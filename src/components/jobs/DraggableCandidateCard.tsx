@@ -5,9 +5,10 @@ import { CSS } from '@dnd-kit/utilities'
 interface DraggableCandidateCardProps {
   id: string
   children: ReactNode
+  isPartOfBulkDrag?: boolean // True if selected while another selected card is being dragged
 }
 
-export default function DraggableCandidateCard({ id, children }: DraggableCandidateCardProps) {
+export default function DraggableCandidateCard({ id, children, isPartOfBulkDrag }: DraggableCandidateCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id })
 
   const transformString = transform
@@ -16,10 +17,10 @@ export default function DraggableCandidateCard({ id, children }: DraggableCandid
 
   const style: React.CSSProperties = {
     transform: transformString,
-    opacity: isDragging ? 0 : 1,
+    opacity: isDragging ? 0 : (isPartOfBulkDrag ? 0.5 : 1),
     cursor: isDragging ? 'grabbing' : 'grab',
     boxShadow: isDragging ? '0 12px 28px rgba(0,0,0,0.12)' : undefined,
-    transition: 'transform 0.12s ease, box-shadow 0.12s ease',
+    transition: 'transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease',
     zIndex: isDragging ? 40 : undefined,
   }
 
@@ -29,4 +30,3 @@ export default function DraggableCandidateCard({ id, children }: DraggableCandid
     </div>
   )
 }
-

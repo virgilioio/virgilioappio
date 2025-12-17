@@ -80,7 +80,7 @@ export function usePipelineActions() {
     return result
   }, [])
 
-  const moveAssociationToStage = useCallback(async (associationId: string, toStageId: string) => {
+  const moveAssociationToStage = useCallback(async (associationId: string, toStageId: string, options?: { silent?: boolean }) => {
     console.log('[usePipelineActions.moveAssociationToStage] moving', { associationId, toStageId })
     const { data, error } = await supabase
       .from('job_candidate_associations')
@@ -90,11 +90,13 @@ export function usePipelineActions() {
 
     if (error) {
       console.error('Error moving candidate:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to move candidate to selected stage.',
-        variant: 'destructive',
-      })
+      if (!options?.silent) {
+        toast({
+          title: 'Error',
+          description: 'Failed to move candidate to selected stage.',
+          variant: 'destructive',
+        })
+      }
       throw error
     }
 
@@ -113,40 +115,48 @@ export function usePipelineActions() {
 
       if (verifyError) {
         console.error('[usePipelineActions.moveAssociationToStage] verification select failed', verifyError)
-        toast({
-          title: 'Not moved',
-          description:
-            "The candidate may not have moved due to permissions or visibility. Please ensure you're assigned to this job and try again.",
-          variant: 'destructive',
-        })
+        if (!options?.silent) {
+          toast({
+            title: 'Not moved',
+            description:
+              "The candidate may not have moved due to permissions or visibility. Please ensure you're assigned to this job and try again.",
+            variant: 'destructive',
+          })
+        }
         throw new Error('Update may have failed: no rows visible after update')
       }
 
       if (verify && verify.current_stage_id === toStageId) {
         console.log('[usePipelineActions.moveAssociationToStage] verification shows candidate moved successfully')
-        toast({
-          title: 'Candidate moved',
-          description: 'Candidate moved to the selected stage.',
-        })
+        if (!options?.silent) {
+          toast({
+            title: 'Candidate moved',
+            description: 'Candidate moved to the selected stage.',
+          })
+        }
         return
       }
 
       console.warn('[usePipelineActions.moveAssociationToStage] verification indicates candidate not moved', {
         verify,
       })
-      toast({
-        title: 'Not moved',
-        description:
-          "The candidate was not moved. You may not have permission, the stage/association may be invalid, or the hiring plan/stage isn't accessible.",
-        variant: 'destructive',
-      })
+      if (!options?.silent) {
+        toast({
+          title: 'Not moved',
+          description:
+            "The candidate was not moved. You may not have permission, the stage/association may be invalid, or the hiring plan/stage isn't accessible.",
+          variant: 'destructive',
+        })
+      }
       throw new Error('No rows updated when moving candidate')
     }
 
-    toast({
-      title: 'Candidate moved',
-      description: 'Candidate moved to the selected stage.',
-    })
+    if (!options?.silent) {
+      toast({
+        title: 'Candidate moved',
+        description: 'Candidate moved to the selected stage.',
+      })
+    }
   }, [])
 
   const createAssociationAndMove = useCallback(async (jobId: string, candidateId: string, toStageId: string) => {

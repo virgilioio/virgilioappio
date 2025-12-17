@@ -297,11 +297,47 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     const { active, over } = event
     setActiveId(null)
     if (!over) return
+    
     const assocId = String(active.id)
     const toStageId = String(over.id)
-    await moveAssociationToStage(assocId, toStageId)
+    
+    // Determine which candidates to move:
+    // - If dragged card IS selected AND there are multiple selections → move ALL selected
+    // - Otherwise → move only the dragged card
+    const idsToMove = (selectedIds.has(assocId) && selectedIds.size > 1) 
+      ? Array.from(selectedIds) 
+      : [assocId]
+    
+    // Move all candidates (in parallel for speed, with silent toasts)
+    try {
+      await Promise.all(idsToMove.map(id => moveAssociationToStage(id, toStageId, { silent: true })))
+      
+      // Show appropriate toast
+      toast({
+        title: idsToMove.length > 1 ? 'Candidates moved' : 'Candidate moved',
+        description: idsToMove.length > 1 
+          ? `${idsToMove.length} candidates moved to the selected stage.`
+          : 'Candidate moved to the selected stage.',
+      })
+      
+      // Clear selection after bulk move
+      if (idsToMove.length > 1) {
+        setSelectedIds(new Set())
+        emitSelectedCandidateIds(new Set())
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: idsToMove.length > 1 
+          ? 'Failed to move some candidates. Please try again.'
+          : 'Failed to move candidate to selected stage.',
+        variant: 'destructive',
+      })
+    }
+    
     await loadPipeline()
-  }, [moveAssociationToStage, loadPipeline])
+    onStageChanged?.()
+  }, [moveAssociationToStage, loadPipeline, selectedIds, emitSelectedCandidateIds, onStageChanged])
 
   // Ordered list of candidate IDs across the pipeline (by stage order, then pipeline_position, then created_at)
   const orderedCandidateIds = useMemo(() => {
@@ -510,8 +546,14 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                       <div className="space-y-2">
                         {(byStage[opt.jhsId] || []).map(assoc => {
                           const t = getTimeInfo(assoc)
+                          // Check if this card is part of a bulk drag (selected + another selected card is being dragged)
+                          const isPartOfBulkDrag = activeId !== null && 
+                            activeId !== assoc.id && 
+                            selectedIds.has(assoc.id) && 
+                            selectedIds.has(activeId) && 
+                            selectedIds.size > 1
                           return (
-                            <DraggableCandidateCard id={assoc.id} key={assoc.id}>
+                            <DraggableCandidateCard id={assoc.id} key={assoc.id} isPartOfBulkDrag={isPartOfBulkDrag}>
                               <CandidateCard
                                 candidateName={assoc.candidate_name}
                                 linkedinUrl={assoc.linkedin_url}
@@ -547,26 +589,56 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                 (() => {
                   const { assoc, stageJhsId } = assocMap.get(activeId)!
                   const t = getTimeInfo(assoc)
+                  const dragCount = (selectedIds.has(activeId) && selectedIds.size > 1) 
+                    ? selectedIds.size 
+                    : 1
+                  
                   return (
-                    <div className="w-72 pointer-events-none" style={{ transform: 'rotate(-2deg) scale(1.02)', boxShadow: '0 12px 28px rgba(0,0,0,0.18)' }}>
-                      <CandidateCard
-                        candidateName={assoc.candidate_name}
-                        linkedinUrl={assoc.linkedin_url}
-                        stageOptions={stageOptions}
-                        currentStageJhsId={stageJhsId}
-                        timeInStageLabel={t.label}
-                        timeBadgeVariant={t.variant}
-                        onMove={(toId) => handleMove(assoc.id, toId)}
-                        onClick={() => { 
-                          const candidateId = orderedCandidateIds.find(id => id === assoc.candidate_id) || assoc.candidate_id;
-                          if (onCandidateClick) {
-                            onCandidateClick(candidateId);
-                          } else {
-                            setSelectedCandidateId(candidateId);
-                            setPanelOpen(true);
-                          }
+                    <div className="relative w-72 pointer-events-none">
+                      {/* Stacked cards effect when dragging multiple */}
+                      {dragCount > 1 && (
+                        <>
+                          <div className="absolute -top-2 left-2 right-2 h-full rounded-lg bg-card border border-border shadow-md opacity-50" />
+                          <div className="absolute -top-1 left-1 right-1 h-full rounded-lg bg-card border border-border shadow-md opacity-70" />
+                        </>
+                      )}
+                      
+                      {/* Main dragged card */}
+                      <div 
+                        className="relative"
+                        style={{ 
+                          transform: 'rotate(-2deg) scale(1.02)', 
+                          boxShadow: '0 12px 28px rgba(0,0,0,0.18)' 
                         }}
-                      />
+                      >
+                        <CandidateCard
+                          candidateName={assoc.candidate_name}
+                          linkedinUrl={assoc.linkedin_url}
+                          stageOptions={stageOptions}
+                          currentStageJhsId={stageJhsId}
+                          timeInStageLabel={t.label}
+                          timeBadgeVariant={t.variant}
+                          onMove={(toId) => handleMove(assoc.id, toId)}
+                          onClick={() => { 
+                            const candidateId = orderedCandidateIds.find(id => id === assoc.candidate_id) || assoc.candidate_id;
+                            if (onCandidateClick) {
+                              onCandidateClick(candidateId);
+                            } else {
+                              setSelectedCandidateId(candidateId);
+                              setPanelOpen(true);
+                            }
+                          }}
+                        />
+                      </div>
+                      
+                      {/* Count badge */}
+                      {dragCount > 1 && (
+                        <Badge 
+                          className="absolute -top-3 -right-3 bg-primary text-primary-foreground shadow-lg z-10 min-w-[24px] justify-center"
+                        >
+                          {dragCount}
+                        </Badge>
+                      )}
                     </div>
                   )
                 })()
