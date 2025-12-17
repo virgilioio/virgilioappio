@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
-import { useIsPlatformAdmin } from '@/hooks/useIsPlatformAdmin'
 import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
 import { log } from '@/lib/logger'
 import { useQueryClient } from '@tanstack/react-query'
@@ -69,34 +68,20 @@ export function useOrganizations() {
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { user, userType, organizationId } = useAuth()
-  const isPlatformAdmin = useIsPlatformAdmin()
+  const { user, userType } = useAuth()
   const queryClient = useQueryClient()
 
   // Helper function to get user's tenant organization
   const getUserTenantOrganization = async () => {
-    if (userType === 'platform_admin' && isPlatformAdmin) {
-      // Platform admins use GoGio as parent
-      const { data: goGioOrg } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('name', 'GoGio')
-        .eq('organization_type', 'platform')
-        .eq('tenant_type', 'saas')
-        .single()
-      
-      return goGioOrg?.id || null
-    } else {
-      // Workspace owners use their current organization's tenant
-      const { data: memberData } = await supabase
-        .from('members')
-        .select('organizations!inner(tenant_id)')
-        .eq('user_id', user?.id)
-        .eq('user_status', 'active')
-        .single()
-      
-      return memberData?.organizations?.tenant_id || null
-    }
+    // ALL users (including platform_admin) get their tenant from their membership
+    const { data: memberData } = await supabase
+      .from('members')
+      .select('tenant_id')
+      .eq('user_id', user?.id)
+      .eq('user_status', 'active')
+      .single()
+    
+    return memberData?.tenant_id || null
   }
 
   const getOrganizations = async () => {
