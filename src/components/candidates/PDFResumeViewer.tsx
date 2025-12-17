@@ -14,20 +14,23 @@ export const PDFResumeViewer = ({ url, height }: PDFResumeViewerProps) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [numPages, setNumPages] = useState(0);
+  const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRefs = useRef<Map<number, HTMLCanvasElement>>(new Map());
 
+  // Effect 1: Load PDF document
   useEffect(() => {
     let cancelled = false;
 
-    const loadAndRenderPDF = async () => {
+    const loadPDF = async () => {
       try {
         setLoading(true);
         setError(null);
+        setPdfDoc(null);
+        setNumPages(0);
 
         console.log('📄 Fetching PDF from URL:', url);
         
-        // Fetch the PDF as a blob
         const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`Failed to fetch PDF: ${response.status} ${response.statusText}`);
@@ -39,48 +42,13 @@ export const PDFResumeViewer = ({ url, height }: PDFResumeViewerProps) => {
         if (cancelled) return;
 
         console.log('📄 Loading PDF with PDF.js');
-        
-        // Load the PDF document
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         
         if (cancelled) return;
 
         console.log(`📄 PDF loaded successfully, ${pdf.numPages} pages`);
         setNumPages(pdf.numPages);
-
-        // Render all pages
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-          if (cancelled) break;
-
-          const page = await pdf.getPage(pageNum);
-          const canvas = canvasRefs.current.get(pageNum);
-          
-          if (!canvas || cancelled) continue;
-
-          const context = canvas.getContext('2d');
-          if (!context) continue;
-
-          // Calculate scale to fit container width
-          const containerWidth = containerRef.current?.clientWidth || 800;
-          const viewport = page.getViewport({ scale: 1 });
-          const scale = (containerWidth - 32) / viewport.width; // 32px for padding
-          const scaledViewport = page.getViewport({ scale });
-
-          canvas.height = scaledViewport.height;
-          canvas.width = scaledViewport.width;
-
-          // Render the page
-          await page.render({
-            canvasContext: context,
-            viewport: scaledViewport,
-          }).promise;
-
-          console.log(`📄 Rendered page ${pageNum}/${pdf.numPages}`);
-        }
-
-        if (!cancelled) {
-          setLoading(false);
-        }
+        setPdfDoc(pdf);
       } catch (err) {
         if (!cancelled) {
           console.error('❌ Error loading PDF:', err);
@@ -90,14 +58,65 @@ export const PDFResumeViewer = ({ url, height }: PDFResumeViewerProps) => {
       }
     };
 
-    loadAndRenderPDF();
-
-    return () => {
-      cancelled = true;
-    };
+    loadPDF();
+    return () => { cancelled = true; };
   }, [url]);
 
-  if (loading) {
+  // Effect 2: Render pages after canvases are mounted
+  useEffect(() => {
+    if (!pdfDoc || numPages === 0) return;
+    
+    let cancelled = false;
+
+    const renderPages = async () => {
+      for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+        if (cancelled) break;
+
+        const canvas = canvasRefs.current.get(pageNum);
+        if (!canvas) {
+          console.warn(`Canvas for page ${pageNum} not found`);
+          continue;
+        }
+
+        const context = canvas.getContext('2d');
+        if (!context) continue;
+
+        try {
+          const page = await pdfDoc.getPage(pageNum);
+          const containerWidth = containerRef.current?.clientWidth || 800;
+          const viewport = page.getViewport({ scale: 1 });
+          const scale = (containerWidth - 32) / viewport.width;
+          const scaledViewport = page.getViewport({ scale });
+
+          canvas.height = scaledViewport.height;
+          canvas.width = scaledViewport.width;
+
+          await page.render({
+            canvasContext: context,
+            viewport: scaledViewport,
+          }).promise;
+
+          console.log(`📄 Rendered page ${pageNum}/${numPages}`);
+        } catch (err) {
+          console.error(`❌ Error rendering page ${pageNum}:`, err);
+        }
+      }
+
+      if (!cancelled) {
+        setLoading(false);
+      }
+    };
+
+    // Small delay to ensure React has mounted canvases
+    const timeoutId = setTimeout(renderPages, 50);
+    
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [pdfDoc, numPages]);
+
+  if (loading && !pdfDoc) {
     return (
       <div 
         className="flex items-center justify-center bg-muted/30 rounded-lg border border-border"
@@ -151,6 +170,12 @@ export const PDFResumeViewer = ({ url, height }: PDFResumeViewerProps) => {
           </div>
         ))}
       </div>
+      {loading && (
+        <div className="flex items-center justify-center py-4">
+          <Loader2 className="h-5 w-5 animate-spin text-primary mr-2" />
+          <span className="text-sm text-muted-foreground">Rendering pages...</span>
+        </div>
+      )}
     </div>
   );
 };
