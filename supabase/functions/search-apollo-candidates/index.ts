@@ -20,6 +20,7 @@ interface SearchCriteria {
   keywords?: string[];  // General keyword search (q_keywords) - joined with spaces
   company_sizes?: string[];  // '1,10', '11,50', etc. (organization_num_employees_ranges)
   company_domains?: string[];  // Target company domains
+  company_names?: string[];  // Target company names (q_organization_name)
   // Note: skills are NOT supported by Apollo search - only titles and locations
 }
 
@@ -196,7 +197,15 @@ function buildApolloSearchUrl(criteria: SearchCriteria, perPage: number = 50): s
     criteria.company_domains.forEach(domain => {
       params.append('q_organization_domains_list[]', domain);
     });
-    console.log(`🎯 Apollo target companies: ${criteria.company_domains.join(', ')}`);
+    console.log(`🎯 Apollo target company domains: ${criteria.company_domains.join(', ')}`);
+  }
+
+  // Target company names → q_organization_name (searches by company name)
+  if (criteria.company_names && criteria.company_names.length > 0) {
+    // Apollo's q_organization_name accepts a single string, join with OR logic
+    const companyNamesString = criteria.company_names.join(' OR ');
+    params.append('q_organization_name', companyNamesString);
+    console.log(`🏢 Apollo target company names: ${companyNamesString}`);
   }
 
   // Results per page
