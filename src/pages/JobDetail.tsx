@@ -876,10 +876,6 @@ export default function JobDetail() {
                               Add Candidate
                             </Button>
                           )}
-                          {/* Debug: Selection state */}
-                          <div className="text-xs text-red-500 border border-red-200 p-1 rounded">
-                            Mode: {selectionMode ? 'ON' : 'OFF'} | Selected: {selectedCandidateIds.length} | Tab: {pipelineSectionTab}
-                          </div>
                           {selectionMode && selectedCandidateIds.length > 0 && (
                             <div className="flex items-center gap-2">
                               <BulkMoveJobCandidatesToPipelineDialog
@@ -891,14 +887,20 @@ export default function JobDetail() {
                                   setPipelineRefresh((v) => v + 1)
                                 }}
                               />
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-2"
+                                onClick={() => setShowBulkEmailDialog(true)}
+                              >
+                                <Mail className="h-4 w-4" />
+                                Email
+                              </Button>
                               <Button 
                                 size="sm" 
                                 variant="outline" 
                                 className="gap-2"
-                                disabled={selectedCandidateIds.length === 0}
                                 onClick={async () => {
-                                  // Archive selected candidates logic would go here
-                                  // For now, just clear selection
                                   setSelectedCandidateIds([])
                                   setSelectionMode(false)
                                 }}
@@ -911,25 +913,14 @@ export default function JobDetail() {
                           {pipelineSectionTab === 'recruiting' ? (
                             <>
                               {selectionMode && (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    disabled={selectedCandidateIds.length === 0}
-                                    onClick={() => setShowBulkEmailDialog(true)}
-                                  >
-                                    <Mail className="h-4 w-4 mr-2" />
-                                    Email
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    disabled={selectedCandidateIds.length === 0}
-                                    onClick={() => setShowBulkRejectionDialog(true)}
-                                  >
-                                    Reject
-                                  </Button>
-                                </>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  disabled={selectedCandidateIds.length === 0}
+                                  onClick={() => setShowBulkRejectionDialog(true)}
+                                >
+                                  Reject
+                                </Button>
                               )}
                               <Button
                                 size="sm"
