@@ -28,7 +28,8 @@ export function usePipelineActions() {
       .from('job_candidate_associations')
       .select('id, job_id, candidate_id, current_stage_id, pipeline_position, created_at, entered_stage_at, status')
       .eq('job_id', jobId)
-      .order('pipeline_position', { ascending: true })
+      .order('pipeline_position', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: false })
 
     if (assocError) {
       console.error('Error fetching associations:', assocError)

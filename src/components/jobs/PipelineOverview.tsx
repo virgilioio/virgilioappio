@@ -346,7 +346,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
         const pa = a.pipeline_position ?? Number.MAX_SAFE_INTEGER
         const pb = b.pipeline_position ?? Number.MAX_SAFE_INTEGER
         if (pa !== pb) return pa - pb
-        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       })
       return arr
     })
@@ -361,7 +361,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
         const pa = a.pipeline_position ?? Number.MAX_SAFE_INTEGER
         const pb = b.pipeline_position ?? Number.MAX_SAFE_INTEGER
         if (pa !== pb) return pa - pb
-        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       })
       for (const a of arr) {
         rows.push({ assoc: a, stage: opt.stage, stageJhsId: opt.jhsId })
