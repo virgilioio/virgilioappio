@@ -19,7 +19,8 @@ import { SuspendOrganizationDialog } from '@/components/settings/SuspendOrganiza
 import { ExtendTrialDialog } from '@/components/settings/ExtendTrialDialog'
 import { ChangePlanDialog } from '@/components/settings/ChangePlanDialog'
 import { AssignCreditsDialog } from '@/components/settings/AssignCreditsDialog'
-import { CustomerHealthBadge, HealthStatus } from '@/components/saas/CustomerHealthBadge'
+import { CustomerHealthBadge } from '@/components/saas/CustomerHealthBadge'
+import { HealthStatusCard } from '@/components/saas/HealthStatusCard'
 import { QuickActionsPanel } from '@/components/saas/QuickActionsPanel'
 import { ActivityTimeline } from '@/components/saas/ActivityTimeline'
 import { MembersList } from '@/components/saas/MembersList'
@@ -27,6 +28,7 @@ import { BillingOverview } from '@/components/saas/BillingOverview'
 import { SubscriptionTimeline } from '@/components/saas/SubscriptionTimeline'
 import { SeatManagementCard } from '@/components/saas/SeatManagementCard'
 import { PaymentHistory } from '@/components/saas/PaymentHistory'
+import { calculateCustomerHealth, CustomerHealthResult } from '@/utils/customerHealth'
 
 export function SaaSCustomerDetail() {
   const { id } = useParams<{ id: string }>()
@@ -81,19 +83,23 @@ export function SaaSCustomerDetail() {
     enabled: !!customer?.tenant_id
   })
 
-  // Calculate customer health status (moved before early returns)
-  const customerHealth: HealthStatus = useMemo(() => {
-    if (!customer || customer.status === 'suspended') return 'inactive'
+  // Calculate customer health status using shared utility
+  const customerHealth: CustomerHealthResult = useMemo(() => {
+    if (!customer) {
+      return {
+        status: 'inactive' as const,
+        reasons: [],
+        recommendation: 'No customer data available.'
+      }
+    }
     
-    const daysSinceActive = customer.last_active_at 
-      ? (Date.now() - new Date(customer.last_active_at).getTime()) / (1000 * 60 * 60 * 24)
-      : 999
-    
-    const hasUsage = customer.jobs_created_30d > 0 || customer.candidates_added_30d > 0
-    
-    if (daysSinceActive > 30) return 'churn-risk'
-    if (daysSinceActive > 14 || !hasUsage) return 'at-risk'
-    return 'healthy'
+    return calculateCustomerHealth({
+      status: customer.status,
+      last_active_at: customer.last_active_at,
+      jobs_created_30d: customer.jobs_created_30d,
+      candidates_added_30d: customer.candidates_added_30d,
+      members_active_count: customer.members_active_count
+    })
   }, [customer])
 
   // Mock activity data (would come from actual activity tracking)
@@ -181,7 +187,7 @@ export function SaaSCustomerDetail() {
 
       {/* Status Badges */}
       <div className="flex items-center gap-3 flex-wrap">
-        <CustomerHealthBadge health={customerHealth} />
+        <CustomerHealthBadge health={customerHealth.status} />
         <Badge variant={getPlanVariant(customer.plan_type)} className="px-3 py-1">
           {customer.plan_type || 'No Plan'}
         </Badge>
@@ -251,6 +257,9 @@ export function SaaSCustomerDetail() {
 
         <TabsContent value="overview" className="space-y-6 mt-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Health Status Card */}
+            <HealthStatusCard health={customerHealth} />
+
             {/* Quick Actions */}
             <QuickActionsPanel
               customer={customer}
