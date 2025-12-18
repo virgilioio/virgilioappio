@@ -1242,8 +1242,11 @@ export type Database = {
           provider_message_id: string | null
           raw_message_data: Json | null
           received_at: string | null
+          references_header: string | null
           replied_at: string | null
+          rfc822_message_id: string | null
           sent_at: string | null
+          snippet: string | null
           status: string
           subject: string
           tenant_id: string
@@ -1276,8 +1279,11 @@ export type Database = {
           provider_message_id?: string | null
           raw_message_data?: Json | null
           received_at?: string | null
+          references_header?: string | null
           replied_at?: string | null
+          rfc822_message_id?: string | null
           sent_at?: string | null
+          snippet?: string | null
           status?: string
           subject: string
           tenant_id: string
@@ -1310,8 +1316,11 @@ export type Database = {
           provider_message_id?: string | null
           raw_message_data?: Json | null
           received_at?: string | null
+          references_header?: string | null
           replied_at?: string | null
+          rfc822_message_id?: string | null
           sent_at?: string | null
+          snippet?: string | null
           status?: string
           subject?: string
           tenant_id?: string
