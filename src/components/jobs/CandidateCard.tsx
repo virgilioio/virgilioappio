@@ -1,11 +1,11 @@
 
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { format, parseISO } from 'date-fns'
+import { format, parseISO, formatDistanceToNowStrict } from 'date-fns'
 import { Card } from '@/components/ui/card'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Calendar, ExternalLink } from 'lucide-react'
+import { Calendar, ExternalLink, Clock, FileText, CheckCircle } from 'lucide-react'
 import { JobStage } from '@/hooks/useJobHiringPlan'
 import { Checkbox } from '@/components/ui/checkbox'
 import { supabase } from '@/lib/supabaseClient'
@@ -13,6 +13,7 @@ import { BookingDetailsDialog } from '@/components/booking/BookingDetailsDialog'
 
 interface CandidateCardProps {
   candidateId?: string
+  associationId?: string
   candidateName: string
   linkedinUrl?: string | null
   stageOptions: { jhsId: string; stage: JobStage }[]
@@ -27,7 +28,7 @@ interface CandidateCardProps {
 }
 
 export default function CandidateCard(props: CandidateCardProps) {
-  const { candidateId, candidateName, linkedinUrl, timeInStageLabel, timeBadgeVariant, onClick } = props
+  const { candidateId, associationId, candidateName, linkedinUrl, timeInStageLabel, timeBadgeVariant, onClick, currentStageJhsId } = props
   const [bookingDialogOpen, setBookingDialogOpen] = useState(false)
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null)
 
@@ -48,6 +49,74 @@ export default function CandidateCard(props: CandidateCardProps) {
     },
     enabled: !!candidateId,
   })
+
+  // Query for candidate status (scorecards and bookings)
+  const { data: candidateStatus } = useQuery({
+    queryKey: ['candidate-status', candidateId, associationId, currentStageJhsId],
+    queryFn: async () => {
+      if (!candidateId || !associationId || !currentStageJhsId) return null
+      
+      // Fetch scorecards for this association + stage (only human-submitted)
+      const { data: scorecards } = await supabase
+        .from('job_stage_scorecards')
+        .select('id')
+        .eq('association_id', associationId)
+        .eq('stage_instance_id', currentStageJhsId)
+        .eq('is_ai_draft', false)
+        .limit(1)
+      
+      // Fetch all bookings for this candidate in this stage
+      const { data: bookings } = await supabase
+        .from('scheduled_bookings')
+        .select('id, scheduled_start, status')
+        .eq('candidate_id', candidateId)
+        .eq('job_hiring_stage_id', currentStageJhsId)
+        .in('status', ['confirmed', 'rescheduled', 'completed', 'no_show'])
+        .order('scheduled_start', { ascending: true })
+      
+      const hasScorecard = (scorecards?.length ?? 0) > 0
+      const now = new Date()
+      
+      // Check for completed interviews (completed status OR confirmed but past)
+      const completedInterview = bookings?.find(b => 
+        b.status === 'completed' || 
+        b.status === 'no_show' ||
+        (b.status === 'confirmed' && new Date(b.scheduled_start) < now)
+      )
+      
+      // Check for upcoming scheduled interview
+      const upcomingInterview = bookings?.find(b => 
+        (b.status === 'confirmed' || b.status === 'rescheduled') && 
+        new Date(b.scheduled_start) >= now
+      )
+      
+      return { hasScorecard, completedInterview, upcomingInterview }
+    },
+    enabled: !!candidateId && !!associationId && !!currentStageJhsId,
+  })
+
+  // Get status badge based on priority
+  const getStatusBadge = () => {
+    if (!candidateStatus) return null
+    const { hasScorecard, completedInterview, upcomingInterview } = candidateStatus
+    
+    if (hasScorecard) {
+      return { label: 'Needs Decision', variant: 'purple' as const, Icon: CheckCircle }
+    }
+    
+    if (completedInterview) {
+      return { label: 'Pending Scorecard', variant: 'warning' as const, Icon: FileText }
+    }
+    
+    if (upcomingInterview) {
+      const timeUntil = formatDistanceToNowStrict(new Date(upcomingInterview.scheduled_start), { addSuffix: false })
+      return { label: `In ${timeUntil}`, variant: 'info' as const, Icon: Calendar }
+    }
+    
+    return { label: 'Pending Schedule', variant: 'pastel-yellow' as const, Icon: Clock }
+  }
+
+  const statusBadge = getStatusBadge()
 
   return (
     <>
@@ -103,11 +172,27 @@ export default function CandidateCard(props: CandidateCardProps) {
           </div>
         </div>
 
-        {timeInStageLabel && (
-          <div className="absolute left-4 bottom-3">
+        {/* Bottom row with time badge (left) and status badge (right) */}
+        <div className="absolute left-4 right-4 bottom-3 flex justify-between items-center gap-2">
+          {timeInStageLabel && (
             <Badge variant={timeBadgeVariant ?? 'outline'}>{timeInStageLabel}</Badge>
-          </div>
-        )}
+          )}
+          {statusBadge && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant={statusBadge.variant} className="gap-1 text-[10px] px-1.5">
+                    <statusBadge.Icon className="h-3 w-3" />
+                    <span className="hidden sm:inline">{statusBadge.label}</span>
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {statusBadge.label}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
       </Card>
 
       <BookingDetailsDialog

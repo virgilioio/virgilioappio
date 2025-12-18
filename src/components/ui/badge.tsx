@@ -28,6 +28,7 @@ const badgeVariants = cva(
         "pastel-pink": "border-transparent bg-pastel-pink text-pastel-pink-foreground hover:bg-pastel-pink/80",
         "pastel-yellow": "border-transparent bg-pastel-yellow text-pastel-yellow-foreground hover:bg-pastel-yellow/80",
         "pastel-orange": "border-transparent bg-pastel-orange text-pastel-orange-foreground hover:bg-pastel-orange/80",
+        "purple": "border-transparent bg-purple-100 text-purple-800 hover:bg-purple-100/80 dark:bg-purple-900/30 dark:text-purple-300",
       },
     },
     defaultVariants: {
