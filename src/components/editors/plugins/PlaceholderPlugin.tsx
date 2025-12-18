@@ -16,6 +16,7 @@ import {
   KEY_ENTER_COMMAND,
 } from 'lexical';
 import { $createPlaceholderNode } from '../nodes/PlaceholderNode';
+import { normalizePlaceholderKey } from '@/utils/templateUtils';
 
 interface PlaceholderPluginProps {
   singleLine?: boolean;
@@ -40,8 +41,9 @@ export function PlaceholderPlugin({ singleLine = false }: PlaceholderPluginProps
         const before = text.slice(0, matchIndex);
         const after = text.slice(matchIndex + fullMatch.length);
         
-        // Create the placeholder node
-        const placeholderNode = $createPlaceholderNode(placeholderKey.trim());
+        // Create the placeholder node with normalized key
+        const normalizedKey = normalizePlaceholderKey(placeholderKey);
+        const placeholderNode = $createPlaceholderNode(normalizedKey);
         
         // Replace the text node with: [before text] [placeholder] [after text]
         if (before) {
@@ -104,6 +106,7 @@ export function PlaceholderPlugin({ singleLine = false }: PlaceholderPluginProps
 
 /**
  * Hook to get placeholder insertion function
+ * The placeholderKey is automatically normalized (braces stripped)
  */
 export function useInsertPlaceholder() {
   const [editor] = useLexicalComposerContext();
@@ -116,8 +119,11 @@ export function useInsertPlaceholder() {
         // Delete any selected content first
         selection.removeText();
         
+        // Normalize the key before creating the node
+        const normalizedKey = normalizePlaceholderKey(placeholderKey);
+        
         // Insert placeholder and space
-        const placeholderNode = $createPlaceholderNode(placeholderKey);
+        const placeholderNode = $createPlaceholderNode(normalizedKey);
         const spaceNode = $createTextNode(' ');
         
         selection.insertNodes([placeholderNode, spaceNode]);

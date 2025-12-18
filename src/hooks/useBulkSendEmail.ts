@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { renderTemplate, buildPlaceholderData } from '@/utils/templateUtils';
 
 interface BulkEmailInput {
   associationIds: string[];
@@ -18,43 +19,6 @@ interface EmailProgress {
   total: number;
   completed: number;
   failed: number;
-}
-
-// Helper to resolve placeholders in text
-function resolvePlaceholders(
-  text: string,
-  data: {
-    candidateName?: string;
-    candidateFirstName?: string;
-    candidateEmail?: string;
-    jobTitle?: string;
-    jobDepartment?: string;
-    jobLocation?: string;
-    senderName?: string;
-    senderFirstName?: string;
-    senderLastName?: string;
-    senderEmail?: string;
-    senderTitle?: string;
-    senderPhone?: string;
-    senderLinkedin?: string;
-    senderBookingLink?: string;
-  }
-): string {
-  return text
-    .replace(/\{\{candidate\.name\}\}/g, data.candidateName || '')
-    .replace(/\{\{candidate\.first_name\}\}/g, data.candidateFirstName || '')
-    .replace(/\{\{candidate\.email\}\}/g, data.candidateEmail || '')
-    .replace(/\{\{job\.title\}\}/g, data.jobTitle || '')
-    .replace(/\{\{job\.department\}\}/g, data.jobDepartment || '')
-    .replace(/\{\{job\.location\}\}/g, data.jobLocation || '')
-    .replace(/\{\{sender\.name\}\}/g, data.senderName || '')
-    .replace(/\{\{sender\.first_name\}\}/g, data.senderFirstName || '')
-    .replace(/\{\{sender\.last_name\}\}/g, data.senderLastName || '')
-    .replace(/\{\{sender\.email\}\}/g, data.senderEmail || '')
-    .replace(/\{\{sender\.title\}\}/g, data.senderTitle || '')
-    .replace(/\{\{sender\.phone\}\}/g, data.senderPhone || '')
-    .replace(/\{\{sender\.linkedin\}\}/g, data.senderLinkedin || '')
-    .replace(/\{\{sender\.booking_link\}\}/g, data.senderBookingLink || '');
 }
 
 export function useBulkSendEmail() {
@@ -94,10 +58,6 @@ export function useBulkSendEmail() {
         .eq('user_id', user?.id)
         .single();
 
-      const senderName = senderProfile 
-        ? `${senderProfile.first_name || ''} ${senderProfile.last_name || ''}`.trim()
-        : '';
-
       const results = await Promise.allSettled(
         associations.map(async (assoc) => {
           try {
@@ -108,26 +68,30 @@ export function useBulkSendEmail() {
               throw new Error(`No email address for candidate ${candidate.candidate_name}`);
             }
 
-            // Resolve placeholders for this candidate
-            const placeholderData = {
-              candidateName: candidate.candidate_name,
-              candidateFirstName: candidate.candidate_name?.split(' ')[0] || '',
-              candidateEmail: candidate.email,
-              jobTitle: job.title,
-              jobDepartment: job.department,
-              jobLocation: job.location,
-              senderName,
-              senderFirstName: (senderProfile as any)?.first_name || '',
-              senderLastName: (senderProfile as any)?.last_name || '',
-              senderEmail: (senderProfile as any)?.email || emailData.fromEmail,
-              senderTitle: (senderProfile as any)?.title || '',
-              senderPhone: (senderProfile as any)?.phone || '',
-              senderLinkedin: (senderProfile as any)?.linkedin_url || '',
-              senderBookingLink: '',
-            };
+            // Build placeholder data using the utility function
+            const placeholderData = buildPlaceholderData({
+              candidate: {
+                candidate_name: candidate.candidate_name,
+                email: candidate.email,
+              },
+              job: {
+                title: job.title,
+                department: job.department,
+                location: job.location,
+              },
+              sender: {
+                first_name: (senderProfile as any)?.first_name,
+                last_name: (senderProfile as any)?.last_name,
+                email: (senderProfile as any)?.email || emailData.fromEmail,
+                title: (senderProfile as any)?.title,
+                phone: (senderProfile as any)?.phone,
+                linkedin_url: (senderProfile as any)?.linkedin_url,
+              },
+            });
 
-            const resolvedSubject = resolvePlaceholders(emailData.subject, placeholderData);
-            const resolvedBody = resolvePlaceholders(emailData.bodyHtml, placeholderData);
+            // Resolve placeholders using the robust rendering function
+            const resolvedSubject = renderTemplate(emailData.subject, placeholderData);
+            const resolvedBody = renderTemplate(emailData.bodyHtml, placeholderData);
 
             if (scheduleFor) {
               // Schedule the email with contextual booking link data

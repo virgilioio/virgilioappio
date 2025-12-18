@@ -41,20 +41,22 @@ export function containsPlaceholders(text: string): boolean {
 }
 
 // List of available placeholders with descriptions
+// IMPORTANT: 'value' is now the NORMALIZED key (no braces) to prevent double-brace bugs
 export const AVAILABLE_PLACEHOLDERS = [
-  { value: '{{candidate.name}}', label: 'Candidate Name', category: 'Candidate' },
-  { value: '{{candidate.email}}', label: 'Candidate Email', category: 'Candidate' },
-  { value: '{{candidate.phone}}', label: 'Candidate Phone', category: 'Candidate' },
-  { value: '{{candidate.location}}', label: 'Candidate Location', category: 'Candidate' },
-  { value: '{{job.title}}', label: 'Job Title', category: 'Job' },
-  { value: '{{job.department}}', label: 'Job Department', category: 'Job' },
-  { value: '{{job.location}}', label: 'Job Location', category: 'Job' },
-  { value: '{{sender.name}}', label: 'Your Name', category: 'Sender' },
-  { value: '{{sender.first_name}}', label: 'Your First Name', category: 'Sender' },
-  { value: '{{sender.last_name}}', label: 'Your Last Name', category: 'Sender' },
-  { value: '{{sender.email}}', label: 'Your Email', category: 'Sender' },
-  { value: '{{sender.title}}', label: 'Your Job Title', category: 'Sender' },
-  { value: '{{sender.phone}}', label: 'Your Phone', category: 'Sender' },
-  { value: '{{sender.linkedin}}', label: 'Your LinkedIn URL', category: 'Sender' },
-  { value: '{{sender.booking_link}}', label: 'Your Booking Link', category: 'Sender' },
+  { value: 'candidate.name', label: 'Candidate Name', category: 'Candidate' },
+  { value: 'candidate.first_name', label: 'Candidate First Name', category: 'Candidate' },
+  { value: 'candidate.email', label: 'Candidate Email', category: 'Candidate' },
+  { value: 'candidate.phone', label: 'Candidate Phone', category: 'Candidate' },
+  { value: 'candidate.location', label: 'Candidate Location', category: 'Candidate' },
+  { value: 'job.title', label: 'Job Title', category: 'Job' },
+  { value: 'job.department', label: 'Job Department', category: 'Job' },
+  { value: 'job.location', label: 'Job Location', category: 'Job' },
+  { value: 'sender.name', label: 'Your Name', category: 'Sender' },
+  { value: 'sender.first_name', label: 'Your First Name', category: 'Sender' },
+  { value: 'sender.last_name', label: 'Your Last Name', category: 'Sender' },
+  { value: 'sender.email', label: 'Your Email', category: 'Sender' },
+  { value: 'sender.title', label: 'Your Job Title', category: 'Sender' },
+  { value: 'sender.phone', label: 'Your Phone', category: 'Sender' },
+  { value: 'sender.linkedin', label: 'Your LinkedIn URL', category: 'Sender' },
+  { value: 'sender.booking_link', label: 'Your Booking Link', category: 'Sender' },
 ];
