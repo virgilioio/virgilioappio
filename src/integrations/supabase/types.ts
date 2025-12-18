@@ -4602,6 +4602,10 @@ export type Database = {
           seat_limit: number
         }[]
       }
+      check_tenant_member_role: {
+        Args: { required_role: string; tenant_id_param: string }
+        Returns: boolean
+      }
       cleanup_expired_draft_conversations: { Args: never; Returns: undefined }
       cleanup_expired_invitations: { Args: never; Returns: number }
       cleanup_expired_salary_data: { Args: never; Returns: number }
