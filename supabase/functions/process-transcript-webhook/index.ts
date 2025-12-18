@@ -14,6 +14,61 @@ function extractIngestCode(email: string): string | null {
   return match ? match[1] : null;
 }
 
+// Check if email is a calendar invite (should be ignored)
+function isCalendarInvite(emailData: any): boolean {
+  const subject = emailData.subject?.toLowerCase() || '';
+  
+  // Calendar invite subject patterns
+  const calendarSubjectPatterns = [
+    'invitation:',
+    'updated invitation:',
+    'canceled:',
+    'cancelled:',
+    'accepted:',
+    'declined:',
+    'tentative:',
+    'reminder:',
+  ];
+  
+  const hasCalendarSubject = calendarSubjectPatterns.some(pattern => 
+    subject.startsWith(pattern)
+  );
+  
+  // Check attachments for calendar-only content
+  const attachments = emailData.attachments || [];
+  const hasOnlyCalendarAttachments = attachments.length > 0 && attachments.every((a: any) => 
+    a.content_type === 'text/calendar' || 
+    a.content_type === 'application/ics' ||
+    a.filename?.endsWith('.ics')
+  );
+  
+  // It's a calendar invite if it has a calendar subject OR only calendar attachments
+  return hasCalendarSubject || hasOnlyCalendarAttachments;
+}
+
+// Extract ingest code from all recipients (to + cc)
+function findIngestCodeInRecipients(emailData: any): { code: string | null; foundIn: string } {
+  // Check 'to' addresses first
+  const toAddresses = Array.isArray(emailData.to) ? emailData.to : [emailData.to].filter(Boolean);
+  for (const addr of toAddresses) {
+    const code = extractIngestCode(addr);
+    if (code) {
+      return { code, foundIn: `to:${addr}` };
+    }
+  }
+  
+  // Check 'cc' addresses
+  const ccAddresses = Array.isArray(emailData.cc) ? emailData.cc : [emailData.cc].filter(Boolean);
+  for (const addr of ccAddresses) {
+    const code = extractIngestCode(addr);
+    if (code) {
+      return { code, foundIn: `cc:${addr}` };
+    }
+  }
+  
+  return { code: null, foundIn: '' };
+}
+
 // Extract transcript content from email
 function extractTranscriptContent(emailData: any): { content: string; metadata: any } {
   let content = '';
@@ -41,8 +96,15 @@ function extractTranscriptContent(emailData: any): { content: string; metadata: 
       size: a.size,
     }));
 
-    // Look for text attachments
+    // Look for text attachments (skip calendar files)
     for (const attachment of emailData.attachments) {
+      // Skip calendar attachments
+      if (attachment.content_type === 'text/calendar' || 
+          attachment.content_type === 'application/ics' ||
+          attachment.filename?.endsWith('.ics')) {
+        continue;
+      }
+      
       if (attachment.content_type?.includes('text') || 
           attachment.filename?.endsWith('.txt') ||
           attachment.filename?.endsWith('.vtt') ||
@@ -54,7 +116,7 @@ function extractTranscriptContent(emailData: any): { content: string; metadata: 
             metadata.content_source = `attachment:${attachment.filename}`;
           }
         } catch (e) {
-          console.warn('[process-transcript-webhook] Failed to decode attachment:', e);
+          console.warn('[Transcript Webhook] Failed to decode attachment:', e);
         }
       }
     }
@@ -82,7 +144,7 @@ serve(async (req) => {
     const svixSignature = req.headers.get('svix-signature');
 
     if (!svixId || !svixTimestamp || !svixSignature) {
-      console.error('[process-transcript-webhook] Missing signature headers:', {
+      console.error('[Transcript Webhook] Missing signature headers:', {
         hasId: !!svixId,
         hasTimestamp: !!svixTimestamp,
         hasSignature: !!svixSignature
@@ -102,20 +164,20 @@ serve(async (req) => {
         "svix-timestamp": svixTimestamp,
         "svix-signature": svixSignature
       });
-      console.log('[process-transcript-webhook] Signature verified successfully');
+      console.log('[Transcript Webhook] Signature verified successfully');
     } catch (verifyError) {
-      console.error('[process-transcript-webhook] Signature verification failed:', verifyError);
+      console.error('[Transcript Webhook] Signature verification failed:', verifyError);
       return new Response(JSON.stringify({ error: 'Invalid signature', details: String(verifyError) }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log('[process-transcript-webhook] Received webhook event:', payload.type);
+    console.log('[Transcript Webhook] Received event:', payload.type);
 
     // Only process email.received events
     if (payload.type !== 'email.received') {
-      console.log('[process-transcript-webhook] Ignoring non-email event:', payload.type);
+      console.log('[Transcript Webhook] Ignoring non-email event:', payload.type);
       return new Response(JSON.stringify({ status: 'ignored', reason: 'not an email event' }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -123,29 +185,45 @@ serve(async (req) => {
     }
 
     const emailData = payload.data;
-    console.log('[process-transcript-webhook] Processing email from:', emailData.from, 'to:', emailData.to);
+    console.log('[Transcript Webhook] Processing email:', {
+      from: emailData.from,
+      to: emailData.to,
+      cc: emailData.cc,
+      subject: emailData.subject,
+      attachments: emailData.attachments?.map((a: any) => ({ 
+        filename: a.filename, 
+        content_type: a.content_type 
+      })),
+    });
 
-    // Find the ingest email in the recipients
-    let ingestCode: string | null = null;
-    const toAddresses = Array.isArray(emailData.to) ? emailData.to : [emailData.to];
-    
-    for (const toAddr of toAddresses) {
-      const code = extractIngestCode(toAddr);
-      if (code) {
-        ingestCode = code;
-        break;
-      }
+    // Check if this is a calendar invite (should be ignored, not rejected)
+    if (isCalendarInvite(emailData)) {
+      console.log('[Transcript Webhook] Ignoring calendar invite:', emailData.subject);
+      return new Response(JSON.stringify({ 
+        status: 'ignored', 
+        reason: 'calendar_invite',
+        subject: emailData.subject,
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
+    // Find the ingest email in both to and cc recipients
+    const { code: ingestCode, foundIn } = findIngestCodeInRecipients(emailData);
+
     if (!ingestCode) {
-      console.error('[process-transcript-webhook] No valid ingest code found in recipients:', toAddresses);
+      console.error('[Transcript Webhook] No valid ingest code found in recipients:', {
+        to: emailData.to,
+        cc: emailData.cc,
+      });
       return new Response(JSON.stringify({ error: 'Invalid recipient email' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log('[process-transcript-webhook] Extracted ingest code:', ingestCode);
+    console.log('[Transcript Webhook] Found ingest code:', ingestCode, 'in:', foundIn);
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -165,7 +243,7 @@ serve(async (req) => {
       .single();
 
     if (bookingError || !booking) {
-      console.error('[process-transcript-webhook] Booking not found for code:', ingestCode, bookingError);
+      console.error('[Transcript Webhook] Booking not found for code:', ingestCode, bookingError);
       return new Response(JSON.stringify({ error: 'Booking not found' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -183,13 +261,17 @@ serve(async (req) => {
       interviewer = profileData;
     }
 
-    console.log('[process-transcript-webhook] Found booking:', booking.id, 'for candidate:', booking.candidate?.candidate_name);
+    console.log('[Transcript Webhook] Found booking:', booking.id, 'for candidate:', booking.candidate?.candidate_name);
 
     // Extract transcript content
     const { content, metadata } = extractTranscriptContent(emailData);
 
     if (!content || content.trim().length < 100) {
-      console.warn('[process-transcript-webhook] Transcript content too short or empty');
+      console.warn('[Transcript Webhook] Transcript content too short:', {
+        received_length: content?.length || 0,
+        from: emailData.from,
+        subject: emailData.subject,
+      });
       return new Response(JSON.stringify({ 
         error: 'Transcript content too short',
         received_length: content?.length || 0 
@@ -199,7 +281,7 @@ serve(async (req) => {
       });
     }
 
-    console.log('[process-transcript-webhook] Extracted transcript, length:', content.length);
+    console.log('[Transcript Webhook] Extracted transcript, length:', content.length, 'source:', metadata.content_source);
 
     // Store raw transcript
     const { error: updateError } = await supabase
@@ -212,11 +294,11 @@ serve(async (req) => {
       .eq('id', booking.id);
 
     if (updateError) {
-      console.error('[process-transcript-webhook] Failed to store transcript:', updateError);
+      console.error('[Transcript Webhook] Failed to store transcript:', updateError);
       throw updateError;
     }
 
-    console.log('[process-transcript-webhook] Transcript stored, triggering scorecard generation...');
+    console.log('[Transcript Webhook] Transcript stored, triggering scorecard generation...');
 
     // Trigger scorecard generation (async call)
     const generateResponse = await fetch(`${supabaseUrl}/functions/v1/generate-scorecard-from-transcript`, {
@@ -232,10 +314,10 @@ serve(async (req) => {
 
     if (!generateResponse.ok) {
       const errorText = await generateResponse.text();
-      console.error('[process-transcript-webhook] Scorecard generation failed:', errorText);
+      console.error('[Transcript Webhook] Scorecard generation failed:', errorText);
       // Don't fail the webhook - transcript is stored, generation can be retried
     } else {
-      console.log('[process-transcript-webhook] Scorecard generation triggered successfully');
+      console.log('[Transcript Webhook] Scorecard generation triggered successfully');
     }
 
     return new Response(JSON.stringify({ 
