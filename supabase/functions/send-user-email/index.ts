@@ -177,7 +177,10 @@ async function replacePlaceholders(
   user: any,
   bookingUrl: string | null
 ): Promise<string> {
-  let result = text;
+  // First, sanitize HTML entities that shouldn't be in plain text (especially subject lines)
+  let result = text
+    .replace(/&nbsp;/g, ' ')  // Non-breaking space HTML entity
+    .replace(/\u00A0/g, ' '); // Non-breaking space character (Unicode)
   
   // Candidate placeholders
   if (candidate) {

@@ -92,10 +92,15 @@ Deno.serve(async (req) => {
         }
         // TODO: Add logic for 'hiring_team' and 'interviewers' when those are implemented
         
+        // Sanitize subject to remove &nbsp; entities before sending
+        const sanitizedSubject = emailConfig.subject
+          .replace(/&nbsp;/g, ' ')
+          .replace(/\u00A0/g, ' ');
+        
         const emailRequest = {
           from_email: emailConfig.from_email,
           to: toAddresses,
-          subject: emailConfig.subject,
+          subject: sanitizedSubject,
           body_html: emailConfig.body,
           candidate_id: candidate.id,
           job_id: association.job_id,
