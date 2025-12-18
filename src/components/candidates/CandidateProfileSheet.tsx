@@ -4,6 +4,7 @@ import { Tabs } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
+import { usePermissions } from '@/hooks/usePermissions'
 import { Badge } from '@/components/ui/badge'
 import { CandidateJobSidebar } from '@/components/candidates/CandidateJobSidebar'
 import { EnhancedSkillBadge } from '@/components/ui/enhanced-skill-badge'
@@ -89,6 +90,7 @@ interface CandidateProfileSheetProps {
 }
 
 export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, onScorecardOpened }: CandidateProfileSheetProps) {
+  const { canEditCandidates } = usePermissions()
   const { organizationId, user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [candidate, setCandidate] = useState<any | null>(null)
@@ -1167,6 +1169,16 @@ const [offerFormOpen, setOfferFormOpen] = useState(false)
                        <CardContent className="p-4">
                          <div className="flex items-center justify-between w-full">
                            <div className="flex items-center gap-2">
+                              {canEditCandidates && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setEditOpen(true)}
+                                >
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit
+                                </Button>
+                              )}
                               <Button
                                 variant="outline"
                                 size="sm"
