@@ -49,6 +49,7 @@ import { ScheduleInterviewSheet } from './ScheduleInterviewSheet'
 import { GenerateBookingLinkButton } from '@/components/candidates/GenerateBookingLinkButton'
 import { RejectionDialog } from './RejectionDialog'
 import { RejectionStatusBanner } from './RejectionStatusBanner'
+import { CreateOfferLetterSheet } from './CreateOfferLetterDialog'
 
 interface StageScorecardProps {
   stageInstanceId: string;
@@ -140,6 +141,9 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
 
 // Rejection Dialog
 const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false)
+
+// Offer Form Sheet
+const [offerFormOpen, setOfferFormOpen] = useState(false)
   // Resume helpers
   const resumeAttachment = attachments.find((a) => a.is_resume)
   const replaceResumeInputRef = useRef<HTMLInputElement>(null)
@@ -635,17 +639,6 @@ const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false)
                                   <MoveRight className="h-4 w-4 mr-2" />
                                   Move to Offer
                                 </Button>
-                                {jobCandidateId && associationStatus === 'offer' && (
-                                  <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                    >
-                                      <FileText className="h-4 w-4 mr-2" />
-                                      Offer Form
-                                    </Button>
-                                  </Link>
-                                )}
                                 <Button
                                   variant="destructive"
                                   size="sm"
@@ -655,15 +648,25 @@ const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false)
                                   Reject
                                 </Button>
                                 {associationStatus === 'offer' && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handleHire}
-                                    className="text-success hover:text-success"
-                                  >
-                                    <Check className="h-4 w-4 mr-2" />
-                                    Mark as Hired
-                                  </Button>
+                                  <>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={handleHire}
+                                      className="text-success hover:text-success"
+                                    >
+                                      <Check className="h-4 w-4 mr-2" />
+                                      Mark as Hired
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setOfferFormOpen(true)}
+                                    >
+                                      <FileText className="h-4 w-4 mr-2" />
+                                      Offer Form
+                                    </Button>
+                                  </>
                                 )}
                               </div>
                            </div>
@@ -1411,6 +1414,17 @@ const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false)
           candidateId={candidateId || undefined}
           jobId={jobId}
           onSuccess={handleRejectionSuccess}
+        />
+      )}
+      
+      {/* Offer Form Sheet */}
+      {candidate && job && (
+        <CreateOfferLetterSheet
+          open={offerFormOpen}
+          onOpenChange={setOfferFormOpen}
+          candidate={candidate}
+          job={job}
+          organization={null}
         />
       )}
       </SheetContent>
