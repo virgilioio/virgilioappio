@@ -41,9 +41,10 @@ const PLACEHOLDER_BADGE_STYLES = `
 `;
 
 export const PlaceholderInput = forwardRef<PlaceholderInputHandle, PlaceholderInputProps>(
-  ({ className, value, onChange, error, success, placeholder, disabled, onFocus, ...props }, ref) => {
+  ({ className, value, onChange, error, success, placeholder, disabled, onFocus, onBlur, ...props }, ref) => {
     const editorRef = useRef<HTMLDivElement>(null);
     const isUpdatingRef = useRef(false);
+    const isFocusedRef = useRef(false);
 
     const processPlaceholders = useCallback((text: string): string => {
       return convertPlaceholdersToHtml(text.replace(/class="placeholder-badge"/g, 'class="placeholder-input-badge"'));
@@ -51,10 +52,24 @@ export const PlaceholderInput = forwardRef<PlaceholderInputHandle, PlaceholderIn
 
     const updateContent = useCallback((html: string) => {
       if (isUpdatingRef.current) return;
-      
+
       const plainText = convertHtmlToPlaceholders(html);
       onChange(plainText);
     }, [onChange]);
+
+    const handleFocus = useCallback((e: React.FocusEvent<HTMLDivElement>) => {
+      isFocusedRef.current = true;
+      onFocus?.();
+    }, [onFocus]);
+
+    const handleBlur = useCallback((e: React.FocusEvent<HTMLDivElement>) => {
+      isFocusedRef.current = false;
+
+      // Final sync on blur to ensure parent has the latest text.
+      if (editorRef.current) updateContent(editorRef.current.innerHTML);
+
+      onBlur?.(e as unknown as React.FocusEvent<HTMLInputElement>);
+    }, [onBlur, updateContent]);
 
   const handleInput = useCallback((e: React.FormEvent<HTMLDivElement>) => {
     if (isUpdatingRef.current) return;
@@ -193,10 +208,13 @@ export const PlaceholderInput = forwardRef<PlaceholderInputHandle, PlaceholderIn
     // Update when value changes externally
     useEffect(() => {
       if (!editorRef.current || isUpdatingRef.current) return;
-      
+
+      // Don't sync external value while the user is actively editing; this prevents cursor jumps.
+      if (isFocusedRef.current) return;
+
       // Compare normalized content to avoid unnecessary updates
       const currentNormalized = convertHtmlToPlaceholders(editorRef.current.innerHTML);
-      
+
       // Only update DOM if the actual content changed
       if (currentNormalized !== value) {
         const processed = processPlaceholders(value);
@@ -215,7 +233,8 @@ export const PlaceholderInput = forwardRef<PlaceholderInputHandle, PlaceholderIn
         onInput={handleInput}
         onPaste={handlePaste}
         onKeyDown={handleKeyDown}
-        onFocus={onFocus}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         data-placeholder={placeholder}
         className={cn(
           "flex items-center min-h-[var(--input-height)] w-full rounded-brand border bg-surface-primary px-3 py-2 text-sm ring-offset-background transition-all duration-200 ease-out shadow-[var(--shadow-xs)]",
