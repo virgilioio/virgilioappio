@@ -921,55 +921,112 @@ const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false)
                             </AccordionTrigger>
                             <AccordionContent>
                               <CardContent className="space-y-4 pt-0">
-                                    {/* Email */}
-                                    {candidate?.email && (
-                                      <div className="flex items-start justify-between gap-2">
-                                        <div className="flex items-start gap-2 flex-1 min-w-0">
-                                          <Mail className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                                          <a
-                                            href={`mailto:${candidate.email}`}
-                                            className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all"
+                                    {/* Emails Section */}
+                                    <div className="space-y-2">
+                                      {/* Primary email or contact_emails */}
+                                      {(candidate as any)?.contact_emails && (candidate as any).contact_emails.length > 0 ? (
+                                        (candidate as any).contact_emails.map((ce: { type: string; email: string; status?: string }, idx: number) => (
+                                          <div key={`email-${idx}`} className="flex items-start justify-between gap-2">
+                                            <div className="flex items-start gap-2 flex-1 min-w-0">
+                                              <Mail className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                                              <div className="flex flex-col min-w-0">
+                                                <a
+                                                  href={`mailto:${ce.email}`}
+                                                  className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all"
+                                                >
+                                                  {ce.email}
+                                                </a>
+                                                <span className="text-xs text-text-tertiary capitalize">{ce.type}</span>
+                                              </div>
+                                            </div>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-6 w-6 p-0 flex-shrink-0"
+                                              onClick={() => copyToClipboard(ce.email, 'Email copied to clipboard')}
+                                            >
+                                              <Copy className="h-3.5 w-3.5" />
+                                            </Button>
+                                          </div>
+                                        ))
+                                      ) : candidate?.email ? (
+                                        <div className="flex items-start justify-between gap-2">
+                                          <div className="flex items-start gap-2 flex-1 min-w-0">
+                                            <Mail className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                                            <a
+                                              href={`mailto:${candidate.email}`}
+                                              className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all"
+                                            >
+                                              {candidate.email}
+                                            </a>
+                                          </div>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 w-6 p-0 flex-shrink-0"
+                                            onClick={() => copyToClipboard(candidate.email, 'Email copied to clipboard')}
                                           >
-                                            {candidate.email}
-                                          </a>
+                                            <Copy className="h-3.5 w-3.5" />
+                                          </Button>
                                         </div>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-6 w-6 p-0 flex-shrink-0"
-                                          onClick={() => copyToClipboard(candidate.email, 'Email copied to clipboard')}
-                                        >
-                                          <Copy className="h-3.5 w-3.5" />
-                                        </Button>
-                                      </div>
-                                    )}
+                                      ) : null}
+                                    </div>
 
-                                    {/* Phone - Always show */}
-                                    <div className="flex items-start justify-between gap-2">
-                                      <div className="flex items-start gap-2 flex-1 min-w-0">
-                                        <Phone className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                                        {candidate?.phone ? (
-                                          <a
-                                            href={`tel:${candidate.phone}`}
-                                            className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all"
-                                          >
-                                            {candidate.phone}
-                                          </a>
-                                        ) : (
-                                          <span className="text-sm text-text-tertiary italic">
-                                            Phone not available
-                                          </span>
-                                        )}
-                                      </div>
-                                      {candidate?.phone && (
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-6 w-6 p-0 flex-shrink-0"
-                                          onClick={() => copyToClipboard(candidate.phone, 'Phone number copied to clipboard')}
-                                        >
-                                          <Copy className="h-3.5 w-3.5" />
-                                        </Button>
+                                    {/* Phones Section */}
+                                    <div className="space-y-2">
+                                      {(candidate as any)?.contact_phones && (candidate as any).contact_phones.length > 0 ? (
+                                        (candidate as any).contact_phones.map((cp: { type: string; number: string }, idx: number) => (
+                                          <div key={`phone-${idx}`} className="flex items-start justify-between gap-2">
+                                            <div className="flex items-start gap-2 flex-1 min-w-0">
+                                              <Phone className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                                              <div className="flex flex-col min-w-0">
+                                                <a
+                                                  href={`tel:${cp.number}`}
+                                                  className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all"
+                                                >
+                                                  {cp.number}
+                                                </a>
+                                                <span className="text-xs text-text-tertiary capitalize">{cp.type}</span>
+                                              </div>
+                                            </div>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-6 w-6 p-0 flex-shrink-0"
+                                              onClick={() => copyToClipboard(cp.number, 'Phone number copied to clipboard')}
+                                            >
+                                              <Copy className="h-3.5 w-3.5" />
+                                            </Button>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <div className="flex items-start justify-between gap-2">
+                                          <div className="flex items-start gap-2 flex-1 min-w-0">
+                                            <Phone className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                                            {candidate?.phone ? (
+                                              <a
+                                                href={`tel:${candidate.phone}`}
+                                                className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all"
+                                              >
+                                                {candidate.phone}
+                                              </a>
+                                            ) : (
+                                              <span className="text-sm text-text-tertiary italic">
+                                                Phone not available
+                                              </span>
+                                            )}
+                                          </div>
+                                          {candidate?.phone && (
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-6 w-6 p-0 flex-shrink-0"
+                                              onClick={() => copyToClipboard(candidate.phone, 'Phone number copied to clipboard')}
+                                            >
+                                              <Copy className="h-3.5 w-3.5" />
+                                            </Button>
+                                          )}
+                                        </div>
                                       )}
                                     </div>
 

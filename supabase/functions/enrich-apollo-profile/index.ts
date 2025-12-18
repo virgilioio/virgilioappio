@@ -341,9 +341,39 @@ serve(async (req) => {
         .filter(Boolean)
         .join(', ');
 
-      // Extract phone number
+      // Extract primary phone number (first one for backward compatibility)
       const phone = person.phone_numbers?.[0]?.sanitized_number || 
                     person.phone_numbers?.[0]?.raw_number || null;
+
+      // Extract all phone numbers with types
+      const contactPhones = (person.phone_numbers || []).map((p: any) => ({
+        type: p.type || 'other',
+        number: p.sanitized_number || p.raw_number || '',
+        raw_number: p.raw_number || null
+      })).filter((p: any) => p.number);
+
+      // Extract all emails with types
+      // Apollo provides primary email + may have additional in contact info
+      const contactEmails: any[] = [];
+      if (person.email) {
+        contactEmails.push({
+          type: 'work',
+          email: person.email,
+          status: person.email_status || null
+        });
+      }
+      // Add any additional emails from Apollo's personal_emails array if present
+      if (person.personal_emails && Array.isArray(person.personal_emails)) {
+        person.personal_emails.forEach((e: string) => {
+          if (e && e !== person.email) {
+            contactEmails.push({
+              type: 'personal',
+              email: e,
+              status: null
+            });
+          }
+        });
+      }
 
       // Create candidate record
       const { data: newCandidate, error: candidateError } = await supabase
@@ -354,6 +384,8 @@ serve(async (req) => {
           email: person.email,
           email_status: person.email_status,
           phone: phone,
+          contact_phones: contactPhones,
+          contact_emails: contactEmails,
           linkedin_url: person.linkedin_url,
           role_current: person.title,
           company_current: person.organization_name,
