@@ -555,6 +555,8 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                           return (
                             <DraggableCandidateCard id={assoc.id} key={assoc.id} isPartOfBulkDrag={isPartOfBulkDrag}>
                               <CandidateCard
+                                candidateId={assoc.candidate_id}
+                                associationId={assoc.id}
                                 candidateName={assoc.candidate_name}
                                 linkedinUrl={assoc.linkedin_url}
                                 stageOptions={stageOptions}
@@ -612,6 +614,8 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                         }}
                       >
                         <CandidateCard
+                          candidateId={assoc.candidate_id}
+                          associationId={assoc.id}
                           candidateName={assoc.candidate_name}
                           linkedinUrl={assoc.linkedin_url}
                           stageOptions={stageOptions}
