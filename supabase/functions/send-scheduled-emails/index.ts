@@ -47,7 +47,7 @@ serve(async (req) => {
       try {
         console.log(`[send-scheduled-emails] Processing email ${email.id} to ${email.to_emails.join(', ')}`);
 
-        // Call the send-user-email function
+        // Call the send-user-email function with contextual booking link data
         const { error: sendError } = await supabase.functions.invoke('send-user-email', {
           body: {
             from_email: email.from_email,
@@ -57,6 +57,8 @@ serve(async (req) => {
             body_text: email.body_html.replace(/<[^>]*>/g, ''),
             candidate_id: email.candidate_id,
             job_id: email.job_id,
+            jhs_id: email.jhs_id,
+            association_id: email.association_id,
           },
         });
 
