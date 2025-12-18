@@ -35,6 +35,7 @@ export function EmailTemplateSheet({
     body: '',
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [lastFocusedField, setLastFocusedField] = useState<'subject' | 'body'>('body');
   const subjectRef = useRef<PlaceholderInputHandle>(null);
   const bodyRef = useRef<RichTextEditorHandle>(null);
 
@@ -42,8 +43,9 @@ export function EmailTemplateSheet({
   const editingTemplate = templates.find(t => t.id === templateId);
 
   const handleInsertPlaceholder = (placeholder: string) => {
-    // Try to insert into the body editor first (most common use case)
-    if (bodyRef.current) {
+    if (lastFocusedField === 'subject' && subjectRef.current) {
+      subjectRef.current.insertPlaceholder(placeholder);
+    } else if (bodyRef.current) {
       bodyRef.current.insertPlaceholder(placeholder);
     }
   };
@@ -114,6 +116,7 @@ export function EmailTemplateSheet({
                 value={formData.subject}
                 onChange={(value) => setFormData({ ...formData, subject: value })}
                 placeholder="e.g., Interview Invitation for {{job.title}}"
+                onFocus={() => setLastFocusedField('subject')}
               />
             </div>
 
@@ -124,6 +127,7 @@ export function EmailTemplateSheet({
                 value={formData.body}
                 onChange={(value) => setFormData({ ...formData, body: value })}
                 placeholder="Enter your email template content here. Use placeholders like {{job.title}} or {{candidate.name}}"
+                onFocus={() => setLastFocusedField('body')}
               />
             </div>
 

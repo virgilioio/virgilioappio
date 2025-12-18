@@ -2,11 +2,12 @@ import React, { useState, useCallback, useRef, useEffect, useImperativeHandle, f
 import { cn } from '@/lib/utils';
 import { convertPlaceholdersToHtml, convertHtmlToPlaceholders } from '@/utils/placeholderUtils';
 
-export interface PlaceholderInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> {
+export interface PlaceholderInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'onFocus'> {
   value: string;
   onChange: (value: string) => void;
   error?: boolean;
   success?: boolean;
+  onFocus?: () => void;
 }
 
 export interface PlaceholderInputHandle {
@@ -37,7 +38,7 @@ const PLACEHOLDER_BADGE_STYLES = `
 `;
 
 export const PlaceholderInput = forwardRef<PlaceholderInputHandle, PlaceholderInputProps>(
-  ({ className, value, onChange, error, success, placeholder, disabled, ...props }, ref) => {
+  ({ className, value, onChange, error, success, placeholder, disabled, onFocus, ...props }, ref) => {
     const editorRef = useRef<HTMLDivElement>(null);
     const isUpdatingRef = useRef(false);
 
@@ -198,6 +199,7 @@ export const PlaceholderInput = forwardRef<PlaceholderInputHandle, PlaceholderIn
         onInput={handleInput}
         onPaste={handlePaste}
         onKeyDown={handleKeyDown}
+        onFocus={onFocus}
         data-placeholder={placeholder}
         className={cn(
           "flex h-[var(--input-height)] w-full rounded-brand border bg-surface-primary px-3 py-2 text-sm ring-offset-background transition-all duration-200 ease-out shadow-[var(--shadow-xs)]",
