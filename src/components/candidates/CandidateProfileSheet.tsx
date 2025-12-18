@@ -658,14 +658,6 @@ const [offerFormOpen, setOfferFormOpen] = useState(false)
                                       <Check className="h-4 w-4 mr-2" />
                                       Mark as Hired
                                     </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => setOfferFormOpen(true)}
-                                    >
-                                      <FileText className="h-4 w-4 mr-2" />
-                                      Offer Form
-                                    </Button>
                                   </>
                                 )}
                               </div>
@@ -1175,38 +1167,45 @@ const [offerFormOpen, setOfferFormOpen] = useState(false)
                        <CardContent className="p-4">
                          <div className="flex items-center justify-between w-full">
                            <div className="flex items-center gap-2">
-                             <Button
-                               variant="outline"
-                               size="sm"
-                               onClick={() => setEditOpen(true)}
-                             >
-                               <Edit className="h-4 w-4 mr-2" />
-                               Edit
-                             </Button>
-                             <Button
-                               variant="outline"
-                               size="sm"
-                               onClick={async () => {
-                                 try {
-                                   await generateCandidatePdf({ candidate, job })
-                                   toast({ 
-                                     title: 'Success', 
-                                     description: 'Profile PDF downloaded successfully' 
-                                   })
-                                 } catch (error) {
-                                   console.error('PDF generation failed:', error)
-                                   toast({ 
-                                     title: 'Error', 
-                                     description: 'Failed to generate PDF. Please try again.', 
-                                     variant: 'destructive' 
-                                   })
-                                 }
-                               }}
-                             >
-                               <Download className="h-4 w-4 mr-2" />
-                               Download
-                             </Button>
-                           </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={!candidate}
+                                onClick={async () => {
+                                  if (!candidate) return
+                                  try {
+                                    await generateCandidatePdf({
+                                      candidate,
+                                      job
+                                    })
+                                    toast({ 
+                                      title: 'PDF Generated', 
+                                      description: 'Candidate profile PDF has been downloaded.' 
+                                    })
+                                  } catch (error) {
+                                    console.error('Error generating PDF:', error)
+                                    toast({ 
+                                      title: 'Error', 
+                                      description: 'Failed to generate PDF. Please try again.', 
+                                      variant: 'destructive' 
+                                    })
+                                  }
+                                }}
+                              >
+                                <Download className="h-4 w-4 mr-2" />
+                                Download
+                              </Button>
+                              {associationStatus === 'offer' && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setOfferFormOpen(true)}
+                                >
+                                  <FileText className="h-4 w-4 mr-2" />
+                                  Offer Form
+                                </Button>
+                              )}
+                            </div>
                            
                            <Separator orientation="vertical" className="h-6" />
                            
