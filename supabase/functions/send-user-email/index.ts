@@ -309,21 +309,22 @@ const handler = async (req: Request): Promise<Response> => {
         throw new Error('From email is not a valid connected identity');
       }
       
-      // Step 2: Verify the user is a member and get tenant_id
-      const { data: memberData, error: memberError } = await supabase
+      // Step 2: Verify the user is a member and get tenant_id and organization_id
+      const { data: member, error: memberError } = await supabase
         .from('members')
-        .select('tenant_id, user_id')
+        .select('tenant_id, user_id, organization_id')
         .eq('user_id', mailIdentity.user_id)
         .eq('user_status', 'active')
         .single();
       
-      if (memberError || !memberData) {
+      if (memberError || !member) {
         throw new Error('User is not a member');
       }
       
       identity = mailIdentity;
-      tenantId = memberData.tenant_id;
-      user = { id: memberData.user_id }; // Set user for logging purposes
+      tenantId = member.tenant_id;
+      user = { id: member.user_id }; // Set user for logging purposes
+      memberData = member; // Assign to outer memberData so organization_id is available for email logging
       
     } else {
       // For user calls: verify tenant and from_email ownership
