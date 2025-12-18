@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     )
 
-    // Verify user is authenticated and is a platform admin
+    // Verify user is authenticated
     const { data: { user }, error: authError } = await userClient.auth.getUser()
     if (authError || !user) {
       console.error('Auth error:', authError)
@@ -68,8 +68,14 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Check if user is platform admin by checking members table
-    const { data: memberRecord, error: memberError } = await userClient
+    // Create service role client for cross-tenant queries (and admin check to bypass RLS)
+    const serviceClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    // Check if user is platform admin using service client to bypass RLS
+    const { data: memberRecord, error: memberError } = await serviceClient
       .from('members')
       .select('user_type, user_status')
       .eq('user_id', user.id)
@@ -77,19 +83,15 @@ Deno.serve(async (req) => {
       .eq('user_status', 'active')
       .maybeSingle()
 
+    console.log('Platform admin check for user:', user.id, 'Result:', memberRecord)
+
     if (memberError || !memberRecord) {
-      console.error('Not platform admin:', memberError || 'No platform_admin membership found')
+      console.error('Not platform admin:', memberError || 'No platform_admin membership found for user ' + user.id)
       return new Response(
         JSON.stringify({ error: 'Forbidden: Platform admin access required' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
-
-    // Create service role client for cross-tenant queries
-    const serviceClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
 
     // Parse request body for optional customerId filter
     let customerId: string | null = null
