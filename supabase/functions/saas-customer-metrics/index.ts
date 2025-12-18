@@ -68,15 +68,17 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Check if user is platform admin
-    const { data: profile, error: profileError } = await userClient
-      .from('profiles')
-      .select('is_platform_admin')
+    // Check if user is platform admin by checking members table
+    const { data: memberRecord, error: memberError } = await userClient
+      .from('members')
+      .select('user_type, user_status')
       .eq('user_id', user.id)
-      .single()
+      .eq('user_type', 'platform_admin')
+      .eq('user_status', 'active')
+      .maybeSingle()
 
-    if (profileError || !profile?.is_platform_admin) {
-      console.error('Not platform admin:', profileError)
+    if (memberError || !memberRecord) {
+      console.error('Not platform admin:', memberError || 'No platform_admin membership found')
       return new Response(
         JSON.stringify({ error: 'Forbidden: Platform admin access required' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
