@@ -1,5 +1,6 @@
 import React, { useRef, useCallback, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { convertHtmlToPlaceholders } from '@/utils/placeholderUtils';
 
 interface SubjectInputWithBadgesProps {
   value: string;
@@ -28,7 +29,8 @@ export const SubjectInputWithBadges = ({
   // Handle content changes
   const handleInput = useCallback(() => {
     if (editorRef.current) {
-      onChange(editorRef.current.innerHTML);
+      const cleaned = convertHtmlToPlaceholders(editorRef.current.innerHTML);
+      onChange(cleaned);
     }
   }, [onChange]);
 
@@ -52,11 +54,11 @@ export const SubjectInputWithBadges = ({
     if (e.key === 'Backspace' && prevSibling?.classList?.contains('placeholder-badge')) {
       e.preventDefault();
       prevSibling.remove();
-      if (editorRef.current) onChange(editorRef.current.innerHTML);
+      if (editorRef.current) onChange(convertHtmlToPlaceholders(editorRef.current.innerHTML));
     } else if (e.key === 'Delete' && nextSibling?.classList?.contains('placeholder-badge')) {
       e.preventDefault();
       nextSibling.remove();
-      if (editorRef.current) onChange(editorRef.current.innerHTML);
+      if (editorRef.current) onChange(convertHtmlToPlaceholders(editorRef.current.innerHTML));
     } else if (isBadge) {
       // Prevent typing inside badges
       e.preventDefault();
