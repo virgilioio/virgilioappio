@@ -48,16 +48,25 @@ serve(async (req) => {
       
       // Extract phone number from the person object
       let phoneNumber: string | null = null;
+      let contactPhones: { type: string; number: string; raw_number?: string | null }[] = [];
       
       if (person.phone_numbers && person.phone_numbers.length > 0) {
         phoneNumber = person.phone_numbers[0].sanitized_number || 
                       person.phone_numbers[0].raw_number || 
                       null;
-        console.log(`📱 Found phone for ${apolloId}: ${phoneNumber}`);
+        // Extract all phone numbers with types
+        contactPhones = person.phone_numbers.map((p: any) => ({
+          type: p.type || 'other',
+          number: p.sanitized_number || p.raw_number || '',
+          raw_number: p.raw_number || null
+        })).filter((p: any) => p.number);
+        console.log(`📱 Found ${contactPhones.length} phones for ${apolloId}, primary: ${phoneNumber}`);
       } else if (person.sanitized_phone) {
         phoneNumber = person.sanitized_phone;
+        contactPhones = [{ type: 'other', number: phoneNumber, raw_number: null }];
       } else if (person.phone) {
         phoneNumber = person.phone;
+        contactPhones = [{ type: 'other', number: phoneNumber, raw_number: null }];
       }
 
       if (!phoneNumber) {
@@ -69,7 +78,7 @@ serve(async (req) => {
       // Find and update the candidate by apollo_id
       const { data: candidate, error: findError } = await supabase
         .from('candidates')
-        .select('id, candidate_name, phone')
+        .select('id, candidate_name, phone, contact_phones')
         .eq('apollo_id', apolloId)
         .maybeSingle();
 
@@ -92,11 +101,12 @@ serve(async (req) => {
         continue;
       }
 
-      // Update the candidate with the phone number
+      // Update the candidate with the phone number(s)
       const { error: updateError } = await supabase
         .from('candidates')
         .update({ 
           phone: phoneNumber,
+          contact_phones: contactPhones.length > 0 ? contactPhones : undefined,
           updated_at: new Date().toISOString()
         })
         .eq('id', candidate.id);
@@ -107,7 +117,7 @@ serve(async (req) => {
         continue;
       }
 
-      console.log(`✅ Updated phone for ${candidate.candidate_name}: ${phoneNumber}`);
+      console.log(`✅ Updated ${contactPhones.length} phone(s) for ${candidate.candidate_name}, primary: ${phoneNumber}`);
       results.push({ apolloId, phoneUpdated: phoneNumber, status: 'updated' });
     }
 

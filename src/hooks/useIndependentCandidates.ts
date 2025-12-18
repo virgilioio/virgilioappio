@@ -7,11 +7,25 @@ import { log } from '@/lib/logger'
 import { getOrganizationTree } from '@/lib/organizationHelpers'
 import { checkForDuplicateCandidate, createCandidate, DuplicateCheckResult } from '@/lib/candidateHelpers'
 
+export interface ContactPhone {
+  type: 'work' | 'mobile' | 'other'
+  number: string
+  raw_number?: string | null
+}
+
+export interface ContactEmail {
+  type: 'work' | 'personal' | 'other'
+  email: string
+  status?: string | null
+}
+
 export interface IndependentCandidate {
   id: string
   candidate_name: string
   email: string | null
   phone: string | null
+  contact_phones?: ContactPhone[] | any[] | null
+  contact_emails?: ContactEmail[] | any[] | null
   location_country: string | null
   location_state: string | null
   location_city: string | null

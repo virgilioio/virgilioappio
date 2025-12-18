@@ -170,7 +170,7 @@ export default function CandidateProfile() {
     if (!candidate) return
     const updatedCandidate = await updateCandidate(candidate.id, data)
     setCandidate({
-      ...updatedCandidate,
+      ...(updatedCandidate as unknown as Candidate),
       association_id: null,
       association_notes: null,
       association_status: null,
