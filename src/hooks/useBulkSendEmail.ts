@@ -76,6 +76,7 @@ export function useBulkSendEmail() {
           id,
           candidate_id,
           job_id,
+          current_stage_id,
           candidate:candidates!inner(id, candidate_name, email),
           job:jobs!inner(id, title, department, location, tenant_id, organization_id)
         `)
@@ -129,7 +130,7 @@ export function useBulkSendEmail() {
             const resolvedBody = resolvePlaceholders(emailData.bodyHtml, placeholderData);
 
             if (scheduleFor) {
-              // Schedule the email
+              // Schedule the email with contextual booking link data
               const { error: scheduleError } = await supabase
                 .from('scheduled_emails')
                 .insert({
@@ -144,13 +145,14 @@ export function useBulkSendEmail() {
                   candidate_id: candidate.id,
                   job_id: job.id,
                   association_id: assoc.id,
+                  jhs_id: assoc.current_stage_id, // For contextual booking links
                   created_by: user?.id,
                   status: 'pending',
                 });
 
               if (scheduleError) throw scheduleError;
             } else {
-              // Send immediately via edge function
+              // Send immediately via edge function with contextual booking link data
               const { error: sendError } = await supabase.functions.invoke('send-user-email', {
                 body: {
                   from_email: emailData.fromEmail,
@@ -160,6 +162,8 @@ export function useBulkSendEmail() {
                   body_text: resolvedBody.replace(/<[^>]*>/g, ''),
                   candidate_id: candidate.id,
                   job_id: job.id,
+                  jhs_id: assoc.current_stage_id,
+                  association_id: assoc.id,
                 },
               });
 

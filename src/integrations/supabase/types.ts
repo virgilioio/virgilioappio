@@ -3283,6 +3283,7 @@ export type Database = {
           error_message: string | null
           from_email: string
           id: string
+          jhs_id: string | null
           job_id: string | null
           organization_id: string | null
           rejection_reason_id: string | null
@@ -3304,6 +3305,7 @@ export type Database = {
           error_message?: string | null
           from_email: string
           id?: string
+          jhs_id?: string | null
           job_id?: string | null
           organization_id?: string | null
           rejection_reason_id?: string | null
@@ -3325,6 +3327,7 @@ export type Database = {
           error_message?: string | null
           from_email?: string
           id?: string
+          jhs_id?: string | null
           job_id?: string | null
           organization_id?: string | null
           rejection_reason_id?: string | null
@@ -3349,6 +3352,13 @@ export type Database = {
             columns: ["candidate_id"]
             isOneToOne: false
             referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_emails_jhs_id_fkey"
+            columns: ["jhs_id"]
+            isOneToOne: false
+            referencedRelation: "job_hiring_stages"
             referencedColumns: ["id"]
           },
           {

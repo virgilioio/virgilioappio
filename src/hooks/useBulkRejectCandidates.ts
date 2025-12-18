@@ -40,6 +40,7 @@ export function useBulkRejectCandidates() {
           id,
           candidate_id,
           job_id,
+          current_stage_id,
           candidate:candidates!inner(id, candidate_name, email),
           job:jobs!inner(id, title, tenant_id, organization_id)
         `)
@@ -91,7 +92,7 @@ export function useBulkRejectCandidates() {
               });
 
               if (scheduleFor) {
-                // Schedule the email
+                // Schedule the email with contextual booking link data
                 const { error: scheduleError } = await supabase
                   .from('scheduled_emails')
                   .insert({
@@ -106,6 +107,7 @@ export function useBulkRejectCandidates() {
                     candidate_id: candidate.id,
                     job_id: job.id,
                     association_id: assoc.id,
+                    jhs_id: assoc.current_stage_id, // For contextual booking links
                     rejection_reason_id: rejectionReasonId,
                     created_by: user?.id,
                     status: 'pending',
@@ -113,7 +115,7 @@ export function useBulkRejectCandidates() {
 
                 if (scheduleError) throw scheduleError;
               } else {
-                // Send immediately via edge function
+                // Send immediately via edge function with contextual booking link data
                 const { error: sendError } = await supabase.functions.invoke('send-user-email', {
                   body: {
                     from_email: emailData.fromEmail,
@@ -123,6 +125,8 @@ export function useBulkRejectCandidates() {
                     body_text: resolvedBody.replace(/<[^>]*>/g, ''),
                     candidate_id: candidate.id,
                     job_id: job.id,
+                    jhs_id: assoc.current_stage_id,
+                    association_id: assoc.id,
                   },
                 });
 
