@@ -24,10 +24,15 @@ export function convertPlaceholdersToHtml(text: string): string {
 // Convert badge HTML back to {{placeholder}}
 export function convertHtmlToPlaceholders(html: string): string {
   // Remove badge spans, keep only the placeholder text
-  return html.replace(
+  let result = html.replace(
     /<span[^>]*class="[^"]*placeholder-badge[^"]*"[^>]*data-placeholder="([^"]*)"[^>]*>.*?<\/span>/g,
     (match, placeholder) => `{{${placeholder}}}`
   );
+  
+  // Convert &nbsp; entities to regular spaces
+  result = result.replace(/&nbsp;/g, ' ');
+  
+  return result;
 }
 
 // Check if text contains placeholders
