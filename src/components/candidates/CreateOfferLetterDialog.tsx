@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import * as React from 'react'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -23,9 +23,9 @@ import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import { toast } from '@/hooks/use-toast'
 
-interface CreateOfferLetterDialogProps {
-  isOpen: boolean
-  onClose: () => void
+interface CreateOfferLetterSheetProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
   candidate: Candidate
   job: any
   organization: any
@@ -33,13 +33,13 @@ interface CreateOfferLetterDialogProps {
 
 type Step = 'template' | 'fields' | 'preview' | 'review'
 
-export function CreateOfferLetterDialog({
-  isOpen,
-  onClose,
+export function CreateOfferLetterSheet({
+  open,
+  onOpenChange,
   candidate,
   job,
   organization
-}: CreateOfferLetterDialogProps) {
+}: CreateOfferLetterSheetProps) {
   const { user, organizationId } = useAuth()
   const { templates, isLoading: templatesLoading } = useOfferTemplates()
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
@@ -336,7 +336,7 @@ const [previewLoading, setPreviewLoading] = useState(false)
         })
       }
 
-      onClose()
+      onOpenChange(false)
       // Reset state
       setCurrentStep('template')
       setSelectedTemplateId('')
@@ -696,58 +696,64 @@ const [previewLoading, setPreviewLoading] = useState(false)
     )
   }
 
+  const handleClose = () => {
+    onOpenChange(false)
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Create Offer Letter</DialogTitle>
-          <DialogDescription>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-4xl overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Create Offer Letter</SheetTitle>
+          <SheetDescription>
             Create a personalized offer letter for {candidate.candidate_name} using predefined templates and custom fields.
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
 
-        {renderStepIndicator()}
+        <div className="mt-6">
+          {renderStepIndicator()}
 
-        <div className="min-h-[400px]">
-          {currentStep === 'template' && renderTemplateSelection()}
-          {currentStep === 'fields' && renderFieldInputs()}
-          {currentStep === 'preview' && renderPreview()}
-          {currentStep === 'review' && renderReview()}
-        </div>
+          <div className="min-h-[400px]">
+            {currentStep === 'template' && renderTemplateSelection()}
+            {currentStep === 'fields' && renderFieldInputs()}
+            {currentStep === 'preview' && renderPreview()}
+            {currentStep === 'review' && renderReview()}
+          </div>
 
-        <div className="flex justify-between pt-4 border-t">
-          <Button
-            variant="outline"
-            onClick={currentStep === 'template' ? onClose : handlePrevStep}
-            disabled={creatingLetter}
-          >
-            {currentStep === 'template' ? 'Cancel' : (
-              <>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </>
-            )}
-          </Button>
-
-          {currentStep === 'review' ? (
-            <Button 
-              onClick={handleCreateOfferLetter}
-              disabled={creatingLetter || !canProceed()}
-              title={!canProceed() ? 'Organization selection required' : ''}
-            >
-              {creatingLetter ? 'Creating...' : 'Create Offer Letter'}
-            </Button>
-          ) : (
+          <div className="flex justify-between pt-4 border-t">
             <Button
-              onClick={handleNextStep}
-              disabled={!canProceed()}
+              variant="outline"
+              onClick={currentStep === 'template' ? handleClose : handlePrevStep}
+              disabled={creatingLetter}
             >
-              Next
-              <ArrowRight className="h-4 w-4 ml-2" />
+              {currentStep === 'template' ? 'Cancel' : (
+                <>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </>
+              )}
             </Button>
-          )}
+
+            {currentStep === 'review' ? (
+              <Button 
+                onClick={handleCreateOfferLetter}
+                disabled={creatingLetter || !canProceed()}
+                title={!canProceed() ? 'Organization selection required' : ''}
+              >
+                {creatingLetter ? 'Creating...' : 'Create Offer Letter'}
+              </Button>
+            ) : (
+              <Button
+                onClick={handleNextStep}
+                disabled={!canProceed()}
+              >
+                Next
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            )}
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }

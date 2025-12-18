@@ -26,7 +26,7 @@ import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeVi
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { useCandidateResolver } from '@/hooks/useCandidateResolver'
 import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDropzone'
-import { CreateOfferLetterDialog } from '@/components/candidates/CreateOfferLetterDialog'
+import { CreateOfferLetterSheet } from '@/components/candidates/CreateOfferLetterDialog'
 import { getSkillColor } from '@/utils/skillColors'
 import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
@@ -610,11 +610,11 @@ export default function CandidateProfile() {
               />
             )}
 
-            {/* Create Offer Letter Dialog */}
+            {/* Create Offer Letter Sheet */}
             {candidate && job && jobOrganization && (
-              <CreateOfferLetterDialog
-                isOpen={isOfferLetterDialogOpen}
-                onClose={() => setIsOfferLetterDialogOpen(false)}
+              <CreateOfferLetterSheet
+                open={isOfferLetterDialogOpen}
+                onOpenChange={setIsOfferLetterDialogOpen}
                 candidate={candidate}
                 job={job}
                 organization={jobOrganization}
