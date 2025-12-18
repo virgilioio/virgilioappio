@@ -131,3 +131,6 @@ verify_jwt = false
 
 [functions.apollo-phone-webhook]
 verify_jwt = false
+
+[functions.saas-customer-metrics]
+verify_jwt = true

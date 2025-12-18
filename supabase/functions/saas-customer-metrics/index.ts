@@ -1,0 +1,275 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+interface CustomerMetrics {
+  id: string
+  name: string
+  plan_type: string | null
+  status: string
+  renewal_date: string | null
+  billing_id: string | null
+  owner_id: string | null
+  organization_type: string
+  tenant_type: string
+  signup_source: string
+  created_at: string
+  updated_at: string
+  jobs_created_30d: number
+  candidates_added_30d: number
+  members_active_count: number
+  last_active_at: string | null
+  trial_end_date: string | null
+  suspended_at: string | null
+  suspended_reason: string | null
+  owner_details?: {
+    first_name: string | null
+    last_name: string | null
+    email: string | null
+  }
+  subscription_plan?: string | null
+  subscription_renewal_date?: string | null
+  billing_email?: string | null
+}
+
+Deno.serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders })
+  }
+
+  try {
+    // Get authorization header to verify the caller
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Create client with user's token to verify they're authenticated
+    const userClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    )
+
+    // Verify user is authenticated and is a platform admin
+    const { data: { user }, error: authError } = await userClient.auth.getUser()
+    if (authError || !user) {
+      console.error('Auth error:', authError)
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Check if user is platform admin
+    const { data: profile, error: profileError } = await userClient
+      .from('profiles')
+      .select('is_platform_admin')
+      .eq('user_id', user.id)
+      .single()
+
+    if (profileError || !profile?.is_platform_admin) {
+      console.error('Not platform admin:', profileError)
+      return new Response(
+        JSON.stringify({ error: 'Forbidden: Platform admin access required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Create service role client for cross-tenant queries
+    const serviceClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    // Parse request body for optional customerId filter
+    let customerId: string | null = null
+    if (req.method === 'POST') {
+      const body = await req.json().catch(() => ({}))
+      customerId = body.customerId || null
+    }
+
+    console.log('Fetching SaaS customer metrics', { customerId })
+
+    // Query to get SaaS tenants
+    let tenantsQuery = serviceClient
+      .from('tenants')
+      .select('*')
+      .eq('tenant_type', 'saas')
+
+    if (customerId) {
+      tenantsQuery = tenantsQuery.eq('id', customerId)
+    }
+
+    const { data: tenants, error: tenantsError } = await tenantsQuery.order('created_at', { ascending: false })
+
+    if (tenantsError) {
+      console.error('Error fetching tenants:', tenantsError)
+      throw tenantsError
+    }
+
+    if (!tenants || tenants.length === 0) {
+      return new Response(
+        JSON.stringify({ customers: [] }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Get tenant subscriptions
+    const tenantIds = tenants.map(t => t.id)
+    const { data: subscriptions } = await serviceClient
+      .from('tenant_subscriptions')
+      .select('tenant_id, billing_status, subscription_tier')
+      .in('tenant_id', tenantIds)
+
+    const subscriptionMap = new Map(
+      (subscriptions || []).map(sub => [sub.tenant_id, sub])
+    )
+
+    // Get metrics for each tenant
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+
+    const customersWithMetrics: CustomerMetrics[] = await Promise.all(
+      tenants.map(async (tenant) => {
+        try {
+          // Get all jobs for this tenant
+          const { data: allJobs } = await serviceClient
+            .from('jobs')
+            .select('id')
+            .eq('tenant_id', tenant.id)
+            .is('deleted_at', null)
+
+          const jobIds = allJobs?.map(j => j.id) || []
+
+          // Get metrics in parallel
+          const [
+            { count: jobsCount },
+            recentAssociationsResult,
+            { count: membersCount },
+            lastActivityResult,
+            ownerProfileResult
+          ] = await Promise.all([
+            // Jobs created in last 30 days
+            serviceClient
+              .from('jobs')
+              .select('*', { count: 'exact', head: true })
+              .eq('tenant_id', tenant.id)
+              .is('deleted_at', null)
+              .gte('created_at', thirtyDaysAgo),
+
+            // Candidate associations in last 30 days
+            jobIds.length > 0
+              ? serviceClient
+                  .from('job_candidate_associations')
+                  .select('candidate_id')
+                  .in('job_id', jobIds)
+                  .gte('created_at', thirtyDaysAgo)
+              : Promise.resolve({ data: [] }),
+
+            // Active members count
+            serviceClient
+              .from('members')
+              .select('*', { count: 'exact', head: true })
+              .eq('tenant_id', tenant.id)
+              .eq('user_status', 'active'),
+
+            // Last activity
+            serviceClient
+              .from('activities')
+              .select('created_at')
+              .eq('tenant_id', tenant.id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle(),
+
+            // Owner details
+            tenant.owner_id
+              ? serviceClient
+                  .from('profiles')
+                  .select('first_name, last_name, email')
+                  .eq('user_id', tenant.owner_id)
+                  .maybeSingle()
+              : Promise.resolve({ data: null })
+          ])
+
+          // Count distinct candidates
+          const candidatesCount = new Set(
+            (recentAssociationsResult.data || []).map((a: any) => a.candidate_id)
+          ).size
+
+          const subscription = subscriptionMap.get(tenant.id)
+
+          return {
+            id: tenant.id,
+            name: tenant.name,
+            plan_type: subscription?.subscription_tier || tenant.subscription_plan,
+            status: subscription?.billing_status || tenant.status,
+            renewal_date: tenant.subscription_renewal_date,
+            billing_id: tenant.billing_email,
+            owner_id: tenant.owner_id,
+            organization_type: 'client',
+            tenant_type: tenant.tenant_type,
+            signup_source: tenant.signup_source || 'unknown',
+            created_at: tenant.created_at,
+            updated_at: tenant.updated_at,
+            jobs_created_30d: jobsCount || 0,
+            candidates_added_30d: candidatesCount,
+            members_active_count: membersCount || 0,
+            last_active_at: lastActivityResult.data?.created_at || null,
+            trial_end_date: tenant.trial_ends_at,
+            suspended_at: tenant.suspended_at,
+            suspended_reason: tenant.suspended_reason,
+            owner_details: ownerProfileResult.data || undefined,
+            subscription_plan: tenant.subscription_plan,
+            subscription_renewal_date: tenant.subscription_renewal_date,
+            billing_email: tenant.billing_email,
+          } as CustomerMetrics
+        } catch (err) {
+          console.error('Error fetching metrics for tenant:', tenant.id, err)
+          const subscription = subscriptionMap.get(tenant.id)
+          return {
+            id: tenant.id,
+            name: tenant.name,
+            plan_type: subscription?.subscription_tier || tenant.subscription_plan,
+            status: subscription?.billing_status || tenant.status,
+            renewal_date: tenant.subscription_renewal_date,
+            billing_id: tenant.billing_email,
+            owner_id: tenant.owner_id,
+            organization_type: 'client',
+            tenant_type: tenant.tenant_type,
+            signup_source: tenant.signup_source || 'unknown',
+            created_at: tenant.created_at,
+            updated_at: tenant.updated_at,
+            jobs_created_30d: 0,
+            candidates_added_30d: 0,
+            members_active_count: 0,
+            last_active_at: null,
+            trial_end_date: tenant.trial_ends_at,
+            suspended_at: tenant.suspended_at,
+            suspended_reason: tenant.suspended_reason,
+          } as CustomerMetrics
+        }
+      })
+    )
+
+    console.log(`Successfully fetched metrics for ${customersWithMetrics.length} customers`)
+
+    return new Response(
+      JSON.stringify({ customers: customersWithMetrics }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  } catch (error) {
+    console.error('Error in saas-customer-metrics:', error)
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+})
