@@ -59,6 +59,7 @@ interface RichTextEditorProps {
   minHeight?: string
   isExternalUpdate?: boolean
   onExternalUpdateComplete?: () => void
+  onFocus?: () => void
 }
 
 export interface RichTextEditorHandle {
@@ -73,7 +74,8 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
     className,
     minHeight = "200px",
     isExternalUpdate = false,
-    onExternalUpdateComplete
+    onExternalUpdateComplete,
+    onFocus: onFocusProp
   } = props
   
   const [isFocused, setIsFocused] = useState(false)
@@ -350,7 +352,8 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
 
   const handleFocus = useCallback(() => {
     setIsFocused(true)
-  }, [])
+    onFocusProp?.()
+  }, [onFocusProp])
 
   const handleBlur = useCallback(() => {
     setIsFocused(false)
