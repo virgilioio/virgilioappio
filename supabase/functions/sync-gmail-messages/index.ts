@@ -57,7 +57,7 @@ async function refreshAccessToken(supabase: any, identity: any): Promise<string>
   console.log('[Gmail Sync] Refreshing access token for identity:', identity.id);
   
   const { data: decryptedToken, error: decryptError } = await supabase
-    .rpc('decrypt_refresh_token', { encrypted_token: identity.encrypted_refresh_token });
+    .rpc('decrypt_refresh_token', { encrypted_token: identity.refresh_token_encrypted });
 
   if (decryptError || !decryptedToken) {
     throw new Error('Failed to decrypt refresh token');
