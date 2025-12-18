@@ -60,43 +60,36 @@ export const PlaceholderInput = forwardRef<PlaceholderInputHandle, PlaceholderIn
     if (isUpdatingRef.current) return;
     
     const target = e.target as HTMLDivElement;
+    const html = target.innerHTML;
     
-    // Save cursor position BEFORE any processing
-    const selection = window.getSelection();
-    let cursorOffset = 0;
-    let anchorNode = selection?.anchorNode;
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      cursorOffset = range.startOffset;
-      anchorNode = range.startContainer;
-    }
+    // Convert current HTML to plain text with placeholder syntax
+    const normalized = convertHtmlToPlaceholders(html);
     
-    // Normalize and process placeholders
-    const normalized = convertHtmlToPlaceholders(target.innerHTML);
-    const processed = processPlaceholders(normalized);
+    // Only re-process DOM if there are NEW unprocessed placeholder patterns
+    // (i.e., user manually typed "{{something}}" that needs to become a badge)
+    const hasUnprocessedPlaceholders = /\{\{[^}]+\}\}/.test(normalized);
     
-    if (processed !== target.innerHTML) {
+    if (hasUnprocessedPlaceholders) {
+      const selection = window.getSelection();
+      const processed = processPlaceholders(normalized);
+      
+      isUpdatingRef.current = true;
       target.innerHTML = processed;
       
-      // Restore cursor position
+      // Position cursor at end after processing new badges
       requestAnimationFrame(() => {
-        try {
-          const selection = window.getSelection();
-          if (selection && target.firstChild) {
-            const range = document.createRange();
-            const textNode = target.firstChild;
-            const offset = Math.min(cursorOffset, textNode.textContent?.length || 0);
-            range.setStart(textNode, offset);
-            range.collapse(true);
-            selection.removeAllRanges();
-            selection.addRange(range);
-          }
-        } catch (error) {
-          console.debug('Failed to restore cursor:', error);
+        isUpdatingRef.current = false;
+        if (selection) {
+          const range = document.createRange();
+          range.selectNodeContents(target);
+          range.collapse(false); // Collapse to end
+          selection.removeAllRanges();
+          selection.addRange(range);
         }
       });
     }
     
+    // Always update the value (without modifying DOM for normal typing)
     updateContent(target.innerHTML);
   }, [processPlaceholders, updateContent]);
 
@@ -201,8 +194,12 @@ export const PlaceholderInput = forwardRef<PlaceholderInputHandle, PlaceholderIn
     useEffect(() => {
       if (!editorRef.current || isUpdatingRef.current) return;
       
-      const processed = processPlaceholders(value);
-      if (editorRef.current.innerHTML !== processed) {
+      // Compare normalized content to avoid unnecessary updates
+      const currentNormalized = convertHtmlToPlaceholders(editorRef.current.innerHTML);
+      
+      // Only update DOM if the actual content changed
+      if (currentNormalized !== value) {
+        const processed = processPlaceholders(value);
         isUpdatingRef.current = true;
         editorRef.current.innerHTML = processed;
         requestAnimationFrame(() => {
