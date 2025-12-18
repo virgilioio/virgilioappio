@@ -4,6 +4,7 @@ import { Tabs } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
+import { usePermissions } from '@/hooks/usePermissions'
 import { EnhancedSkillBadge } from '@/components/ui/enhanced-skill-badge'
 import { CandidateAttachments } from '@/components/candidates/CandidateAttachments'
 import { CandidateComments } from '@/components/candidates/CandidateComments'
@@ -50,6 +51,7 @@ export function IndependentCandidateProfileSheet({
   onNavigatePrev,
   onNavigateNext,
 }: IndependentCandidateProfileSheetProps) {
+  const { canEditCandidates } = usePermissions()
   const { organizationId, user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [candidate, setCandidate] = useState<any | null>(null)
@@ -511,14 +513,16 @@ export function IndependentCandidateProfileSheet({
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between w-full">
                             <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setEditOpen(true)}
-                              >
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit
-                              </Button>
+                              {canEditCandidates && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setEditOpen(true)}
+                                >
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit
+                                </Button>
+                              )}
                               <Button
                                 variant="outline"
                                 size="sm"
