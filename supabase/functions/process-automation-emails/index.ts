@@ -98,7 +98,9 @@ Deno.serve(async (req) => {
           subject: emailConfig.subject,
           body_html: emailConfig.body,
           candidate_id: candidate.id,
-          job_id: association.job_id
+          job_id: association.job_id,
+          jhs_id: association.current_stage_id,
+          association_id: association.id
         };
         
         // Send email via send-user-email function with service role auth
