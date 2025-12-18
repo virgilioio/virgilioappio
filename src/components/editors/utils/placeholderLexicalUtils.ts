@@ -18,6 +18,7 @@ import {
 } from 'lexical';
 import { $generateHtmlFromNodes, $generateNodesFromDOM } from '@lexical/html';
 import { $createPlaceholderNode, PlaceholderNode, $isPlaceholderNode } from '../nodes/PlaceholderNode';
+import { normalizePlaceholderKey, collapseDoubleBraces } from '@/utils/templateUtils';
 
 /**
  * Pattern to match {{placeholder}} tokens in text
@@ -124,6 +125,9 @@ export function editorStateToHtml(editor: LexicalEditor): string {
  * Clears the editor and populates with parsed nodes
  */
 export function loadTemplateIntoEditor(editor: LexicalEditor, template: string, singleLine: boolean = false): void {
+  // First collapse any double braces from legacy content
+  const cleanedTemplate = collapseDoubleBraces(template);
+  
   editor.update(() => {
     const root = $getRoot();
     root.clear();
@@ -131,12 +135,12 @@ export function loadTemplateIntoEditor(editor: LexicalEditor, template: string, 
     if (singleLine) {
       // For subject editor - single paragraph with inline nodes
       const paragraph = $createParagraphNode();
-      const nodes = parseTemplateToNodes(template);
+      const nodes = parseTemplateToNodes(cleanedTemplate);
       nodes.forEach(node => paragraph.append(node));
       root.append(paragraph);
     } else {
       // For body editor - split by newlines into paragraphs
-      const lines = template.split('\n');
+      const lines = cleanedTemplate.split('\n');
       lines.forEach(line => {
         const paragraph = $createParagraphNode();
         const nodes = parseTemplateToNodes(line);
@@ -154,14 +158,16 @@ export function loadTemplateIntoEditor(editor: LexicalEditor, template: string, 
  * Parses HTML and converts existing placeholder badges to PlaceholderNodes
  */
 export function loadHtmlIntoEditor(editor: LexicalEditor, html: string): void {
+  // First collapse any double braces from legacy content
+  const cleanedHtml = collapseDoubleBraces(html || '');
+  
   editor.update(() => {
     const root = $getRoot();
     root.clear();
     
-    // First, convert any {{placeholder}} in the HTML to temporary markers
-    // Then parse the HTML into nodes
+    // Parse the HTML into nodes
     const parser = new DOMParser();
-    const dom = parser.parseFromString(html || '<p></p>', 'text/html');
+    const dom = parser.parseFromString(cleanedHtml || '<p></p>', 'text/html');
     
     // Find all existing badge spans and convert them to placeholder markers
     const badges = dom.querySelectorAll('.placeholder-badge, .placeholder-input-badge, .lexical-placeholder-badge');

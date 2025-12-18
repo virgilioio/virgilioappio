@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { renderTemplate, buildPlaceholderData } from '@/utils/templateUtils';
 
 export interface BulkRejectInput {
   associationIds: string[];
@@ -78,18 +79,20 @@ export function useBulkRejectCandidates() {
 
             // Handle email if enabled
             if (sendEmail && emailData && candidate.email) {
-              // Resolve placeholders for this candidate
-              const resolvedSubject = resolvePlaceholders(emailData.subject, {
-                candidateName: candidate.candidate_name,
-                candidateFirstName: candidate.candidate_name?.split(' ')[0] || '',
-                jobTitle: job.title,
+              // Build placeholder data using the utility function
+              const placeholderData = buildPlaceholderData({
+                candidate: {
+                  candidate_name: candidate.candidate_name,
+                  email: candidate.email,
+                },
+                job: {
+                  title: job.title,
+                },
               });
 
-              const resolvedBody = resolvePlaceholders(emailData.bodyHtml, {
-                candidateName: candidate.candidate_name,
-                candidateFirstName: candidate.candidate_name?.split(' ')[0] || '',
-                jobTitle: job.title,
-              });
+              // Resolve placeholders using the robust rendering function
+              const resolvedSubject = renderTemplate(emailData.subject, placeholderData);
+              const resolvedBody = renderTemplate(emailData.bodyHtml, placeholderData);
 
               if (scheduleFor) {
                 // Schedule the email with contextual booking link data
@@ -184,17 +187,3 @@ export function useBulkRejectCandidates() {
   };
 }
 
-// Helper to resolve placeholders
-function resolvePlaceholders(
-  text: string,
-  data: {
-    candidateName?: string;
-    candidateFirstName?: string;
-    jobTitle?: string;
-  }
-): string {
-  return text
-    .replace(/\{\{candidate\.name\}\}/gi, data.candidateName || '')
-    .replace(/\{\{candidate\.first_name\}\}/gi, data.candidateFirstName || '')
-    .replace(/\{\{job\.title\}\}/gi, data.jobTitle || '');
-}

@@ -18,6 +18,7 @@ import {
   LexicalEditor,
 } from 'lexical';
 import { ReactNode } from 'react';
+import { normalizePlaceholderKey } from '@/utils/templateUtils';
 
 export type SerializedPlaceholderNode = Spread<
   {
@@ -52,7 +53,8 @@ export class PlaceholderNode extends DecoratorNode<ReactNode> {
 
   constructor(placeholderKey: string, key?: NodeKey) {
     super(key);
-    this.__placeholderKey = placeholderKey;
+    // Always normalize the key to strip any accidental braces
+    this.__placeholderKey = normalizePlaceholderKey(placeholderKey);
   }
 
   createDOM(): HTMLElement {
@@ -71,7 +73,7 @@ export class PlaceholderNode extends DecoratorNode<ReactNode> {
 
   setPlaceholderKey(key: string): void {
     const writable = this.getWritable();
-    writable.__placeholderKey = key;
+    writable.__placeholderKey = normalizePlaceholderKey(key);
   }
 
   // Export to DOM (for HTML output)
@@ -98,7 +100,8 @@ export class PlaceholderNode extends DecoratorNode<ReactNode> {
               conversion: (element: HTMLElement): DOMConversionOutput | null => {
                 const key = element.getAttribute('data-placeholder');
                 if (key) {
-                  return { node: $createPlaceholderNode(key) };
+                  // Normalize key when importing
+                  return { node: $createPlaceholderNode(normalizePlaceholderKey(key)) };
                 }
                 return null;
               },
@@ -122,7 +125,8 @@ export class PlaceholderNode extends DecoratorNode<ReactNode> {
 
   // Deserialize from JSON
   static importJSON(serializedNode: SerializedPlaceholderNode): PlaceholderNode {
-    return $createPlaceholderNode(serializedNode.placeholderKey);
+    // Normalize key when deserializing
+    return $createPlaceholderNode(normalizePlaceholderKey(serializedNode.placeholderKey));
   }
 
   // For copy/paste - export as the template string
@@ -147,7 +151,8 @@ export class PlaceholderNode extends DecoratorNode<ReactNode> {
 }
 
 export function $createPlaceholderNode(placeholderKey: string): PlaceholderNode {
-  return $applyNodeReplacement(new PlaceholderNode(placeholderKey));
+  // Normalize on creation to ensure clean keys
+  return $applyNodeReplacement(new PlaceholderNode(normalizePlaceholderKey(placeholderKey)));
 }
 
 export function $isPlaceholderNode(

@@ -170,6 +170,26 @@ function encodeBookingContext(context: {
   }
 }
 
+/**
+ * Collapse accidental double braces in a template string
+ * "Hi {{{{first_name}}}}" -> "Hi {{first_name}}"
+ */
+function collapseDoubleBraces(template: string): string {
+  if (!template) return '';
+  
+  let result = template;
+  let prevResult = '';
+  
+  // Loop until no changes (handles {{{{{{key}}}}}} etc.)
+  while (result !== prevResult) {
+    prevResult = result;
+    result = result.replace(/\{\{\{\{/g, '{{');
+    result = result.replace(/\}\}\}\}/g, '}}');
+  }
+  
+  return result;
+}
+
 async function replacePlaceholders(
   text: string,
   candidate: any,
@@ -177,42 +197,54 @@ async function replacePlaceholders(
   user: any,
   bookingUrl: string | null
 ): Promise<string> {
-  // First, sanitize HTML entities that shouldn't be in plain text (especially subject lines)
-  let result = text
-    .replace(/&nbsp;/g, ' ')  // Non-breaking space HTML entity
-    .replace(/\u00A0/g, ' '); // Non-breaking space character (Unicode)
+  // Step 1: Collapse any accidental double braces from legacy content
+  let result = collapseDoubleBraces(text);
   
-  // Candidate placeholders
+  // Step 2: Sanitize HTML entities
+  result = result
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\u00A0/g, ' ');
+  
+  // Step 3: Build placeholder data map
+  const data: Record<string, string> = {};
+  
   if (candidate) {
-    result = result.replace(/\{\{candidate\.name\}\}/g, candidate.candidate_name || '');
-    result = result.replace(/\{\{candidate\.email\}\}/g, candidate.email || '');
-    result = result.replace(/\{\{candidate\.phone\}\}/g, candidate.phone || '');
-    result = result.replace(/\{\{candidate\.location\}\}/g, 
-      [candidate.location_city, candidate.location_state, candidate.location_country]
-        .filter(Boolean)
-        .join(', ') || ''
-    );
+    data['candidate.name'] = candidate.candidate_name || '';
+    data['candidate.first_name'] = candidate.candidate_name?.split(' ')[0] || '';
+    data['candidate.email'] = candidate.email || '';
+    data['candidate.phone'] = candidate.phone || '';
+    data['candidate.location'] = [candidate.location_city, candidate.location_state, candidate.location_country]
+      .filter(Boolean)
+      .join(', ') || '';
   }
   
-  // Job placeholders
   if (job) {
-    result = result.replace(/\{\{job\.title\}\}/g, job.title || '');
-    result = result.replace(/\{\{job\.department\}\}/g, job.department || '');
-    result = result.replace(/\{\{job\.location\}\}/g, job.location || '');
+    data['job.title'] = job.title || '';
+    data['job.department'] = job.department || '';
+    data['job.location'] = job.location || '';
   }
   
-  // User placeholders (sender)
   if (user) {
     const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ');
-    result = result.replace(/\{\{sender\.name\}\}/g, fullName || user.email || '');
-    result = result.replace(/\{\{sender\.email\}\}/g, user.email || '');
-    result = result.replace(/\{\{sender\.first_name\}\}/g, user.first_name || '');
-    result = result.replace(/\{\{sender\.last_name\}\}/g, user.last_name || '');
-    result = result.replace(/\{\{sender\.title\}\}/g, user.title || '');
-    result = result.replace(/\{\{sender\.phone\}\}/g, user.phone || '');
-    result = result.replace(/\{\{sender\.linkedin\}\}/g, user.linkedin_url || '');
-    result = result.replace(/\{\{sender\.booking_link\}\}/g, bookingUrl || '');
+    data['sender.name'] = fullName || user.email || '';
+    data['sender.email'] = user.email || '';
+    data['sender.first_name'] = user.first_name || '';
+    data['sender.last_name'] = user.last_name || '';
+    data['sender.title'] = user.title || '';
+    data['sender.phone'] = user.phone || '';
+    data['sender.linkedin'] = user.linkedin_url || '';
   }
+  
+  if (bookingUrl) {
+    data['sender.booking_link'] = bookingUrl;
+  }
+  
+  // Step 4: Replace all placeholder tokens using whitespace-tolerant regex
+  // This matches {{ key }}, {{key}}, {{ key}}, etc.
+  result = result.replace(/\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g, (match, key) => {
+    const normalizedKey = key.trim();
+    return data[normalizedKey] !== undefined ? data[normalizedKey] : '';
+  });
   
   return result;
 }
