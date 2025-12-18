@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { SubjectTemplateEditor, BodyTemplateEditor } from '@/components/editors';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -11,7 +11,6 @@ import { Badge } from '@/components/ui/badge';
 import { useMailIdentities } from '@/hooks/useMailIdentities';
 import { useRejectionEmailTemplates } from '@/hooks/useRejectionEmailTemplates';
 import { convertPlaceholdersToHtml, convertHtmlToPlaceholders, containsPlaceholders } from '@/utils/placeholderUtils';
-import { SubjectInputWithBadges } from './SubjectInputWithBadges';
 import { CalendarIcon, Clock } from 'lucide-react';
 import { format, addHours, setHours, setMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -183,7 +182,7 @@ export function RejectionEmailComposer({
       {/* Subject */}
       <div className="space-y-2">
         <Label>Subject</Label>
-        <SubjectInputWithBadges
+        <SubjectTemplateEditor
           value={subjectHtml}
           onChange={setSubjectHtml}
           placeholder="Email subject"
@@ -193,11 +192,11 @@ export function RejectionEmailComposer({
       {/* Body */}
       <div className="space-y-2">
         <Label>Message</Label>
-        <RichTextEditor
+        <BodyTemplateEditor
           value={bodyHtml}
           onChange={setBodyHtml}
           placeholder="Write your rejection email..."
-          className="min-h-[150px]"
+          minHeight="150px"
         />
         {containsPlaceholders(bodyHtml) && (
           <p className="text-xs text-primary bg-primary/10 border border-primary/30 rounded px-2 py-1">
