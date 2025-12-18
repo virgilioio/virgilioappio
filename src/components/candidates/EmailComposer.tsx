@@ -5,7 +5,7 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { SubjectTemplateEditor, BodyTemplateEditor } from '@/components/editors';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMailIdentities } from '@/hooks/useMailIdentities';
@@ -16,7 +16,6 @@ import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { convertPlaceholdersToHtml, convertHtmlToPlaceholders, containsPlaceholders } from '@/utils/placeholderUtils';
-import { SubjectInputWithBadges } from './SubjectInputWithBadges';
 
 const emailSchema = z.object({
   from_email: z.string().email('Invalid email address'),
@@ -377,12 +376,12 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
           {/* Subject */}
           <div className="space-y-2">
             <Label htmlFor="subject">Subject</Label>
-            <SubjectInputWithBadges
+            <SubjectTemplateEditor
               id="subject"
               value={subjectHtml}
-              onChange={(html) => {
-                setSubjectHtml(html);
-                setValue('subject', html);
+              onChange={(value) => {
+                setSubjectHtml(value);
+                setValue('subject', value);
               }}
               placeholder="Email subject"
             />
@@ -394,7 +393,7 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
           {/* Body */}
           <div className="space-y-2">
             <Label>Message</Label>
-            <RichTextEditor
+            <BodyTemplateEditor
               value={bodyHtml}
               onChange={(content) => {
                 setBodyHtml(content);

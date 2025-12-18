@@ -9,8 +9,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { RichTextEditor, type RichTextEditorHandle } from '@/components/ui/rich-text-editor';
-import { PlaceholderInput, type PlaceholderInputHandle } from '@/components/ui/placeholder-input';
+import { 
+  SubjectTemplateEditor, 
+  BodyTemplateEditor,
+  type SubjectTemplateEditorHandle,
+  type BodyTemplateEditorHandle 
+} from '@/components/editors';
 import { PlaceholderHelper } from '../PlaceholderHelper';
 import { useRejectionEmailTemplates } from '@/hooks/useRejectionEmailTemplates';
 import { Loader2 } from 'lucide-react';
@@ -35,8 +39,8 @@ export function RejectionEmailTemplateSheet({
     body: '',
   });
   const [isSaving, setIsSaving] = useState(false);
-  const subjectRef = useRef<PlaceholderInputHandle>(null);
-  const bodyRef = useRef<RichTextEditorHandle>(null);
+  const subjectRef = useRef<SubjectTemplateEditorHandle>(null);
+  const bodyRef = useRef<BodyTemplateEditorHandle>(null);
 
   const isEditMode = !!templateId;
   const editingTemplate = templates.find(t => t.id === templateId);
@@ -107,7 +111,7 @@ export function RejectionEmailTemplateSheet({
 
             <div className="space-y-2">
               <Label htmlFor="subject">Subject Line</Label>
-              <PlaceholderInput
+              <SubjectTemplateEditor
                 ref={subjectRef}
                 id="subject"
                 value={formData.subject}
@@ -118,7 +122,7 @@ export function RejectionEmailTemplateSheet({
 
             <div className="space-y-2">
               <Label htmlFor="body">Email Body</Label>
-              <RichTextEditor
+              <BodyTemplateEditor
                 ref={bodyRef}
                 value={formData.body}
                 onChange={(value) => setFormData({ ...formData, body: value })}

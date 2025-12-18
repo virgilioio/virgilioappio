@@ -21,8 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { RichTextEditor } from '@/components/ui/rich-text-editor';
-import { SubjectInputWithBadges } from './SubjectInputWithBadges';
+import { SubjectTemplateEditor, BodyTemplateEditor } from '@/components/editors';
 import { useBulkSendEmail } from '@/hooks/useBulkSendEmail';
 import { useMailIdentities } from '@/hooks/useMailIdentities';
 import { useEmailTemplates } from '@/hooks/useEmailTemplates';
@@ -259,7 +258,7 @@ export function BulkEmailDialog({
           {/* Subject */}
           <div className="space-y-2">
             <Label>Subject</Label>
-            <SubjectInputWithBadges
+            <SubjectTemplateEditor
               value={subjectHtml}
               onChange={setSubjectHtml}
               placeholder="Email subject..."
@@ -269,7 +268,7 @@ export function BulkEmailDialog({
           {/* Body */}
           <div className="space-y-2">
             <Label>Message</Label>
-            <RichTextEditor
+            <BodyTemplateEditor
               value={bodyHtml}
               onChange={setBodyHtml}
               placeholder="Write your email message..."

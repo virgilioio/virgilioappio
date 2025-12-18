@@ -11,14 +11,14 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { SubjectTemplateEditor, BodyTemplateEditor } from '@/components/editors';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { RejectionReasonSelector } from './RejectionReasonSelector';
-import { SubjectInputWithBadges } from './SubjectInputWithBadges';
+
 import { useBulkRejectCandidates } from '@/hooks/useBulkRejectCandidates';
 import { useMailIdentities } from '@/hooks/useMailIdentities';
 import { useRejectionEmailTemplates } from '@/hooks/useRejectionEmailTemplates';
@@ -286,7 +286,7 @@ export function BulkRejectionDialog({
                     {/* Subject */}
                     <div className="space-y-2">
                       <Label>Subject</Label>
-                      <SubjectInputWithBadges
+                      <SubjectTemplateEditor
                         value={subjectHtml}
                         onChange={setSubjectHtml}
                         placeholder="Email subject"
@@ -296,11 +296,11 @@ export function BulkRejectionDialog({
                     {/* Body */}
                     <div className="space-y-2">
                       <Label>Message</Label>
-                      <RichTextEditor
+                      <BodyTemplateEditor
                         value={bodyHtml}
                         onChange={setBodyHtml}
                         placeholder="Write your rejection email..."
-                        className="min-h-[150px]"
+                        minHeight="150px"
                       />
                       {containsPlaceholders(bodyHtml) && (
                         <p className="text-xs text-primary bg-primary/10 border border-primary/30 rounded px-2 py-1">
