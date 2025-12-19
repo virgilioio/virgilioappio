@@ -35,6 +35,7 @@ import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 import { toast } from '@/hooks/use-toast'
 import CandidateNameCard from '@/components/candidates/CandidateNameCard'
 import { copyToClipboard } from '@/utils/clipboard'
+import { getEmailFromEntry, getPhoneFromEntry } from '@/utils/parseContactEntry'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { useCandidateResolver } from '@/hooks/useCandidateResolver'
@@ -923,9 +924,8 @@ const [offerFormOpen, setOfferFormOpen] = useState(false)
                                       {/* Primary email or contact_emails */}
                                       {(candidate as any)?.contact_emails && (candidate as any).contact_emails.length > 0 ? (
                                         (candidate as any).contact_emails.map((ce: any, idx: number) => {
-                                          // Handle both string and object formats
-                                          const emailValue = typeof ce === 'string' ? ce : ce.email;
-                                          const emailType = typeof ce === 'string' ? 'personal' : ce.type;
+                                          // Parse JSON string or use object/string directly
+                                          const { email: emailValue, type: emailType } = getEmailFromEntry(ce);
                                           
                                           if (!emailValue) return null;
                                           
@@ -981,9 +981,8 @@ const [offerFormOpen, setOfferFormOpen] = useState(false)
                                     <div className="space-y-2">
                                       {(candidate as any)?.contact_phones && (candidate as any).contact_phones.length > 0 ? (
                                         (candidate as any).contact_phones.map((cp: any, idx: number) => {
-                                          // Handle both string and object formats
-                                          const phoneValue = typeof cp === 'string' ? cp : cp.number;
-                                          const phoneType = typeof cp === 'string' ? 'personal' : cp.type;
+                                          // Parse JSON string or use object/string directly
+                                          const { phone: phoneValue, type: phoneType } = getPhoneFromEntry(cp);
                                           
                                           if (!phoneValue) return null;
                                           
