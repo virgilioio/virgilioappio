@@ -606,9 +606,9 @@ serve(async (req) => {
       return scoreB - scoreA;
     });
 
-    // Limit results - for sourcing projects, return more candidates (up to 200)
+    // Limit results - for sourcing projects, return more candidates (up to 500)
     // For job matching, keep it focused (up to 50)
-    const maxResults = sourcing_project_id ? 200 : 50;
+    const maxResults = sourcing_project_id ? 500 : 50;
     const effectiveLimit = Math.min(limit, maxResults);
     const limitedCandidates = analyzedCandidates.slice(0, effectiveLimit);
 

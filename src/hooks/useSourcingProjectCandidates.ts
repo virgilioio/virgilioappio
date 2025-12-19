@@ -60,13 +60,13 @@ export interface SourcingProjectMatchingResult {
 
 interface UseSourcingProjectCandidatesParams {
   projectId: string
-  limit?: number
+  limit?: number  // Default: 500 for sourcing projects
   enabled?: boolean
 }
 
 export function useSourcingProjectCandidates({
   projectId,
-  limit = 50,
+  limit = 500,
   enabled = true
 }: UseSourcingProjectCandidatesParams) {
   const [matchingResult, setMatchingResult] = useState<SourcingProjectMatchingResult | null>(null)
