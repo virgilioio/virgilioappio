@@ -12,6 +12,7 @@ interface JobSelectionDialogProps {
   onOpenChange: (open: boolean) => void
   onJobSelected: (jobId: string, jobName: string, stageId?: string, stageName?: string) => void
   onSkip: () => void
+  initialJobId?: string | null
 }
 
 export function JobSelectionDialog({
@@ -19,6 +20,7 @@ export function JobSelectionDialog({
   onOpenChange,
   onJobSelected,
   onSkip,
+  initialJobId,
 }: JobSelectionDialogProps) {
   const [selectedJobId, setSelectedJobId] = useState<string>('')
   const [selectedStageId, setSelectedStageId] = useState<string>('')
@@ -27,6 +29,17 @@ export function JobSelectionDialog({
   
   const { jobs, isLoading } = useJobsForCandidateAssignment()
   const { loadHiringPlanInstances } = useJobHiringPlan()
+
+  // Initialize with linked job when dialog opens
+  useEffect(() => {
+    if (open && initialJobId) {
+      setSelectedJobId(initialJobId)
+    } else if (!open) {
+      setSelectedJobId('')
+      setSelectedStageId('')
+      setStageOptions([])
+    }
+  }, [open, initialJobId])
 
   // Load stages when job is selected
   useEffect(() => {
@@ -40,12 +53,16 @@ export function JobSelectionDialog({
       setIsLoadingStages(true)
       try {
         const stages = await loadHiringPlanInstances(selectedJobId)
-        setStageOptions(
-          stages.map((s) => ({
-            jhsId: s.jhsId,
-            label: s.customStageName || s.stage.stage_name,
-          }))
-        )
+        const options = stages.map((s) => ({
+          jhsId: s.jhsId,
+          label: s.customStageName || s.stage.stage_name,
+        }))
+        setStageOptions(options)
+        
+        // Auto-select first stage if available
+        if (options.length > 0) {
+          setSelectedStageId(options[0].jhsId)
+        }
       } catch (error) {
         console.error('Failed to load stages:', error)
         setStageOptions([])
