@@ -1,30 +1,27 @@
-import { useState, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-import { X, Plus, Sparkles, Loader2 } from 'lucide-react'
+import { X, Plus } from 'lucide-react'
 import { CreateIndependentCandidateData } from '@/hooks/useIndependentCandidates'
-import { toast } from '@/hooks/use-toast'
-import { supabase } from '@/lib/supabaseClient'
 import { getSkillColor } from '@/utils/skillColors'
 import { SkillsGenerationPanel } from './SkillsGenerationPanel'
-import { useResumeParsing } from '@/hooks/useResumeParsing'
 import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 import { markdownToHtml } from '@/utils/markdown'
 import { EnhancedResumeDropzone, ParsedResumeData } from './EnhancedResumeDropzone'
+import { ContactEmailsInput, ContactEmail } from './ContactEmailsInput'
+import { ContactPhonesInput, ContactPhone } from './ContactPhonesInput'
+import { parseContactEntry } from '@/utils/parseContactEntry'
 
 const candidateSchema = z.object({
   candidate_name: z.string().min(1, 'Name is required'),
-  email: z.string().email('Invalid email').optional().or(z.literal('')),
-  phone: z.string().optional(),
   location_country: z.string().optional(),
   location_state: z.string().optional(),
   location_city: z.string().optional(),
@@ -59,7 +56,44 @@ export function IndependentCandidateForm({
 }: IndependentCandidateFormProps) {
   const [skills, setSkills] = useState<string[]>(initialData?.skills || [])
   const [newSkill, setNewSkill] = useState('')
-  const [dragOver, setDragOver] = useState(false)
+
+  // Initialize contact emails from initialData or create one empty entry
+  const [contactEmails, setContactEmails] = useState<ContactEmail[]>(() => {
+    if (initialData?.contact_emails && Array.isArray(initialData.contact_emails) && initialData.contact_emails.length > 0) {
+      return initialData.contact_emails.map(e => {
+        const parsed = parseContactEntry(e)
+        return {
+          type: (parsed?.type as 'work' | 'personal' | 'other') || 'work',
+          email: parsed?.email || '',
+          status: parsed?.status || null
+        }
+      }).filter(e => e.email)
+    }
+    // Fallback to single email field
+    if (initialData?.email) {
+      return [{ type: 'work' as const, email: initialData.email, status: null }]
+    }
+    return [{ type: 'work' as const, email: '', status: null }]
+  })
+
+  // Initialize contact phones from initialData or create one empty entry
+  const [contactPhones, setContactPhones] = useState<ContactPhone[]>(() => {
+    if (initialData?.contact_phones && Array.isArray(initialData.contact_phones) && initialData.contact_phones.length > 0) {
+      return initialData.contact_phones.map(p => {
+        const parsed = parseContactEntry(p)
+        return {
+          type: (parsed?.type as 'work' | 'mobile' | 'other') || 'mobile',
+          number: parsed?.number || '',
+          raw_number: parsed?.raw_number || null
+        }
+      }).filter(p => p.number)
+    }
+    // Fallback to single phone field
+    if (initialData?.phone) {
+      return [{ type: 'mobile' as const, number: initialData.phone, raw_number: null }]
+    }
+    return [{ type: 'mobile' as const, number: '', raw_number: null }]
+  })
 
   const [profileSummary, setProfileSummary] = useState(() => sanitizeHtmlForEditor(markdownToHtml(initialData?.profile_summary || "")))
 
@@ -74,8 +108,6 @@ export function IndependentCandidateForm({
     resolver: zodResolver(candidateSchema),
     defaultValues: {
       candidate_name: initialData?.candidate_name || '',
-      email: initialData?.email || '',
-      phone: initialData?.phone || '',
       location_country: initialData?.location_country || '',
       location_state: initialData?.location_state || '',
       location_city: initialData?.location_city || '',
@@ -94,14 +126,21 @@ export function IndependentCandidateForm({
   const salary_period = watch('salary_period')
   const status = watch('status')
   const source = watch('source')
-  const { isParsing, parseResume } = useResumeParsing()
 
   const handleFormSubmit = async (data: CandidateFormData) => {
     try {
+      // Filter out empty emails and phones
+      const validEmails = contactEmails.filter(e => e.email.trim())
+      const validPhones = contactPhones.filter(p => p.number.trim())
+      
       const formattedData: CreateIndependentCandidateData = {
         candidate_name: data.candidate_name,
-        email: data.email || null,
-        phone: data.phone || null,
+        // Set primary email/phone from first entry for backward compatibility
+        email: validEmails[0]?.email || null,
+        phone: validPhones[0]?.number || null,
+        // Include full arrays
+        contact_emails: validEmails.length > 0 ? validEmails : null,
+        contact_phones: validPhones.length > 0 ? validPhones : null,
         location_country: data.location_country || null,
         location_state: data.location_state || null,
         location_city: data.location_city || null,
@@ -127,6 +166,8 @@ export function IndependentCandidateForm({
     reset()
     setSkills([])
     setNewSkill('')
+    setContactEmails([{ type: 'work', email: '', status: null }])
+    setContactPhones([{ type: 'mobile', number: '', raw_number: null }])
     onClose()
   }
 
@@ -178,8 +219,12 @@ export function IndependentCandidateForm({
                 
                 // Apply parsed data to form
                 if (parsed.name) setValue('candidate_name', parsed.name)
-                if (parsed.email) setValue('email', parsed.email)
-                if (parsed.phone) setValue('phone', parsed.phone)
+                if (parsed.email) {
+                  setContactEmails([{ type: 'work', email: parsed.email, status: null }])
+                }
+                if (parsed.phone) {
+                  setContactPhones([{ type: 'mobile', number: parsed.phone, raw_number: null }])
+                }
                 
                 if (parsed.linkedinUrl) {
                   console.log('[IndependentCandidateForm] Setting linkedin_url:', parsed.linkedinUrl);
@@ -254,28 +299,6 @@ export function IndependentCandidateForm({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  {...register('email')}
-                  placeholder="john@example.com"
-                />
-                {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  {...register('phone')}
-                  placeholder="+1 (555) 123-4567"
-                />
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
                 <Select value={status} onValueChange={(value) => setValue('status', value)}>
                   <SelectTrigger>
@@ -289,6 +312,22 @@ export function IndependentCandidateForm({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+          </div>
+
+          {/* Contact Information */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">Contact Information</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <ContactEmailsInput
+                value={contactEmails}
+                onChange={setContactEmails}
+              />
+              <ContactPhonesInput
+                value={contactPhones}
+                onChange={setContactPhones}
+              />
             </div>
           </div>
 

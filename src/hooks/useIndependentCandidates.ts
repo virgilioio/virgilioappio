@@ -49,6 +49,8 @@ export interface CreateIndependentCandidateData {
   candidate_name: string
   email?: string | null
   phone?: string | null
+  contact_emails?: ContactEmail[] | null
+  contact_phones?: ContactPhone[] | null
   location_country?: string | null
   location_state?: string | null
   location_city?: string | null
@@ -193,6 +195,8 @@ export function useIndependentCandidates() {
       if (candidateData.candidate_name !== undefined) updateData.candidate_name = candidateData.candidate_name
       if (candidateData.email !== undefined) updateData.email = candidateData.email
       if (candidateData.phone !== undefined) updateData.phone = candidateData.phone
+      if (candidateData.contact_emails !== undefined) updateData.contact_emails = candidateData.contact_emails?.map(e => JSON.stringify(e)) || []
+      if (candidateData.contact_phones !== undefined) updateData.contact_phones = candidateData.contact_phones?.map(p => JSON.stringify(p)) || []
       if (candidateData.location_country !== undefined) updateData.location_country = candidateData.location_country
       if (candidateData.location_state !== undefined) updateData.location_state = candidateData.location_state
       if (candidateData.location_city !== undefined) updateData.location_city = candidateData.location_city
