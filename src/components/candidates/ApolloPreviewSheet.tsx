@@ -8,7 +8,7 @@ import {
   Sparkles, ExternalLink, AlertCircle, ChevronLeft, ChevronRight, 
   Mail, Phone, Lock, Briefcase, GraduationCap, Wrench, MapPin, 
   Users, UserPlus, Building2, Globe, CheckCircle2, TrendingUp,
-  Target, Zap, Eye, Check, Star, XCircle, Info, Clock, Award
+  Target, Zap, Eye, Check, Star, XCircle, Info, Clock, Award, Copy
 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
@@ -974,15 +974,28 @@ export function ApolloPreviewSheet({
                       {isCollected ? (
                         <>
                           {enrichedData?.email && (
-                            <div className="flex items-center gap-2">
-                              <Mail className="h-4 w-4 text-text-secondary" />
-                              <a href={`mailto:${enrichedData.email}`} className="text-sm text-blue-600 hover:underline">
-                                {enrichedData.email}
-                              </a>
-                              <Badge variant="secondary" className="text-xs">
-                                <CheckCircle2 className="h-3 w-3 mr-1 text-green-500" />
-                                Verified
-                              </Badge>
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <Mail className="h-4 w-4 text-text-secondary flex-shrink-0" />
+                                <a href={`mailto:${enrichedData.email}`} className="text-sm text-blue-600 hover:underline truncate">
+                                  {enrichedData.email}
+                                </a>
+                                <Badge variant="secondary" className="text-xs flex-shrink-0">
+                                  <CheckCircle2 className="h-3 w-3 mr-1 text-green-500" />
+                                  Verified
+                                </Badge>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 flex-shrink-0"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(enrichedData.email);
+                                  toast({ title: 'Copied', description: 'Email copied to clipboard' });
+                                }}
+                              >
+                                <Copy className="h-3.5 w-3.5" />
+                              </Button>
                             </div>
                           )}
                           <div className="flex items-center gap-2">
