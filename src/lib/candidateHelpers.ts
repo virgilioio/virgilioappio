@@ -2,10 +2,24 @@ import { supabase } from '@/lib/supabaseClient'
 import { withAuthRetry } from '@/lib/authUtils'
 import { log } from '@/lib/logger'
 
+export interface ContactEmail {
+  type: 'work' | 'personal' | 'other'
+  email: string
+  status?: string | null
+}
+
+export interface ContactPhone {
+  type: 'work' | 'mobile' | 'other'
+  number: string
+  raw_number?: string | null
+}
+
 export interface CandidateData {
   candidate_name: string
   email?: string | null
   phone?: string | null
+  contact_emails?: ContactEmail[] | null
+  contact_phones?: ContactPhone[] | null
   location_country?: string | null
   location_state?: string | null
   location_city?: string | null
@@ -153,6 +167,8 @@ export async function createCandidate(candidateData: CandidateData) {
         candidate_name: candidateData.candidate_name,
         email: candidateData.email,
         phone: candidateData.phone,
+        contact_emails: candidateData.contact_emails?.map(e => JSON.stringify(e)) || [],
+        contact_phones: candidateData.contact_phones?.map(p => JSON.stringify(p)) || [],
         location_country: candidateData.location_country,
         location_state: candidateData.location_state,
         location_city: candidateData.location_city,
