@@ -26,19 +26,19 @@ export interface AnalyticsReportOptions {
 
 // Color definitions (RGB values for PDF)
 const colors = {
-  primary: [124, 58, 237] as [number, number, number],      // Virgilio purple
-  primaryLight: [237, 233, 254] as [number, number, number], // Light purple bg
-  success: [34, 197, 94] as [number, number, number],        // Green
-  successLight: [220, 252, 231] as [number, number, number],
-  info: [59, 130, 246] as [number, number, number],          // Blue
-  infoLight: [219, 234, 254] as [number, number, number],
-  warning: [245, 158, 11] as [number, number, number],       // Amber/Gold
-  warningLight: [254, 243, 199] as [number, number, number],
-  destructive: [239, 68, 68] as [number, number, number],    // Red
-  destructiveLight: [254, 226, 226] as [number, number, number],
-  muted: [100, 116, 139] as [number, number, number],        // Slate
-  text: [30, 41, 59] as [number, number, number],            // Dark text
-  border: [226, 232, 240] as [number, number, number],       // Light border
+  primary: [124, 58, 237] as [number, number, number],
+  primaryLight: [245, 243, 255] as [number, number, number],
+  success: [34, 197, 94] as [number, number, number],
+  successLight: [236, 253, 245] as [number, number, number],
+  info: [59, 130, 246] as [number, number, number],
+  infoLight: [239, 246, 255] as [number, number, number],
+  warning: [245, 158, 11] as [number, number, number],
+  warningLight: [255, 251, 235] as [number, number, number],
+  destructive: [239, 68, 68] as [number, number, number],
+  destructiveLight: [254, 242, 242] as [number, number, number],
+  muted: [100, 116, 139] as [number, number, number],
+  text: [30, 41, 59] as [number, number, number],
+  border: [226, 232, 240] as [number, number, number],
   white: [255, 255, 255] as [number, number, number],
 }
 
@@ -46,49 +46,33 @@ export const generateAnalyticsReport = async ({
   data,
   dateRange,
   jobTitle,
-  organizationName
 }: AnalyticsReportOptions): Promise<void> => {
   console.log('[Analytics PDF] Starting report generation...')
   
   const pdf = new jsPDF()
   const pageWidth = pdf.internal.pageSize.width
   const pageHeight = pdf.internal.pageSize.height
-  const margin = 20
+  const margin = 15
   const contentWidth = pageWidth - (margin * 2)
   let yPosition = margin
 
   // Load custom fonts
   const loadCustomFonts = async () => {
     try {
-      console.log('[Analytics PDF] Loading custom fonts...')
-      
-      const poppinsBoldResponse = await withFetchTimeout(
-        fetch(PoppinsBoldFont),
-        5000
-      )
-      
+      const poppinsBoldResponse = await withFetchTimeout(fetch(PoppinsBoldFont), 5000)
       if (!poppinsBoldResponse.ok) throw new Error('Failed to fetch Poppins font')
-      
       const poppinsBoldBuffer = await poppinsBoldResponse.arrayBuffer()
       const poppinsBoldBase64 = btoa(String.fromCharCode(...new Uint8Array(poppinsBoldBuffer)))
       
-      const latoRegularResponse = await withFetchTimeout(
-        fetch(LatoRegularFont),
-        5000
-      )
-      
+      const latoRegularResponse = await withFetchTimeout(fetch(LatoRegularFont), 5000)
       if (!latoRegularResponse.ok) throw new Error('Failed to fetch Lato font')
-      
       const latoRegularBuffer = await latoRegularResponse.arrayBuffer()
       const latoRegularBase64 = btoa(String.fromCharCode(...new Uint8Array(latoRegularBuffer)))
       
       pdf.addFileToVFS('Poppins-Bold.ttf', poppinsBoldBase64)
       pdf.addFont('Poppins-Bold.ttf', 'Poppins', 'bold')
-      
       pdf.addFileToVFS('Lato-Regular.ttf', latoRegularBase64)
       pdf.addFont('Lato-Regular.ttf', 'Lato', 'normal')
-      
-      console.log('[Analytics PDF] Custom fonts loaded successfully')
       return true
     } catch (error) {
       console.warn('[Analytics PDF] Failed to load custom fonts:', error)
@@ -107,229 +91,186 @@ export const generateAnalyticsReport = async ({
       .eq('asset_type', 'logo')
       .eq('is_active', true)
       .single()
-
-    if (logoData?.file_url) {
-      logoUrl = logoData.file_url
-    }
+    if (logoData?.file_url) logoUrl = logoData.file_url
   } catch (error) {
     console.warn('[Analytics PDF] Failed to fetch logo:', error)
   }
 
   // Typography helpers
   const setH1 = () => {
-    pdf.setFontSize(20)
-    pdf.setFont(fontsLoaded ? 'Poppins' : 'helvetica', 'bold')
-    pdf.setTextColor(...colors.text)
-  }
-
-  const setH2 = () => {
     pdf.setFontSize(14)
     pdf.setFont(fontsLoaded ? 'Poppins' : 'helvetica', 'bold')
     pdf.setTextColor(...colors.text)
   }
-
-  const setH3 = () => {
-    pdf.setFontSize(11)
+  const setH2 = () => {
+    pdf.setFontSize(9)
     pdf.setFont(fontsLoaded ? 'Poppins' : 'helvetica', 'bold')
     pdf.setTextColor(...colors.text)
   }
-
   const setBody = () => {
-    pdf.setFontSize(10)
+    pdf.setFontSize(7)
     pdf.setFont(fontsLoaded ? 'Lato' : 'helvetica', 'normal')
     pdf.setTextColor(...colors.text)
   }
-
   const setSmall = () => {
-    pdf.setFontSize(8)
+    pdf.setFontSize(6)
     pdf.setFont(fontsLoaded ? 'Lato' : 'helvetica', 'normal')
     pdf.setTextColor(...colors.muted)
   }
 
-  // Helper to draw rounded rectangle
-  const drawRoundedRect = (x: number, y: number, w: number, h: number, r: number, fill: [number, number, number], stroke?: [number, number, number]) => {
-    pdf.setFillColor(...fill)
-    if (stroke) {
-      pdf.setDrawColor(...stroke)
-      pdf.setLineWidth(0.5)
-      pdf.roundedRect(x, y, w, h, r, r, 'FD')
-    } else {
-      pdf.roundedRect(x, y, w, h, r, r, 'F')
-    }
-  }
-
-  // Draw header with gradient-like background
+  // Draw header
   const drawHeader = async () => {
-    // Purple gradient header background
-    drawRoundedRect(margin, yPosition, contentWidth, 35, 4, colors.primaryLight, colors.primary)
+    // Header background
+    pdf.setFillColor(...colors.primaryLight)
+    pdf.roundedRect(margin, yPosition, contentWidth, 22, 3, 3, 'F')
+    pdf.setDrawColor(...colors.primary)
+    pdf.setLineWidth(0.5)
+    pdf.roundedRect(margin, yPosition, contentWidth, 22, 3, 3, 'S')
     
     // Try to add logo
     try {
       const logoImg = new Image()
       logoImg.crossOrigin = 'anonymous'
-      
       const imageLoaded = new Promise<HTMLImageElement>((resolve, reject) => {
         const timeout = setTimeout(() => reject(new Error('Logo timeout')), 3000)
         logoImg.onload = () => { clearTimeout(timeout); resolve(logoImg) }
         logoImg.onerror = () => { clearTimeout(timeout); reject(new Error('Logo load failed')) }
         logoImg.src = logoUrl.startsWith('http') ? logoUrl : `${window.location.origin}${logoUrl.startsWith('/') ? '' : '/'}${logoUrl}`
       })
-      
       const loadedImage = await imageLoaded
       const canvas = document.createElement('canvas')
       const ctx = canvas.getContext('2d')
-      
       if (ctx) {
         canvas.width = loadedImage.naturalWidth
         canvas.height = loadedImage.naturalHeight
         ctx.drawImage(loadedImage, 0, 0)
         const base64Logo = canvas.toDataURL('image/png')
-        
-        const logoWidth = 22
+        const logoWidth = 14
         const logoHeight = (loadedImage.naturalHeight / loadedImage.naturalWidth) * logoWidth
-        pdf.addImage(base64Logo, 'PNG', margin + 6, yPosition + 6, logoWidth, logoHeight)
+        pdf.addImage(base64Logo, 'PNG', margin + 4, yPosition + 4, logoWidth, logoHeight)
       }
-    } catch (error) {
-      // Fallback text logo
-      pdf.setFontSize(12)
+    } catch {
+      pdf.setFontSize(8)
       pdf.setFont(fontsLoaded ? 'Poppins' : 'helvetica', 'bold')
       pdf.setTextColor(...colors.primary)
-      pdf.text('GOGIO', margin + 8, yPosition + 18)
+      pdf.text('GOGIO', margin + 5, yPosition + 13)
     }
     
-    // Report title
+    // Title
     setH1()
     pdf.setTextColor(...colors.primary)
-    const title = jobTitle ? `${jobTitle} - Analytics Report` : 'Analytics Report'
-    pdf.text(title, margin + 35, yPosition + 15)
+    const title = jobTitle ? `${jobTitle} - Analytics` : 'Analytics Report'
+    pdf.text(title, margin + 22, yPosition + 10)
     
-    // Date range subtitle
+    // Date range
     setSmall()
     const dateRangeText = `${format(dateRange.startDate, 'MMM d, yyyy')} - ${format(dateRange.endDate, 'MMM d, yyyy')}`
-    pdf.text(dateRangeText, margin + 35, yPosition + 24)
+    pdf.text(dateRangeText, margin + 22, yPosition + 16)
     
     // Generated timestamp
-    pdf.text(`Generated: ${format(new Date(), 'MMM d, yyyy \'at\' h:mm a')}`, pageWidth - margin - 55, yPosition + 24)
+    pdf.text(`Generated: ${format(new Date(), "MMM d, yyyy 'at' h:mm a")}`, pageWidth - margin - 45, yPosition + 16)
     
-    yPosition += 45
+    yPosition += 28
   }
 
-  // Draw metric card
-  const drawMetricCard = (
-    x: number, 
-    y: number, 
-    width: number, 
-    title: string, 
-    value: number, 
-    bgColor: [number, number, number], 
-    accentColor: [number, number, number]
-  ) => {
-    const height = 35
+  // Compact metric card
+  const drawMetricCard = (x: number, y: number, w: number, title: string, value: number, accent: [number, number, number], bg: [number, number, number]) => {
+    const h = 20
+    pdf.setFillColor(...bg)
+    pdf.roundedRect(x, y, w, h, 2, 2, 'F')
+    pdf.setFillColor(...accent)
+    pdf.roundedRect(x, y, 2, h, 1, 1, 'F')
     
-    // Card background
-    drawRoundedRect(x, y, width, height, 4, bgColor, colors.border)
-    
-    // Left accent bar
-    pdf.setFillColor(...accentColor)
-    pdf.roundedRect(x, y, 4, height, 2, 2, 'F')
-    
-    // Title
     setSmall()
     pdf.setTextColor(...colors.muted)
-    pdf.text(title, x + 10, y + 12)
+    pdf.text(title, x + 6, y + 7)
     
-    // Value
-    pdf.setFontSize(18)
+    pdf.setFontSize(11)
     pdf.setFont(fontsLoaded ? 'Poppins' : 'helvetica', 'bold')
-    pdf.setTextColor(...accentColor)
-    pdf.text(value.toLocaleString(), x + 10, y + 27)
-    
-    return height
+    pdf.setTextColor(...accent)
+    pdf.text(value.toLocaleString(), x + 6, y + 15)
+    return h
   }
 
-  // Draw funnel section
-  const drawFunnel = () => {
+  // Compact funnel
+  const drawFunnel = (x: number, y: number, w: number) => {
     setH2()
-    pdf.text('Recruitment Funnel', margin, yPosition)
-    yPosition += 10
+    pdf.text('Recruitment Funnel', x, y)
+    let cy = y + 6
 
     const stages = [
-      { label: 'Applications', value: data.applications, color: colors.primary, bgColor: colors.primaryLight },
-      { label: 'Active Candidates', value: data.activeCandidates, color: colors.info, bgColor: colors.infoLight },
-      { label: 'Offers', value: data.totalOffers, color: colors.warning, bgColor: colors.warningLight },
-      { label: 'Hired', value: data.totalHires, color: colors.success, bgColor: colors.successLight },
+      { label: 'Applications', value: data.applications, color: colors.primary, bg: colors.primaryLight },
+      { label: 'Active', value: data.activeCandidates, color: colors.info, bg: colors.infoLight },
+      { label: 'Offers', value: data.totalOffers, color: colors.warning, bg: colors.warningLight },
+      { label: 'Hired', value: data.totalHires, color: colors.success, bg: colors.successLight },
     ]
 
     const maxValue = Math.max(data.applications, 1)
-    const barHeight = 14
-    const spacing = 20
+    const barH = 8
+    const labelW = 28
 
-    stages.forEach((stage, index) => {
-      const barWidth = Math.max((stage.value / maxValue) * (contentWidth - 80), 30)
+    stages.forEach((stage, idx) => {
+      const barW = Math.max((stage.value / maxValue) * (w - labelW - 20), 15)
       
-      // Stage label
-      setBody()
+      setSmall()
       pdf.setTextColor(...colors.text)
-      pdf.text(stage.label, margin, yPosition + 9)
+      pdf.text(stage.label, x, cy + 5)
       
-      // Bar background
+      // Bar bg
       pdf.setFillColor(...colors.border)
-      pdf.roundedRect(margin + 65, yPosition, contentWidth - 80, barHeight, 3, 3, 'F')
+      pdf.roundedRect(x + labelW, cy, w - labelW - 15, barH, 2, 2, 'F')
       
-      // Filled bar
-      pdf.setFillColor(...stage.bgColor)
-      pdf.roundedRect(margin + 65, yPosition, barWidth, barHeight, 3, 3, 'F')
+      // Bar fill
+      pdf.setFillColor(...stage.bg)
+      pdf.roundedRect(x + labelW, cy, barW, barH, 2, 2, 'F')
       
-      // Accent border
+      // Accent
       pdf.setFillColor(...stage.color)
-      pdf.roundedRect(margin + 65, yPosition, 3, barHeight, 1, 1, 'F')
+      pdf.roundedRect(x + labelW, cy, 2, barH, 1, 1, 'F')
       
       // Value
-      pdf.setFontSize(10)
+      pdf.setFontSize(7)
       pdf.setFont(fontsLoaded ? 'Poppins' : 'helvetica', 'bold')
       pdf.setTextColor(...stage.color)
-      pdf.text(stage.value.toLocaleString(), margin + 70 + barWidth, yPosition + 10)
+      pdf.text(stage.value.toLocaleString(), x + labelW + barW + 3, cy + 5.5)
       
-      // Conversion rate (if not last item)
-      if (index < stages.length - 1) {
-        const nextValue = stages[index + 1].value
-        const rate = stage.value > 0 ? ((nextValue / stage.value) * 100).toFixed(1) : '0'
+      // Conversion arrow
+      if (idx < stages.length - 1) {
+        const next = stages[idx + 1].value
+        const rate = stage.value > 0 ? ((next / stage.value) * 100).toFixed(0) : '0'
         setSmall()
-        pdf.text(`↓ ${rate}%`, margin + 80, yPosition + barHeight + 6)
+        pdf.setTextColor(...colors.muted)
+        pdf.text(`${rate}%`, x + labelW + 2, cy + barH + 4)
       }
       
-      yPosition += spacing
+      cy += idx < stages.length - 1 ? 14 : 10
     })
 
-    // Overall conversion rate
-    const overallRate = data.applications > 0 
-      ? ((data.totalHires / data.applications) * 100).toFixed(1) 
-      : '0'
-    
+    // Overall rate
+    const overallRate = data.applications > 0 ? ((data.totalHires / data.applications) * 100).toFixed(1) : '0'
     pdf.setDrawColor(...colors.border)
-    pdf.setLineWidth(0.5)
-    pdf.line(margin, yPosition, margin + contentWidth, yPosition)
-    yPosition += 8
+    pdf.setLineWidth(0.3)
+    pdf.line(x, cy, x + w - 5, cy)
+    cy += 5
     
-    setBody()
+    setSmall()
     pdf.setTextColor(...colors.muted)
-    pdf.text('Overall Conversion Rate (Applications → Hired):', margin, yPosition)
-    
-    pdf.setFontSize(14)
+    pdf.text('Overall:', x, cy)
+    pdf.setFontSize(8)
     pdf.setFont(fontsLoaded ? 'Poppins' : 'helvetica', 'bold')
     pdf.setTextColor(...colors.primary)
-    pdf.text(`${overallRate}%`, margin + 90, yPosition)
+    pdf.text(`${overallRate}%`, x + 16, cy)
     
-    yPosition += 15
+    return cy - y + 5
   }
 
-  // Draw status distribution
-  const drawStatusDistribution = () => {
-    if (data.statusDistribution.length === 0) return
+  // Status distribution pie-like visualization
+  const drawStatusDistribution = (x: number, y: number, w: number) => {
+    if (data.statusDistribution.length === 0) return 0
 
     setH2()
-    pdf.text('Candidate Status Distribution', margin, yPosition)
-    yPosition += 10
+    pdf.text('Status Distribution', x, y)
+    let cy = y + 6
 
     const statusColors: Record<string, [number, number, number]> = {
       'Active': colors.primary,
@@ -340,151 +281,175 @@ export const generateAnalyticsReport = async ({
     }
 
     const total = data.statusDistribution.reduce((sum, s) => sum + s.value, 0)
-    const barStartX = margin + 60
-    const barWidth = contentWidth - 70
-    let currentX = barStartX
-
-    // Draw stacked bar
+    
+    // Stacked horizontal bar
+    let barX = x
+    const barW = w - 5
+    const barH = 10
+    
     data.statusDistribution.forEach((status) => {
-      const width = (status.value / total) * barWidth
+      const segW = (status.value / total) * barW
       const color = statusColors[status.name] || colors.muted
       pdf.setFillColor(...color)
-      pdf.rect(currentX, yPosition, width, 12, 'F')
-      currentX += width
+      pdf.rect(barX, cy, segW, barH, 'F')
+      barX += segW
     })
+    cy += barH + 4
 
-    yPosition += 18
-
-    // Legend
-    let legendX = margin
-    data.statusDistribution.forEach((status) => {
+    // Legend - 2 columns
+    const colW = (w - 5) / 2
+    let col = 0
+    let legendY = cy
+    
+    data.statusDistribution.forEach((status, idx) => {
       const color = statusColors[status.name] || colors.muted
-      const percentage = total > 0 ? ((status.value / total) * 100).toFixed(1) : '0'
+      const pct = total > 0 ? ((status.value / total) * 100).toFixed(0) : '0'
+      const lx = x + (col * colW)
       
       pdf.setFillColor(...color)
-      pdf.rect(legendX, yPosition, 8, 8, 'F')
+      pdf.rect(lx, legendY, 4, 4, 'F')
       
-      setSmall()
-      pdf.text(`${status.name}: ${status.value} (${percentage}%)`, legendX + 11, yPosition + 6)
-      
-      legendX += 50
-      if (legendX > pageWidth - margin - 50) {
-        legendX = margin
-        yPosition += 12
-      }
-    })
-
-    yPosition += 20
-  }
-
-  // Draw stage distribution
-  const drawStageDistribution = () => {
-    if (data.stageDistribution.length === 0) return
-
-    setH2()
-    pdf.text('Stage Distribution', margin, yPosition)
-    yPosition += 10
-
-    const maxCount = Math.max(...data.stageDistribution.map(s => s.count), 1)
-    const barHeight = 10
-    const maxBarWidth = contentWidth - 100
-
-    data.stageDistribution.slice(0, 8).forEach((stage) => {
-      const barWidth = (stage.count / maxCount) * maxBarWidth
-      
-      // Stage name
       setSmall()
       pdf.setTextColor(...colors.text)
-      const truncatedName = stage.name.length > 15 ? stage.name.substring(0, 15) + '...' : stage.name
-      pdf.text(truncatedName, margin, yPosition + 7)
+      pdf.text(`${status.name}: ${status.value} (${pct}%)`, lx + 6, legendY + 3)
+      
+      col++
+      if (col >= 2) {
+        col = 0
+        legendY += 6
+      }
+    })
+    
+    return legendY - y + (col > 0 ? 8 : 2)
+  }
+
+  // Stage distribution
+  const drawStageDistribution = (x: number, y: number, w: number) => {
+    if (data.stageDistribution.length === 0) return 0
+
+    setH2()
+    pdf.text('Stage Distribution', x, y)
+    let cy = y + 6
+
+    const maxCount = Math.max(...data.stageDistribution.map(s => s.count), 1)
+    const barH = 6
+    const labelW = 35
+    const maxBarW = w - labelW - 15
+
+    data.stageDistribution.slice(0, 6).forEach((stage) => {
+      const barW = (stage.count / maxCount) * maxBarW
+      
+      setSmall()
+      pdf.setTextColor(...colors.text)
+      const truncName = stage.name.length > 12 ? stage.name.substring(0, 12) + '..' : stage.name
+      pdf.text(truncName, x, cy + 4)
       
       // Bar
       pdf.setFillColor(...colors.primaryLight)
-      pdf.roundedRect(margin + 50, yPosition, maxBarWidth, barHeight, 2, 2, 'F')
-      
+      pdf.roundedRect(x + labelW, cy, maxBarW, barH, 1, 1, 'F')
       pdf.setFillColor(...colors.primary)
-      pdf.roundedRect(margin + 50, yPosition, barWidth, barHeight, 2, 2, 'F')
+      pdf.roundedRect(x + labelW, cy, barW, barH, 1, 1, 'F')
       
       // Count
-      pdf.setFontSize(9)
+      pdf.setFontSize(6)
       pdf.setFont(fontsLoaded ? 'Poppins' : 'helvetica', 'bold')
       pdf.setTextColor(...colors.primary)
-      pdf.text(stage.count.toString(), margin + 55 + barWidth, yPosition + 7)
+      pdf.text(stage.count.toString(), x + labelW + barW + 2, cy + 4)
       
-      yPosition += 14
+      cy += 9
     })
-
-    yPosition += 10
+    
+    return cy - y
   }
 
-  // Draw footer
-  const drawFooter = () => {
-    const footerY = pageHeight - 15
+  // Summary stats box
+  const drawSummaryBox = (x: number, y: number, w: number) => {
+    setH2()
+    pdf.text('Quick Stats', x, y)
+    let cy = y + 6
+
+    const stats = [
+      { label: 'Total Applications', value: data.applications },
+      { label: 'Active Pipeline', value: data.activeCandidates },
+      { label: 'Offers Extended', value: data.totalOffers },
+      { label: 'Hires Completed', value: data.totalHires },
+      { label: 'Interviews Scheduled', value: data.scheduledInterviews },
+    ]
+
+    if (data.rejectedCandidates !== undefined) {
+      stats.push({ label: 'Rejected', value: data.rejectedCandidates })
+    }
+
+    stats.forEach((stat) => {
+      setSmall()
+      pdf.setTextColor(...colors.muted)
+      pdf.text(stat.label, x, cy)
+      
+      pdf.setFontSize(7)
+      pdf.setFont(fontsLoaded ? 'Poppins' : 'helvetica', 'bold')
+      pdf.setTextColor(...colors.text)
+      pdf.text(stat.value.toLocaleString(), x + w - 20, cy, { align: 'right' })
+      
+      cy += 7
+    })
     
+    return cy - y
+  }
+
+  // Footer
+  const drawFooter = () => {
+    const footerY = pageHeight - 10
     pdf.setDrawColor(...colors.border)
-    pdf.setLineWidth(0.5)
-    pdf.line(margin, footerY - 5, pageWidth - margin, footerY - 5)
+    pdf.setLineWidth(0.3)
+    pdf.line(margin, footerY - 3, pageWidth - margin, footerY - 3)
     
     setSmall()
     pdf.text('Generated by GoGio ATS', margin, footerY)
-    pdf.text(`Page 1`, pageWidth - margin - 15, footerY)
+    pdf.text('Page 1 of 1', pageWidth - margin - 18, footerY)
   }
 
-  // Generate the report
+  // ===== Generate Report =====
   await drawHeader()
   
-  // Metric cards row
-  const cardWidth = (contentWidth - 15) / 4
-  const cardY = yPosition
+  // Metric cards - 6 cards in one row
+  const cardGap = 3
+  const cardW = (contentWidth - (cardGap * 5)) / 6
   
-  drawMetricCard(margin, cardY, cardWidth, 'Applications', data.applications, colors.primaryLight, colors.primary)
-  drawMetricCard(margin + cardWidth + 5, cardY, cardWidth, 'Active', data.activeCandidates, colors.infoLight, colors.info)
-  drawMetricCard(margin + (cardWidth + 5) * 2, cardY, cardWidth, 'Offers', data.totalOffers, colors.warningLight, colors.warning)
-  drawMetricCard(margin + (cardWidth + 5) * 3, cardY, cardWidth, 'Hired', data.totalHires, colors.successLight, colors.success)
+  drawMetricCard(margin, yPosition, cardW, 'Applications', data.applications, colors.primary, colors.primaryLight)
+  drawMetricCard(margin + (cardW + cardGap), yPosition, cardW, 'Active', data.activeCandidates, colors.info, colors.infoLight)
+  drawMetricCard(margin + (cardW + cardGap) * 2, yPosition, cardW, 'Offers', data.totalOffers, colors.warning, colors.warningLight)
+  drawMetricCard(margin + (cardW + cardGap) * 3, yPosition, cardW, 'Hired', data.totalHires, colors.success, colors.successLight)
+  drawMetricCard(margin + (cardW + cardGap) * 4, yPosition, cardW, 'Interviews', data.scheduledInterviews, colors.warning, colors.warningLight)
   
-  yPosition = cardY + 45
+  if (data.rejectedCandidates !== undefined) {
+    drawMetricCard(margin + (cardW + cardGap) * 5, yPosition, cardW, 'Rejected', data.rejectedCandidates, colors.destructive, colors.destructiveLight)
+  }
+  
+  yPosition += 26
 
-  // Second row of cards
-  if (data.scheduledInterviews !== undefined || data.rejectedCandidates !== undefined) {
-    const card2Width = (contentWidth - 5) / 2
-    
-    if (data.scheduledInterviews !== undefined) {
-      drawMetricCard(margin, yPosition, card2Width, 'Scheduled Interviews', data.scheduledInterviews, colors.warningLight, colors.warning)
-    }
-    
-    if (data.rejectedCandidates !== undefined) {
-      drawMetricCard(margin + card2Width + 5, yPosition, card2Width, 'Rejected', data.rejectedCandidates, colors.destructiveLight, colors.destructive)
-    }
-    
-    yPosition += 45
-  }
+  // Two-column layout for charts
+  const colWidth = (contentWidth - 10) / 2
+  const leftX = margin
+  const rightX = margin + colWidth + 10
 
-  drawFunnel()
-  
-  // Check if we need a new page
-  if (yPosition > pageHeight - 80) {
-    pdf.addPage()
-    yPosition = margin
-  }
-  
-  drawStatusDistribution()
-  
-  if (yPosition > pageHeight - 80) {
-    pdf.addPage()
-    yPosition = margin
-  }
-  
-  drawStageDistribution()
-  
+  // Left column: Funnel + Summary
+  const funnelHeight = drawFunnel(leftX, yPosition, colWidth)
+  const summaryY = yPosition + funnelHeight + 8
+  drawSummaryBox(leftX, summaryY, colWidth)
+
+  // Right column: Status + Stage distribution
+  const statusHeight = drawStatusDistribution(rightX, yPosition, colWidth)
+  const stageY = yPosition + statusHeight + 8
+  drawStageDistribution(rightX, stageY, colWidth)
+
   drawFooter()
 
-  // Generate filename
+  // Generate filename and save
   const dateStr = format(new Date(), 'yyyy-MM-dd')
   const filename = jobTitle 
     ? `${jobTitle.replace(/[^a-zA-Z0-9]/g, '-')}-analytics-${dateStr}.pdf`
     : `analytics-report-${dateStr}.pdf`
 
-  // Download the PDF
   pdf.save(filename)
   console.log('[Analytics PDF] Report generated successfully:', filename)
 }
