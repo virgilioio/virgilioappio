@@ -12,7 +12,7 @@ import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeVi
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
-import { Edit, FileText, Download, ChevronLeft, ChevronRight, Mail, Phone, Copy, ExternalLink, Send, Activity, StickyNote, Sparkles, User, Globe } from 'lucide-react'
+import { Edit, FileText, Download, ChevronLeft, ChevronRight, Mail, Phone, Copy, ExternalLink, Send, Activity, StickyNote, Sparkles, User, Globe, Loader2 } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -32,6 +32,7 @@ import { EmailHistoryList } from './EmailHistoryList'
 import { ActivityFeedList } from './ActivityFeedList'
 import AddToJobPipelineDialog from './AddToJobPipelineDialog'
 import { Separator } from '@/components/ui/separator'
+import { useEnrichCandidate } from '@/hooks/useEnrichCandidate'
 
 interface IndependentCandidateProfileSheetProps {
   open: boolean
@@ -234,6 +235,22 @@ export function IndependentCandidateProfileSheet({
                                 </Badge>
                               )}
                               <AddToJobPipelineDialog candidateId={candidate.id} />
+                              {canEnrich(candidate) && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handleEnrichFromLinkedIn}
+                                  disabled={isEnriching}
+                                  className="gap-1.5"
+                                >
+                                  {isEnriching ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Sparkles className="h-4 w-4" />
+                                  )}
+                                  Enrich from LinkedIn
+                                </Button>
+                              )}
                             </div>
                           </div>
                         </CardContent>
