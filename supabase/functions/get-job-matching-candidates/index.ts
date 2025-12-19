@@ -172,7 +172,7 @@ serve(async (req) => {
       job_id, 
       sourcing_project_id,
       criteria: providedCriteria,
-      limit = 200, // Increased for sourcing projects 
+      limit = 500, // Increased for sourcing projects with large talent pools 
       count_only = false,
       filters: requestFilters
     }: JobMatchingRequest = await req.json();
@@ -333,7 +333,7 @@ serve(async (req) => {
       .select(candidateFields)
       .eq('tenant_id', tenant_id)
       .is('deleted_at', null)
-      .limit(1000); // Fetch all candidates for sourcing projects (up to 1000)
+      .limit(2000); // Fetch all candidates for sourcing projects (up to 2000)
 
     if (localError) {
       console.warn('Error fetching local candidates:', localError);
