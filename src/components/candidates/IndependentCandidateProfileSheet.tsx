@@ -83,6 +83,24 @@ export function IndependentCandidateProfileSheet({
     await deleteAttachment(resumeAttachment.id, resumeAttachment.file_url)
   }
 
+  const { enrichByLinkedIn, canEnrich, isEnriching } = useEnrichCandidate()
+
+  const handleEnrichFromLinkedIn = async () => {
+    if (!candidateId) return
+    
+    const result = await enrichByLinkedIn(candidateId)
+    
+    // Refresh candidate data after enrichment
+    if (result?.enriched_count && result.enriched_count > 0) {
+      const { data } = await supabase
+        .from('candidates')
+        .select('*')
+        .eq('id', candidateId)
+        .single()
+      setCandidate(data || null)
+    }
+  }
+
   useEffect(() => {
     if (open) setActiveTab('overview')
     const load = async () => {
