@@ -446,15 +446,6 @@ export default function IndependentCandidateProfile() {
                           </div>
                         </div>
 
-                        <div className="flex items-start gap-md text-text-secondary">
-                          <User className="h-5 w-5 mt-1 flex-shrink-0" />
-                          <div className="space-y-1">
-                            <span className="text-sm font-medium block">Source</span>
-                            <p className="text-text-primary text-base capitalize">
-                              {candidate.source?.replace('_', ' ') || 'Direct'}
-                            </p>
-                          </div>
-                        </div>
                       </div>
 
                       {candidate.resume_url && (

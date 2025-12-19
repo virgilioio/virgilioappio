@@ -374,7 +374,6 @@ export function SourcingCandidateTable({
             <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[80px]">Source</TableHead>
                 <TableHead className="w-[280px]">
                   <SortableHeader 
                     sortKey="candidate_name" 
@@ -444,11 +443,6 @@ export function SourcingCandidateTable({
                       }
                     }}
                   >
-                    <TableCell>
-                      <Badge variant={candidate.source === 'local' ? 'default' : 'secondary'} className="text-xs">
-                        {candidate.source === 'local' ? 'Local' : 'Apollo'}
-                      </Badge>
-                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
