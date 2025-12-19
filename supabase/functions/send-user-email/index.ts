@@ -190,6 +190,34 @@ function collapseDoubleBraces(template: string): string {
   return result;
 }
 
+/**
+ * Convert plain text with newlines to proper HTML paragraphs
+ * This ensures emails render with proper paragraph breaks
+ */
+function textToHtml(text: string): string {
+  if (!text) return '';
+  
+  // If already contains HTML paragraph tags, return as-is
+  if (/<p[\s>]/i.test(text) || /<br\s*\/?>/i.test(text)) {
+    return text;
+  }
+  
+  // Normalize line endings
+  const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  
+  // Split by double newlines (paragraphs)
+  const paragraphs = normalized.split(/\n\n+/);
+  
+  return paragraphs
+    .map(p => {
+      // Replace single newlines within paragraphs with <br>
+      const withBreaks = p.trim().replace(/\n/g, '<br>');
+      return withBreaks ? `<p>${withBreaks}</p>` : '';
+    })
+    .filter(Boolean)
+    .join('\n');
+}
+
 async function replacePlaceholders(
   text: string,
   candidate: any,
@@ -527,15 +555,19 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Replace placeholders in subject and body
+    const processedSubject = await replacePlaceholders(request.subject, candidateData, jobData, userProfile || user, bookingUrl);
+    const processedBodyText = request.body_text 
+      ? await replacePlaceholders(request.body_text, candidateData, jobData, userProfile || user, bookingUrl)
+      : undefined;
+    const processedBodyHtml = request.body_html
+      ? textToHtml(await replacePlaceholders(request.body_html, candidateData, jobData, userProfile || user, bookingUrl))
+      : undefined;
+    
     const processedRequest = {
       ...request,
-      subject: await replacePlaceholders(request.subject, candidateData, jobData, userProfile || user, bookingUrl),
-      body_text: request.body_text 
-        ? await replacePlaceholders(request.body_text, candidateData, jobData, userProfile || user, bookingUrl)
-        : undefined,
-      body_html: request.body_html
-        ? await replacePlaceholders(request.body_html, candidateData, jobData, userProfile || user, bookingUrl)
-        : undefined,
+      subject: processedSubject,
+      body_text: processedBodyText,
+      body_html: processedBodyHtml,
     };
 
     // Build RFC822 email with threading headers
