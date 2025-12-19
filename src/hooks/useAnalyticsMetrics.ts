@@ -18,6 +18,7 @@ export interface AnalyticsFilters {
 export interface AnalyticsMetrics {
   applications: number
   activeCandidates: number
+  totalOffers: number
   totalHires: number
   scheduledInterviews: number
   statusDistribution: { name: string; value: number; color: string }[]
@@ -105,6 +106,7 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
         return {
           applications: 0,
           activeCandidates: 0,
+          totalOffers: 0,
           totalHires: 0,
           scheduledInterviews: 0,
           statusDistribution: [],
@@ -179,6 +181,13 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
 
       // Active candidates (status = 'active')
       const activeCandidates = allAssociations.filter(a => a.status === 'active').length
+
+      // Total offers (status = 'offer') within date range
+      const totalOffers = allAssociations.filter(a => {
+        if (a.status !== 'offer') return false
+        const updatedAt = new Date(a.updated_at)
+        return updatedAt >= dateRange.startDate && updatedAt <= dateRange.endDate
+      }).length
 
       // Total hires (status = 'hired') within date range
       const totalHires = allAssociations.filter(a => {
@@ -266,6 +275,7 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
       return {
         applications,
         activeCandidates,
+        totalOffers,
         totalHires,
         scheduledInterviews,
         statusDistribution,
@@ -280,6 +290,7 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
   return {
     applications: data?.applications ?? 0,
     activeCandidates: data?.activeCandidates ?? 0,
+    totalOffers: data?.totalOffers ?? 0,
     totalHires: data?.totalHires ?? 0,
     scheduledInterviews: data?.scheduledInterviews ?? 0,
     statusDistribution: data?.statusDistribution ?? [],

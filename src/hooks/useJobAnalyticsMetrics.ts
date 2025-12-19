@@ -11,6 +11,7 @@ export interface DateRange {
 export interface JobAnalyticsMetrics {
   applications: number
   activeCandidates: number
+  totalOffers: number
   totalHires: number
   scheduledInterviews: number
   rejectedCandidates: number
@@ -96,6 +97,13 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
 
       // Active candidates (status = 'active')
       const activeCandidates = allAssociations.filter(a => a.status === 'active').length
+
+      // Total offers (status = 'offer') within date range
+      const totalOffers = allAssociations.filter(a => {
+        if (a.status !== 'offer') return false
+        const updatedAt = new Date(a.updated_at)
+        return updatedAt >= dateRange.startDate && updatedAt <= dateRange.endDate
+      }).length
 
       // Total hires (status = 'hired') within date range
       const totalHires = allAssociations.filter(a => {
@@ -184,6 +192,7 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
       return {
         applications,
         activeCandidates,
+        totalOffers,
         totalHires,
         scheduledInterviews,
         rejectedCandidates,
@@ -199,6 +208,7 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
   return {
     applications: data?.applications ?? 0,
     activeCandidates: data?.activeCandidates ?? 0,
+    totalOffers: data?.totalOffers ?? 0,
     totalHires: data?.totalHires ?? 0,
     scheduledInterviews: data?.scheduledInterviews ?? 0,
     rejectedCandidates: data?.rejectedCandidates ?? 0,
