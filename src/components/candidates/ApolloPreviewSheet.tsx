@@ -648,75 +648,175 @@ export function ApolloPreviewSheet({
                 </Card>
               )}
 
-              {/* Career Snapshot Card */}
+              {/* Unlock CTA - Prominent position right after Fit Snapshot */}
               {!isCollected && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <Award className="h-4 w-4 text-text-secondary" />
-                        Career Snapshot
-                      </CardTitle>
+                <Card className="border-primary/40 bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 dark:from-violet-950/30 dark:via-purple-950/30 dark:to-fuchsia-950/30 shadow-md">
+                  <CardContent className="p-5">
+                    <div className="flex items-start gap-4">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/20">
+                        <Sparkles className="h-5 w-5 text-white" />
+                      </div>
+                      <div className="flex-1 space-y-3">
+                        <div>
+                          <h4 className="font-semibold text-text-primary">
+                            Unlock full profile with 1 credit
+                          </h4>
+                          <p className="text-sm text-text-secondary mt-1">
+                            {getCtaText()}
+                          </p>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-2">
+                          <UnlockBenefit icon={Mail} text="Verified email" available={hasEmailAvailable} />
+                          <UnlockBenefit icon={Phone} text="Phone number" available={hasPhoneAvailable} />
+                          <UnlockBenefit icon={Briefcase} text="Full work history" />
+                          <UnlockBenefit icon={GraduationCap} text="Education details" />
+                          <UnlockBenefit icon={Wrench} text="Complete skills" />
+                          <UnlockBenefit icon={Sparkles} text="AI career summary" />
+                        </div>
+
+                        <div className="flex items-center gap-3 pt-2">
+                          <Button
+                            onClick={() => {
+                              if (!jobId) {
+                                setShowJobSelection(true)
+                              } else {
+                                handleCollectProfile()
+                              }
+                            }}
+                            disabled={isCollecting || isCollectDisabled}
+                            className="flex-1"
+                          >
+                            {isCollecting ? (
+                              <>
+                                <Sparkles className="h-4 w-4 mr-2 animate-spin" />
+                                Unlocking...
+                              </>
+                            ) : (
+                              <>
+                                <Zap className="h-4 w-4 mr-2" />
+                                Unlock Profile
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Candidate Snapshot - Merged Career Snapshot + What We Know */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">
+                      {isCollected ? 'Profile Details' : 'Candidate Snapshot'}
+                    </CardTitle>
+                    {!isCollected && (
                       <Badge variant="outline" className="text-xs text-text-tertiary border-dashed">
                         <Info className="h-3 w-3 mr-1" />
                         Inferred
                       </Badge>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Basic Info Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {(apolloData?.current_role || enrichedData) && (
+                      <InfoRow 
+                        icon={Briefcase} 
+                        label="Current Role" 
+                        value={apolloData?.current_role || 'Not specified'} 
+                      />
+                    )}
+                    {(apolloData?.current_company || enrichedData) && (
+                      <InfoRow 
+                        icon={Building2} 
+                        label="Company" 
+                        value={apolloData?.current_company || 'Not specified'} 
+                      />
+                    )}
+                    {(apolloData?.location || enrichedLocation) && (
+                      <InfoRow 
+                        icon={MapPin} 
+                        label="Location" 
+                        value={enrichedLocation || apolloData?.location || 'Not specified'} 
+                      />
+                    )}
+                    {apolloData?.industry && (
+                      <InfoRow 
+                        icon={TrendingUp} 
+                        label="Industry" 
+                        value={apolloData.industry} 
+                      />
+                    )}
+                  </div>
+
+                  {/* Headline */}
+                  {apolloData?.headline && (
+                    <div className="pt-4 border-t">
+                      <p className="text-sm text-text-secondary italic">
+                        "{apolloData.headline}"
+                      </p>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <span className="text-xs text-text-tertiary">Seniority</span>
-                        <div className="mt-1">
-                          <Badge variant="secondary" className="text-xs">
-                            {careerSnapshot.seniority}
-                          </Badge>
+                  )}
+
+                  {/* Inferred Insights Section (only in preview) */}
+                  {!isCollected && (
+                    <div className="pt-4 border-t">
+                      <p className="text-xs font-medium text-text-tertiary mb-3">Inferred Insights</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <span className="text-xs text-text-tertiary">Seniority</span>
+                          <div className="mt-1">
+                            <Badge variant="secondary" className="text-xs">
+                              {careerSnapshot.seniority}
+                            </Badge>
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <span className="text-xs text-text-tertiary">Likely Experience</span>
-                        <div className="flex items-center gap-1 mt-1">
-                          <Clock className="h-3 w-3 text-text-tertiary" />
-                          <span className="text-sm text-text-primary">{careerSnapshot.yearsRangeLabel}</span>
+                        <div>
+                          <span className="text-xs text-text-tertiary">Likely Experience</span>
+                          <div className="flex items-center gap-1 mt-1">
+                            <Clock className="h-3 w-3 text-text-tertiary" />
+                            <span className="text-sm text-text-primary">{careerSnapshot.yearsRangeLabel}</span>
+                          </div>
                         </div>
+                        <div>
+                          <span className="text-xs text-text-tertiary">Function</span>
+                          <p className="text-sm text-text-primary mt-1">{careerSnapshot.functionLabel}</p>
+                        </div>
+                        {careerSnapshot.companyStageLabel !== 'Unknown' && (
+                          <div>
+                            <span className="text-xs text-text-tertiary">Company Stage</span>
+                            <p className="text-sm text-text-primary mt-1">{careerSnapshot.companyStageLabel}</p>
+                          </div>
+                        )}
                       </div>
-                      <div>
-                        <span className="text-xs text-text-tertiary">Function</span>
-                        <p className="text-sm text-text-primary mt-1">{careerSnapshot.functionLabel}</p>
-                      </div>
-                      <div>
-                        <span className="text-xs text-text-tertiary">Industry</span>
-                        <p className="text-sm text-text-primary mt-1">{careerSnapshot.industryLabel}</p>
-                      </div>
-                      {careerSnapshot.companyStageLabel !== 'Unknown' && (
-                        <div className="col-span-2">
-                          <span className="text-xs text-text-tertiary">Company Stage</span>
-                          <p className="text-sm text-text-primary mt-1">{careerSnapshot.companyStageLabel}</p>
+
+                      {careerSnapshot.idealRoleExamples.length > 0 && (
+                        <div className="mt-4 pt-3 border-t border-dashed">
+                          <span className="text-xs text-text-tertiary">Ideal for roles like</span>
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {careerSnapshot.idealRoleExamples.map((role, idx) => (
+                              <Badge key={idx} variant="outline" className="text-xs">
+                                {role}
+                              </Badge>
+                            ))}
+                          </div>
                         </div>
                       )}
+
+                      {careerSnapshot.caveats.length > 0 && (
+                        <p className="text-xs text-text-tertiary mt-3 italic">
+                          {careerSnapshot.caveats[0]}
+                        </p>
+                      )}
                     </div>
-
-                    {careerSnapshot.idealRoleExamples.length > 0 && (
-                      <div className="mt-4 pt-3 border-t">
-                        <span className="text-xs text-text-tertiary">Ideal for roles like</span>
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          {careerSnapshot.idealRoleExamples.map((role, idx) => (
-                            <Badge key={idx} variant="outline" className="text-xs">
-                              {role}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {careerSnapshot.caveats.length > 0 && (
-                      <p className="text-xs text-text-tertiary mt-3 italic">
-                        {careerSnapshot.caveats[0]}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
+                  )}
+                </CardContent>
+              </Card>
 
               {/* Compared to Job Card */}
               {!isCollected && (jobTitle || searchCriteria?.title_keywords?.[0]) && (
@@ -758,144 +858,6 @@ export function ApolloPreviewSheet({
                         </ul>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* What We Know So Far */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">
-                    {isCollected ? 'Profile Details' : 'What We Know So Far'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {(apolloData?.current_role || enrichedData) && (
-                      <InfoRow 
-                        icon={Briefcase} 
-                        label="Current Role" 
-                        value={apolloData?.current_role || 'Not specified'} 
-                      />
-                    )}
-                    {(apolloData?.current_company || enrichedData) && (
-                      <InfoRow 
-                        icon={Building2} 
-                        label="Company" 
-                        value={apolloData?.current_company || 'Not specified'} 
-                      />
-                    )}
-                    {(apolloData?.location || enrichedLocation) && (
-                      <InfoRow 
-                        icon={MapPin} 
-                        label="Location" 
-                        value={enrichedLocation || apolloData?.location || 'Not specified'} 
-                      />
-                    )}
-                    {apolloData?.industry && (
-                      <InfoRow 
-                        icon={TrendingUp} 
-                        label="Industry" 
-                        value={apolloData.industry} 
-                      />
-                    )}
-                  </div>
-
-                  {/* Headline */}
-                  {apolloData?.headline && (
-                    <div className="mt-4 pt-4 border-t">
-                      <p className="text-sm text-text-secondary italic">
-                        "{apolloData.headline}"
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Inferred insights for preview */}
-                  {!isCollected && apolloData?.current_role && (
-                    <div className="mt-4 pt-4 border-t">
-                      <p className="text-xs font-medium text-text-tertiary mb-2">
-                        Based on this role and company, Gio infers:
-                      </p>
-                      <ul className="space-y-1">
-                        {careerSnapshot.seniority !== 'Unknown' && (
-                          <li className="text-xs text-text-secondary flex items-start gap-2">
-                            <span className="text-text-tertiary">•</span>
-                            Likely {careerSnapshot.seniority.toLowerCase()}-level {careerSnapshot.functionLabel.toLowerCase()} professional
-                          </li>
-                        )}
-                        {careerSnapshot.yearsRangeLabel !== 'Unknown' && (
-                          <li className="text-xs text-text-secondary flex items-start gap-2">
-                            <span className="text-text-tertiary">•</span>
-                            Estimated {careerSnapshot.yearsRangeLabel} of experience
-                          </li>
-                        )}
-                        {careerSnapshot.industryLabel !== 'Unknown' && (
-                          <li className="text-xs text-text-secondary flex items-start gap-2">
-                            <span className="text-text-tertiary">•</span>
-                            Background in {careerSnapshot.industryLabel}
-                          </li>
-                        )}
-                      </ul>
-                      <p className="text-xs text-text-tertiary italic mt-2">
-                        Inference · May be approximate
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Unlock CTA - Only show when not collected */}
-              {!isCollected && (
-                <Card className="border-dashed border-primary/30 bg-primary/5">
-                  <CardContent className="p-5">
-                    <div className="flex items-start gap-4">
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <Sparkles className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1 space-y-3">
-                        <div>
-                          <h4 className="font-semibold text-text-primary">
-                            Unlock full profile with 1 credit
-                          </h4>
-                          <p className="text-sm text-text-secondary mt-1">
-                            {getCtaText()}
-                          </p>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-2">
-                          <UnlockBenefit icon={Mail} text="Verified email" available={hasEmailAvailable} />
-                          <UnlockBenefit icon={Phone} text="Phone number" available={hasPhoneAvailable} />
-                          <UnlockBenefit icon={Briefcase} text="Full work history" />
-                          <UnlockBenefit icon={GraduationCap} text="Education details" />
-                          <UnlockBenefit icon={Wrench} text="Complete skills" />
-                          <UnlockBenefit icon={Sparkles} text="AI career summary" />
-                        </div>
-
-                        <div className="flex items-center gap-3 pt-2">
-                          <Button
-                            onClick={() => setShowJobSelection(true)}
-                            disabled={isCollecting || isCollectDisabled}
-                            className="flex-1"
-                          >
-                            <Sparkles className="h-4 w-4 mr-2" />
-                            {isCollecting 
-                              ? 'Collecting...' 
-                              : isCollectDisabled 
-                                ? 'Credit Limit Reached' 
-                                : 'Reveal Full Profile (1 credit)'}
-                          </Button>
-                          {apolloData?.linkedin_url && (
-                            <Button
-                              variant="outline"
-                              onClick={() => window.open(apolloData.linkedin_url, '_blank')}
-                            >
-                              <ExternalLink className="h-4 w-4 mr-2" />
-                              LinkedIn
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
                   </CardContent>
                 </Card>
               )}
