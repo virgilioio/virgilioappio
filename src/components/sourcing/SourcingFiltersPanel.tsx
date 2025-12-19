@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -34,7 +33,7 @@ export function SourcingFiltersPanel({
   }
 
   const handleSaveAndRefresh = async () => {
-    // Apollo uses title_keywords as primary filter, not skills
+    // Title keywords are required for external search
     if (!editableCriteria.title_keywords || editableCriteria.title_keywords.length === 0) return
     setIsEditingCriteria(false)
     await onUpdateSearchCriteria(editableCriteria)
@@ -45,7 +44,7 @@ export function SourcingFiltersPanel({
     setIsEditingCriteria(false)
   }
 
-  // Check if save is disabled (need at least title keywords for Apollo)
+  // Check if save is disabled (need at least title keywords for search)
   const isSaveDisabled = isRefreshing || !editableCriteria.title_keywords || editableCriteria.title_keywords.length === 0
 
   return (
@@ -254,27 +253,6 @@ export function SourcingFiltersPanel({
             </div>
           </div>
 
-          {/* Source Filter */}
-          <div className="space-y-2">
-            <Label className="text-xs font-medium text-virgilio-muted">Source</Label>
-            <div className="space-y-2">
-              {(['all', 'local', 'apollo'] as const).map(source => (
-                <label key={source} className="flex items-center gap-2.5 cursor-pointer group">
-                  <Checkbox 
-                    checked={!filters.source || filters.source === source}
-                    onCheckedChange={(checked) => {
-                      onFiltersChange({
-                        ...filters,
-                        source: checked ? source : 'all'
-                      })
-                    }}
-                    className="transition-all duration-200"
-                  />
-                  <span className="text-sm capitalize text-virgilio-text group-hover:text-virgilio-purple transition-colors">{source}</span>
-                </label>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </div>

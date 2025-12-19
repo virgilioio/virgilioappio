@@ -5,12 +5,10 @@ import {
   MapPin, Coins, Globe, Lock 
 } from 'lucide-react'
 import { useSourcingCredits } from '@/hooks/useSourcingCredits'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Switch } from '@/components/ui/switch'
 import {
   DropdownMenu,
@@ -19,9 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { SourcingProject, SourcingProjectFilters, SearchCriteria } from '@/types/sourcing'
-import { EditableSearchCriteria } from './EditableSearchCriteria'
-import { cn } from '@/lib/utils'
+import { SourcingProject } from '@/types/sourcing'
 
 interface SourcingProjectHeaderProps {
   project: SourcingProject
@@ -170,24 +166,16 @@ export function SourcingProjectHeader({
           </div>
         )}
 
-        {/* Source Breakdown */}
+        {/* Total Candidates */}
         {(breakdown.localCandidates !== undefined || breakdown.apolloCandidates !== undefined) && (
           <>
             {project.search_criteria?.locations && project.search_criteria.locations.length > 0 && (
               <span className="text-muted-foreground">•</span>
             )}
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-muted-foreground">Sources:</span>
-              {breakdown.localCandidates !== undefined && (
-                <Badge variant="default" className="text-xs">
-                  {breakdown.localCandidates} Local
-                </Badge>
-              )}
-              {breakdown.apolloCandidates !== undefined && breakdown.apolloCandidates > 0 && (
-                <Badge variant="secondary" className="text-xs">
-                  {breakdown.apolloCandidates} Apollo
-                </Badge>
-              )}
+              <span className="text-sm font-medium text-muted-foreground">
+                Candidates: {(breakdown.localCandidates || 0) + (breakdown.apolloCandidates || 0)}
+              </span>
             </div>
           </>
         )}
