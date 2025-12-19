@@ -20,6 +20,7 @@ export interface SourcingProject {
     title: string
     status: string
     organization_id: string
+    organizations?: { name: string }
   } | null
 }
 

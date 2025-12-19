@@ -226,6 +226,22 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
       refetchProject()
     }
   }
+
+  const handleLinkToJob = async (jobId: string) => {
+    if (!project) return
+    
+    const { error } = await supabase
+      .from('sourcing_projects')
+      .update({ job_id: jobId })
+      .eq('id', project.id)
+    
+    if (error) {
+      toast.error('Failed to link job', { description: error.message })
+    } else {
+      toast.success('Project linked to job')
+      refetchProject()
+    }
+  }
   
   if (projectLoading) {
     return <div className="flex items-center justify-center h-96">
@@ -252,6 +268,7 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
             onDelete={handleDelete}
             onNameUpdate={handleSaveName}
             onVisibilityToggle={handleVisibilityToggle}
+            onLinkToJob={handleLinkToJob}
           />
         </div>
       </div>
