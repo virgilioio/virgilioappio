@@ -1154,6 +1154,7 @@ export function ApolloPreviewSheet({
           setShowJobSelection(false)
           handleCollectProfile() // Collect without job - adds to universal candidate list
         }}
+        initialJobId={jobId}
       />
     </>
   )
