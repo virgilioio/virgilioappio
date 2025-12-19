@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Users, UserCheck, Briefcase, Calendar, UserX } from 'lucide-react'
+import { Users, UserCheck, Briefcase, Calendar, UserX, Download, Loader2 } from 'lucide-react'
 import { MetricCard } from '@/components/ui/metric-card'
 import { AnalyticsTimeFilter, TimePreset } from '@/components/analytics/AnalyticsTimeFilter'
 import { ApplicationsTrendChart } from '@/components/analytics/ApplicationsTrendChart'
@@ -8,22 +8,29 @@ import { StageDistributionChart } from '@/components/analytics/StageDistribution
 import { RecruitmentFunnelChart } from '@/components/analytics/RecruitmentFunnelChart'
 import { useJobAnalyticsMetrics } from '@/hooks/useJobAnalyticsMetrics'
 import { SalaryInsightsCard } from '@/components/jobs/SalaryInsightsCard'
+import { Button } from '@/components/ui/button'
+import { useToast } from '@/hooks/use-toast'
+import { generateAnalyticsReport } from '@/utils/analyticsReportGenerator'
 
 interface JobAnalyticsDashboardProps {
   jobId: string
+  jobTitle?: string
   candidates?: any[]
   jobCurrency?: string
 }
 
-export function JobAnalyticsDashboard({ jobId, candidates = [], jobCurrency = 'USD' }: JobAnalyticsDashboardProps) {
+export function JobAnalyticsDashboard({ jobId, jobTitle, candidates = [], jobCurrency = 'USD' }: JobAnalyticsDashboardProps) {
+  const { toast } = useToast()
   const [dateRange, setDateRange] = useState({
     startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
     endDate: new Date()
   })
+  const [isExporting, setIsExporting] = useState(false)
 
   const {
     applications,
     activeCandidates,
+    totalOffers,
     totalHires,
     scheduledInterviews,
     rejectedCandidates,
@@ -37,10 +44,57 @@ export function JobAnalyticsDashboard({ jobId, candidates = [], jobCurrency = 'U
     setDateRange({ startDate, endDate })
   }
 
+  const handleExportReport = async () => {
+    setIsExporting(true)
+    try {
+      await generateAnalyticsReport({
+        data: {
+          applications,
+          activeCandidates,
+          totalOffers,
+          totalHires,
+          scheduledInterviews,
+          rejectedCandidates,
+          statusDistribution,
+          stageDistribution,
+          trendData
+        },
+        dateRange,
+        jobTitle
+      })
+      toast({
+        title: 'Report exported',
+        description: 'Your job analytics report has been downloaded.',
+      })
+    } catch (error) {
+      console.error('[JobAnalytics] Export failed:', error)
+      toast({
+        title: 'Export failed',
+        description: 'Failed to generate the report. Please try again.',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
-      {/* Time Filter */}
-      <div className="flex justify-end">
+      {/* Time Filter and Export */}
+      <div className="flex justify-end gap-3">
+        <Button
+          variant="outline"
+          onClick={handleExportReport}
+          disabled={isExporting || isLoading}
+          className="gap-2"
+        >
+          {isExporting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4" />
+          )}
+          Export Report
+        </Button>
         <AnalyticsTimeFilter 
           onDateRangeChange={handleDateRangeChange}
           initialPreset="last30d"
@@ -116,6 +170,7 @@ export function JobAnalyticsDashboard({ jobId, candidates = [], jobCurrency = 'U
           data={{
             applications: applications,
             activeCandidates: activeCandidates,
+            offers: totalOffers,
             totalHires: totalHires
           }}
           isLoading={isLoading}

@@ -4,6 +4,7 @@ import { TrendingDown } from 'lucide-react'
 interface FunnelData {
   applications: number
   activeCandidates: number
+  offers: number
   totalHires: number
 }
 
@@ -27,6 +28,12 @@ export function RecruitmentFunnelChart({ data, isLoading }: RecruitmentFunnelCha
       bgColor: 'hsl(var(--info) / 0.15)'
     },
     {
+      label: 'Offers',
+      value: data.offers,
+      color: 'hsl(var(--warning))',
+      bgColor: 'hsl(var(--warning) / 0.15)'
+    },
+    {
       label: 'Hired',
       value: data.totalHires,
       color: 'hsl(var(--success))',
@@ -38,8 +45,11 @@ export function RecruitmentFunnelChart({ data, isLoading }: RecruitmentFunnelCha
   const appToActive = data.applications > 0 
     ? ((data.activeCandidates / data.applications) * 100).toFixed(1) 
     : '0'
-  const activeToHired = data.activeCandidates > 0 
-    ? ((data.totalHires / data.activeCandidates) * 100).toFixed(1) 
+  const activeToOffer = data.activeCandidates > 0 
+    ? ((data.offers / data.activeCandidates) * 100).toFixed(1) 
+    : '0'
+  const offerToHired = data.offers > 0 
+    ? ((data.totalHires / data.offers) * 100).toFixed(1) 
     : '0'
   const overallRate = data.applications > 0 
     ? ((data.totalHires / data.applications) * 100).toFixed(1) 
@@ -48,6 +58,14 @@ export function RecruitmentFunnelChart({ data, isLoading }: RecruitmentFunnelCha
   // Calculate bar widths (first stage is always 100%)
   const maxValue = Math.max(data.applications, 1)
   const getWidth = (value: number) => Math.max((value / maxValue) * 100, 8)
+
+  // Get conversion rate for each stage transition
+  const getConversionRate = (index: number) => {
+    if (index === 0) return appToActive
+    if (index === 1) return activeToOffer
+    if (index === 2) return offerToHired
+    return '0'
+  }
 
   if (isLoading) {
     return (
@@ -103,7 +121,7 @@ export function RecruitmentFunnelChart({ data, isLoading }: RecruitmentFunnelCha
                     <div className="flex items-center gap-2 text-xs text-virgilio-muted">
                       <div className="h-4 w-px bg-virgilio-border" />
                       <span className="font-poppins">
-                        {index === 0 ? `${appToActive}%` : `${activeToHired}%`} conversion
+                        {getConversionRate(index)}% conversion
                       </span>
                       <div className="h-4 w-px bg-virgilio-border" />
                     </div>

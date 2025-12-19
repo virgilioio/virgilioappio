@@ -10,8 +10,10 @@ import { CandidateStatusPieChart } from '@/components/analytics/CandidateStatusP
 import { StageDistributionChart } from '@/components/analytics/StageDistributionChart'
 import { RecruitmentFunnelChart } from '@/components/analytics/RecruitmentFunnelChart'
 import { Card, CardContent } from '@/components/ui/card'
-import { FileText, Users, UserCheck, Calendar, BarChart3 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { FileText, Users, UserCheck, Calendar, BarChart3, Download, Loader2 } from 'lucide-react'
 import { subDays } from 'date-fns'
+import { generateAnalyticsReport } from '@/utils/analyticsReportGenerator'
 
 export default function Analytics() {
   const navigate = useNavigate()
@@ -53,6 +55,40 @@ export default function Analytics() {
   const handleFiltersChange = useCallback((filters: AnalyticsFilters) => {
     setAdvancedFilters(filters)
   }, [])
+
+  const [isExporting, setIsExporting] = useState(false)
+
+  const handleExportReport = async () => {
+    setIsExporting(true)
+    try {
+      await generateAnalyticsReport({
+        data: {
+          applications: metrics.applications,
+          activeCandidates: metrics.activeCandidates,
+          totalOffers: metrics.totalOffers,
+          totalHires: metrics.totalHires,
+          scheduledInterviews: metrics.scheduledInterviews,
+          statusDistribution: metrics.statusDistribution,
+          stageDistribution: metrics.stageDistribution,
+          trendData: metrics.trendData
+        },
+        dateRange
+      })
+      toast({
+        title: 'Report exported',
+        description: 'Your analytics report has been downloaded.',
+      })
+    } catch (error) {
+      console.error('[Analytics] Export failed:', error)
+      toast({
+        title: 'Export failed',
+        description: 'Failed to generate the report. Please try again.',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   // Don't render until we verify platform admin status
   if (isPlatformAdmin === undefined) {
@@ -115,7 +151,22 @@ export default function Analytics() {
             </p>
           </div>
         </div>
-        <AnalyticsTimeFilter onDateRangeChange={handleDateRangeChange} />
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={handleExportReport}
+            disabled={isExporting || metrics.isLoading}
+            className="gap-2"
+          >
+            {isExporting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            Export Report
+          </Button>
+          <AnalyticsTimeFilter onDateRangeChange={handleDateRangeChange} />
+        </div>
       </div>
 
       {/* Advanced Filters */}
@@ -166,6 +217,7 @@ export default function Analytics() {
           data={{
             applications: metrics.applications,
             activeCandidates: metrics.activeCandidates,
+            offers: metrics.totalOffers,
             totalHires: metrics.totalHires
           }} 
           isLoading={metrics.isLoading} 
