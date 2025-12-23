@@ -47,14 +47,16 @@ export function CandidateNameCard({
         )}
 
         {/* Tabs */}
-        <div className="w-full rounded-xl p-1.5 bg-[#fffcf9] border border-virgilio-border/20">
-          <div className="inline-flex h-auto items-center justify-start rounded-xl bg-transparent p-0 text-muted-foreground w-full">
+        <div className="w-full rounded-xl p-1.5 bg-[#fffcf9] border border-virgilio-border/20 overflow-x-auto scrollbar-none">
+          <div className="flex h-auto items-center justify-start rounded-xl bg-transparent gap-1 min-w-max">
             {tabs.map(({ value, label, Icon }) => (
               <button
                 key={value}
                 onClick={() => onTabChange(value)}
                 className={cn(
-                  'inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-poppins font-medium tracking-tight',
+                  'inline-flex items-center justify-center whitespace-nowrap rounded-lg',
+                  'px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm',
+                  'font-poppins font-medium tracking-tight min-h-[40px]',
                   'transition-all duration-200 ease-out',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple focus-visible:ring-offset-2',
                   'disabled:pointer-events-none disabled:opacity-50',
@@ -63,7 +65,7 @@ export function CandidateNameCard({
                     : 'text-virgilio-muted hover:bg-virgilio-purple/5 hover:-translate-y-0.5'
                 )}
               >
-                {Icon ? <Icon className="h-4 w-4 mr-2" /> : null}
+                {Icon ? <Icon className="h-4 w-4 mr-2 flex-shrink-0" /> : null}
                 {label}
               </button>
             ))}
