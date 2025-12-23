@@ -45,7 +45,8 @@ export function PlaceholderHelper({ templateId, onInsert }: PlaceholderHelperPro
   ]
 
   const candidatePlaceholders = [
-    { key: '{{candidate.name}}', description: 'Candidate name' },
+    { key: '{{candidate.name}}', description: 'Candidate full name' },
+    { key: '{{candidate.first_name}}', description: 'Candidate first name' },
     { key: '{{candidate.location_city}}', description: 'Candidate city' },
     { key: '{{candidate.location_state}}', description: 'Candidate state' },
     { key: '{{candidate.location_country}}', description: 'Candidate country' },
