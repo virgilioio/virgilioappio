@@ -14,6 +14,13 @@ interface SendInvitationRequest {
   inviterName?: string;
 }
 
+// Generate a secure random token
+function generateInviteToken(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
 const handler = async (req: Request): Promise<Response> => {
   const preflightResponse = handleSecureCorsPreFlight(req, corsHeaders);
   if (preflightResponse) return preflightResponse;
@@ -38,17 +45,28 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { memberId, email, inviterName }: SendInvitationRequest = await req.json();
 
-    console.log('Sending invitation for member:', memberId, 'to email:', email);
+    console.log('Sending/resending invitation for member:', memberId, 'to email:', email);
 
-    // Update the member record with the invited email
+    // Generate new invite token and expiry date (7 days from now)
+    const newInviteToken = generateInviteToken();
+    const newExpiryDate = new Date();
+    newExpiryDate.setDate(newExpiryDate.getDate() + 7);
+
+    console.log('Generated new invite token and expiry:', newExpiryDate.toISOString());
+
+    // Update the member record with new token, expiry, email, and reset status to 'invited'
     const { error: updateError } = await supabase
       .from('members')
-      .update({ invited_email: email })
-      .eq('id', memberId)
-      .eq('user_status', 'invited');
+      .update({ 
+        invited_email: email,
+        invite_token: newInviteToken,
+        invite_expires_at: newExpiryDate.toISOString(),
+        user_status: 'invited' // Reset status in case it was set to 'inactive' by cleanup
+      })
+      .eq('id', memberId);
 
     if (updateError) {
-      console.error('Error updating member with email:', updateError);
+      console.error('Error updating member with new invitation details:', updateError);
       throw updateError;
     }
 
@@ -62,21 +80,16 @@ const handler = async (req: Request): Promise<Response> => {
         )
       `)
       .eq('id', memberId)
-      .eq('user_status', 'invited')
       .single();
 
     if (memberError || !member) {
       console.error('Error fetching member:', memberError);
-      throw new Error('Member not found or not in invited status');
-    }
-
-    if (!member.invite_token) {
-      throw new Error('No invitation token found for member');
+      throw new Error('Member not found');
     }
 
     const organizationName = member.organizations?.name || 'the organization';
-    const inviteUrl = `https://app.gogio.io/accept-invite/${member.invite_token}`;
-    const expiryDate = new Date(member.invite_expires_at).toLocaleDateString('en-US', {
+    const inviteUrl = `https://app.gogio.io/accept-invite/${newInviteToken}`;
+    const expiryDate = new Date(newExpiryDate).toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -129,7 +142,8 @@ const handler = async (req: Request): Promise<Response> => {
       p_metadata: {
         invited_email: email,
         role: member.member_role,
-        member_id: memberId
+        member_id: memberId,
+        is_resend: true // Mark that this could be a resend
       },
       p_entity_type: 'member',
       p_entity_id: memberId
@@ -144,7 +158,8 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({ 
         success: true, 
         messageId: emailResponse.data?.id,
-        inviteUrl 
+        inviteUrl,
+        expiresAt: newExpiryDate.toISOString()
       }), 
       {
         status: 200,
