@@ -149,6 +149,7 @@ export const PLACEHOLDER_OPTIONS = [
   { key: 'sender.phone', label: 'Your Phone', category: 'Sender' },
   { key: 'sender.linkedin', label: 'Your LinkedIn URL', category: 'Sender' },
   { key: 'sender.booking_link', label: 'Your Booking Link', category: 'Sender' },
+  { key: 'stage.booking_link', label: 'Stage Interviewer Booking Link', category: 'Stage' },
 ];
 
 /**

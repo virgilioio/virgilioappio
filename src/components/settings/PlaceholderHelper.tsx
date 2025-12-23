@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
-import { CornerDownLeft, Code, User, Building, Briefcase, type LucideIcon } from 'lucide-react'
+import { CornerDownLeft, Code, User, Building, Briefcase, CalendarClock, type LucideIcon } from 'lucide-react'
 import { useOfferTemplateFields } from '@/hooks/useOfferTemplateFields'
 import { useToast } from '@/hooks/use-toast'
 
@@ -53,6 +53,10 @@ export function PlaceholderHelper({ templateId, onInsert }: PlaceholderHelperPro
     { key: '{{candidate.salary_amount}}', description: 'Candidate salary expectation' },
     { key: '{{candidate.salary_currency}}', description: 'Candidate salary currency' },
     { key: '{{candidate.salary_period}}', description: 'Candidate salary period' }
+  ]
+
+  const stagePlaceholders = [
+    { key: '{{stage.booking_link}}', description: 'Assigned interviewer booking link (falls back to sender)' }
   ]
 
   // Dynamic placeholders from template fields
@@ -165,6 +169,12 @@ export function PlaceholderHelper({ templateId, onInsert }: PlaceholderHelperPro
               title="Candidate"
               icon={User}
               placeholders={candidatePlaceholders}
+            />
+
+            <PlaceholderSection
+              title="Stage"
+              icon={CalendarClock}
+              placeholders={stagePlaceholders}
             />
 
             {dynamicPlaceholders.length > 0 && (
