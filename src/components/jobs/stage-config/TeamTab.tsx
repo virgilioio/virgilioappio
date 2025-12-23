@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabaseClient'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useStageInterviewerAssignments } from '@/hooks/useStageInterviewerAssignments'
 import { useMembers } from '@/hooks/useMembers'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { getOrganizationTree } from '@/lib/organizationHelpers'
-import { User, UserPlus, Users, Trash2, Info, Loader2 } from 'lucide-react'
+import { User, UserPlus, Users, Trash2, Info, Loader2, AlertTriangle } from 'lucide-react'
 
 interface TeamTabProps {
   jhsId: string
@@ -41,6 +44,30 @@ export function TeamTab({ jhsId, jobId, organizationId }: TeamTabProps) {
       user_id: member?.user_id || null
     }
   })
+  
+  // Fetch booking configurations for all interviewers to check availability status
+  const interviewerUserIds = interviewers.map(i => i.user_id).filter(Boolean) as string[]
+  
+  const { data: bookingConfigs } = useQuery({
+    queryKey: ['booking-configs-for-interviewers', interviewerUserIds.join(',')],
+    queryFn: async () => {
+      if (interviewerUserIds.length === 0) return []
+      
+      const { data, error } = await supabase
+        .from('booking_configurations')
+        .select('user_id, is_active')
+        .in('user_id', interviewerUserIds)
+      
+      if (error) throw error
+      return data
+    },
+    enabled: interviewerUserIds.length > 0,
+  })
+  
+  // Build a map of user_id -> booking config status
+  const bookingConfigMap = new Map(
+    bookingConfigs?.map(bc => [bc.user_id, { hasConfig: true, isActive: bc.is_active }]) || []
+  )
   
   // Build sets for quick lookups
   const assignedMemberIds = new Set(interviewers.map(i => i.member_id))
@@ -215,51 +242,87 @@ export function TeamTab({ jhsId, jobId, organizationId }: TeamTabProps) {
           </div>
         ) : (
           <div className="space-y-3">
-            {interviewers.map(interviewer => (
-              <div key={interviewer.id} className="rounded-lg border border-border bg-card p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <User className="h-5 w-5 text-primary" />
+            {interviewers.map(interviewer => {
+              const bookingStatus = interviewer.user_id 
+                ? bookingConfigMap.get(interviewer.user_id) 
+                : null
+              const hasActiveBooking = bookingStatus?.hasConfig && bookingStatus?.isActive
+              const hasInactiveBooking = bookingStatus?.hasConfig && !bookingStatus?.isActive
+              const hasNoBooking = !bookingStatus?.hasConfig
+              const showWarning = hasInactiveBooking || hasNoBooking
+              
+              return (
+                <div key={interviewer.id} className="rounded-lg border border-border bg-card p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <User className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm truncate">{interviewer.member_name}</p>
+                          {showWarning && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-xs">
+                                  <p className="text-sm">
+                                    {hasNoBooking 
+                                      ? "No booking configuration set up. This interviewer can't be scheduled for interviews until they configure their availability in Settings → Booking."
+                                      : "Booking is disabled. This interviewer can't be scheduled for interviews until they enable their booking availability."
+                                    }
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">{interviewer.member_email}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className="text-xs">
+                            {interviewer.member_role}
+                          </Badge>
+                          {showWarning && (
+                            <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30">
+                              {hasNoBooking ? 'No availability' : 'Booking disabled'}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm truncate">{interviewer.member_name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{interviewer.member_email}</p>
-                      <Badge variant="outline" className="mt-1 text-xs">
-                        {interviewer.member_role}
-                      </Badge>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Select
-                      value={interviewer.assignment_type}
-                      onValueChange={(v) => handleTypeChange(interviewer.id, v as any)}
-                      disabled={updateAssignmentType.isPending}
-                    >
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="required">Required</SelectItem>
-                        <SelectItem value="optional">Optional</SelectItem>
-                        <SelectItem value="backup">Backup</SelectItem>
-                      </SelectContent>
-                    </Select>
                     
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemove(interviewer.id, interviewer.member_name)}
-                      disabled={removeInterviewer.isPending}
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Select
+                        value={interviewer.assignment_type}
+                        onValueChange={(v) => handleTypeChange(interviewer.id, v as any)}
+                        disabled={updateAssignmentType.isPending}
+                      >
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="required">Required</SelectItem>
+                          <SelectItem value="optional">Optional</SelectItem>
+                          <SelectItem value="backup">Backup</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemove(interviewer.id, interviewer.member_name)}
+                        disabled={removeInterviewer.isPending}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </section>

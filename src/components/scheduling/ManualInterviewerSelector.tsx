@@ -29,16 +29,24 @@ export interface TeamInterviewer {
   } | null;
 }
 
+interface UnavailableInterviewer {
+  name: string;
+  hasConfig: boolean;
+  isActive: boolean;
+}
+
 interface ManualInterviewerSelectorProps {
   jobId: string;
   organizationId: string;
   onSelect: (interviewer: TeamInterviewer) => void;
+  unavailableInterviewers?: UnavailableInterviewer[];
 }
 
 export function ManualInterviewerSelector({
   jobId,
   organizationId,
   onSelect,
+  unavailableInterviewers = [],
 }: ManualInterviewerSelectorProps) {
   // Fetch all team members with active booking configurations
   const { data: teamInterviewers, isLoading } = useQuery({
@@ -104,15 +112,43 @@ export function ManualInterviewerSelector({
     );
   }
 
+  // Check if there are assigned interviewers without active booking configs
+  const hasUnavailableInterviewers = unavailableInterviewers.length > 0;
+
   if (!teamInterviewers || teamInterviewers.length === 0) {
     return (
       <div className="space-y-4">
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            No team members have active booking configurations. Interviewers need to set up their availability before interviews can be scheduled.
-          </AlertDescription>
-        </Alert>
+        {hasUnavailableInterviewers ? (
+          <Alert variant="default" className="bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
+            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <AlertDescription className="text-sm text-amber-700 dark:text-amber-300">
+              <div className="space-y-2">
+                <p>
+                  <strong>{unavailableInterviewers.length} interviewer{unavailableInterviewers.length > 1 ? 's' : ''}</strong> assigned to this stage {unavailableInterviewers.length > 1 ? "don't" : "doesn't"} have scheduling availability configured:
+                </p>
+                <ul className="list-disc list-inside ml-2 text-sm">
+                  {unavailableInterviewers.map((interviewer, idx) => (
+                    <li key={idx}>
+                      {interviewer.name}
+                      {!interviewer.hasConfig && ' (no booking configuration)'}
+                      {interviewer.hasConfig && !interviewer.isActive && ' (booking disabled)'}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs pt-1 border-t border-amber-200 dark:border-amber-700 mt-2">
+                  They need to enable their booking availability in <strong>Settings → Booking</strong> before interviews can be scheduled with them.
+                </p>
+              </div>
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              No team members have active booking configurations. Interviewers need to set up their availability before interviews can be scheduled.
+            </AlertDescription>
+          </Alert>
+        )}
         <Button variant="outline" asChild>
           <Link to="/settings?tab=booking">
             <Settings className="h-4 w-4 mr-2" />
@@ -125,12 +161,34 @@ export function ManualInterviewerSelector({
 
   return (
     <div className="space-y-4">
-      <Alert variant="default" className="bg-primary/5 border-primary/20">
-        <Info className="h-4 w-4 text-primary" />
-        <AlertDescription className="text-sm">
-          No interviewers are assigned to this stage. Select a team member manually to schedule the interview.
-        </AlertDescription>
-      </Alert>
+      {hasUnavailableInterviewers ? (
+        <Alert variant="default" className="bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
+          <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <AlertDescription className="text-sm text-amber-700 dark:text-amber-300">
+            <div className="space-y-2">
+              <p>
+                <strong>{unavailableInterviewers.length} interviewer{unavailableInterviewers.length > 1 ? 's' : ''}</strong> assigned to this stage {unavailableInterviewers.length > 1 ? "can't" : "can't"} conduct interviews:
+              </p>
+              <ul className="list-disc list-inside ml-2 text-sm">
+                {unavailableInterviewers.map((interviewer, idx) => (
+                  <li key={idx}>
+                    {interviewer.name}
+                    {!interviewer.hasConfig && ' (no booking configuration)'}
+                    {interviewer.hasConfig && !interviewer.isActive && ' (booking disabled)'}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <Alert variant="default" className="bg-primary/5 border-primary/20">
+          <Info className="h-4 w-4 text-primary" />
+          <AlertDescription className="text-sm">
+            No interviewers are assigned to this stage. Select a team member manually to schedule the interview.
+          </AlertDescription>
+        </Alert>
+      )}
       
       <h3 className="text-lg font-semibold">Select Interviewer</h3>
       
