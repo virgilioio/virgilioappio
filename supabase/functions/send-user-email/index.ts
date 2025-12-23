@@ -223,7 +223,8 @@ async function replacePlaceholders(
   candidate: any,
   job: any,
   user: any,
-  bookingUrl: string | null
+  bookingUrl: string | null,
+  stageBookingUrl?: string | null
 ): Promise<string> {
   // Step 1: Collapse any accidental double braces from legacy content
   let result = collapseDoubleBraces(text);
@@ -265,6 +266,14 @@ async function replacePlaceholders(
   
   if (bookingUrl) {
     data['sender.booking_link'] = bookingUrl;
+  }
+  
+  // Stage booking link: uses assigned interviewer's config, falls back to sender's
+  if (stageBookingUrl) {
+    data['stage.booking_link'] = stageBookingUrl;
+  } else if (bookingUrl) {
+    // Fallback to sender's booking link if no stage-specific one
+    data['stage.booking_link'] = bookingUrl;
   }
   
   // Step 4: Replace all placeholder tokens using whitespace-tolerant regex
@@ -504,15 +513,16 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Get booking configuration for booking link placeholder
     let bookingUrl: string | null = null;
+    const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://app.gogio.io';
+    
     const { data: bookingConfig } = await supabase
       .from('booking_configurations')
       .select('short_code')
       .eq('user_id', user.id)
+      .eq('is_active', true)
       .single();
     
     if (bookingConfig?.short_code) {
-      const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://app.gogio.io';
-      
       // Generate contextual booking link if job+candidate context is provided
       if (request.job_id && request.candidate_id && request.jhs_id && request.association_id) {
         const context = {
@@ -530,6 +540,77 @@ const handler = async (req: Request): Promise<Response> => {
       } else {
         // Fallback to generic booking link
         bookingUrl = `${frontendUrl}/schedule/${bookingConfig.short_code}`;
+      }
+    }
+
+    // Get stage interviewer booking link if jhs_id is provided
+    let stageBookingUrl: string | null = null;
+    if (request.jhs_id) {
+      console.log('Looking up stage interviewer assignments for jhs_id:', request.jhs_id);
+      
+      // Get stage interviewer assignments with priority
+      const { data: assignments } = await supabase
+        .from('stage_interviewer_assignments')
+        .select('member_id, assignment_type')
+        .eq('job_hiring_stage_id', request.jhs_id);
+
+      if (assignments && assignments.length > 0) {
+        const memberIds = assignments.map(a => a.member_id);
+        
+        // Get member user IDs
+        const { data: members } = await supabase
+          .from('members')
+          .select('id, user_id')
+          .in('id', memberIds);
+
+        if (members && members.length > 0) {
+          const userIds = members.map(m => m.user_id).filter(Boolean);
+          
+          // Get active booking configs for these users
+          const { data: interviewerConfigs } = await supabase
+            .from('booking_configurations')
+            .select('user_id, short_code')
+            .in('user_id', userIds)
+            .eq('is_active', true);
+
+          if (interviewerConfigs && interviewerConfigs.length > 0) {
+            // Priority order: required > optional > manual > backup
+            const priorityMap: Record<string, number> = { required: 1, optional: 2, manual: 3, backup: 4 };
+            
+            const prioritized = assignments
+              .map(a => {
+                const member = members.find(m => m.id === a.member_id);
+                const config = interviewerConfigs.find(c => c.user_id === member?.user_id);
+                if (!config) return null;
+                return { 
+                  shortCode: config.short_code, 
+                  priority: priorityMap[a.assignment_type] || 99 
+                };
+              })
+              .filter((item): item is { shortCode: string; priority: number } => item !== null)
+              .sort((a, b) => a.priority - b.priority);
+
+            if (prioritized.length > 0 && prioritized[0].shortCode) {
+              // Generate contextual link with interviewer's short code
+              if (request.job_id && request.candidate_id && request.association_id) {
+                const context = {
+                  jobId: request.job_id,
+                  candidateId: request.candidate_id,
+                  jhsId: request.jhs_id,
+                  associationId: request.association_id,
+                  candidateName: candidateData?.candidate_name,
+                  candidateEmail: candidateData?.email,
+                  jobTitle: jobData?.title,
+                };
+                const encodedContext = encodeBookingContext(context);
+                stageBookingUrl = `${frontendUrl}/schedule/${prioritized[0].shortCode}?ctx=${encodedContext}`;
+                console.log('Generated stage interviewer booking link with short_code:', prioritized[0].shortCode);
+              } else {
+                stageBookingUrl = `${frontendUrl}/schedule/${prioritized[0].shortCode}`;
+              }
+            }
+          }
+        }
       }
     }
 
@@ -555,12 +636,12 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Replace placeholders in subject and body
-    const processedSubject = await replacePlaceholders(request.subject, candidateData, jobData, userProfile || user, bookingUrl);
+    const processedSubject = await replacePlaceholders(request.subject, candidateData, jobData, userProfile || user, bookingUrl, stageBookingUrl);
     const processedBodyText = request.body_text 
-      ? await replacePlaceholders(request.body_text, candidateData, jobData, userProfile || user, bookingUrl)
+      ? await replacePlaceholders(request.body_text, candidateData, jobData, userProfile || user, bookingUrl, stageBookingUrl)
       : undefined;
     const processedBodyHtml = request.body_html
-      ? textToHtml(await replacePlaceholders(request.body_html, candidateData, jobData, userProfile || user, bookingUrl))
+      ? textToHtml(await replacePlaceholders(request.body_html, candidateData, jobData, userProfile || user, bookingUrl, stageBookingUrl))
       : undefined;
     
     const processedRequest = {
