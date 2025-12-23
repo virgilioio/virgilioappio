@@ -4,7 +4,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/hooks/use-toast'
 import { GoGioLogo } from '@/components/GoGioLogo'
@@ -13,6 +12,15 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useOrgContext } from '@/contexts/OrgContext'
 import onboardingHero from '@/assets/onboarding-hero-new.png'
 import { WorkspaceProvisioningLoader } from '@/components/onboarding/WorkspaceProvisioningLoader'
+import { PendingInvitationAlert } from '@/components/onboarding/PendingInvitationAlert'
+
+interface PendingInvitation {
+  organization_name: string
+  member_role: string
+  invited_by_email?: string
+  invite_expires_at: string
+  member_id: string
+}
 
 export default function Onboarding() {
   const [workspaceName, setWorkspaceName] = useState('')
@@ -20,6 +28,7 @@ export default function Onboarding() {
   const [emailVerified, setEmailVerified] = useState<boolean | null>(null)
   const [userEmail, setUserEmail] = useState('')
   const [provisioningStatus, setProvisioningStatus] = useState<'idle' | 'creating' | 'configuring' | 'finalizing' | 'complete'>('idle')
+  const [pendingInvitation, setPendingInvitation] = useState<PendingInvitation | null>(null)
   const { toast } = useToast()
   const navigate = useNavigate()
   
@@ -174,7 +183,7 @@ export default function Onboarding() {
   }
 
   // Pre-flight check: If user already has a workspace, redirect to dashboard
-  // Also attempt auto-join for verified domains by calling provision-tenant early
+  // Also check for pending invitations and attempt auto-join for verified domains
   useEffect(() => {
     const checkExistingMembershipOrAutoJoin = async () => {
       if (!user || !emailVerified) return;
@@ -198,9 +207,35 @@ export default function Onboarding() {
         navigate('/dashboard', { replace: true });
         return;
       }
+
+      // Check for pending invitations (user was invited but hasn't joined yet)
+      const { data: pendingInvite } = await supabase
+        .from('members')
+        .select(`
+          id,
+          member_role,
+          invite_expires_at,
+          organizations!inner (
+            name
+          )
+        `)
+        .eq('invited_email', user.email)
+        .eq('user_status', 'invited')
+        .maybeSingle();
+
+      if (pendingInvite && pendingInvite.organizations) {
+        console.log('[Onboarding] User has pending invitation', pendingInvite);
+        setPendingInvitation({
+          organization_name: (pendingInvite.organizations as any).name || 'Unknown',
+          member_role: pendingInvite.member_role,
+          invite_expires_at: pendingInvite.invite_expires_at || '',
+          member_id: pendingInvite.id,
+          invited_by_email: undefined
+        });
+        // Don't return - still show the form but with a notice
+      }
       
       // Check if user has a verified domain that could auto-join
-      // Call provision-tenant without a workspace name - it will check for verified domains
       const emailDomain = user.email?.split('@')[1]?.toLowerCase();
       const isPublicDomain = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com', 'aol.com', 'protonmail.com', 'mail.com'].includes(emailDomain || '');
       
@@ -317,6 +352,13 @@ export default function Onboarding() {
                   onVerified={handleEmailVerified}
                 />
               ) : (
+                <>
+                  {pendingInvitation && (
+                    <PendingInvitationAlert 
+                      invitation={pendingInvitation} 
+                      userEmail={userEmail}
+                    />
+                  )}
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-2">
                     <Label htmlFor="workspaceName" className="text-base font-medium">Workspace name</Label>
@@ -354,6 +396,7 @@ export default function Onboarding() {
                     </Button>
                   </div>
                 </form>
+                </>
               )}
             </CardContent>
           </Card>
