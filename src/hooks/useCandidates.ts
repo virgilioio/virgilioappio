@@ -334,7 +334,7 @@ export function useCandidates(jobId: string) {
         organization_id: jobData.organization_id,
         created_by: user.id,
         status: 'available',
-        source: 'job_application'
+        source: 'direct'
       })
 
       // Create the job association using shared helper
