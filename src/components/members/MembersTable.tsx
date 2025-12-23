@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from '@/hooks/use-toast'
 import { Member } from '@/hooks/useMembers'
-import { MoreVertical, Plus, Send, UserCheck, UserX, Trash2, Copy } from 'lucide-react'
+import { MoreVertical, Plus, Send, UserCheck, UserX, Trash2, Copy, Briefcase } from 'lucide-react'
 
 interface MembersTableProps {
   members: Member[]
@@ -18,6 +18,7 @@ interface MembersTableProps {
   onDeactivate: (id: string) => void
   onResendInvitation: (memberId: string, email: string) => void
   onDeleteUser: (member: Member) => void
+  onManageJobAssignments?: (member: Member) => void
   onAddNew?: () => void
 }
 
@@ -28,6 +29,7 @@ export function MembersTable({
   onDeactivate,
   onResendInvitation,
   onDeleteUser,
+  onManageJobAssignments,
   onAddNew
 }: MembersTableProps) {
   const [copyingInvite, setCopyingInvite] = useState<string | null>(null)
@@ -230,6 +232,19 @@ export function MembersTable({
                           <DropdownMenuItem onClick={() => onEdit(member)}>
                             Edit Member
                           </DropdownMenuItem>
+                          
+                          {/* Job Assignments - only for hiring managers and interviewers */}
+                          {onManageJobAssignments && 
+                           member.user_status === 'active' && 
+                           ['hiring_manager', 'interviewer'].includes(member.member_role) && (
+                            <DropdownMenuItem 
+                              onClick={() => onManageJobAssignments(member)}
+                              className="gap-2"
+                            >
+                              <Briefcase className="h-4 w-4" />
+                              Manage Job Access
+                            </DropdownMenuItem>
+                          )}
                           
                           {member.user_status === 'invited' && (
                             <>

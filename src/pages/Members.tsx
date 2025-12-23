@@ -5,6 +5,7 @@ import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { MembersTable } from '@/components/members/MembersTable'
 import { MemberInviteSheet } from '@/components/members/MemberInviteSheet'
+import { MemberJobAssignmentsDialog } from '@/components/members/MemberJobAssignmentsDialog'
 import { UserDeletionDialog } from '@/components/organizations/UserDeletionDialog'
 import { useMembers, Member } from '@/hooks/useMembers'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -16,6 +17,7 @@ export default function Members() {
   const [deactivateMemberId, setDeactivateMemberId] = useState<string | null>(null)
   const [userToDelete, setUserToDelete] = useState<any>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [jobAssignmentsMember, setJobAssignmentsMember] = useState<Member | null>(null)
   
   const {
     members,
@@ -97,7 +99,14 @@ export default function Members() {
               onDeactivate={handleDeactivate}
               onResendInvitation={handleResendInvitation}
               onDeleteUser={handleDeleteUser}
+              onManageJobAssignments={setJobAssignmentsMember}
               onAddNew={handleCreateNew}
+            />
+
+            <MemberJobAssignmentsDialog
+              isOpen={!!jobAssignmentsMember}
+              onClose={() => setJobAssignmentsMember(null)}
+              member={jobAssignmentsMember}
             />
 
             <MemberInviteSheet

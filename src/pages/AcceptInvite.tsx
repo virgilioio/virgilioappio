@@ -315,6 +315,8 @@ export default function AcceptInvite() {
   }
 
   if (!invitationData?.is_valid) {
+    const isExpired = invitationData?.error_message?.toLowerCase().includes('expired')
+    
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-primary p-4">
         <Card className="w-full max-w-md card-brand">
@@ -323,19 +325,43 @@ export default function AcceptInvite() {
             <div className="mx-auto mb-4 w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center">
               <XCircle className="h-6 w-6 text-destructive" />
             </div>
-            <CardTitle className="text-text-primary font-poppins">Invalid Invitation</CardTitle>
+            <CardTitle className="text-text-primary font-poppins">
+              {isExpired ? 'Invitation Expired' : 'Invalid Invitation'}
+            </CardTitle>
             <CardDescription className="text-text-secondary">
-              {invitationData?.error_message || 'This invitation link is invalid or has expired.'}
+              {isExpired 
+                ? 'This invitation link has expired. Please contact your workspace administrator for a new invitation.'
+                : (invitationData?.error_message || 'This invitation link is invalid or has already been used.')
+              }
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Button 
-              onClick={() => navigate('/auth')} 
-              className="w-full"
-              variant="outline"
-            >
-              Go to Login
-            </Button>
+          <CardContent className="space-y-4">
+            {isExpired && (
+              <Alert className="bg-muted/50 border-border">
+                <AlertDescription className="text-sm text-text-secondary">
+                  <strong>What to do:</strong>
+                  <ol className="list-decimal ml-4 mt-2 space-y-1">
+                    <li>Contact the person who invited you</li>
+                    <li>Ask them to resend your invitation from Settings → Members</li>
+                    <li>Check your email for the new invitation link</li>
+                  </ol>
+                </AlertDescription>
+              </Alert>
+            )}
+            <div className="space-y-2">
+              <Button 
+                onClick={() => navigate('/auth')} 
+                className="w-full"
+                variant={isExpired ? 'outline' : 'default'}
+              >
+                {isExpired ? 'Already have an account? Sign In' : 'Go to Login'}
+              </Button>
+              {isExpired && (
+                <p className="text-xs text-center text-text-secondary">
+                  If you don't have an account yet, wait for a new invitation
+                </p>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
