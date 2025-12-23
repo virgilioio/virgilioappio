@@ -71,7 +71,7 @@ export default function AddJobCandidateToPipelineDialog({ jobId, jobCandidate }:
       linkedin_url: jobCandidate.linkedin_url,
       skills: jobCandidate.skills,
       status: 'available',
-      source: 'job_application',
+      source: 'direct',
       created_by: createdBy,
     }
 

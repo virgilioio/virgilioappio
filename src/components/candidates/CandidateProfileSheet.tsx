@@ -39,7 +39,7 @@ import { getEmailFromEntry, getPhoneFromEntry } from '@/utils/parseContactEntry'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { useCandidateResolver } from '@/hooks/useCandidateResolver'
-import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDropzone'
+
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 import { AddOrTransferCandidateDialog } from '@/components/candidates/AddOrTransferCandidateDialog'
 import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
@@ -894,13 +894,23 @@ const [offerFormOpen, setOfferFormOpen] = useState(false)
                                 <CandidateResumeViewer candidateId={independentCandidateId || candidateId} />
                               </>
                             ) : (
-                              <EnhancedResumeDropzone 
-                                onUpload={(file) => uploadResume(file, true)} 
-                                isUploading={isResumeUploading}
-                                candidateId={jobCandidateId || undefined}
-                                showUpload={true}
-                                parseOnly={false}
-                              />
+                              <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
+                                <FileText className="h-12 w-12 text-muted-foreground" />
+                                <div>
+                                  <p className="text-sm text-muted-foreground">No resume uploaded yet</p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Upload a resume to auto-extract candidate information
+                                  </p>
+                                </div>
+                                <Button 
+                                  variant="outline" 
+                                  onClick={() => setEditOpen(true)}
+                                  disabled={!canEditCandidates}
+                                >
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Upload Resume
+                                </Button>
+                              </div>
                             )
                           ) : (
                             <div className="text-sm text-text-secondary">No job candidate record linked.</div>

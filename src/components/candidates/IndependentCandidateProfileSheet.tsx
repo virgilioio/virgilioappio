@@ -26,7 +26,7 @@ import CandidateNameCard from '@/components/candidates/CandidateNameCard'
 import { copyToClipboard } from '@/utils/clipboard'
 import { getEmailFromEntry, getPhoneFromEntry } from '@/utils/parseContactEntry'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
-import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDropzone'
+
 import { MinimizableEmailComposer } from '@/components/candidates/MinimizableEmailComposer'
 import { EmailHistoryList } from './EmailHistoryList'
 import { ActivityFeedList } from './ActivityFeedList'
@@ -313,13 +313,23 @@ export function IndependentCandidateProfileSheet({
                                 <CandidateResumeViewer candidateId={candidateId} />
                               </>
                             ) : (
-                              <EnhancedResumeDropzone 
-                                onUpload={(file) => uploadResume(file, true)} 
-                                isUploading={isResumeUploading}
-                                candidateId={candidateId || undefined}
-                                showUpload={true}
-                                parseOnly={false}
-                              />
+                              <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
+                                <FileText className="h-12 w-12 text-muted-foreground" />
+                                <div>
+                                  <p className="text-sm text-muted-foreground">No resume uploaded yet</p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Upload a resume to auto-extract candidate information
+                                  </p>
+                                </div>
+                                <Button 
+                                  variant="outline" 
+                                  onClick={() => setEditOpen(true)}
+                                  disabled={!canEditCandidates}
+                                >
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Upload Resume
+                                </Button>
+                              </div>
                             )}
                           </CardContent>
                         </Card>

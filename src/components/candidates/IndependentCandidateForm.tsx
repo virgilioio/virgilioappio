@@ -313,6 +313,26 @@ export function IndependentCandidateForm({
                 </Select>
               </div>
             </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="source">Source</Label>
+                <Select value={source} onValueChange={(value) => setValue('source', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="direct">Direct / Internal</SelectItem>
+                    <SelectItem value="referral">Referral</SelectItem>
+                    <SelectItem value="sourced">Sourced by Recruiter</SelectItem>
+                    <SelectItem value="headhunter">Headhunter</SelectItem>
+                    <SelectItem value="job_board">Job Board</SelectItem>
+                    <SelectItem value="career_fair">Career Fair</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
 
           {/* Contact Information */}

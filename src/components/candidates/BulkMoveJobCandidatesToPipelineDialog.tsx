@@ -86,7 +86,7 @@ export default function BulkMoveJobCandidatesToPipelineDialog({ jobId, candidate
       linkedin_url: jobCandidate.linkedin_url,
       skills: jobCandidate.skills,
       status: 'available',
-      source: 'job_application',
+      source: 'direct',
       created_by: createdBy,
     }
     const { data: created, error } = await supabase
