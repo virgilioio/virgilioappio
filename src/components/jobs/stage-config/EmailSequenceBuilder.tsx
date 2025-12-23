@@ -36,6 +36,10 @@ export function EmailSequenceBuilder({
   const { templates } = useEmailTemplates('organization');
   const { identities } = useMailIdentities();
   const [expandedEmails, setExpandedEmails] = useState<Record<number, boolean>>({});
+  const [lastFocusedField, setLastFocusedField] = useState<{
+    emailIndex: number;
+    field: 'subject' | 'body';
+  } | null>(null);
   const bodyRefs = useRef<(BodyTemplateEditorHandle | null)[]>([]);
   const subjectRefs = useRef<(SubjectTemplateEditorHandle | null)[]>([]);
   
@@ -43,13 +47,22 @@ export function EmailSequenceBuilder({
   const firstRecurringIndex = emails.findIndex(e => e.is_recurring);
 
   const handleInsertPlaceholder = (placeholder: string) => {
-    // Find the first expanded email and insert into its body
-    const expandedIndex = Object.entries(expandedEmails).find(([_, isExpanded]) => isExpanded)?.[0];
-    if (expandedIndex !== undefined) {
-      const index = parseInt(expandedIndex);
-      if (bodyRefs.current[index]) {
+    if (!lastFocusedField) {
+      // Fallback: find first expanded email and insert into body
+      const expandedIndex = Object.entries(expandedEmails).find(([_, isExpanded]) => isExpanded)?.[0];
+      if (expandedIndex !== undefined) {
+        const index = parseInt(expandedIndex);
         bodyRefs.current[index]?.insertPlaceholder(placeholder);
       }
+      return;
+    }
+
+    const { emailIndex, field } = lastFocusedField;
+    
+    if (field === 'subject') {
+      subjectRefs.current[emailIndex]?.insertPlaceholder(placeholder);
+    } else {
+      bodyRefs.current[emailIndex]?.insertPlaceholder(placeholder);
     }
   };
   
@@ -318,6 +331,7 @@ export function EmailSequenceBuilder({
                           value={email.subject}
                           onChange={(v) => updateEmail(index, { subject: v })}
                           placeholder="Email subject with {{placeholders}}"
+                          onFocus={() => setLastFocusedField({ emailIndex: index, field: 'subject' })}
                         />
                       </div>
                       
@@ -327,6 +341,7 @@ export function EmailSequenceBuilder({
                           ref={(el) => { bodyRefs.current[index] = el }}
                           value={email.body}
                           onChange={(v) => updateEmail(index, { body: v })}
+                          onFocus={() => setLastFocusedField({ emailIndex: index, field: 'body' })}
                         />
                       </div>
                     </>
