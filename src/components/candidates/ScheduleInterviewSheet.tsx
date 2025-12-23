@@ -321,12 +321,11 @@ export function ScheduleInterviewSheet({
       const userIds = members?.map(m => m.user_id).filter(Boolean) || [];
       if (userIds.length === 0) return [];
       
-      // Fetch booking configurations
+      // Fetch ALL booking configurations (not just active) so we can show proper messaging
       const { data: bookingConfigs, error: configError } = await supabase
         .from('booking_configurations')
         .select('*')
-        .in('user_id', userIds)
-        .eq('is_active', true);
+        .in('user_id', userIds);
       
       if (configError) throw configError;
       
@@ -363,6 +362,19 @@ export function ScheduleInterviewSheet({
         const order = { required: 1, optional: 2, backup: 3 };
         return order[a.assignment_type] - order[b.assignment_type];
       });
+  }, [interviewers]);
+
+  // Get interviewers without active booking configs (for messaging)
+  const interviewersWithoutBookingConfig = useMemo(() => {
+    if (!interviewers) return [];
+    
+    return interviewers
+      .filter(i => i.assignment_type !== 'backup' && !i.booking_configurations?.is_active)
+      .map(i => ({
+        name: `${i.profiles?.first_name || ''} ${i.profiles?.last_name || ''}`.trim() || 'Unknown',
+        hasConfig: !!i.booking_configurations,
+        isActive: i.booking_configurations?.is_active || false,
+      }));
   }, [interviewers]);
 
   // Auto-select if only one interviewer
@@ -557,10 +569,11 @@ export function ScheduleInterviewSheet({
               <Skeleton className="h-20 w-full" />
             </div>
           ) : !selectedInterviewer && (!availableInterviewers || availableInterviewers.length === 0) ? (
-            <ManualInterviewerSelector
+          <ManualInterviewerSelector
               jobId={jobId}
               organizationId={organizationId}
               onSelect={setSelectedInterviewer}
+              unavailableInterviewers={interviewersWithoutBookingConfig}
             />
           ) : !candidateEmail ? (
             <Alert>
