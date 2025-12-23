@@ -1,6 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { usePlatformMetrics } from '@/hooks/usePlatformMetrics'
+import { supabase } from '@/lib/supabaseClient'
+import { useToast } from '@/hooks/use-toast'
+import { useState } from 'react'
 import { 
   Users, 
   Building2, 
@@ -12,12 +16,51 @@ import {
   Database,
   AlertCircle,
   CheckCircle,
-  Clock
+  Clock,
+  Wrench,
+  Loader2
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export function PlatformDashboard() {
   const { data: metrics, isLoading, error } = usePlatformMetrics()
+  const { toast } = useToast()
+  const [isFixingHiringManager, setIsFixingHiringManager] = useState(false)
+
+  const fixHiringManagerData = async () => {
+    setIsFixingHiringManager(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-fix-member-data', {
+        body: {
+          action: 'fix-hiring-manager',
+          data: {
+            userId: '478710dd-db21-4244-ab31-efa2a41c0d95',
+            virgilioMemberId: 'b2f5ee38-69d1-442a-b2c2-1fe1f35bcd08',
+            aquamaticMemberId: 'f0c7e6e2-2937-462f-b3a2-1cc57dfdfacd',
+            aquamaticTenantId: '732d263e-420f-43ec-8b04-3d7148a1403b',
+            virgilioOrgId: '5ba7b145-f251-4b18-8900-724cb06028ab'
+          }
+        }
+      })
+
+      if (error) throw error
+
+      console.log('Fix result:', data)
+      toast({
+        title: 'Success',
+        description: 'Hiring manager data fixed successfully. They should now be able to log in to Virgilio.',
+      })
+    } catch (err: any) {
+      console.error('Fix error:', err)
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to fix hiring manager data',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsFixingHiringManager(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -226,6 +269,40 @@ export function PlatformDashboard() {
                   new Date(metrics.lastUpdated).toLocaleString() : 
                   'Just now'
                 }
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Maintenance Tools */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Wrench className="h-5 w-5" />
+              Maintenance Tools
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="p-3 border rounded-lg">
+                <div className="font-medium text-sm mb-1">Fix Hiring Manager: gcapacitacion@aquamatic.com.mx</div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Updates Virgilio member to active, archives AquaMatic tenant, updates user metadata
+                </p>
+                <Button 
+                  size="sm" 
+                  onClick={fixHiringManagerData}
+                  disabled={isFixingHiringManager}
+                >
+                  {isFixingHiringManager ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Fixing...
+                    </>
+                  ) : (
+                    'Run Fix'
+                  )}
+                </Button>
               </div>
             </div>
           </CardContent>
