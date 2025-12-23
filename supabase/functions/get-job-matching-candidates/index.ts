@@ -431,7 +431,14 @@ serve(async (req) => {
           locations: criteria.locations,  // Pass full locations array for multi-location support
           title_keywords: job.title_keywords || criteria.title_keywords,
           salary_min: criteria.salary_min || job.salary_min,
-          salary_max: criteria.salary_max || job.salary_max
+          salary_max: criteria.salary_max || job.salary_max,
+          // Include all additional filter criteria
+          keywords: criteria.keywords,
+          company_names: criteria.company_names,
+          company_domains: criteria.company_domains,
+          seniorities: criteria.seniorities,
+          company_sizes: criteria.company_sizes,
+          experience_years: criteria.experience_years
         };
 
         // Call search-apollo-candidates edge function
