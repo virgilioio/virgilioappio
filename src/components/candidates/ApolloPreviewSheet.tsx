@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,22 +14,18 @@ import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
-import { Separator } from '@/components/ui/separator'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { JobSelectionDialog } from '@/components/sourcing/JobSelectionDialog'
 import { 
   calculateFitScore, 
-  generateGioTake,
   type FitScore,
-  type GioTake
 } from '@/lib/candidateFitScoring'
 import {
   inferCareerSnapshotFromPreview,
   compareCandidateToJob,
   getRecommendation,
   generateEnrichedGioTake,
-  generateScoreExplanation,
   type CareerSnapshotInference,
   type JobComparisonSummary
 } from '@/features/sourcing/apollo/previewInference'
@@ -123,55 +119,87 @@ function MatchLabel({ match }: { match: 'Strong' | 'Medium' | 'Weak' | 'Unknown'
   )
 }
 
-// Search match item - shows checkmarks/warnings for search criteria matching
-function SearchMatchItem({ 
+// Search intent match bullet - shows explicit criteria matching with icons
+function IntentMatchBullet({ 
   label, 
-  value, 
-  searchValue, 
-  match 
+  isStrong,
+  isPartial,
+  isInferred
 }: { 
   label: string
-  value?: string | null
-  searchValue?: string | null
-  match: 'low' | 'medium' | 'high' | 'unknown'
+  isStrong?: boolean
+  isPartial?: boolean
+  isInferred?: boolean
 }) {
-  const hasValue = value && value.trim().length > 0
-  const hasSearchValue = searchValue && searchValue.trim().length > 0
-  
-  // Determine icon and styling based on match quality
-  const getMatchIcon = () => {
-    if (!hasValue) {
-      return <AlertCircle className="h-3.5 w-3.5 text-text-tertiary" />
+  const getIcon = () => {
+    if (isStrong) {
+      return <Check className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
     }
-    if (match === 'high') {
-      return <Check className="h-3.5 w-3.5 text-green-600" />
+    if (isPartial || isInferred) {
+      return <AlertCircle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
     }
-    if (match === 'medium') {
-      return <Check className="h-3.5 w-3.5 text-amber-500" />
-    }
-    if (match === 'low') {
-      return <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
-    }
-    return <AlertCircle className="h-3.5 w-3.5 text-text-tertiary" />
-  }
-
-  const getValueStyle = () => {
-    if (!hasValue) return "text-text-tertiary italic"
-    if (match === 'high') return "text-text-primary"
-    if (match === 'medium') return "text-text-secondary"
-    return "text-text-secondary"
+    return <XCircle className="h-3.5 w-3.5 text-text-tertiary flex-shrink-0" />
   }
 
   return (
-    <div className="flex items-center justify-between py-1">
-      <div className="flex items-center gap-2">
-        {getMatchIcon()}
-        <span className="text-sm text-text-secondary">{label}</span>
-      </div>
-      <span className={cn("text-sm max-w-[200px] truncate text-right", getValueStyle())}>
-        {hasValue ? value : (hasSearchValue ? `Looking for: ${searchValue}` : "Not specified")}
+    <div className="flex items-center gap-2 py-0.5">
+      {getIcon()}
+      <span className={cn(
+        "text-sm",
+        isStrong ? "text-text-primary" : "text-text-secondary"
+      )}>
+        {label}
+        {isInferred && (
+          <span className="text-xs text-text-tertiary ml-1 italic">(inferred)</span>
+        )}
       </span>
     </div>
+  )
+}
+
+// Typing animation component for Gio's Take
+function TypewriterText({ text, onComplete }: { text: string; onComplete?: () => void }) {
+  const [displayedText, setDisplayedText] = useState('')
+  const [isComplete, setIsComplete] = useState(false)
+  const prevTextRef = useRef<string>('')
+  
+  useEffect(() => {
+    // Only animate if text changed significantly (new candidate)
+    if (text === prevTextRef.current) {
+      setDisplayedText(text)
+      setIsComplete(true)
+      return
+    }
+    
+    prevTextRef.current = text
+    setDisplayedText('')
+    setIsComplete(false)
+    
+    // Fast typewriter effect - complete in ~400ms
+    const totalDuration = 350
+    const charsPerInterval = Math.max(1, Math.ceil(text.length / (totalDuration / 16)))
+    let currentIndex = 0
+    
+    const interval = setInterval(() => {
+      currentIndex += charsPerInterval
+      if (currentIndex >= text.length) {
+        setDisplayedText(text)
+        setIsComplete(true)
+        onComplete?.()
+        clearInterval(interval)
+      } else {
+        setDisplayedText(text.slice(0, currentIndex))
+      }
+    }, 16)
+    
+    return () => clearInterval(interval)
+  }, [text, onComplete])
+  
+  return (
+    <span>
+      {displayedText}
+      {!isComplete && <span className="inline-block w-0.5 h-4 bg-primary/60 animate-pulse ml-0.5" />}
+    </span>
   )
 }
 
@@ -284,25 +312,89 @@ export function ApolloPreviewSheet({
     })
   }, [apolloData, searchCriteria, careerSnapshot, jobTitle])
 
-  // Generate Gio's take and recommendation
-  const gioTake: GioTake = useMemo(() => {
-    if (!apolloData) {
-      return { summary: 'No candidate data available.', strengths: [], concerns: [] }
-    }
-    return generateGioTake(apolloData, searchCriteria, fitScore)
-  }, [apolloData, searchCriteria, fitScore])
-
-  const enrichedGioTake = useMemo(() => {
-    return generateEnrichedGioTake(careerSnapshot, jobComparison, fitScore.overall, fitScore.confidence)
-  }, [careerSnapshot, jobComparison, fitScore.overall, fitScore.confidence])
-
-  const scoreExplanation = useMemo(() => {
-    return generateScoreExplanation(careerSnapshot, jobComparison, fitScore.confidence)
-  }, [careerSnapshot, jobComparison, fitScore.confidence])
+  // Generate candidate-specific Gio's Take
+  const gioTakeText = useMemo(() => {
+    return generateEnrichedGioTake(
+      careerSnapshot, 
+      jobComparison, 
+      fitScore.overall, 
+      fitScore.confidence,
+      {
+        candidateName: apolloData?.candidate_name,
+        currentRole: apolloData?.current_role,
+        currentCompany: apolloData?.current_company,
+        location: apolloData?.location,
+        headline: apolloData?.headline
+      },
+      {
+        titleKeywords: searchCriteria?.title_keywords,
+        locations: searchCriteria?.locations,
+        seniorities: searchCriteria?.seniorities,
+        skills: searchCriteria?.skills
+      }
+    )
+  }, [careerSnapshot, jobComparison, fitScore.overall, fitScore.confidence, apolloData, searchCriteria])
 
   const recommendation = useMemo(() => {
     return getRecommendation(fitScore.overall, fitScore.confidence)
   }, [fitScore.overall, fitScore.confidence])
+
+  // Generate intent match bullets
+  const intentBullets = useMemo(() => {
+    const bullets: { label: string; isStrong?: boolean; isPartial?: boolean; isInferred?: boolean }[] = []
+    
+    // Title/Role match
+    if (apolloData?.current_role && searchCriteria?.title_keywords?.length) {
+      const targetTitle = searchCriteria.title_keywords[0]
+      if (jobComparison.titleMatchLabel === 'Strong') {
+        bullets.push({ label: `${careerSnapshot.functionLabel} leadership role`, isStrong: true })
+      } else if (jobComparison.titleMatchLabel === 'Medium') {
+        bullets.push({ label: `${careerSnapshot.functionLabel} background`, isPartial: true, isInferred: true })
+      } else if (apolloData.current_role) {
+        bullets.push({ label: `Currently: ${apolloData.current_role}`, isPartial: true })
+      }
+    } else if (apolloData?.current_role) {
+      bullets.push({ label: `${careerSnapshot.functionLabel} function`, isPartial: true, isInferred: true })
+    }
+    
+    // Seniority match
+    if (careerSnapshot.seniority !== 'Unknown') {
+      const isStrongSeniority = jobComparison.seniorityMatchLabel === 'Strong'
+      const isMediumSeniority = jobComparison.seniorityMatchLabel === 'Medium'
+      bullets.push({ 
+        label: `${careerSnapshot.seniority} seniority`, 
+        isStrong: isStrongSeniority,
+        isPartial: isMediumSeniority,
+        isInferred: !searchCriteria?.seniorities?.length
+      })
+    }
+    
+    // Location match
+    if (apolloData?.location) {
+      if (jobComparison.locationMatchLabel === 'Strong') {
+        bullets.push({ label: `Based in ${apolloData.location}`, isStrong: true })
+      } else if (jobComparison.locationMatchLabel === 'Medium') {
+        bullets.push({ label: `Location: ${apolloData.location}`, isPartial: true })
+      } else if (searchCriteria?.locations?.length) {
+        bullets.push({ label: `Location mismatch`, isPartial: false })
+      }
+    } else if (searchCriteria?.locations?.length) {
+      bullets.push({ label: `Location not confirmed`, isInferred: true })
+    }
+    
+    // Industry/Domain match
+    if (careerSnapshot.industryLabel !== 'Unknown') {
+      const isStrongIndustry = jobComparison.industryMatchLabel === 'Strong'
+      bullets.push({ 
+        label: `${careerSnapshot.industryLabel} background`, 
+        isStrong: isStrongIndustry,
+        isPartial: !isStrongIndustry,
+        isInferred: true
+      })
+    }
+    
+    return bullets.slice(0, 5)
+  }, [apolloData, searchCriteria, careerSnapshot, jobComparison])
 
   const handleCollectProfile = async (
     selectedJobId?: string, 
@@ -428,19 +520,6 @@ export function ApolloPreviewSheet({
         .filter(Boolean).join(', ')
     : null
 
-  // Dynamic CTA text based on score and confidence
-  const getCtaText = () => {
-    if (fitScore.confidence < 40) {
-      return 'Limited preview data — unlock to see full profile and make an informed decision.'
-    } else if (fitScore.overall >= 65) {
-      return 'Strong match — unlocking will reveal full contact info and work history.'
-    } else if (fitScore.overall >= 45) {
-      return 'Decent match — review details above before spending a credit.'
-    } else {
-      return 'Lower match score — consider reviewing carefully before unlocking.'
-    }
-  }
-
   const recommendationBadgeColors: Record<string, string> = {
     worth_unlocking: 'bg-green-100 text-green-700 border-green-200',
     borderline: 'bg-amber-100 text-amber-700 border-amber-200',
@@ -509,19 +588,21 @@ export function ApolloPreviewSheet({
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-5">
               
-              {/* Why This Is Worth a Look - Primary Section */}
+              {/* WHY THIS IS WORTH A LOOK - Primary Section with Purple Accent */}
               {!isCollected && (
-                <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
-                  <CardContent className="pt-5 pb-4 space-y-4">
-                    {/* Gio's Take - Elevated to Primary Position */}
+                <Card className="border-primary bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-sm">
+                  <CardContent className="pt-5 pb-4">
                     <div className="flex items-start gap-3">
-                      <div className="h-8 w-8 rounded-full overflow-hidden flex-shrink-0">
+                      <div className="h-10 w-10 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-primary/20">
                         <img src={gioFaceYellow} alt="Gio" className="h-full w-full object-cover" />
                       </div>
-                      <div className="space-y-1 flex-1">
-                        <span className="text-sm font-semibold text-text-primary">Why this is worth a look</span>
-                        <p className="text-sm text-text-secondary leading-relaxed">
-                          {enrichedGioTake}
+                      <div className="space-y-1.5 flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-primary">Why this is worth a look</span>
+                          <Sparkles className="h-3.5 w-3.5 text-primary/60" />
+                        </div>
+                        <p className="text-sm text-text-primary leading-relaxed">
+                          <TypewriterText text={gioTakeText} key={apolloId} />
                         </p>
                       </div>
                     </div>
@@ -529,62 +610,33 @@ export function ApolloPreviewSheet({
                 </Card>
               )}
 
-              {/* Matches Your Search - Explicit Criteria Matching */}
-              {!isCollected && (
+              {/* MATCHES YOUR SEARCH - Intent Mirroring Section */}
+              {!isCollected && intentBullets.length > 0 && (
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-text-secondary">
+                    <CardTitle className="text-sm font-medium text-text-secondary flex items-center gap-2">
                       Matches your search
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="pt-0">
-                    <div className="space-y-2">
-                      {/* Title Match */}
-                      <SearchMatchItem 
-                        label="Title" 
-                        value={apolloData?.current_role}
-                        searchValue={searchCriteria?.title_keywords?.[0] || jobTitle}
-                        match={fitScore.roleAlignment}
-                      />
-                      
-                      {/* Seniority Match */}
-                      {searchCriteria?.seniorities?.[0] && (
-                        <SearchMatchItem 
-                          label="Seniority" 
-                          value={careerSnapshot.seniority}
-                          searchValue={searchCriteria.seniorities[0]}
-                          match={jobComparison.seniorityMatchLabel === 'Strong' ? 'high' : 
-                                 jobComparison.seniorityMatchLabel === 'Medium' ? 'medium' : 'low'}
+                    <div className="space-y-1">
+                      {intentBullets.map((bullet, idx) => (
+                        <IntentMatchBullet 
+                          key={idx}
+                          label={bullet.label}
+                          isStrong={bullet.isStrong}
+                          isPartial={bullet.isPartial}
+                          isInferred={bullet.isInferred}
                         />
-                      )}
-                      
-                      {/* Location Match */}
-                      <SearchMatchItem 
-                        label="Location" 
-                        value={apolloData?.location}
-                        searchValue={searchCriteria?.locations?.[0]}
-                        match={fitScore.locationMatch}
-                      />
-                      
-                      {/* Industry/Domain Match */}
-                      {(apolloData?.industry || searchCriteria?.keywords?.length) && (
-                        <SearchMatchItem 
-                          label="Domain" 
-                          value={apolloData?.industry || careerSnapshot.functionLabel}
-                          searchValue={searchCriteria?.keywords?.[0]}
-                          match={jobComparison.industryMatchLabel === 'Strong' ? 'high' : 
-                                 jobComparison.industryMatchLabel === 'Medium' ? 'medium' : 
-                                 jobComparison.industryMatchLabel === 'Unknown' ? 'unknown' : 'low'}
-                        />
-                      )}
+                      ))}
                     </div>
                     
-                    {/* Confidence Signal - De-emphasized Score */}
+                    {/* De-emphasized Confidence Signal */}
                     <div className="flex items-center justify-between mt-4 pt-3 border-t border-border/50">
-                      <span className="text-xs text-text-tertiary">Confidence signal</span>
+                      <span className="text-xs text-text-tertiary">Signal strength</span>
                       <div className="flex items-center gap-2">
                         <span className={cn(
-                          "text-xs font-medium",
+                          "text-xs",
                           fitScore.overall >= 65 ? "text-green-600" : 
                           fitScore.overall >= 45 ? "text-amber-600" : "text-text-tertiary"
                         )}>
@@ -602,7 +654,7 @@ export function ApolloPreviewSheet({
                 </Card>
               )}
 
-              {/* Unlock CTA - Reframed as Confirmation */}
+              {/* UNLOCK CTA - Reframed as Confirmation */}
               {!isCollected && (
                 <Card className="border-primary/30 bg-surface-primary">
                   <CardContent className="p-4">
@@ -613,22 +665,23 @@ export function ApolloPreviewSheet({
                         </p>
                       </div>
                       
-                      <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-text-tertiary">
-                        <span className="flex items-center gap-1">
-                          <Mail className={cn("h-3 w-3", hasEmailAvailable ? "text-green-500" : "")} />
-                          {hasEmailAvailable ? "Email available" : "Email"}
+                      {/* What unlock reveals */}
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                        <span className="flex items-center gap-1.5 text-text-secondary">
+                          <Mail className={cn("h-3 w-3", hasEmailAvailable ? "text-green-500" : "text-text-tertiary")} />
+                          {hasEmailAvailable ? "Verified email" : "Email"}
                         </span>
-                        <span className="flex items-center gap-1">
-                          <Phone className={cn("h-3 w-3", hasPhoneAvailable ? "text-green-500" : "")} />
-                          {hasPhoneAvailable ? "Phone available" : "Phone"}
+                        <span className="flex items-center gap-1.5 text-text-secondary">
+                          <Phone className={cn("h-3 w-3", hasPhoneAvailable ? "text-green-500" : "text-text-tertiary")} />
+                          {hasPhoneAvailable ? "Phone number" : "Phone"}
                         </span>
-                        <span className="flex items-center gap-1">
-                          <Briefcase className="h-3 w-3" />
-                          Work history
+                        <span className="flex items-center gap-1.5 text-text-secondary">
+                          <Briefcase className="h-3 w-3 text-text-tertiary" />
+                          Full work history
                         </span>
-                        <span className="flex items-center gap-1">
-                          <Wrench className="h-3 w-3" />
-                          Skills
+                        <span className="flex items-center gap-1.5 text-text-secondary">
+                          <Wrench className="h-3 w-3 text-text-tertiary" />
+                          Skills + education
                         </span>
                       </div>
 
@@ -661,7 +714,7 @@ export function ApolloPreviewSheet({
                 </Card>
               )}
 
-              {/* Candidate Snapshot - Merged Career Snapshot + What We Know */}
+              {/* Candidate Snapshot */}
               <Card>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
@@ -907,7 +960,7 @@ export function ApolloPreviewSheet({
                                 size="sm"
                                 className="h-6 w-6 p-0 flex-shrink-0"
                                 onClick={() => {
-                                  navigator.clipboard.writeText(enrichedData.email);
+                                  navigator.clipboard.writeText(enrichedData.email!);
                                   toast({ title: 'Copied', description: 'Email copied to clipboard' });
                                 }}
                               >
