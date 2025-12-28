@@ -455,63 +455,132 @@ export function getRecommendation(score: number, confidence: number = 100): GioR
   }
 }
 
-// Generate enriched Gio's Take sentence
+/**
+ * Generate candidate-specific "Why this is worth a look" summary
+ * 
+ * CRITICAL RULES (enforced):
+ * 1. 1-2 sentences maximum
+ * 2. Recruiter-to-founder tone (opinionated, direct)
+ * 3. MUST reference at least one candidate-specific signal:
+ *    - Current role/title
+ *    - Company or industry
+ *    - Specific overlap with search (skills, function, seniority, domain, location)
+ *    - OR a specific tradeoff/uncertainty
+ * 4. Honest about inference - never invent facts
+ * 5. Avoid generic phrasing that could apply to anyone
+ * 
+ * BANNED PHRASES (hard ban):
+ * - "Good alignment overall"
+ * - "Looks like a director+ marketing professional" (unless followed by specific signal)
+ * - Any statement that just repeats the role without insight
+ */
 export function generateEnrichedGioTake(
   snapshot: CareerSnapshotInference,
   comparison: JobComparisonSummary,
   score: number,
-  confidence: number = 100
+  confidence: number = 100,
+  candidateData?: {
+    candidateName?: string | null
+    currentRole?: string | null
+    currentCompany?: string | null
+    location?: string | null
+    headline?: string | null
+  },
+  searchCriteria?: {
+    titleKeywords?: string[]
+    locations?: string[]
+    seniorities?: string[]
+    skills?: string[]
+  }
 ): string {
-  const parts: string[] = []
+  const role = candidateData?.currentRole
+  const company = candidateData?.currentCompany
+  const location = candidateData?.location
   
-  // Low confidence intro
-  if (confidence < 40) {
-    parts.push('Limited preview data available.')
+  // Count available signals for determining approach
+  const hasRole = !!role && role.length > 2
+  const hasCompany = !!company && company.length > 1
+  const hasLocation = !!location && location.length > 2
+  const hasStrongTitle = comparison.titleMatchLabel === 'Strong'
+  const hasMediumTitle = comparison.titleMatchLabel === 'Medium'
+  const hasStrongLocation = comparison.locationMatchLabel === 'Strong'
+  const hasIndustrySignal = snapshot.industryLabel !== 'Unknown'
+  
+  const signalCount = [hasRole, hasCompany, hasLocation].filter(Boolean).length
+  
+  // LOW DATA FALLBACK: Be honest when signals are weak
+  if (confidence < 40 || signalCount < 2) {
+    if (hasRole && hasCompany) {
+      return `Currently ${role} at ${company}. Broadly aligned on title, but limited standout signal from public data — worth a quick skim before unlocking.`
+    }
+    if (hasRole) {
+      return `${role} — title looks relevant. Limited preview data available, so verify fit on LinkedIn before spending a credit.`
+    }
+    return `Limited preview data available. Worth a quick skim on LinkedIn to see if there's a fit before unlocking.`
   }
   
-  // Seniority + function
-  if (snapshot.seniority !== 'Unknown' && snapshot.functionLabel !== 'Other') {
-    parts.push(`Looks like a ${snapshot.seniority.toLowerCase()} ${snapshot.functionLabel.toLowerCase()} professional`)
-    if (snapshot.yearsRangeLabel !== 'Unknown') {
-      parts[parts.length - 1] += `, likely ${snapshot.yearsRangeLabel} experience`
+  // STRONG MATCH: Lead with the specific distinguishing signal
+  if (score >= 65 && hasStrongTitle) {
+    // Build candidate-specific insight
+    if (hasCompany && hasIndustrySignal) {
+      return `${role} at ${company} — ${snapshot.industryLabel} experience with a title that matches your search. Worth the unlock.`
     }
-    parts[parts.length - 1] += '.'
-  } else if (snapshot.seniority !== 'Unknown') {
-    parts.push(`Appears to be ${snapshot.seniority.toLowerCase()}-level.`)
+    if (hasCompany) {
+      return `${role} at ${company}. Title aligns well with what you're looking for.`
+    }
+    if (hasLocation && hasStrongLocation) {
+      return `${role} based in ${location}. Strong title match and location fit — check this one.`
+    }
+    return `${role} — direct title match to your search. Looks promising.`
   }
   
-  // Company/industry context
-  if (snapshot.industryLabel !== 'Unknown') {
-    parts.push(`Background in ${snapshot.industryLabel}.`)
+  // MEDIUM/DECENT MATCH: Acknowledge fit with specific context
+  if (score >= 45) {
+    // Has company context
+    if (hasCompany && hasIndustrySignal) {
+      if (hasMediumTitle) {
+        return `${role} at ${company} (${snapshot.industryLabel}). Title is close but not exact — could be a fit depending on specific skills.`
+      }
+      return `${snapshot.seniority} ${snapshot.functionLabel.toLowerCase()} from ${company}. Background in ${snapshot.industryLabel} could be relevant.`
+    }
+    
+    if (hasCompany) {
+      if (hasMediumTitle) {
+        return `${role} at ${company}. Similar function to your search — worth reviewing the profile.`
+      }
+      return `Currently at ${company} as ${role}. May overlap with your needs.`
+    }
+    
+    // Location as differentiator
+    if (hasLocation && hasStrongLocation && searchCriteria?.locations?.length) {
+      return `${role} based in ${location} — location matches. Check if the role experience aligns.`
+    }
+    
+    // Seniority match
+    if (snapshot.seniority !== 'Unknown' && comparison.seniorityMatchLabel === 'Strong') {
+      return `${snapshot.seniority}-level ${snapshot.functionLabel.toLowerCase()}. Seniority fits, but verify specific experience.`
+    }
+    
+    // Fallback with honesty
+    return `${role}${hasCompany ? ` at ${company}` : ''}. Decent match on paper — worth a quick look.`
   }
   
-  // Match assessment - adjusted for new thresholds
-  if (score >= 65) {
-    if (comparison.titleMatchLabel === 'Strong') {
-      parts.push('Strong title match — worth a closer look.')
-    } else {
-      parts.push('Good alignment overall.')
-    }
-  } else if (score >= 45) {
-    if (comparison.titleMatchLabel === 'Strong' || comparison.titleMatchLabel === 'Medium') {
-      parts.push('Decent fit on paper.')
-    }
-    if (comparison.locationMatchLabel === 'Unknown') {
-      parts.push('Check location if that\'s critical.')
-    }
-  } else if (confidence >= 40) {
+  // LOWER MATCH: Be honest about tradeoffs
+  if (hasRole && hasCompany) {
     if (comparison.titleMatchLabel === 'Weak') {
-      parts.push('Title may not align closely.')
+      return `${role} at ${company}. Title doesn't obviously match, but might have transferable experience worth checking.`
     }
-    parts.push('Lower match based on available signals.')
+    if (comparison.locationMatchLabel === 'Weak' && hasLocation) {
+      return `${role} at ${company}, but based in ${location}. Location mismatch — skip if that's a dealbreaker.`
+    }
   }
   
-  // For low confidence, add encouraging note
-  if (confidence < 40 && score >= 45) {
-    parts.push('Title and company look promising despite limited data.')
+  // FINAL FALLBACK: Honest uncertainty
+  if (hasRole) {
+    return `${role}${hasCompany ? ` at ${company}` : ''} — lower match based on available signals, but you might spot something I missed.`
   }
   
-  return parts.join(' ')
+  return `Limited standout signals from public data. Worth a quick LinkedIn check before deciding.`
 }
 
 // Generate "Why this score" explanation bullets
