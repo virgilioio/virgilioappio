@@ -588,12 +588,12 @@ export function ApolloPreviewSheet({
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-5">
               
-              {/* WHY THIS IS WORTH A LOOK - Primary Section with Purple Accent */}
+              {/* WHY THIS IS WORTH A LOOK - Primary Section with Lilac Purple */}
               {!isCollected && (
-                <Card className="border-primary bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-sm">
+                <Card className="border-primary/40 bg-primary/10 shadow-sm">
                   <CardContent className="pt-5 pb-4">
                     <div className="flex items-start gap-3">
-                      <div className="h-10 w-10 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-primary/20">
+                      <div className="h-10 w-10 rounded-full overflow-hidden flex-shrink-0">
                         <img src={gioFaceYellow} alt="Gio" className="h-full w-full object-cover" />
                       </div>
                       <div className="space-y-1.5 flex-1 min-w-0">
