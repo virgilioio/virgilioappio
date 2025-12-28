@@ -590,7 +590,7 @@ export function ApolloPreviewSheet({
               
               {/* WHY THIS IS WORTH A LOOK - Primary Section with Lilac Purple */}
               {!isCollected && (
-                <Card className="border-primary/40 bg-primary/10 shadow-sm">
+                <Card className="border-virgilio-purple/25 bg-accent shadow-sm">
                   <CardContent className="pt-5 pb-4">
                     <div className="flex items-start gap-3">
                       <div className="h-10 w-10 rounded-full overflow-hidden flex-shrink-0">
@@ -598,8 +598,8 @@ export function ApolloPreviewSheet({
                       </div>
                       <div className="space-y-1.5 flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-primary">Why this is worth a look</span>
-                          <Sparkles className="h-3.5 w-3.5 text-primary/60" />
+                          <span className="text-sm font-semibold text-virgilio-purple">Why this is worth a look</span>
+                          <Sparkles className="h-3.5 w-3.5 text-virgilio-purple/70" />
                         </div>
                         <p className="text-sm text-text-primary leading-relaxed">
                           <TypewriterText text={gioTakeText} key={apolloId} />
