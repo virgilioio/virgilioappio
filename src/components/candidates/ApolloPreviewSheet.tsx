@@ -7,8 +7,8 @@ import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { 
   Sparkles, ExternalLink, AlertCircle, ChevronLeft, ChevronRight, 
   Mail, Phone, Lock, Briefcase, GraduationCap, Wrench, MapPin, 
-  Users, UserPlus, Building2, Globe, CheckCircle2, TrendingUp,
-  Target, Zap, Eye, Check, Star, XCircle, Info, Clock, Award, Copy
+  Building2, CheckCircle2, TrendingUp,
+  Zap, Eye, Check, Star, XCircle, Info, Clock, Copy
 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
@@ -20,9 +20,7 @@ import { useNavigate } from 'react-router-dom'
 import { JobSelectionDialog } from '@/components/sourcing/JobSelectionDialog'
 import { 
   calculateFitScore, 
-  generateGioTake, 
-  getFitScoreLabel, 
-  getFitScoreColor,
+  generateGioTake,
   type FitScore,
   type GioTake
 } from '@/lib/candidateFitScoring'
@@ -91,117 +89,6 @@ interface EnrichedCandidateData {
   profile_summary?: string
 }
 
-// Signal bar component for fit indicators
-function SignalBar({ 
-  label, 
-  tier, 
-  icon: Icon 
-}: { 
-  label: string
-  tier: 'low' | 'medium' | 'high'
-  icon: React.ElementType
-}) {
-  const tierLabels = { low: 'Low', medium: 'Medium', high: 'High' }
-  const tierColors = {
-    low: 'bg-red-100 text-red-700 border-red-200',
-    medium: 'bg-amber-100 text-amber-700 border-amber-200',
-    high: 'bg-green-100 text-green-700 border-green-200'
-  }
-  
-  return (
-    <div className="flex items-center gap-2">
-      <Icon className="h-4 w-4 text-text-secondary" />
-      <span className="text-sm text-text-secondary">{label}</span>
-      <Badge variant="outline" className={cn("text-xs", tierColors[tier])}>
-        {tierLabels[tier]}
-      </Badge>
-    </div>
-  )
-}
-
-// Circular score display
-function FitScoreCircle({ score, label }: { score: number; label: string }) {
-  const circumference = 2 * Math.PI * 36
-  const strokeDashoffset = circumference - (score / 100) * circumference
-  
-  const getScoreGradient = (s: number) => {
-    if (s >= 70) return 'url(#scoreGradientHigh)'
-    if (s >= 50) return 'url(#scoreGradientMedium)'
-    return 'url(#scoreGradientLow)'
-  }
-
-  return (
-    <div className="flex flex-col items-center">
-      <div className="relative w-24 h-24">
-        <svg className="w-24 h-24 -rotate-90">
-          <defs>
-            <linearGradient id="scoreGradientHigh" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#22c55e" />
-              <stop offset="100%" stopColor="#10b981" />
-            </linearGradient>
-            <linearGradient id="scoreGradientMedium" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#6F3FF5" />
-              <stop offset="100%" stopColor="#9B7BF7" />
-            </linearGradient>
-            <linearGradient id="scoreGradientLow" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#f59e0b" />
-              <stop offset="100%" stopColor="#d97706" />
-            </linearGradient>
-          </defs>
-          <circle
-            cx="48"
-            cy="48"
-            r="36"
-            stroke="currentColor"
-            strokeWidth="8"
-            fill="transparent"
-            className="text-border"
-          />
-          <circle
-            cx="48"
-            cy="48"
-            r="36"
-            stroke={getScoreGradient(score)}
-            strokeWidth="8"
-            fill="transparent"
-            strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-            className="transition-all duration-500"
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-bold text-text-primary">{score}</span>
-        </div>
-      </div>
-      <span className={cn("text-sm font-medium mt-1", getFitScoreColor(score))}>
-        {label}
-      </span>
-    </div>
-  )
-}
-
-// Unlock benefit item
-function UnlockBenefit({ icon: Icon, text, available }: { icon: React.ElementType; text: string; available?: boolean }) {
-  return (
-    <div className="flex items-center gap-2">
-      <div className={cn(
-        "flex items-center justify-center h-5 w-5 rounded-full",
-        available ? "bg-green-100" : "bg-primary/10"
-      )}>
-        {available ? (
-          <Check className="h-3 w-3 text-green-600" />
-        ) : (
-          <Icon className="h-3 w-3 text-primary" />
-        )}
-      </div>
-      <span className={cn("text-sm", available ? "text-green-700" : "text-text-secondary")}>
-        {text}
-      </span>
-    </div>
-  )
-}
-
 // Info row component
 function InfoRow({ icon: Icon, label, value, className }: { 
   icon: React.ElementType
@@ -233,6 +120,58 @@ function MatchLabel({ match }: { match: 'Strong' | 'Medium' | 'Weak' | 'Unknown'
     <span className={cn("text-xs font-medium px-2 py-0.5 rounded", config[match].bg, config[match].color)}>
       {match}
     </span>
+  )
+}
+
+// Search match item - shows checkmarks/warnings for search criteria matching
+function SearchMatchItem({ 
+  label, 
+  value, 
+  searchValue, 
+  match 
+}: { 
+  label: string
+  value?: string | null
+  searchValue?: string | null
+  match: 'low' | 'medium' | 'high' | 'unknown'
+}) {
+  const hasValue = value && value.trim().length > 0
+  const hasSearchValue = searchValue && searchValue.trim().length > 0
+  
+  // Determine icon and styling based on match quality
+  const getMatchIcon = () => {
+    if (!hasValue) {
+      return <AlertCircle className="h-3.5 w-3.5 text-text-tertiary" />
+    }
+    if (match === 'high') {
+      return <Check className="h-3.5 w-3.5 text-green-600" />
+    }
+    if (match === 'medium') {
+      return <Check className="h-3.5 w-3.5 text-amber-500" />
+    }
+    if (match === 'low') {
+      return <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+    }
+    return <AlertCircle className="h-3.5 w-3.5 text-text-tertiary" />
+  }
+
+  const getValueStyle = () => {
+    if (!hasValue) return "text-text-tertiary italic"
+    if (match === 'high') return "text-text-primary"
+    if (match === 'medium') return "text-text-secondary"
+    return "text-text-secondary"
+  }
+
+  return (
+    <div className="flex items-center justify-between py-1">
+      <div className="flex items-center gap-2">
+        {getMatchIcon()}
+        <span className="text-sm text-text-secondary">{label}</span>
+      </div>
+      <span className={cn("text-sm max-w-[200px] truncate text-right", getValueStyle())}>
+        {hasValue ? value : (hasSearchValue ? `Looking for: ${searchValue}` : "Not specified")}
+      </span>
+    </div>
   )
 }
 
@@ -570,137 +509,153 @@ export function ApolloPreviewSheet({
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-5">
               
-              {/* Fit Snapshot Card */}
+              {/* Why This Is Worth a Look - Primary Section */}
               {!isCollected && (
-                <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <Sparkles className="h-4 w-4 text-primary" />
-                        Fit Snapshot
-                      </CardTitle>
-                      <Badge 
-                        variant="outline" 
-                        className={cn("text-xs", recommendationBadgeColors[recommendation.type])}
-                      >
-                        {recommendation.label}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-start gap-6">
-                      {/* Score Circle */}
-                      <FitScoreCircle 
-                        score={fitScore.overall} 
-                        label={getFitScoreLabel(fitScore.overall)} 
-                      />
-                      
-                      {/* Signal Bars */}
-                      <div className="flex-1 space-y-2.5">
-                        <SignalBar 
-                          label="Role alignment" 
-                          tier={fitScore.roleAlignment} 
-                          icon={Target} 
-                        />
-                        <SignalBar 
-                          label="Skills match" 
-                          tier={fitScore.skillsMatch} 
-                          icon={Wrench} 
-                        />
-                        <SignalBar 
-                          label="Location" 
-                          tier={fitScore.locationMatch} 
-                          icon={MapPin} 
-                        />
+                <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
+                  <CardContent className="pt-5 pb-4 space-y-4">
+                    {/* Gio's Take - Elevated to Primary Position */}
+                    <div className="flex items-start gap-3">
+                      <div className="h-8 w-8 rounded-full overflow-hidden flex-shrink-0">
+                        <img src={gioFaceYellow} alt="Gio" className="h-full w-full object-cover" />
                       </div>
-                    </div>
-
-                    {/* Why this score? */}
-                    <div className="pt-3 border-t border-border/50">
-                      <p className="text-xs font-medium text-text-tertiary mb-2">
-                        Why {fitScore.overall}/100?
-                      </p>
-                      <ul className="space-y-1">
-                        {scoreExplanation.map((bullet, idx) => (
-                          <li key={idx} className="text-xs text-text-secondary flex items-start gap-2">
-                            <span className="text-text-tertiary">•</span>
-                            {bullet}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {/* Gio's Take */}
-                    <div className="pt-3 border-t border-border/50">
-                      <div className="flex items-start gap-2">
-                        <div className="h-6 w-6 rounded-full overflow-hidden flex-shrink-0 mt-0.5">
-                          <img src={gioFaceYellow} alt="Gio" className="h-full w-full object-cover" />
-                        </div>
-                        <div className="space-y-1.5">
-                          <span className="text-xs font-medium text-primary">Gio's Take</span>
-                          <p className="text-sm text-text-secondary leading-relaxed">
-                            {enrichedGioTake}
-                          </p>
-                        </div>
+                      <div className="space-y-1 flex-1">
+                        <span className="text-sm font-semibold text-text-primary">Why this is worth a look</span>
+                        <p className="text-sm text-text-secondary leading-relaxed">
+                          {enrichedGioTake}
+                        </p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               )}
 
-              {/* Unlock CTA - Prominent position right after Fit Snapshot */}
+              {/* Matches Your Search - Explicit Criteria Matching */}
               {!isCollected && (
-                <Card className="border-primary/40 bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 dark:from-violet-950/30 dark:via-purple-950/30 dark:to-fuchsia-950/30 shadow-md">
-                  <CardContent className="p-5">
-                    <div className="flex items-start gap-4">
-                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/20">
-                        <Sparkles className="h-5 w-5 text-white" />
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-text-secondary">
+                      Matches your search
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="space-y-2">
+                      {/* Title Match */}
+                      <SearchMatchItem 
+                        label="Title" 
+                        value={apolloData?.current_role}
+                        searchValue={searchCriteria?.title_keywords?.[0] || jobTitle}
+                        match={fitScore.roleAlignment}
+                      />
+                      
+                      {/* Seniority Match */}
+                      {searchCriteria?.seniorities?.[0] && (
+                        <SearchMatchItem 
+                          label="Seniority" 
+                          value={careerSnapshot.seniority}
+                          searchValue={searchCriteria.seniorities[0]}
+                          match={jobComparison.seniorityMatchLabel === 'Strong' ? 'high' : 
+                                 jobComparison.seniorityMatchLabel === 'Medium' ? 'medium' : 'low'}
+                        />
+                      )}
+                      
+                      {/* Location Match */}
+                      <SearchMatchItem 
+                        label="Location" 
+                        value={apolloData?.location}
+                        searchValue={searchCriteria?.locations?.[0]}
+                        match={fitScore.locationMatch}
+                      />
+                      
+                      {/* Industry/Domain Match */}
+                      {(apolloData?.industry || searchCriteria?.keywords?.length) && (
+                        <SearchMatchItem 
+                          label="Domain" 
+                          value={apolloData?.industry || careerSnapshot.functionLabel}
+                          searchValue={searchCriteria?.keywords?.[0]}
+                          match={jobComparison.industryMatchLabel === 'Strong' ? 'high' : 
+                                 jobComparison.industryMatchLabel === 'Medium' ? 'medium' : 
+                                 jobComparison.industryMatchLabel === 'Unknown' ? 'unknown' : 'low'}
+                        />
+                      )}
+                    </div>
+                    
+                    {/* Confidence Signal - De-emphasized Score */}
+                    <div className="flex items-center justify-between mt-4 pt-3 border-t border-border/50">
+                      <span className="text-xs text-text-tertiary">Confidence signal</span>
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          "text-xs font-medium",
+                          fitScore.overall >= 65 ? "text-green-600" : 
+                          fitScore.overall >= 45 ? "text-amber-600" : "text-text-tertiary"
+                        )}>
+                          {fitScore.overall}/100
+                        </span>
+                        <Badge 
+                          variant="outline" 
+                          className={cn("text-xs", recommendationBadgeColors[recommendation.type])}
+                        >
+                          {recommendation.label}
+                        </Badge>
                       </div>
-                      <div className="flex-1 space-y-3">
-                        <div>
-                          <h4 className="font-semibold text-text-primary">
-                            Unlock full profile with 1 credit
-                          </h4>
-                          <p className="text-sm text-text-secondary mt-1">
-                            {getCtaText()}
-                          </p>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-2">
-                          <UnlockBenefit icon={Mail} text="Verified email" available={hasEmailAvailable} />
-                          <UnlockBenefit icon={Phone} text="Phone number" available={hasPhoneAvailable} />
-                          <UnlockBenefit icon={Briefcase} text="Full work history" />
-                          <UnlockBenefit icon={GraduationCap} text="Education details" />
-                          <UnlockBenefit icon={Wrench} text="Complete skills" />
-                          <UnlockBenefit icon={Sparkles} text="AI career summary" />
-                        </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
-                        <div className="flex items-center gap-3 pt-2">
-                          <Button
-                            onClick={() => {
-                              if (!jobId) {
-                                setShowJobSelection(true)
-                              } else {
-                                handleCollectProfile()
-                              }
-                            }}
-                            disabled={isCollecting || isCollectDisabled}
-                            className="flex-1"
-                          >
-                            {isCollecting ? (
-                              <>
-                                <Sparkles className="h-4 w-4 mr-2 animate-spin" />
-                                Unlocking...
-                              </>
-                            ) : (
-                              <>
-                                <Zap className="h-4 w-4 mr-2" />
-                                Unlock Profile
-                              </>
-                            )}
-                          </Button>
-                        </div>
+              {/* Unlock CTA - Reframed as Confirmation */}
+              {!isCollected && (
+                <Card className="border-primary/30 bg-surface-primary">
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-sm text-text-secondary">
+                          This profile already matches your search. Unlocking confirms contact info and full work history.
+                        </p>
                       </div>
+                      
+                      <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-text-tertiary">
+                        <span className="flex items-center gap-1">
+                          <Mail className={cn("h-3 w-3", hasEmailAvailable ? "text-green-500" : "")} />
+                          {hasEmailAvailable ? "Email available" : "Email"}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Phone className={cn("h-3 w-3", hasPhoneAvailable ? "text-green-500" : "")} />
+                          {hasPhoneAvailable ? "Phone available" : "Phone"}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Briefcase className="h-3 w-3" />
+                          Work history
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Wrench className="h-3 w-3" />
+                          Skills
+                        </span>
+                      </div>
+
+                      <Button
+                        onClick={() => {
+                          if (!jobId) {
+                            setShowJobSelection(true)
+                          } else {
+                            handleCollectProfile()
+                          }
+                        }}
+                        disabled={isCollecting || isCollectDisabled}
+                        className="w-full"
+                        size="default"
+                      >
+                        {isCollecting ? (
+                          <>
+                            <Sparkles className="h-4 w-4 mr-2 animate-spin" />
+                            Unlocking...
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="h-4 w-4 mr-2" />
+                            Unlock with 1 credit
+                          </>
+                        )}
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
