@@ -242,13 +242,20 @@ function calculateRoleScore(
     }
   }
 
-  const totalKeywords = titleKeywords.length
-  
-  // Calculate base score - boosted for matches
-  // Full match = 100, partial = 65
-  const baseScore = totalKeywords > 0 
-    ? ((matchCount * 100) + (partialCount * 65)) / totalKeywords
-    : 50
+  // Calculate base score - reward ANY match, don't average across all keywords
+  // This fixes the bug where having many search terms penalizes good matches
+  let baseScore: number
+  if (matchCount > 0) {
+    // At least one exact match = high score (90-100)
+    // Bonus for multiple matches (up to +10)
+    baseScore = 90 + Math.min(10, matchCount * 3)
+  } else if (partialCount > 0) {
+    // Partial matches only = medium-high score (70-85)
+    baseScore = 70 + Math.min(15, partialCount * 5)
+  } else {
+    // No matches = neutral
+    baseScore = 50
+  }
 
   // Add seniority bonus (up to 10 points)
   const seniorityBonus = Math.min(10, (seniority.score - 50) * 0.2)
@@ -307,10 +314,9 @@ function calculateSkillsScore(
     }
   }
 
-  // Base score from matches
-  const matchRatio = matchCount / searchTerms.length
-  
-  if (matchRatio === 0) {
+  // Reward ANY skill matches - don't penalize for having many search terms
+  // This fixes the bug where comprehensive searches result in lower scores
+  if (matchCount === 0) {
     // No matches found - check for inferred skills from title
     const inferredSkills = inferSkillsFromTitle(currentRole)
     if (inferredSkills.length > 0) {
@@ -318,13 +324,20 @@ function calculateSkillsScore(
       const inferredMatch = searchTerms.some(s => 
         inferredSkills.some(is => normalize(is).includes(normalize(s)) || normalize(s).includes(normalize(is)))
       )
-      if (inferredMatch) return 60 // Inferred match = slight positive
+      if (inferredMatch) return 65 // Inferred match = moderate positive
     }
     return 50 // No match = neutral, not penalty
   }
   
-  // Scale: 0% = 50, 100% = 100
-  const baseScore = 50 + (matchRatio * 50)
+  // Score based on match quality, not ratio to total search terms
+  let baseScore: number
+  if (matchCount >= 3) {
+    baseScore = 95  // 3+ skill matches = excellent
+  } else if (matchCount >= 2) {
+    baseScore = 85  // 2 matches = very good
+  } else {
+    baseScore = 75  // 1 match = good
+  }
   
   return Math.min(100, Math.round(baseScore))
 }
