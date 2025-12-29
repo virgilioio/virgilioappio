@@ -365,7 +365,8 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAs
             location_details: generatedSpec.location_details,
             salary_range: generatedSpec.salary_range,
             skills: skills,
-            recommendations: generatedSpec.recommendations
+            recommendations: generatedSpec.recommendations,
+            research_metadata: generatedSpec.research_metadata
           }
         }
       })
@@ -493,7 +494,8 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAs
             location_details: (editableJobSpec as any).location_details,
             salary_range: editableJobSpec.salary_range,
             skills: editableSkills,
-            recommendations: editableJobSpec.recommendations
+            recommendations: editableJobSpec.recommendations,
+            research_metadata: (editableJobSpec as any).research_metadata
           }
         }
       })
