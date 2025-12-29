@@ -1,16 +1,17 @@
 import { useState } from 'react'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import { AIJobAssistant } from '@/components/dashboard/AIJobAssistant'
-import { Section } from '@/components/layout/Section'
 import { SourcingSidebar } from '@/components/sourcing/SourcingSidebar'
 import { SourcingProjectView } from '@/components/sourcing/SourcingProjectView'
 import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
 import { RoleGate } from '@/components/auth/RoleGate'
+import { GioThinkingHeader } from '@/components/sourcing/GioThinkingHeader'
 import gioAvatar from '@/assets/gio-avatar.png'
 
 export default function Find() {
   const [mode, setMode] = useState<'new' | 'project'>('new')
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
+  const [isGenerating, setIsGenerating] = useState(false)
   
   // Initialize credit warnings
   useSourcingCreditWarnings()
@@ -40,21 +41,27 @@ export default function Find() {
               <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-4 py-12 animate-fade-in">
                 {/* Centered Container */}
                 <div className="w-full max-w-3xl mx-auto space-y-8">
-                  {/* Header - Centered */}
+                  {/* Header - Switches between static and animated */}
                   <div className="text-center space-y-3">
-                    <div className="inline-flex items-center justify-center mb-4">
-                      <img 
-                        src={gioAvatar} 
-                        alt="Gio AI Assistant"
-                        className="h-16 w-16 rounded-full shadow-lg"
-                      />
-                    </div>
-                    <h1 className="text-h2-mobile md:text-h2-desktop font-poppins font-bold text-virgilio-text tracking-page-title">
-                      Find your people<span className="text-virgilio-purple">.</span>
-                    </h1>
-                    <p className="text-base text-virgilio-muted max-w-2xl mx-auto">
-                      Describe the talent you need and let AI generate a complete job specification with matching candidates.
-                    </p>
+                    {isGenerating ? (
+                      <GioThinkingHeader />
+                    ) : (
+                      <>
+                        <div className="inline-flex items-center justify-center mb-4">
+                          <img 
+                            src={gioAvatar} 
+                            alt="Gio AI Assistant"
+                            className="h-16 w-16 rounded-full shadow-lg"
+                          />
+                        </div>
+                        <h1 className="text-h2-mobile md:text-h2-desktop font-poppins font-bold text-virgilio-text tracking-page-title">
+                          Find your people<span className="text-virgilio-purple">.</span>
+                        </h1>
+                        <p className="text-base text-virgilio-muted max-w-2xl mx-auto">
+                          Describe the talent you need and let AI generate a complete job specification with matching candidates.
+                        </p>
+                      </>
+                    )}
                   </div>
 
                   {/* AI Prompt Card - Centered */}
@@ -63,6 +70,7 @@ export default function Find() {
                       setSelectedProjectId(projectId)
                       setMode('project')
                     }}
+                    onGeneratingChange={setIsGenerating}
                   />
                 </div>
               </div>

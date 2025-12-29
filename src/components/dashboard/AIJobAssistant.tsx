@@ -90,9 +90,10 @@ interface MarketSalaryData {
 
 interface AIJobAssistantProps {
   onProjectCreated?: (projectId: string) => void
+  onGeneratingChange?: (isGenerating: boolean) => void
 }
 
-export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
+export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAssistantProps = {}) {
   const [prompt, setPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [jobSpec, setJobSpec] = useState<JobSpec | null>(null)
@@ -220,6 +221,7 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
     if (!conversationId || !isReadyForCreation) return
 
     setIsGenerating(true)
+    onGeneratingChange?.(true)
     try {
       // Send explicit synthesis instruction instead of last user message
       // This ensures the AI properly synthesizes the entire conversation
@@ -264,6 +266,7 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
       })
     } finally {
       setIsGenerating(false)
+      onGeneratingChange?.(false)
     }
   }
 
@@ -281,6 +284,7 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
     }
 
     setIsGenerating(true)
+    onGeneratingChange?.(true)
     try {
       const { data, error } = await supabase.functions.invoke('generate-job-spec', {
         body: { prompt }
@@ -314,6 +318,7 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
       })
     } finally {
       setIsGenerating(false)
+      onGeneratingChange?.(false)
     }
   }
 

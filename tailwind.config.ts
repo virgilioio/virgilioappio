@@ -272,6 +272,19 @@ export default {
 					}
 				}
 			},
+			'coin-flip': {
+				'0%': { transform: 'rotateY(0deg) scale(0.8)', opacity: '0' },
+				'20%': { opacity: '1' },
+				'60%': { transform: 'rotateY(540deg) scale(1.05)' },
+				'80%': { transform: 'rotateY(700deg) scale(1)' },
+				'95%': { transform: 'rotateY(720deg) scale(1.03)' },
+				'100%': { transform: 'rotateY(720deg) scale(1)' }
+			},
+			'shimmer-beam': {
+				'0%': { transform: 'translateX(-100%)' },
+				'100%': { transform: 'translateX(200%)' }
+			}
+			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
@@ -279,7 +292,9 @@ export default {
 				'scale-in': 'scale-in 0.2s ease-out',
 				'slide-in': 'slide-in 0.3s ease-out',
 				'slide-in-bottom-right': 'slide-in-bottom-right 0.3s ease-out',
-				'slide-out-bottom-right': 'slide-out-bottom-right 0.3s ease-out'
+				'slide-out-bottom-right': 'slide-out-bottom-right 0.3s ease-out',
+				'coin-flip': 'coin-flip 1.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+				'shimmer-beam': 'shimmer-beam 2s ease-in-out infinite'
 			}
 		}
 	},
