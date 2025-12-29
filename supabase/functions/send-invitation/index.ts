@@ -14,11 +14,9 @@ interface SendInvitationRequest {
   inviterName?: string;
 }
 
-// Generate a secure random token
+// Generate a secure random UUID token
 function generateInviteToken(): string {
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+  return crypto.randomUUID();
 }
 
 const handler = async (req: Request): Promise<Response> => {
