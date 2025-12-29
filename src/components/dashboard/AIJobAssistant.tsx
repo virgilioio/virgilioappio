@@ -286,29 +286,109 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAs
     setIsGenerating(true)
     onGeneratingChange?.(true)
     try {
+      // Step 1: Generate job spec
       const { data, error } = await supabase.functions.invoke('generate-job-spec', {
         body: { prompt }
       })
 
       if (error) {
-        // Handle credit exhaustion error specifically
         if (error.message?.includes('CREDITS_EXHAUSTED')) {
           throw new Error('Monthly search credit limit reached. Credits will reset on the 1st of next month.')
         }
         throw error
       }
 
-      if (data?.jobSpec) {
-        setJobSpec(data.jobSpec)
-        setEditableJobSpec(data.jobSpec)
-        setCandidateMatching(data.candidateMatching || null)
-        setSelectedTitle(data.jobSpec.job_title)
-        setEditableSkills(data.jobSpec.skills || [])
-        setCurrentStep('specs')
-        setShowModal(true)
-      } else {
+      if (!data?.jobSpec) {
         throw new Error('Invalid response from AI service')
       }
+
+      const generatedSpec = data.jobSpec
+      const skills = generatedSpec.skills || []
+      const title = generatedSpec.job_title
+
+      // Step 2: Normalize location for sourcing
+      const rawLocation = generatedSpec.location || ''
+      let normalizedLocations: string[] = []
+      
+      if (isValidSourcingLocation(rawLocation)) {
+        normalizedLocations = [rawLocation]
+      } else {
+        normalizedLocations = normalizeLocationForSourcing(rawLocation)
+        
+        // Fallback to location_details if normalization returned empty
+        if (normalizedLocations.length === 0 && generatedSpec.location_details) {
+          const details = generatedSpec.location_details
+          if (details.country_code) {
+            if (details.city && details.state) {
+              normalizedLocations = [`${details.city},${details.state},${details.country_code}`]
+            } else if (details.state) {
+              normalizedLocations = [`${details.state},${details.country_code}`]
+            } else {
+              normalizedLocations = [details.country_code]
+            }
+          } else if (details.region && details.is_remote) {
+            const regionCodes = {
+              'LATAM': ['MX', 'CO', 'AR', 'BR', 'CL', 'PE'],
+              'EMEA': ['GB', 'DE', 'FR', 'ES', 'IT', 'NL'],
+              'APAC': ['IN', 'SG', 'AU', 'JP'],
+              'NORTH_AMERICA': ['US', 'CA']
+            }
+            normalizedLocations = regionCodes[details.region as keyof typeof regionCodes] || []
+          }
+        }
+      }
+
+      // Step 3: Create sourcing project immediately (skip the modal)
+      console.log('🚀 Creating sourcing project directly...')
+      
+      const { data: project, error: projectError } = await supabase.functions.invoke('create-sourcing-project', {
+        body: {
+          name: `${title} - ${generatedSpec.location}`,
+          description: prompt,
+          job_id: null,
+          organization_id: organizationId,
+          search_criteria: {
+            skills: skills,
+            locations: normalizedLocations,
+            title_keywords: [title, ...(generatedSpec.alt_titles || [])],
+            salary_min: generatedSpec.salary_range?.min,
+            salary_max: generatedSpec.salary_range?.max,
+            currency: generatedSpec.salary_range?.currency
+          },
+          job_spec_data: {
+            job_title: title,
+            alt_titles: generatedSpec.alt_titles,
+            job_description: generatedSpec.job_description,
+            level: generatedSpec.level,
+            department: generatedSpec.department,
+            location: generatedSpec.location,
+            location_details: generatedSpec.location_details,
+            salary_range: generatedSpec.salary_range,
+            skills: skills,
+            recommendations: generatedSpec.recommendations
+          }
+        }
+      })
+
+      if (projectError) {
+        throw new Error(projectError.message)
+      }
+
+      console.log('✅ Sourcing project created:', project.id)
+
+      toast({
+        title: 'Finding Candidates',
+        description: `Searching for "${title}" matches...`,
+      })
+
+      // Navigate directly to project view
+      if (onProjectCreated) {
+        onProjectCreated(project.id)
+      }
+
+      // Reset state
+      setPrompt('')
+      
     } catch (error: any) {
       console.error('Error generating job spec:', error)
       toast({

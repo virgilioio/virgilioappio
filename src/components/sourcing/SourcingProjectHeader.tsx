@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { 
   Edit2, MoreHorizontal, RefreshCw, Archive, Trash2, 
-  MapPin, Coins, Globe, Lock, Link2, Briefcase, Plus
+  MapPin, Coins, Globe, Lock, Link2, Briefcase, Plus, Eye
 } from 'lucide-react'
 import { useSourcingCredits } from '@/hooks/useSourcingCredits'
 import { Button } from '@/components/ui/button'
@@ -20,6 +20,7 @@ import {
 import { SourcingProject } from '@/types/sourcing'
 import { LinkToJobDialog } from './LinkToJobDialog'
 import { CreateJobFromProjectDialog } from './CreateJobFromProjectDialog'
+import { RoleInterpretationDrawer } from './RoleInterpretationDrawer'
 
 interface SourcingProjectHeaderProps {
   project: SourcingProject
@@ -55,6 +56,7 @@ export function SourcingProjectHeader({
   const [editedName, setEditedName] = useState(project.name)
   const [showLinkJobDialog, setShowLinkJobDialog] = useState(false)
   const [showCreateJobDialog, setShowCreateJobDialog] = useState(false)
+  const [showInterpretationDrawer, setShowInterpretationDrawer] = useState(false)
   const { data: usage } = useSourcingCredits()
 
   const handleSaveName = () => {
@@ -115,6 +117,17 @@ export function SourcingProjectHeader({
               <Badge variant={project.status === 'active' ? 'default' : 'secondary'}>
                 {project.status}
               </Badge>
+              {project.job_spec_data && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowInterpretationDrawer(true)}
+                >
+                  <Eye className="h-3 w-3 mr-1" />
+                  View Gio's interpretation
+                </Button>
+              )}
               {project.last_search_at && (
                 <span className="text-sm text-muted-foreground">
                   Last updated {formatDistanceToNow(new Date(project.last_search_at))} ago
@@ -286,6 +299,13 @@ export function SourcingProjectHeader({
         onOpenChange={setShowCreateJobDialog}
         projectId={project.id}
         projectName={project.name}
+        jobSpecData={project.job_spec_data || null}
+      />
+
+      {/* Role Interpretation Drawer */}
+      <RoleInterpretationDrawer
+        open={showInterpretationDrawer}
+        onOpenChange={setShowInterpretationDrawer}
         jobSpecData={project.job_spec_data || null}
       />
     </>
