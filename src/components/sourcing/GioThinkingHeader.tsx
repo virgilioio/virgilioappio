@@ -3,8 +3,11 @@ import { cn } from '@/lib/utils'
 import gioAvatar from '@/assets/gio-avatar.png'
 import gioFaceYellow from '@/assets/gio-face-yellow.png'
 import gioFaceEmpty from '@/assets/gio-face-empty.png'
+import gioFacePurple from '@/assets/gio-face-purple.png'
+import gioFacePink from '@/assets/gio-face-pink.png'
+import gioFaceGreen from '@/assets/gio-face-green.png'
 
-const GIO_AVATARS = [gioAvatar, gioFaceYellow, gioFaceEmpty]
+const GIO_AVATARS = [gioAvatar, gioFaceYellow, gioFacePurple, gioFacePink, gioFaceGreen]
 
 const THINKING_MESSAGES = [
   "Analyzing your prompt",
@@ -25,15 +28,15 @@ export function GioThinkingHeader() {
   const triggerFlip = useCallback(() => {
     setIsFlipping(true)
     
-    // Swap avatar at 75% (when edge-on at 270deg, ~525ms into 700ms animation)
+    // Swap avatar at 50% (when edge-on at 90deg, ~250ms into 500ms animation)
     setTimeout(() => {
       setAvatarIndex((prev) => (prev + 1) % GIO_AVATARS.length)
-    }, 525)
+    }, 250)
     
     // Reset flip state after animation completes
     setTimeout(() => {
       setIsFlipping(false)
-    }, 700)
+    }, 500)
   }, [])
 
   // Trigger flip every 2 seconds
