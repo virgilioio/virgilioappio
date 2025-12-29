@@ -271,13 +271,14 @@ export default {
 						opacity: '0'
 					}
 				},
-			'coin-flip-2d': {
-				'0%': { transform: 'rotateY(0deg) scale(1)' },
-				'50%': { transform: 'rotateY(90deg) scale(1.05)' },
-				'75%': { transform: 'rotateY(180deg) scale(1.08)' },
-				'85%': { transform: 'rotateY(175deg) scale(1.02)' },
-				'100%': { transform: 'rotateY(180deg) scale(1)' }
-			},
+        'coin-flip-2d': {
+          '0%': { transform: 'rotateY(0deg) scale(1)' },
+          '35%': { transform: 'rotateY(90deg) scale(1.05)' },
+          '50%': { transform: 'rotateY(180deg) scale(1.08)' },
+          '65%': { transform: 'rotateY(270deg) scale(1.05)' },
+          '80%': { transform: 'rotateY(355deg) scale(1.02)' },
+          '100%': { transform: 'rotateY(360deg) scale(1)' }
+        },
 			'shimmer-beam': {
 				'0%': { transform: 'translateX(-100%)' },
 				'100%': { transform: 'translateX(400%)' }
