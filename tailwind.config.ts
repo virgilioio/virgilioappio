@@ -273,18 +273,20 @@ export default {
 				},
         'coin-flip-2d': {
           '0%': { transform: 'rotateY(0deg) scale(1)' },
-          '40%': { transform: 'rotateY(90deg) scale(1.02)' },
-          '65%': { transform: 'rotateY(195deg) scale(1)' },
-          '80%': { transform: 'rotateY(170deg) scale(1)' },
-          '92%': { transform: 'rotateY(184deg) scale(1)' },
+          '35%': { transform: 'rotateY(90deg) scale(1.02)' },
+          '55%': { transform: 'rotateY(210deg) scale(1)' },
+          '70%': { transform: 'rotateY(160deg) scale(1)' },
+          '82%': { transform: 'rotateY(190deg) scale(1)' },
+          '92%': { transform: 'rotateY(175deg) scale(1)' },
           '100%': { transform: 'rotateY(180deg) scale(1)' }
         },
         'coin-flip-2d-back': {
           '0%': { transform: 'rotateY(180deg) scale(1)' },
-          '40%': { transform: 'rotateY(90deg) scale(1.02)' },
-          '65%': { transform: 'rotateY(-15deg) scale(1)' },
-          '80%': { transform: 'rotateY(10deg) scale(1)' },
-          '92%': { transform: 'rotateY(-4deg) scale(1)' },
+          '35%': { transform: 'rotateY(90deg) scale(1.02)' },
+          '55%': { transform: 'rotateY(-30deg) scale(1)' },
+          '70%': { transform: 'rotateY(20deg) scale(1)' },
+          '82%': { transform: 'rotateY(-10deg) scale(1)' },
+          '92%': { transform: 'rotateY(5deg) scale(1)' },
           '100%': { transform: 'rotateY(0deg) scale(1)' }
         },
 			'shimmer-beam': {
