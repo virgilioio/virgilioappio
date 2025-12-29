@@ -290,6 +290,7 @@ export default {
 				'slide-in-bottom-right': 'slide-in-bottom-right 0.3s ease-out',
 				'slide-out-bottom-right': 'slide-out-bottom-right 0.3s ease-out',
 			'coin-flip-2d': 'coin-flip-2d 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+			'coin-flip-2d-reverse': 'coin-flip-2d 0.5s cubic-bezier(0.4, 0, 0.2, 1) reverse forwards',
 			'shimmer-beam': 'shimmer-beam 2s ease-in-out infinite'
 			}
 		}

@@ -22,6 +22,7 @@ const THINKING_MESSAGES = [
 export function GioThinkingHeader() {
   const [avatarIndex, setAvatarIndex] = useState(0)
   const [isFlipping, setIsFlipping] = useState(false)
+  const [isMirrored, setIsMirrored] = useState(false)
   const [messageIndex, setMessageIndex] = useState(0)
 
   // Handle flip animation and avatar swap
@@ -33,9 +34,10 @@ export function GioThinkingHeader() {
       setAvatarIndex((prev) => (prev + 1) % GIO_AVATARS.length)
     }, 250)
     
-    // Reset flip state after animation completes
+    // Reset flip state and toggle mirrored state after animation completes
     setTimeout(() => {
       setIsFlipping(false)
+      setIsMirrored((prev) => !prev)
     }, 500)
   }, [])
 
@@ -64,8 +66,9 @@ export function GioThinkingHeader() {
           alt="Gio"
           className={cn(
             "w-full h-full rounded-full object-cover shadow-lg will-change-transform",
-            isFlipping && "animate-coin-flip-2d"
+            isFlipping && (isMirrored ? "animate-coin-flip-2d-reverse" : "animate-coin-flip-2d")
           )}
+          style={{ transform: isMirrored ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
         />
       </div>
 
