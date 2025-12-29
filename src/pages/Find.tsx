@@ -38,20 +38,26 @@ export default function Find() {
           
           <main className="flex-1 bg-white overflow-hidden">
             {mode === 'new' && (
-              <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-4 py-12 animate-fade-in">
-                {/* Centered Container */}
-                <div className="w-full max-w-3xl mx-auto space-y-8">
-                  {/* Header - Switches between static and animated */}
-                  <div className="text-center space-y-3">
+              <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-4 py-12">
+                {/* Centered Container with smooth transitions */}
+                <div 
+                  className={`w-full max-w-3xl mx-auto transition-all duration-500 ease-out ${
+                    isGenerating ? 'space-y-0' : 'space-y-8'
+                  }`}
+                >
+                  {/* Header - Smooth transition between states */}
+                  <div className={`text-center transition-all duration-500 ease-out ${
+                    isGenerating ? 'py-8' : 'space-y-3'
+                  }`}>
                     {isGenerating ? (
                       <GioThinkingHeader />
                     ) : (
-                      <>
+                      <div className="animate-fade-in">
                         <div className="inline-flex items-center justify-center mb-4">
                           <img 
                             src={gioAvatar} 
                             alt="Gio AI Assistant"
-                            className="h-16 w-16 rounded-full shadow-lg"
+                            className="h-16 w-16 rounded-full shadow-lg transition-all duration-500"
                           />
                         </div>
                         <h1 className="text-h2-mobile md:text-h2-desktop font-poppins font-bold text-virgilio-text tracking-page-title">
@@ -60,18 +66,24 @@ export default function Find() {
                         <p className="text-base text-virgilio-muted max-w-2xl mx-auto">
                           Describe the talent you need and let AI generate a complete job specification with matching candidates.
                         </p>
-                      </>
+                      </div>
                     )}
                   </div>
 
-                  {/* AI Prompt Card - Centered */}
-                  <AIJobAssistant 
-                    onProjectCreated={(projectId) => {
-                      setSelectedProjectId(projectId)
-                      setMode('project')
-                    }}
-                    onGeneratingChange={setIsGenerating}
-                  />
+                  {/* AI Prompt Card - Fades out when generating */}
+                  <div className={`transition-all duration-500 ease-out ${
+                    isGenerating 
+                      ? 'opacity-0 scale-95 max-h-0 overflow-hidden pointer-events-none' 
+                      : 'opacity-100 scale-100 max-h-[1000px]'
+                  }`}>
+                    <AIJobAssistant 
+                      onProjectCreated={(projectId) => {
+                        setSelectedProjectId(projectId)
+                        setMode('project')
+                      }}
+                      onGeneratingChange={setIsGenerating}
+                    />
+                  </div>
                 </div>
               </div>
             )}
