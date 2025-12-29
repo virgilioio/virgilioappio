@@ -5,11 +5,13 @@ import { CandidatesTab } from './CandidatesTab'
 import { ConversationTab } from './ConversationTab'
 import { SavedCandidatesTab } from './SavedCandidatesTab'
 import { ArchivedCandidatesTab } from './ArchivedCandidatesTab'
+import { AddCollectedToPipelineDialog } from './AddCollectedToPipelineDialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { useSourcingProject } from '@/hooks/useSourcingProject'
 import { useSourcingProjectCandidates } from '@/hooks/useSourcingProjectCandidates'
 import { useSavedCandidates } from '@/hooks/useSavedCandidates'
+import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { SourcingProjectFilters, SearchCriteria } from '@/types/sourcing'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
@@ -50,6 +52,12 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
   })
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState('candidates')
+  
+  // State for add-to-pipeline dialog when linking to job
+  const [showAddToPipelineDialog, setShowAddToPipelineDialog] = useState(false)
+  const [pendingJobId, setPendingJobId] = useState<string | null>(null)
+  
+  const { createAssociationAndMove } = usePipelineActions()
   
   // Apply filters locally
   const filteredCandidates = useMemo(() => {
@@ -227,20 +235,81 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
     }
   }
 
-  const handleLinkToJob = async (jobId: string) => {
-    if (!project) return
-    
+  // Helper function to just link the project to a job
+  const linkProjectToJob = async (jobId: string) => {
     const { error } = await supabase
       .from('sourcing_projects')
       .update({ job_id: jobId })
-      .eq('id', project.id)
+      .eq('id', project!.id)
     
     if (error) {
       toast.error('Failed to link job', { description: error.message })
-    } else {
-      toast.success('Project linked to job')
-      refetchProject()
+      return false
     }
+    toast.success('Project linked to job')
+    refetchProject()
+    return true
+  }
+
+  const handleLinkToJob = async (jobId: string) => {
+    if (!project) return
+    
+    // Check if there are saved candidates
+    if (savedCandidates && savedCandidates.length > 0) {
+      // Store the jobId and show the dialog
+      setPendingJobId(jobId)
+      setShowAddToPipelineDialog(true)
+      return // Don't link yet - wait for dialog response
+    }
+    
+    // No candidates, link directly
+    await linkProjectToJob(jobId)
+  }
+
+  // Handle adding candidates to pipeline after linking
+  const handleAddToPipelineConfirm = async (stageId: string) => {
+    if (!pendingJobId) return
+    
+    // 1. First link the project to the job
+    const linked = await linkProjectToJob(pendingJobId)
+    if (!linked) {
+      setShowAddToPipelineDialog(false)
+      setPendingJobId(null)
+      return
+    }
+    
+    // 2. Then move all saved candidates to the pipeline
+    let successCount = 0
+    let failCount = 0
+    
+    for (const candidate of savedCandidates) {
+      try {
+        await createAssociationAndMove(pendingJobId, candidate.id, stageId)
+        successCount++
+      } catch (error) {
+        console.error('Failed to add candidate to pipeline:', error)
+        failCount++
+      }
+    }
+    
+    if (successCount > 0) {
+      toast.success(`Added ${successCount} candidate${successCount !== 1 ? 's' : ''} to pipeline`)
+    }
+    if (failCount > 0) {
+      toast.error(`Failed to add ${failCount} candidate${failCount !== 1 ? 's' : ''}`)
+    }
+    
+    setShowAddToPipelineDialog(false)
+    setPendingJobId(null)
+  }
+
+  const handleAddToPipelineSkip = async () => {
+    if (!pendingJobId) return
+    
+    // Just link the project, don't move candidates
+    await linkProjectToJob(pendingJobId)
+    setShowAddToPipelineDialog(false)
+    setPendingJobId(null)
   }
   
   if (projectLoading) {
@@ -337,13 +406,25 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
         </TabsContent>
         
         <TabsContent value="saved" className="flex-1 overflow-hidden m-0">
-          <SavedCandidatesTab projectId={projectId} />
+          <SavedCandidatesTab projectId={projectId} jobId={project.job_id} />
         </TabsContent>
         
         <TabsContent value="archived" className="flex-1 overflow-hidden m-0">
           <ArchivedCandidatesTab projectId={projectId} />
         </TabsContent>
       </Tabs>
+
+      {/* Dialog for adding candidates to pipeline when linking to job */}
+      {pendingJobId && (
+        <AddCollectedToPipelineDialog
+          open={showAddToPipelineDialog}
+          onOpenChange={setShowAddToPipelineDialog}
+          jobId={pendingJobId}
+          candidateCount={savedCandidates.length}
+          onConfirm={handleAddToPipelineConfirm}
+          onSkip={handleAddToPipelineSkip}
+        />
+      )}
     </div>
   )
 }
