@@ -156,9 +156,18 @@ function buildApolloSearchUrl(criteria: SearchCriteria, perPage: number = 100, p
     console.log(`🎯 Apollo title filter: ${criteria.title_keywords.join(', ')}`);
   }
 
-  // General keywords → q_keywords (searches across profile) - join array with spaces
-  if (criteria.keywords && criteria.keywords.length > 0) {
-    const keywordsString = criteria.keywords.join(' ');
+  // Keywords and company names are mutually exclusive to avoid over-filtering with AND logic
+  // Priority: company_names > keywords (company filter is more specific)
+  if (criteria.company_names && criteria.company_names.length > 0) {
+    // Target company names → q_organization_name (searches by company name)
+    // Limit to 10 companies to avoid overly restrictive search
+    const companyNamesString = criteria.company_names.slice(0, 10).join(' OR ');
+    params.append('q_organization_name', companyNamesString);
+    console.log(`🏢 Apollo target company names: ${companyNamesString}`);
+  } else if (criteria.keywords && criteria.keywords.length > 0) {
+    // General keywords → q_keywords (searches across profile) - only if no company filter
+    // Limit to 5 keywords to avoid over-filtering
+    const keywordsString = criteria.keywords.slice(0, 5).join(' ');
     params.append('q_keywords', keywordsString);
     console.log(`🔑 Apollo keywords: ${keywordsString}`);
   }
@@ -202,20 +211,15 @@ function buildApolloSearchUrl(criteria: SearchCriteria, perPage: number = 100, p
     console.log(`🎯 Apollo target company domains: ${criteria.company_domains.join(', ')}`);
   }
 
-  // Target company names → q_organization_name (searches by company name)
-  if (criteria.company_names && criteria.company_names.length > 0) {
-    // Apollo's q_organization_name accepts a single string, join with OR logic
-    const companyNamesString = criteria.company_names.join(' OR ');
-    params.append('q_organization_name', companyNamesString);
-    console.log(`🏢 Apollo target company names: ${companyNamesString}`);
-  }
-
-  // Industry filter → organization_industry_tag_ids[]
+  // NOTE: company_names is now handled above with keywords (mutually exclusive)
+  // This avoids the AND logic between q_organization_name and q_keywords
+  
+  // REMOVED: Industry filter (organization_industry_tag_ids[])
+  // Apollo requires NUMERIC tag IDs for industries, not text strings like "SaaS"
+  // Passing text strings causes 422 errors or returns 0 results
+  // Industry is redundant anyway when filtering by company names
   if (criteria.industries && criteria.industries.length > 0) {
-    criteria.industries.forEach(industry => {
-      params.append('organization_industry_tag_ids[]', industry);
-    });
-    console.log(`🏭 Apollo industries: ${criteria.industries.join(', ')}`);
+    console.log(`⚠️ Skipping industry filter (requires Apollo numeric IDs): ${criteria.industries.join(', ')}`);
   }
 
   // Pagination
