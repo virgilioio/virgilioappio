@@ -8,7 +8,7 @@ export function useSourcingProject(projectId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('sourcing_projects')
-        .select('*, jobs(id, title, status, organization_id, organizations(name))')
+        .select('*, jobs(id, title, status, organization_id, organizations(name)), job_spec_data')
         .eq('id', projectId)
         .single()
 

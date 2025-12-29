@@ -1,3 +1,27 @@
+export interface JobSpecData {
+  job_title: string
+  alt_titles?: string[]
+  job_description?: string
+  level?: string
+  department?: string
+  location?: string
+  location_details?: {
+    city?: string
+    state?: string
+    country_code?: string
+    region?: string
+    is_remote?: boolean
+  }
+  salary_range?: {
+    min: number
+    max: number
+    currency: string
+    period?: string
+  }
+  skills?: string[]
+  recommendations?: string[]
+}
+
 export interface SourcingProject {
   id: string
   organization_id: string
@@ -13,6 +37,7 @@ export interface SourcingProject {
   is_public: boolean
   created_at: string
   updated_at: string
+  job_spec_data?: JobSpecData | null  // Full AI-generated job specification
   
   // Joined relations
   jobs?: {

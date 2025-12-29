@@ -137,3 +137,9 @@ verify_jwt = true
 
 [functions.enrich-by-linkedin]
 verify_jwt = true
+
+[functions.create-sourcing-project]
+verify_jwt = true
+
+[functions.create-job-from-sourcing-project]
+verify_jwt = true
