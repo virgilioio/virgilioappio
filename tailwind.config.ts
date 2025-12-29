@@ -273,10 +273,9 @@ export default {
 				},
         'coin-flip-2d': {
           '0%': { transform: 'rotateY(0deg) scale(1)' },
-          '35%': { transform: 'rotateY(90deg) scale(1.05)' },
-          '50%': { transform: 'rotateY(180deg) scale(1.08)' },
-          '65%': { transform: 'rotateY(270deg) scale(1.05)' },
-          '80%': { transform: 'rotateY(355deg) scale(1.02)' },
+          '25%': { transform: 'rotateY(90deg) scale(1.02)' },
+          '50%': { transform: 'rotateY(180deg) scale(1.03)' },
+          '75%': { transform: 'rotateY(270deg) scale(1.02)' },
           '100%': { transform: 'rotateY(360deg) scale(1)' }
         },
 			'shimmer-beam': {
@@ -292,7 +291,7 @@ export default {
 				'slide-in': 'slide-in 0.3s ease-out',
 				'slide-in-bottom-right': 'slide-in-bottom-right 0.3s ease-out',
 				'slide-out-bottom-right': 'slide-out-bottom-right 0.3s ease-out',
-			'coin-flip-2d': 'coin-flip-2d 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+			'coin-flip-2d': 'coin-flip-2d 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards',
 			'shimmer-beam': 'shimmer-beam 2s ease-in-out infinite'
 			}
 		}

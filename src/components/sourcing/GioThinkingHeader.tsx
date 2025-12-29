@@ -25,15 +25,15 @@ export function GioThinkingHeader() {
   const triggerFlip = useCallback(() => {
     setIsFlipping(true)
     
-    // Swap avatar at 65% (when edge-on at 270deg, ~390ms into 600ms animation)
+    // Swap avatar at 75% (when edge-on at 270deg, ~525ms into 700ms animation)
     setTimeout(() => {
       setAvatarIndex((prev) => (prev + 1) % GIO_AVATARS.length)
-    }, 390)
+    }, 525)
     
     // Reset flip state after animation completes
     setTimeout(() => {
       setIsFlipping(false)
-    }, 600)
+    }, 700)
   }, [])
 
   // Trigger flip every 2 seconds
@@ -60,7 +60,7 @@ export function GioThinkingHeader() {
           src={GIO_AVATARS[avatarIndex]} 
           alt="Gio"
           className={cn(
-            "w-full h-full rounded-full object-cover shadow-lg transition-transform",
+            "w-full h-full rounded-full object-cover shadow-lg will-change-transform",
             isFlipping && "animate-coin-flip-2d"
           )}
         />
