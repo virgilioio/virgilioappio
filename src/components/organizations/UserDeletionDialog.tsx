@@ -47,8 +47,8 @@ export function UserDeletionDialog({
 
     setIsDeleting(true)
     try {
-      // Handle invited members (no user_id) vs registered members differently
-      if (userToDelete.userStatus === 'invited' && !userToDelete.id) {
+      // Handle members without user_id (never registered) vs registered members differently
+      if (!userToDelete.id) {
         // For invited members, just delete from members table
         const { error: deleteError } = await supabase
           .from('members')
@@ -171,7 +171,7 @@ export function UserDeletionDialog({
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>This action cannot be undone.</strong> This will permanently delete the {userToDelete?.userStatus === 'invited' && !userToDelete?.id ? 'invited member' : 'user from all systems including authentication'}.
+                  <strong>This action cannot be undone.</strong> This will permanently delete the {!userToDelete?.id ? 'member record' : 'user from all systems including authentication'}.
                 </AlertDescription>
               </Alert>
 
