@@ -39,6 +39,7 @@ export interface SearchCriteria {
   company_sizes?: string[]  // '1-10', '11-50', '51-200', '201-500', '501-1000', '1001-5000', '5001-10000', '10001+'
   company_domains?: string[]  // Target company domains for filtering
   company_names?: string[]  // Target company names for filtering (q_organization_name)
+  industries?: string[]  // Industry/sector filter (organization_industry_tag_ids)
 }
 
 export type EnabledSource = 'internal' | 'apollo' | 'linkedin' | 'seekout'
