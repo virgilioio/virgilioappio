@@ -332,15 +332,7 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
   const handleSaveDraft = async () => {
     if (!editableJobSpec) return
 
-    // Validate organization is selected
-    if (!selectedOrgId) {
-      toast({
-        title: 'Organization Required',
-        description: 'Please select a job folder for this search.',
-        variant: 'destructive'
-      })
-      return
-    }
+    // Organization is now optional - no validation required
 
     setIsCreatingProject(true)
     try {
@@ -774,10 +766,10 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
                 {/* Step 2: Specs */}
                 {currentStep === 'specs' && (
                   <div className="space-y-6 pt-6">
-                    {/* Organization Selector - Required */}
+                    {/* Organization Selector - Optional */}
                     <div className="space-y-2">
                       <Label htmlFor="organization-select">
-                        Job Folder (Department) <span className="text-red-500">*</span>
+                        Job Folder (Department) <span className="text-muted-foreground text-xs">(optional)</span>
                       </Label>
                       <SearchableSelect
                         options={(childOrgs || []).map(org => ({
@@ -796,7 +788,7 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
                         createNewLabel="Create Department"
                       />
                       <p className="text-xs text-muted-foreground">
-                        Select which department or client this search belongs to
+                        You can link this search to a job later from the project settings.
                       </p>
                     </div>
 
