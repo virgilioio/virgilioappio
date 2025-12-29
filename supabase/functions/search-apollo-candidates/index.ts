@@ -29,6 +29,7 @@ interface SearchRequest {
   project_id?: string;
   criteria: SearchCriteria;
   limit?: number;
+  max_results?: number;  // Max total results to fetch (default: 300, max: 500)
   organization_id?: string;
 }
 
@@ -143,7 +144,7 @@ function formatLocationForApollo(locationValue: string): string | null {
  * Build Apollo API request URL with query parameters
  * Apollo uses URL query params, not JSON body for api_search
  */
-function buildApolloSearchUrl(criteria: SearchCriteria, perPage: number = 50): string {
+function buildApolloSearchUrl(criteria: SearchCriteria, perPage: number = 100, page: number = 1): string {
   const params = new URLSearchParams();
   
   // Title keywords → person_titles[] (CURRENT JOB TITLE filter)
@@ -217,8 +218,9 @@ function buildApolloSearchUrl(criteria: SearchCriteria, perPage: number = 50): s
     console.log(`🏭 Apollo industries: ${criteria.industries.join(', ')}`);
   }
 
-  // Results per page
+  // Pagination
   params.append('per_page', String(perPage));
+  params.append('page', String(page));
 
   return `${APOLLO_API_URL}?${params.toString()}`;
 }
@@ -275,9 +277,12 @@ serve(async (req) => {
   const cors = corsHeadersFor(origin);
 
   try {
-    const { project_id, criteria, limit = 100, organization_id }: SearchRequest = await req.json();
+    const { project_id, criteria, limit = 100, max_results = 300, organization_id }: SearchRequest = await req.json();
 
-    console.log('🚀 Apollo Search Request:', { project_id, criteria, limit });
+    // Clamp max_results between 100 and 500
+    const effectiveMaxResults = Math.min(Math.max(max_results, 100), 500);
+    
+    console.log('🚀 Apollo Search Request:', { project_id, criteria, limit, max_results: effectiveMaxResults });
 
     // Validate API key
     if (!APOLLO_API_KEY) {
@@ -361,14 +366,16 @@ serve(async (req) => {
     // Credits are only consumed when enriching/revealing contact info
     console.log('💡 Apollo search is FREE - no credits consumed');
 
-    // Build Apollo request URL with query params
-    const perPage = Math.min(limit, 100); // Apollo max is 100 per page
-    const searchUrl = buildApolloSearchUrl(criteria, perPage);
+    // Multi-page fetching configuration
+    const PER_PAGE = 100;  // Apollo max is 100 per page
+    const MAX_PAGES = Math.ceil(effectiveMaxResults / PER_PAGE);
+    const DELAY_BETWEEN_PAGES = 200;  // ms - respect rate limits
 
-    console.log('📡 Apollo API Request URL:', searchUrl);
+    // Fetch first page
+    const page1Url = buildApolloSearchUrl(criteria, PER_PAGE, 1);
+    console.log('📡 Apollo API Request URL (page 1):', page1Url);
 
-    // Call Apollo API
-    const apolloResponse = await fetch(searchUrl, {
+    const apolloResponse = await fetch(page1Url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -385,12 +392,61 @@ serve(async (req) => {
     }
 
     const apolloData = await apolloResponse.json();
+    const totalAvailable = apolloData.total_entries || 0;
     
-    console.log(`✅ Apollo returned ${apolloData.people?.length || 0} candidates (total: ${apolloData.total_entries || 0})`);
+    // Collect all candidates from first page
+    let allApolloPeople: any[] = [...(apolloData.people || [])];
+    
+    console.log(`✅ Apollo page 1 returned ${apolloData.people?.length || 0} candidates (total available: ${totalAvailable})`);
+
+    // Calculate how many more pages to fetch
+    const pagesNeeded = Math.min(MAX_PAGES, Math.ceil(Math.min(totalAvailable, effectiveMaxResults) / PER_PAGE));
+    
+    // Fetch additional pages if available and needed
+    for (let page = 2; page <= pagesNeeded && allApolloPeople.length < effectiveMaxResults; page++) {
+      // Respect rate limits with delay between requests
+      await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_PAGES));
+      
+      const pageUrl = buildApolloSearchUrl(criteria, PER_PAGE, page);
+      console.log(`📡 Apollo API Request URL (page ${page}):`, pageUrl);
+      
+      try {
+        const pageResponse = await fetch(pageUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+            'X-Api-Key': APOLLO_API_KEY,
+            'accept': 'application/json'
+          }
+        });
+        
+        if (!pageResponse.ok) {
+          console.warn(`⚠️ Apollo page ${page} failed:`, pageResponse.status);
+          break;  // Stop fetching more pages on error
+        }
+        
+        const pageData = await pageResponse.json();
+        const pagePeople = pageData.people || [];
+        allApolloPeople.push(...pagePeople);
+        
+        console.log(`✅ Apollo page ${page} returned ${pagePeople.length} candidates (total collected: ${allApolloPeople.length})`);
+        
+        // Stop if we've collected enough
+        if (allApolloPeople.length >= effectiveMaxResults) {
+          break;
+        }
+      } catch (pageError) {
+        console.warn(`⚠️ Error fetching Apollo page ${page}:`, pageError);
+        break;  // Stop on error
+      }
+    }
+    
+    console.log(`📊 Total Apollo candidates fetched: ${allApolloPeople.length} from ${Math.min(pagesNeeded, Math.ceil(allApolloPeople.length / PER_PAGE))} pages`);
 
     // 🔍 DEBUG: Log the raw Apollo response structure to see actual field names
-    if (apolloData.people && apolloData.people.length > 0) {
-      const sample = apolloData.people[0];
+    if (allApolloPeople.length > 0) {
+      const sample = allApolloPeople[0];
       console.log('📦 SAMPLE RAW APOLLO RESPONSE:', JSON.stringify({
         id: sample.id,
         first_name: sample.first_name,
@@ -416,9 +472,9 @@ serve(async (req) => {
       }, null, 2));
     }
 
-    // Map Apollo candidates to our format
-    const candidates = (apolloData.people || []).map(mapApolloSearchCandidate);
-    const totalCount = apolloData.total_entries || candidates.length;
+    // Map Apollo candidates to our format (limit to effectiveMaxResults)
+    const candidates = allApolloPeople.slice(0, effectiveMaxResults).map(mapApolloSearchCandidate);
+    const totalCount = totalAvailable;
 
     // Store in cache if project_id provided
     if (project_id && candidates.length > 0) {
@@ -429,7 +485,8 @@ serve(async (req) => {
         .eq('sourcing_project_id', project_id);
 
       // Insert new candidates with availability flags (NOT actual values - those come from enrichment)
-      const candidatesToInsert = candidates.slice(0, 200).map((c: any) => ({
+      // Increased limit to 300 to match multi-page fetching
+      const candidatesToInsert = candidates.slice(0, 300).map((c: any) => ({
         sourcing_project_id: project_id,
         apollo_id: c.apollo_id,
         full_name: c.full_name,
