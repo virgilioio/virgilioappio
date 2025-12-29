@@ -57,7 +57,7 @@ export default function Find() {
                           <img 
                             src={gioAvatar} 
                             alt="Gio AI Assistant"
-                            className="h-16 w-16 rounded-full shadow-lg transition-all duration-500"
+                            className="h-16 w-16 rounded-full transition-all duration-500"
                           />
                         </div>
                         <h1 className="text-h2-mobile md:text-h2-desktop font-poppins font-bold text-virgilio-text tracking-page-title">
