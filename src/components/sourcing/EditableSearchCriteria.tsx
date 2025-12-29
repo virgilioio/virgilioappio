@@ -52,6 +52,36 @@ const COMPANY_SIZE_OPTIONS = [
   { value: '10001,', label: '10,000+ employees' },
 ]
 
+// Apollo industry options (organization_industry_tag_ids)
+const INDUSTRY_OPTIONS = [
+  { value: 'information technology & services', label: 'IT & Services' },
+  { value: 'computer software', label: 'Software' },
+  { value: 'internet', label: 'Internet' },
+  { value: 'financial services', label: 'Financial Services' },
+  { value: 'banking', label: 'Banking' },
+  { value: 'marketing and advertising', label: 'Marketing & Advertising' },
+  { value: 'management consulting', label: 'Consulting' },
+  { value: 'hospital & health care', label: 'Healthcare' },
+  { value: 'pharmaceuticals', label: 'Pharmaceuticals' },
+  { value: 'real estate', label: 'Real Estate' },
+  { value: 'retail', label: 'Retail' },
+  { value: 'e-commerce', label: 'E-commerce' },
+  { value: 'education management', label: 'Education' },
+  { value: 'telecommunications', label: 'Telecommunications' },
+  { value: 'automotive', label: 'Automotive' },
+  { value: 'food & beverages', label: 'Food & Beverages' },
+  { value: 'construction', label: 'Construction' },
+  { value: 'entertainment', label: 'Entertainment' },
+  { value: 'staffing and recruiting', label: 'Staffing & Recruiting' },
+  { value: 'logistics and supply chain', label: 'Logistics' },
+  { value: 'nonprofit organization management', label: 'Non-Profit' },
+  { value: 'insurance', label: 'Insurance' },
+  { value: 'legal services', label: 'Legal Services' },
+  { value: 'oil & energy', label: 'Oil & Energy' },
+  { value: 'consumer goods', label: 'Consumer Goods' },
+  { value: 'media', label: 'Media' },
+]
+
 export function EditableSearchCriteria({
   criteria,
   onChange
@@ -125,6 +155,26 @@ export function EditableSearchCriteria({
 
   const getCompanySizeLabel = (value: string) => {
     return COMPANY_SIZE_OPTIONS.find(o => o.value === value)?.label || value
+  }
+
+  const handleAddIndustry = (value: string) => {
+    if (value && !(criteria.industries || []).includes(value)) {
+      onChange({
+        ...criteria,
+        industries: [...(criteria.industries || []), value]
+      })
+    }
+  }
+
+  const handleRemoveIndustry = (industry: string) => {
+    onChange({
+      ...criteria,
+      industries: (criteria.industries || []).filter(i => i !== industry)
+    })
+  }
+
+  const getIndustryLabel = (value: string) => {
+    return INDUSTRY_OPTIONS.find(o => o.value === value)?.label || value
   }
 
   return (
@@ -319,6 +369,38 @@ export function EditableSearchCriteria({
                 {getCompanySizeLabel(size)}
                 <button
                   onClick={() => handleRemoveCompanySize(size)}
+                  className="ml-1 hover:bg-destructive/10 rounded-sm"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Industry */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Industry (Optional)</Label>
+        <Select onValueChange={handleAddIndustry} value="">
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Add industry filter..." />
+          </SelectTrigger>
+          <SelectContent>
+            {INDUSTRY_OPTIONS.filter(opt => !(criteria.industries || []).includes(opt.value)).map(option => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {criteria.industries && criteria.industries.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {criteria.industries.map(industry => (
+              <Badge key={industry} variant="outline" className="gap-1">
+                {getIndustryLabel(industry)}
+                <button
+                  onClick={() => handleRemoveIndustry(industry)}
                   className="ml-1 hover:bg-destructive/10 rounded-sm"
                 >
                   <X className="h-3 w-3" />
