@@ -438,8 +438,21 @@ serve(async (req) => {
           company_domains: criteria.company_domains,
           seniorities: criteria.seniorities,
           company_sizes: criteria.company_sizes,
-          experience_years: criteria.experience_years
+          experience_years: criteria.experience_years,
+          industries: criteria.industries,  // Researched industries for sector filtering
+          // Pass research metadata for logging/debugging
+          research_metadata: criteria.research_metadata
         };
+        
+        // Log enriched search criteria if research was applied
+        if (criteria.research_metadata) {
+          console.log('🔬 Search enriched with research metadata:', {
+            title_keywords: searchCriteria.title_keywords?.length || 0,
+            company_names: searchCriteria.company_names?.length || 0,
+            industries: searchCriteria.industries?.length || 0,
+            keywords: searchCriteria.keywords?.length || 0
+          });
+        }
 
         // Call search-apollo-candidates edge function
         const { data: apolloResponse, error: apolloError } = await supabase.functions.invoke(

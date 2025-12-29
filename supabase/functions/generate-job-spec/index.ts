@@ -10,6 +10,72 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
 
+// Helper functions to extract hints from prompts
+function extractIndustryHint(prompt: string, jobSpec: any): string | undefined {
+  const lowerPrompt = prompt.toLowerCase();
+  
+  // Common industry keywords
+  const industryPatterns = [
+    { pattern: /\b(saas|software as a service)\b/i, industry: 'SaaS' },
+    { pattern: /\b(fintech|financial technology)\b/i, industry: 'FinTech' },
+    { pattern: /\b(healthtech|health tech|healthcare tech)\b/i, industry: 'HealthTech' },
+    { pattern: /\b(edtech|education tech)\b/i, industry: 'EdTech' },
+    { pattern: /\b(e-?commerce)\b/i, industry: 'E-commerce' },
+    { pattern: /\b(cybersecurity|cyber security)\b/i, industry: 'Cybersecurity' },
+    { pattern: /\b(ai|artificial intelligence|machine learning|ml)\b/i, industry: 'AI/ML' },
+    { pattern: /\b(blockchain|crypto|web3)\b/i, industry: 'Blockchain/Crypto' },
+    { pattern: /\b(gaming|game dev)\b/i, industry: 'Gaming' },
+    { pattern: /\b(biotech|biotechnology)\b/i, industry: 'Biotech' },
+    { pattern: /\b(cleantech|clean tech|renewable)\b/i, industry: 'CleanTech' },
+    { pattern: /\b(b2b)\b/i, industry: 'B2B' },
+    { pattern: /\b(b2c)\b/i, industry: 'B2C' },
+    { pattern: /\b(enterprise)\b/i, industry: 'Enterprise Software' },
+    { pattern: /\b(startup|scale-?up)\b/i, industry: 'Startup' },
+    { pattern: /\b(consulting)\b/i, industry: 'Consulting' },
+    { pattern: /\b(banking|bank)\b/i, industry: 'Banking' },
+    { pattern: /\b(insurance)\b/i, industry: 'Insurance' },
+    { pattern: /\b(retail)\b/i, industry: 'Retail' },
+    { pattern: /\b(manufacturing)\b/i, industry: 'Manufacturing' },
+    { pattern: /\b(logistics|supply chain)\b/i, industry: 'Logistics' },
+    { pattern: /\b(real estate)\b/i, industry: 'Real Estate' },
+    { pattern: /\b(media|advertising)\b/i, industry: 'Media/Advertising' },
+    { pattern: /\b(telecommunications|telecom)\b/i, industry: 'Telecommunications' },
+  ];
+
+  for (const { pattern, industry } of industryPatterns) {
+    if (pattern.test(prompt)) {
+      return industry;
+    }
+  }
+
+  // Use department from job spec as fallback hint
+  if (jobSpec?.department) {
+    return jobSpec.department;
+  }
+
+  return undefined;
+}
+
+function extractCompanyHint(prompt: string): string | undefined {
+  // Look for patterns like "like Google", "similar to Stripe", "at Figma"
+  const companyPatterns = [
+    /(?:like|similar to|such as|at|from)\s+([A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+)?)/g,
+    /(?:companies? like|competitors? of|work(?:ed)? at)\s+([A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+)?)/g,
+  ];
+
+  for (const pattern of companyPatterns) {
+    const match = pattern.exec(prompt);
+    if (match && match[1]) {
+      // Filter out common words that might be capitalized
+      const excluded = ['The', 'A', 'An', 'For', 'In', 'With', 'To', 'From', 'By', 'And', 'Or'];
+      if (!excluded.includes(match[1])) {
+        return match[1];
+      }
+    }
+  }
+
+  return undefined;
+}
 serve(async (req) => {
   const pre = handlePreflight(req);
   if (pre) return pre;
@@ -384,7 +450,72 @@ Return ONLY valid JSON in this format:
       throw new Error('Invalid response format from AI');
     }
 
-    console.log('✅ Job spec generated, now finding matching candidates...');
+    console.log('✅ Job spec generated, now researching enrichments...');
+
+    // Call research-sourcing-criteria for enriched search data
+    let researchData = null;
+    try {
+      console.log('🔍 Calling research-sourcing-criteria for enrichments...');
+      
+      // Extract industry/company hints from the prompt or job spec
+      const industryHint = extractIndustryHint(prompt, jobSpec);
+      const companyHint = extractCompanyHint(prompt);
+      
+      const { data: researchResult, error: researchError } = await supabase.functions.invoke(
+        'research-sourcing-criteria',
+        {
+          body: {
+            job_title: jobSpec.job_title,
+            industry_hint: industryHint,
+            location: jobSpec.location,
+            skills: jobSpec.skills,
+            company_hint: companyHint,
+            department: jobSpec.department
+          }
+        }
+      );
+
+      if (researchError) {
+        console.error('❌ Research function error:', researchError);
+      } else if (researchResult && !researchResult.error) {
+        researchData = researchResult;
+        console.log('✅ Research enrichment complete:', {
+          titles: researchData.researched_titles?.length || 0,
+          companies: researchData.researched_companies?.length || 0,
+          industries: researchData.researched_industries?.length || 0,
+          keywords: researchData.researched_keywords?.length || 0
+        });
+      } else {
+        console.warn('⚠️ Research returned empty or error:', researchResult);
+      }
+    } catch (researchError) {
+      console.error('❌ Failed to get research enrichment:', researchError);
+      // Continue without research data - graceful degradation
+    }
+
+    // Merge research data into job spec
+    if (researchData) {
+      // Add researched titles to alt_titles (deduplicated)
+      if (researchData.researched_titles && researchData.researched_titles.length > 0) {
+        const existingTitles = new Set((jobSpec.alt_titles || []).map((t: string) => t.toLowerCase()));
+        const newTitles = researchData.researched_titles.filter(
+          (t: string) => !existingTitles.has(t.toLowerCase()) && t.toLowerCase() !== jobSpec.job_title.toLowerCase()
+        );
+        jobSpec.alt_titles = [...(jobSpec.alt_titles || []), ...newTitles];
+      }
+      
+      // Attach research metadata for transparency
+      jobSpec.research_metadata = {
+        researched_titles: researchData.researched_titles || [],
+        researched_companies: researchData.researched_companies || [],
+        researched_industries: researchData.researched_industries || [],
+        researched_keywords: researchData.researched_keywords || [],
+        research_reasoning: researchData.research_reasoning || '',
+        research_timestamp: new Date().toISOString()
+      };
+    }
+
+    console.log('📊 Finding matching candidates...');
 
     // Call candidate matching function
     let candidateMatching = null;
