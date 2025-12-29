@@ -23,6 +23,23 @@ interface CreateSourcingProjectRequest {
     salary_max?: number;
     currency?: string;
   };
+  job_spec_data?: {
+    job_title: string;
+    alt_titles?: string[];
+    job_description?: string;
+    level?: string;
+    department?: string;
+    location?: string;
+    location_details?: any;
+    salary_range?: {
+      min: number;
+      max: number;
+      currency: string;
+      period?: string;
+    };
+    skills?: string[];
+    recommendations?: string[];
+  };
 }
 
 interface CreateSourcingProjectResponse {
@@ -69,7 +86,7 @@ serve(async (req) => {
 
     // Parse request body
     const body: CreateSourcingProjectRequest = await req.json();
-    const { name, description, job_id, organization_id, is_public, conversationId, search_criteria } = body;
+    const { name, description, job_id, organization_id, is_public, conversationId, search_criteria, job_spec_data } = body;
 
     // Validate required fields
     if (!name) {
@@ -138,7 +155,8 @@ serve(async (req) => {
         search_criteria: search_criteria,
         enabled_sources: ['internal'],
         status: 'active',
-        is_public: is_public ?? false
+        is_public: is_public ?? false,
+        job_spec_data: job_spec_data || null  // Store full AI-generated job spec
       })
       .select('id, created_at')
       .single();

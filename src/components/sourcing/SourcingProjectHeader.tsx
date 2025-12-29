@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { 
   Edit2, MoreHorizontal, RefreshCw, Archive, Trash2, 
-  MapPin, Coins, Globe, Lock, Link2, Briefcase
+  MapPin, Coins, Globe, Lock, Link2, Briefcase, Plus
 } from 'lucide-react'
 import { useSourcingCredits } from '@/hooks/useSourcingCredits'
 import { Button } from '@/components/ui/button'
@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { SourcingProject } from '@/types/sourcing'
 import { LinkToJobDialog } from './LinkToJobDialog'
+import { CreateJobFromProjectDialog } from './CreateJobFromProjectDialog'
 
 interface SourcingProjectHeaderProps {
   project: SourcingProject
@@ -53,6 +54,7 @@ export function SourcingProjectHeader({
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(project.name)
   const [showLinkJobDialog, setShowLinkJobDialog] = useState(false)
+  const [showCreateJobDialog, setShowCreateJobDialog] = useState(false)
   const { data: usage } = useSourcingCredits()
 
   const handleSaveName = () => {
@@ -153,12 +155,23 @@ export function SourcingProjectHeader({
                 </p>
               </div>
               
+              {/* Create Job option - only show if no job linked and has job_spec_data */}
+              {!project.job_id && project.job_spec_data && (
+                <>
+                  <DropdownMenuItem onClick={() => setShowCreateJobDialog(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Job from Spec
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              
               {/* Link to Job option - only show if no job linked */}
               {!project.job_id && onLinkToJob && (
                 <>
                   <DropdownMenuItem onClick={() => setShowLinkJobDialog(true)}>
                     <Link2 className="h-4 w-4 mr-2" />
-                    Link to Job
+                    Link to Existing Job
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                 </>
@@ -265,6 +278,15 @@ export function SourcingProjectHeader({
         onOpenChange={setShowLinkJobDialog}
         onConfirm={handleLinkToJob}
         currentJobId={project.job_id}
+      />
+
+      {/* Create Job from Project Dialog */}
+      <CreateJobFromProjectDialog
+        open={showCreateJobDialog}
+        onOpenChange={setShowCreateJobDialog}
+        projectId={project.id}
+        projectName={project.name}
+        jobSpecData={project.job_spec_data || null}
       />
     </>
   )

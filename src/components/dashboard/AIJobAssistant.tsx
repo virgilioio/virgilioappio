@@ -401,6 +401,19 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAs
             salary_min: editableJobSpec.salary_range.min,
             salary_max: editableJobSpec.salary_range.max,
             currency: editableJobSpec.salary_range.currency
+          },
+          // Store full AI-generated job spec for later job creation
+          job_spec_data: {
+            job_title: selectedTitle,
+            alt_titles: editableJobSpec.alt_titles,
+            job_description: editableJobSpec.job_description,
+            level: editableJobSpec.level,
+            department: editableJobSpec.department,
+            location: editableJobSpec.location,
+            location_details: (editableJobSpec as any).location_details,
+            salary_range: editableJobSpec.salary_range,
+            skills: editableSkills,
+            recommendations: editableJobSpec.recommendations
           }
         }
       })
