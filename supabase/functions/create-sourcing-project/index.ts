@@ -140,6 +140,53 @@ serve(async (req) => {
       console.log(`🏢 Organization: ${targetOrganizationId}`);
     }
 
+    // Enrich search_criteria with research metadata from job_spec_data if available
+    let enrichedSearchCriteria = { ...search_criteria };
+    
+    if (job_spec_data?.research_metadata) {
+      const rm = job_spec_data.research_metadata;
+      
+      // Merge researched titles into title_keywords
+      if (rm.researched_titles && rm.researched_titles.length > 0) {
+        const existingTitles = new Set((search_criteria.title_keywords || []).map((t: string) => t.toLowerCase()));
+        const newTitles = rm.researched_titles.filter(
+          (t: string) => !existingTitles.has(t.toLowerCase())
+        );
+        enrichedSearchCriteria.title_keywords = [
+          ...(search_criteria.title_keywords || []),
+          ...newTitles
+        ];
+      }
+      
+      // Add researched companies
+      if (rm.researched_companies && rm.researched_companies.length > 0) {
+        enrichedSearchCriteria.company_names = rm.researched_companies;
+      }
+      
+      // Add researched industries
+      if (rm.researched_industries && rm.researched_industries.length > 0) {
+        enrichedSearchCriteria.industries = rm.researched_industries;
+      }
+      
+      // Add researched keywords
+      if (rm.researched_keywords && rm.researched_keywords.length > 0) {
+        enrichedSearchCriteria.keywords = [
+          ...(search_criteria.keywords || []),
+          ...rm.researched_keywords
+        ];
+      }
+      
+      // Store full research metadata
+      enrichedSearchCriteria.research_metadata = rm;
+      
+      console.log('🔍 Enriched search criteria with research metadata:', {
+        title_keywords: enrichedSearchCriteria.title_keywords?.length || 0,
+        company_names: enrichedSearchCriteria.company_names?.length || 0,
+        industries: enrichedSearchCriteria.industries?.length || 0,
+        keywords: enrichedSearchCriteria.keywords?.length || 0
+      });
+    }
+
     // Insert sourcing project
     // RLS policies will automatically enforce:
     // - User has recruiter+ role in organization
@@ -152,7 +199,7 @@ serve(async (req) => {
         job_id: job_id || null,  // Can be null now
         organization_id: targetOrganizationId,
         created_by: userId,
-        search_criteria: search_criteria,
+        search_criteria: enrichedSearchCriteria,
         enabled_sources: ['internal'],
         status: 'active',
         is_public: is_public ?? false,

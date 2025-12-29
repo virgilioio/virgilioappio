@@ -1,3 +1,12 @@
+export interface ResearchMetadata {
+  researched_titles?: string[]
+  researched_companies?: string[]
+  researched_industries?: string[]
+  researched_keywords?: string[]
+  research_reasoning?: string
+  research_timestamp?: string
+}
+
 export interface JobSpecData {
   job_title: string
   alt_titles?: string[]
@@ -20,6 +29,7 @@ export interface JobSpecData {
   }
   skills?: string[]
   recommendations?: string[]
+  research_metadata?: ResearchMetadata
 }
 
 export interface SourcingProject {
@@ -65,6 +75,15 @@ export interface SearchCriteria {
   company_domains?: string[]  // Target company domains for filtering
   company_names?: string[]  // Target company names for filtering (q_organization_name)
   industries?: string[]  // Industry/sector filter (organization_industry_tag_ids)
+  // Research metadata - populated by AI research
+  research_metadata?: {
+    researched_titles?: string[]
+    researched_companies?: string[]
+    researched_industries?: string[]
+    researched_keywords?: string[]
+    research_reasoning?: string
+    research_timestamp?: string
+  }
 }
 
 export type EnabledSource = 'internal' | 'apollo' | 'linkedin' | 'seekout'

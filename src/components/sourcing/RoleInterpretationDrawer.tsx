@@ -5,11 +5,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Edit2, Briefcase, MapPin, DollarSign, Target, Lightbulb, Check, X } from 'lucide-react'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Edit2, Briefcase, MapPin, DollarSign, Target, Lightbulb, Check, X, Search, Building2, Tag, ChevronDown } from 'lucide-react'
 import { SkillsEditor } from '@/components/dashboard/SkillsEditor'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { JobSpecData } from '@/types/sourcing'
 import gioAvatar from '@/assets/gio-avatar.png'
+
+import { ResearchMetadata } from '@/types/sourcing'
 
 interface RoleInterpretationDrawerProps {
   open: boolean
@@ -274,6 +277,107 @@ export function RoleInterpretationDrawer({
                   <SafeHtml content={spec.job_description} />
                 </div>
               </div>
+            )}
+
+            {/* Research Enrichments */}
+            {spec.research_metadata && (
+              spec.research_metadata.researched_companies?.length ||
+              spec.research_metadata.researched_industries?.length ||
+              spec.research_metadata.researched_titles?.length ||
+              spec.research_metadata.researched_keywords?.length
+            ) && (
+              <Collapsible defaultOpen={true}>
+                <CollapsibleTrigger className="flex items-center gap-2 w-full group">
+                  <Label className="flex items-center gap-2 text-sm font-medium text-muted-foreground cursor-pointer group-hover:text-foreground transition-colors">
+                    <Search className="h-4 w-4" />
+                    What Gio Researched
+                  </Label>
+                  <ChevronDown className="h-4 w-4 ml-auto text-muted-foreground group-hover:text-foreground transition-all group-data-[state=open]:rotate-180" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3 space-y-4">
+                  {/* Title Variations */}
+                  {spec.research_metadata.researched_titles && spec.research_metadata.researched_titles.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                        <Briefcase className="h-3 w-3" />
+                        Title Variations
+                      </Label>
+                      <div className="flex flex-wrap gap-1">
+                        {spec.research_metadata.researched_titles.slice(0, 8).map((title, i) => (
+                          <Badge key={i} variant="outline" className="text-xs bg-surface-secondary/50">
+                            {title}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Target Companies */}
+                  {spec.research_metadata.researched_companies && spec.research_metadata.researched_companies.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                        <Building2 className="h-3 w-3" />
+                        Target Companies
+                      </Label>
+                      <div className="flex flex-wrap gap-1">
+                        {spec.research_metadata.researched_companies.slice(0, 12).map((company, i) => (
+                          <Badge key={i} variant="secondary" className="text-xs">
+                            {company}
+                          </Badge>
+                        ))}
+                        {spec.research_metadata.researched_companies.length > 12 && (
+                          <Badge variant="outline" className="text-xs text-muted-foreground">
+                            +{spec.research_metadata.researched_companies.length - 12} more
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Industries */}
+                  {spec.research_metadata.researched_industries && spec.research_metadata.researched_industries.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                        <Tag className="h-3 w-3" />
+                        Industries
+                      </Label>
+                      <div className="flex flex-wrap gap-1">
+                        {spec.research_metadata.researched_industries.map((industry, i) => (
+                          <Badge key={i} variant="outline" className="text-xs border-primary/30 text-primary">
+                            {industry}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Keywords */}
+                  {spec.research_metadata.researched_keywords && spec.research_metadata.researched_keywords.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                        <Search className="h-3 w-3" />
+                        Search Keywords
+                      </Label>
+                      <div className="flex flex-wrap gap-1">
+                        {spec.research_metadata.researched_keywords.map((keyword, i) => (
+                          <Badge key={i} variant="outline" className="text-xs bg-muted/50">
+                            {keyword}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Research Reasoning */}
+                  {spec.research_metadata.research_reasoning && (
+                    <div className="space-y-2 pt-2 border-t">
+                      <p className="text-xs text-muted-foreground italic">
+                        💡 {spec.research_metadata.research_reasoning}
+                      </p>
+                    </div>
+                  )}
+                </CollapsibleContent>
+              </Collapsible>
             )}
 
             {/* Recommendations */}
