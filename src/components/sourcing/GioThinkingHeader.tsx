@@ -84,6 +84,7 @@ export function GioThinkingHeader() {
         <p 
           key={messageIndex}
           className="text-lg font-poppins font-bold text-virgilio-text animate-fade-in"
+          style={{ letterSpacing: '-0.06em' }}
         >
           {THINKING_MESSAGES[messageIndex]}
           <span className="text-virgilio-purple">...</span>
