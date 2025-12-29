@@ -4,6 +4,7 @@ import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronLeft, Chevro
 import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
 import emptyStateAvatar from '@/assets/empty-state-avatar.png'
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
+import { CandidateTableSkeleton } from './CandidateTableSkeleton'
 import {
   Table,
   TableBody,
@@ -16,7 +17,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Card, CardContent } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
 import { SortableHeader } from '@/components/ui/sortable-header'
 import { useSortableTable } from '@/hooks/useSortableTable'
 import { useToast } from '@/hooks/use-toast'
@@ -330,17 +330,7 @@ export function SourcingCandidateTable({
   const paginatedData = sortedData.slice(startIndex, startIndex + itemsPerPage)
 
   if (isLoading) {
-    return (
-      <Card className="shadow-calendly">
-        <CardContent className="p-6">
-          <div className="space-y-3">
-            {[1, 2, 3, 4, 5].map(i => (
-              <Skeleton key={i} className="h-16 w-full" />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    )
+    return <CandidateTableSkeleton rows={8} />
   }
 
   if (candidates.length === 0) {
