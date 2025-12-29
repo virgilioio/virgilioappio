@@ -65,7 +65,7 @@ export function GioThinkingHeader() {
           src={GIO_AVATARS[avatarIndex]} 
           alt="Gio"
           className={cn(
-            "w-full h-full rounded-full object-cover shadow-lg will-change-transform",
+            "w-full h-full rounded-full object-cover will-change-transform",
             isFlipping && (isMirrored ? "animate-coin-flip-2d-reverse" : "animate-coin-flip-2d")
           )}
           style={{ transform: isMirrored ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
