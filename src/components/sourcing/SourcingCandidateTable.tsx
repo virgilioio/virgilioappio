@@ -74,7 +74,7 @@ export function SourcingCandidateTable({
   const navigate = useNavigate()
   const { toast } = useToast()
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 10
+  const itemsPerPage = 25
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
   const [selectedApolloId, setSelectedApolloId] = useState<string | null>(null)
   const [selectedApolloData, setSelectedApolloData] = useState<any>(null)

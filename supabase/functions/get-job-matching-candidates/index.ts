@@ -454,14 +454,15 @@ serve(async (req) => {
           });
         }
 
-        // Call search-apollo-candidates edge function
+        // Call search-apollo-candidates edge function with multi-page fetching
         const { data: apolloResponse, error: apolloError } = await supabase.functions.invoke(
           'search-apollo-candidates',
           {
             body: {
               project_id: sourcing_project_id,
               criteria: searchCriteria,
-              limit: 100, // Apollo supports up to 100 per page
+              limit: 100,  // Per-page limit
+              max_results: 300,  // Fetch up to 300 candidates (3 pages)
               organization_id
             }
           }
