@@ -25,10 +25,10 @@ export function GioThinkingHeader() {
   const triggerFlip = useCallback(() => {
     setIsFlipping(true)
     
-    // Swap avatar at midpoint (when edge-on, ~300ms into 600ms animation)
+    // Swap avatar at 65% (when edge-on at 270deg, ~390ms into 600ms animation)
     setTimeout(() => {
       setAvatarIndex((prev) => (prev + 1) % GIO_AVATARS.length)
-    }, 300)
+    }, 390)
     
     // Reset flip state after animation completes
     setTimeout(() => {
