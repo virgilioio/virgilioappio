@@ -271,19 +271,16 @@ export default {
 						opacity: '0'
 					}
 				},
-			'coin-flip': {
-				'0%': { transform: 'rotateX(0deg)' },
-				'100%': { transform: 'rotateX(1080deg)' }
-			},
-			'coin-shadow': {
-				'0%, 100%': { transform: 'translateX(-50%) scaleX(1)', opacity: '0.2' },
-				'25%': { transform: 'translateX(-50%) scaleX(0.6)', opacity: '0.4' },
-				'50%': { transform: 'translateX(-50%) scaleX(1)', opacity: '0.2' },
-				'75%': { transform: 'translateX(-50%) scaleX(0.6)', opacity: '0.4' }
+			'coin-flip-2d': {
+				'0%': { transform: 'rotateY(0deg) scale(1)' },
+				'50%': { transform: 'rotateY(90deg) scale(1.05)' },
+				'75%': { transform: 'rotateY(180deg) scale(1.08)' },
+				'85%': { transform: 'rotateY(175deg) scale(1.02)' },
+				'100%': { transform: 'rotateY(180deg) scale(1)' }
 			},
 			'shimmer-beam': {
 				'0%': { transform: 'translateX(-100%)' },
-				'100%': { transform: 'translateX(200%)' }
+				'100%': { transform: 'translateX(400%)' }
 			}
 			},
 			animation: {
@@ -294,8 +291,7 @@ export default {
 				'slide-in': 'slide-in 0.3s ease-out',
 				'slide-in-bottom-right': 'slide-in-bottom-right 0.3s ease-out',
 				'slide-out-bottom-right': 'slide-out-bottom-right 0.3s ease-out',
-			'coin-flip': 'coin-flip 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite',
-			'coin-shadow': 'coin-shadow 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+			'coin-flip-2d': 'coin-flip-2d 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
 			'shimmer-beam': 'shimmer-beam 2s ease-in-out infinite'
 			}
 		}

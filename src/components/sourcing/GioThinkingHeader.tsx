@@ -1,19 +1,48 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { cn } from '@/lib/utils'
 import gioAvatar from '@/assets/gio-avatar.png'
 import gioFaceYellow from '@/assets/gio-face-yellow.png'
+import gioFaceEmpty from '@/assets/gio-face-empty.png'
+
+const GIO_AVATARS = [gioAvatar, gioFaceYellow, gioFaceEmpty]
 
 const THINKING_MESSAGES = [
-  "Analyzing your prompt...",
-  "Understanding job context...",
-  "Identifying core skills...",
-  "Mapping geographic requirements...",
-  "Matching candidates to your search...",
-  "Evaluating experience levels...",
-  "Finding your people..."
+  "Analyzing your prompt",
+  "Understanding job context",
+  "Identifying core skills",
+  "Mapping geographic requirements",
+  "Matching candidates",
+  "Evaluating experience levels",
+  "Finding your people"
 ]
 
 export function GioThinkingHeader() {
+  const [avatarIndex, setAvatarIndex] = useState(0)
+  const [isFlipping, setIsFlipping] = useState(false)
   const [messageIndex, setMessageIndex] = useState(0)
+
+  // Handle flip animation and avatar swap
+  const triggerFlip = useCallback(() => {
+    setIsFlipping(true)
+    
+    // Swap avatar at midpoint (when edge-on, ~300ms into 600ms animation)
+    setTimeout(() => {
+      setAvatarIndex((prev) => (prev + 1) % GIO_AVATARS.length)
+    }, 300)
+    
+    // Reset flip state after animation completes
+    setTimeout(() => {
+      setIsFlipping(false)
+    }, 600)
+  }, [])
+
+  // Trigger flip every 2 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      triggerFlip()
+    }, 2000)
+    return () => clearInterval(interval)
+  }, [triggerFlip])
 
   // Cycle through messages every 2.5 seconds
   useEffect(() => {
@@ -25,99 +54,33 @@ export function GioThinkingHeader() {
 
   return (
     <div className="flex flex-col items-center justify-center space-y-8 animate-fade-in">
-      {/* 3D Coin Container */}
-      <div 
-        className="relative"
-        style={{ perspective: '800px' }}
-      >
-        {/* The Coin */}
-        <div 
-          className="relative w-20 h-20 animate-coin-flip"
-          style={{ 
-            transformStyle: 'preserve-3d',
-          }}
-        >
-          {/* Front Face - Main Gio Avatar */}
-          <div 
-            className="absolute inset-0 rounded-full overflow-hidden shadow-xl"
-            style={{ 
-              backfaceVisibility: 'hidden',
-              WebkitBackfaceVisibility: 'hidden',
-            }}
-          >
-            <img 
-              src={gioAvatar} 
-              alt="Gio"
-              className="w-full h-full object-cover"
-            />
-            {/* Coin edge effect */}
-            <div 
-              className="absolute inset-0 rounded-full"
-              style={{
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 50%, rgba(0,0,0,0.2) 100%)',
-                boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.2)'
-              }}
-            />
-          </div>
-          
-          {/* Back Face - Yellow Gio */}
-          <div 
-            className="absolute inset-0 rounded-full overflow-hidden shadow-xl"
-            style={{ 
-              backfaceVisibility: 'hidden',
-              WebkitBackfaceVisibility: 'hidden',
-              transform: 'rotateX(180deg)',
-            }}
-          >
-            <img 
-              src={gioFaceYellow} 
-              alt="Gio"
-              className="w-full h-full object-cover"
-            />
-            {/* Coin edge effect */}
-            <div 
-              className="absolute inset-0 rounded-full"
-              style={{
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 50%, rgba(0,0,0,0.2) 100%)',
-                boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.2)'
-              }}
-            />
-          </div>
-          
-          {/* Coin Edge (depth) */}
-          <div 
-            className="absolute inset-0 rounded-full"
-            style={{
-              transform: 'translateZ(-4px)',
-              background: 'linear-gradient(to bottom, #d4a853, #b8942e, #d4a853)',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
-            }}
-          />
-        </div>
-        
-        {/* Dynamic Shadow */}
-        <div 
-          className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-16 h-3 rounded-full bg-black/20 blur-sm animate-coin-shadow"
+      {/* Simple 2D Flipping Avatar */}
+      <div className="relative w-20 h-20">
+        <img 
+          src={GIO_AVATARS[avatarIndex]} 
+          alt="Gio"
+          className={cn(
+            "w-full h-full rounded-full object-cover shadow-lg transition-transform",
+            isFlipping && "animate-coin-flip-2d"
+          )}
         />
       </div>
 
-      {/* Progress Beam Bar */}
+      {/* Simple Shimmer Beam Bar - Solid Color */}
       <div className="w-48 h-1.5 bg-muted rounded-full overflow-hidden">
         <div 
-          className="h-full w-1/3 rounded-full animate-shimmer-beam"
-          style={{
-            background: 'linear-gradient(90deg, transparent, #6F3FF5, #d7c5fb, #6F3FF5, transparent)'
-          }}
+          className="h-full w-1/4 rounded-full bg-virgilio-purple animate-shimmer-beam"
         />
       </div>
 
-      {/* Status Message with fade transition */}
-      <div className="h-6 flex items-center justify-center">
+      {/* Status Message - Bigger, Bolder, Purple Dots */}
+      <div className="h-8 flex items-center justify-center">
         <p 
           key={messageIndex}
-          className="text-sm text-muted-foreground animate-fade-in"
+          className="text-lg font-poppins font-bold text-virgilio-text animate-fade-in"
         >
           {THINKING_MESSAGES[messageIndex]}
+          <span className="text-virgilio-purple">...</span>
         </p>
       </div>
     </div>
