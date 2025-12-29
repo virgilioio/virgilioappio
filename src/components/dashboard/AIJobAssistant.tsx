@@ -532,7 +532,7 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAs
       case 'prompt':
         return jobSpec !== null
       case 'specs':
-        return editableJobSpec !== null && !isCreatingProject && !!selectedOrgId
+        return editableJobSpec !== null && !isCreatingProject
       default:
         return false
     }
@@ -719,39 +719,18 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAs
               <img 
                 src={gioAvatar} 
                 alt="Gio AI Assistant"
-                className="h-12 w-12 rounded-full shadow-lg"
+                className="h-12 w-12 rounded-full"
               />
               <div className="flex-1">
                 <SheetTitle className="text-h4-mobile font-poppins font-bold text-virgilio-text tracking-page-title">
-                  AI Job Assistant<span className="text-virgilio-purple">.</span>
+                  We're almost done<span className="text-virgilio-purple">.</span>
                 </SheetTitle>
                 <p className="text-sm text-virgilio-muted mt-1">
-                  Step {currentStep === 'prompt' ? '1' : currentStep === 'specs' ? '2' : '3'} of 3
+                  Review the final details
                 </p>
               </div>
             </div>
             
-            {/* Progress Dots */}
-            <div className="flex items-center justify-center gap-2">
-              {['prompt', 'specs', 'decision'].map((step, index) => {
-                const stepIndex = ['prompt', 'specs', 'decision'].indexOf(currentStep)
-                const isActive = currentStep === step
-                const isCompleted = index < stepIndex
-                
-                return (
-                  <div 
-                    key={step}
-                    className={`h-2 rounded-full transition-all duration-300 ${
-                      isActive 
-                        ? "bg-gradient-to-r from-purple-600 to-cyan-600 w-8" 
-                        : isCompleted
-                        ? "bg-virgilio-purple w-2"
-                        : "bg-gray-300 w-2"
-                    }`}
-                  />
-                )
-              })}
-            </div>
           </SheetHeader>
           
           {editableJobSpec && (
