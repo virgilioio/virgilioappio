@@ -12,10 +12,9 @@ export interface Activity {
   entity_type: string | null;
   entity_id: string | null;
   created_at: string;
-  author?: {
-    email: string;
-    full_name?: string;
-  };
+  author_first_name?: string;
+  author_last_name?: string;
+  author_email?: string;
 }
 
 export function useActivityFeed(candidateId?: string, jobId?: string) {

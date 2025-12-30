@@ -4707,6 +4707,9 @@ export type Database = {
         Args: { p_candidate_id: string; p_job_id?: string }
         Returns: {
           activity_type: Database["public"]["Enums"]["activity_type"]
+          author_email: string
+          author_first_name: string
+          author_last_name: string
           created_at: string
           description: string
           entity_id: string

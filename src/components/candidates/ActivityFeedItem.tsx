@@ -12,11 +12,13 @@ export function ActivityFeedItem({ activity, isLast }: ActivityFeedItemProps) {
   const icon = getActivityIcon(activity.activity_type);
   const color = getActivityColor(activity.activity_type);
   
-  // Get author name from metadata or email
-  const authorName = activity.metadata?.author_name || 
-                     activity.author?.full_name || 
-                     activity.author?.email?.split('@')[0] || 
-                     'System';
+  // Get author name from profile data, metadata, or email
+  const authorName = 
+    (activity.author_first_name || activity.author_last_name)
+      ? `${activity.author_first_name || ''} ${activity.author_last_name || ''}`.trim()
+      : activity.metadata?.author_name 
+        || activity.author_email?.split('@')[0] 
+        || 'System';
   
   return (
     <div className="relative flex gap-3 pb-4">
