@@ -60,12 +60,9 @@ export default function Find() {
                             className="h-16 w-16 rounded-full transition-all duration-500"
                           />
                         </div>
-                        <h1 className="text-h2-mobile md:text-h2-desktop font-poppins font-bold text-virgilio-text tracking-page-title">
-                          Find your people<span className="text-virgilio-purple">.</span>
+                        <h1 className="text-xl md:text-2xl font-poppins font-bold text-virgilio-text" style={{ letterSpacing: '-0.06em' }}>
+                          What role are you hiring right now<span className="text-virgilio-purple">?</span>
                         </h1>
-                        <p className="text-base text-virgilio-muted max-w-2xl mx-auto">
-                          Describe the talent you need and let AI generate a complete job specification with matching candidates.
-                        </p>
                       </div>
                     )}
                   </div>
