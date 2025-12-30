@@ -18,6 +18,7 @@ interface ResearchInput {
   company_hint?: string;
   user_companies?: string[];  // User-mentioned companies (hard constraint)
   department?: string;
+  detected_language?: string; // Language detected from user prompt
 }
 
 interface ResearchOutput {
@@ -73,15 +74,20 @@ serve(async (req) => {
       contextParts.push(`Department: ${input.department}`);
     }
 
+    // Language instruction for research outputs
+    const languageInstruction = input.detected_language && input.detected_language !== 'English'
+      ? `\n\n🌐 LANGUAGE REQUIREMENT: The user's prompt is in ${input.detected_language}. Generate all alternative titles and keywords in ${input.detected_language} to match how candidates in that language market describe themselves.`
+      : '';
+
     // Updated prompt with reduced caps
     const researchPrompt = `You are a recruiting research assistant specializing in talent sourcing. Given a job specification, research and provide enriched search criteria.
 
 Context:
-${contextParts.join('\n')}
+${contextParts.join('\n')}${languageInstruction}
 
 Provide the following research outputs with STRICT LIMITS:
 
-1. **Alternative Titles** (2-3 max): ONLY the most commonly used direct synonyms for this job title. Do NOT include seniority variations or niche variations. Focus on titles candidates actually use on their profiles.
+1. **Alternative Titles** (2-3 max): ONLY the most commonly used direct synonyms for this job title. Do NOT include seniority variations or niche variations. Focus on titles candidates actually use on their profiles.${input.detected_language && input.detected_language !== 'English' ? ` Generate titles in ${input.detected_language}.` : ''}
 
 2. **Target Companies** (0-3 max): ${userSpecifiedCompanies ? 
   'The user has already specified target companies. Return an EMPTY array [] since we should focus on their specified companies.' : 
@@ -92,7 +98,7 @@ Provide the following research outputs with STRICT LIMITS:
 4. **Search Keywords** (3-5 max): High-signal terms that would appear in ideal candidates' profiles. Focus on:
    - Specific tools, technologies, or methodologies
    - Key achievements or metrics (e.g., "quota attainment", "revenue growth")
-   - Industry-specific terminology
+   - Industry-specific terminology${input.detected_language && input.detected_language !== 'English' ? `\n   Generate keywords in ${input.detected_language} where appropriate.` : ''}
    Do NOT include generic terms.
 
 5. **Research Reasoning**: A brief 1-2 sentence explanation of your research logic.
