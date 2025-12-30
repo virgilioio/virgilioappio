@@ -29,6 +29,10 @@ export function CandidateMergeDialog({
   newCandidate,
   mergedCandidate
 }: CandidateMergeDialogProps) {
+  // Guard against undefined candidates - return early if not ready
+  if (!existingCandidate || !mergedCandidate) {
+    return null
+  }
   const renderComparisonField = (
     label: string,
     icon: React.ReactNode,
