@@ -233,8 +233,8 @@ export function GlobalCreateButton() {
 
   if (isPlatformAdmin) {
     createOptions.push({
-      label: 'New Organization',
-      description: 'Create a new organization',
+      label: 'New Department',
+      description: 'Create a new department',
       icon: Building2,
       onClick: () => setOrganizationFormOpen(true),
       shortcut: '⌘O'

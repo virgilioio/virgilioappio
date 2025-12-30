@@ -52,7 +52,7 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
     },
     { 
       id: 'organizations', 
-      label: 'Organizations', 
+      label: 'Departments', 
       icon: Building2, 
       show: permissions.canViewOrganizations 
     },

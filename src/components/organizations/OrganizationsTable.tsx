@@ -138,7 +138,7 @@ export function OrganizationsTable({
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search organizations..."
+                placeholder="Search departments..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -159,7 +159,7 @@ export function OrganizationsTable({
             {permissions.canCreateOrganizations && onCreateNew && (
               <Button onClick={onCreateNew} className="gap-2 whitespace-nowrap">
                 <Plus className="h-4 w-4" />
-                Create Organization
+                Create Department
               </Button>
             )}
           </div>
@@ -169,14 +169,14 @@ export function OrganizationsTable({
           {filteredOrganizations.length === 0 ? (
             <EmptyState
               assetType="empty-state-organizations"
-              title={organizations.length === 0 ? 'No organizations yet' : 'No organizations match your filters'}
+              title={organizations.length === 0 ? 'No departments yet' : 'No departments match your filters'}
               description={organizations.length === 0 
-                ? 'Create your first organization to get started.'
+                ? 'Create your first department to get started.'
                 : 'Try adjusting your search or filter criteria.'
               }
               fallbackIcon={Building2}
               action={organizations.length === 0 && permissions.canCreateOrganizations && onCreateNew ? {
-                label: 'Create Organization',
+                label: 'Create Department',
                 onClick: onCreateNew
               } : undefined}
             />
@@ -252,7 +252,7 @@ export function OrganizationsTable({
                     <div className="inline-flex items-center gap-2 px-4 py-2 bg-surface-secondary/50 border border-border/50 rounded-brand text-sm text-text-secondary backdrop-blur-sm">
                       <Building2 className="h-4 w-4 opacity-60" />
                       <span className="font-medium">
-                        Showing {startIndex + 1}-{Math.min(endIndex, filteredOrganizations.length)} of {filteredOrganizations.length} organizations
+                        Showing {startIndex + 1}-{Math.min(endIndex, filteredOrganizations.length)} of {filteredOrganizations.length} departments
                       </span>
                     </div>
                   </div>

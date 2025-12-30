@@ -58,8 +58,8 @@ export function OrganizationsTab() {
   return (
     <div className="space-y-6">
       <PageHeader 
-        title="Organizations" 
-        subtitle="Manage your organizations and departments"
+        title="Departments" 
+        subtitle="Manage your departments"
       />
 
       <div data-onboarding-target="organization">
@@ -83,9 +83,9 @@ export function OrganizationsTab() {
       <AlertDialog open={!!deleteOrgId} onOpenChange={() => setDeleteOrgId(null)}>
         <AlertDialogContent className="mx-4 max-w-md sm:max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle>Deactivate Organization</AlertDialogTitle>
+            <AlertDialogTitle>Deactivate Department</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to deactivate this organization? This will set its status to inactive but won't permanently delete it.
+              Are you sure you want to deactivate this department? This will set its status to inactive but won't permanently delete it.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-3">

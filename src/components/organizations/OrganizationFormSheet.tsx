@@ -79,10 +79,10 @@ export function OrganizationFormSheet({
         <div className="flex flex-col h-full">
           <SheetHeader className="px-6 py-4 border-b border-border">
             <SheetTitle className="text-lg">
-              {isEditing ? 'Edit Organization' : 'Create Organization'}
+              {isEditing ? 'Edit Department' : 'Create Department'}
             </SheetTitle>
             <SheetDescription>
-              {isEditing ? 'Update organization details' : 'Create a new organization. Parent and ownership will be set automatically based on your role.'}
+              {isEditing ? 'Update department details' : 'Create a new department. Parent and ownership will be set automatically based on your role.'}
             </SheetDescription>
           </SheetHeader>
 
@@ -94,9 +94,9 @@ export function OrganizationFormSheet({
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Organization Name</FormLabel>
+                      <FormLabel>Department Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter organization name" {...field} />
+                        <Input placeholder="Enter department name" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
