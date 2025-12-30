@@ -37,6 +37,7 @@ import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCan
 import BulkMoveJobCandidatesToPipelineDialog from '@/components/candidates/BulkMoveJobCandidatesToPipelineDialog'
 import { BulkRejectionDialog } from '@/components/candidates/BulkRejectionDialog'
 import { BulkEmailDialog } from '@/components/candidates/BulkEmailDialog'
+import { CandidateMergeDialog } from '@/components/candidates/CandidateMergeDialog'
 import { useJobMatchingCandidates, MatchedCandidate } from '@/hooks/useJobMatchingCandidates'
 import { useJobMatchingCandidatesCount } from '@/hooks/useJobMatchingCandidatesCount'
 import { useRealTimeSkillMatching } from '@/hooks/useRealTimeSkillMatching'
@@ -66,6 +67,12 @@ export default function JobDetail() {
   const [pipelineRefresh, setPipelineRefresh] = useState(0)
   const [showBulkRejectionDialog, setShowBulkRejectionDialog] = useState(false)
   const [showBulkEmailDialog, setShowBulkEmailDialog] = useState(false)
+  const [showMergeDialog, setShowMergeDialog] = useState(false)
+  const [duplicateInfo, setDuplicateInfo] = useState<{
+    existing: any
+    incoming: any
+    merged: any
+  } | null>(null)
 
   // In-place profile sheet state with navigation
   const [profileOpen, setProfileOpen] = useState(false)
@@ -265,6 +272,7 @@ export default function JobDetail() {
     candidates,
     isLoading: candidatesLoading,
     addCandidate,
+    confirmMergeCandidate,
     updateCandidate,
     deleteCandidate,
     markCandidateAsViewed,
@@ -663,12 +671,51 @@ export default function JobDetail() {
 
   const handleAddCandidate = async (candidateData: any) => {
     try {
-      const created = await addCandidate(candidateData)
+      const result = await addCandidate(candidateData)
+      
+      // Check if this is a duplicate that needs user confirmation
+      if (result && 'isDuplicate' in result && result.isDuplicate) {
+        setDuplicateInfo({
+          existing: result.existingCandidate,
+          incoming: result.incomingData,
+          merged: result.mergedData
+        })
+        setShowMergeDialog(true)
+        return null // Keep form open while showing dialog
+      }
+      
+      // Refresh pipeline keys after successful creation
+      setPipelineRefresh((v) => v + 1)
       setShowAddCandidate(false)
-      return created
+      return result
     } catch (error) {
       console.error('Error adding candidate:', error)
     }
+  }
+
+  const handleMergeConfirm = async () => {
+    if (!duplicateInfo) return
+    
+    try {
+      await confirmMergeCandidate(
+        duplicateInfo.existing.id,
+        duplicateInfo.incoming,
+        duplicateInfo.incoming.assignedStageId
+      )
+      
+      // Refresh pipeline keys after merge
+      setPipelineRefresh((v) => v + 1)
+      setShowMergeDialog(false)
+      setDuplicateInfo(null)
+      setShowAddCandidate(false)
+    } catch (error) {
+      console.error('Error merging candidate:', error)
+    }
+  }
+
+  const handleMergeCancel = () => {
+    setShowMergeDialog(false)
+    setDuplicateInfo(null)
   }
 
   const handleEditCandidate = (candidate: any) => {
@@ -1384,32 +1431,19 @@ export default function JobDetail() {
                             </div>
                           ) : pipelineSectionTab === 'application' ? (
                             <div className="w-full p-layout-md">
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                <Card>
-                                  <CardHeader className="pb-2">
-                                    <div className="text-sm text-text-secondary">Active Candidates</div>
-                                    <div className="text-3xl font-semibold text-text-primary">{activeCount}</div>
-                                  </CardHeader>
-                                </Card>
-                                <Card>
-                                  <CardHeader className="pb-2">
-                                    <div className="text-sm text-text-secondary">Offers</div>
-                                    <div className="text-3xl font-semibold text-text-primary">{offerCount}</div>
-                                  </CardHeader>
-                                </Card>
-                                <Card>
-                                  <CardHeader className="pb-2">
-                                    <div className="text-sm text-text-secondary">Hired</div>
-                                    <div className="text-3xl font-semibold text-text-primary">{hiredCount}</div>
-                                  </CardHeader>
-                                </Card>
-                                <Card>
-                                  <CardHeader className="pb-2">
-                                    <div className="text-sm text-text-secondary">Rejected</div>
-                                    <div className="text-3xl font-semibold text-text-primary">{rejectedCount}</div>
-                                  </CardHeader>
-                                </Card>
-                              </div>
+                              <CandidateTable
+                                candidates={applicationReviewCandidates}
+                                isLoading={pipelineLoading || candidatesLoading}
+                                onEdit={handleEditCandidate}
+                                onDelete={handleDeleteCandidate}
+                                markCandidateAsViewed={markCandidateAsViewed}
+                                isCandidateNewForUser={isCandidateNewForUser}
+                                onRowClick={(candidateId) => openProfileInPlace(candidateId, 'application', applicationReviewCandidates)}
+                                selectionMode={selectionMode}
+                                onSelectionModeChange={setSelectionMode}
+                                selectedIds={selectedCandidateIds}
+                                onSelectedIdsChange={setSelectedCandidateIds}
+                              />
                             </div>
                           ) : pipelineSectionTab === 'offers' ? (
                             <div className="w-full p-layout-md">
@@ -1589,6 +1623,16 @@ export default function JobDetail() {
             setSelectedCandidateIds([])
             setSelectionMode(false)
           }}
+        />
+
+        {/* Candidate Merge Dialog */}
+        <CandidateMergeDialog
+          isOpen={showMergeDialog}
+          onConfirm={handleMergeConfirm}
+          onCancel={handleMergeCancel}
+          existingCandidate={duplicateInfo?.existing}
+          newCandidate={duplicateInfo?.incoming}
+          mergedCandidate={duplicateInfo?.merged}
         />
       </div>
     </div>
