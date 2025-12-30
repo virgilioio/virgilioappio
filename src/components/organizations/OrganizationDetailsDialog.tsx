@@ -122,7 +122,7 @@ export function OrganizationDetailsDialog({
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle className="text-xl">
-                Organization Details: {organization.name}
+                Department Details: {organization.name}
               </DialogTitle>
             </div>
           </DialogHeader>
@@ -139,7 +139,7 @@ export function OrganizationDetailsDialog({
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Users className="h-4 w-4" />
-                    Organization Members
+                    Department Members
                     <Badge variant="outline" className="ml-auto">
                       {organizationMembers.length}
                     </Badge>
@@ -217,7 +217,7 @@ export function OrganizationDetailsDialog({
                     <div className="text-center py-6">
                       <Users className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
                       <p className="text-muted-foreground text-sm">
-                        No members found for this organization
+                        No members found for this department
                       </p>
                     </div>
                   )}

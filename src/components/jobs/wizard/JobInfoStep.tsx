@@ -102,11 +102,11 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
           </Select>
         </div>
 
-        {/* Department / Organization - Only show for users who can select org */}
+        {/* Department - Only show for users who can select org */}
         {canSelectOrganization && (
           <div className="space-y-2">
             <Label htmlFor="organization">
-              Department / Organization <span className="text-red-500">*</span>
+              Department <span className="text-red-500">*</span>
             </Label>
             <SearchableSelect
               options={organizationOptions}
@@ -120,7 +120,7 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
               createNewLabel="Create Department"
             />
             <p className="text-xs text-muted-foreground">
-              Select which department or client this job belongs to
+              Select which department this job belongs to
             </p>
           </div>
         )}
