@@ -137,6 +137,26 @@ Deno.serve(async (req) => {
       console.error('Failed to log invitation acceptance audit:', auditError);
     }
 
+    // P0 FIX: Auto-confirm the user's email since they accepted via a valid invitation
+    // This prevents the "Email not confirmed" blocking issue
+    try {
+      const { error: confirmError } = await supabaseAdmin.auth.admin.updateUserById(
+        newUserId,
+        {
+          email_confirm: true  // This marks the email as confirmed
+        }
+      );
+      
+      if (confirmError) {
+        console.error('Error confirming user email:', confirmError);
+        // Don't fail - user can still verify via email if needed
+      } else {
+        console.log('User email auto-confirmed for invited user');
+      }
+    } catch (confirmError) {
+      console.error('Failed to auto-confirm email:', confirmError);
+    }
+
     // Inject metadata using admin client with better error handling
     try {
       const { data: updateResult, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
