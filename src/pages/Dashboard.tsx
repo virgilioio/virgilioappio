@@ -1,48 +1,21 @@
-
-import { useState, useEffect } from 'react'
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
 import { MyInterviews } from '@/components/dashboard/MyInterviews'
 import { JobsOverview } from '@/components/dashboard/JobsOverview'
 import { TrialCountdownBanner } from '@/components/dashboard/TrialCountdownBanner'
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist'
+import { RecentSourcingProjects } from '@/components/dashboard/RecentSourcingProjects'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
 import { Section } from '@/components/layout/Section'
 import { useOrgContext } from '@/contexts/OrgContext'
 import { WorkspaceProvisioningLoader } from '@/components/onboarding/WorkspaceProvisioningLoader'
+import { useSourcingProjects } from '@/hooks/useSourcingProjects'
 
 export default function Dashboard() {
   const { profile, isLoading } = useUserProfile()
   const permissions = usePermissions()
   const { isLoading: orgLoading, hasOrganizationContext } = useOrgContext()
-  const [showWelcome, setShowWelcome] = useState(false)
-  
-  // Handle post-onboarding welcome flow
-  useEffect(() => {
-    const welcomePhase = sessionStorage.getItem('virgilio_show_welcome')
-    
-    if (welcomePhase === 'phase1') {
-      // Update to phase2 before refresh (sessionStorage survives reload)
-      sessionStorage.setItem('virgilio_show_welcome', 'phase2')
-      
-      // Trigger refresh to ensure all components initialize properly
-      window.location.reload()
-    } else if (welcomePhase === 'phase2') {
-      // After refresh, show welcome message
-      setShowWelcome(true)
-      
-      // Clear flag and hide welcome after 2.5 seconds
-      setTimeout(() => {
-        sessionStorage.removeItem('virgilio_show_welcome')
-        setShowWelcome(false)
-      }, 2500)
-    }
-  }, [])
-  
-  // Show welcome loader after onboarding
-  if (showWelcome) {
-    return <WorkspaceProvisioningLoader status="welcome" />
-  }
+  const { data: sourcingProjects } = useSourcingProjects()
   
   // Fallback loader if context isn't ready
   if (orgLoading || !hasOrganizationContext) {
@@ -54,6 +27,12 @@ export default function Dashboard() {
   const hasJobContent = permissions.canViewJobs || permissions.canCreateJobs
   const hasQuickAccess = permissions.canCreateJobs || permissions.canManageMembers
   const canManageOrganization = (permissions.canManageOrganization || permissions.isWorkspaceOwner || permissions.isPlatformAdmin)
+  
+  // Compute deemphasis state for checklist
+  const hasSeenValue = (sourcingProjects?.length ?? 0) > 0
+  
+  // Show sourcing panel for Admin/Recruiter roles
+  const showSourcingPanel = permissions.isAdmin || permissions.isRecruiter || permissions.isPlatformAdmin || permissions.isWorkspaceOwner
   
   return (
     <div>
@@ -68,7 +47,8 @@ export default function Dashboard() {
           <div className="grid gap-6 lg:grid-cols-2">
             {/* Left Column */}
             <div className="space-y-6">
-              <OnboardingChecklist />
+              <OnboardingChecklist isDeemphasized={!hasSeenValue} />
+              {showSourcingPanel && <RecentSourcingProjects />}
               {hasJobContent && <JobsOverview permissions={permissions} />}
             </div>
             
@@ -82,4 +62,3 @@ export default function Dashboard() {
     </div>
   )
 }
-
