@@ -81,14 +81,24 @@ export function MembersTable({
     return member.user_email || member.invited_email || 'No email available'
   }
 
-  const copyInviteLink = async (memberId: string) => {
+  const copyInviteLink = async (member: Member) => {
     if (!window.location) return
     
-    setCopyingInvite(memberId)
+    // Validate that the member has a valid invite token
+    if (!member.invite_token) {
+      toast({
+        title: 'Error',
+        description: 'No invitation token found. Please resend the invitation first.',
+        variant: 'destructive'
+      })
+      return
+    }
+    
+    setCopyingInvite(member.id)
     try {
-      // Generate invite URL using current domain
+      // Generate invite URL using the INVITE TOKEN (not member ID)
       const baseUrl = window.location.origin
-      const inviteUrl = `${baseUrl}/accept-invite/${memberId}`
+      const inviteUrl = `${baseUrl}/accept-invite/${member.invite_token}`
       
       await navigator.clipboard.writeText(inviteUrl)
       toast({
@@ -257,7 +267,7 @@ export function MembersTable({
                                 Resend Invitation
                               </DropdownMenuItem>
                               <DropdownMenuItem 
-                                onClick={() => copyInviteLink(member.id)}
+                                onClick={() => copyInviteLink(member)}
                                 disabled={copyingInvite === member.id}
                                 className="gap-2"
                               >
