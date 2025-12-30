@@ -45,7 +45,12 @@ export default function AddToJobPipelineDialog({ candidateId }: AddToJobPipeline
     try {
       await createAssociationAndMove(selectedJobId, candidateId, selectedStageId)
       setOpen(false)
-      toast({ title: 'Success', description: 'Candidate moved to selected pipeline.' })
+      
+      // Open the candidate in the job pipeline context in a new tab
+      const candidateUrl = `/jobs/${selectedJobId}?candidate=${candidateId}`
+      window.open(candidateUrl, '_blank', 'noopener,noreferrer')
+      
+      toast({ title: 'Success', description: 'Candidate moved to pipeline. Opening in new tab...' })
     } catch (e) {
       // errors are toasted in hook
     }
