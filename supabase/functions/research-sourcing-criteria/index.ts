@@ -16,6 +16,7 @@ interface ResearchInput {
   location?: string;
   skills?: string[];
   company_hint?: string;
+  user_companies?: string[];  // User-mentioned companies (hard constraint)
   department?: string;
 }
 
@@ -46,6 +47,10 @@ serve(async (req) => {
       );
     }
 
+    // Check if user already specified companies - if so, don't suggest more
+    const userSpecifiedCompanies = (input.user_companies && input.user_companies.length > 0) || 
+                                    (input.company_hint && input.company_hint.length > 0);
+
     // Build context for the AI
     const contextParts: string[] = [];
     contextParts.push(`Job Title: ${input.job_title}`);
@@ -59,46 +64,48 @@ serve(async (req) => {
     if (input.skills && input.skills.length > 0) {
       contextParts.push(`Required Skills: ${input.skills.join(', ')}`);
     }
-    if (input.company_hint) {
+    if (input.user_companies && input.user_companies.length > 0) {
+      contextParts.push(`User-Specified Target Companies: ${input.user_companies.join(', ')}`);
+    } else if (input.company_hint) {
       contextParts.push(`Company Reference: ${input.company_hint}`);
     }
     if (input.department) {
       contextParts.push(`Department: ${input.department}`);
     }
 
+    // Updated prompt with reduced caps
     const researchPrompt = `You are a recruiting research assistant specializing in talent sourcing. Given a job specification, research and provide enriched search criteria.
 
 Context:
 ${contextParts.join('\n')}
 
-Provide the following research outputs:
+Provide the following research outputs with STRICT LIMITS:
 
-1. **Alternative Titles** (5-8 variations): Common variations of this job title that candidates might use on their profiles. Include both more senior and junior variations, as well as industry-specific variants.
+1. **Alternative Titles** (2-3 max): ONLY the most commonly used direct synonyms for this job title. Do NOT include seniority variations or niche variations. Focus on titles candidates actually use on their profiles.
 
-2. **Target Companies** (10-20 companies): Real companies that would employ this role based on the industry/location context. Focus on:
-   - Companies known for this type of role
-   - Companies in the relevant industry/sector
-   - Companies in or near the specified location (if provided)
-   - Mix of large enterprises and notable startups/scale-ups
+2. **Target Companies** (0-3 max): ${userSpecifiedCompanies ? 
+  'The user has already specified target companies. Return an EMPTY array [] since we should focus on their specified companies.' : 
+  'Suggest 0-3 highly relevant companies ONLY if they are directly known for this specific role type. If unsure, return an empty array. Quality over quantity - fewer is better.'}
 
-3. **Industry Classifications** (3-5 industries): Relevant industry tags that encompass companies hiring for this role.
+3. **Industry Classifications**: Return an EMPTY array []. Industry filtering is handled separately and causes over-filtering.
 
-4. **Search Keywords** (5-10 keywords): Terms that would commonly appear in ideal candidates' profiles, resumes, or LinkedIn headlines. Include:
-   - Technical terms specific to the role
-   - Industry jargon
-   - Common achievements or metrics
-   - Tools and methodologies
+4. **Search Keywords** (3-5 max): High-signal terms that would appear in ideal candidates' profiles. Focus on:
+   - Specific tools, technologies, or methodologies
+   - Key achievements or metrics (e.g., "quota attainment", "revenue growth")
+   - Industry-specific terminology
+   Do NOT include generic terms.
 
-5. **Research Reasoning**: A brief 2-3 sentence explanation of your research logic, explaining why you selected these companies and how the enrichments will improve candidate discovery.
+5. **Research Reasoning**: A brief 1-2 sentence explanation of your research logic.
 
-IMPORTANT GUIDELINES:
-- Provide REAL, currently operating company names (not fictional)
-- Consider the geographic context when suggesting companies
-- Focus on companies actively hiring or known to employ this type of role
-- Keywords should help find passive candidates, not just active job seekers
-- Title variations should include what candidates actually put on their profiles`;
+CRITICAL CONSTRAINTS:
+- FEWER IS BETTER - over-filtering returns zero results
+- Only suggest what you're highly confident about
+- Alternative titles must be what candidates ACTUALLY use, not theoretical variations
+- If user specified companies, return empty array for researched_companies
+- Industries must always be empty array
+- Keywords should be specific and actionable`;
 
-    console.log('🤖 Calling OpenAI for research...');
+    console.log('🤖 Calling OpenAI for research with reduced caps...');
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -109,7 +116,7 @@ IMPORTANT GUIDELINES:
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: 'You are a recruiting research expert. Always respond with valid JSON matching the requested schema.' },
+          { role: 'system', content: 'You are a recruiting research expert. Always respond with valid JSON matching the requested schema. Prioritize precision over recall - fewer, higher-quality suggestions are better than many low-quality ones.' },
           { role: 'user', content: researchPrompt }
         ],
         tools: [
@@ -124,26 +131,30 @@ IMPORTANT GUIDELINES:
                   researched_titles: {
                     type: 'array',
                     items: { type: 'string' },
-                    description: 'Alternative job titles (5-8 variations)'
+                    description: 'Alternative job titles (2-3 max, only most common synonyms)',
+                    maxItems: 3
                   },
                   researched_companies: {
                     type: 'array',
                     items: { type: 'string' },
-                    description: 'Real company names to target (10-20 companies)'
+                    description: 'Target company names (0-3 max, only if user did not specify companies)',
+                    maxItems: 3
                   },
                   researched_industries: {
                     type: 'array',
                     items: { type: 'string' },
-                    description: 'Industry classifications (3-5 industries)'
+                    description: 'Industry classifications - ALWAYS return empty array []',
+                    maxItems: 0
                   },
                   researched_keywords: {
                     type: 'array',
                     items: { type: 'string' },
-                    description: 'Search keywords for profiles (5-10 keywords)'
+                    description: 'Search keywords for profiles (3-5 max, high-signal terms only)',
+                    maxItems: 5
                   },
                   research_reasoning: {
                     type: 'string',
-                    description: 'Brief explanation of research logic (2-3 sentences)'
+                    description: 'Brief explanation of research logic (1-2 sentences)'
                   }
                 },
                 required: ['researched_titles', 'researched_companies', 'researched_industries', 'researched_keywords', 'research_reasoning'],
@@ -153,7 +164,7 @@ IMPORTANT GUIDELINES:
           }
         ],
         tool_choice: { type: 'function', function: { name: 'provide_research_results' } },
-        temperature: 0.7
+        temperature: 0.5  // Lower temperature for more consistent, focused results
       }),
     });
 
@@ -172,13 +183,20 @@ IMPORTANT GUIDELINES:
       throw new Error('Unexpected response format from OpenAI');
     }
 
-    const researchResult: ResearchOutput = JSON.parse(toolCall.function.arguments);
+    let researchResult: ResearchOutput = JSON.parse(toolCall.function.arguments);
 
-    console.log('✅ Research complete:', {
+    // ENFORCE CAPS even if LLM ignores them
+    researchResult.researched_titles = (researchResult.researched_titles || []).slice(0, 3);
+    researchResult.researched_companies = userSpecifiedCompanies ? [] : (researchResult.researched_companies || []).slice(0, 3);
+    researchResult.researched_industries = []; // Always empty
+    researchResult.researched_keywords = (researchResult.researched_keywords || []).slice(0, 5);
+
+    console.log('✅ Research complete (with caps enforced):', {
       titles: researchResult.researched_titles.length,
       companies: researchResult.researched_companies.length,
       industries: researchResult.researched_industries.length,
-      keywords: researchResult.researched_keywords.length
+      keywords: researchResult.researched_keywords.length,
+      userSpecifiedCompanies
     });
 
     return new Response(JSON.stringify(researchResult), {

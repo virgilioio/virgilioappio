@@ -140,8 +140,77 @@ serve(async (req) => {
       console.log(`🏢 Organization: ${targetOrganizationId}`);
     }
 
+    // Budget search criteria to prevent AND-stack overload
+    function budgetSearchCriteria(criteria: any, userCompanies: string[]): any {
+      const result = { ...criteria };
+      
+      // TITLES: max 4
+      if (result.title_keywords?.length > 4) {
+        console.log(`📊 Capping title_keywords from ${result.title_keywords.length} to 4`);
+        result.title_keywords = result.title_keywords.slice(0, 4);
+      }
+      
+      // USER COMPANIES: hard constraint, max 5
+      result.user_company_names = (userCompanies || []).slice(0, 5);
+      
+      // RESEARCHED COMPANIES: soft boosters, only if no user companies, max 3
+      if (result.user_company_names.length > 0) {
+        result.researched_companies = [];
+      } else {
+        result.researched_companies = (result.company_names || []).slice(0, 3);
+      }
+      
+      // KEYWORDS: max 3
+      if (result.keywords?.length > 3) {
+        console.log(`📊 Capping keywords from ${result.keywords.length} to 3`);
+        result.keywords = result.keywords.slice(0, 3);
+      }
+      
+      // SENIORITIES: max 2
+      if (result.seniorities?.length > 2) {
+        console.log(`📊 Capping seniorities from ${result.seniorities.length} to 2`);
+        result.seniorities = result.seniorities.slice(0, 2);
+      }
+      
+      // INDUSTRIES: drop entirely (causes over-filtering)
+      result.industries = [];
+      
+      // DYNAMIC CONSTRAINT BUDGET — prevent AND-stack overload
+      const titleCount = result.title_keywords?.length || 0;
+      const keywordCount = result.keywords?.length || 0;
+      const seniorityCount = result.seniorities?.length || 0;
+      const hasStrictLocation = result.locations?.some((loc: string) => loc.split(',').length >= 2); // city-level
+      
+      const totalCompanies = (result.user_company_names?.length || 0) + (result.researched_companies?.length || 0);
+      
+      // If heavily constrained, cap companies harder
+      if (titleCount >= 3 && keywordCount >= 2 && totalCompanies > 5) {
+        console.log(`📊 Dynamic cap: Heavy constraints detected, limiting companies to 5`);
+        const userCap = Math.min(result.user_company_names.length, 5);
+        const boosterCap = Math.max(0, 5 - userCap);
+        result.user_company_names = result.user_company_names.slice(0, userCap);
+        result.researched_companies = result.researched_companies.slice(0, boosterCap);
+      }
+      
+      if (seniorityCount >= 2 && hasStrictLocation && totalCompanies > 3) {
+        console.log(`📊 Dynamic cap: Very strict search, limiting companies to 3`);
+        const userCap = Math.min(result.user_company_names.length, 3);
+        const boosterCap = Math.max(0, 3 - userCap);
+        result.user_company_names = result.user_company_names.slice(0, userCap);
+        result.researched_companies = result.researched_companies.slice(0, boosterCap);
+      }
+      
+      // Clean up legacy field
+      delete result.company_names;
+      
+      return result;
+    }
+
     // Enrich search_criteria with research metadata from job_spec_data if available
     let enrichedSearchCriteria = { ...search_criteria };
+    
+    // Extract user companies from the request (passed from generate-job-spec)
+    const userCompanies = search_criteria.user_company_names || [];
     
     if (job_spec_data?.research_metadata) {
       const rm = job_spec_data.research_metadata;
@@ -158,14 +227,9 @@ serve(async (req) => {
         ];
       }
       
-      // Add researched companies
+      // Add researched companies (will be budgeted below)
       if (rm.researched_companies && rm.researched_companies.length > 0) {
         enrichedSearchCriteria.company_names = rm.researched_companies;
-      }
-      
-      // Add researched industries
-      if (rm.researched_industries && rm.researched_industries.length > 0) {
-        enrichedSearchCriteria.industries = rm.researched_industries;
       }
       
       // Add researched keywords
@@ -178,14 +242,19 @@ serve(async (req) => {
       
       // Store full research metadata
       enrichedSearchCriteria.research_metadata = rm;
-      
-      console.log('🔍 Enriched search criteria with research metadata:', {
-        title_keywords: enrichedSearchCriteria.title_keywords?.length || 0,
-        company_names: enrichedSearchCriteria.company_names?.length || 0,
-        industries: enrichedSearchCriteria.industries?.length || 0,
-        keywords: enrichedSearchCriteria.keywords?.length || 0
-      });
     }
+    
+    // Apply budget constraints
+    enrichedSearchCriteria = budgetSearchCriteria(enrichedSearchCriteria, userCompanies);
+    
+    console.log('🔍 Budgeted search criteria:', {
+      title_keywords: enrichedSearchCriteria.title_keywords?.length || 0,
+      user_company_names: enrichedSearchCriteria.user_company_names?.length || 0,
+      researched_companies: enrichedSearchCriteria.researched_companies?.length || 0,
+      keywords: enrichedSearchCriteria.keywords?.length || 0,
+      seniorities: enrichedSearchCriteria.seniorities?.length || 0,
+      industries: enrichedSearchCriteria.industries?.length || 0
+    });
 
     // Insert sourcing project
     // RLS policies will automatically enforce:

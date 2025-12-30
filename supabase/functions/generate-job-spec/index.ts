@@ -56,25 +56,74 @@ function extractIndustryHint(prompt: string, jobSpec: any): string | undefined {
   return undefined;
 }
 
-function extractCompanyHint(prompt: string): string | undefined {
-  // Look for patterns like "like Google", "similar to Stripe", "at Figma"
-  const companyPatterns = [
-    /(?:like|similar to|such as|at|from)\s+([A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+)?)/g,
-    /(?:companies? like|competitors? of|work(?:ed)? at)\s+([A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+)?)/g,
+// Extract user-mentioned companies with proper filtering
+function extractUserCompanies(prompt: string): string[] {
+  // Role words that should not be treated as company names
+  const ROLE_STOPLIST = new Set([
+    'manager', 'engineer', 'specialist', 'developer', 'executive', 'director',
+    'coordinator', 'analyst', 'consultant', 'recruiter', 'marketer', 'designer',
+    'founder', 'ceo', 'vp', 'lead', 'senior', 'junior', 'principal', 'head',
+    'remote', 'contract', 'founding', 'part-time', 'full-time', 'freelance', 'intern',
+    'assistant', 'associate', 'representative', 'administrator', 'technician'
+  ]);
+  
+  // Location names that should not be treated as company names
+  const LOCATION_STOPLIST = new Set([
+    'san francisco', 'new york', 'los angeles', 'chicago', 'austin', 'seattle',
+    'boston', 'denver', 'miami', 'atlanta', 'london', 'berlin', 'paris',
+    'toronto', 'vancouver', 'sydney', 'mexico', 'brazil', 'latam', 'emea', 'apac',
+    'united states', 'usa', 'uk', 'canada', 'germany', 'france', 'spain',
+    'singapore', 'hong kong', 'tokyo', 'mumbai', 'bangalore', 'dublin',
+    'amsterdam', 'stockholm', 'zurich', 'barcelona', 'madrid', 'lisbon'
+  ]);
+  
+  // Corporate suffixes to filter out fragments
+  const SUFFIX_STOPLIST = /^(inc|llc|ltd|gmbh|s\.?a\.?|plc|corp|co|ag|bv|nv|pty|lp)$/i;
+  
+  const patterns = [
+    /(?:like|similar to|such as|at|from|ex-|worked at|experience at|alumni of|background from)\s+([A-Z][a-zA-Z0-9&]+(?:\s+[A-Z&][a-zA-Z0-9&]+)*)/gi,
+    /(?:companies? like|competitors? of)\s+([A-Z][a-zA-Z0-9&]+(?:[,]?\s*(?:\s+and\s+|\s+or\s+|,)\s*[A-Z][a-zA-Z0-9&]+)*)/gi
   ];
-
-  for (const pattern of companyPatterns) {
-    const match = pattern.exec(prompt);
-    if (match && match[1]) {
-      // Filter out common words that might be capitalized
-      const excluded = ['The', 'A', 'An', 'For', 'In', 'With', 'To', 'From', 'By', 'And', 'Or'];
-      if (!excluded.includes(match[1])) {
-        return match[1];
+  
+  const candidates = new Set<string>();
+  
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(prompt)) !== null) {
+      const rawMatch = match[1].trim();
+      
+      // SPLIT multi-company lists on comma, " and ", " or " (with spaces to protect "Johnson & Johnson")
+      const companyParts = rawMatch.split(/\s*(?:,|\s+and\s+|\s+or\s+)\s*/i);
+      
+      for (const part of companyParts) {
+        const companyName = part.trim();
+        if (!companyName) continue;
+        
+        const lowerName = companyName.toLowerCase();
+        
+        // Skip if too short or matches suffix stoplist (e.g., "Inc.", "LLC")
+        if (companyName.length <= 2) continue;
+        if (SUFFIX_STOPLIST.test(companyName)) continue;
+        
+        // Reject if matches role stoplist
+        if (ROLE_STOPLIST.has(lowerName)) continue;
+        if ([...ROLE_STOPLIST].some(word => lowerName.includes(word) && lowerName.length < word.length + 5)) continue;
+        
+        // Reject if matches location stoplist
+        if (LOCATION_STOPLIST.has(lowerName)) continue;
+        
+        candidates.add(companyName);
       }
     }
   }
+  
+  return Array.from(candidates).slice(0, 5); // Max 5 user companies
+}
 
-  return undefined;
+// Legacy function for backward compatibility
+function extractCompanyHint(prompt: string): string | undefined {
+  const companies = extractUserCompanies(prompt);
+  return companies.length > 0 ? companies[0] : undefined;
 }
 serve(async (req) => {
   const pre = handlePreflight(req);
