@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet'
 import { Tabs } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -12,6 +13,7 @@ import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeVi
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
+import { CandidateJobSidebar } from '@/components/candidates/CandidateJobSidebar'
 import { Edit, FileText, Download, ChevronLeft, ChevronRight, Mail, Phone, Copy, ExternalLink, Send, Activity, StickyNote, Sparkles, User, Globe, Loader2 } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -55,6 +57,7 @@ export function IndependentCandidateProfileSheet({
 }: IndependentCandidateProfileSheetProps) {
   const { canEditCandidates } = usePermissions()
   const { organizationId, user } = useAuth()
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [candidate, setCandidate] = useState<any | null>(null)
   const [activeTab, setActiveTab] = useState<'overview' | 'resume' | 'comments'>('overview')
@@ -64,6 +67,12 @@ export function IndependentCandidateProfileSheet({
   const [editOpen, setEditOpen] = useState(false)
   const [editLoading, setEditLoading] = useState(false)
   const [emailComposerOpen, setEmailComposerOpen] = useState(false)
+
+  // Handler for job sidebar navigation
+  const handleJobSelect = (jobId: string) => {
+    onOpenChange(false) // Close the sheet
+    navigate(`/jobs/${jobId}?candidate=${candidateId}`)
+  }
 
   const { attachments, uploadAttachment: uploadResume, isUploading: isResumeUploading, deleteAttachment } = useCandidateAttachments(candidateId || '')
 
@@ -237,6 +246,19 @@ export function IndependentCandidateProfileSheet({
               ) : !candidate ? (
                 <div className="text-text-secondary text-sm">No data available.</div>
               ) : (
+                <div className="flex gap-6">
+                  {/* Job Associations Sidebar */}
+                  {candidateId && (
+                    <CandidateJobSidebar
+                      candidateId={candidateId}
+                      currentJobId=""
+                      onJobSelect={handleJobSelect}
+                      className="hidden lg:block"
+                    />
+                  )}
+                  
+                  {/* Main Content */}
+                  <div className="flex-1 min-w-0">
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'overview' | 'resume' | 'comments')}>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Left column (50%) */}
@@ -718,8 +740,9 @@ export function IndependentCandidateProfileSheet({
                     </div>
                   </div>
                 </Tabs>
+                  </div>
+                </div>
               )}
-              
               <CandidateFormSheet
                 isOpen={editOpen}
                 onClose={() => setEditOpen(false)}

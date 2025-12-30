@@ -225,8 +225,18 @@ export async function mergeCandidate(existingCandidateId: string, candidateData:
 
   const mergedData = smartMerge(existingCandidate, candidateData)
   
-  // Remove fields that shouldn't be updated
-  const { id, created_at, created_by, ...updateFields } = mergedData
+  // Remove fields that shouldn't be updated or don't exist in candidates table
+  const { 
+    id, 
+    created_at, 
+    created_by, 
+    // Form-only fields that don't exist in candidates table
+    assignedJobId,
+    assignedStageId,
+    job_id,
+    notes,
+    ...updateFields 
+  } = mergedData
 
   const { data: updatedCandidate, error: updateError } = await withAuthRetry(async () =>
     await supabase

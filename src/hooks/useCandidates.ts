@@ -72,12 +72,13 @@ export interface CreateCandidateData {
   job_id?: string | null
 }
 
-// Duplicate result interface for backward compatibility with UI
+// Duplicate result interface for UI handling
 export interface DuplicateResult {
   isDuplicate: true
-  existingCandidate: Candidate
+  existingCandidate: any
   incomingData: CreateCandidateData
   mergedData: any
+  jobId?: string
 }
 
 export function useCandidates(jobId: string) {
@@ -274,62 +275,22 @@ export function useCandidates(jobId: string) {
       const duplicateCheck = await checkForDuplicateCandidate(candidateData, jobData.organization_id)
       
       if (duplicateCheck) {
-        // Candidate exists - perform smart merge using shared helper
-        await mergeCandidate(duplicateCheck.existingCandidate.id, candidateData)
-        
-        // Create the job association
-        await createJobAssociation(
-          jobId,
-          duplicateCheck.existingCandidate.id,
-          candidateData.notes,
-          candidateData.assignedStageId,
-          'active',
-          user.id
-        )
-
-        toast({
-          title: 'Success',
-          description: 'Candidate merged and added to job',
-        })
-
-        await getCandidates()
-        
-        // Recompute onboarding progress
-        try {
-          const { data: { user: authUser } } = await supabase.auth.getUser();
-          if (authUser?.id) {
-            const { data: member } = await supabase
-              .from('members')
-              .select('tenant_id')
-              .eq('user_id', authUser.id)
-              .eq('user_status', 'active')
-              .single();
-
-            if (member?.tenant_id) {
-              await supabase.rpc('check_onboarding_task_completion', {
-                p_user_id: authUser.id,
-                p_tenant_id: member.tenant_id
-              });
-              queryClient.invalidateQueries({ 
-                queryKey: ['onboarding-progress', authUser.id, member.tenant_id] 
-              });
-            }
-          }
-        } catch (error) {
-          console.error('Failed to update onboarding progress:', error);
-        }
-        
+        // Return duplicate info for UI to handle - don't merge automatically
         return {
-          id: duplicateCheck.existingCandidate.id,
-          wasMerged: true,
-          existingData: duplicateCheck.existingCandidate,
-          mergedData: duplicateCheck.mergedData
-        }
+          isDuplicate: true,
+          existingCandidate: duplicateCheck.existingCandidate,
+          incomingData: candidateData,
+          mergedData: duplicateCheck.mergedData,
+          jobId: jobId
+        } as DuplicateResult
       }
 
       // No duplicate - create new candidate using shared helper
+      // Strip form-only fields that don't exist in candidates table
+      const { assignedJobId, assignedStageId, job_id, notes, ...cleanCandidateData } = candidateData as any
+
       const newCandidate = await createCandidate({
-        ...candidateData,
+        ...cleanCandidateData,
         candidate_name: candidateData.candidate_name,
         organization_id: jobData.organization_id,
         created_by: user.id,
@@ -388,6 +349,82 @@ export function useCandidates(jobId: string) {
     } catch (err) {
       const errorMessage = extractErrorMessage(err)
       log.error('Candidate creation error:', err)
+      setError(errorMessage)
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  /**
+   * Confirm and process a duplicate candidate merge after user approval
+   */
+  const confirmMergeCandidate = async (
+    existingCandidateId: string,
+    candidateData: CreateCandidateData,
+    stageId?: string | null
+  ): Promise<any> => {
+    if (!user || !jobId) throw new Error('User not authenticated or job ID missing')
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      // Strip form-only fields before merge
+      const { assignedJobId, assignedStageId, job_id, notes, ...cleanData } = candidateData as any
+      
+      await mergeCandidate(existingCandidateId, cleanData)
+      
+      await createJobAssociation(
+        jobId,
+        existingCandidateId,
+        candidateData.notes,
+        stageId,
+        'active',
+        user.id
+      )
+
+      toast({
+        title: 'Success',
+        description: 'Candidate merged and added to job',
+      })
+
+      await getCandidates()
+      
+      // Recompute onboarding progress
+      try {
+        const { data: { user: authUser } } = await supabase.auth.getUser()
+        if (authUser?.id) {
+          const { data: member } = await supabase
+            .from('members')
+            .select('tenant_id')
+            .eq('user_id', authUser.id)
+            .eq('user_status', 'active')
+            .single()
+
+          if (member?.tenant_id) {
+            await supabase.rpc('check_onboarding_task_completion', {
+              p_user_id: authUser.id,
+              p_tenant_id: member.tenant_id
+            })
+            queryClient.invalidateQueries({ 
+              queryKey: ['onboarding-progress', authUser.id, member.tenant_id] 
+            })
+          }
+        }
+      } catch (error) {
+        console.error('Failed to update onboarding progress:', error)
+      }
+
+      return { id: existingCandidateId, wasMerged: true }
+    } catch (err) {
+      const errorMessage = extractErrorMessage(err)
+      log.error('Candidate merge error:', err)
       setError(errorMessage)
       toast({
         title: 'Error',
@@ -531,6 +568,7 @@ export function useCandidates(jobId: string) {
     error,
     getCandidates,
     addCandidate,
+    confirmMergeCandidate,
     updateCandidate,
     deleteCandidate,
     markCandidateAsViewed,
