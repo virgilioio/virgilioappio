@@ -218,29 +218,101 @@ serve(async (req) => {
     console.log('Generating job spec with prompt:', effectivePrompt);
     console.log('First 100 chars of prompt:', effectivePrompt.substring(0, 100));
     
-    // Simple language detection based on common words
+    // Robust language detection using exclusive discriminators (not overlapping words)
     function detectPromptLanguage(text: string): string {
       const lowerText = text.toLowerCase();
       
-      // Spanish indicators
-      const spanishWords = ['necesito', 'busco', 'quiero', 'estoy', 'para', 'con', 'que', 'una', 'uno'];
-      // Portuguese indicators  
-      const portugueseWords = ['preciso', 'procuro', 'estou', 'para', 'com', 'que', 'uma', 'um'];
-      // French indicators
-      const frenchWords = ['besoin', 'cherche', 'veux', 'pour', 'avec', 'que', 'une', 'un'];
-      // English indicators
-      const englishWords = ['need', 'looking', 'want', 'for', 'with', 'that', 'who', 'help'];
+      // STEP 1: Character-based detection (most reliable)
+      // Portuguese-only characters/patterns
+      if (/[ãõ]|ção|ções|ões|ão\b/.test(text)) {
+        console.log('Language detected via Portuguese characters: ã/õ/ção/ões/ão');
+        return 'Portuguese';
+      }
+      // Spanish-only character
+      if (/ñ/.test(text)) {
+        console.log('Language detected via Spanish character: ñ');
+        return 'Spanish';
+      }
+      // Portuguese digraphs (lh, nh are Portuguese-specific, ll is Spanish)
+      if (/\b\w*[ln]h\w*\b/.test(lowerText)) {
+        console.log('Language detected via Portuguese digraphs: lh/nh');
+        return 'Portuguese';
+      }
+      // Spanish double-l pattern (ll followed by vowel)
+      if (/ll[aeiou]/.test(lowerText)) {
+        console.log('Language detected via Spanish pattern: ll+vowel');
+        return 'Spanish';
+      }
       
-      const spanishCount = spanishWords.filter(word => lowerText.includes(word)).length;
-      const portugueseCount = portugueseWords.filter(word => lowerText.includes(word)).length;
-      const frenchCount = frenchWords.filter(word => lowerText.includes(word)).length;
-      const englishCount = englishWords.filter(word => lowerText.includes(word)).length;
+      // STEP 2: Exclusive word detection (words that exist in one language but not the other)
+      // Spanish-ONLY words (do NOT exist in Portuguese)
+      const spanishOnlyWords = [
+        'necesito', 'busco', 'quiero', 'tengo', 'puedo', 'donde', 'cuando', 
+        'aunque', 'pero', 'sin', 'hacia', 'hasta', 'muy', 'también', 'ahora',
+        'siempre', 'nunca', 'trabajo', 'empresa', 'equipo', 'años', 'experiencia',
+        'desarrollador', 'ingeniero', 'gerente', 'ventas', 'cliente', 'somos',
+        'buscamos', 'queremos', 'nuestro', 'nuestra'
+      ];
+      
+      // Portuguese-ONLY words (do NOT exist in Spanish)
+      const portugueseOnlyWords = [
+        'preciso', 'procuro', 'tenho', 'posso', 'onde', 'quando',
+        'embora', 'mas', 'sem', 'até', 'muito', 'também', 'agora',
+        'sempre', 'nunca', 'trabalho', 'empresa', 'equipe', 'você', 'não', 'sim',
+        'desenvolvedor', 'engenheiro', 'gerente', 'vendas', 'cliente', 'somos',
+        'procuramos', 'queremos', 'nosso', 'nossa', 'anos', 'experiência'
+      ];
+      
+      // French-ONLY words
+      const frenchOnlyWords = [
+        'besoin', 'cherche', 'veux', 'nous', 'vous', 'avec', 'dans', 'sont',
+        'être', 'avoir', 'faire', 'pour', 'cette', 'cette', 'développeur',
+        'ingénieur', 'responsable', 'équipe', 'années', 'expérience'
+      ];
+      
+      // English indicators
+      const englishWords = [
+        'need', 'looking', 'want', 'with', 'that', 'who', 'help', 'the', 'and',
+        'for', 'are', 'have', 'this', 'will', 'your', 'from', 'they', 'been',
+        'experience', 'years', 'team', 'company', 'developer', 'engineer', 'manager'
+      ];
+      
+      // Count matches using word boundaries to avoid partial matches
+      const countMatches = (words: string[]) => 
+        words.filter(word => new RegExp(`\\b${word}\\b`, 'i').test(lowerText)).length;
+      
+      const spanishCount = countMatches(spanishOnlyWords);
+      const portugueseCount = countMatches(portugueseOnlyWords);
+      const frenchCount = countMatches(frenchOnlyWords);
+      const englishCount = countMatches(englishWords);
+      
+      console.log(`Language detection scores - ES: ${spanishCount}, PT: ${portugueseCount}, FR: ${frenchCount}, EN: ${englishCount}`);
       
       const maxCount = Math.max(spanishCount, portugueseCount, frenchCount, englishCount);
       
-      if (spanishCount === maxCount && spanishCount > 0) return 'Spanish';
-      if (portugueseCount === maxCount && portugueseCount > 0) return 'Portuguese';
-      if (frenchCount === maxCount && frenchCount > 0) return 'French';
+      if (maxCount === 0) return 'English'; // Default if no matches
+      
+      // Require at least 2 matches for non-English to avoid false positives
+      if (spanishCount === maxCount && spanishCount >= 2) {
+        console.log('Language detected: Spanish (exclusive word match)');
+        return 'Spanish';
+      }
+      if (portugueseCount === maxCount && portugueseCount >= 2) {
+        console.log('Language detected: Portuguese (exclusive word match)');
+        return 'Portuguese';
+      }
+      if (frenchCount === maxCount && frenchCount >= 2) {
+        console.log('Language detected: French (exclusive word match)');
+        return 'French';
+      }
+      if (englishCount === maxCount && englishCount >= 1) {
+        return 'English';
+      }
+      
+      // Fallback: if only 1 match in Spanish/Portuguese, still use it (better than wrong default)
+      if (spanishCount === 1 && portugueseCount === 0) return 'Spanish';
+      if (portugueseCount === 1 && spanishCount === 0) return 'Portuguese';
+      
       return 'English'; // Default
     }
     
@@ -519,7 +591,8 @@ Return ONLY valid JSON in this format:
             location: jobSpec.location,
             skills: jobSpec.skills,
             company_hint: companyHint,
-            department: jobSpec.department
+            department: jobSpec.department,
+            detected_language: detectedLanguage  // Pass language for consistent outputs
           }
         }
       );
