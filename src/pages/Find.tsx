@@ -1,20 +1,71 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import { AIJobAssistant } from '@/components/dashboard/AIJobAssistant'
 import { SourcingSidebar } from '@/components/sourcing/SourcingSidebar'
 import { SourcingProjectView } from '@/components/sourcing/SourcingProjectView'
 import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
+import { useSourcingProjects } from '@/hooks/useSourcingProjects'
 import { RoleGate } from '@/components/auth/RoleGate'
 import { GioThinkingHeader } from '@/components/sourcing/GioThinkingHeader'
+import { FirstRunOrientationDialog } from '@/components/onboarding/FirstRunOrientationDialog'
 import gioAvatar from '@/assets/gio-avatar.png'
 
 export default function Find() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [mode, setMode] = useState<'new' | 'project'>('new')
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [showFirstRunDialog, setShowFirstRunDialog] = useState(false)
+  
+  // Fetch sourcing projects to determine first-run state
+  const { data: sourcingProjects, isLoading: isLoadingProjects } = useSourcingProjects()
   
   // Initialize credit warnings
   useSourcingCreditWarnings()
+
+  // Handle query param for project selection (Phase 2 support)
+  useEffect(() => {
+    const projectParam = searchParams.get('project')
+    if (projectParam && sourcingProjects) {
+      const projectExists = sourcingProjects.some(p => p.id === projectParam)
+      if (projectExists) {
+        setSelectedProjectId(projectParam)
+        setMode('project')
+        // Clean URL after setting state
+        setSearchParams({}, { replace: true })
+      }
+    }
+  }, [searchParams, sourcingProjects, setSearchParams])
+
+  // Determine first-run state and handle dialog (with loading guard)
+  useEffect(() => {
+    if (isLoadingProjects) return // Wait for loading to complete
+    
+    const firstRunFlag = sessionStorage.getItem('virgilio_first_run')
+    
+    // Guard: If user already has projects, clear the flag and don't show dialog
+    if (sourcingProjects && sourcingProjects.length > 0) {
+      if (firstRunFlag) {
+        sessionStorage.removeItem('virgilio_first_run')
+      }
+      return
+    }
+    
+    // Show dialog if first-run flag is set and no projects exist
+    if (firstRunFlag === 'true') {
+      setShowFirstRunDialog(true)
+    }
+  }, [isLoadingProjects, sourcingProjects])
+
+  const handleFirstRunComplete = () => {
+    setShowFirstRunDialog(false)
+  }
+
+  // Compute first-run state for sidebar collapse
+  const isFirstRunTenantFlow = !isLoadingProjects && 
+    sessionStorage.getItem('virgilio_first_run') === 'true' && 
+    (!sourcingProjects || sourcingProjects.length === 0)
 
   return (
     <RoleGate
@@ -22,7 +73,12 @@ export default function Find() {
       redirectTo="/dashboard"
       accessDeniedMessage="The Find feature is only available to recruiters and administrators."
     >
-      <SidebarProvider defaultOpen={true}>
+      <FirstRunOrientationDialog 
+        open={showFirstRunDialog} 
+        onComplete={handleFirstRunComplete} 
+      />
+      
+      <SidebarProvider defaultOpen={!isFirstRunTenantFlow}>
         <div className="min-h-screen flex w-full overflow-hidden">
           <SourcingSidebar 
             selectedProjectId={selectedProjectId}

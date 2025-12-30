@@ -8,7 +8,11 @@ import { Progress } from '@/components/ui/progress';
 import { useOnboardingProgress } from '@/hooks/useOnboardingProgress';
 import { cn } from '@/lib/utils';
 
-export function OnboardingChecklist() {
+interface OnboardingChecklistProps {
+  isDeemphasized?: boolean;
+}
+
+export function OnboardingChecklist({ isDeemphasized = false }: OnboardingChecklistProps) {
   const navigate = useNavigate();
   const {
     tasks,
@@ -33,7 +37,10 @@ export function OnboardingChecklist() {
   const progressPercent = (completedCount / totalCount) * 100;
   
   return (
-    <Card className="border-virgilio-purple/20 bg-gradient-to-br from-virgilio-purple/5 to-surface-primary h-fit">
+    <Card className={cn(
+      "border-virgilio-purple/20 bg-gradient-to-br from-virgilio-purple/5 to-surface-primary h-fit transition-opacity",
+      isDeemphasized && "opacity-60"
+    )}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">

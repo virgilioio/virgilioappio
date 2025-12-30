@@ -151,11 +151,11 @@ export default function Onboarding() {
         // Non-fatal - continue
       }
       
-      // Set session flag to trigger welcome flow in Dashboard
-      sessionStorage.setItem('virgilio_show_welcome', 'phase1')
+      // Set session flag to trigger first-run orientation in Find
+      sessionStorage.setItem('virgilio_first_run', 'true')
       
-      // Navigate to dashboard (loader stays visible)
-      navigate('/dashboard', { replace: true })
+      // Navigate to Find page (the new first-run destination)
+      navigate('/find', { replace: true })
       
     } catch (err: any) {
       console.error('[Onboarding] Onboarding failed', err)

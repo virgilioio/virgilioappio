@@ -156,7 +156,8 @@ export function useOnboardingProgress() {
   const shouldShowFullOnboarding = 
     userType === 'platform_admin' || 
     userType === 'workspace_owner' || 
-    role === 'admin';
+    role === 'admin' ||
+    role === 'recruiter';
   
   const tasks = shouldShowFullOnboarding 
     ? allTasks 
