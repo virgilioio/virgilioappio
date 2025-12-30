@@ -73,8 +73,11 @@ export interface SearchCriteria {
   keywords?: string[]  // General keyword search (q_keywords) - joined with spaces for Apollo
   company_sizes?: string[]  // '1-10', '11-50', '51-200', '201-500', '501-1000', '1001-5000', '5001-10000', '10001+'
   company_domains?: string[]  // Target company domains for filtering
-  company_names?: string[]  // Target company names for filtering (q_organization_name)
-  industries?: string[]  // Industry/sector filter (organization_industry_tag_ids)
+  // Separated company fields for constraint budgeting
+  user_company_names?: string[]  // User-mentioned companies (hard constraint, max 5)
+  researched_companies?: string[]  // AI-suggested companies (soft boosters, max 3)
+  company_names?: string[]  // Legacy: Target company names for filtering (q_organization_name)
+  industries?: string[]  // Industry/sector filter - DEPRECATED, always empty
   // Research metadata - populated by AI research
   research_metadata?: {
     researched_titles?: string[]
@@ -84,6 +87,23 @@ export interface SearchCriteria {
     research_reasoning?: string
     research_timestamp?: string
   }
+}
+
+// Search metadata for progressive relaxation feedback
+export interface SearchMetadata {
+  search_expanded: boolean
+  expanded_steps: Array<
+    | 'dropped_booster_companies'
+    | 'dropped_keywords'
+    | 'dropped_seniorities'
+    | 'broadened_location'
+  >
+  result_pool_size: number    // Apollo total_count from winning search
+  returned_count: number      // Actual candidates returned after merge/dedupe
+  overflow_warning: boolean   // True if result_pool_size > 500
+  title_match_rate?: number   // Percentage of candidates with matching titles
+  fallback_trigger_reason?: 'zero_results' | 'low_quality' | null
+  has_user_companies?: boolean  // For context-aware UI copy
 }
 
 export type EnabledSource = 'internal' | 'apollo' | 'linkedin' | 'seekout'
