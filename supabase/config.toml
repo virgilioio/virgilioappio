@@ -146,3 +146,6 @@ verify_jwt = true
 
 [functions.research-sourcing-criteria]
 verify_jwt = true
+
+[functions.request-new-invitation]
+verify_jwt = false

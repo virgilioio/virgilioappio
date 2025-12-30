@@ -24,6 +24,10 @@ export interface Member {
   user_first_name?: string
   user_last_name?: string
   organization_name?: string
+  // Email delivery tracking (P1)
+  invitation_email_sent_at?: string | null
+  invitation_email_status?: string | null
+  invitation_email_error?: string | null
 }
 
 export interface CreateMemberData {

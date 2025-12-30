@@ -35,6 +35,9 @@ export default function AcceptInvite() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  // P2: State for requesting new invitation
+  const [isRequestingNewInvite, setIsRequestingNewInvite] = useState(false)
+  const [requestSent, setRequestSent] = useState(false)
 
   useEffect(() => {
     if (!token) {
@@ -336,19 +339,66 @@ export default function AcceptInvite() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {isExpired && (
+            {isExpired && !requestSent && (
               <Alert className="bg-muted/50 border-border">
                 <AlertDescription className="text-sm text-text-secondary">
                   <strong>What to do:</strong>
                   <ol className="list-decimal ml-4 mt-2 space-y-1">
-                    <li>Contact the person who invited you</li>
-                    <li>Ask them to resend your invitation from Settings → Members</li>
+                    <li>Click the button below to request a new invitation</li>
+                    <li>Your admin will be notified and can resend your invite</li>
                     <li>Check your email for the new invitation link</li>
                   </ol>
                 </AlertDescription>
               </Alert>
             )}
+            {requestSent && (
+              <Alert className="bg-success/10 border-success/20">
+                <CheckCircle2 className="h-4 w-4 text-success" />
+                <AlertDescription className="text-sm text-text-primary ml-2">
+                  <strong>Request sent!</strong> Your administrator has been notified. 
+                  They will send you a new invitation shortly. Please check your email.
+                </AlertDescription>
+              </Alert>
+            )}
             <div className="space-y-2">
+              {isExpired && !requestSent && invitationData?.invite_email && (
+                <Button 
+                  onClick={async () => {
+                    setIsRequestingNewInvite(true)
+                    try {
+                      const { error } = await supabase.functions.invoke('request-new-invitation', {
+                        body: { email: invitationData.invite_email }
+                      })
+                      if (error) throw error
+                      setRequestSent(true)
+                      toast({
+                        title: 'Request Sent',
+                        description: 'Your administrator has been notified. They will send you a new invitation shortly.',
+                      })
+                    } catch (error) {
+                      console.error('Failed to request new invitation:', error)
+                      toast({
+                        title: 'Error',
+                        description: 'Failed to request new invitation. Please contact your administrator directly.',
+                        variant: 'destructive'
+                      })
+                    } finally {
+                      setIsRequestingNewInvite(false)
+                    }
+                  }}
+                  disabled={isRequestingNewInvite}
+                  className="w-full"
+                >
+                  {isRequestingNewInvite ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Requesting...
+                    </>
+                  ) : (
+                    'Request New Invitation'
+                  )}
+                </Button>
+              )}
               <Button 
                 onClick={() => navigate('/auth')} 
                 className="w-full"
@@ -356,9 +406,9 @@ export default function AcceptInvite() {
               >
                 {isExpired ? 'Already have an account? Sign In' : 'Go to Login'}
               </Button>
-              {isExpired && (
+              {isExpired && !requestSent && (
                 <p className="text-xs text-center text-text-secondary">
-                  If you don't have an account yet, wait for a new invitation
+                  Or contact your administrator directly
                 </p>
               )}
             </div>

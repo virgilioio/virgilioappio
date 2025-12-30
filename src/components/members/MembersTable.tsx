@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from '@/hooks/use-toast'
 import { Member } from '@/hooks/useMembers'
-import { MoreVertical, Plus, Send, UserCheck, UserX, Trash2, Copy, Briefcase } from 'lucide-react'
+import { MoreVertical, Plus, Send, UserCheck, UserX, Trash2, Copy, Briefcase, Mail, MailX, Clock } from 'lucide-react'
 
 interface MembersTableProps {
   members: Member[]
@@ -63,6 +63,35 @@ export function MembersTable({
         return 'bg-muted/10 text-muted-foreground'
       default:
         return 'bg-muted/10 text-muted-foreground'
+    }
+  }
+
+  // P1: Get email delivery status icon for invited members
+  const getEmailStatusIndicator = (member: Member) => {
+    if (member.user_status !== 'invited') return null;
+    
+    switch (member.invitation_email_status) {
+      case 'sent':
+      case 'delivered':
+        return (
+          <span title="Email sent successfully" className="ml-1">
+            <Mail className="inline h-3.5 w-3.5 text-success" />
+          </span>
+        );
+      case 'failed':
+      case 'bounced':
+        return (
+          <span title={`Email failed: ${member.invitation_email_error || 'Unknown error'}`} className="ml-1">
+            <MailX className="inline h-3.5 w-3.5 text-destructive" />
+          </span>
+        );
+      case 'pending':
+      default:
+        return (
+          <span title="Email pending" className="ml-1">
+            <Clock className="inline h-3.5 w-3.5 text-warning" />
+          </span>
+        );
     }
   }
 
@@ -222,9 +251,12 @@ export function MembersTable({
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge className={getStatusColor(member.user_status)}>
-                        {member.user_status}
-                      </Badge>
+                      <div className="flex items-center gap-1">
+                        <Badge className={getStatusColor(member.user_status)}>
+                          {member.user_status}
+                        </Badge>
+                        {getEmailStatusIndicator(member)}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <span className="text-sm text-muted-foreground">

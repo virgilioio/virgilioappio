@@ -2229,6 +2229,9 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          invitation_email_error: string | null
+          invitation_email_sent_at: string | null
+          invitation_email_status: string | null
           invite_expires_at: string | null
           invite_token: string | null
           invited_email: string | null
@@ -2243,6 +2246,9 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
+          invitation_email_error?: string | null
+          invitation_email_sent_at?: string | null
+          invitation_email_status?: string | null
           invite_expires_at?: string | null
           invite_token?: string | null
           invited_email?: string | null
@@ -2257,6 +2263,9 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
+          invitation_email_error?: string | null
+          invitation_email_sent_at?: string | null
+          invitation_email_status?: string | null
           invite_expires_at?: string | null
           invite_token?: string | null
           invited_email?: string | null
