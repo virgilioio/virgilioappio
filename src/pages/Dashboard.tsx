@@ -48,6 +48,7 @@ export default function Dashboard() {
           <div className="grid gap-6 lg:grid-cols-2">
             {/* Left Column */}
             <div className="space-y-6">
+              <MyInterviews />
               <MyTasks />
               <OnboardingChecklist isDeemphasized={!hasSeenValue} />
               {showSourcingPanel && <RecentSourcingProjects />}
@@ -56,7 +57,7 @@ export default function Dashboard() {
             
             {/* Right Column */}
             <div>
-              <MyInterviews />
+              {/* Reserved for future content */}
             </div>
           </div>
         </div>
