@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { useTenantDomains } from '@/hooks/useTenantDomains';
+import { TableSkeleton } from '@/components/ui/skeleton';
 import { Plus, Shield, ShieldCheck, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -101,6 +102,9 @@ export function VerifiedDomainsManager({
           <CardTitle>Verified Domains</CardTitle>
           <CardDescription>Loading domains...</CardDescription>
         </CardHeader>
+        <CardContent>
+          <TableSkeleton rows={3} />
+        </CardContent>
       </Card>
     );
   }

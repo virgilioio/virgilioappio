@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton, TableSkeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Plus, Search, FileText, Building, ChevronLeft, ChevronRight, MoreHorizontal, Eye, Edit, Archive } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -161,10 +161,8 @@ export function JobsTable({
             <Skeleton className="h-10 w-32" />
           </div>
         </CardHeader>
-        <CardContent className="space-y-md">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-[52px] bg-surface-secondary rounded-brand animate-pulse" />
-          ))}
+        <CardContent>
+          <TableSkeleton rows={5} />
         </CardContent>
       </Card>
     )

@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -16,7 +18,6 @@ import {
 } from '@/components/ui/select'
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 import { 
-  Loader2, 
   Mail, 
   Phone, 
   Linkedin, 
@@ -27,7 +28,8 @@ import {
   Archive,
   CheckSquare,
   X,
-  ArrowRight
+  ArrowRight,
+  Loader2
 } from 'lucide-react'
 import gioFaceEmpty from '@/assets/gio-face-empty.png'
 import { format } from 'date-fns'
@@ -173,9 +175,25 @@ export function SavedCandidatesTab({ projectId, jobId }: SavedCandidatesTabProps
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
+      <Card className="shadow-calendly m-4">
+        <CardContent className="p-4">
+          <div className="space-y-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
+                <Skeleton className="h-10 w-10 rounded-full flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                  <Skeleton className="h-8 w-8 rounded-md" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     )
   }
 

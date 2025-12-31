@@ -11,6 +11,7 @@ import { format } from 'date-fns'
 import { log } from '@/lib/logger'
 import { Loader2, AlertCircle } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { TableSkeleton } from '@/components/ui/skeleton'
 
 interface AuditLogEntry {
   id: string
@@ -162,9 +163,7 @@ export function AdminAuditLog() {
 
         {/* Loading/Error States */}
         {isLoading && (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
+          <TableSkeleton rows={8} />
         )}
 
         {error && (

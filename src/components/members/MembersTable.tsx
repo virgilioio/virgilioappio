@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton, TableSkeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from '@/hooks/use-toast'
 import { Member } from '@/hooks/useMembers'
@@ -174,20 +174,7 @@ export function MembersTable({
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex items-center space-x-4">
-                <Skeleton className="h-10 w-10 rounded-full" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-[200px]" />
-                  <Skeleton className="h-3 w-[150px]" />
-                </div>
-                <Skeleton className="h-6 w-16" />
-                <Skeleton className="h-6 w-16" />
-                <Skeleton className="h-8 w-8" />
-              </div>
-            ))}
-          </div>
+          <TableSkeleton rows={5} />
         </CardContent>
       </Card>
     )

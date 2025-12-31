@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { TableSkeleton } from '@/components/ui/skeleton';
 import { Edit, Trash2, FileX } from 'lucide-react';
 import { useRejectionEmailTemplates } from '@/hooks/useRejectionEmailTemplates';
 import { RejectionEmailTemplateSheet } from './templates/RejectionEmailTemplateSheet';
@@ -24,7 +25,7 @@ export function RejectionEmailTemplatesManager({ context }: RejectionEmailTempla
   };
 
   if (isLoading) {
-    return <div className="text-center py-8">Loading templates...</div>;
+    return <TableSkeleton rows={3} />;
   }
 
   if (templates.length === 0) {

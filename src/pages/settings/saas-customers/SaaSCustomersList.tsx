@@ -24,6 +24,7 @@ import {
 import { MoreVertical, Search, Users, Briefcase, Activity } from 'lucide-react'
 import { useSaaSCustomers } from '@/hooks/useSaaSCustomers'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { TableSkeleton } from '@/components/ui/skeleton'
 import { format } from 'date-fns'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
@@ -103,7 +104,7 @@ export function SaaSCustomersList() {
         
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8">Loading customers...</div>
+            <TableSkeleton rows={8} />
           ) : (
             <Table>
               <TableHeader>
