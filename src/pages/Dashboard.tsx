@@ -5,6 +5,7 @@ import { TrialCountdownBanner } from '@/components/dashboard/TrialCountdownBanne
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist'
 import { RecentSourcingProjects } from '@/components/dashboard/RecentSourcingProjects'
 import { MyTasks } from '@/components/dashboard/MyTasks'
+import { StaleCandidates } from '@/components/dashboard/StaleCandidates'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
 import { Section } from '@/components/layout/Section'
@@ -57,6 +58,7 @@ export default function Dashboard() {
             <div className="space-y-6">
               <MyInterviews />
               <MyTasks />
+              <StaleCandidates />
             </div>
           </div>
         </div>
