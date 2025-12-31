@@ -46,18 +46,17 @@ export default function Dashboard() {
           
           {/* Layout: Two columns with 1:1 proportions */}
           <div className="grid gap-6 lg:grid-cols-2">
-            {/* Left Column */}
+            {/* Left Column - Jobs & Searches */}
             <div className="space-y-6">
-              <MyInterviews />
-              <MyTasks />
               <OnboardingChecklist isDeemphasized={!hasSeenValue} />
               {showSourcingPanel && <RecentSourcingProjects />}
               {hasJobContent && <JobsOverview permissions={permissions} />}
             </div>
             
-            {/* Right Column */}
-            <div>
-              {/* Reserved for future content */}
+            {/* Right Column - Tasks */}
+            <div className="space-y-6">
+              <MyInterviews />
+              <MyTasks />
             </div>
           </div>
         </div>
