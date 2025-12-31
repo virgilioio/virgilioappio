@@ -4,6 +4,7 @@ import { useSourcingProjects } from '@/hooks/useSourcingProjects'
 import { formatDistanceToNow } from 'date-fns'
 import { Users, ChevronRight, Search } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import gioFacePurple from '@/assets/gio-face-purple.png'
 
 export function RecentSourcingProjects() {
   const { data: projects, isLoading } = useSourcingProjects()
@@ -39,9 +40,13 @@ export function RecentSourcingProjects() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
-            No searches yet. Your sourcing projects will appear here.
-          </p>
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <img src={gioFacePurple} alt="No searches" className="w-16 h-16 mb-4" />
+            <h3 className="text-lg font-poppins font-bold text-virgilio-text tracking-page-title">
+              No searches yet<span className="text-purple-period">.</span>
+            </h3>
+            <p className="text-sm text-virgilio-muted mt-2">Your sourcing projects will appear here</p>
+          </div>
         </CardContent>
       </Card>
     )

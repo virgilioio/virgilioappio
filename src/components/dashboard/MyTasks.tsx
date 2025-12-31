@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePendingScorecards, PendingScorecard } from '@/hooks/usePendingScorecards';
-import { ClipboardList, CheckCircle2, Clock, ChevronRight } from 'lucide-react';
+import { ClipboardList, Clock, ChevronRight } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import gioFaceGreen from '@/assets/gio-face-green.png';
 import { useState } from 'react';
 
 export function MyTasks() {
@@ -65,10 +66,12 @@ export function MyTasks() {
       </CardHeader>
       <CardContent>
         {tasks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-6 text-center">
-            <CheckCircle2 className="h-10 w-10 text-success mb-3" />
-            <p className="text-sm font-medium text-foreground">You're all caught up!</p>
-            <p className="text-xs text-muted-foreground mt-1">No pending scorecards to submit</p>
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <img src={gioFaceGreen} alt="All caught up" className="w-16 h-16 mb-4" />
+            <h3 className="text-lg font-poppins font-bold text-virgilio-text tracking-page-title">
+              You're all caught up<span className="text-purple-period">.</span>
+            </h3>
+            <p className="text-sm text-virgilio-muted mt-2">No pending scorecards to submit</p>
           </div>
         ) : (
           <div className="space-y-2">
