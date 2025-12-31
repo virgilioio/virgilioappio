@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
+import { TableSkeleton } from '@/components/ui/skeleton'
 import { Plus, Edit, Trash2, UserX, UserMinus, Check, X } from 'lucide-react'
 import { useRejectionReasons, type RejectionCategory, type RejectionReason } from '@/hooks/useRejectionReasons'
 
@@ -162,7 +163,11 @@ export function RejectionReasonsManager({ context = 'organization' }: RejectionR
   )
 
   if (isLoading) {
-    return <div className="text-center py-8 text-muted-foreground">Loading rejection reasons...</div>
+    return (
+      <div className="space-y-4">
+        <TableSkeleton rows={3} />
+      </div>
+    )
   }
 
   return (

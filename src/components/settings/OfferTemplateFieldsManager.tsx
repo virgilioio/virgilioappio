@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Plus, Edit, Trash2, MoveUp, MoveDown, List } from 'lucide-react'
+import { TableSkeleton } from '@/components/ui/skeleton'
 import { useOfferTemplateFields, type OfferTemplateField } from '@/hooks/useOfferTemplateFields'
 
 interface OfferTemplateFieldsManagerProps {
@@ -240,7 +241,7 @@ export function OfferTemplateFieldsManager({ templateId }: OfferTemplateFieldsMa
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8">Loading fields...</div>
+            <TableSkeleton rows={3} />
           ) : fields.length === 0 ? (
             <div className="text-center py-8">
               <List className="h-8 w-8 text-muted-foreground mx-auto mb-3" />

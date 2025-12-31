@@ -11,7 +11,7 @@ import { Plus, Edit, Trash2, Building2, Search, ChevronLeft, ChevronRight, MoreH
 import { EmptyState } from '@/components/ui/empty-state'
 import { Organization } from '@/hooks/useOrganizations'
 import { usePermissions } from '@/hooks/usePermissions'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton, TableSkeleton } from '@/components/ui/skeleton'
 import { OrganizationDetailsDialog } from './OrganizationDetailsDialog'
 
 interface OrganizationsTableProps {
@@ -114,17 +114,10 @@ export function OrganizationsTable({
           <div className="flex flex-col sm:flex-row gap-4">
             <Skeleton className="h-10 flex-1" />
             <Skeleton className="h-10 w-32" />
-            <Skeleton className="h-10 w-32" />
-            <Skeleton className="h-10 w-32" />
-            <Skeleton className="h-10 w-32" />
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {[...Array(3)].map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full" />
-            ))}
-          </div>
+          <TableSkeleton rows={5} />
         </CardContent>
       </Card>
     )

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { TableSkeleton } from '@/components/ui/skeleton'
 import { Plus, Edit, Trash2 } from 'lucide-react'
 import type { ApplicationFieldWithRelations } from '@/hooks/useApplicationFields'
 
@@ -39,7 +40,7 @@ export function PlatformApplicationFieldsManager() {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="text-center py-4">Loading fields...</div>
+          <TableSkeleton rows={3} />
         ) : fields.length === 0 ? (
           <div className="text-center py-8 text-text-secondary">
             No platform default fields created yet.
