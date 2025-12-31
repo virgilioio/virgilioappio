@@ -81,8 +81,8 @@ export function OnboardingChecklist({ isDeemphasized = false }: OnboardingCheckl
             <div
               key={task.id}
               className={cn(
-                "flex items-center gap-2 p-2 rounded-md border border-virgilio-border transition-all cursor-pointer",
-                "hover:border-virgilio-purple/40 hover:bg-virgilio-purple/5",
+                "flex items-center gap-2 p-2 rounded-md border border-border bg-card transition-all cursor-pointer",
+                "hover:bg-accent hover:border-accent-foreground/20",
                 task.completed && "opacity-50"
               )}
               onClick={() => {
@@ -95,8 +95,8 @@ export function OnboardingChecklist({ isDeemphasized = false }: OnboardingCheckl
               <div className={cn(
                 "flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium",
                 task.completed 
-                  ? "bg-virgilio-purple text-white" 
-                  : "bg-surface-secondary text-text-secondary"
+                  ? "bg-primary text-primary-foreground" 
+                  : "bg-muted text-muted-foreground"
               )}>
                 {task.completed ? (
                   <Check className="h-3 w-3" />
@@ -107,11 +107,11 @@ export function OnboardingChecklist({ isDeemphasized = false }: OnboardingCheckl
               
               {/* Task Info */}
               <div className="flex-1 min-w-0">
-                <h4 className="font-medium text-xs text-virgilio-text leading-tight">{task.title}</h4>
+                <span className="font-medium text-xs text-foreground leading-tight block">{task.title}</span>
               </div>
               
               {/* Arrow */}
-              <ChevronRight className="h-3 w-3 text-text-secondary flex-shrink-0" />
+              <ChevronRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
             </div>
           ))}
         </div>
