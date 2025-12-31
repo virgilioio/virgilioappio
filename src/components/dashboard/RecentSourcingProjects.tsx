@@ -21,9 +21,16 @@ export function RecentSourcingProjects() {
             Recent Searches
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
-          <Skeleton className="h-14 w-full" />
-          <Skeleton className="h-14 w-full" />
+        <CardContent className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center gap-3">
+              <Skeleton className="h-10 w-10 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            </div>
+          ))}
         </CardContent>
       </Card>
     )
@@ -72,12 +79,12 @@ export function RecentSourcingProjects() {
             <Link
               key={project.id}
               to={`/find?project=${project.id}`}
-              className="flex items-center gap-3 p-3 rounded-lg border border-virgilio-border hover:border-virgilio-purple/40 hover:bg-virgilio-purple/5 transition-colors group"
+              className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:bg-accent hover:border-accent-foreground/20 transition-all group"
             >
               <div className="flex-1 min-w-0">
-                <h4 className="font-medium text-sm text-virgilio-text truncate">
+                <span className="font-medium text-sm text-foreground truncate block">
                   {title}
-                </h4>
+                </span>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
                   <span className="flex items-center gap-1">
                     <Users className="h-3 w-3" />
@@ -91,7 +98,7 @@ export function RecentSourcingProjects() {
                   )}
                 </div>
               </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-virgilio-purple transition-colors flex-shrink-0" />
+              <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0 group-hover:translate-x-0.5 transition-transform" />
             </Link>
           )
         })}

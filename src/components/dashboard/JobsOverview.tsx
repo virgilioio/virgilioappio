@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Briefcase, ExternalLink, MapPin, Building } from 'lucide-react'
+import { Briefcase, ExternalLink, MapPin, Building, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useJobs } from '@/hooks/useJobs'
 
@@ -37,9 +37,16 @@ export function JobsOverview({ permissions }: JobsOverviewProps) {
             Jobs Overview
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-8 w-32" />
+        <CardContent className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center gap-3">
+              <Skeleton className="h-10 w-10 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            </div>
+          ))}
         </CardContent>
       </Card>
     )
@@ -94,37 +101,36 @@ export function JobsOverview({ permissions }: JobsOverviewProps) {
                 <Link 
                   key={job.id} 
                   to={`/jobs/${job.id}`}
-                  className="block p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                  className="flex items-start justify-between gap-2 p-3 rounded-lg border border-border bg-card hover:bg-accent hover:border-accent-foreground/20 transition-all group"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="text-sm font-medium text-foreground truncate">
-                          {job.title}
-                        </h4>
-                        <Badge 
-                          variant="outline" 
-                          className={`text-xs ${getStatusColor(job.status)}`}
-                        >
-                          {job.status}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        {job.location && (
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            <span className="truncate">{job.location}</span>
-                          </div>
-                        )}
-                        {job.department && (
-                          <div className="flex items-center gap-1">
-                            <Building className="h-3 w-3" />
-                            <span className="truncate">{job.department}</span>
-                          </div>
-                        )}
-                      </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm font-medium text-foreground truncate block">
+                        {job.title}
+                      </span>
+                      <Badge 
+                        variant="outline" 
+                        className={`text-xs ${getStatusColor(job.status)}`}
+                      >
+                        {job.status}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      {job.location && (
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          <span className="truncate">{job.location}</span>
+                        </div>
+                      )}
+                      {job.department && (
+                        <div className="flex items-center gap-1">
+                          <Building className="h-3 w-3" />
+                          <span className="truncate">{job.department}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1 group-hover:translate-x-0.5 transition-transform" />
                 </Link>
               ))}
             </div>
