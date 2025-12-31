@@ -4,6 +4,7 @@ import { JobsOverview } from '@/components/dashboard/JobsOverview'
 import { TrialCountdownBanner } from '@/components/dashboard/TrialCountdownBanner'
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist'
 import { RecentSourcingProjects } from '@/components/dashboard/RecentSourcingProjects'
+import { MyTasks } from '@/components/dashboard/MyTasks'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
 import { Section } from '@/components/layout/Section'
@@ -47,6 +48,7 @@ export default function Dashboard() {
           <div className="grid gap-6 lg:grid-cols-2">
             {/* Left Column */}
             <div className="space-y-6">
+              <MyTasks />
               <OnboardingChecklist isDeemphasized={!hasSeenValue} />
               {showSourcingPanel && <RecentSourcingProjects />}
               {hasJobContent && <JobsOverview permissions={permissions} />}

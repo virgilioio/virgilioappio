@@ -87,6 +87,7 @@ export default function JobDetail() {
   
   // Auto-open scorecard from URL parameter (for AI note-taker notifications)
   const [autoOpenScorecard, setAutoOpenScorecard] = useState(false)
+  const [autoOpenScorecardStageId, setAutoOpenScorecardStageId] = useState<string | null>(null)
 
   // Helper to update URL with candidate parameter
   const updateCandidateUrl = (candidateId: string | null) => {
@@ -569,13 +570,18 @@ export default function JobDetail() {
   useEffect(() => {
     const candidateIdFromUrl = getCandidateIdFromUrl()
     const openParam = searchParams.get('open')
+    const stageParam = searchParams.get('stage')
     
-    // Handle ?open=scorecard parameter
+    // Handle ?open=scorecard&stage=xxx parameter
     if (openParam === 'scorecard' && candidateIdFromUrl) {
       setAutoOpenScorecard(true)
-      // Clean up the 'open' param from URL
+      if (stageParam) {
+        setAutoOpenScorecardStageId(stageParam)
+      }
+      // Clean up the 'open' and 'stage' params from URL
       const newParams = new URLSearchParams(searchParams)
       newParams.delete('open')
+      newParams.delete('stage')
       setSearchParams(newParams, { replace: true })
     }
     
@@ -1592,6 +1598,7 @@ export default function JobDetail() {
               if (!open) {
                 updateCandidateUrl(null)
                 setAutoOpenScorecard(false)
+                setAutoOpenScorecardStageId(null)
               }
             }}
             candidateId={profileCandidateId}
@@ -1602,7 +1609,11 @@ export default function JobDetail() {
             onNavigateNext={handleNavigateNext}
             onStageChanged={() => setPipelineRefresh((v) => v + 1)}
             autoOpenScorecard={autoOpenScorecard}
-            onScorecardOpened={() => setAutoOpenScorecard(false)}
+            autoOpenScorecardStageId={autoOpenScorecardStageId}
+            onScorecardOpened={() => {
+              setAutoOpenScorecard(false)
+              setAutoOpenScorecardStageId(null)
+            }}
           />
         )}
 

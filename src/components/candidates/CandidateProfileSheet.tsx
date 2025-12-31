@@ -87,10 +87,11 @@ interface CandidateProfileSheetProps {
   onNavigateNext?: () => void
   onStageChanged?: () => void
   autoOpenScorecard?: boolean
+  autoOpenScorecardStageId?: string | null
   onScorecardOpened?: () => void
 }
 
-export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, onScorecardOpened }: CandidateProfileSheetProps) {
+export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, autoOpenScorecardStageId, onScorecardOpened }: CandidateProfileSheetProps) {
   const { canEditCandidates } = usePermissions()
   const { organizationId, user } = useAuth()
   const [loading, setLoading] = useState(false)
@@ -211,16 +212,20 @@ const [offerFormOpen, setOfferFormOpen] = useState(false)
     }
     
     // Auto-open scorecard if requested via URL param
-    if (autoOpenScorecard && currentStageId && associationId) {
-      const currentStage = planStages.find(s => s.jhsId === currentStageId)
-      if (currentStage && supportsScorecard(currentStage.stage.stage_type)) {
-        setScoreStageInstId(currentStageId)
-        setScoreStageName(currentStage.stage.stage_name)
-        setScoreOpen(true)
-        onScorecardOpened?.()
+    if (autoOpenScorecard && associationId) {
+      // Use the specific stage from URL if provided, otherwise fallback to current stage
+      const targetStageId = autoOpenScorecardStageId || currentStageId
+      if (targetStageId) {
+        const targetStage = planStages.find(s => s.jhsId === targetStageId)
+        if (targetStage && supportsScorecard(targetStage.stage.stage_type)) {
+          setScoreStageInstId(targetStageId)
+          setScoreStageName(targetStage.stage.stage_name)
+          setScoreOpen(true)
+          onScorecardOpened?.()
+        }
       }
     }
-  }, [open, planStages, currentStageId])
+  }, [open, planStages, currentStageId, autoOpenScorecard, autoOpenScorecardStageId, associationId])
 
   // Remove CoreSignal enrichment - work experience and education will be empty arrays for now
 
