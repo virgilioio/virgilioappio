@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Settings, Save, Loader2, Coins, Image } from 'lucide-react'
+import { Settings, Save, Loader2, Coins, Image, Palette } from 'lucide-react'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 import { usePlatformAssets } from '@/hooks/usePlatformAssets'
-// Currency settings removed
 import { PlatformAssetUploader } from './PlatformAssetUploader'
 import { FeatureFlagsManager } from './FeatureFlagsManager'
+import { StyleGuide } from './StyleGuide'
 
 export function PlatformSettingsManager() {
   const { settings, isLoading, isUpdating, updateSetting, getSetting } = usePlatformSettings()
@@ -65,7 +65,7 @@ export function PlatformSettingsManager() {
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="general" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               General
@@ -81,6 +81,10 @@ export function PlatformSettingsManager() {
             <TabsTrigger value="currency" className="flex items-center gap-2">
               <Coins className="h-4 w-4" />
               Currency
+            </TabsTrigger>
+            <TabsTrigger value="style-guide" className="flex items-center gap-2">
+              <Palette className="h-4 w-4" />
+              Style Guide
             </TabsTrigger>
           </TabsList>
           
@@ -142,6 +146,10 @@ export function PlatformSettingsManager() {
             <div className="text-center py-8 text-muted-foreground">
               Currency settings have been removed
             </div>
+          </TabsContent>
+          
+          <TabsContent value="style-guide" className="mt-6">
+            <StyleGuide />
           </TabsContent>
         </Tabs>
       </CardContent>
