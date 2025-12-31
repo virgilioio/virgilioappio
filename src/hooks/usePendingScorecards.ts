@@ -45,7 +45,6 @@ export function usePendingScorecards() {
           interviewer_id,
           job_hiring_stage_id,
           job_candidate_association_id,
-          interviewer:profiles!scheduled_bookings_interviewer_id_fkey(first_name, last_name),
           job_candidate_associations!inner(
             id,
             candidate_id,
@@ -69,6 +68,24 @@ export function usePendingScorecards() {
       }
 
       const { data: bookings, error: bookingsError } = await bookingsQuery;
+
+      if (bookingsError) {
+        console.error('Error fetching bookings:', bookingsError);
+        throw bookingsError;
+      }
+
+      if (!bookings || bookings.length === 0) return [];
+
+      // Fetch interviewer profiles separately
+      const interviewerIds = [...new Set(bookings.map(b => b.interviewer_id).filter(Boolean))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name')
+        .in('user_id', interviewerIds);
+
+      const profileMap = new Map(
+        (profiles || []).map(p => [p.user_id, p])
+      );
 
       if (bookingsError) {
         console.error('Error fetching bookings:', bookingsError);
@@ -104,7 +121,6 @@ export function usePendingScorecards() {
       for (const booking of bookings) {
         const association = booking.job_candidate_associations as any;
         const stage = booking.job_hiring_stages as any;
-        const interviewer = booking.interviewer as any;
         
         if (!association || !stage) continue;
         
@@ -114,8 +130,9 @@ export function usePendingScorecards() {
         // Skip if scorecard already exists from this interviewer
         if (scorecardKeys.has(key)) continue;
         
-        const interviewerName = interviewer 
-          ? `${interviewer.first_name || ''} ${interviewer.last_name || ''}`.trim() || 'Unknown'
+        const profile = profileMap.get(booking.interviewer_id);
+        const interviewerName = profile 
+          ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Unknown'
           : 'Unknown';
         
         pendingScorecards.push({
