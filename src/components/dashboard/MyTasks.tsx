@@ -3,16 +3,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePendingScorecards, PendingScorecard } from '@/hooks/usePendingScorecards';
-import { ClipboardList, Clock, ChevronRight } from 'lucide-react';
+import { ClipboardList, Clock, ChevronRight, Users } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import gioFaceGreen from '@/assets/gio-face-green.png';
 import { useState } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
 
 export function MyTasks() {
   const navigate = useNavigate();
   const { data: pendingScorecards, isLoading, error } = usePendingScorecards();
   const [showAll, setShowAll] = useState(false);
+  const permissions = usePermissions();
+  
+  const isAdmin = permissions.isAdmin || permissions.isWorkspaceOwner || permissions.isPlatformAdmin;
 
   const handleTaskClick = (task: PendingScorecard) => {
     // Navigate to job with candidate profile sheet and scorecard for specific stage
@@ -24,8 +28,8 @@ export function MyTasks() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg font-semibold flex items-center gap-2">
-            <ClipboardList className="h-5 w-5" />
-            My Tasks
+            {isAdmin ? <Users className="h-5 w-5" /> : <ClipboardList className="h-5 w-5" />}
+            {isAdmin ? 'Pending Scorecards' : 'My Tasks'}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -55,8 +59,8 @@ export function MyTasks() {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
-          <ClipboardList className="h-5 w-5" />
-          My Tasks
+          {isAdmin ? <Users className="h-5 w-5" /> : <ClipboardList className="h-5 w-5" />}
+          {isAdmin ? 'Pending Scorecards' : 'My Tasks'}
           {tasks.length > 0 && (
             <span className="ml-auto text-sm font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
               {tasks.length}
@@ -71,7 +75,9 @@ export function MyTasks() {
             <h3 className="text-lg font-poppins font-bold text-virgilio-text tracking-page-title">
               You're all caught up<span className="text-purple-period">.</span>
             </h3>
-            <p className="text-sm text-virgilio-muted mt-2">No pending scorecards to submit</p>
+            <p className="text-sm text-virgilio-muted mt-2">
+              {isAdmin ? 'No pending scorecards in your organization' : 'No pending scorecards to submit'}
+            </p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -88,14 +94,19 @@ export function MyTasks() {
                     "w-full text-left p-3 rounded-lg border transition-all",
                     "hover:bg-accent hover:border-accent-foreground/20",
                     "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                    isUrgent ? "border-warning/50 bg-warning/5" : "border-border bg-card"
+                    isUrgent ? "border-warning/50 bg-warning/5" : "border-border bg-card",
+                    !task.isOwnTask && "opacity-80"
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium truncate">
-                          Submit scorecard for {task.candidateName}
+                          {task.isOwnTask ? (
+                            <>Submit scorecard for {task.candidateName}</>
+                          ) : (
+                            <>{task.interviewerName} • Scorecard for {task.candidateName}</>
+                          )}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
