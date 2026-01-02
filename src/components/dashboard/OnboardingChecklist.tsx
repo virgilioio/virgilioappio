@@ -88,7 +88,7 @@ export function OnboardingChecklist({ isDeemphasized = false }: OnboardingCheckl
               onClick={() => {
                 const url = new URL(task.route, window.location.origin);
                 url.searchParams.set('highlight', task.id);
-                navigate(`${url.pathname}${url.search}`);
+                window.open(`${url.pathname}${url.search}`, '_blank');
               }}
             >
               {/* Task Number */}

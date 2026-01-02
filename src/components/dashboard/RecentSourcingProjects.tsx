@@ -79,6 +79,8 @@ export function RecentSourcingProjects() {
             <Link
               key={project.id}
               to={`/find?project=${project.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:bg-accent hover:border-accent-foreground/20 transition-all group"
             >
               <div className="flex-1 min-w-0">

@@ -14,7 +14,7 @@ export function StaleCandidates() {
   const [showAll, setShowAll] = useState(false);
 
   const handleCandidateClick = (candidate: StaleCandidate) => {
-    navigate(`/jobs/${candidate.jobId}?candidate=${candidate.candidateId}`);
+    window.open(`/jobs/${candidate.jobId}?candidate=${candidate.candidateId}`, '_blank');
   };
 
   if (isLoading) {
