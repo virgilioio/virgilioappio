@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Info, Loader2 } from 'lucide-react'
+import { Info, Loader2, Users, Check } from 'lucide-react'
 
 interface ChangePlanDialogProps {
   open: boolean
@@ -41,11 +41,31 @@ const intervalOptions = [
   { value: 'yearly', label: 'Yearly' },
 ]
 
-const tierPricing = {
-  solo: { monthly: 29, yearly: 306 },
-  launch: { monthly: 149, yearly: 1519 },
-  growth: { monthly: 399, yearly: 4069 },
-  business: { monthly: 799, yearly: 8149 },
+const tierDetails = {
+  solo: { 
+    maxUsers: 1, 
+    monthlyPrice: 29, 
+    yearlyPrice: 306,
+    features: ['1 user seat', '10 searches/mo', '5 enrichments/mo']
+  },
+  launch: { 
+    maxUsers: 5, 
+    monthlyPrice: 149, 
+    yearlyPrice: 1519,
+    features: ['Up to 5 user seats', '25 searches/mo', '10 enrichments/mo']
+  },
+  growth: { 
+    maxUsers: 15, 
+    monthlyPrice: 399, 
+    yearlyPrice: 4069,
+    features: ['Up to 15 user seats', '100 searches/mo', '50 enrichments/mo']
+  },
+  business: { 
+    maxUsers: 50, 
+    monthlyPrice: 799, 
+    yearlyPrice: 8149,
+    features: ['Up to 50 user seats', '250 searches/mo', '125 enrichments/mo']
+  },
 }
 
 export function ChangePlanDialog({
@@ -66,16 +86,21 @@ export function ChangePlanDialog({
 
   const getCurrentPrice = () => {
     if (!currentTier || !currentInterval) return null
-    const tier = currentTier as keyof typeof tierPricing
+    const tier = currentTier as keyof typeof tierDetails
     const interval = currentInterval as 'monthly' | 'yearly'
-    return tierPricing[tier]?.[interval]
+    const details = tierDetails[tier]
+    return interval === 'monthly' ? details?.monthlyPrice : details?.yearlyPrice
   }
 
   const getNewPrice = () => {
-    const tier = selectedTier as keyof typeof tierPricing
+    const tier = selectedTier as keyof typeof tierDetails
     const interval = selectedInterval as 'monthly' | 'yearly'
-    return tierPricing[tier]?.[interval]
+    const details = tierDetails[tier]
+    return interval === 'monthly' ? details?.monthlyPrice : details?.yearlyPrice
   }
+
+  const currentTierDetails = currentTier ? tierDetails[currentTier as keyof typeof tierDetails] : null
+  const selectedTierDetails = tierDetails[selectedTier as keyof typeof tierDetails]
 
   const currentPrice = getCurrentPrice()
   const newPrice = getNewPrice()
@@ -96,17 +121,20 @@ export function ChangePlanDialog({
 
         <div className="space-y-6 py-4">
           {/* Current Plan Display */}
-          {currentTier && currentInterval && (
+          {currentTier && currentInterval && currentTierDetails && (
             <div className="p-4 bg-muted/50 rounded-lg border border-border">
-              <div className="text-sm text-virgilio-muted mb-1">Current Plan</div>
-              <div className="font-medium text-virgilio-text">
+              <div className="text-sm text-muted-foreground mb-1">Current Plan</div>
+              <div className="font-medium text-foreground">
                 {tierOptions.find(t => t.value === currentTier)?.label} - {' '}
                 <span className="capitalize">{currentInterval}</span>
-                {currentPrice && (
-                  <span className="text-virgilio-muted ml-2">
-                    ${currentPrice}/{currentInterval === 'monthly' ? 'mo' : 'yr'}
-                  </span>
-                )}
+              </div>
+              <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Users className="h-3.5 w-3.5" />
+                  {currentTierDetails.maxUsers} {currentTierDetails.maxUsers === 1 ? 'seat' : 'seats'}
+                </span>
+                <span>•</span>
+                <span>${currentPrice}/{currentInterval === 'monthly' ? 'mo' : 'yr'}</span>
               </div>
             </div>
           )}
@@ -150,14 +178,24 @@ export function ChangePlanDialog({
           </div>
 
           {/* New Plan Preview */}
-          {newPrice && (
+          {newPrice && selectedTierDetails && (
             <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
-              <div className="text-sm text-virgilio-muted mb-1">New Plan</div>
-              <div className="font-bold text-lg text-virgilio-text">
+              <div className="text-sm text-muted-foreground mb-1">New Plan</div>
+              <div className="font-bold text-lg text-foreground">
                 {tierOptions.find(t => t.value === selectedTier)?.label}
               </div>
-              <div className="text-virgilio-muted">
+              <div className="text-muted-foreground mb-3">
                 ${newPrice}/{selectedInterval === 'monthly' ? 'month' : 'year'}
+              </div>
+              
+              {/* Plan features */}
+              <div className="space-y-1.5 pt-3 border-t border-primary/10">
+                {selectedTierDetails.features.map((feature, idx) => (
+                  <div key={idx} className="flex items-center gap-2 text-sm">
+                    <Check className="h-3.5 w-3.5 text-success flex-shrink-0" />
+                    <span className="text-foreground">{feature}</span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
