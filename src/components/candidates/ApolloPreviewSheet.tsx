@@ -229,12 +229,46 @@ export function ApolloPreviewSheet({
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 
-  // Reset state when apolloId changes
+  // Reset state when apolloId changes and check if already collected
   useEffect(() => {
-    setEnrichedData(null)
     setCollectedCandidateId(null)
     setCollectedJobId(null)
     setPhoneCheckStatus('idle')
+    
+    // Check if this apollo_id has already been collected
+    const checkIfCollected = async () => {
+      if (!apolloId) {
+        setEnrichedData(null)
+        return
+      }
+      
+      const { data } = await supabase
+        .from('candidates')
+        .select('id, candidate_name, linkedin_url, email, phone, location_city, location_state, location_country, skills, profile_summary')
+        .eq('apollo_id', apolloId)
+        .maybeSingle()
+      
+      if (data) {
+        // Candidate was already collected - populate enrichedData
+        setEnrichedData({
+          candidate_id: data.id,
+          candidate_name: data.candidate_name,
+          linkedin_url: data.linkedin_url || undefined,
+          email: data.email || undefined,
+          phone: data.phone || undefined,
+          location_city: data.location_city || undefined,
+          location_state: data.location_state || undefined,
+          location_country: data.location_country || undefined,
+          skills: data.skills || undefined,
+          profile_summary: data.profile_summary || undefined,
+        })
+        setCollectedCandidateId(data.id)
+      } else {
+        setEnrichedData(null)
+      }
+    }
+    
+    checkIfCollected()
   }, [apolloId])
 
   // Poll for phone number after collection if has_phone was indicated but not received
