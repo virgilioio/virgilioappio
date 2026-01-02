@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -30,6 +30,7 @@ import {
   type JobComparisonSummary
 } from '@/features/sourcing/apollo/previewInference'
 import { useCandidatePreviewStatus } from '@/hooks/useCandidatePreviewStatus'
+import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 import type { SearchCriteria } from '@/types/sourcing'
 import { cn } from '@/lib/utils'
 import gioFaceYellow from '@/assets/gio-face-yellow.png'
@@ -224,10 +225,37 @@ export function ApolloPreviewSheet({
   const [showJobSelection, setShowJobSelection] = useState(false)
   const [enrichedData, setEnrichedData] = useState<EnrichedCandidateData | null>(null)
   const [phoneCheckStatus, setPhoneCheckStatus] = useState<'idle' | 'checking' | 'done'>('idle')
+  const [firstStageInfo, setFirstStageInfo] = useState<{ id: string; name: string } | null>(null)
   const { isCollectDisabled } = useSourcingCreditWarnings()
   const { shortlistCandidate, markNotAFit, isUpdating, currentApolloId } = useCandidatePreviewStatus()
+  const { loadHiringPlanInstances } = useJobHiringPlan()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+
+  // Fetch first stage info when jobId is available
+  useEffect(() => {
+    async function fetchFirstStage() {
+      if (!jobId) {
+        setFirstStageInfo(null)
+        return
+      }
+      
+      try {
+        const stages = await loadHiringPlanInstances(jobId)
+        if (stages.length > 0) {
+          const firstStage = stages[0]
+          setFirstStageInfo({
+            id: firstStage.jhsId,
+            name: firstStage.customStageName || firstStage.stage.stage_name
+          })
+        }
+      } catch (error) {
+        console.error('Failed to load first stage:', error)
+      }
+    }
+    
+    fetchFirstStage()
+  }, [jobId, loadHiringPlanInstances])
 
   // Reset state when apolloId changes and check if already collected
   useEffect(() => {
@@ -724,7 +752,12 @@ export function ApolloPreviewSheet({
                           if (!jobId) {
                             setShowJobSelection(true)
                           } else {
-                            handleCollectProfile()
+                            handleCollectProfile(
+                              jobId,
+                              jobTitle || undefined,
+                              firstStageInfo?.id,
+                              firstStageInfo?.name
+                            )
                           }
                         }}
                         disabled={isCollecting || isCollectDisabled}
