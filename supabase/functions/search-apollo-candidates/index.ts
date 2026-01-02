@@ -141,6 +141,35 @@ function formatLocationForApollo(locationValue: string): string | null {
 }
 
 /**
+ * Deduplicate keywords by removing terms that already appear in title_keywords
+ * This prevents redundant AND conditions in Apollo's search
+ */
+function deduplicateKeywords(keywords: string[], titleKeywords: string[]): string[] {
+  if (!keywords?.length || !titleKeywords?.length) return keywords || [];
+  
+  // Build a set of words from all title keywords (lowercase for comparison)
+  const titleWords = new Set<string>();
+  titleKeywords.forEach(title => {
+    title.toLowerCase().split(/[\s,]+/).forEach(word => {
+      if (word.length > 2) titleWords.add(word); // Skip very short words like "of", "in"
+    });
+  });
+  
+  // Filter out keywords that are redundant with titles
+  return keywords.filter(keyword => {
+    const keywordLower = keyword.toLowerCase();
+    // Check if all words in this keyword appear in titles (fully redundant)
+    const keywordWords = keywordLower.split(/\s+/);
+    const isRedundant = keywordWords.every(word => word.length <= 2 || titleWords.has(word));
+    
+    if (isRedundant) {
+      console.log(`⚠️ Skipping redundant keyword "${keyword}" (already covered by titles)`);
+    }
+    return !isRedundant;
+  });
+}
+
+/**
  * Build Apollo API request URL with query parameters
  * Apollo uses URL query params, not JSON body for api_search
  */
@@ -148,28 +177,32 @@ function buildApolloSearchUrl(criteria: SearchCriteria, perPage: number = 100, p
   const params = new URLSearchParams();
   
   // Title keywords → person_titles[] (CURRENT JOB TITLE filter)
+  // Note: Apollo's person_titles already does fuzzy matching by default
   if (criteria.title_keywords && criteria.title_keywords.length > 0) {
-    // Add multiple title variations for broader results
     criteria.title_keywords.slice(0, 10).forEach(title => {
       params.append('person_titles[]', title);
     });
-    console.log(`🎯 Apollo title filter: ${criteria.title_keywords.join(', ')}`);
+    console.log(`🎯 Apollo title filter (fuzzy matching ON): ${criteria.title_keywords.join(', ')}`);
   }
 
   // Keywords and company names are mutually exclusive to avoid over-filtering with AND logic
   // Priority: company_names > keywords (company filter is more specific)
   if (criteria.company_names && criteria.company_names.length > 0) {
     // Target company names → q_organization_name (searches by company name)
-    // Limit to 10 companies to avoid overly restrictive search
     const companyNamesString = criteria.company_names.slice(0, 10).join(' OR ');
     params.append('q_organization_name', companyNamesString);
     console.log(`🏢 Apollo target company names: ${companyNamesString}`);
   } else if (criteria.keywords && criteria.keywords.length > 0) {
-    // General keywords → q_keywords (searches across profile) - only if no company filter
-    // Limit to 5 keywords to avoid over-filtering
-    const keywordsString = criteria.keywords.slice(0, 5).join(' ');
-    params.append('q_keywords', keywordsString);
-    console.log(`🔑 Apollo keywords: ${keywordsString}`);
+    // Deduplicate: remove keywords already covered by title_keywords to prevent over-filtering
+    const uniqueKeywords = deduplicateKeywords(criteria.keywords, criteria.title_keywords || []);
+    
+    if (uniqueKeywords.length > 0) {
+      const keywordsString = uniqueKeywords.slice(0, 5).join(' ');
+      params.append('q_keywords', keywordsString);
+      console.log(`🔑 Apollo keywords (deduplicated): ${keywordsString}`);
+    } else {
+      console.log(`⚠️ All keywords redundant with titles - skipping q_keywords for broader results`);
+    }
   }
 
   // Locations → person_locations[]
