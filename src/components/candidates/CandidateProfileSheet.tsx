@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Tabs } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -15,7 +15,7 @@ import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeVi
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe } from 'lucide-react'
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -52,6 +52,7 @@ import { GenerateBookingLinkButton } from '@/components/candidates/GenerateBooki
 import { RejectionDialog } from './RejectionDialog'
 import { RejectionStatusBanner } from './RejectionStatusBanner'
 import { CreateOfferLetterSheet } from './CreateOfferLetterDialog'
+import { useQuery } from '@tanstack/react-query'
 
 interface StageScorecardProps {
   stageInstanceId: string;
@@ -148,6 +149,32 @@ const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false)
 
 // Offer Form Sheet
 const [offerFormOpen, setOfferFormOpen] = useState(false)
+
+// Stage automations query for lightning icon
+const { data: stageAutomations } = useQuery({
+  queryKey: ['job-stage-automations', jobId],
+  queryFn: async () => {
+    const { data, error } = await supabase
+      .from('stage_automations')
+      .select('id, job_hiring_stage_id, is_active')
+      .eq('is_active', true);
+    
+    if (error) throw error;
+    return data || [];
+  },
+  enabled: !!jobId && open
+});
+
+const stageHasAutomation = useMemo(() => {
+  const map = new Map<string, boolean>();
+  if (stageAutomations) {
+    stageAutomations.forEach(automation => {
+      map.set(automation.job_hiring_stage_id, true);
+    });
+  }
+  return map;
+}, [stageAutomations]);
+
   // Resume helpers
   const resumeAttachment = attachments.find((a) => a.is_resume)
   const replaceResumeInputRef = useRef<HTMLInputElement>(null)
@@ -720,6 +747,9 @@ const [offerFormOpen, setOfferFormOpen] = useState(false)
               <Circle className="h-4 w-4 text-text-tertiary" />
             )}
             <div className="text-sm font-medium">{opt.stage.stage_name}</div>
+            {stageHasAutomation.get(opt.jhsId) && (
+              <Zap className="h-4 w-4 text-purple-500 fill-purple-500" />
+            )}
           </div>
         </AccordionTrigger>
         <AccordionContent className="px-3">
