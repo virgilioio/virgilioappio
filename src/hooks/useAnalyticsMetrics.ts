@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { format, eachDayOfInterval } from 'date-fns'
-
+import { extractHiringTeamUserIds } from '@/utils/jobInvolvement'
 export interface DateRange {
   startDate: Date
   endDate: Date
@@ -81,7 +81,7 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
       // Step 2: Fetch jobs for this tenant (with optional organization filter)
       let jobsQuery = supabase
         .from('jobs')
-        .select('id')
+        .select('id, hiring_team')
         .eq('tenant_id', tenantId)
 
       // Apply organization filter if specified
@@ -102,6 +102,38 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
         finalJobIds = jobIds.filter(id => tenantJobSet.has(id))
       }
 
+      // If recruiterIds are selected, filter to jobs where those users are involved
+      // (via hiring_team OR job_assignments)
+      if (recruiterIds && recruiterIds.length > 0) {
+        // Get jobs where selected users are assigned via job_assignments
+        const { data: assignments, error: assignError } = await supabase
+          .from('job_assignments')
+          .select('job_id')
+          .in('user_id', recruiterIds)
+          .is('deleted_at', null)
+
+        if (assignError) throw assignError
+
+        const assignedJobIds = new Set(assignments?.map(a => a.job_id) || [])
+
+        // Filter to jobs where user is in hiring_team OR assigned
+        const recruiterIdSet = new Set(recruiterIds)
+        finalJobIds = finalJobIds.filter(jobId => {
+          // Check if assigned
+          if (assignedJobIds.has(jobId)) return true
+          
+          // Check hiring_team
+          const job = tenantJobs?.find(j => j.id === jobId)
+          if (job) {
+            const hiringTeamUserIds = extractHiringTeamUserIds(job.hiring_team)
+            for (const userId of recruiterIdSet) {
+              if (hiringTeamUserIds.has(userId)) return true
+            }
+          }
+          return false
+        })
+      }
+
       if (finalJobIds.length === 0) {
         return {
           applications: 0,
@@ -115,8 +147,8 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
         }
       }
 
-      // Step 3: Fetch job_candidate_associations for these jobs
-      let associationsQuery = supabase
+      // Step 3: Fetch job_candidate_associations for these jobs (no recruiter filter on associations)
+      const associationsQuery = supabase
         .from('job_candidate_associations')
         .select(`
           id,
@@ -137,28 +169,18 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
         `)
         .in('job_id', finalJobIds)
 
-      // Apply recruiter filter to associations (who added the candidate)
-      if (recruiterIds && recruiterIds.length > 0) {
-        associationsQuery = associationsQuery.in('added_by', recruiterIds)
-      }
-
       const { data: associations, error: assocError } = await associationsQuery
 
       if (assocError) throw assocError
 
-      // Step 4: Fetch scheduled bookings for tenant jobs
-      let bookingsQuery = supabase
+      // Step 4: Fetch scheduled bookings for involved jobs (no recruiter filter on bookings)
+      const bookingsQuery = supabase
         .from('scheduled_bookings')
         .select('id, status, scheduled_start, job_id, booked_by')
         .in('job_id', finalJobIds)
         .gte('scheduled_start', startISO)
         .lte('scheduled_start', endISO)
         .not('status', 'eq', 'cancelled')
-
-      // Apply recruiter filter to bookings (who scheduled the interview)
-      if (recruiterIds && recruiterIds.length > 0) {
-        bookingsQuery = bookingsQuery.in('booked_by', recruiterIds)
-      }
 
       const { data: bookings, error: bookingsError } = await bookingsQuery
 

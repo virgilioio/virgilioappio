@@ -11,9 +11,10 @@ import { usePipelineJobMetrics } from '@/hooks/usePipelineJobMetrics';
 import { useJobs } from '@/hooks/useJobs';
 import { useMembers } from '@/hooks/useMembers';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useUserAssignedJobIds } from '@/hooks/useUserAssignedJobIds';
+import { jobMatchesUsers } from '@/utils/jobInvolvement';
 import { Briefcase, Users, Clock, TrendingUp } from 'lucide-react';
 import { Accordion } from '@/components/ui/accordion';
-
 export default function Pipeline() {
   const permissions = usePermissions();
   const { jobs, isLoading: jobsLoading } = useJobs();
@@ -33,6 +34,9 @@ export default function Pipeline() {
   // Fetch global metrics
   const { data: globalMetrics, isLoading: metricsLoading } = usePipelineGlobalMetrics(filters);
 
+  // Fetch job assignments for selected users
+  const { assignedJobIds, isLoading: assignmentsLoading } = useUserAssignedJobIds(selectedUsers);
+
   // Client-side filter to apply status, search & user filters
   const filteredJobs = useMemo(() => {
     return jobs.filter(job => {
@@ -42,16 +46,14 @@ export default function Pipeline() {
       // Search filter
       if (searchTerm && !job.title.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       
-      // User filter - check if any selected user is in the hiring_team
-      if (selectedUsers.length > 0) {
-        const hiringTeam = Array.isArray(job.hiring_team) ? job.hiring_team : [];
-        const hasMatchingUser = selectedUsers.some(userId => hiringTeam.includes(userId));
-        if (!hasMatchingUser) return false;
-      }
+      // User filter - check if any selected user is in the hiring_team OR job_assignments
+      if (!jobMatchesUsers(job, selectedUsers, assignedJobIds)) return false;
       
       return true;
     });
-  }, [jobs, jobStatus, searchTerm, selectedUsers]);
+  }, [jobs, jobStatus, searchTerm, selectedUsers, assignedJobIds]);
+
+  const isFilteringUsers = selectedUsers.length > 0 && assignmentsLoading;
 
   const jobIds = filteredJobs.map(j => j.id);
   const { data: jobMetrics } = usePipelineJobMetrics(jobIds);
@@ -133,7 +135,7 @@ export default function Pipeline() {
               </div>
 
               {/* Job List with Embedded Kanban */}
-              {jobsLoading ? (
+              {jobsLoading || isFilteringUsers ? (
                 <div className="text-center py-8 text-muted-foreground">Loading jobs...</div>
               ) : filteredJobs.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
