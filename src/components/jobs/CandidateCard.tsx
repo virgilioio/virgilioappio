@@ -5,7 +5,7 @@ import { format, parseISO, formatDistanceToNowStrict } from 'date-fns'
 import { Card } from '@/components/ui/card'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Calendar, ExternalLink, Clock, FileText, CheckCircle } from 'lucide-react'
+import { Calendar, ExternalLink, Clock, FileText, CheckCircle, Send } from 'lucide-react'
 import { JobStage } from '@/hooks/useJobHiringPlan'
 import { Checkbox } from '@/components/ui/checkbox'
 import { supabase } from '@/lib/supabaseClient'
@@ -68,10 +68,10 @@ export default function CandidateCard(props: CandidateCardProps) {
       // Fetch all bookings for this candidate in this stage
       const { data: bookings } = await supabase
         .from('scheduled_bookings')
-        .select('id, scheduled_start, status')
+        .select('id, scheduled_start, status, candidate_confirmation_status')
         .eq('candidate_id', candidateId)
         .eq('job_hiring_stage_id', currentStageJhsId)
-        .in('status', ['confirmed', 'rescheduled', 'completed', 'no_show'])
+        .in('status', ['pending', 'confirmed', 'rescheduled', 'completed', 'no_show'])
         .order('scheduled_start', { ascending: true })
       
       const hasScorecard = (scorecards?.length ?? 0) > 0
@@ -90,7 +90,13 @@ export default function CandidateCard(props: CandidateCardProps) {
         new Date(b.scheduled_start) >= now
       )
       
-      return { hasScorecard, completedInterview, upcomingInterview }
+      // Check for pending booking link (sent but not confirmed by candidate)
+      const pendingBookingLink = bookings?.find(b => 
+        b.status === 'pending' || 
+        (b.candidate_confirmation_status === 'pending' && b.status !== 'cancelled')
+      )
+      
+      return { hasScorecard, completedInterview, upcomingInterview, pendingBookingLink }
     },
     enabled: !!candidateId && !!associationId && !!currentStageJhsId,
   })
@@ -98,7 +104,7 @@ export default function CandidateCard(props: CandidateCardProps) {
   // Get status badge based on priority
   const getStatusBadge = () => {
     if (!candidateStatus) return null
-    const { hasScorecard, completedInterview, upcomingInterview } = candidateStatus
+    const { hasScorecard, completedInterview, upcomingInterview, pendingBookingLink } = candidateStatus
     
     if (hasScorecard) {
       return { label: 'Needs Decision', variant: 'purple' as const, Icon: CheckCircle }
@@ -111,6 +117,10 @@ export default function CandidateCard(props: CandidateCardProps) {
     if (upcomingInterview) {
       const timeUntil = formatDistanceToNowStrict(new Date(upcomingInterview.scheduled_start), { addSuffix: false })
       return { label: `In ${timeUntil}`, variant: 'info' as const, Icon: Calendar }
+    }
+    
+    if (pendingBookingLink) {
+      return { label: 'Booking Link Sent', variant: 'secondary' as const, Icon: Send }
     }
     
     return { label: 'Pending Schedule', variant: 'pastel-yellow' as const, Icon: Clock }
