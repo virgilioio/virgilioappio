@@ -3,8 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Mail, Trash2, Calendar, Repeat } from 'lucide-react';
-import { useStageAutomations } from '@/hooks/useStageAutomations';
+import { Plus, Mail, Trash2, Calendar, Repeat, Pencil } from 'lucide-react';
+import { useStageAutomations, type StageAutomation } from '@/hooks/useStageAutomations';
 import { AutomationFormSheet } from './AutomationFormSheet';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
@@ -17,7 +17,25 @@ interface AutomationsTabProps {
 export function AutomationsTab({ jhsId, jobId, organizationId }: AutomationsTabProps) {
   const { automations, isLoading, toggleActive, deleteAutomation } = useStageAutomations(jhsId);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingAutomation, setEditingAutomation] = useState<StageAutomation | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  
+  const handleOpenCreate = () => {
+    setEditingAutomation(null);
+    setIsDialogOpen(true);
+  };
+  
+  const handleOpenEdit = (automation: StageAutomation) => {
+    setEditingAutomation(automation);
+    setIsDialogOpen(true);
+  };
+  
+  const handleCloseSheet = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setEditingAutomation(null);
+    }
+  };
   
   if (isLoading) {
     return <div className="p-4">Loading automations...</div>;
@@ -32,7 +50,7 @@ export function AutomationsTab({ jhsId, jobId, organizationId }: AutomationsTabP
             Automatically send emails when candidates enter or exit this stage
           </p>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)}>
+        <Button onClick={handleOpenCreate}>
           <Plus className="h-4 w-4 mr-2" />
           Add Automation
         </Button>
@@ -45,7 +63,7 @@ export function AutomationsTab({ jhsId, jobId, organizationId }: AutomationsTabP
           <p className="text-sm text-muted-foreground mb-4">
             Create your first automation to start engaging candidates automatically
           </p>
-          <Button onClick={() => setIsDialogOpen(true)}>
+          <Button onClick={handleOpenCreate}>
             <Plus className="h-4 w-4 mr-2" />
             Create Automation
           </Button>
@@ -57,7 +75,11 @@ export function AutomationsTab({ jhsId, jobId, organizationId }: AutomationsTabP
             const recurringEmail = automation.emails.find(e => e.is_recurring);
             
             return (
-              <Card key={automation.id} className="p-4">
+              <Card 
+                key={automation.id} 
+                className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => handleOpenEdit(automation)}
+              >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
@@ -104,7 +126,7 @@ export function AutomationsTab({ jhsId, jobId, organizationId }: AutomationsTabP
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">Active</span>
                       <Switch
@@ -114,6 +136,13 @@ export function AutomationsTab({ jhsId, jobId, organizationId }: AutomationsTabP
                         }
                       />
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleOpenEdit(automation)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -131,10 +160,11 @@ export function AutomationsTab({ jhsId, jobId, organizationId }: AutomationsTabP
       
       <AutomationFormSheet
         open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
+        onOpenChange={handleCloseSheet}
         jhsId={jhsId}
         jobId={jobId}
         organizationId={organizationId}
+        existingAutomation={editingAutomation}
       />
       
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>

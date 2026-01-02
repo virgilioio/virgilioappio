@@ -121,6 +121,55 @@ export function useStageAutomations(jhsId: string | null) {
     }
   });
   
+  const updateAutomation = useMutation({
+    mutationFn: async (data: {
+      id: string;
+      automation_type: 'single_email' | 'email_sequence';
+      trigger_event: 'on_stage_enter' | 'on_stage_exit';
+      emails: Omit<AutomationEmail, 'id' | 'template_name'>[];
+    }) => {
+      // Update the automation record
+      const { error: updateError } = await supabase
+        .from('stage_automations')
+        .update({
+          automation_type: data.automation_type,
+          trigger_event: data.trigger_event,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', data.id);
+      
+      if (updateError) throw updateError;
+      
+      // Delete existing emails
+      const { error: deleteError } = await supabase
+        .from('stage_automation_emails')
+        .delete()
+        .eq('stage_automation_id', data.id);
+      
+      if (deleteError) throw deleteError;
+      
+      // Insert updated emails
+      const { error: insertError } = await supabase
+        .from('stage_automation_emails')
+        .insert(
+          data.emails.map((email, index) => ({
+            ...email,
+            stage_automation_id: data.id,
+            sequence_order: index + 1
+          }))
+        );
+      
+      if (insertError) throw insertError;
+    },
+    onSuccess: () => {
+      toast.success('Automation updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['stage-automations', jhsId] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update automation: ${error.message}`);
+    }
+  });
+  
   const deleteAutomation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -143,6 +192,7 @@ export function useStageAutomations(jhsId: string | null) {
     automations: automations || [],
     isLoading,
     createAutomation,
+    updateAutomation,
     toggleActive,
     deleteAutomation
   };
