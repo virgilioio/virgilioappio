@@ -98,9 +98,11 @@ export function JobsOverview({ permissions }: JobsOverviewProps) {
             <p className="text-sm font-medium text-text-primary">Recent Open Jobs</p>
             <div className="space-y-2">
               {recentJobs.map((job) => (
-                <Link 
+              <Link 
                   key={job.id} 
                   to={`/jobs/${job.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="flex items-start justify-between gap-2 p-3 rounded-lg border border-border bg-card hover:bg-accent hover:border-accent-foreground/20 transition-all group"
                 >
                   <div className="flex-1 min-w-0">
@@ -139,7 +141,7 @@ export function JobsOverview({ permissions }: JobsOverviewProps) {
         
         <div className="flex gap-2 pt-2 border-t border-border">
           {permissions.canViewJobs && (
-            <Link to="/jobs">
+            <Link to="/jobs" target="_blank" rel="noopener noreferrer">
               <Button variant="ghost" size="sm">
                 View All Jobs
                 <ExternalLink className="h-3 w-3" />

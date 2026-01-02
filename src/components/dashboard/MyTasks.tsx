@@ -19,8 +19,8 @@ export function MyTasks() {
   const isAdmin = permissions.isAdmin || permissions.isWorkspaceOwner || permissions.isPlatformAdmin;
 
   const handleTaskClick = (task: PendingScorecard) => {
-    // Navigate to job with candidate profile sheet and scorecard for specific stage
-    navigate(`/jobs/${task.jobId}?candidate=${task.candidateId}&open=scorecard&stage=${task.stageInstanceId}`);
+    // Open job in new tab with candidate profile sheet and scorecard for specific stage
+    window.open(`/jobs/${task.jobId}?candidate=${task.candidateId}&open=scorecard&stage=${task.stageInstanceId}`, '_blank');
   };
 
   if (isLoading) {
