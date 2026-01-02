@@ -227,11 +227,58 @@ serve(async (req) => {
     }
 
     let candidateId: string;
+    let existingJobAssociations: Array<{
+      association_id: string;
+      job_id: string;
+      job_title: string;
+      stage_id: string | null;
+      stage_name: string;
+      candidate_url: string;
+    }> | null = null;
 
     if (existingCandidate) {
       // Use existing candidate
       candidateId = existingCandidate.id;
       console.log(`📋 Using existing candidate: ${candidateId}`);
+
+      // Fetch existing job associations for this candidate
+      const { data: associations, error: assocFetchError } = await supabase
+        .from('job_candidate_associations')
+        .select(`
+          id,
+          status,
+          current_stage_id,
+          job_id,
+          jobs!inner (
+            id,
+            title
+          ),
+          job_hiring_stages (
+            id,
+            custom_stage_name,
+            job_stages (
+              stage_name
+            )
+          )
+        `)
+        .eq('candidate_id', candidateId)
+        .in('status', ['active', 'offer', 'hired']);
+
+      if (assocFetchError) {
+        console.error('⚠️ Failed to fetch existing associations:', assocFetchError);
+      } else if (associations && associations.length > 0) {
+        existingJobAssociations = associations.map((assoc: any) => ({
+          association_id: assoc.id,
+          job_id: assoc.job_id,
+          job_title: assoc.jobs?.title || 'Unknown Job',
+          stage_id: assoc.current_stage_id,
+          stage_name: assoc.job_hiring_stages?.custom_stage_name 
+            || assoc.job_hiring_stages?.job_stages?.stage_name 
+            || 'Unknown Stage',
+          candidate_url: `/jobs/${assoc.job_id}/candidates/${candidateId}`
+        }));
+        console.log(`📋 Found ${existingJobAssociations.length} existing job associations`);
+      }
     } else {
       // Create new candidate
       const { data: newCandidate, error: createError } = await supabase
@@ -329,12 +376,18 @@ serve(async (req) => {
       console.log(`✅ Created new association: ${associationId}`);
     }
 
-    const response = {
+    // Build response
+    const response: Record<string, any> = {
       candidate_id: candidateId,
       association_id: associationId,
       was_duplicate: wasDuplicate,
       action  // 'created' | 'attached' | 'updated'
     };
+
+    // Include existing jobs when duplicate is found
+    if (wasDuplicate && existingJobAssociations && existingJobAssociations.length > 0) {
+      response.existing_jobs = existingJobAssociations;
+    }
 
     console.log(`✅ Chrome API /candidates - Success: ${JSON.stringify(response)}`);
 
