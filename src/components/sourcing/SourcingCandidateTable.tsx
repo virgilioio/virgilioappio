@@ -186,6 +186,14 @@ export function SourcingCandidateTable({
   const [addedCandidates, setAddedCandidates] = useState<Set<string>>(new Set())
   const [loadingCandidates, setLoadingCandidates] = useState<Set<string>>(new Set())
   const [collectingProfiles, setCollectingProfiles] = useState<Set<string>>(new Set())
+  // Track apollo IDs that have been collected in this session
+  const [collectedApolloIds, setCollectedApolloIds] = useState<Set<string>>(new Set())
+
+  // Handler for when a candidate is collected from the sheet
+  const handleCandidateCollected = (candidateId: string, apolloId: string) => {
+    setCollectedApolloIds(prev => new Set(prev).add(apolloId))
+    setAddedCandidates(prev => new Set(prev).add(candidateId))
+  }
 
   // Check existing pipeline candidates
   useEffect(() => {
@@ -798,6 +806,7 @@ export function SourcingCandidateTable({
         onNavigatePrev={handleNavigatePrev}
         onNavigateNext={handleNavigateNext}
         searchCriteria={searchCriteria}
+        onCandidateCollected={handleCandidateCollected}
       />
     </div>
   )

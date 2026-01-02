@@ -39,6 +39,7 @@ interface UniversalCandidateProfileSheetProps {
     has_location?: boolean
   }
   searchCriteria?: SearchCriteria
+  onCandidateCollected?: (candidateId: string, apolloId: string) => void
 }
 
 export default function UniversalCandidateProfileSheet(props: UniversalCandidateProfileSheetProps) {
@@ -47,7 +48,14 @@ export default function UniversalCandidateProfileSheet(props: UniversalCandidate
   
   // If Apollo preview (has apolloId but no candidateId)
   if (props.apolloId && !props.candidateId) {
-    return <ApolloPreviewSheet {...props} />
+    return (
+      <ApolloPreviewSheet 
+        {...props} 
+        onCandidateCollected={(candidateId) => {
+          props.onCandidateCollected?.(candidateId, props.apolloId!)
+        }}
+      />
+    )
   }
   
   // If job context, use the existing CandidateProfileSheet (UNCHANGED)
