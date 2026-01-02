@@ -644,6 +644,28 @@ const handler = async (req: Request): Promise<Response> => {
       ? textToHtml(await replacePlaceholders(request.body_html, candidateData, jobData, userProfile || user, bookingUrl, stageBookingUrl))
       : undefined;
     
+    // Detect if a booking link placeholder was used in the original content
+    const originalContent = `${request.subject || ''} ${request.body_text || ''} ${request.body_html || ''}`;
+    const bookingLinkWasUsed = 
+      /\{\{\s*stage\.booking_link\s*\}\}/i.test(originalContent) ||
+      /\{\{\s*sender\.booking_link\s*\}\}/i.test(originalContent);
+    
+    // Update booking_link_sent_at if booking link was used and we have association context
+    if (bookingLinkWasUsed && request.association_id) {
+      console.log('Booking link detected in email, updating booking_link_sent_at for association:', request.association_id);
+      
+      const { error: updateError } = await supabase
+        .from('job_candidate_associations')
+        .update({ booking_link_sent_at: new Date().toISOString() })
+        .eq('id', request.association_id);
+        
+      if (updateError) {
+        console.error('Failed to update booking_link_sent_at:', updateError);
+      } else {
+        console.log('Successfully updated booking_link_sent_at for association:', request.association_id);
+      }
+    }
+    
     const processedRequest = {
       ...request,
       subject: processedSubject,

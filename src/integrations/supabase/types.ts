@@ -1678,6 +1678,7 @@ export type Database = {
       job_candidate_associations: {
         Row: {
           added_by: string | null
+          booking_link_sent_at: string | null
           candidate_id: string
           created_at: string
           current_stage_id: string | null
@@ -1696,6 +1697,7 @@ export type Database = {
         }
         Insert: {
           added_by?: string | null
+          booking_link_sent_at?: string | null
           candidate_id: string
           created_at?: string
           current_stage_id?: string | null
@@ -1714,6 +1716,7 @@ export type Database = {
         }
         Update: {
           added_by?: string | null
+          booking_link_sent_at?: string | null
           candidate_id?: string
           created_at?: string
           current_stage_id?: string | null

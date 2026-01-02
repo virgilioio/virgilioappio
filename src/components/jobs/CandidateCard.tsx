@@ -50,7 +50,7 @@ export default function CandidateCard(props: CandidateCardProps) {
     enabled: !!candidateId,
   })
 
-  // Query for candidate status (scorecards and bookings)
+  // Query for candidate status (scorecards, bookings, and booking link sent)
   const { data: candidateStatus } = useQuery({
     queryKey: ['candidate-status', candidateId, associationId, currentStageJhsId],
     queryFn: async () => {
@@ -74,6 +74,13 @@ export default function CandidateCard(props: CandidateCardProps) {
         .in('status', ['pending', 'confirmed', 'rescheduled', 'completed', 'no_show'])
         .order('scheduled_start', { ascending: true })
       
+      // Fetch booking_link_sent_at from the association
+      const { data: association } = await supabase
+        .from('job_candidate_associations')
+        .select('booking_link_sent_at')
+        .eq('id', associationId)
+        .single()
+      
       const hasScorecard = (scorecards?.length ?? 0) > 0
       const now = new Date()
       
@@ -96,7 +103,10 @@ export default function CandidateCard(props: CandidateCardProps) {
         (b.candidate_confirmation_status === 'pending' && b.status !== 'cancelled')
       )
       
-      return { hasScorecard, completedInterview, upcomingInterview, pendingBookingLink }
+      // Check if a booking link was explicitly sent via email
+      const bookingLinkSentAt = association?.booking_link_sent_at
+      
+      return { hasScorecard, completedInterview, upcomingInterview, pendingBookingLink, bookingLinkSentAt }
     },
     enabled: !!candidateId && !!associationId && !!currentStageJhsId,
   })
@@ -104,7 +114,7 @@ export default function CandidateCard(props: CandidateCardProps) {
   // Get status badge based on priority
   const getStatusBadge = () => {
     if (!candidateStatus) return null
-    const { hasScorecard, completedInterview, upcomingInterview, pendingBookingLink } = candidateStatus
+    const { hasScorecard, completedInterview, upcomingInterview, pendingBookingLink, bookingLinkSentAt } = candidateStatus
     
     if (hasScorecard) {
       return { label: 'Needs Decision', variant: 'purple' as const, Icon: CheckCircle }
@@ -119,7 +129,8 @@ export default function CandidateCard(props: CandidateCardProps) {
       return { label: `In ${timeUntil}`, variant: 'info' as const, Icon: Calendar }
     }
     
-    if (pendingBookingLink) {
+    // Check both: pending booking in scheduled_bookings OR explicit booking link sent via email
+    if (pendingBookingLink || bookingLinkSentAt) {
       return { label: 'Booking Link Sent', variant: 'secondary' as const, Icon: Send }
     }
     
