@@ -16,7 +16,7 @@ export function RecentSourcingProjects() {
     return (
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2">
             <Search className="h-4 w-4 text-virgilio-purple" />
             Recent Searches
           </CardTitle>
@@ -41,7 +41,7 @@ export function RecentSourcingProjects() {
     return (
       <Card className="border-dashed">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2">
             <Search className="h-4 w-4 text-muted-foreground" />
             Recent Searches
           </CardTitle>
@@ -62,7 +62,7 @@ export function RecentSourcingProjects() {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2">
           <Search className="h-4 w-4 text-virgilio-purple" />
           Recent Searches
         </CardTitle>
