@@ -33,7 +33,7 @@ export default function Pipeline() {
   // Fetch global metrics
   const { data: globalMetrics, isLoading: metricsLoading } = usePipelineGlobalMetrics(filters);
 
-  // Client-side filter to apply status & search
+  // Client-side filter to apply status, search & user filters
   const filteredJobs = useMemo(() => {
     return jobs.filter(job => {
       // Status filter
@@ -42,9 +42,16 @@ export default function Pipeline() {
       // Search filter
       if (searchTerm && !job.title.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       
+      // User filter - check if any selected user is in the hiring_team
+      if (selectedUsers.length > 0) {
+        const hiringTeam = Array.isArray(job.hiring_team) ? job.hiring_team : [];
+        const hasMatchingUser = selectedUsers.some(userId => hiringTeam.includes(userId));
+        if (!hasMatchingUser) return false;
+      }
+      
       return true;
     });
-  }, [jobs, jobStatus, searchTerm]);
+  }, [jobs, jobStatus, searchTerm, selectedUsers]);
 
   const jobIds = filteredJobs.map(j => j.id);
   const { data: jobMetrics } = usePipelineJobMetrics(jobIds);
