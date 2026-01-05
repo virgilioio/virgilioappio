@@ -104,6 +104,7 @@ export function useMyScorecards(associationId?: string | null) {
             stage_instance_id: stageInstanceId,
             rating,
             general_overview,
+            created_by: user.id,
           },
         ])
         .select("*")
