@@ -98,6 +98,9 @@ export function AddOrTransferCandidateDialog({
 
     if (result.success) {
       setOpen(false)
+      // Open candidate profile in the new job in a new tab
+      const newProfileUrl = `/jobs/${selectedJobId}/candidates/${candidateId}`
+      window.open(newProfileUrl, '_blank')
     }
   }
 
@@ -117,8 +120,12 @@ export function AddOrTransferCandidateDialog({
     })
 
     if (result.success) {
+      // Open candidate profile in the new job in a new tab FIRST
+      const newProfileUrl = `/jobs/${selectedJobId}/candidates/${candidateId}`
+      window.open(newProfileUrl, '_blank')
+      
       setOpen(false)
-      // Close the candidate profile sheet as well since candidate is no longer in this job
+      // Navigate back since candidate no longer exists in current job
       window.history.back()
     }
   }
