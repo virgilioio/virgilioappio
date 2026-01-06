@@ -25,6 +25,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Checkbox } from '@/components/ui/checkbox'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
+import { usePipelineCandidateStatuses } from '@/hooks/usePipelineCandidateStatuses'
 
 
 interface PipelineOverviewProps {
@@ -339,36 +340,60 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     onStageChanged?.()
   }, [moveAssociationToStage, loadPipeline, selectedIds, emitSelectedCandidateIds, onStageChanged])
 
-  // Ordered list of candidate IDs across the pipeline (by stage order, then pipeline_position, then created_at)
-  const orderedCandidateIds = useMemo(() => {
-    const perStage = stageOptions.map(opt => {
-      const arr = (byStage[opt.jhsId] || []).slice().sort((a, b) => {
-        const pa = a.pipeline_position ?? Number.MAX_SAFE_INTEGER
-        const pb = b.pipeline_position ?? Number.MAX_SAFE_INTEGER
-        if (pa !== pb) return pa - pb
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      })
-      return arr
-    })
-    return perStage.flat().map(a => a.candidate_id)
+  // Get all associations for status-based sorting
+  const allAssociations = useMemo(() => {
+    const all: PipelineAssociation[] = []
+    for (const opt of stageOptions) {
+      for (const a of byStage[opt.jhsId] || []) {
+        all.push(a)
+      }
+    }
+    return all
   }, [byStage, stageOptions])
+
+  // Get status priorities for all candidates (batch query)
+  const { statusMap } = usePipelineCandidateStatuses(jobId, allAssociations)
+
+  // Sort function: priority first, then time (ascending for all = oldest/soonest first)
+  const sortByStatusPriority = useCallback((a: PipelineAssociation, b: PipelineAssociation) => {
+    const statusA = statusMap.get(a.id) ?? { priority: 5, sortTime: new Date(a.entered_stage_at || a.created_at).getTime() }
+    const statusB = statusMap.get(b.id) ?? { priority: 5, sortTime: new Date(b.entered_stage_at || b.created_at).getTime() }
+    
+    // Primary: Sort by status priority (1 = highest priority = first)
+    if (statusA.priority !== statusB.priority) {
+      return statusA.priority - statusB.priority
+    }
+    
+    // Secondary: Sort by time (ascending = oldest/soonest first)
+    return statusA.sortTime - statusB.sortTime
+  }, [statusMap])
+
+  // Sorted candidates by stage (for board view rendering)
+  const sortedByStage = useMemo(() => {
+    const result: Record<string, PipelineAssociation[]> = {}
+    for (const opt of stageOptions) {
+      const arr = (byStage[opt.jhsId] || []).slice().sort(sortByStatusPriority)
+      result[opt.jhsId] = arr
+    }
+    return result
+  }, [byStage, stageOptions, sortByStatusPriority])
+
+  // Ordered list of candidate IDs across the pipeline (by stage order, then status priority)
+  const orderedCandidateIds = useMemo(() => {
+    const perStage = stageOptions.map(opt => sortedByStage[opt.jhsId] || [])
+    return perStage.flat().map(a => a.candidate_id)
+  }, [sortedByStage, stageOptions])
 
   // Flat list of candidates for list view
   const flatCandidates = useMemo(() => {
     const rows: { assoc: PipelineAssociation; stage: JobStage; stageJhsId: string }[] = []
     for (const opt of stageOptions) {
-      const arr = (byStage[opt.jhsId] || []).slice().sort((a, b) => {
-        const pa = a.pipeline_position ?? Number.MAX_SAFE_INTEGER
-        const pb = b.pipeline_position ?? Number.MAX_SAFE_INTEGER
-        if (pa !== pb) return pa - pb
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      })
-      for (const a of arr) {
+      for (const a of sortedByStage[opt.jhsId] || []) {
         rows.push({ assoc: a, stage: opt.stage, stageJhsId: opt.jhsId })
       }
     }
     return rows
-  }, [byStage, stageOptions])
+  }, [sortedByStage, stageOptions])
 
   // List view helpers
   const [search, setSearch] = useState('')
@@ -521,7 +546,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                         {selectionMode && (
                           <div className="flex items-center gap-2 pr-1" onClick={(e) => e.stopPropagation()}>
                             <Checkbox
-                              checked={(byStage[opt.jhsId] || []).length > 0 && (byStage[opt.jhsId] || []).every(a => isSelected(a.id))}
+                              checked={(sortedByStage[opt.jhsId] || []).length > 0 && (sortedByStage[opt.jhsId] || []).every(a => isSelected(a.id))}
                               onCheckedChange={() => selectAllInStage(opt.jhsId)}
                               aria-label="Select all in stage"
                             />
@@ -532,19 +557,20 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                     </div>
                   </CardHeader>
                   <CardContent className={`${getHeaderBgClass(opt.stage.stage_type)} rounded-b-md flex-1 overflow-y-auto`}>
-                    <DroppableStage id={opt.jhsId} isEmpty={!byStage[opt.jhsId] || byStage[opt.jhsId].length === 0} tintClass={getHeaderBgClass(opt.stage.stage_type)}>
+                    <DroppableStage id={opt.jhsId} isEmpty={!sortedByStage[opt.jhsId] || sortedByStage[opt.jhsId].length === 0} tintClass={getHeaderBgClass(opt.stage.stage_type)}>
                       {isLoadingCandidates && (
                         <div className="text-xs text-text-tertiary">Loading candidates...</div>
                       )}
 
-                      {!isLoadingCandidates && (!byStage[opt.jhsId] || byStage[opt.jhsId].length === 0) && (
+                      {!isLoadingCandidates && (!sortedByStage[opt.jhsId] || sortedByStage[opt.jhsId].length === 0) && (
                         <div className="text-xs text-text-tertiary">
                           No candidates in this stage
                         </div>
                       )}
 
+
                       <div className="space-y-2">
-                        {(byStage[opt.jhsId] || []).map(assoc => {
+                        {(sortedByStage[opt.jhsId] || []).map(assoc => {
                           const t = getTimeInfo(assoc)
                           // Check if this card is part of a bulk drag (selected + another selected card is being dragged)
                           const isPartOfBulkDrag = activeId !== null && 
