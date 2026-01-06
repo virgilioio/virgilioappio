@@ -138,6 +138,10 @@ export function MyInterviews() {
     }
   }
 
+  const handleNavigateToCandidate = (jobId: string, candidateId: string) => {
+    window.open(`/jobs/${jobId}?candidate=${candidateId}`, '_blank')
+  }
+
   const EmptyState = ({ type }: { type: 'upcoming' | 'past' }) => (
     <div className="text-center py-8 text-muted-foreground">
       <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
@@ -215,6 +219,7 @@ export function MyInterviews() {
                         showInterviewer={showInterviewer}
                         isPastTab={false}
                         onViewDetails={handleViewDetails}
+                        onNavigate={handleNavigateToCandidate}
                         onCopyMeetingLink={handleCopyMeetingLink}
                         onMarkCompleted={(id) => handleStatusUpdate(id, 'completed')}
                         onMarkNoShow={(id) => handleStatusUpdate(id, 'no_show')}
@@ -245,6 +250,7 @@ export function MyInterviews() {
                         showInterviewer={showInterviewer}
                         isPastTab={true}
                         onViewDetails={handleViewDetails}
+                        onNavigate={handleNavigateToCandidate}
                       />
                     ))}
                   </div>
