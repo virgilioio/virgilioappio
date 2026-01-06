@@ -31,6 +31,7 @@ interface InterviewRowProps {
   showInterviewer: boolean
   isPastTab?: boolean
   onViewDetails: (bookingId: string) => void
+  onNavigate?: (jobId: string, candidateId: string) => void
   onCopyMeetingLink?: (booking: ScheduledBooking) => void
   onMarkCompleted?: (bookingId: string) => void
   onMarkNoShow?: (bookingId: string) => void
@@ -72,6 +73,7 @@ export function InterviewRow({
   showInterviewer,
   isPastTab = false,
   onViewDetails,
+  onNavigate,
   onCopyMeetingLink,
   onMarkCompleted,
   onMarkNoShow,
@@ -86,17 +88,25 @@ export function InterviewRow({
   const candidateName = booking.candidate?.candidate_name || booking.candidate_name
   const jobTitle = booking.job?.title || 'Unknown Job'
 
+  const handleRowClick = () => {
+    if (onNavigate && booking.job?.id && booking.candidate_id) {
+      onNavigate(booking.job.id, booking.candidate_id)
+    } else {
+      onViewDetails(booking.id)
+    }
+  }
+
   return (
     <div
       className={cn(
-        "w-full text-left p-3 rounded-lg border transition-all",
+        "group w-full text-left p-3 rounded-lg border transition-all",
         "hover:bg-accent hover:border-accent-foreground/20",
         "border-border bg-card"
       )}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-center justify-between gap-2">
         <button
-          onClick={() => onViewDetails(booking.id)}
+          onClick={handleRowClick}
           className="flex-1 min-w-0 text-left focus:outline-none"
         >
           {/* Line 1: Candidate name + Status badge + Sync icons */}
@@ -159,7 +169,7 @@ export function InterviewRow({
         </button>
 
         {/* Right side: Dropdown menu + Chevron */}
-        <div className="flex items-center gap-1 shrink-0 pt-0.5">
+        <div className="flex items-center gap-1 shrink-0">
           <DropdownMenu>
             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -209,7 +219,7 @@ export function InterviewRow({
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
         </div>
       </div>
     </div>
