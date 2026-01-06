@@ -1,24 +1,7 @@
 import { useState, useEffect } from 'react'
-import { format, parseISO, isToday, isTomorrow } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,27 +12,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Calendar,
-  Clock,
-  MoreVertical,
   ChevronDown,
   ChevronUp,
-  ExternalLink,
-  RefreshCw,
-  AlertTriangle,
 } from 'lucide-react'
 import { useScheduledBookings, type ScheduledBooking } from '@/hooks/useScheduledBookings'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
 import { BookingDetailsDialog } from '@/components/booking/BookingDetailsDialog'
+import { InterviewRow } from './InterviewRow'
 import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/integrations/supabase/client'
 import { useQueryClient } from '@tanstack/react-query'
@@ -117,32 +90,8 @@ export function MyInterviews() {
 
   const displayedBookings = isExpanded ? bookings : bookings.slice(0, 5)
 
-  const formatInterviewDate = (dateString: string) => {
-    const date = parseISO(dateString)
-    const time = format(date, 'h:mm a')
-
-    if (isToday(date)) return `Today at ${time}`
-    if (isTomorrow(date)) return `Tomorrow at ${time}`
-
-    return `${format(date, 'MMM d')} at ${time}`
-  }
-
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return 'default'
-      case 'rescheduled':
-        return 'secondary'
-      case 'completed':
-        return 'outline'
-      case 'cancelled':
-        return 'destructive'
-      case 'no_show':
-        return 'outline'
-      default:
-        return 'outline'
-    }
-  }
+  const showInterviewer = permissions.isRecruiter || permissions.isHiringManager || 
+    permissions.isAdmin || permissions.isWorkspaceOwner || permissions.isPlatformAdmin
 
   const handleViewDetails = (bookingId: string) => {
     setSelectedBookingId(bookingId)
@@ -206,9 +155,32 @@ export function MyInterviews() {
   const LoadingState = () => (
     <div className="space-y-2">
       {[...Array(3)].map((_, i) => (
-        <Skeleton key={i} className="h-12 w-full" />
+        <Skeleton key={i} className="h-[72px] w-full rounded-lg" />
       ))}
     </div>
+  )
+
+  const ShowMoreButton = () => (
+    bookings.length > 5 && (
+      <div className="mt-4 flex justify-center">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="gap-2"
+        >
+          {isExpanded ? (
+            <>
+              Show Less <ChevronUp className="h-4 w-4" />
+            </>
+          ) : (
+            <>
+              Show More ({bookings.length - 5} more) <ChevronDown className="h-4 w-4" />
+            </>
+          )}
+        </Button>
+      </div>
+    )
   )
 
   return (
@@ -234,164 +206,27 @@ export function MyInterviews() {
                 <EmptyState type="upcoming" />
               ) : (
                 <div className={isExpanded ? 'max-h-[400px] overflow-y-auto' : ''}>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="min-w-[180px] max-w-[220px]">Candidate</TableHead>
-                        {(permissions.isRecruiter || permissions.isHiringManager || permissions.isAdmin || permissions.isWorkspaceOwner || permissions.isPlatformAdmin) && (
-                          <TableHead>Interviewer</TableHead>
-                        )}
-                        <TableHead>Date & Time</TableHead>
-                        <TableHead>Duration</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="w-[50px]"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {displayedBookings.map((booking) => (
-                        <TableRow
-                          key={booking.id}
-                          className="cursor-pointer hover:bg-muted/50"
-                          onClick={() => handleViewDetails(booking.id)}
-                        >
-                          <TableCell className="font-medium max-w-[220px]">
-                            <div className="truncate" title={booking.candidate?.candidate_name || booking.candidate_name}>
-                              {booking.candidate?.candidate_name || booking.candidate_name}
-                            </div>
-                          </TableCell>
-                          {(permissions.isRecruiter || permissions.isHiringManager || permissions.isAdmin || permissions.isWorkspaceOwner || permissions.isPlatformAdmin) && (
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                {booking.interviewer_profile ? (
-                                  <>
-                                    <span className="text-sm">
-                                      {booking.interviewer_profile.first_name} {booking.interviewer_profile.last_name}
-                                    </span>
-                                    {booking.interviewer_id !== user?.id && (
-                                      <Badge variant="outline" className="text-xs">Team</Badge>
-                                    )}
-                                  </>
-                                ) : booking.interviewer_id ? (
-                                  <span className="text-sm text-muted-foreground" title={`Interviewer ID: ${booking.interviewer_id}`}>
-                                    Profile Not Found
-                                  </span>
-                                ) : (
-                                  <span className="text-sm text-muted-foreground">
-                                    Not Assigned
-                                  </span>
-                                )}
-                              </div>
-                            </TableCell>
-                          )}
-                          <TableCell>{formatInterviewDate(booking.scheduled_start)}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="gap-1">
-                              <Clock className="h-3 w-3" />
-                              {booking.duration_minutes} min
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={getStatusBadgeVariant(booking.status)}>
-                                {booking.status}
-                              </Badge>
-                              {booking.sync_source === 'google_calendar' && (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger>
-                                      <Badge variant="outline" className="gap-1">
-                                        <RefreshCw className="h-3 w-3" />
-                                        Synced
-                                      </Badge>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Last synced: {booking.last_synced_at ? format(parseISO(booking.last_synced_at), 'MMM d, h:mm a') : 'Never'}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              )}
-                              {booking.sync_errors && Array.isArray(booking.sync_errors) && booking.sync_errors.length > 0 && (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger>
-                                      <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Sync issues detected. View details for more info.</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleViewDetails(booking.id)}>
-                                  View Details
-                                </DropdownMenuItem>
-                                {booking.meeting_location && (
-                                  <DropdownMenuItem onClick={() => handleCopyMeetingLink(booking)}>
-                                    <ExternalLink className="h-4 w-4 mr-2" />
-                                    Copy Meeting Link
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => handleStatusUpdate(booking.id, 'completed')}
-                                  disabled={isUpdating}
-                                >
-                                  Mark as Completed
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleStatusUpdate(booking.id, 'no_show')}
-                                  disabled={isUpdating}
-                                >
-                                  Mark as No-Show
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => handleCancelBooking(booking.id)}
-                                  disabled={isCancelling}
-                                  className="text-destructive"
-                                >
-                                  Cancel Booking
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                  <div className="space-y-2">
+                    {displayedBookings.map((booking) => (
+                      <InterviewRow
+                        key={booking.id}
+                        booking={booking}
+                        currentUserId={user?.id}
+                        showInterviewer={showInterviewer}
+                        isPastTab={false}
+                        onViewDetails={handleViewDetails}
+                        onCopyMeetingLink={handleCopyMeetingLink}
+                        onMarkCompleted={(id) => handleStatusUpdate(id, 'completed')}
+                        onMarkNoShow={(id) => handleStatusUpdate(id, 'no_show')}
+                        onCancel={handleCancelBooking}
+                        isUpdating={isUpdating}
+                        isCancelling={isCancelling}
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
-
-              {!isLoading && bookings.length > 5 && (
-                <div className="mt-4 flex justify-center">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsExpanded(!isExpanded)}
-                    className="gap-2"
-                  >
-                    {isExpanded ? (
-                      <>
-                        Show Less <ChevronUp className="h-4 w-4" />
-                      </>
-                    ) : (
-                      <>
-                        Show More ({bookings.length - 5} more) <ChevronDown className="h-4 w-4" />
-                      </>
-                    )}
-                  </Button>
-                </div>
-              )}
+              {!isLoading && <ShowMoreButton />}
             </TabsContent>
 
             <TabsContent value="past" className="mt-0">
@@ -401,108 +236,21 @@ export function MyInterviews() {
                 <EmptyState type="past" />
               ) : (
                 <div className={isExpanded ? 'max-h-[400px] overflow-y-auto' : ''}>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="min-w-[180px] max-w-[220px]">Candidate</TableHead>
-                        {(permissions.isRecruiter || permissions.isHiringManager || permissions.isAdmin || permissions.isWorkspaceOwner || permissions.isPlatformAdmin) && (
-                          <TableHead>Interviewer</TableHead>
-                        )}
-                        <TableHead>Date & Time</TableHead>
-                        <TableHead>Duration</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="w-[50px]"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {displayedBookings.map((booking) => (
-                        <TableRow
-                          key={booking.id}
-                          className="cursor-pointer hover:bg-muted/50"
-                          onClick={() => handleViewDetails(booking.id)}
-                        >
-                          <TableCell className="font-medium max-w-[220px]">
-                            <div className="truncate" title={booking.candidate?.candidate_name || booking.candidate_name}>
-                              {booking.candidate?.candidate_name || booking.candidate_name}
-                            </div>
-                          </TableCell>
-                          {(permissions.isRecruiter || permissions.isHiringManager || permissions.isAdmin || permissions.isWorkspaceOwner || permissions.isPlatformAdmin) && (
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                {booking.interviewer_profile ? (
-                                  <>
-                                    <span className="text-sm">
-                                      {booking.interviewer_profile.first_name} {booking.interviewer_profile.last_name}
-                                    </span>
-                                    {booking.interviewer_id !== user?.id && (
-                                      <Badge variant="outline" className="text-xs">Team</Badge>
-                                    )}
-                                  </>
-                                ) : booking.interviewer_id ? (
-                                  <span className="text-sm text-muted-foreground" title={`Interviewer ID: ${booking.interviewer_id}`}>
-                                    Profile Not Found
-                                  </span>
-                                ) : (
-                                  <span className="text-sm text-muted-foreground">
-                                    Not Assigned
-                                  </span>
-                                )}
-                              </div>
-                            </TableCell>
-                          )}
-                          <TableCell>{format(parseISO(booking.scheduled_start), 'MMM d, h:mm a')}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="gap-1">
-                              <Clock className="h-3 w-3" />
-                              {booking.duration_minutes} min
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={getStatusBadgeVariant(booking.status)}>
-                              {booking.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleViewDetails(booking.id)}>
-                                  View Details
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                  <div className="space-y-2">
+                    {displayedBookings.map((booking) => (
+                      <InterviewRow
+                        key={booking.id}
+                        booking={booking}
+                        currentUserId={user?.id}
+                        showInterviewer={showInterviewer}
+                        isPastTab={true}
+                        onViewDetails={handleViewDetails}
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
-
-              {!isLoading && bookings.length > 5 && (
-                <div className="mt-4 flex justify-center">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsExpanded(!isExpanded)}
-                    className="gap-2"
-                  >
-                    {isExpanded ? (
-                      <>
-                        Show Less <ChevronUp className="h-4 w-4" />
-                      </>
-                    ) : (
-                      <>
-                        Show More ({bookings.length - 5} more) <ChevronDown className="h-4 w-4" />
-                      </>
-                    )}
-                  </Button>
-                </div>
-              )}
+              {!isLoading && <ShowMoreButton />}
             </TabsContent>
           </Tabs>
         </CardContent>
