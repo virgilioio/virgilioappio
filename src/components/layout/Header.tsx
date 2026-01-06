@@ -297,12 +297,6 @@ export function Header() {
               <DropdownMenuSeparator className="bg-virgilio-border" />
               <DropdownMenuItem asChild className="hover:bg-virgilio-purple/5 hover:text-virgilio-text transition-colors cursor-pointer">
                 <Link to="/settings" className="flex items-center gap-2 w-full">
-                  <User className="h-3.5 w-3.5" />
-                  <span className="font-poppins">Profile</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild className="hover:bg-virgilio-purple/5 hover:text-virgilio-text transition-colors cursor-pointer">
-                <Link to="/settings" className="flex items-center gap-2 w-full">
                   <Settings className="h-3.5 w-3.5" />
                   <span className="font-poppins">Settings</span>
                 </Link>
