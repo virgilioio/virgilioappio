@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { 
   Edit2, MoreHorizontal, RefreshCw, Archive, Trash2, 
@@ -239,7 +240,13 @@ export function SourcingProjectHeader({
               <div className="flex items-center gap-2">
                 <Briefcase className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium text-foreground">
-                  Linked to: {linkedJobLabel}
+                  Linked to:{' '}
+                  <Link 
+                    to={`/jobs/${project.job_id}`}
+                    className="text-primary hover:underline"
+                  >
+                    {linkedJobLabel}
+                  </Link>
                 </span>
               </div>
             </>
