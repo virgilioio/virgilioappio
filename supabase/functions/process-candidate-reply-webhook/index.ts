@@ -96,7 +96,7 @@ serve(async (req) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const webhookSecret = Deno.env.get('RESEND_INBOUND_WEBHOOK_SECRET')!;
+  const webhookSecret = Deno.env.get('RESEND_CANDIDATE_REPLY_WEBHOOK_SECRET')!;
 
   try {
     const rawPayload = await req.text();
