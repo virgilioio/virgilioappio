@@ -352,11 +352,12 @@ const stageHasAutomation = useMemo(() => {
         email: globalCandidateData.email,
         phone: globalCandidateData.phone,
         // Sync contact arrays with primary values so Contact Information card updates
+        // These columns are text[] so we must store JSON strings
         contact_emails: globalCandidateData.email 
-          ? [{ type: 'primary', email: globalCandidateData.email, status: 'verified' }]
+          ? [JSON.stringify({ type: 'work', email: globalCandidateData.email, status: 'verified' })]
           : [],
         contact_phones: globalCandidateData.phone 
-          ? [{ type: 'primary', phone: globalCandidateData.phone }]
+          ? [JSON.stringify({ type: 'other', number: globalCandidateData.phone, raw_number: globalCandidateData.phone })]
           : [],
         location_country: globalCandidateData.location_country,
         location_state: globalCandidateData.location_state,
