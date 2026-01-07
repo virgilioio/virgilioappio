@@ -76,3 +76,4 @@ export function handlePreflight(req: Request): Response | null {
 // Legacy exports for backward compatibility
 export const createSecureCorsHeaders = () => corsHeadersFor();
 export const handleSecureCorsPreFlight = (req: Request, _corsHeaders?: Record<string, string>) => handlePreflight(req);
+export const corsHeaders = corsHeadersFor();
