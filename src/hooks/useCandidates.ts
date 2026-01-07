@@ -452,6 +452,13 @@ export function useCandidates(jobId: string) {
         candidate_name: globalCandidateData.candidate_name,
         email: globalCandidateData.email,
         phone: globalCandidateData.phone,
+        // Sync contact arrays with primary values (text[] columns require JSON strings)
+        contact_emails: globalCandidateData.email 
+          ? [JSON.stringify({ type: 'work', email: globalCandidateData.email, status: 'verified' })]
+          : [],
+        contact_phones: globalCandidateData.phone 
+          ? [JSON.stringify({ type: 'other', number: globalCandidateData.phone, raw_number: globalCandidateData.phone })]
+          : [],
         location_country: globalCandidateData.location_country,
         location_state: globalCandidateData.location_state,
         location_city: globalCandidateData.location_city,
