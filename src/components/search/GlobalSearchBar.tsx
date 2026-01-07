@@ -6,6 +6,7 @@ import { Popover, PopoverContent, PopoverAnchor } from '@/components/ui/popover'
 import { useGlobalSearch, type SearchResult } from '@/hooks/useGlobalSearch'
 import { SearchDropdown } from './SearchDropdown'
 import { SearchResultsDialog } from './SearchResultsDialog'
+import { IndependentCandidateProfileSheet } from '@/components/candidates/IndependentCandidateProfileSheet'
 
 export function GlobalSearchBar() {
   const navigate = useNavigate()
@@ -15,6 +16,8 @@ export function GlobalSearchBar() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
+  const [sheetOpen, setSheetOpen] = useState(false)
   
   const { results, isLoading, totalCounts } = useGlobalSearch(query, { limit: 5 })
 
@@ -52,9 +55,13 @@ export function GlobalSearchBar() {
     if (e.key === 'Enter') {
       e.preventDefault()
       if (highlightedIndex >= 0 && highlightedIndex < results.length) {
-        // Navigate to highlighted result
         const result = results[highlightedIndex]
-        navigate(result.route)
+        if (result.type === 'candidate') {
+          setSelectedCandidateId(result.id)
+          setSheetOpen(true)
+        } else {
+          navigate(result.route)
+        }
         setQuery('')
         setIsDropdownOpen(false)
       } else if (query.length >= 2) {
@@ -81,7 +88,12 @@ export function GlobalSearchBar() {
   }, [query, results, highlightedIndex, navigate])
 
   const handleResultClick = (result: SearchResult) => {
-    navigate(result.route)
+    if (result.type === 'candidate') {
+      setSelectedCandidateId(result.id)
+      setSheetOpen(true)
+    } else {
+      navigate(result.route)
+    }
     setQuery('')
     setIsDropdownOpen(false)
   }
@@ -158,6 +170,13 @@ export function GlobalSearchBar() {
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         initialQuery={query}
+      />
+
+      {/* Candidate Profile Sheet */}
+      <IndependentCandidateProfileSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        candidateId={selectedCandidateId}
       />
     </>
   )

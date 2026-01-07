@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 import { useGlobalSearch, type SearchResult } from '@/hooks/useGlobalSearch'
 import { SearchResultRow } from './SearchResultRow'
 import { SearchResultsSkeleton } from './SearchResultsSkeleton'
+import { IndependentCandidateProfileSheet } from '@/components/candidates/IndependentCandidateProfileSheet'
 
 interface SearchResultsDialogProps {
   open: boolean
@@ -25,6 +26,8 @@ export function SearchResultsDialog({ open, onOpenChange, initialQuery }: Search
   const navigate = useNavigate()
   const [query, setQuery] = useState(initialQuery)
   const [activeTab, setActiveTab] = useState<TabType>('all')
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
+  const [sheetOpen, setSheetOpen] = useState(false)
   
   // Use unlimited results for dialog
   const { results, isLoading, totalCounts } = useGlobalSearch(query, { limit: 50 })
@@ -37,8 +40,14 @@ export function SearchResultsDialog({ open, onOpenChange, initialQuery }: Search
   }, [open, initialQuery])
 
   const handleResultClick = (result: SearchResult) => {
-    navigate(result.route)
-    onOpenChange(false)
+    if (result.type === 'candidate') {
+      setSelectedCandidateId(result.id)
+      setSheetOpen(true)
+      onOpenChange(false)
+    } else {
+      navigate(result.route)
+      onOpenChange(false)
+    }
   }
 
   // Filter results by active tab
@@ -57,111 +66,120 @@ export function SearchResultsDialog({ open, onOpenChange, initialQuery }: Search
   ]
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden">
-        <DialogTitle className="sr-only">Search Results</DialogTitle>
-        
-        {/* Search Input */}
-        <div className="p-4 border-b border-virgilio-border">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-virgilio-muted" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search for anything..."
-              className="pl-10 pr-10 h-11"
-              autoFocus
-            />
-            {query && (
-              <button
-                onClick={() => setQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-virgilio-muted hover:text-virgilio-text transition-colors"
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden">
+          <DialogTitle className="sr-only">Search Results</DialogTitle>
+          
+          {/* Search Input */}
+          <div className="p-4 border-b border-virgilio-border">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-virgilio-muted" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search for anything..."
+                className="pl-10 pr-10 h-11"
+                autoFocus
+              />
+              {query && (
+                <button
+                  onClick={() => setQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-virgilio-muted hover:text-virgilio-text transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex items-center gap-1 px-4 py-2 border-b border-virgilio-border bg-surface-secondary/30">
+            {tabs.map(tab => (
+              <Button
+                key={tab.id}
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  "font-poppins text-xs gap-1.5 h-8",
+                  activeTab === tab.id
+                    ? "bg-virgilio-purple text-white hover:bg-virgilio-purple/90"
+                    : "text-virgilio-muted hover:text-virgilio-text hover:bg-virgilio-purple/5"
+                )}
               >
-                <X className="h-4 w-4" />
-              </button>
+                <tab.icon className="h-3.5 w-3.5" />
+                {tab.label}
+                {tab.count > 0 && (
+                  <span className={cn(
+                    "text-[10px] px-1.5 py-0.5 rounded-full",
+                    activeTab === tab.id
+                      ? "bg-white/20"
+                      : "bg-virgilio-border"
+                  )}>
+                    {tab.count}
+                  </span>
+                )}
+              </Button>
+            ))}
+          </div>
+
+          {/* Results */}
+          <div className="max-h-[400px] overflow-y-auto">
+            {isLoading ? (
+              <div className="p-4">
+                <SearchResultsSkeleton count={5} />
+              </div>
+            ) : filteredResults.length === 0 ? (
+              <div className="p-8 text-center">
+                <Search className="h-12 w-12 text-virgilio-border mx-auto mb-3" />
+                <p className="text-sm text-virgilio-muted font-poppins">
+                  {query.length < 2 
+                    ? "Type at least 2 characters to search" 
+                    : `No results found for "${query}"`}
+                </p>
+              </div>
+            ) : (
+              <div className="p-2">
+                {filteredResults.map((result) => (
+                  <SearchResultRow
+                    key={result.id}
+                    result={result}
+                    onClick={() => handleResultClick(result)}
+                  />
+                ))}
+              </div>
             )}
           </div>
-        </div>
 
-        {/* Tabs */}
-        <div className="flex items-center gap-1 px-4 py-2 border-b border-virgilio-border bg-surface-secondary/30">
-          {tabs.map(tab => (
-            <Button
-              key={tab.id}
-              variant="ghost"
-              size="sm"
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                "font-poppins text-xs gap-1.5 h-8",
-                activeTab === tab.id
-                  ? "bg-virgilio-purple text-white hover:bg-virgilio-purple/90"
-                  : "text-virgilio-muted hover:text-virgilio-text hover:bg-virgilio-purple/5"
-              )}
-            >
-              <tab.icon className="h-3.5 w-3.5" />
-              {tab.label}
-              {tab.count > 0 && (
-                <span className={cn(
-                  "text-[10px] px-1.5 py-0.5 rounded-full",
-                  activeTab === tab.id
-                    ? "bg-white/20"
-                    : "bg-virgilio-border"
-                )}>
-                  {tab.count}
+          {/* Footer */}
+          <div className="px-4 py-3 border-t border-virgilio-border bg-surface-secondary/30">
+            <div className="flex items-center justify-between text-xs text-virgilio-muted">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1">
+                  <kbd className="px-1.5 py-0.5 bg-virgilio-border rounded text-[10px] font-mono">↑↓</kbd>
+                  Navigate
                 </span>
-              )}
-            </Button>
-          ))}
-        </div>
-
-        {/* Results */}
-        <div className="max-h-[400px] overflow-y-auto">
-          {isLoading ? (
-            <div className="p-4">
-              <SearchResultsSkeleton count={5} />
-            </div>
-          ) : filteredResults.length === 0 ? (
-            <div className="p-8 text-center">
-              <Search className="h-12 w-12 text-virgilio-border mx-auto mb-3" />
-              <p className="text-sm text-virgilio-muted font-poppins">
-                {query.length < 2 
-                  ? "Type at least 2 characters to search" 
-                  : `No results found for "${query}"`}
-              </p>
-            </div>
-          ) : (
-            <div className="p-2">
-              {filteredResults.map((result) => (
-                <SearchResultRow
-                  key={result.id}
-                  result={result}
-                  onClick={() => handleResultClick(result)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="px-4 py-3 border-t border-virgilio-border bg-surface-secondary/30">
-          <div className="flex items-center justify-between text-xs text-virgilio-muted">
-            <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1">
-                <kbd className="px-1.5 py-0.5 bg-virgilio-border rounded text-[10px] font-mono">↑↓</kbd>
-                Navigate
-              </span>
-              <span className="flex items-center gap-1">
-                <kbd className="px-1.5 py-0.5 bg-virgilio-border rounded text-[10px] font-mono">Enter</kbd>
-                Select
-              </span>
-              <span className="flex items-center gap-1">
-                <kbd className="px-1.5 py-0.5 bg-virgilio-border rounded text-[10px] font-mono">Esc</kbd>
-                Close
-              </span>
+                <span className="flex items-center gap-1">
+                  <kbd className="px-1.5 py-0.5 bg-virgilio-border rounded text-[10px] font-mono">Enter</kbd>
+                  Select
+                </span>
+                <span className="flex items-center gap-1">
+                  <kbd className="px-1.5 py-0.5 bg-virgilio-border rounded text-[10px] font-mono">Esc</kbd>
+                  Close
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      {/* Candidate Profile Sheet */}
+      <IndependentCandidateProfileSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        candidateId={selectedCandidateId}
+      />
+    </>
   )
 }
