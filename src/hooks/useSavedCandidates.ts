@@ -33,13 +33,14 @@ export function useSavedCandidates({ projectId, enabled = true, status = 'active
     queryFn: async (): Promise<SavedCandidate[]> => {
       if (!projectId) return []
 
-      // Step 1: Get all apollo_ids from the sourcing project's preview candidates filtered by status
+      // Step 1: Get all apollo_ids from preview candidates that were ACTUALLY collected in this project
       const { data: previewCandidates, error: previewError } = await supabase
         .from('sourcing_preview_candidates')
         .select('apollo_id')
         .eq('sourcing_project_id', projectId)
         .eq('status', status)
         .not('apollo_id', 'is', null)
+        .not('collected_at', 'is', null)  // Only include candidates actually collected in THIS project
 
       if (previewError) {
         console.error('Error fetching preview candidates:', previewError)

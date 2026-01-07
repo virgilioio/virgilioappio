@@ -147,7 +147,7 @@ serve(async (req) => {
     // Support both singular (apollo_id from frontend) and plural (apollo_ids for batch)
     const apollo_ids = requestBody.apollo_ids || 
                        (requestBody.apollo_id ? [requestBody.apollo_id] : []);
-    const { job_id, stage_id, user_id } = requestBody;
+    const { job_id, stage_id, user_id, sourcing_project_id } = requestBody;
 
     // Ensure we have an array
     const idsToEnrich = Array.isArray(apollo_ids) ? apollo_ids.filter(Boolean) : [apollo_ids].filter(Boolean);
@@ -413,6 +413,19 @@ serve(async (req) => {
       }
 
       console.log('✅ Candidate created:', newCandidate.id);
+
+      // Mark as collected in the sourcing project
+      if (sourcing_project_id) {
+        const { error: previewUpdateError } = await supabase
+          .from('sourcing_preview_candidates')
+          .update({ collected_at: new Date().toISOString() })
+          .eq('apollo_id', person.id)
+          .eq('sourcing_project_id', sourcing_project_id);
+        
+        if (previewUpdateError) {
+          console.warn('Failed to update preview candidate collected_at:', previewUpdateError);
+        }
+      }
 
       // Store work experience if available
       if (person.employment_history && person.employment_history.length > 0) {
