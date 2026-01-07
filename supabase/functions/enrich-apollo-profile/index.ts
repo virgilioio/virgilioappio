@@ -6,6 +6,16 @@ import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 const APOLLO_API_KEY = Deno.env.get('APOLLO_API_KEY');
 // CORRECT Apollo endpoint for enrichment (bulk_match for IDs)
 const APOLLO_BULK_MATCH_URL = 'https://api.apollo.io/api/v1/people/bulk_match';
+const APOLLO_BATCH_SIZE = 10; // Apollo API limit per request
+
+// Helper to chunk array into smaller batches
+function chunkArray<T>(array: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size));
+  }
+  return chunks;
+}
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
@@ -302,30 +312,46 @@ serve(async (req) => {
     const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/apollo-phone-webhook`;
     console.log(`📞 Phone webhook URL: ${webhookUrl}`);
     
-    const apolloResponse = await fetch(APOLLO_BULK_MATCH_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache',
-        'X-Api-Key': APOLLO_API_KEY
-      },
-      body: JSON.stringify({
-        details: idsToProcess.map(id => ({ id })),
-        reveal_phone_number: true,
-        webhook_url: webhookUrl
-      })
-    });
+    // Split into batches of 10 (Apollo's limit per request)
+    const batches = chunkArray(idsToProcess, APOLLO_BATCH_SIZE);
+    console.log(`📦 Processing ${idsToProcess.length} candidates in ${batches.length} batch(es)`);
 
-    if (!apolloResponse.ok) {
-      const errorText = await apolloResponse.text();
-      console.error('❌ Apollo API Error:', apolloResponse.status, errorText);
-      throw new Error(`Apollo API error: ${apolloResponse.status}`);
+    const allMatches: ApolloPerson[] = [];
+
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i];
+      console.log(`🔄 Processing batch ${i + 1}/${batches.length} (${batch.length} candidates)`);
+      
+      const apolloResponse = await fetch(APOLLO_BULK_MATCH_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'X-Api-Key': APOLLO_API_KEY
+        },
+        body: JSON.stringify({
+          details: batch.map(id => ({ id })),
+          reveal_phone_number: true,
+          webhook_url: webhookUrl
+        })
+      });
+
+      if (!apolloResponse.ok) {
+        const errorText = await apolloResponse.text();
+        console.error(`❌ Apollo API Error (batch ${i + 1}):`, apolloResponse.status, errorText);
+        // Continue with other batches instead of failing completely
+        continue;
+      }
+
+      const apolloData = await apolloResponse.json();
+      const batchMatches = apolloData.matches || [];
+      console.log(`✅ Batch ${i + 1} returned ${batchMatches.length} profiles`);
+      
+      allMatches.push(...batchMatches);
     }
 
-    const apolloData = await apolloResponse.json();
-    const matches = apolloData.matches || [];
-    
-    console.log(`✅ Apollo enrichment returned ${matches.length} profiles`);
+    const matches = allMatches;
+    console.log(`✅ Apollo enrichment returned ${matches.length} total profiles from ${batches.length} batch(es)`);
 
     // Increment credit usage for successful enrichments
     if (matches.length > 0) {
