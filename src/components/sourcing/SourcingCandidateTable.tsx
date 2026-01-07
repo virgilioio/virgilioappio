@@ -62,6 +62,7 @@ interface SourcingCandidateTableProps {
   candidates: MatchedCandidate[]
   isLoading: boolean
   jobId?: string | null
+  projectId?: string | null
   searchCriteria?: import('@/types/sourcing').SearchCriteria
 }
 
@@ -69,6 +70,7 @@ export function SourcingCandidateTable({
   candidates, 
   isLoading,
   jobId,
+  projectId,
   searchCriteria
 }: SourcingCandidateTableProps) {
   const navigate = useNavigate()
@@ -243,6 +245,7 @@ export function SourcingCandidateTable({
         body: {
           apollo_id: apolloId,
           job_id: jobId,
+          sourcing_project_id: projectId,
           user_id: user?.id
         }
       })

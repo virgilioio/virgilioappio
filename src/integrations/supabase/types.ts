@@ -3555,6 +3555,7 @@ export type Database = {
         Row: {
           apollo_id: string | null
           archived_at: string | null
+          collected_at: string | null
           company_industry: string | null
           company_url: string | null
           company_website: string | null
@@ -3586,6 +3587,7 @@ export type Database = {
         Insert: {
           apollo_id?: string | null
           archived_at?: string | null
+          collected_at?: string | null
           company_industry?: string | null
           company_url?: string | null
           company_website?: string | null
@@ -3617,6 +3619,7 @@ export type Database = {
         Update: {
           apollo_id?: string | null
           archived_at?: string | null
+          collected_at?: string | null
           company_industry?: string | null
           company_url?: string | null
           company_website?: string | null
