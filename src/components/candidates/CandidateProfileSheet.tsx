@@ -664,6 +664,9 @@ const stageHasAutomation = useMemo(() => {
                                     candidateName={`${candidate.first_name || ''} ${candidate.last_name || ''}`.trim() || 'Candidate'}
                                     currentJobId={jobId}
                                     currentJobTitle={job.title}
+                                    hasNextCandidate={hasNext}
+                                    onNavigateNext={onNavigateNext}
+                                    onClose={() => onOpenChange(false)}
                                   />
                                 )}
                                 <Button

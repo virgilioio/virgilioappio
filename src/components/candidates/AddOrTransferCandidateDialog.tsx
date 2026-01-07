@@ -25,6 +25,9 @@ interface AddOrTransferCandidateDialogProps {
   currentJobId: string
   currentJobTitle: string
   trigger?: React.ReactNode
+  hasNextCandidate?: boolean
+  onNavigateNext?: () => void
+  onClose?: () => void
 }
 
 export function AddOrTransferCandidateDialog({
@@ -32,7 +35,10 @@ export function AddOrTransferCandidateDialog({
   candidateName,
   currentJobId,
   currentJobTitle,
-  trigger
+  trigger,
+  hasNextCandidate,
+  onNavigateNext,
+  onClose
 }: AddOrTransferCandidateDialogProps) {
   const [open, setOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'add' | 'transfer'>('add')
@@ -98,8 +104,8 @@ export function AddOrTransferCandidateDialog({
 
     if (result.success) {
       setOpen(false)
-      // Open candidate profile in the new job in a new tab
-      const newProfileUrl = `/jobs/${selectedJobId}/candidates/${candidateId}`
+      // Open job pipeline with candidate profile sheet in a new tab
+      const newProfileUrl = `/jobs/${selectedJobId}?candidate=${candidateId}`
       window.open(newProfileUrl, '_blank')
     }
   }
@@ -120,13 +126,18 @@ export function AddOrTransferCandidateDialog({
     })
 
     if (result.success) {
-      // Open candidate profile in the new job in a new tab FIRST
-      const newProfileUrl = `/jobs/${selectedJobId}/candidates/${candidateId}`
+      // Open job pipeline with candidate profile sheet in a new tab
+      const newProfileUrl = `/jobs/${selectedJobId}?candidate=${candidateId}`
       window.open(newProfileUrl, '_blank')
       
       setOpen(false)
-      // Navigate back since candidate no longer exists in current job
-      window.history.back()
+      
+      // Smart navigation: go to next candidate if available, otherwise close the sheet
+      if (hasNextCandidate && onNavigateNext) {
+        onNavigateNext()
+      } else if (onClose) {
+        onClose()
+      }
     }
   }
 
