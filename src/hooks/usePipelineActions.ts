@@ -85,7 +85,12 @@ export function usePipelineActions() {
     console.log('[usePipelineActions.moveAssociationToStage] moving', { associationId, toStageId })
     const { data, error } = await supabase
       .from('job_candidate_associations')
-      .update({ current_stage_id: toStageId, pipeline_position: null })
+      .update({ 
+        current_stage_id: toStageId, 
+        pipeline_position: null,
+        booking_link_sent_at: null,  // Reset for new stage
+        entered_stage_at: new Date().toISOString()  // Update stage entry time
+      })
       .eq('id', associationId)
       .select('id') // attempt to return updated row
 
