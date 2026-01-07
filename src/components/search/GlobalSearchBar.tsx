@@ -113,9 +113,9 @@ export function GlobalSearchBar() {
               onKeyDown={handleKeyDown}
               placeholder="Search for anything..."
               className={cn(
-                "h-9 w-[200px] rounded-lg border border-virgilio-border bg-surface-primary pl-9 pr-12 text-sm font-poppins",
+                "h-9 w-[280px] rounded-lg border border-virgilio-border bg-surface-primary pl-9 pr-12 text-sm font-poppins",
                 "placeholder:text-virgilio-muted transition-all duration-200",
-                "focus:outline-none focus:ring-2 focus:ring-virgilio-purple focus:border-virgilio-purple focus:w-[280px]",
+                "focus:outline-none focus:ring-2 focus:ring-virgilio-purple focus:border-virgilio-purple focus:w-[400px]",
                 "hover:border-virgilio-purple/50"
               )}
             />
