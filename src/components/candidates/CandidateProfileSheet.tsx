@@ -351,6 +351,13 @@ const stageHasAutomation = useMemo(() => {
         candidate_name: globalCandidateData.candidate_name,
         email: globalCandidateData.email,
         phone: globalCandidateData.phone,
+        // Sync contact arrays with primary values so Contact Information card updates
+        contact_emails: globalCandidateData.email 
+          ? [{ type: 'primary', email: globalCandidateData.email, status: 'verified' }]
+          : [],
+        contact_phones: globalCandidateData.phone 
+          ? [{ type: 'primary', phone: globalCandidateData.phone }]
+          : [],
         location_country: globalCandidateData.location_country,
         location_state: globalCandidateData.location_state,
         location_city: globalCandidateData.location_city,
