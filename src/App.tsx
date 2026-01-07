@@ -36,6 +36,7 @@ import IndependentCandidateProfile from '@/pages/IndependentCandidateProfile'
 import { useFavicon } from './hooks/useFavicon'
 import { useBrowserTitle } from './hooks/useBrowserTitle'
 import { Toaster } from '@/components/ui/toaster'
+import { AppUpdateNotification } from '@/components/layout/AppUpdateNotification'
 import { useAuthBootstrap } from './hooks/useAuthBootstrap'
 import PublicJobPosting from './pages/PublicJobPosting'
 import PublicCareersPage from './pages/PublicCareersPage'
@@ -111,6 +112,7 @@ function AppContent() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       <Toaster />
+      <AppUpdateNotification />
     </div>
   )
 }
