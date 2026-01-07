@@ -1682,6 +1682,8 @@ export type Database = {
           candidate_id: string
           created_at: string
           current_stage_id: string | null
+          email_ingest_address: string | null
+          email_ingest_code: string | null
           entered_stage_at: string | null
           id: string
           job_id: string
@@ -1701,6 +1703,8 @@ export type Database = {
           candidate_id: string
           created_at?: string
           current_stage_id?: string | null
+          email_ingest_address?: string | null
+          email_ingest_code?: string | null
           entered_stage_at?: string | null
           id?: string
           job_id: string
@@ -1720,6 +1724,8 @@ export type Database = {
           candidate_id?: string
           created_at?: string
           current_stage_id?: string | null
+          email_ingest_address?: string | null
+          email_ingest_code?: string | null
           entered_stage_at?: string | null
           id?: string
           job_id?: string
