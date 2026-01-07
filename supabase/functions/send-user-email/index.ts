@@ -71,13 +71,7 @@ async function refreshAccessToken(supabase: any, identity: any): Promise<string>
   return tokens.access_token;
 }
 
-function buildRFC822Email(
-  request: SendEmailRequest, 
-  threadId?: string, 
-  inReplyTo?: string, 
-  references?: string,
-  ingestEmail?: string | null
-): string {
+function buildRFC822Email(request: SendEmailRequest, threadId?: string, inReplyTo?: string, references?: string): string {
   const boundary = `boundary_${Date.now()}_${Math.random().toString(36).substring(7)}`;
   const lines: string[] = [];
 
@@ -85,13 +79,7 @@ function buildRFC822Email(
   lines.push(`From: ${request.from_email}`);
   lines.push(`To: ${request.to.join(', ')}`);
   if (request.cc?.length) lines.push(`Cc: ${request.cc.join(', ')}`);
-  
-  // Add ingest email to Bcc for reply capture (hidden from recipient)
-  const allBcc = [...(request.bcc || [])];
-  if (ingestEmail) {
-    allBcc.push(ingestEmail);
-  }
-  if (allBcc.length) lines.push(`Bcc: ${allBcc.join(', ')}`);
+  if (request.bcc?.length) lines.push(`Bcc: ${request.bcc.join(', ')}`);
   lines.push(`Subject: ${request.subject}`);
   
   // Add threading headers for replies
@@ -155,67 +143,6 @@ function base64UrlEncode(str: string): string {
   const data = encoder.encode(str);
   const base64 = btoa(String.fromCharCode(...data));
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-/**
- * Generate an 8-character alphanumeric code for email ingest routing
- */
-function generateIngestCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  let code = '';
-  for (let i = 0; i < 8; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
-}
-
-/**
- * Get or create an ingest email address for a job+candidate association.
- * This enables capturing candidate replies to outbound emails.
- */
-async function getOrCreateIngestEmail(
-  supabase: any,
-  candidateId: string,
-  jobId: string
-): Promise<string | null> {
-  // Check if association exists
-  const { data: association, error: assocError } = await supabase
-    .from('job_candidate_associations')
-    .select('id, email_ingest_code, email_ingest_address')
-    .eq('candidate_id', candidateId)
-    .eq('job_id', jobId)
-    .single();
-
-  if (assocError || !association) {
-    console.log('No job_candidate_association found for ingest email:', { candidateId, jobId });
-    return null;
-  }
-
-  // Return existing if already set
-  if (association.email_ingest_address) {
-    console.log('Using existing ingest email:', association.email_ingest_address);
-    return association.email_ingest_address;
-  }
-
-  // Generate new code and address
-  const code = generateIngestCode();
-  const ingestEmail = `jc_${code}@ingest.gogio.io`;
-
-  const { error: updateError } = await supabase
-    .from('job_candidate_associations')
-    .update({
-      email_ingest_code: code,
-      email_ingest_address: ingestEmail,
-    })
-    .eq('id', association.id);
-
-  if (updateError) {
-    console.error('Failed to set ingest email on association:', updateError);
-    return null;
-  }
-
-  console.log('Created new ingest email:', ingestEmail, 'for association:', association.id);
-  return ingestEmail;
 }
 
 /**
@@ -746,14 +673,8 @@ const handler = async (req: Request): Promise<Response> => {
       body_html: processedBodyHtml,
     };
 
-    // Get or create ingest email for reply capture (if candidate + job context provided)
-    let ingestEmail: string | null = null;
-    if (request.candidate_id && request.job_id) {
-      ingestEmail = await getOrCreateIngestEmail(supabase, request.candidate_id, request.job_id);
-    }
-
-    // Build RFC822 email with threading headers and ingest Bcc
-    const rfc822 = buildRFC822Email(processedRequest, threadId, inReplyTo, references, ingestEmail);
+    // Build RFC822 email with threading headers
+    const rfc822 = buildRFC822Email(processedRequest, threadId, inReplyTo, references);
     const encodedEmail = base64UrlEncode(rfc822);
 
     // Send via Gmail API
