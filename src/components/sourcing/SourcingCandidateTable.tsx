@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronLeft, ChevronRight, Download, Mail, Phone } from 'lucide-react'
+import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronLeft, ChevronRight, Download, Mail, Phone, X } from 'lucide-react'
 import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
 import emptyStateAvatar from '@/assets/empty-state-avatar.png'
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 import { CandidateTableSkeleton } from './CandidateTableSkeleton'
+import { JobSelectionDialog } from './JobSelectionDialog'
 import {
   Table,
   TableBody,
@@ -17,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Card, CardContent } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import { SortableHeader } from '@/components/ui/sortable-header'
 import { useSortableTable } from '@/hooks/useSortableTable'
 import { useToast } from '@/hooks/use-toast'
@@ -83,11 +85,62 @@ export function SourcingCandidateTable({
   const [sheetOpen, setSheetOpen] = useState(false)
   const { isCollectDisabled } = useSourcingCreditWarnings()
   
+  // Bulk selection state
+  const [selectedApolloIds, setSelectedApolloIds] = useState<Set<string>>(new Set())
+  const [isBulkCollecting, setIsBulkCollecting] = useState(false)
+  const [showJobDialog, setShowJobDialog] = useState(false)
+  const [pendingBulkIds, setPendingBulkIds] = useState<string[]>([])
+  
   // Sortable table with default sort by match_score DESC
   const { sortedData, sortConfig, requestSort } = useSortableTable(
     candidates,
     { key: 'match_score', direction: 'desc' }
   )
+
+  // Pagination
+  const totalPages = Math.ceil(sortedData.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const paginatedData = sortedData.slice(startIndex, startIndex + itemsPerPage)
+
+  // Apollo candidates that can be selected on current page (not already collected)
+  const apolloCandidatesOnPage = paginatedData.filter(c => 
+    c.source === 'apollo' && !c.candidate_id && c.apollo_id
+  )
+
+  const isAllApolloSelected = apolloCandidatesOnPage.length > 0 && 
+    apolloCandidatesOnPage.every(c => selectedApolloIds.has(c.apollo_id!))
+
+  const toggleSelectApollo = (apolloId: string) => {
+    setSelectedApolloIds(prev => {
+      const next = new Set(prev)
+      if (next.has(apolloId)) {
+        next.delete(apolloId)
+      } else {
+        next.add(apolloId)
+      }
+      return next
+    })
+  }
+
+  const toggleSelectAllApollo = () => {
+    if (isAllApolloSelected) {
+      // Deselect all on current page
+      setSelectedApolloIds(prev => {
+        const next = new Set(prev)
+        apolloCandidatesOnPage.forEach(c => next.delete(c.apollo_id!))
+        return next
+      })
+    } else {
+      // Select all on current page
+      setSelectedApolloIds(prev => {
+        const next = new Set(prev)
+        apolloCandidatesOnPage.forEach(c => next.add(c.apollo_id!))
+        return next
+      })
+    }
+  }
+
+  const clearSelection = () => setSelectedApolloIds(new Set())
 
   // Track current candidate index for navigation
   const currentIndex = selectedApolloId 
@@ -216,6 +269,67 @@ export function SourcingCandidateTable({
     checkExisting()
   }, [jobId, candidates])
 
+  // Bulk collect handler
+  const handleBulkCollect = async () => {
+    if (selectedApolloIds.size === 0) return
+    
+    const idsToCollect = Array.from(selectedApolloIds)
+    
+    // If no job linked, show job selection dialog
+    if (!jobId) {
+      setPendingBulkIds(idsToCollect)
+      setShowJobDialog(true)
+      return
+    }
+    
+    // Proceed with bulk collection
+    await executeBulkCollect(idsToCollect, jobId)
+  }
+
+  const executeBulkCollect = async (apolloIds: string[], targetJobId?: string | null, stageId?: string) => {
+    setIsBulkCollecting(true)
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      const { data, error } = await supabase.functions.invoke('enrich-apollo-profile', {
+        body: {
+          apollo_ids: apolloIds,
+          job_id: targetJobId,
+          stage_id: stageId,
+          sourcing_project_id: projectId,
+          user_id: user?.id
+        }
+      })
+      
+      if (error) {
+        if (error.message?.includes('CREDITS_EXHAUSTED')) {
+          throw new Error('Monthly collect credit limit reached.')
+        }
+        throw error
+      }
+      
+      const successCount = data?.enriched_count || 0
+      const alreadyCollected = data?.results?.filter((r: any) => r.already_collected).length || 0
+      
+      toast({
+        title: 'Profiles collected',
+        description: `${successCount} new profile(s) collected.${alreadyCollected > 0 ? ` ${alreadyCollected} were already in your database.` : ''}`
+      })
+      
+      clearSelection()
+      window.location.reload()
+    } catch (error: any) {
+      toast({
+        title: 'Failed to collect profiles',
+        description: error.message,
+        variant: 'destructive'
+      })
+    } finally {
+      setIsBulkCollecting(false)
+    }
+  }
+
   const handleCollectProfile = async (apolloId: string) => {
     if (!jobId) {
       toast({
@@ -335,11 +449,6 @@ export function SourcingCandidateTable({
     }
   }
 
-  // Pagination
-  const totalPages = Math.ceil(sortedData.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const paginatedData = sortedData.slice(startIndex, startIndex + itemsPerPage)
-
   if (isLoading) {
     return <CandidateTableSkeleton rows={8} />
   }
@@ -368,6 +477,36 @@ export function SourcingCandidateTable({
 
   return (
     <div className="h-full flex flex-col space-y-4">
+      {/* Bulk Action Bar */}
+      {selectedApolloIds.size > 0 && (
+        <div className="sticky top-0 z-10 bg-muted/95 backdrop-blur border border-border rounded-lg px-4 py-3 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium">
+              {selectedApolloIds.size} selected
+            </span>
+            <Button variant="ghost" size="sm" onClick={clearSelection} className="h-7 px-2">
+              <X className="h-3.5 w-3.5 mr-1" />
+              Clear
+            </Button>
+          </div>
+          <Button
+            size="sm"
+            onClick={handleBulkCollect}
+            disabled={isBulkCollecting || isCollectDisabled}
+          >
+            {isBulkCollecting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4 mr-2" />
+            )}
+            {isCollectDisabled 
+              ? 'Credits exhausted' 
+              : `Unlock ${selectedApolloIds.size} ${selectedApolloIds.size === 1 ? 'profile' : 'profiles'} (${selectedApolloIds.size} ${selectedApolloIds.size === 1 ? 'credit' : 'credits'})`
+            }
+          </Button>
+        </div>
+      )}
+
       {/* Desktop Table View */}
       <Card className="shadow-calendly hidden md:block flex-1 flex flex-col overflow-hidden">
         <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
@@ -375,6 +514,14 @@ export function SourcingCandidateTable({
             <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10 px-3">
+                  <Checkbox
+                    checked={isAllApolloSelected && apolloCandidatesOnPage.length > 0}
+                    onCheckedChange={toggleSelectAllApollo}
+                    aria-label="Select all Apollo candidates on page"
+                    disabled={apolloCandidatesOnPage.length === 0}
+                  />
+                </TableHead>
                 <TableHead className="w-[280px]">
                   <SortableHeader 
                     sortKey="candidate_name" 
@@ -402,11 +549,16 @@ export function SourcingCandidateTable({
                 const isAdded = addedCandidates.has(candidate.id)
                 const isLoading = loadingCandidates.has(candidate.id)
                 const isCollecting = candidate.apollo_id ? collectingProfiles.has(candidate.apollo_id) : false
+                const canSelect = candidate.source === 'apollo' && !candidate.candidate_id && candidate.apollo_id
+                const isSelected = canSelect && selectedApolloIds.has(candidate.apollo_id!)
 
                 return (
                   <TableRow 
                     key={candidate.apollo_id || candidate.id}
-                    className="cursor-pointer hover:bg-muted/50"
+                    className={cn(
+                      "cursor-pointer hover:bg-muted/50",
+                      isSelected && "bg-muted/30"
+                    )}
                     onClick={() => {
                       if (candidate.candidate_id || candidate.source === 'local') {
                         // Full profile available
@@ -444,6 +596,17 @@ export function SourcingCandidateTable({
                       }
                     }}
                   >
+                    <TableCell onClick={(e) => e.stopPropagation()} className="w-10 px-3">
+                      {canSelect ? (
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleSelectApollo(candidate.apollo_id!)}
+                          aria-label={`Select ${candidate.candidate_name}`}
+                        />
+                      ) : (
+                        <div className="w-4 h-4" />
+                      )}
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
@@ -634,11 +797,16 @@ export function SourcingCandidateTable({
         {paginatedData.map(candidate => {
           const isAdded = addedCandidates.has(candidate.id)
           const isLoading = loadingCandidates.has(candidate.id)
+          const canSelect = candidate.source === 'apollo' && !candidate.candidate_id && candidate.apollo_id
+          const isSelected = canSelect && selectedApolloIds.has(candidate.apollo_id!)
 
           return (
             <Card 
               key={candidate.id} 
-              className="shadow-calendly cursor-pointer hover:shadow-lg transition-shadow"
+              className={cn(
+                "shadow-calendly cursor-pointer hover:shadow-lg transition-shadow",
+                isSelected && "ring-2 ring-primary"
+              )}
               onClick={() => {
                 if (candidate.candidate_id || candidate.source === 'local') {
                   // Full profile available
@@ -678,6 +846,15 @@ export function SourcingCandidateTable({
             >
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-start gap-3">
+                  {canSelect && (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleSelectApollo(candidate.apollo_id!)}
+                        aria-label={`Select ${candidate.candidate_name}`}
+                      />
+                    </div>
+                  )}
                   <Avatar className="h-10 w-10">
                     <AvatarFallback className="bg-accent/20 text-accent-foreground font-semibold text-sm">
                       {candidate.candidate_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
@@ -810,6 +987,21 @@ export function SourcingCandidateTable({
         onNavigateNext={handleNavigateNext}
         searchCriteria={searchCriteria}
         onCandidateCollected={handleCandidateCollected}
+      />
+
+      {/* Job Selection Dialog for bulk collection without linked job */}
+      <JobSelectionDialog
+        open={showJobDialog}
+        onOpenChange={setShowJobDialog}
+        onJobSelected={async (selectedJobId, jobName, stageId) => {
+          setShowJobDialog(false)
+          await executeBulkCollect(pendingBulkIds, selectedJobId, stageId)
+        }}
+        onSkip={async () => {
+          setShowJobDialog(false)
+          await executeBulkCollect(pendingBulkIds, null)
+        }}
+        initialJobId={null}
       />
     </div>
   )
