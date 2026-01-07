@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Popover, PopoverContent, PopoverAnchor } from '@/components/ui/popover'
 import { useGlobalSearch, type SearchResult } from '@/hooks/useGlobalSearch'
 import { SearchDropdown } from './SearchDropdown'
 import { SearchResultsDialog } from './SearchResultsDialog'
@@ -100,8 +100,8 @@ export function GlobalSearchBar() {
 
   return (
     <>
-      <Popover open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
-        <PopoverTrigger asChild>
+      <Popover open={isDropdownOpen}>
+        <PopoverAnchor asChild>
           <div className="relative hidden md:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-virgilio-muted pointer-events-none" />
             <input
@@ -124,12 +124,14 @@ export function GlobalSearchBar() {
               <kbd className="px-1 py-0.5 bg-virgilio-border/50 rounded font-mono">/</kbd>
             </div>
           </div>
-        </PopoverTrigger>
+        </PopoverAnchor>
         
         <PopoverContent 
           className="w-[400px] p-0 shadow-elevated border-virgilio-border"
           align="start"
           sideOffset={8}
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onCloseAutoFocus={(e) => e.preventDefault()}
         >
           <SearchDropdown
             results={results}
