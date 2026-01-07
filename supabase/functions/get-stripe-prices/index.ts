@@ -1,7 +1,9 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import Stripe from "https://esm.sh/stripe@16?target=deno";
-import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
+import Stripe from "npm:stripe@16";
+import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/cors.ts";
+
+const corsHeaders = createSecureCorsHeaders();
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16',
@@ -9,7 +11,7 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
 
 serve(async (req) => {
   // Handle CORS preflight requests
-  const preflightResponse = handlePreflight(req);
+  const preflightResponse = handleSecureCorsPreFlight(req, corsHeaders);
   if (preflightResponse) return preflightResponse;
 
   try {
@@ -19,7 +21,7 @@ serve(async (req) => {
       console.error('Missing Authorization header');
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeadersFor(), 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -34,7 +36,7 @@ serve(async (req) => {
       console.error('Authentication failed:', authError);
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeadersFor(), 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -91,7 +93,7 @@ serve(async (req) => {
       JSON.stringify(response),
       { 
         headers: { 
-          ...corsHeadersFor(), 
+          ...corsHeaders, 
           'Content-Type': 'application/json',
           'Cache-Control': 'public, max-age=300' // Cache for 5 minutes
         } 
@@ -107,7 +109,7 @@ serve(async (req) => {
       }),
       { 
         status: 500, 
-        headers: { ...corsHeadersFor(), 'Content-Type': 'application/json' } 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
   }
