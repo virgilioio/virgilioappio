@@ -95,6 +95,7 @@ function AppContent() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/find" element={<Find />} />
+            <Route path="/find/:projectId" element={<Find />} />
             <Route path="/jobs" element={<Jobs />} />
             <Route path="/pipeline" element={<Pipeline />} />
             <Route path="/analytics" element={<Analytics />} />

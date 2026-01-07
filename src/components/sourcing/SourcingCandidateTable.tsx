@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronLeft, ChevronRight, Download, Mail, Phone, X } from 'lucide-react'
 import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
 import emptyStateAvatar from '@/assets/empty-state-avatar.png'
@@ -76,6 +77,7 @@ export function SourcingCandidateTable({
   searchCriteria
 }: SourcingCandidateTableProps) {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { toast } = useToast()
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 25
@@ -318,7 +320,9 @@ export function SourcingCandidateTable({
       })
       
       clearSelection()
-      window.location.reload()
+      // Invalidate queries to refresh data without full page reload
+      queryClient.invalidateQueries({ queryKey: ['sourcing-candidates', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['saved-candidates', projectId] })
     } catch (error: any) {
       toast({
         title: 'Failed to collect profiles',
@@ -377,8 +381,9 @@ export function SourcingCandidateTable({
         description: 'Full candidate profile has been added to your pipeline.'
       })
 
-      // Refresh candidates list to show updated data
-      window.location.reload()
+      // Invalidate queries to refresh data without full page reload
+      queryClient.invalidateQueries({ queryKey: ['sourcing-candidates', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['saved-candidates', projectId] })
     } catch (error: any) {
       toast({
         title: 'Failed to collect profile',

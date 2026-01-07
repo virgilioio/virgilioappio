@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import { AIJobAssistant } from '@/components/dashboard/AIJobAssistant'
 import { SourcingSidebar } from '@/components/sourcing/SourcingSidebar'
@@ -12,11 +12,13 @@ import { FirstRunOrientationDialog } from '@/components/onboarding/FirstRunOrien
 import gioAvatar from '@/assets/gio-avatar.png'
 
 export default function Find() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [mode, setMode] = useState<'new' | 'project'>('new')
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
+  const { projectId } = useParams<{ projectId?: string }>()
+  const navigate = useNavigate()
   const [isGenerating, setIsGenerating] = useState(false)
   const [showFirstRunDialog, setShowFirstRunDialog] = useState(false)
+  
+  // Derive mode from URL
+  const mode = projectId ? 'project' : 'new'
   
   // Fetch sourcing projects to determine first-run state
   const { data: sourcingProjects, isLoading: isLoadingProjects } = useSourcingProjects()
@@ -24,19 +26,14 @@ export default function Find() {
   // Initialize credit warnings
   useSourcingCreditWarnings()
 
-  // Handle query param for project selection (Phase 2 support)
-  useEffect(() => {
-    const projectParam = searchParams.get('project')
-    if (projectParam && sourcingProjects) {
-      const projectExists = sourcingProjects.some(p => p.id === projectParam)
-      if (projectExists) {
-        setSelectedProjectId(projectParam)
-        setMode('project')
-        // Clean URL after setting state
-        setSearchParams({}, { replace: true })
-      }
-    }
-  }, [searchParams, sourcingProjects, setSearchParams])
+  // Navigation handlers
+  const handleSelectProject = (id: string) => {
+    navigate(`/find/${id}`)
+  }
+  
+  const handleNewSearch = () => {
+    navigate('/find')
+  }
 
   // Determine first-run state and handle dialog (with loading guard)
   useEffect(() => {
@@ -81,15 +78,9 @@ export default function Find() {
       <SidebarProvider defaultOpen={!isFirstRunTenantFlow}>
         <div className="min-h-screen flex w-full overflow-hidden">
           <SourcingSidebar 
-            selectedProjectId={selectedProjectId}
-            onSelectProject={(id) => {
-              setSelectedProjectId(id)
-              setMode('project')
-            }}
-            onNewSearch={() => {
-              setSelectedProjectId(null)
-              setMode('new')
-            }}
+            selectedProjectId={projectId || null}
+            onSelectProject={handleSelectProject}
+            onNewSearch={handleNewSearch}
           />
           
           <main className="flex-1 bg-white overflow-hidden">
@@ -130,9 +121,8 @@ export default function Find() {
                       : 'opacity-100 scale-100 max-h-[1000px]'
                   }`}>
                     <AIJobAssistant 
-                      onProjectCreated={(projectId) => {
-                        setSelectedProjectId(projectId)
-                        setMode('project')
+                      onProjectCreated={(newProjectId) => {
+                        navigate(`/find/${newProjectId}`)
                       }}
                       onGeneratingChange={setIsGenerating}
                     />
@@ -141,8 +131,8 @@ export default function Find() {
               </div>
             )}
             
-            {mode === 'project' && selectedProjectId && (
-              <SourcingProjectView projectId={selectedProjectId} />
+            {mode === 'project' && projectId && (
+              <SourcingProjectView projectId={projectId} />
             )}
           </main>
         </div>
