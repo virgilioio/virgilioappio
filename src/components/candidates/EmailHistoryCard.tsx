@@ -92,20 +92,7 @@ export function EmailHistoryCard({ email }: EmailHistoryCardProps) {
   const emailDate = email.received_at || email.sent_at || email.created_at;
 
   return (
-    <Card 
-      className={cn(
-        "relative border-l-4 transition-all",
-        isSent && "bg-primary/5"
-      )}
-      style={{
-        borderLeftColor: 
-          isReceived ? '#c2d2ff' :
-          email.status === 'sent' || email.status === 'delivered' ? '#d2ffc2' :
-          email.status === 'failed' ? '#ffc2c2' :
-          email.status === 'pending' ? '#f5f5f5' :
-          undefined
-      }}
-    >
+    <Card className="relative transition-all overflow-hidden">
       <CardContent className="p-4">
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
@@ -183,13 +170,16 @@ export function EmailHistoryCard({ email }: EmailHistoryCardProps) {
         )}
 
         {/* Body preview/expanded */}
-        <div className="mt-3">
+        <div className="mt-3 overflow-hidden">
           {isExpanded ? (
-            <div className="text-sm text-text-primary">
+            <div className="text-sm text-text-primary overflow-x-auto">
               {email.body_html ? (
-                <SafeHtml content={email.body_html} className="prose prose-sm max-w-none dark:prose-invert" />
+                <SafeHtml 
+                  content={email.body_html} 
+                  className="prose prose-sm max-w-full dark:prose-invert break-words [&_*]:max-w-full [&_table]:table-fixed [&_img]:max-w-full" 
+                />
               ) : (
-                <div className="whitespace-pre-wrap">{email.body_text || 'No content'}</div>
+                <div className="whitespace-pre-wrap break-words">{email.body_text || 'No content'}</div>
               )}
             </div>
           ) : (
