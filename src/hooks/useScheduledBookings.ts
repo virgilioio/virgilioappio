@@ -162,14 +162,15 @@ export function useScheduledBookings(status?: BookingStatus, permissions?: Permi
       }
 
       // Apply status-based filters
+      // Use scheduled_end for filtering so interviews remain visible during the meeting
       if (status === 'upcoming') {
         query = query
-          .gte('scheduled_start', new Date().toISOString())
+          .gte('scheduled_end', new Date().toISOString())
           .in('status', ['confirmed', 'rescheduled'])
           .order('scheduled_start', { ascending: true })
       } else if (status === 'past') {
         query = query
-          .or(`scheduled_start.lt.${new Date().toISOString()},status.in.(completed,cancelled,no_show)`)
+          .or(`scheduled_end.lt.${new Date().toISOString()},status.in.(completed,cancelled,no_show)`)
           .order('scheduled_start', { ascending: false })
       } else {
         query = query.order('scheduled_start', { ascending: false })
