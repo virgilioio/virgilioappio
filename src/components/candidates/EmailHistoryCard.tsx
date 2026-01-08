@@ -170,16 +170,17 @@ export function EmailHistoryCard({ email }: EmailHistoryCardProps) {
         )}
 
         {/* Body preview/expanded */}
-        <div className="mt-3 overflow-hidden">
+        <div className="mt-3 w-full overflow-hidden">
           {isExpanded ? (
-            <div className="text-sm text-text-primary overflow-x-auto">
+            <div className="text-sm text-text-primary w-full overflow-hidden">
               {email.body_html ? (
                 <SafeHtml 
                   content={email.body_html} 
-                  className="prose prose-sm max-w-full dark:prose-invert break-words [&_*]:max-w-full [&_table]:table-fixed [&_img]:max-w-full" 
+                  className="prose prose-sm max-w-full w-full dark:prose-invert overflow-hidden [&_*]:max-w-full [&_*]:break-words [&_pre]:whitespace-pre-wrap [&_pre]:overflow-x-auto [&_table]:w-full [&_table]:table-fixed [&_img]:max-w-full [&_a]:break-all" 
+                  style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
                 />
               ) : (
-                <div className="whitespace-pre-wrap break-words">{email.body_text || 'No content'}</div>
+                <div className="whitespace-pre-wrap break-words overflow-hidden">{email.body_text || 'No content'}</div>
               )}
             </div>
           ) : (
