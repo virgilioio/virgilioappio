@@ -678,7 +678,15 @@ export function SourcingCandidateTable({
                       <div className="text-sm">
                         <div className="font-medium truncate">{candidate.current_role || '-'}</div>
                         {candidate.current_company && (
-                          <div className="text-xs text-muted-foreground truncate">{candidate.current_company}</div>
+                          <a
+                            href={`https://www.google.com/search?q=${encodeURIComponent(candidate.current_company)}+site:linkedin.com/company`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-xs text-muted-foreground truncate hover:text-primary hover:underline cursor-pointer"
+                          >
+                            {candidate.current_company}
+                          </a>
                         )}
                       </div>
                     </TableCell>
