@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useState, useEffect } from 'react';
+import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { useBookingConfig, type BookingConfig } from './useBookingConfig';
 import { 
   BookingContext, 
@@ -111,7 +111,7 @@ export function useContextualBookingLink(params: UseContextualBookingLinkParams 
       : config;
   }, [assignedInterviewer?.bookingConfig, config]);
 
-  // Build the context object
+  // Build the context object - use primitive values to prevent infinite loop
   const context = useMemo<BookingContext | null>(() => {
     if (!params || !activeConfig?.short_code) return null;
     
@@ -125,14 +125,38 @@ export function useContextualBookingLink(params: UseContextualBookingLinkParams 
       jobTitle: params.jobTitle,
       stageName: params.stageName,
     };
-  }, [params, activeConfig?.short_code]);
+  }, [
+    params?.jobId,
+    params?.candidateId,
+    params?.jhsId,
+    params?.associationId,
+    params?.candidateName,
+    params?.candidateEmail,
+    params?.jobTitle,
+    params?.stageName,
+    activeConfig?.short_code,
+  ]);
+
+  // Ref to track which context we're currently creating a token for
+  const tokenContextKeyRef = useRef<string | null>(null);
 
   // Create short token when context is ready
   useEffect(() => {
     if (!context || !activeConfig?.short_code) {
       setShortToken(null);
+      tokenContextKeyRef.current = null;
       return;
     }
+
+    // Create a unique key for this context to prevent duplicate calls
+    const contextKey = `${context.jobId}-${context.candidateId}-${context.jhsId}-${activeConfig.short_code}`;
+    
+    // Skip if we're already processing this exact context
+    if (tokenContextKeyRef.current === contextKey) {
+      return;
+    }
+    
+    tokenContextKeyRef.current = contextKey;
 
     // Create the short token
     const createToken = async () => {
