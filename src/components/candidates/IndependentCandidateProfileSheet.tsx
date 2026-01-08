@@ -31,6 +31,8 @@ import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 
 import { MinimizableEmailComposer } from '@/components/candidates/MinimizableEmailComposer'
 import { EmailHistoryList } from './EmailHistoryList'
+import { EmailHistoryCardEmail } from './EmailHistoryCard'
+import { formatQuotedReply, formatForwardedMessage, getReplySubject, getForwardSubject } from '@/utils/emailFormatUtils'
 import { ActivityFeedList } from './ActivityFeedList'
 import AddToJobPipelineDialog from './AddToJobPipelineDialog'
 import { Separator } from '@/components/ui/separator'
@@ -67,6 +69,12 @@ export function IndependentCandidateProfileSheet({
   const [editOpen, setEditOpen] = useState(false)
   const [editLoading, setEditLoading] = useState(false)
   const [emailComposerOpen, setEmailComposerOpen] = useState(false)
+  const [emailComposerMode, setEmailComposerMode] = useState<'compose' | 'reply' | 'forward'>('compose')
+  const [emailComposerSubject, setEmailComposerSubject] = useState<string | undefined>(undefined)
+  const [emailComposerBody, setEmailComposerBody] = useState<string | undefined>(undefined)
+  const [emailComposerTo, setEmailComposerTo] = useState<string | undefined>(undefined)
+  const [emailComposerCc, setEmailComposerCc] = useState<string | undefined>(undefined)
+  const [emailComposerReplyToId, setEmailComposerReplyToId] = useState<string | undefined>(undefined)
 
   // Handler for job sidebar navigation
   const handleJobSelect = (jobId: string) => {
@@ -108,6 +116,38 @@ export function IndependentCandidateProfileSheet({
         .single()
       setCandidate(data || null)
     }
+  }
+
+  // Email Reply/Forward handlers
+  const handleEmailReply = (email: EmailHistoryCardEmail) => {
+    const isReceived = email.direction === 'received'
+    setEmailComposerMode('reply')
+    setEmailComposerTo(isReceived ? email.from_address : email.to_addresses[0])
+    setEmailComposerSubject(getReplySubject(email.subject))
+    setEmailComposerBody(formatQuotedReply(email))
+    setEmailComposerCc(email.cc_addresses?.join(', ') || undefined)
+    setEmailComposerReplyToId(email.id)
+    setEmailComposerOpen(true)
+  }
+
+  const handleEmailForward = (email: EmailHistoryCardEmail) => {
+    setEmailComposerMode('forward')
+    setEmailComposerTo('')
+    setEmailComposerSubject(getForwardSubject(email.subject))
+    setEmailComposerBody(formatForwardedMessage(email))
+    setEmailComposerCc(undefined)
+    setEmailComposerReplyToId(email.id)
+    setEmailComposerOpen(true)
+  }
+
+  const resetEmailComposer = () => {
+    setEmailComposerMode('compose')
+    setEmailComposerSubject(undefined)
+    setEmailComposerBody(undefined)
+    setEmailComposerTo(undefined)
+    setEmailComposerCc(undefined)
+    setEmailComposerReplyToId(undefined)
+    setEmailComposerOpen(false)
   }
 
   useEffect(() => {
@@ -731,6 +771,8 @@ export function IndependentCandidateProfileSheet({
                               <div className="p-6">
                                 <EmailHistoryList 
                                   candidateId={candidate.id}
+                                  onReply={handleEmailReply}
+                                  onForward={handleEmailForward}
                                 />
                               </div>
                             </ScrollArea>
@@ -756,11 +798,19 @@ export function IndependentCandidateProfileSheet({
           {/* Minimizable Email Composer (portal to body) */}
           <MinimizableEmailComposer
             isOpen={emailComposerOpen}
-            onOpenChange={setEmailComposerOpen}
+            onOpenChange={(open) => {
+              if (!open) resetEmailComposer()
+              else setEmailComposerOpen(open)
+            }}
             candidateId={candidateId || undefined}
-            defaultTo={candidate?.email}
+            defaultTo={emailComposerTo ?? candidate?.email}
             candidateName={candidate?.candidate_name}
-            onSuccess={() => setEmailComposerOpen(false)}
+            onSuccess={resetEmailComposer}
+            mode={emailComposerMode}
+            inReplyToMessageId={emailComposerReplyToId}
+            defaultSubject={emailComposerSubject}
+            defaultBody={emailComposerBody}
+            defaultCc={emailComposerCc}
           />
         </SheetContent>
       </Sheet>

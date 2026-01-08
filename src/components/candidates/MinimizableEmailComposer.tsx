@@ -15,6 +15,12 @@ interface MinimizableEmailComposerProps {
   // Contextual booking link context
   jhsId?: string;
   associationId?: string;
+  // Reply/Forward support
+  mode?: 'compose' | 'reply' | 'forward';
+  inReplyToMessageId?: string;
+  defaultSubject?: string;
+  defaultBody?: string;
+  defaultCc?: string;
 }
 
 export function MinimizableEmailComposer({
@@ -27,6 +33,11 @@ export function MinimizableEmailComposer({
   onSuccess,
   jhsId,
   associationId,
+  mode = 'compose',
+  inReplyToMessageId,
+  defaultSubject,
+  defaultBody,
+  defaultCc,
 }: MinimizableEmailComposerProps) {
   const [isMinimized, setIsMinimized] = useState(false);
 
@@ -51,7 +62,12 @@ export function MinimizableEmailComposer({
         onClick={() => setIsMinimized(!isMinimized)}
       >
         <h3 className="font-semibold text-sm truncate">
-          {isMinimized ? `Compose: ${candidateName || 'Candidate'}` : `Send Email to ${candidateName || 'Candidate'}`}
+          {mode === 'reply' 
+            ? (isMinimized ? `Reply: ${candidateName || 'Candidate'}` : `Reply to ${candidateName || 'Candidate'}`)
+            : mode === 'forward'
+            ? (isMinimized ? `Forward: ${candidateName || 'Candidate'}` : `Forward Email`)
+            : (isMinimized ? `Compose: ${candidateName || 'Candidate'}` : `Send Email to ${candidateName || 'Candidate'}`)
+          }
         </h3>
         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
           <Button
@@ -88,6 +104,10 @@ export function MinimizableEmailComposer({
             embedded
             jhsId={jhsId}
             associationId={associationId}
+            inReplyToMessageId={inReplyToMessageId}
+            defaultSubject={defaultSubject}
+            defaultBody={defaultBody}
+            defaultCc={defaultCc}
           />
         </div>
       )}

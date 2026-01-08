@@ -38,6 +38,11 @@ interface EmailComposerProps {
   // Contextual booking link context
   jhsId?: string;
   associationId?: string;
+  // Reply/Forward support
+  inReplyToMessageId?: string;
+  defaultSubject?: string;
+  defaultBody?: string;
+  defaultCc?: string;
 }
 
 interface Attachment {
@@ -46,14 +51,14 @@ interface Attachment {
   size: number;
 }
 
-export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedded = false, jhsId, associationId }: EmailComposerProps) {
+export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedded = false, jhsId, associationId, inReplyToMessageId, defaultSubject, defaultBody, defaultCc }: EmailComposerProps) {
   const { identities, isLoading: loadingIdentities } = useMailIdentities();
   const { templates, isLoading: loadingTemplates } = useEmailTemplates('organization');
   const sendEmail = useSendEmail();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [bodyHtml, setBodyHtml] = useState('');
-  const [subjectHtml, setSubjectHtml] = useState('');
-  const [showCC, setShowCC] = useState(false);
+  const [bodyHtml, setBodyHtml] = useState(defaultBody || '');
+  const [subjectHtml, setSubjectHtml] = useState(defaultSubject || '');
+  const [showCC, setShowCC] = useState(!!defaultCc);
   const [showBCC, setShowBCC] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   
@@ -81,10 +86,10 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
     defaultValues: {
       to: defaultTo || '',
       from_email: activeIdentities[0]?.email_address || '',
-      subject: '',
-      cc: '',
+      subject: defaultSubject || '',
+      cc: defaultCc || '',
       bcc: '',
-      body_html: '',
+      body_html: defaultBody || '',
     },
   });
 
@@ -167,6 +172,8 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
       // Pass contextual booking link context for automatic {{sender.booking_link}} replacement
       jhs_id: jhsId,
       association_id: associationId,
+      // Pass in_reply_to for threading
+      in_reply_to_message_id: inReplyToMessageId,
     };
 
     await sendEmail.mutateAsync(request);

@@ -1,36 +1,40 @@
 import { useState } from 'react';
 import { formatDistanceToNow, format, isToday, isYesterday } from 'date-fns';
-import { ChevronDown, ChevronUp, Check, X, Clock, Mail } from 'lucide-react';
+import { ChevronDown, ChevronUp, Check, X, Clock, Mail, Reply, Forward } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SafeHtml } from '@/components/ui/safe-html';
 import { cn } from '@/lib/utils';
 
-interface EmailHistoryCardProps {
-  email: {
-    id: string;
-    direction?: string;
-    from_address: string;
-    to_addresses: string[];
-    cc_addresses?: string[] | null;
-    bcc_addresses?: string[] | null;
-    subject: string;
-    body_html?: string | null;
-    body_text?: string | null;
-    status: string;
-    created_at: string;
-    sent_at?: string | null;
-    received_at?: string | null;
-    is_read?: boolean;
-    opened_at?: string | null;
-    clicked_at?: string | null;
-    replied_at?: string | null;
-    error_message?: string | null;
-  };
+export interface EmailHistoryCardEmail {
+  id: string;
+  direction?: string;
+  from_address: string;
+  to_addresses: string[];
+  cc_addresses?: string[] | null;
+  bcc_addresses?: string[] | null;
+  subject: string;
+  body_html?: string | null;
+  body_text?: string | null;
+  status: string;
+  created_at: string;
+  sent_at?: string | null;
+  received_at?: string | null;
+  is_read?: boolean;
+  opened_at?: string | null;
+  clicked_at?: string | null;
+  replied_at?: string | null;
+  error_message?: string | null;
 }
 
-export function EmailHistoryCard({ email }: EmailHistoryCardProps) {
+interface EmailHistoryCardProps {
+  email: EmailHistoryCardEmail;
+  onReply?: (email: EmailHistoryCardEmail) => void;
+  onForward?: (email: EmailHistoryCardEmail) => void;
+}
+
+export function EmailHistoryCard({ email, onReply, onForward }: EmailHistoryCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isSent = email.direction === 'sent';
   const isReceived = email.direction === 'received';
@@ -189,24 +193,60 @@ export function EmailHistoryCard({ email }: EmailHistoryCardProps) {
             </div>
           )}
           
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="mt-2 h-7 text-xs"
-          >
-            {isExpanded ? (
-              <>
-                <ChevronUp className="h-3 w-3 mr-1" />
-                Show less
-              </>
-            ) : (
-              <>
-                <ChevronDown className="h-3 w-3 mr-1" />
-                Show more
-              </>
+          <div className="flex items-center justify-between mt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="h-7 text-xs"
+            >
+              {isExpanded ? (
+                <>
+                  <ChevronUp className="h-3 w-3 mr-1" />
+                  Show less
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-3 w-3 mr-1" />
+                  Show more
+                </>
+              )}
+            </Button>
+            
+            {/* Reply and Forward buttons */}
+            {(onReply || onForward) && (
+              <div className="flex items-center gap-1">
+                {onReply && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onReply(email);
+                    }}
+                    className="h-7 text-xs gap-1"
+                  >
+                    <Reply className="h-3 w-3" />
+                    Reply
+                  </Button>
+                )}
+                {onForward && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onForward(email);
+                    }}
+                    className="h-7 text-xs gap-1"
+                  >
+                    <Forward className="h-3 w-3" />
+                    Forward
+                  </Button>
+                )}
+              </div>
             )}
-          </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
