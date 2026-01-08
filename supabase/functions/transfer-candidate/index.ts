@@ -56,7 +56,28 @@ serve(async (req) => {
 
     console.log('[Transfer] Source association found:', sourceAssociation.id)
 
-    // 2. Check if candidate already exists in target job
+    // 2. Build stage mapping between source and target jobs
+    const { data: sourceStages } = await supabaseClient
+      .from('job_hiring_stages')
+      .select('id, stage_id, position')
+      .eq('job_id', sourceJobId)
+
+    const { data: targetStages } = await supabaseClient
+      .from('job_hiring_stages')
+      .select('id, stage_id, position')
+      .eq('job_id', targetJobId)
+
+    // Map source stage IDs to target stage IDs (matching by stage_id)
+    const stageMapping = new Map<string, string>()
+    for (const source of sourceStages || []) {
+      const target = targetStages?.find(t => t.stage_id === source.stage_id)
+      if (target) {
+        stageMapping.set(source.id, target.id)
+      }
+    }
+    console.log('[Transfer] Stage mapping built:', stageMapping.size, 'mappings')
+
+    // 3. Check if candidate already exists in target job
     const { data: existingAssociation, error: existingError } = await supabaseClient
       .from('job_candidate_associations')
       .select('id')
