@@ -15,7 +15,13 @@ import { toast } from '@/hooks/use-toast';
 import { AlertCircle, Globe } from 'lucide-react';
 import { startOfMonth, endOfMonth, isSameDay, parseISO } from 'date-fns';
 import { useBookingAvailability } from '@/hooks/useBookingAvailability';
-import { parseBookingContextFromUrl, BookingContext } from '@/lib/bookingLinkUtils';
+import { 
+  parseBookingContextFromUrl, 
+  BookingContext, 
+  hasShortToken, 
+  getShortToken, 
+  resolveBookingToken 
+} from '@/lib/bookingLinkUtils';
 import gioAvatar from '@/assets/gio-avatar.png';
 
 // Common timezones for the selector
@@ -42,11 +48,38 @@ export default function PublicBookingPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string } | null>(null);
+  const [resolvedContext, setResolvedContext] = useState<BookingContext | null>(null);
+  const [isResolvingToken, setIsResolvingToken] = useState(false);
 
-  // Parse contextual booking context from URL
-  const bookingContext = useMemo(() => {
+  // Parse contextual booking context from URL (legacy base64)
+  const legacyContext = useMemo(() => {
     return parseBookingContextFromUrl(searchParams);
   }, [searchParams]);
+
+  // Resolve short token if present
+  useEffect(() => {
+    const resolveToken = async () => {
+      if (hasShortToken(searchParams)) {
+        const token = getShortToken(searchParams);
+        if (token) {
+          setIsResolvingToken(true);
+          try {
+            const context = await resolveBookingToken(token);
+            setResolvedContext(context);
+          } catch (e) {
+            console.error('Failed to resolve booking token:', e);
+          } finally {
+            setIsResolvingToken(false);
+          }
+        }
+      }
+    };
+
+    resolveToken();
+  }, [searchParams]);
+
+  // Use resolved context (short token) or legacy context (base64)
+  const bookingContext = resolvedContext || legacyContext;
 
   // Fetch booking configuration
   const { data: config, isLoading, error } = useQuery({

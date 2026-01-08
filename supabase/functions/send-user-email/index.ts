@@ -199,7 +199,7 @@ async function getOrCreateIngestEmail(
 }
 
 /**
- * Encode booking context to a URL-safe base64 string for contextual booking links
+ * Encode booking context to a URL-safe base64 string for contextual booking links (legacy fallback)
  */
 function encodeBookingContext(context: {
   jobId: string;
@@ -220,6 +220,105 @@ function encodeBookingContext(context: {
   } catch (e) {
     console.error('Failed to encode booking context:', e);
     return '';
+  }
+}
+
+/**
+ * Generate a short 8-character alphanumeric token
+ */
+function generateShortToken(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let token = '';
+  const array = new Uint8Array(8);
+  crypto.getRandomValues(array);
+  for (let i = 0; i < 8; i++) {
+    token += chars[array[i] % chars.length];
+  }
+  return token;
+}
+
+/**
+ * Create or retrieve a short booking token
+ */
+async function getOrCreateBookingToken(
+  supabase: any,
+  shortCode: string,
+  context: {
+    jobId: string;
+    candidateId: string;
+    jhsId: string;
+    associationId: string;
+    candidateName?: string;
+    candidateEmail?: string;
+    jobTitle?: string;
+    stageName?: string;
+  },
+  userId: string
+): Promise<string | null> {
+  try {
+    // Check for existing valid token
+    const { data: existingToken } = await supabase
+      .from('booking_link_tokens')
+      .select('token')
+      .eq('job_id', context.jobId)
+      .eq('candidate_id', context.candidateId)
+      .eq('association_id', context.associationId)
+      .eq('short_code', shortCode)
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle();
+
+    if (existingToken?.token) {
+      return existingToken.token;
+    }
+
+    // Generate a new unique token
+    let token = generateShortToken();
+    let attempts = 0;
+    const maxAttempts = 5;
+
+    while (attempts < maxAttempts) {
+      const { data: collision } = await supabase
+        .from('booking_link_tokens')
+        .select('token')
+        .eq('token', token)
+        .maybeSingle();
+
+      if (!collision) break;
+      token = generateShortToken();
+      attempts++;
+    }
+
+    if (attempts >= maxAttempts) {
+      console.error('Failed to generate unique token after max attempts');
+      return null;
+    }
+
+    // Insert the new token
+    const { error: insertError } = await supabase
+      .from('booking_link_tokens')
+      .insert({
+        token,
+        job_id: context.jobId,
+        candidate_id: context.candidateId,
+        jhs_id: context.jhsId || null,
+        association_id: context.associationId,
+        candidate_name: context.candidateName || null,
+        candidate_email: context.candidateEmail || null,
+        job_title: context.jobTitle || null,
+        stage_name: context.stageName || null,
+        short_code: shortCode,
+        created_by: userId,
+      });
+
+    if (insertError) {
+      console.error('Failed to insert booking token:', insertError);
+      return null;
+    }
+
+    return token;
+  } catch (e) {
+    console.error('Error creating booking token:', e);
+    return null;
   }
 }
 
@@ -587,9 +686,19 @@ const handler = async (req: Request): Promise<Response> => {
           candidateEmail: candidateData?.email,
           jobTitle: jobData?.title,
         };
-        const encodedContext = encodeBookingContext(context);
-        bookingUrl = `${frontendUrl}/schedule/${bookingConfig.short_code}?ctx=${encodedContext}`;
-        console.log('Generated contextual booking link for candidate:', request.candidate_id);
+        
+        // Try to create a short token first
+        const shortToken = await getOrCreateBookingToken(supabase, bookingConfig.short_code, context, user.id);
+        
+        if (shortToken) {
+          bookingUrl = `${frontendUrl}/schedule/${bookingConfig.short_code}?t=${shortToken}`;
+          console.log('Generated short booking link for candidate:', request.candidate_id);
+        } else {
+          // Fallback to legacy base64 encoding
+          const encodedContext = encodeBookingContext(context);
+          bookingUrl = `${frontendUrl}/schedule/${bookingConfig.short_code}?ctx=${encodedContext}`;
+          console.log('Generated legacy booking link for candidate:', request.candidate_id);
+        }
       } else {
         // Fallback to generic booking link
         bookingUrl = `${frontendUrl}/schedule/${bookingConfig.short_code}`;
@@ -655,9 +764,19 @@ const handler = async (req: Request): Promise<Response> => {
                   candidateEmail: candidateData?.email,
                   jobTitle: jobData?.title,
                 };
-                const encodedContext = encodeBookingContext(context);
-                stageBookingUrl = `${frontendUrl}/schedule/${prioritized[0].shortCode}?ctx=${encodedContext}`;
-                console.log('Generated stage interviewer booking link with short_code:', prioritized[0].shortCode);
+                
+                // Try to create a short token first
+                const shortToken = await getOrCreateBookingToken(supabase, prioritized[0].shortCode, context, user.id);
+                
+                if (shortToken) {
+                  stageBookingUrl = `${frontendUrl}/schedule/${prioritized[0].shortCode}?t=${shortToken}`;
+                  console.log('Generated short stage booking link with short_code:', prioritized[0].shortCode);
+                } else {
+                  // Fallback to legacy base64 encoding
+                  const encodedContext = encodeBookingContext(context);
+                  stageBookingUrl = `${frontendUrl}/schedule/${prioritized[0].shortCode}?ctx=${encodedContext}`;
+                  console.log('Generated legacy stage booking link with short_code:', prioritized[0].shortCode);
+                }
               } else {
                 stageBookingUrl = `${frontendUrl}/schedule/${prioritized[0].shortCode}`;
               }

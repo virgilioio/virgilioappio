@@ -516,6 +516,86 @@ export type Database = {
           },
         ]
       }
+      booking_link_tokens: {
+        Row: {
+          association_id: string | null
+          candidate_email: string | null
+          candidate_id: string | null
+          candidate_name: string | null
+          created_at: string | null
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          jhs_id: string | null
+          job_id: string | null
+          job_title: string | null
+          short_code: string
+          stage_name: string | null
+          token: string
+        }
+        Insert: {
+          association_id?: string | null
+          candidate_email?: string | null
+          candidate_id?: string | null
+          candidate_name?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          jhs_id?: string | null
+          job_id?: string | null
+          job_title?: string | null
+          short_code: string
+          stage_name?: string | null
+          token: string
+        }
+        Update: {
+          association_id?: string | null
+          candidate_email?: string | null
+          candidate_id?: string | null
+          candidate_name?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          jhs_id?: string | null
+          job_id?: string | null
+          job_title?: string | null
+          short_code?: string
+          stage_name?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_link_tokens_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "job_candidate_associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_link_tokens_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_link_tokens_jhs_id_fkey"
+            columns: ["jhs_id"]
+            isOneToOne: false
+            referencedRelation: "job_hiring_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_link_tokens_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_identities: {
         Row: {
           access_token: string
