@@ -15,7 +15,7 @@ import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeVi
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap } from 'lucide-react'
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Link2 } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -53,6 +53,8 @@ import { RejectionDialog } from './RejectionDialog'
 import { RejectionStatusBanner } from './RejectionStatusBanner'
 import { CreateOfferLetterSheet } from './CreateOfferLetterDialog'
 import { useQuery } from '@tanstack/react-query'
+import { useBookingConfig } from '@/hooks/useBookingConfig'
+import { useUserProfile } from '@/hooks/useUserProfile'
 
 interface StageScorecardProps {
   stageInstanceId: string;
@@ -149,6 +151,10 @@ const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false)
 
 // Offer Form Sheet
 const [offerFormOpen, setOfferFormOpen] = useState(false)
+
+// Generic booking link for quick scheduling
+const { bookingUrl } = useBookingConfig()
+const { profile: userProfile } = useUserProfile()
 
 // Stage automations query for lightning icon
 const { data: stageAutomations } = useQuery({
@@ -1309,6 +1315,22 @@ const stageHasAutomation = useMemo(() => {
                                <Mail className="h-4 w-4 mr-2" />
                                Send Email
                              </Button>
+                             {bookingUrl && (
+                               <Button
+                                 variant="outline"
+                                 size="sm"
+                                 onClick={() => {
+                                   navigator.clipboard.writeText(bookingUrl)
+                                   toast({
+                                     title: 'Link Copied',
+                                     description: 'Your booking link has been copied to clipboard.'
+                                   })
+                                 }}
+                               >
+                                 <Link2 className="h-4 w-4 mr-2" />
+                                 Copy {userProfile?.first_name ? `${userProfile.first_name}'s` : 'My'} Link
+                               </Button>
+                             )}
                            </div>
                          </div>
                        </CardContent>
