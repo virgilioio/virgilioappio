@@ -52,13 +52,30 @@ export function useRejectionReasons(context: 'platform-defaults' | 'organization
       category: RejectionCategory
       description?: string 
     }) => {
+      // For org context, we need to get the user's tenant_id from members table
+      let tenantId: string | null = null
+      
+      if (context !== 'platform-defaults') {
+        const { data: member, error: memberError } = await supabase
+          .from('members')
+          .select('tenant_id')
+          .eq('user_id', user?.id)
+          .eq('user_status', 'active')
+          .maybeSingle()
+        
+        if (memberError) throw memberError
+        if (!member?.tenant_id) throw new Error('No tenant found for user')
+        
+        tenantId = member.tenant_id
+      }
+
       const { data, error } = await supabase
         .from('rejection_reasons')
         .insert({
           name: input.name,
           category: input.category,
           description: input.description || null,
-          tenant_id: context === 'platform-defaults' ? null : undefined, // RLS will set tenant_id for org context
+          tenant_id: tenantId,
           source: context === 'platform-defaults' ? 'platform' : 'tenant',
           created_by: user?.id
         })
