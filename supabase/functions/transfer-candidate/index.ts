@@ -156,7 +156,22 @@ serve(async (req) => {
       console.log('[Transfer] Activities transferred:', activities.length)
     }
 
-    // 8. Delete source association
+    // 8. Transfer scheduled bookings
+    const { error: bookingsError } = await supabaseClient
+      .from('scheduled_bookings')
+      .update({ 
+        job_id: targetJobId,
+        job_candidate_association_id: newAssociation.id 
+      })
+      .eq('job_candidate_association_id', sourceAssociation.id)
+
+    if (bookingsError) {
+      console.error('[Transfer] Failed to transfer scheduled bookings:', bookingsError)
+    } else {
+      console.log('[Transfer] Scheduled bookings transferred')
+    }
+
+    // 9. Delete source association
     const { error: deleteError } = await supabaseClient
       .from('job_candidate_associations')
       .delete()
