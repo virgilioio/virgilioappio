@@ -136,20 +136,28 @@ serve(async (req) => {
       console.log('[Transfer] Email logs transferred')
     }
 
-    // 6. Transfer scorecards (update both job_id and association_id)
-    const { error: scorecardsError } = await supabaseClient
+    // 6. Transfer scorecards (update job_id, association_id, and stage_instance_id)
+    const { data: scorecards } = await supabaseClient
       .from('job_stage_scorecards')
-      .update({ 
-        job_id: targetJobId,
-        association_id: newAssociation.id 
-      })
+      .select('id, stage_instance_id')
       .eq('candidate_id', candidateId)
       .eq('job_id', sourceJobId)
 
-    if (scorecardsError) {
-      console.error('[Transfer] Failed to transfer scorecards:', scorecardsError)
+    if (scorecards && scorecards.length > 0) {
+      for (const scorecard of scorecards) {
+        const newStageId = stageMapping.get(scorecard.stage_instance_id)
+        await supabaseClient
+          .from('job_stage_scorecards')
+          .update({ 
+            job_id: targetJobId,
+            association_id: newAssociation.id,
+            stage_instance_id: newStageId || scorecard.stage_instance_id
+          })
+          .eq('id', scorecard.id)
+      }
+      console.log('[Transfer] Scorecards transferred:', scorecards.length)
     } else {
-      console.log('[Transfer] Scorecards transferred')
+      console.log('[Transfer] No scorecards to transfer')
     }
 
     // 7. Transfer activities
@@ -177,19 +185,27 @@ serve(async (req) => {
       console.log('[Transfer] Activities transferred:', activities.length)
     }
 
-    // 8. Transfer scheduled bookings
-    const { error: bookingsError } = await supabaseClient
+    // 8. Transfer scheduled bookings (update job_id, association_id, and job_hiring_stage_id)
+    const { data: bookings } = await supabaseClient
       .from('scheduled_bookings')
-      .update({ 
-        job_id: targetJobId,
-        job_candidate_association_id: newAssociation.id 
-      })
+      .select('id, job_hiring_stage_id')
       .eq('job_candidate_association_id', sourceAssociation.id)
 
-    if (bookingsError) {
-      console.error('[Transfer] Failed to transfer scheduled bookings:', bookingsError)
+    if (bookings && bookings.length > 0) {
+      for (const booking of bookings) {
+        const newStageId = stageMapping.get(booking.job_hiring_stage_id)
+        await supabaseClient
+          .from('scheduled_bookings')
+          .update({ 
+            job_id: targetJobId,
+            job_candidate_association_id: newAssociation.id,
+            job_hiring_stage_id: newStageId || booking.job_hiring_stage_id
+          })
+          .eq('id', booking.id)
+      }
+      console.log('[Transfer] Scheduled bookings transferred:', bookings.length)
     } else {
-      console.log('[Transfer] Scheduled bookings transferred')
+      console.log('[Transfer] No scheduled bookings to transfer')
     }
 
     // 9. Delete source association
