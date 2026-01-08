@@ -11,11 +11,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useMailIdentities } from '@/hooks/useMailIdentities';
 import { useSendEmail, SendEmailRequest } from '@/hooks/useSendEmail';
 import { useEmailTemplates } from '@/hooks/useEmailTemplates';
-import { Paperclip, X, Send, Mail } from 'lucide-react';
+import { Paperclip, X, Send, Mail, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { convertPlaceholdersToHtml, convertHtmlToPlaceholders, containsPlaceholders } from '@/utils/placeholderUtils';
+import { AIDraftDialog } from './AIDraftDialog';
 
 const emailSchema = z.object({
   from_email: z.string().email('Invalid email address'),
@@ -55,6 +56,7 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
   const [showCC, setShowCC] = useState(false);
   const [showBCC, setShowBCC] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [showAIDraft, setShowAIDraft] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -292,9 +294,23 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
-              Templates can include placeholders like {'{{'}candidate.name{'}}'}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-muted-foreground flex-1">
+                Templates can include placeholders like {'{{'}candidate.name{'}}'}
+              </p>
+              {candidateId && jobId && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAIDraft(true)}
+                  className="shrink-0"
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  AI Draft
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* To */}
@@ -483,6 +499,22 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
               )}
             </Button>
           </div>
+
+          {/* AI Draft Dialog */}
+          <AIDraftDialog
+            open={showAIDraft}
+            onOpenChange={setShowAIDraft}
+            candidateId={candidateId}
+            jobId={jobId}
+            onInsert={(subject, body) => {
+              setSubjectHtml(subject);
+              setValue('subject', subject);
+              setBodyHtml(body);
+              setValue('body_html', body);
+              setShowAIDraft(false);
+              toast.success('AI draft inserted');
+            }}
+          />
         </form>
   );
 
