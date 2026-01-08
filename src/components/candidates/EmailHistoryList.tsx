@@ -1,7 +1,7 @@
 import { Mail, RefreshCw } from 'lucide-react';
 import { useEmailLogs } from '@/hooks/useEmailLogs';
 import { useSyncGmail } from '@/hooks/useSyncGmail';
-import { EmailHistoryCard } from './EmailHistoryCard';
+import { EmailHistoryCard, EmailHistoryCardEmail } from './EmailHistoryCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,9 +11,11 @@ import { useState, useEffect } from 'react';
 interface EmailHistoryListProps {
   candidateId: string;
   jobId?: string;
+  onReply?: (email: EmailHistoryCardEmail) => void;
+  onForward?: (email: EmailHistoryCardEmail) => void;
 }
 
-export function EmailHistoryList({ candidateId, jobId }: EmailHistoryListProps) {
+export function EmailHistoryList({ candidateId, jobId, onReply, onForward }: EmailHistoryListProps) {
   const { data: emails, isLoading } = useEmailLogs(candidateId, jobId);
   const syncGmail = useSyncGmail();
   const [mailIdentityId, setMailIdentityId] = useState<string | null>(null);
@@ -119,7 +121,12 @@ export function EmailHistoryList({ candidateId, jobId }: EmailHistoryListProps) 
       {sortedThreads.map(([threadId, threadEmails]) => (
         <div key={threadId} className="space-y-2">
           {threadEmails.map((email) => (
-            <EmailHistoryCard key={email.id} email={email} />
+            <EmailHistoryCard 
+              key={email.id} 
+              email={email}
+              onReply={onReply}
+              onForward={onForward}
+            />
           ))}
         </div>
       ))}

@@ -46,6 +46,8 @@ import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
 import { cn } from '@/lib/utils'
 import { MinimizableEmailComposer } from '@/components/candidates/MinimizableEmailComposer'
 import { EmailHistoryList } from './EmailHistoryList'
+import { EmailHistoryCardEmail } from './EmailHistoryCard'
+import { formatQuotedReply, formatForwardedMessage, getReplySubject, getForwardSubject } from '@/utils/emailFormatUtils'
 import { ActivityFeedList } from './ActivityFeedList'
 import { ScheduleInterviewSheet } from './ScheduleInterviewSheet'
 import { GenerateBookingLinkButton } from '@/components/candidates/GenerateBookingLinkButton'
@@ -123,6 +125,12 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [viewingScorecard, setViewingScorecard] = useState<any>(null)
   const [movingStageId, setMovingStageId] = useState<string | null>(null)
   const [emailComposerOpen, setEmailComposerOpen] = useState(false)
+  const [emailComposerMode, setEmailComposerMode] = useState<'compose' | 'reply' | 'forward'>('compose')
+  const [emailComposerSubject, setEmailComposerSubject] = useState<string | undefined>(undefined)
+  const [emailComposerBody, setEmailComposerBody] = useState<string | undefined>(undefined)
+  const [emailComposerTo, setEmailComposerTo] = useState<string | undefined>(undefined)
+  const [emailComposerCc, setEmailComposerCc] = useState<string | undefined>(undefined)
+  const [emailComposerReplyToId, setEmailComposerReplyToId] = useState<string | undefined>(undefined)
   
   // Use the candidate resolver to get the correct ID for attachments
   const { independentCandidateId } = useCandidateResolver(candidateId)
@@ -407,6 +415,38 @@ const stageHasAutomation = useMemo(() => {
     } finally {
       setEditLoading(false)
     }
+  }
+
+  // Email Reply/Forward handlers
+  const handleEmailReply = (email: EmailHistoryCardEmail) => {
+    const isReceived = email.direction === 'received'
+    setEmailComposerMode('reply')
+    setEmailComposerTo(isReceived ? email.from_address : email.to_addresses[0])
+    setEmailComposerSubject(getReplySubject(email.subject))
+    setEmailComposerBody(formatQuotedReply(email))
+    setEmailComposerCc(email.cc_addresses?.join(', ') || undefined)
+    setEmailComposerReplyToId(email.id)
+    setEmailComposerOpen(true)
+  }
+
+  const handleEmailForward = (email: EmailHistoryCardEmail) => {
+    setEmailComposerMode('forward')
+    setEmailComposerTo('')
+    setEmailComposerSubject(getForwardSubject(email.subject))
+    setEmailComposerBody(formatForwardedMessage(email))
+    setEmailComposerCc(undefined)
+    setEmailComposerReplyToId(email.id)
+    setEmailComposerOpen(true)
+  }
+
+  const resetEmailComposer = () => {
+    setEmailComposerMode('compose')
+    setEmailComposerSubject(undefined)
+    setEmailComposerBody(undefined)
+    setEmailComposerTo(undefined)
+    setEmailComposerCc(undefined)
+    setEmailComposerReplyToId(undefined)
+    setEmailComposerOpen(false)
   }
 
   const handleSetStatus = async (s: 'active' | 'rejected' | 'hired') => {
@@ -1398,6 +1438,8 @@ const stageHasAutomation = useMemo(() => {
                                 <EmailHistoryList 
                                   candidateId={candidate.id} 
                                   jobId={jobId}
+                                  onReply={handleEmailReply}
+                                  onForward={handleEmailForward}
                                 />
                               </div>
                             </ScrollArea>
@@ -1491,14 +1533,22 @@ const stageHasAutomation = useMemo(() => {
       {/* Minimizable Email Composer (portal to body) */}
       <MinimizableEmailComposer
         isOpen={emailComposerOpen}
-        onOpenChange={setEmailComposerOpen}
+        onOpenChange={(open) => {
+          if (!open) resetEmailComposer()
+          else setEmailComposerOpen(open)
+        }}
         candidateId={candidateId || undefined}
         jobId={jobId}
-        defaultTo={candidate?.email}
+        defaultTo={emailComposerTo ?? candidate?.email}
         candidateName={candidate?.candidate_name}
-        onSuccess={() => setEmailComposerOpen(false)}
+        onSuccess={resetEmailComposer}
         jhsId={currentStageId || undefined}
         associationId={associationId || undefined}
+        mode={emailComposerMode}
+        inReplyToMessageId={emailComposerReplyToId}
+        defaultSubject={emailComposerSubject}
+        defaultBody={emailComposerBody}
+        defaultCc={emailComposerCc}
       />
 
       {/* Rejection Dialog */}
