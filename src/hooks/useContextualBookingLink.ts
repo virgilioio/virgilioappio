@@ -1,6 +1,11 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState, useEffect } from 'react';
 import { useBookingConfig, type BookingConfig } from './useBookingConfig';
-import { generateContextualBookingLink, BookingContext } from '@/lib/bookingLinkUtils';
+import { 
+  BookingContext, 
+  createShortBookingToken, 
+  generateShortBookingLink,
+  generateContextualBookingLink 
+} from '@/lib/bookingLinkUtils';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { useQuery } from '@tanstack/react-query';
@@ -24,6 +29,8 @@ type AssignedInterviewerBooking = {
 
 export function useContextualBookingLink(params: UseContextualBookingLinkParams | null) {
   const { config, isLoading: isLoadingUserConfig } = useBookingConfig();
+  const [shortToken, setShortToken] = useState<string | null>(null);
+  const [isCreatingToken, setIsCreatingToken] = useState(false);
 
   const { data: assignedInterviewer, isLoading: isLoadingAssignedInterviewer } = useQuery({
     queryKey: ['assigned-interviewer-booking-config', params?.jhsId],
@@ -97,14 +104,18 @@ export function useContextualBookingLink(params: UseContextualBookingLinkParams 
     },
   });
 
-  const contextualLink = useMemo(() => {
-    const activeConfig = assignedInterviewer?.bookingConfig?.short_code
+  // Get the active config (assigned interviewer's or user's)
+  const activeConfig = useMemo(() => {
+    return assignedInterviewer?.bookingConfig?.short_code
       ? assignedInterviewer.bookingConfig
       : config;
+  }, [assignedInterviewer?.bookingConfig, config]);
 
+  // Build the context object
+  const context = useMemo<BookingContext | null>(() => {
     if (!params || !activeConfig?.short_code) return null;
-
-    const context: BookingContext = {
+    
+    return {
       jobId: params.jobId,
       candidateId: params.candidateId,
       jhsId: params.jhsId,
@@ -114,12 +125,57 @@ export function useContextualBookingLink(params: UseContextualBookingLinkParams 
       jobTitle: params.jobTitle,
       stageName: params.stageName,
     };
+  }, [params, activeConfig?.short_code]);
 
-    return generateContextualBookingLink({
-      shortCode: activeConfig.short_code,
-      context,
-    });
-  }, [assignedInterviewer?.bookingConfig, config, params]);
+  // Create short token when context is ready
+  useEffect(() => {
+    if (!context || !activeConfig?.short_code) {
+      setShortToken(null);
+      return;
+    }
+
+    // Create the short token
+    const createToken = async () => {
+      setIsCreatingToken(true);
+      try {
+        const token = await createShortBookingToken({
+          shortCode: activeConfig.short_code,
+          context,
+        });
+        setShortToken(token);
+      } catch (e) {
+        console.error('Failed to create short token:', e);
+        setShortToken(null);
+      } finally {
+        setIsCreatingToken(false);
+      }
+    };
+
+    createToken();
+  }, [context, activeConfig?.short_code]);
+
+  // Generate the contextual link (short if available, fallback to base64)
+  const contextualLink = useMemo(() => {
+    if (!activeConfig?.short_code) return null;
+
+    // If we have a short token, use it
+    if (shortToken) {
+      return generateShortBookingLink({
+        shortCode: activeConfig.short_code,
+        token: shortToken,
+      });
+    }
+
+    // Fallback to legacy base64 encoding while token is being created
+    if (context) {
+      return generateContextualBookingLink({
+        shortCode: activeConfig.short_code,
+        context,
+      });
+    }
+
+    return null;
+  }, [activeConfig?.short_code, shortToken, context]);
 
   const copyToClipboard = useCallback(async () => {
     if (!contextualLink) {
@@ -161,6 +217,6 @@ export function useContextualBookingLink(params: UseContextualBookingLinkParams 
     hasUserBookingConfig: !!config?.short_code && config?.is_active,
     linkOwnerName: assignedInterviewer?.displayName || assignedInterviewer?.fullName || null,
     usingAssignedInterviewer: !!assignedInterviewer?.bookingConfig?.short_code,
-    isLoading: isLoadingUserConfig || isLoadingAssignedInterviewer,
+    isLoading: isLoadingUserConfig || isLoadingAssignedInterviewer || isCreatingToken,
   };
 }
