@@ -1,5 +1,5 @@
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
@@ -378,11 +378,6 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     return result
   }, [byStage, stageOptions, sortByStatusPriority])
 
-  // Ordered list of candidate IDs across the pipeline (by stage order, then status priority)
-  const orderedCandidateIds = useMemo(() => {
-    const perStage = stageOptions.map(opt => sortedByStage[opt.jhsId] || [])
-    return perStage.flat().map(a => a.candidate_id)
-  }, [sortedByStage, stageOptions])
 
   // Flat list of candidates for list view
   const flatCandidates = useMemo(() => {
@@ -460,21 +455,51 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
 
   const defaultOpenGroups = useMemo(() => groupedByStage.map(g => g.stageName), [groupedByStage])
 
-  const currentIndex = selectedCandidateId ? orderedCandidateIds.indexOf(selectedCandidateId) : -1
+  // Ordered list of candidate IDs across the pipeline (respects current view)
+  const orderedCandidateIds = useMemo(() => {
+    if (currentView === 'list') {
+      // List view: use the table's sorted order (respects user's column sorting)
+      return sortedData.map(r => r.candidateId)
+    } else {
+      // Board view: use status-priority sort order (left-to-right, top-to-bottom)
+      const perStage = stageOptions.map(opt => sortedByStage[opt.jhsId] || [])
+      return perStage.flat().map(a => a.candidate_id)
+    }
+  }, [currentView, sortedData, sortedByStage, stageOptions])
+
+  // Snapshot navigation order when sheet first opens to prevent async updates from changing order mid-navigation
+  const navigationOrderRef = useRef<string[]>([])
+  const wasOpenRef = useRef(false)
+
+  useEffect(() => {
+    // Snapshot order when sheet first opens (not during navigation)
+    if (panelOpen && !wasOpenRef.current) {
+      navigationOrderRef.current = orderedCandidateIds
+      wasOpenRef.current = true
+    }
+    // Reset when sheet closes
+    if (!panelOpen) {
+      wasOpenRef.current = false
+    }
+  }, [panelOpen, orderedCandidateIds])
+
+  // Use snapshotted navigation order for consistent prev/next behavior
+  const navOrder = navigationOrderRef.current.length > 0 ? navigationOrderRef.current : orderedCandidateIds
+  const currentIndex = selectedCandidateId ? navOrder.indexOf(selectedCandidateId) : -1
   const hasPrev = currentIndex > 0
-  const hasNext = currentIndex >= 0 && currentIndex < orderedCandidateIds.length - 1
+  const hasNext = currentIndex >= 0 && currentIndex < navOrder.length - 1
 
   const handlePrevCandidate = useCallback(() => {
-    if (hasPrev) {
-      setSelectedCandidateId(orderedCandidateIds[currentIndex - 1])
+    if (currentIndex > 0) {
+      setSelectedCandidateId(navOrder[currentIndex - 1])
     }
-  }, [hasPrev, currentIndex, orderedCandidateIds])
+  }, [currentIndex, navOrder])
 
   const handleNextCandidate = useCallback(() => {
-    if (hasNext) {
-      setSelectedCandidateId(orderedCandidateIds[currentIndex + 1])
+    if (currentIndex >= 0 && currentIndex < navOrder.length - 1) {
+      setSelectedCandidateId(navOrder[currentIndex + 1])
     }
-  }, [hasNext, currentIndex, orderedCandidateIds])
+  }, [currentIndex, navOrder])
 
   return (
     <div className="space-y-4">
