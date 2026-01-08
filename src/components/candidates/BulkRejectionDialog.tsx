@@ -153,9 +153,19 @@ export function BulkRejectionDialog({
     ? ((bulkReject.progress.completed + bulkReject.progress.failed) / bulkReject.progress.total) * 100
     : 0;
 
+  // Cmd+Enter shortcut handler
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      if (canSubmit && !bulkReject.isPending) {
+        handleSubmit();
+      }
+    }
+  }, [canSubmit, bulkReject.isPending, handleSubmit]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col">
+      <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col" onKeyDown={handleKeyDown}>
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <ThumbsDown className="h-5 w-5 text-destructive" />
@@ -381,37 +391,40 @@ export function BulkRejectionDialog({
           </div>
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={bulkReject.isPending}>
-            Cancel
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={handleSubmit}
-            disabled={!canSubmit || bulkReject.isPending}
-          >
-            {bulkReject.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Rejecting...
-              </>
-            ) : isScheduled ? (
-              <>
-                <Clock className="h-4 w-4 mr-2" />
-                Reject & Schedule Emails
-              </>
-            ) : sendEmail && activeIdentities.length > 0 ? (
-              <>
-                <Send className="h-4 w-4 mr-2" />
-                Reject & Send Emails
-              </>
-            ) : (
-              <>
-                <ThumbsDown className="h-4 w-4 mr-2" />
-                Reject {candidateIds.length} Candidate{candidateIds.length > 1 ? 's' : ''}
-              </>
-            )}
-          </Button>
+        <DialogFooter className="gap-2 sm:gap-0 flex-row items-center justify-between sm:justify-between">
+          <span className="text-xs text-muted-foreground hidden sm:inline">⌘↵ to submit</span>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={bulkReject.isPending}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleSubmit}
+              disabled={!canSubmit || bulkReject.isPending}
+            >
+              {bulkReject.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Rejecting...
+                </>
+              ) : isScheduled ? (
+                <>
+                  <Clock className="h-4 w-4 mr-2" />
+                  Reject & Schedule Emails
+                </>
+              ) : sendEmail && activeIdentities.length > 0 ? (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Reject & Send Emails
+                </>
+              ) : (
+                <>
+                  <ThumbsDown className="h-4 w-4 mr-2" />
+                  Reject {candidateIds.length} Candidate{candidateIds.length > 1 ? 's' : ''}
+                </>
+              )}
+            </Button>
+          </div>
         </DialogFooter>
 
         {sendEmail && activeIdentities.length > 0 && (!fromEmail || !subjectHtml || !bodyHtml) && (

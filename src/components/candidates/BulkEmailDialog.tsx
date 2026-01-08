@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -153,9 +153,19 @@ export function BulkEmailDialog({
     ? ((bulkEmail.progress.completed + bulkEmail.progress.failed) / bulkEmail.progress.total) * 100
     : 0;
 
+  // Cmd+Enter shortcut handler
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      if (canSubmit && !bulkEmail.isPending && (sendOption === 'now' || scheduledDate)) {
+        handleSend();
+      }
+    }
+  }, [canSubmit, bulkEmail.isPending, sendOption, scheduledDate, handleSend]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col">
+      <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col" onKeyDown={handleKeyDown}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5" />
@@ -350,26 +360,29 @@ export function BulkEmailDialog({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={bulkEmail.isPending}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSend}
-            disabled={!canSubmit || bulkEmail.isPending || (sendOption === 'later' && !scheduledDate)}
-          >
-            {bulkEmail.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Sending...
-              </>
-            ) : (
-              <>
-                <Send className="h-4 w-4 mr-2" />
-                {isScheduled ? 'Schedule' : 'Send'} {associationIds.length} Email{associationIds.length > 1 ? 's' : ''}
-              </>
-            )}
-          </Button>
+        <DialogFooter className="flex-row items-center justify-between sm:justify-between">
+          <span className="text-xs text-muted-foreground hidden sm:inline">⌘↵ to send</span>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={bulkEmail.isPending}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSend}
+              disabled={!canSubmit || bulkEmail.isPending || (sendOption === 'later' && !scheduledDate)}
+            >
+              {bulkEmail.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  {isScheduled ? 'Schedule' : 'Send'} {associationIds.length} Email{associationIds.length > 1 ? 's' : ''}
+                </>
+              )}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

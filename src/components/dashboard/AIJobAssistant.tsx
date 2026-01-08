@@ -195,8 +195,8 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAs
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Submit on Enter (without Shift)
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // Submit on Enter (without Shift) or Cmd/Ctrl+Enter
+    if ((e.key === 'Enter' && !e.shiftKey) || ((e.metaKey || e.ctrlKey) && e.key === 'Enter')) {
       e.preventDefault()
       if (chatMode) {
         if (prompt.trim() && !isChatLoading) {

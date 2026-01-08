@@ -1,5 +1,5 @@
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -8,6 +8,7 @@ import { Trash2, MessageSquare, Send } from 'lucide-react'
 import { useCandidateComments } from '@/hooks/useCandidateComments'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useSubmitShortcut } from '@/hooks/useSubmitShortcut'
 
 interface CandidateCommentsProps {
   candidateId: string
@@ -20,12 +21,18 @@ export function CandidateComments({ candidateId, jobId, organizationId }: Candid
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { user } = useAuth()
   const permissions = usePermissions()
+  const formRef = useRef<HTMLFormElement>(null)
   const {
     comments,
     isLoading,
     addComment,
     deleteComment
   } = useCandidateComments(candidateId)
+
+  const handleKeyDown = useSubmitShortcut(
+    () => formRef.current?.requestSubmit(),
+    { disabled: !newComment.trim() || isSubmitting }
+  )
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -77,22 +84,25 @@ export function CandidateComments({ candidateId, jobId, organizationId }: Candid
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Add Comment Form */}
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-3">
           <Textarea
             placeholder="Add a comment..."
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
+            onKeyDown={handleKeyDown}
             rows={3}
             className="resize-none"
           />
-          <Button
-            type="submit"
-            disabled={!newComment.trim() || isSubmitting}
-            className="w-full sm:w-auto"
-          >
-            <Send className="h-4 w-4 mr-2" />
-            {isSubmitting ? 'Adding...' : 'Add Comment'}
-          </Button>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">⌘↵ to submit</span>
+            <Button
+              type="submit"
+              disabled={!newComment.trim() || isSubmitting}
+            >
+              <Send className="h-4 w-4 mr-2" />
+              {isSubmitting ? 'Adding...' : 'Add Comment'}
+            </Button>
+          </div>
         </form>
 
         <Separator />
