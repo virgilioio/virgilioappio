@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { convertPlaceholdersToHtml, convertHtmlToPlaceholders, containsPlaceholders } from '@/utils/placeholderUtils';
+import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer';
 import { AIDraftPopover } from './AIDraftPopover';
 
 const emailSchema = z.object({
@@ -313,11 +314,20 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
                   onInsert={(subject, body) => {
                     setSubjectHtml(subject);
                     setValue('subject', subject);
-                    // Convert plain text to simple HTML paragraphs
-                    const htmlBody = body
-                      .split('\n\n')
-                      .map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`)
-                      .join('');
+                    
+                    // Detect HTML (matches markdownToHtml pattern)
+                    const isHtml = /<\/?[a-z][\s\S]*>/i.test(body);
+                    
+                    let htmlBody: string;
+                    if (isHtml) {
+                      // HTML - sanitize for editor (matches RichTextEditor paste pattern)
+                      htmlBody = sanitizeHtmlForEditor(body);
+                    } else {
+                      // Plain text - convert to paragraphs (matches RichTextEditor pattern)
+                      const lines = body.split(/\n+/).filter(line => line.trim());
+                      htmlBody = lines.map(line => `<p>${line.trim()}</p>`).join('');
+                    }
+                    
                     setBodyHtml(htmlBody);
                     setValue('body_html', htmlBody);
                   }}
