@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -56,8 +56,17 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
   const [showBCC, setShowBCC] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const activeIdentities = identities.filter(id => id.is_active);
+
+  // Cmd+Enter shortcut handler for the form
+  const handleFormKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      formRef.current?.requestSubmit();
+    }
+  }, []);
 
   const {
     register,
@@ -214,7 +223,7 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
   }
 
   const formContent = (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form ref={formRef} onSubmit={handleSubmit(onSubmit)} onKeyDown={handleFormKeyDown} className="space-y-4">
           {/* From */}
           <div className="space-y-2">
             <Label htmlFor="from_email">From</Label>
@@ -458,7 +467,8 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
           </div>
 
           {/* Submit */}
-          <div className="flex justify-end gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">⌘↵ to send</span>
             <Button
               type="submit"
               disabled={sendEmail.isPending}

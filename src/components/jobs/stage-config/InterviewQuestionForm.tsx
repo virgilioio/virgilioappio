@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Sheet,
   SheetContent,
@@ -14,6 +14,7 @@ import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Plus, X } from 'lucide-react'
 import type { InterviewQuestion, AnswerType, SelectOption } from '@/hooks/useScorecardsConfiguration'
+import { useSubmitShortcut } from '@/hooks/useSubmitShortcut'
 
 interface InterviewQuestionFormProps {
   open: boolean
@@ -99,6 +100,8 @@ export function InterviewQuestionForm({
   const validOptions = isSelectType ? selectOptions.filter(opt => opt.value.trim() && opt.label.trim()) : []
   const canSave = questionText.trim() && (!isSelectType || validOptions.length >= 2)
 
+  const handleKeyDown = useSubmitShortcut(handleSave, { disabled: !canSave || isSaving })
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
@@ -122,8 +125,10 @@ export function InterviewQuestionForm({
               placeholder="Enter the interview question..."
               value={questionText}
               onChange={(e) => setQuestionText(e.target.value)}
+              onKeyDown={handleKeyDown}
               rows={3}
             />
+            <p className="text-xs text-muted-foreground">⌘↵ to save</p>
           </div>
 
           {/* Answer Type */}

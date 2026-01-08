@@ -53,7 +53,8 @@ export function ConversationTab({ projectId, onRefinementComplete }: Conversatio
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // Submit on Enter (without Shift) or Cmd/Ctrl+Enter
+    if ((e.key === 'Enter' && !e.shiftKey) || ((e.metaKey || e.ctrlKey) && e.key === 'Enter')) {
       e.preventDefault();
       handleSendMessage();
     }
@@ -200,10 +201,10 @@ export function ConversationTab({ projectId, onRefinementComplete }: Conversatio
               ) : (
                 <Send className="h-5 w-5" />
               )}
-            </Button>
+          </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            Press Enter to send, Shift+Enter for new line
+            Press Enter or ⌘↵ to send, Shift+Enter for new line
           </p>
         </div>
       </div>
