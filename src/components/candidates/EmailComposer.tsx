@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { convertPlaceholdersToHtml, convertHtmlToPlaceholders, containsPlaceholders } from '@/utils/placeholderUtils';
-import { AIDraftDialog } from './AIDraftDialog';
+import { AIDraftPopover } from './AIDraftPopover';
 
 const emailSchema = z.object({
   from_email: z.string().email('Invalid email address'),
@@ -56,7 +56,7 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
   const [showCC, setShowCC] = useState(false);
   const [showBCC, setShowBCC] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
-  const [showAIDraft, setShowAIDraft] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -299,16 +299,32 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
                 Templates can include placeholders like {'{{'}candidate.name{'}}'}
               </p>
               {candidateId && jobId && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowAIDraft(true)}
-                  className="shrink-0"
+                <AIDraftPopover
+                  candidateId={candidateId}
+                  jobId={jobId}
+                  senderName={activeIdentities.find(i => i.email_address === fromEmail)?.display_name || undefined}
+                  onInsert={(subject, body) => {
+                    setSubjectHtml(subject);
+                    setValue('subject', subject);
+                    // Convert plain text to simple HTML paragraphs
+                    const htmlBody = body
+                      .split('\n\n')
+                      .map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`)
+                      .join('');
+                    setBodyHtml(htmlBody);
+                    setValue('body_html', htmlBody);
+                  }}
                 >
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  AI Draft
-                </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2 text-purple-500" />
+                    AI Draft
+                  </Button>
+                </AIDraftPopover>
               )}
             </div>
           </div>
@@ -500,21 +516,6 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
             </Button>
           </div>
 
-          {/* AI Draft Dialog */}
-          <AIDraftDialog
-            open={showAIDraft}
-            onOpenChange={setShowAIDraft}
-            candidateId={candidateId}
-            jobId={jobId}
-            onInsert={(subject, body) => {
-              setSubjectHtml(subject);
-              setValue('subject', subject);
-              setBodyHtml(body);
-              setValue('body_html', body);
-              setShowAIDraft(false);
-              toast.success('AI draft inserted');
-            }}
-          />
         </form>
   );
 
