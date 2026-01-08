@@ -158,3 +158,6 @@ verify_jwt = true
 
 [functions.resolve-booking-token]
 verify_jwt = false
+
+[functions.generate-email-draft]
+verify_jwt = true
