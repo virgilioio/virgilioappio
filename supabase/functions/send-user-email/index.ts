@@ -146,6 +146,59 @@ function base64UrlEncode(str: string): string {
 }
 
 /**
+ * Get or create an ingest email address for reply tracking
+ * This is used to Bcc candidate emails so replies are captured via webhook
+ */
+async function getOrCreateIngestEmail(
+  supabase: any,
+  candidateId: string,
+  jobId: string
+): Promise<string | null> {
+  // 1. Check if association already has an ingest address
+  const { data: association, error } = await supabase
+    .from('job_candidate_associations')
+    .select('id, email_ingest_code, email_ingest_address')
+    .eq('candidate_id', candidateId)
+    .eq('job_id', jobId)
+    .single();
+
+  if (error || !association) {
+    console.log('No job_candidate_association found for reply tracking');
+    return null;
+  }
+
+  // 2. Return existing address if already set
+  if (association.email_ingest_address) {
+    return association.email_ingest_address;
+  }
+
+  // 3. Generate new 8-character code
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let code = '';
+  for (let i = 0; i < 8; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  const ingestEmail = `jc_${code}@ingest.gogio.io`;
+
+  // 4. Save to database
+  const { error: updateError } = await supabase
+    .from('job_candidate_associations')
+    .update({
+      email_ingest_code: code,
+      email_ingest_address: ingestEmail,
+    })
+    .eq('id', association.id);
+
+  if (updateError) {
+    console.error('Failed to save ingest email:', updateError);
+    return null;
+  }
+
+  console.log('Created ingest email for reply tracking:', ingestEmail);
+  return ingestEmail;
+}
+
+/**
  * Encode booking context to a URL-safe base64 string for contextual booking links
  */
 function encodeBookingContext(context: {
@@ -672,6 +725,20 @@ const handler = async (req: Request): Promise<Response> => {
       body_text: processedBodyText,
       body_html: processedBodyHtml,
     };
+
+    // Add ingest email to Bcc for reply tracking
+    if (request.candidate_id && request.job_id) {
+      const ingestEmail = await getOrCreateIngestEmail(
+        supabase,
+        request.candidate_id,
+        request.job_id
+      );
+      
+      if (ingestEmail) {
+        processedRequest.bcc = [...(processedRequest.bcc || []), ingestEmail];
+        console.log('Added ingest email to Bcc for reply tracking:', ingestEmail);
+      }
+    }
 
     // Build RFC822 email with threading headers
     const rfc822 = buildRFC822Email(processedRequest, threadId, inReplyTo, references);
