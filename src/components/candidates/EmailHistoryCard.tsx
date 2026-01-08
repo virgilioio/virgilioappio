@@ -107,11 +107,6 @@ export function EmailHistoryCard({ email, onReply, onForward }: EmailHistoryCard
                   Received
                 </Badge>
               )}
-              {isSent && (
-                <Badge variant="outline" className="text-xs bg-primary/10 border-primary/30">
-                  Sent
-                </Badge>
-              )}
               <Mail className="h-4 w-4 text-text-secondary flex-shrink-0" />
               <span className="text-sm font-medium text-text-primary truncate">
                 {isReceived ? `From: ${email.from_address}` : `To: ${email.to_addresses.join(', ')}`}
