@@ -206,7 +206,8 @@ export function AIDraftPopover({ candidateId, jobId, onInsert, senderName, child
               <div className="space-y-1">
                 <Label className="text-xs font-medium">Body</Label>
                 <div className="p-2 bg-muted rounded-md text-xs whitespace-pre-wrap max-h-40 overflow-y-auto">
-                  {generatedDraft.body}
+                  {/* Strip HTML tags for clean preview */}
+                  {generatedDraft.body.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()}
                 </div>
               </div>
 
