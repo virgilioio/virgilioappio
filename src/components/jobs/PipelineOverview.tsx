@@ -542,6 +542,9 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                         <CardTitle className="text-base font-medium truncate max-w-[160px]" title={opt.stage.stage_name}>
                           {opt.stage.stage_name}
                         </CardTitle>
+                        <Badge variant="secondary" className="text-xs">
+                          {(sortedByStage[opt.jhsId] || []).length}
+                        </Badge>
                         {opt.stage.is_default && (
                           <Badge variant="outline">Default</Badge>
                         )}
