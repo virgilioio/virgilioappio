@@ -319,6 +319,13 @@ export function SourcingCandidateTable({
         description: `${successCount} new profile(s) collected.${alreadyCollected > 0 ? ` ${alreadyCollected} were already in your database.` : ''}`
       })
       
+      // Immediately mark all as collected for instant badge display
+      setCollectedApolloIds(prev => {
+        const next = new Set(prev)
+        apolloIds.forEach(id => next.add(id))
+        return next
+      })
+      
       clearSelection()
       // Invalidate queries to refresh data without full page reload
       queryClient.invalidateQueries({ queryKey: ['sourcing-candidates', projectId] })
@@ -380,6 +387,9 @@ export function SourcingCandidateTable({
         title: 'Profile collected',
         description: 'Full candidate profile has been added to your pipeline.'
       })
+
+      // Immediately mark as collected for instant badge display
+      setCollectedApolloIds(prev => new Set(prev).add(apolloId))
 
       // Invalidate queries to refresh data without full page reload
       queryClient.invalidateQueries({ queryKey: ['sourcing-candidates', projectId] })
