@@ -557,12 +557,19 @@ export function SourcingCandidateTable({
                 const canSelect = candidate.source === 'apollo' && !candidate.candidate_id && candidate.apollo_id
                 const isSelected = canSelect && selectedApolloIds.has(candidate.apollo_id!)
 
+                // Check if this row is currently open in the preview
+                const isActiveRow = sheetOpen && (
+                  (selectedCandidateId && candidate.id === selectedCandidateId) ||
+                  (selectedApolloId && candidate.apollo_id === selectedApolloId)
+                )
+
                 return (
                   <TableRow 
                     key={candidate.apollo_id || candidate.id}
                     className={cn(
                       "cursor-pointer hover:bg-muted/50",
-                      isSelected && "bg-muted/30"
+                      isSelected && "bg-muted/30",
+                      isActiveRow && "bg-primary/5 border-l-2 border-l-primary"
                     )}
                     onClick={() => {
                       if (candidate.candidate_id || candidate.source === 'local') {
@@ -622,6 +629,12 @@ export function SourcingCandidateTable({
                         <div className="flex flex-col gap-0.5">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-sm">{candidate.candidate_name}</span>
+                            {/* Collected indicator badge */}
+                            {(candidate.candidate_id || collectedApolloIds.has(candidate.apollo_id || '')) && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-green-500 text-green-600 bg-green-50">
+                                Collected
+                              </Badge>
+                            )}
                             {/* Only show LinkedIn icon if URL is available (after enrichment) */}
                             {candidate.linkedin_url && (
                               <a 

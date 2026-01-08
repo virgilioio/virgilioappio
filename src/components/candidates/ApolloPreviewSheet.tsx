@@ -1108,7 +1108,16 @@ export function ApolloPreviewSheet({
                           {apolloData?.current_company && (
                             <div className="flex items-center gap-2 mt-1 text-sm text-text-secondary">
                               <Building2 className="h-3.5 w-3.5" />
-                              {apolloData.current_company}
+                              <a
+                                href={`https://www.google.com/search?q=${encodeURIComponent(apolloData.current_company)}+site:linkedin.com/company`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-primary hover:underline cursor-pointer flex items-center gap-1"
+                              >
+                                {apolloData.current_company}
+                                <ExternalLink className="h-3 w-3 text-text-tertiary" />
+                              </a>
                             </div>
                           )}
                           {apolloData?.experience_location && (
