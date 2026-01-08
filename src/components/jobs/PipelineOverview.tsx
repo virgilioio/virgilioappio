@@ -467,39 +467,24 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     }
   }, [currentView, sortedData, sortedByStage, stageOptions])
 
-  // Snapshot navigation order when sheet first opens to prevent async updates from changing order mid-navigation
-  const navigationOrderRef = useRef<string[]>([])
-  const wasOpenRef = useRef(false)
-
-  useEffect(() => {
-    // Snapshot order when sheet first opens (not during navigation)
-    if (panelOpen && !wasOpenRef.current) {
-      navigationOrderRef.current = orderedCandidateIds
-      wasOpenRef.current = true
-    }
-    // Reset when sheet closes
-    if (!panelOpen) {
-      wasOpenRef.current = false
-    }
-  }, [panelOpen, orderedCandidateIds])
-
-  // Use snapshotted navigation order for consistent prev/next behavior
-  const navOrder = navigationOrderRef.current.length > 0 ? navigationOrderRef.current : orderedCandidateIds
-  const currentIndex = selectedCandidateId ? navOrder.indexOf(selectedCandidateId) : -1
+  // Always use current visual order for navigation - matches what user sees
+  const currentIndex = selectedCandidateId 
+    ? orderedCandidateIds.indexOf(selectedCandidateId) 
+    : -1
   const hasPrev = currentIndex > 0
-  const hasNext = currentIndex >= 0 && currentIndex < navOrder.length - 1
+  const hasNext = currentIndex >= 0 && currentIndex < orderedCandidateIds.length - 1
 
   const handlePrevCandidate = useCallback(() => {
     if (currentIndex > 0) {
-      setSelectedCandidateId(navOrder[currentIndex - 1])
+      setSelectedCandidateId(orderedCandidateIds[currentIndex - 1])
     }
-  }, [currentIndex, navOrder])
+  }, [currentIndex, orderedCandidateIds])
 
   const handleNextCandidate = useCallback(() => {
-    if (currentIndex >= 0 && currentIndex < navOrder.length - 1) {
-      setSelectedCandidateId(navOrder[currentIndex + 1])
+    if (currentIndex >= 0 && currentIndex < orderedCandidateIds.length - 1) {
+      setSelectedCandidateId(orderedCandidateIds[currentIndex + 1])
     }
-  }, [currentIndex, navOrder])
+  }, [currentIndex, orderedCandidateIds])
 
   return (
     <div className="space-y-4">
