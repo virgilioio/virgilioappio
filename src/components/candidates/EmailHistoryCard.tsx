@@ -92,7 +92,7 @@ export function EmailHistoryCard({ email, onReply, onForward }: EmailHistoryCard
     }
   };
 
-  const hasRecipients = email.cc_addresses?.length || email.bcc_addresses?.length;
+  const hasRecipients = (email.cc_addresses?.length ?? 0) > 0 || (email.bcc_addresses?.length ?? 0) > 0;
   const emailDate = email.received_at || email.sent_at || email.created_at;
 
   return (
