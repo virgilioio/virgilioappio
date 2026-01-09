@@ -189,7 +189,9 @@ export default function JobDetail() {
   }
 
   // Wrapper for opening pipeline candidates with URL support
-  const openPipelineProfile = (candidateId: string) => {
+  // Uses navigation order from PipelineOverview when provided
+  const openPipelineProfile = (candidateId: string, navigationOrder?: string[]) => {
+    // Build candidate list from all pipeline candidates
     const allPipelineCandidates = [
       ...recruitingProcessCandidates,
       ...matchingCandidates,
@@ -197,6 +199,30 @@ export default function JobDetail() {
       ...hiredCandidates,
       ...rejectedCandidates
     ];
+    
+    // If we have a navigation order snapshot from PipelineOverview, use it!
+    // This ensures navigation matches the exact visual order on the board
+    if (navigationOrder && navigationOrder.length > 0) {
+      // Create lookup map by candidate_id
+      const candidateMap = new Map<string, any>();
+      allPipelineCandidates.forEach(c => {
+        const id = c.candidate_id || c.id;
+        if (id) candidateMap.set(id, c);
+      });
+      
+      // Build ordered list matching the navigation order
+      const orderedCandidates = navigationOrder
+        .map(id => candidateMap.get(id))
+        .filter(Boolean);
+      
+      // Only use ordered list if we found most candidates (fallback safety)
+      if (orderedCandidates.length >= navigationOrder.length * 0.8) {
+        openProfileInPlace(candidateId, 'pipeline', orderedCandidates);
+        return;
+      }
+    }
+    
+    // Fallback to default order
     openProfileInPlace(candidateId, 'pipeline', allPipelineCandidates);
   }
 

@@ -39,7 +39,8 @@ interface PipelineOverviewProps {
   onSelectedIdsChange?: (ids: string[]) => void
   refreshToken?: number
   onStageChanged?: () => void
-  onCandidateClick?: (candidateId: string) => void
+  /** Called when a candidate is clicked. Second arg is the visual navigation order snapshot */
+  onCandidateClick?: (candidateId: string, navigationOrder: string[]) => void
 }
 
 
@@ -639,7 +640,11 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                                 onMove={(toId) => handleMove(assoc.id, toId)}
                                 onClick={() => { 
                                   if (onCandidateClick) {
-                                    onCandidateClick(assoc.candidate_id);
+                                    // Pass current visual order snapshot for navigation
+                                    const currentOrder = navigationSnapshotRef.current.length > 0 
+                                      ? navigationSnapshotRef.current 
+                                      : orderedCandidateIds
+                                    onCandidateClick(assoc.candidate_id, currentOrder);
                                   } else {
                                     handleOpenCandidateSheet(assoc.candidate_id);
                                   }
@@ -696,7 +701,10 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                           onMove={(toId) => handleMove(assoc.id, toId)}
                           onClick={() => { 
                             if (onCandidateClick) {
-                              onCandidateClick(assoc.candidate_id);
+                              const currentOrder = navigationSnapshotRef.current.length > 0 
+                                ? navigationSnapshotRef.current 
+                                : orderedCandidateIds
+                              onCandidateClick(assoc.candidate_id, currentOrder);
                             } else {
                               handleOpenCandidateSheet(assoc.candidate_id);
                             }
@@ -791,7 +799,10 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                                   {group.rows.map((row) => (
                                     <TableRow key={row.id} interactive className="hover:bg-transparent" onClick={() => { 
                                       if (onCandidateClick) {
-                                        onCandidateClick(row.candidateId);
+                                        const currentOrder = navigationSnapshotRef.current.length > 0 
+                                          ? navigationSnapshotRef.current 
+                                          : orderedCandidateIds
+                                        onCandidateClick(row.candidateId, currentOrder);
                                       } else {
                                         handleOpenCandidateSheet(row.candidateId);
                                       }
@@ -835,7 +846,10 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                                         <Button size="sm" variant="outline" onClick={(e) => { 
                                           e.stopPropagation();
                                           if (onCandidateClick) {
-                                            onCandidateClick(row.candidateId);
+                                            const currentOrder = navigationSnapshotRef.current.length > 0 
+                                              ? navigationSnapshotRef.current 
+                                              : orderedCandidateIds
+                                            onCandidateClick(row.candidateId, currentOrder);
                                           } else {
                                             setSelectedCandidateId(row.candidateId);
                                             setPanelOpen(true);
