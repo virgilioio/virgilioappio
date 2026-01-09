@@ -102,7 +102,7 @@ export function JobOverviewTab({ job, onEdit, onArchive }: JobOverviewTabProps) 
             <span className="text-virgilio-muted">·</span>
             <div className="flex items-center gap-2 text-virgilio-muted">
               <Building className="h-4 w-4" />
-              <span>{job.organization_name || 'Organization'}</span>
+              <span>{job.organization_name || (job as any).organization?.name || 'Organization'}</span>
             </div>
           </div>
         </div>
@@ -127,7 +127,7 @@ export function JobOverviewTab({ job, onEdit, onArchive }: JobOverviewTabProps) 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Department"
-          value={job.organization_name || job.department || 'Not specified'}
+          value={job.organization_name || (job as any).organization?.name || job.department || 'Not specified'}
           icon={<Building />}
           tooltip="Job department"
         />
