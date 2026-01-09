@@ -101,6 +101,10 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   const [hired, setHired] = useState<PipelineAssociation[]>([])
   const [panelOpen, setPanelOpen] = useState(false)
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
+  
+  // Snapshot of navigation order when sheet opens - prevents order changes mid-session
+  const [navigationSnapshot, setNavigationSnapshot] = useState<string[]>([])
+  const navigationSnapshotRef = useRef<string[]>([])
 
   const mouseSensor = useSensor(MouseSensor, { activationConstraint: { distance: 10 } })
   const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } })
@@ -352,7 +356,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   }, [byStage, stageOptions])
 
   // Get status priorities for all candidates (batch query)
-  const { statusMap } = usePipelineCandidateStatuses(jobId, allAssociations)
+  const { statusMap, isLoading: isStatusLoading } = usePipelineCandidateStatuses(jobId, allAssociations)
 
   // Sort function: priority first, then time (ascending for all = oldest/soonest first)
   const sortByStatusPriority = useCallback((a: PipelineAssociation, b: PipelineAssociation) => {
@@ -467,24 +471,54 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     }
   }, [currentView, sortedData, sortedByStage, stageOptions])
 
-  // Always use current visual order for navigation - matches what user sees
+  // Update ref whenever orderedCandidateIds changes (for snapshot capture)
+  useEffect(() => {
+    if (!isStatusLoading && orderedCandidateIds.length > 0) {
+      navigationSnapshotRef.current = orderedCandidateIds
+    }
+  }, [orderedCandidateIds, isStatusLoading])
+
+  // Snapshot navigation order when sheet opens - this is the KEY fix
+  // Navigation will use this snapshot throughout the session, not the live order
+  const handleOpenCandidateSheet = useCallback((candidateId: string) => {
+    // Capture current visual order as the navigation order for this session
+    const currentOrder = navigationSnapshotRef.current.length > 0 
+      ? navigationSnapshotRef.current 
+      : orderedCandidateIds
+    setNavigationSnapshot(currentOrder)
+    setSelectedCandidateId(candidateId)
+    setPanelOpen(true)
+  }, [orderedCandidateIds])
+
+  // Use snapshot for navigation (not live orderedCandidateIds)
+  const activeNavigationOrder = panelOpen && navigationSnapshot.length > 0 
+    ? navigationSnapshot 
+    : orderedCandidateIds
+
   const currentIndex = selectedCandidateId 
-    ? orderedCandidateIds.indexOf(selectedCandidateId) 
+    ? activeNavigationOrder.indexOf(selectedCandidateId) 
     : -1
   const hasPrev = currentIndex > 0
-  const hasNext = currentIndex >= 0 && currentIndex < orderedCandidateIds.length - 1
+  const hasNext = currentIndex >= 0 && currentIndex < activeNavigationOrder.length - 1
 
   const handlePrevCandidate = useCallback(() => {
     if (currentIndex > 0) {
-      setSelectedCandidateId(orderedCandidateIds[currentIndex - 1])
+      setSelectedCandidateId(activeNavigationOrder[currentIndex - 1])
     }
-  }, [currentIndex, orderedCandidateIds])
+  }, [currentIndex, activeNavigationOrder])
 
   const handleNextCandidate = useCallback(() => {
-    if (currentIndex >= 0 && currentIndex < orderedCandidateIds.length - 1) {
-      setSelectedCandidateId(orderedCandidateIds[currentIndex + 1])
+    if (currentIndex >= 0 && currentIndex < activeNavigationOrder.length - 1) {
+      setSelectedCandidateId(activeNavigationOrder[currentIndex + 1])
     }
-  }, [currentIndex, orderedCandidateIds])
+  }, [currentIndex, activeNavigationOrder])
+
+  // Clear snapshot when sheet closes
+  useEffect(() => {
+    if (!panelOpen) {
+      setNavigationSnapshot([])
+    }
+  }, [panelOpen])
 
   return (
     <div className="space-y-4">
@@ -604,12 +638,10 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                                 timeBadgeVariant={t.variant}
                                 onMove={(toId) => handleMove(assoc.id, toId)}
                                 onClick={() => { 
-                                  const candidateId = orderedCandidateIds.find(id => id === assoc.candidate_id) || assoc.candidate_id;
                                   if (onCandidateClick) {
-                                    onCandidateClick(candidateId);
+                                    onCandidateClick(assoc.candidate_id);
                                   } else {
-                                    setSelectedCandidateId(candidateId);
-                                    setPanelOpen(true);
+                                    handleOpenCandidateSheet(assoc.candidate_id);
                                   }
                                 }}
                                 showCheckbox={selectionMode}
@@ -663,12 +695,10 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                           timeBadgeVariant={t.variant}
                           onMove={(toId) => handleMove(assoc.id, toId)}
                           onClick={() => { 
-                            const candidateId = orderedCandidateIds.find(id => id === assoc.candidate_id) || assoc.candidate_id;
                             if (onCandidateClick) {
-                              onCandidateClick(candidateId);
+                              onCandidateClick(assoc.candidate_id);
                             } else {
-                              setSelectedCandidateId(candidateId);
-                              setPanelOpen(true);
+                              handleOpenCandidateSheet(assoc.candidate_id);
                             }
                           }}
                         />
@@ -763,8 +793,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                                       if (onCandidateClick) {
                                         onCandidateClick(row.candidateId);
                                       } else {
-                                        setSelectedCandidateId(row.candidateId);
-                                        setPanelOpen(true);
+                                        handleOpenCandidateSheet(row.candidateId);
                                       }
                                     }}>
                                       {selectionMode && (

@@ -168,5 +168,8 @@ export function usePipelineCandidateStatuses(jobId: string, associations: { id: 
     return map
   }, [associations, scorecards, bookings, associationsData])
 
-  return { statusMap }
+  // isLoading is true until all three queries have returned data
+  const isLoading = !scorecards || !bookings || !associationsData
+
+  return { statusMap, isLoading }
 }
