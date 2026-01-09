@@ -13,11 +13,13 @@ export interface JobAnalyticsMetrics {
   activeCandidates: number
   totalOffers: number
   totalHires: number
-  scheduledInterviews: number
+  interviewsScheduled: number
+  interviewsCompleted: number
+  upcomingInterviews: number
   rejectedCandidates: number
   statusDistribution: { name: string; value: number; color: string }[]
   stageDistribution: { name: string; count: number }[]
-  trendData: { date: string; applications: number; active: number; hires: number; interviews: number }[]
+  trendData: { date: string; applications: number; active: number; hires: number; interviewsScheduled: number }[]
   isLoading: boolean
   error: Error | null
 }
@@ -69,16 +71,25 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
 
       if (assocError) throw assocError
 
-      // Fetch scheduled bookings for this job
+      // Fetch scheduled bookings for this job (within date range by created_at)
       const { data: bookings, error: bookingsError } = await supabase
         .from('scheduled_bookings')
-        .select('id, status, scheduled_start')
+        .select('id, status, scheduled_start, created_at')
         .eq('job_id', jobId)
-        .gte('scheduled_start', startISO)
-        .lte('scheduled_start', endISO)
+        .gte('created_at', startISO)
+        .lte('created_at', endISO)
         .not('status', 'eq', 'cancelled')
 
       if (bookingsError) throw bookingsError
+
+      // Fetch ALL bookings for this job (for upcoming interviews and completed count)
+      const { data: allBookings, error: allBookingsError } = await supabase
+        .from('scheduled_bookings')
+        .select('id, status, scheduled_start, created_at')
+        .eq('job_id', jobId)
+        .not('status', 'eq', 'cancelled')
+
+      if (allBookingsError) throw allBookingsError
 
       // Calculate metrics
       const allAssociations = associations || []
@@ -115,8 +126,23 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
       // Rejected candidates
       const rejectedCandidates = allAssociations.filter(a => a.status === 'rejected').length
 
-      // Scheduled interviews
-      const scheduledInterviews = bookings?.length || 0
+      // Interviews SCHEDULED within date range (based on created_at)
+      const interviewsScheduled = bookings?.length || 0
+
+      // Interviews that HAPPENED/COMPLETED within date range (scheduled_start in past and in range)
+      const now = new Date()
+      const interviewsCompleted = (allBookings || []).filter(b => {
+        const scheduledStart = new Date(b.scheduled_start)
+        return scheduledStart <= now && 
+               scheduledStart >= dateRange.startDate && 
+               scheduledStart <= dateRange.endDate
+      }).length
+
+      // Upcoming interviews (snapshot - future interviews not date filtered)
+      const upcomingInterviews = (allBookings || []).filter(b => {
+        const scheduledStart = new Date(b.scheduled_start)
+        return scheduledStart > now
+      }).length
 
       // Status distribution for pie chart
       const statusCounts: Record<string, number> = {}
@@ -175,9 +201,12 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
           return updatedAt >= dayStartUTC && updatedAt <= dayEndUTC
         }).length
 
-        const dayInterviews = (bookings || []).filter(b => {
-          const scheduledStart = new Date(b.scheduled_start)
-          return scheduledStart >= dayStartUTC && scheduledStart <= dayEndUTC
+        // Interviews SCHEDULED on this day (by created_at)
+        const dayInterviewsScheduled = (bookings || []).filter(b => {
+          const createdAt = new Date(b.created_at)
+          const createdDate = format(createdAt, 'yyyy-MM-dd')
+          const dayDate = format(day, 'yyyy-MM-dd')
+          return createdDate === dayDate
         }).length
 
         return {
@@ -185,7 +214,7 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
           applications: dayApplications,
           active: dayActive,
           hires: dayHires,
-          interviews: dayInterviews
+          interviewsScheduled: dayInterviewsScheduled
         }
       })
 
@@ -194,7 +223,9 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
         activeCandidates,
         totalOffers,
         totalHires,
-        scheduledInterviews,
+        interviewsScheduled,
+        interviewsCompleted,
+        upcomingInterviews,
         rejectedCandidates,
         statusDistribution,
         stageDistribution,
@@ -210,7 +241,9 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
     activeCandidates: data?.activeCandidates ?? 0,
     totalOffers: data?.totalOffers ?? 0,
     totalHires: data?.totalHires ?? 0,
-    scheduledInterviews: data?.scheduledInterviews ?? 0,
+    interviewsScheduled: data?.interviewsScheduled ?? 0,
+    interviewsCompleted: data?.interviewsCompleted ?? 0,
+    upcomingInterviews: data?.upcomingInterviews ?? 0,
     rejectedCandidates: data?.rejectedCandidates ?? 0,
     statusDistribution: data?.statusDistribution ?? [],
     stageDistribution: data?.stageDistribution ?? [],

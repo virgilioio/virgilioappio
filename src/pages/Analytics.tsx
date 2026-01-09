@@ -67,7 +67,8 @@ export default function Analytics() {
           activeCandidates: metrics.activeCandidates,
           totalOffers: metrics.totalOffers,
           totalHires: metrics.totalHires,
-          scheduledInterviews: metrics.scheduledInterviews,
+          interviewsScheduled: metrics.interviewsScheduled,
+          interviewsCompleted: metrics.interviewsCompleted,
           statusDistribution: metrics.statusDistribution,
           stageDistribution: metrics.stageDistribution,
           trendData: metrics.trendData
@@ -127,7 +128,7 @@ export default function Analytics() {
     },
     {
       title: 'Scheduled Interviews',
-      value: metrics.scheduledInterviews,
+      value: metrics.interviewsScheduled,
       icon: Calendar,
       bgColor: 'hsl(48 100% 90%)', // #fffead
       iconColor: 'hsl(48 100% 35%)' // Yellow

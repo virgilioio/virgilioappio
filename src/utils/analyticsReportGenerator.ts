@@ -10,11 +10,13 @@ export interface AnalyticsReportData {
   activeCandidates: number
   totalOffers: number
   totalHires: number
-  scheduledInterviews: number
+  interviewsScheduled: number
+  interviewsCompleted?: number
+  upcomingInterviews?: number
   rejectedCandidates?: number
   statusDistribution: { name: string; value: number; color: string }[]
   stageDistribution: { name: string; count: number }[]
-  trendData: { date: string; applications: number; active: number; hires: number; interviews: number }[]
+  trendData: { date: string; applications: number; active: number; hires: number; interviewsScheduled: number }[]
 }
 
 export interface AnalyticsReportOptions {
@@ -497,7 +499,8 @@ export const generateAnalyticsReport = async ({
       { label: 'Active in Pipeline', value: data.activeCandidates },
       { label: 'Offers Extended', value: data.totalOffers },
       { label: 'Successful Hires', value: data.totalHires },
-      { label: 'Interviews Scheduled', value: data.scheduledInterviews },
+      { label: 'Interviews Scheduled', value: data.interviewsScheduled },
+      { label: 'Interviews Completed', value: data.interviewsCompleted ?? 0 },
     ]
 
     if (data.rejectedCandidates !== undefined) {
@@ -562,7 +565,7 @@ export const generateAnalyticsReport = async ({
     { label: 'Active', value: data.activeCandidates, color: colors.cyan, bg: colors.pastelCyan },
     { label: 'Offers', value: data.totalOffers, color: colors.amber, bg: colors.pastelAmber },
     { label: 'Hired', value: data.totalHires, color: colors.green, bg: colors.pastelGreen },
-    { label: 'Interviews', value: data.scheduledInterviews, color: colors.purpleMid, bg: colors.pastelPurple },
+    { label: 'Scheduled', value: data.interviewsScheduled, color: colors.purpleMid, bg: colors.pastelPurple },
     { label: 'Rejected', value: data.rejectedCandidates ?? 0, color: colors.red, bg: colors.pastelRed },
   ]
   
