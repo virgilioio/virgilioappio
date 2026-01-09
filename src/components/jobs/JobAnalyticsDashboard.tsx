@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Users, UserCheck, Briefcase, Calendar, UserX, Download, Loader2 } from 'lucide-react'
+import { Users, UserCheck, Briefcase, CalendarPlus, CalendarCheck, CalendarClock, UserX, Download, Loader2 } from 'lucide-react'
 import { MetricCard } from '@/components/ui/metric-card'
 import { AnalyticsTimeFilter, TimePreset } from '@/components/analytics/AnalyticsTimeFilter'
 import { ApplicationsTrendChart } from '@/components/analytics/ApplicationsTrendChart'
@@ -32,7 +32,9 @@ export function JobAnalyticsDashboard({ jobId, jobTitle, candidates = [], jobCur
     activeCandidates,
     totalOffers,
     totalHires,
-    scheduledInterviews,
+    interviewsScheduled,
+    interviewsCompleted,
+    upcomingInterviews,
     rejectedCandidates,
     statusDistribution,
     stageDistribution,
@@ -53,7 +55,9 @@ export function JobAnalyticsDashboard({ jobId, jobTitle, candidates = [], jobCur
           activeCandidates,
           totalOffers,
           totalHires,
-          scheduledInterviews,
+          interviewsScheduled,
+          interviewsCompleted,
+          upcomingInterviews,
           rejectedCandidates,
           statusDistribution,
           stageDistribution,
@@ -108,7 +112,7 @@ export function JobAnalyticsDashboard({ jobId, jobTitle, candidates = [], jobCur
       />
 
       {/* Metric Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <MetricCard
           title="Applications"
           value={isLoading ? '...' : applications}
@@ -121,7 +125,7 @@ export function JobAnalyticsDashboard({ jobId, jobTitle, candidates = [], jobCur
           title="Active"
           value={isLoading ? '...' : activeCandidates}
           icon={<UserCheck className="h-5 w-5" />}
-          tooltip="Currently active candidates"
+          tooltip="Currently active candidates (all time)"
           backgroundColor="linear-gradient(135deg, hsl(var(--info) / 0.1), hsl(var(--info) / 0.05))"
           iconColor="hsl(var(--info))"
         />
@@ -134,18 +138,26 @@ export function JobAnalyticsDashboard({ jobId, jobTitle, candidates = [], jobCur
           iconColor="hsl(var(--success))"
         />
         <MetricCard
-          title="Interviews"
-          value={isLoading ? '...' : scheduledInterviews}
-          icon={<Calendar className="h-5 w-5" />}
+          title="Scheduled"
+          value={isLoading ? '...' : interviewsScheduled}
+          icon={<CalendarPlus className="h-5 w-5" />}
           tooltip="Interviews scheduled in selected period"
           backgroundColor="linear-gradient(135deg, hsl(var(--warning) / 0.1), hsl(var(--warning) / 0.05))"
           iconColor="hsl(var(--warning))"
         />
         <MetricCard
+          title="Completed"
+          value={isLoading ? '...' : interviewsCompleted}
+          icon={<CalendarCheck className="h-5 w-5" />}
+          tooltip="Interviews completed in selected period"
+          backgroundColor="linear-gradient(135deg, hsl(var(--success) / 0.1), hsl(var(--success) / 0.05))"
+          iconColor="hsl(var(--success))"
+        />
+        <MetricCard
           title="Rejected"
           value={isLoading ? '...' : rejectedCandidates}
           icon={<UserX className="h-5 w-5" />}
-          tooltip="Total rejected candidates"
+          tooltip="Total rejected candidates (all time)"
           backgroundColor="linear-gradient(135deg, hsl(var(--destructive) / 0.1), hsl(var(--destructive) / 0.05))"
           iconColor="hsl(var(--destructive))"
         />

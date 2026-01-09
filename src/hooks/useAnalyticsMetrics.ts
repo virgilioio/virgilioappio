@@ -20,10 +20,11 @@ export interface AnalyticsMetrics {
   activeCandidates: number
   totalOffers: number
   totalHires: number
-  scheduledInterviews: number
+  interviewsScheduled: number
+  interviewsCompleted: number
   statusDistribution: { name: string; value: number; color: string }[]
   stageDistribution: { name: string; count: number }[]
-  trendData: { date: string; applications: number; active: number; hires: number; interviews: number }[]
+  trendData: { date: string; applications: number; active: number; hires: number; interviewsScheduled: number }[]
   isLoading: boolean
   error: Error | null
 }
@@ -140,7 +141,8 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
           activeCandidates: 0,
           totalOffers: 0,
           totalHires: 0,
-          scheduledInterviews: 0,
+          interviewsScheduled: 0,
+          interviewsCompleted: 0,
           statusDistribution: [],
           stageDistribution: [],
           trendData: []
@@ -173,18 +175,27 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
 
       if (assocError) throw assocError
 
-      // Step 4: Fetch scheduled bookings for involved jobs (no recruiter filter on bookings)
+      // Step 4: Fetch scheduled bookings for involved jobs
+      // Fetch by created_at for "scheduled" metric, and all for "completed" calculation
       const bookingsQuery = supabase
         .from('scheduled_bookings')
-        .select('id, status, scheduled_start, job_id, booked_by')
+        .select('id, status, scheduled_start, created_at, job_id, booked_by')
         .in('job_id', finalJobIds)
-        .gte('scheduled_start', startISO)
-        .lte('scheduled_start', endISO)
+        .gte('created_at', startISO)
+        .lte('created_at', endISO)
         .not('status', 'eq', 'cancelled')
 
       const { data: bookings, error: bookingsError } = await bookingsQuery
-
       if (bookingsError) throw bookingsError
+
+      // Fetch ALL bookings for completed interviews calculation
+      const { data: allBookings, error: allBookingsError } = await supabase
+        .from('scheduled_bookings')
+        .select('id, status, scheduled_start, created_at, job_id')
+        .in('job_id', finalJobIds)
+        .not('status', 'eq', 'cancelled')
+
+      if (allBookingsError) throw allBookingsError
 
       // Calculate metrics
       const allAssociations = associations || []
@@ -218,8 +229,17 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
         return updatedAt >= dateRange.startDate && updatedAt <= dateRange.endDate
       }).length
 
-      // Scheduled interviews
-      const scheduledInterviews = bookings?.length || 0
+      // Interviews SCHEDULED within date range (based on created_at)
+      const interviewsScheduled = bookings?.length || 0
+
+      // Interviews that COMPLETED within date range (scheduled_start in past and in range)
+      const now = new Date()
+      const interviewsCompleted = (allBookings || []).filter(b => {
+        const scheduledStart = new Date(b.scheduled_start)
+        return scheduledStart <= now && 
+               scheduledStart >= dateRange.startDate && 
+               scheduledStart <= dateRange.endDate
+      }).length
 
       // Status distribution for pie chart
       const statusCounts: Record<string, number> = {}
@@ -280,9 +300,12 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
           return updatedAt >= dayStartUTC && updatedAt <= dayEndUTC
         }).length
 
-        const dayInterviews = (bookings || []).filter(b => {
-          const scheduledStart = new Date(b.scheduled_start)
-          return scheduledStart >= dayStartUTC && scheduledStart <= dayEndUTC
+        // Interviews SCHEDULED on this day (by created_at)
+        const dayInterviewsScheduled = (bookings || []).filter(b => {
+          const createdAt = new Date(b.created_at)
+          const createdDate = format(createdAt, 'yyyy-MM-dd')
+          const dayDate = format(day, 'yyyy-MM-dd')
+          return createdDate === dayDate
         }).length
 
         return {
@@ -290,7 +313,7 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
           applications: dayApplications,
           active: dayActive,
           hires: dayHires,
-          interviews: dayInterviews
+          interviewsScheduled: dayInterviewsScheduled
         }
       })
 
@@ -299,7 +322,8 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
         activeCandidates,
         totalOffers,
         totalHires,
-        scheduledInterviews,
+        interviewsScheduled,
+        interviewsCompleted,
         statusDistribution,
         stageDistribution,
         trendData
@@ -314,7 +338,8 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
     activeCandidates: data?.activeCandidates ?? 0,
     totalOffers: data?.totalOffers ?? 0,
     totalHires: data?.totalHires ?? 0,
-    scheduledInterviews: data?.scheduledInterviews ?? 0,
+    interviewsScheduled: data?.interviewsScheduled ?? 0,
+    interviewsCompleted: data?.interviewsCompleted ?? 0,
     statusDistribution: data?.statusDistribution ?? [],
     stageDistribution: data?.stageDistribution ?? [],
     trendData: data?.trendData ?? [],
