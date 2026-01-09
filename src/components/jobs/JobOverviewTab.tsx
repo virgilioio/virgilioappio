@@ -127,7 +127,7 @@ export function JobOverviewTab({ job, onEdit, onArchive }: JobOverviewTabProps) 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Department"
-          value={job.department || 'Not specified'}
+          value={job.organization_name || job.department || 'Not specified'}
           icon={<Building />}
           tooltip="Job department"
         />

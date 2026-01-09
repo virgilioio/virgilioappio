@@ -114,10 +114,10 @@ async function searchJobs(query: string, limit: number) {
     .or(`title.ilike.${searchPattern},department.ilike.${searchPattern},location.ilike.${searchPattern},standardized_title.ilike.${searchPattern}`)
     .is('deleted_at', null)
 
-  // Get limited results
+  // Get limited results with organization name
   const { data, error } = await supabase
     .from('jobs')
-    .select('id, title, department, location, status, organization_id')
+    .select('id, title, department, location, status, organization_id, organizations(name)')
     .or(`title.ilike.${searchPattern},department.ilike.${searchPattern},location.ilike.${searchPattern},standardized_title.ilike.${searchPattern}`)
     .is('deleted_at', null)
     .order('updated_at', { ascending: false })
@@ -129,7 +129,7 @@ async function searchJobs(query: string, limit: number) {
     id: job.id,
     type: 'job' as const,
     title: job.title,
-    subtitle: job.department || 'No department',
+    subtitle: (job.organizations as any)?.name || job.department || 'No department',
     metadata: job.location || 'No location',
     route: `/jobs/${job.id}`,
     icon: Briefcase
