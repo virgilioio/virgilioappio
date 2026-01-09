@@ -346,7 +346,10 @@ export function BookingDetailsDialog({
                         <User className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm">Linked to candidate profile</span>
                       </div>
-                      <Link to={`/candidates/${booking.candidate_id}`}>
+                      <Link to={booking.job?.id 
+                        ? `/jobs/${booking.job.id}?candidate=${booking.candidate_id}`
+                        : `/candidates/${booking.candidate_id}`
+                      }>
                         <Button variant="outline" size="sm">
                           Open Profile
                         </Button>
