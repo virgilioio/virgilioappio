@@ -71,7 +71,11 @@ export default function Analytics() {
           interviewsCompleted: metrics.interviewsCompleted,
           statusDistribution: metrics.statusDistribution,
           stageDistribution: metrics.stageDistribution,
-          trendData: metrics.trendData
+          trendData: metrics.trendData,
+          // Global analytics doesn't have per-stage breakdowns yet
+          interviewsByStage: [],
+          stageConversions: [],
+          avgTimePerStage: []
         },
         dateRange
       })

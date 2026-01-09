@@ -39,6 +39,9 @@ export function JobAnalyticsDashboard({ jobId, jobTitle, candidates = [], jobCur
     statusDistribution,
     stageDistribution,
     trendData,
+    interviewsByStage,
+    stageConversions,
+    avgTimePerStage,
     isLoading
   } = useJobAnalyticsMetrics(jobId, dateRange)
 
@@ -61,7 +64,10 @@ export function JobAnalyticsDashboard({ jobId, jobTitle, candidates = [], jobCur
           rejectedCandidates,
           statusDistribution,
           stageDistribution,
-          trendData
+          trendData,
+          interviewsByStage,
+          stageConversions,
+          avgTimePerStage
         },
         dateRange,
         jobTitle
