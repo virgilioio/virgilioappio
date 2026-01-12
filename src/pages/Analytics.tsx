@@ -11,26 +11,28 @@ import { StageDistributionChart } from '@/components/analytics/StageDistribution
 import { RecruitmentFunnelChart } from '@/components/analytics/RecruitmentFunnelChart'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { FileText, Users, UserCheck, Calendar, BarChart3, Download, Loader2 } from 'lucide-react'
+import { FileText, Users, UserCheck, CalendarPlus, CalendarCheck, UserX, BarChart3, Download, Loader2 } from 'lucide-react'
 import { subDays } from 'date-fns'
 import { generateAnalyticsReport } from '@/utils/analyticsReportGenerator'
 
 export default function Analytics() {
   const navigate = useNavigate()
   const { toast } = useToast()
-  const { isPlatformAdmin } = usePermissions()
+  const { isPlatformAdmin, isWorkspaceOwner, isAdmin } = usePermissions()
+  
+  const canAccessAnalytics = isPlatformAdmin || isWorkspaceOwner || isAdmin
 
-  // Redirect non-platform admins
+  // Redirect users without analytics access
   useEffect(() => {
-    if (isPlatformAdmin === false) {
+    if (canAccessAnalytics === false) {
       toast({
         title: 'Access Denied',
-        description: 'Analytics is only available to platform administrators.',
+        description: 'Analytics is only available to administrators.',
         variant: 'destructive'
       })
       navigate('/dashboard')
     }
-  }, [isPlatformAdmin, navigate, toast])
+  }, [canAccessAnalytics, navigate, toast])
 
   const [dateRange, setDateRange] = useState<DateRange>({
     startDate: subDays(new Date(), 7),
@@ -69,6 +71,7 @@ export default function Analytics() {
           totalHires: metrics.totalHires,
           interviewsScheduled: metrics.interviewsScheduled,
           interviewsCompleted: metrics.interviewsCompleted,
+          rejectedCandidates: metrics.rejectedCandidates,
           statusDistribution: metrics.statusDistribution,
           stageDistribution: metrics.stageDistribution,
           trendData: metrics.trendData,
@@ -95,8 +98,8 @@ export default function Analytics() {
     }
   }
 
-  // Don't render until we verify platform admin status
-  if (isPlatformAdmin === undefined) {
+  // Don't render until we verify access status
+  if (canAccessAnalytics === undefined) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="h-8 w-8 rounded-full border-2 border-virgilio-purple border-t-transparent animate-spin" />
@@ -104,7 +107,7 @@ export default function Analytics() {
     )
   }
 
-  if (!isPlatformAdmin) {
+  if (!canAccessAnalytics) {
     return null
   }
 
@@ -113,29 +116,49 @@ export default function Analytics() {
       title: 'Applications',
       value: metrics.applications,
       icon: FileText,
-      bgColor: 'hsl(267 84% 87%)', // #d7c5fb
-      iconColor: 'hsl(267 89% 60%)' // Purple
+      bgColor: 'hsl(267 84% 87%)',
+      iconColor: 'hsl(267 89% 60%)',
+      tooltip: 'New applications in selected period'
     },
     {
-      title: 'Active Candidates',
+      title: 'Active',
       value: metrics.activeCandidates,
       icon: Users,
-      bgColor: 'hsl(180 100% 88%)', // #c5f5fb
-      iconColor: 'hsl(180 100% 35%)' // Cyan
+      bgColor: 'hsl(180 100% 88%)',
+      iconColor: 'hsl(180 100% 35%)',
+      tooltip: 'Currently active candidates (all time)'
     },
     {
-      title: 'Total Hires',
+      title: 'Hires',
       value: metrics.totalHires,
       icon: UserCheck,
-      bgColor: 'hsl(120 100% 88%)', // #d2ffc2
-      iconColor: 'hsl(120 100% 30%)' // Green
+      bgColor: 'hsl(120 100% 88%)',
+      iconColor: 'hsl(120 100% 30%)',
+      tooltip: 'Candidates hired in selected period'
     },
     {
-      title: 'Scheduled Interviews',
+      title: 'Scheduled',
       value: metrics.interviewsScheduled,
-      icon: Calendar,
-      bgColor: 'hsl(48 100% 90%)', // #fffead
-      iconColor: 'hsl(48 100% 35%)' // Yellow
+      icon: CalendarPlus,
+      bgColor: 'hsl(48 100% 90%)',
+      iconColor: 'hsl(48 100% 35%)',
+      tooltip: 'Interviews scheduled in selected period'
+    },
+    {
+      title: 'Completed',
+      value: metrics.interviewsCompleted,
+      icon: CalendarCheck,
+      bgColor: 'hsl(200 100% 88%)',
+      iconColor: 'hsl(200 100% 35%)',
+      tooltip: 'Interviews completed in selected period'
+    },
+    {
+      title: 'Rejected',
+      value: metrics.rejectedCandidates,
+      icon: UserX,
+      bgColor: 'hsl(0 70% 92%)',
+      iconColor: 'hsl(0 70% 50%)',
+      tooltip: 'Total rejected candidates (all time)'
     }
   ]
 
@@ -178,16 +201,16 @@ export default function Analytics() {
       <AnalyticsFiltersBar onFiltersChange={handleFiltersChange} />
 
       {/* Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         {metricCards.map((card) => (
-          <Card key={card.title} className="border-virgilio-border hover:shadow-lg transition-shadow">
+          <Card key={card.title} className="border-virgilio-border hover:shadow-lg transition-shadow" title={card.tooltip}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-poppins font-medium text-virgilio-muted">
                     {card.title}
                   </p>
-                  <p className="text-3xl font-poppins font-bold text-virgilio-text mt-1">
+                  <p className="text-2xl lg:text-3xl font-poppins font-bold text-virgilio-text mt-1">
                     {metrics.isLoading ? (
                       <span className="inline-block w-12 h-8 bg-virgilio-border/50 rounded animate-pulse" />
                     ) : (
@@ -196,11 +219,11 @@ export default function Analytics() {
                   </p>
                 </div>
                 <div
-                  className="p-3 rounded-xl"
+                  className="p-2 lg:p-3 rounded-xl"
                   style={{ backgroundColor: card.bgColor }}
                 >
                   <card.icon
-                    className="h-5 w-5"
+                    className="h-4 w-4 lg:h-5 lg:w-5"
                     style={{ color: card.iconColor }}
                   />
                 </div>

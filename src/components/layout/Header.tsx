@@ -160,7 +160,7 @@ export function Header() {
       href: '/analytics',
       icon: BarChart3,
       label: 'Analytics',
-      show: isPlatformAdmin,
+      show: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     },
   ]
 

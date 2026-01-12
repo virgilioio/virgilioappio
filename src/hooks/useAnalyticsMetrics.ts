@@ -22,6 +22,7 @@ export interface AnalyticsMetrics {
   totalHires: number
   interviewsScheduled: number
   interviewsCompleted: number
+  rejectedCandidates: number
   statusDistribution: { name: string; value: number; color: string }[]
   stageDistribution: { name: string; count: number }[]
   trendData: { date: string; applications: number; active: number; hires: number; interviewsScheduled: number }[]
@@ -143,6 +144,7 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
           totalHires: 0,
           interviewsScheduled: 0,
           interviewsCompleted: 0,
+          rejectedCandidates: 0,
           statusDistribution: [],
           stageDistribution: [],
           trendData: []
@@ -214,6 +216,9 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
 
       // Active candidates (status = 'active')
       const activeCandidates = allAssociations.filter(a => a.status === 'active').length
+      
+      // Rejected candidates (status = 'rejected') - all time snapshot
+      const rejectedCandidates = allAssociations.filter(a => a.status === 'rejected').length
 
       // Total offers (status = 'offer') within date range
       const totalOffers = allAssociations.filter(a => {
@@ -324,6 +329,7 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
         totalHires,
         interviewsScheduled,
         interviewsCompleted,
+        rejectedCandidates,
         statusDistribution,
         stageDistribution,
         trendData
@@ -340,6 +346,7 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
     totalHires: data?.totalHires ?? 0,
     interviewsScheduled: data?.interviewsScheduled ?? 0,
     interviewsCompleted: data?.interviewsCompleted ?? 0,
+    rejectedCandidates: data?.rejectedCandidates ?? 0,
     statusDistribution: data?.statusDistribution ?? [],
     stageDistribution: data?.stageDistribution ?? [],
     trendData: data?.trendData ?? [],
