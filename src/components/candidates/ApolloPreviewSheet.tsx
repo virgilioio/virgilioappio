@@ -810,7 +810,21 @@ export function ApolloPreviewSheet({
                       <InfoRow 
                         icon={Building2} 
                         label="Company" 
-                        value={apolloData?.current_company || 'Not specified'} 
+                        value={
+                          (apolloData?.company_url || apolloData?.company_website) ? (
+                            <a 
+                              href={apolloData?.company_url || apolloData?.company_website}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline inline-flex items-center gap-1"
+                            >
+                              {apolloData?.current_company || 'Not specified'}
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          ) : (
+                            apolloData?.current_company || 'Not specified'
+                          )
+                        } 
                       />
                     )}
                     {(apolloData?.location || enrichedLocation) && (
