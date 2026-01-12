@@ -811,18 +811,19 @@ export function ApolloPreviewSheet({
                         icon={Building2} 
                         label="Company" 
                         value={
-                          (apolloData?.company_url || apolloData?.company_website) ? (
+                          apolloData?.current_company ? (
                             <a 
-                              href={apolloData?.company_url || apolloData?.company_website}
+                              href={`https://www.google.com/search?q=${encodeURIComponent(apolloData.current_company)}+site:linkedin.com/company`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-primary hover:underline inline-flex items-center gap-1"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-primary hover:underline cursor-pointer inline-flex items-center gap-1"
                             >
-                              {apolloData?.current_company || 'Not specified'}
-                              <ExternalLink className="h-3 w-3" />
+                              {apolloData.current_company}
+                              <ExternalLink className="h-3 w-3 text-text-tertiary" />
                             </a>
                           ) : (
-                            apolloData?.current_company || 'Not specified'
+                            'Not specified'
                           )
                         } 
                       />
