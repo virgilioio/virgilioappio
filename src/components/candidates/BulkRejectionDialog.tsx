@@ -22,7 +22,7 @@ import { RejectionReasonSelector } from './RejectionReasonSelector';
 import { useBulkRejectCandidates } from '@/hooks/useBulkRejectCandidates';
 import { useMailIdentities } from '@/hooks/useMailIdentities';
 import { useRejectionEmailTemplates } from '@/hooks/useRejectionEmailTemplates';
-import { convertPlaceholdersToHtml, convertHtmlToPlaceholders, containsPlaceholders } from '@/utils/placeholderUtils';
+import { convertHtmlToPlaceholders, containsPlaceholders } from '@/utils/placeholderUtils';
 import { ThumbsDown, Loader2, Send, Clock, AlertCircle, CalendarIcon, Users, Mail, Info } from 'lucide-react';
 import { format, setHours, setMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -99,8 +99,9 @@ export function BulkRejectionDialog({
     setSelectedTemplateId(templateId);
     const template = templates.find(t => t.id === templateId);
     if (template) {
-      setSubjectHtml(convertPlaceholdersToHtml(template.subject));
-      setBodyHtml(convertPlaceholdersToHtml(template.body));
+      // Normalize to plain text with {{placeholders}} - the editor handles badge rendering
+      setSubjectHtml(convertHtmlToPlaceholders(template.subject));
+      setBodyHtml(convertHtmlToPlaceholders(template.body));
     }
   };
 

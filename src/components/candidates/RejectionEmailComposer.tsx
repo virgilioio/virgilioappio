@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useMailIdentities } from '@/hooks/useMailIdentities';
 import { useRejectionEmailTemplates } from '@/hooks/useRejectionEmailTemplates';
-import { convertPlaceholdersToHtml, convertHtmlToPlaceholders, containsPlaceholders } from '@/utils/placeholderUtils';
+import { convertHtmlToPlaceholders, containsPlaceholders } from '@/utils/placeholderUtils';
 import { CalendarIcon, Clock } from 'lucide-react';
 import { format, addHours, setHours, setMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -93,10 +93,9 @@ export function RejectionEmailComposer({
     setSelectedTemplateId(templateId);
     const template = templates.find(t => t.id === templateId);
     if (template) {
-      const subjectWithBadges = convertPlaceholdersToHtml(template.subject);
-      const bodyWithBadges = convertPlaceholdersToHtml(template.body);
-      setSubjectHtml(subjectWithBadges);
-      setBodyHtml(bodyWithBadges);
+      // Normalize to plain text with {{placeholders}} - the editor handles badge rendering
+      setSubjectHtml(convertHtmlToPlaceholders(template.subject));
+      setBodyHtml(convertHtmlToPlaceholders(template.body));
     }
   };
 

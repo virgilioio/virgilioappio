@@ -42,6 +42,7 @@ import { PlaceholderNode, $createPlaceholderNode } from './nodes/PlaceholderNode
 import { PlaceholderPlugin } from './plugins/PlaceholderPlugin';
 import { OnChangePlugin } from './plugins/OnChangePlugin';
 import { parseTemplateToNodes } from './utils/placeholderLexicalUtils';
+import { convertHtmlToPlaceholders } from '@/utils/placeholderUtils';
 
 export interface BodyTemplateEditorProps {
   value: string;
@@ -130,10 +131,12 @@ function BodyEditorInner({
     isInitializedRef.current = true;
 
     if (value) {
+      // Normalize: strip any HTML and convert to plain text with {{placeholders}}
+      const plainText = convertHtmlToPlaceholders(value);
       editor.update(() => {
         const root = $getRoot();
         root.clear();
-        const lines = value.split('\n');
+        const lines = plainText.split('\n');
         lines.forEach(line => {
           const paragraph = $createParagraphNode();
           const nodes = parseTemplateToNodes(line);
@@ -150,10 +153,12 @@ function BodyEditorInner({
     if (isFocused) return;
     if (value === lastValueRef.current) return;
 
+    // Normalize: strip any HTML and convert to plain text with {{placeholders}}
+    const plainText = convertHtmlToPlaceholders(value);
     editor.update(() => {
       const root = $getRoot();
       root.clear();
-      const lines = value.split('\n');
+      const lines = plainText.split('\n');
       lines.forEach(line => {
         const paragraph = $createParagraphNode();
         const nodes = parseTemplateToNodes(line);
