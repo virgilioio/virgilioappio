@@ -49,6 +49,7 @@ export function usePendingScorecards() {
             id,
             candidate_id,
             job_id,
+            status,
             candidates(id, candidate_name),
             jobs(id, title)
           ),
@@ -123,6 +124,9 @@ export function usePendingScorecards() {
         const stage = booking.job_hiring_stages as any;
         
         if (!association || !stage) continue;
+        
+        // Skip if candidate is no longer active (rejected, hired, etc.)
+        if (association.status !== 'active' && association.status !== 'offer') continue;
         
         // Key includes interviewer_id to check if THAT interviewer submitted
         const key = `${association.id}:${booking.job_hiring_stage_id}:${booking.interviewer_id}`;
