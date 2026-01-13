@@ -77,6 +77,26 @@ export function usePendingScorecards() {
 
       if (!bookings || bookings.length === 0) return [];
 
+      // Get association IDs from past bookings to check for rescheduled interviews
+      const associationIds = [...new Set(
+        bookings.map(b => (b.job_candidate_associations as any)?.id).filter(Boolean)
+      )];
+
+      // Fetch future bookings for these associations to detect rescheduled interviews
+      const { data: futureBookings } = await supabase
+        .from('scheduled_bookings')
+        .select('job_candidate_association_id, job_hiring_stage_id, interviewer_id')
+        .in('job_candidate_association_id', associationIds)
+        .gte('scheduled_start', new Date().toISOString())
+        .not('status', 'eq', 'cancelled');
+
+      // Create a set of association+stage+interviewer combos that have future bookings
+      const futureBookingKeys = new Set(
+        (futureBookings || []).map(fb => 
+          `${fb.job_candidate_association_id}:${fb.job_hiring_stage_id}:${fb.interviewer_id}`
+        )
+      );
+
       // Fetch interviewer profiles separately
       const interviewerIds = [...new Set(bookings.map(b => b.interviewer_id).filter(Boolean))];
       const { data: profiles } = await supabase
@@ -133,6 +153,10 @@ export function usePendingScorecards() {
         
         // Skip if scorecard already exists from this interviewer
         if (scorecardKeys.has(key)) continue;
+
+        // Skip if there's a future booking for the same candidate+stage+interviewer (rescheduled)
+        const rescheduledKey = `${association.id}:${booking.job_hiring_stage_id}:${booking.interviewer_id}`;
+        if (futureBookingKeys.has(rescheduledKey)) continue;
         
         const profile = profileMap.get(booking.interviewer_id);
         const interviewerName = profile 
