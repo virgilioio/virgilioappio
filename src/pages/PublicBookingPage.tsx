@@ -265,6 +265,12 @@ export default function PublicBookingPage() {
       </header>
 
       <main className="container mx-auto px-4 md:px-6 lg:px-8 py-8 md:py-12 max-w-[1400px]">
+        {/* Personalized greeting for stage booking links */}
+        {bookingContext?.candidateName && !isResolvingToken && (
+          <p className="text-lg md:text-xl text-virgilio-muted mb-2">
+            Hi, {bookingContext.candidateName.split(' ')[0]}! 👋
+          </p>
+        )}
         <h1 className="text-h1-mobile md:text-h1-desktop font-poppins font-bold text-virgilio-text mb-6">
           Select a Date & Time<span className="text-virgilio-purple">.</span>
         </h1>
