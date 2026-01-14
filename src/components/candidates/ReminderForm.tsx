@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { format, addHours } from 'date-fns'
+import { addHours } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Card, CardContent } from '@/components/ui/card'
 import { Loader2, X } from 'lucide-react'
+import { ReminderDateTimePicker } from './ReminderDateTimePicker'
 import type { CandidateReminder } from '@/hooks/useCandidateReminders'
 
 interface ReminderFormProps {
@@ -31,12 +32,12 @@ export function ReminderForm({
 
   // Default to 1 hour from now for new reminders
   const defaultDueAt = reminder?.due_at 
-    ? format(new Date(reminder.due_at), "yyyy-MM-dd'T'HH:mm")
-    : format(addHours(new Date(), 1), "yyyy-MM-dd'T'HH:mm")
+    ? new Date(reminder.due_at)
+    : addHours(new Date(), 1)
 
   const [subject, setSubject] = useState(reminder?.subject || '')
   const [description, setDescription] = useState(reminder?.description || '')
-  const [dueAt, setDueAt] = useState(defaultDueAt)
+  const [dueAt, setDueAt] = useState<Date>(defaultDueAt)
   const [isTeamVisible, setIsTeamVisible] = useState(reminder?.is_team_visible ?? false)
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -47,13 +48,13 @@ export function ReminderForm({
     onSubmit({
       subject: subject.trim(),
       description: description.trim() || undefined,
-      due_at: new Date(dueAt).toISOString(),
+      due_at: dueAt.toISOString(),
       is_team_visible: isTeamVisible
     })
   }
 
   return (
-    <Card className="border-primary/30 bg-primary/5">
+    <Card className="bg-white border border-virgilio-border shadow-calendly">
       <CardContent className="p-4">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex items-center justify-between">
@@ -104,12 +105,9 @@ export function ReminderForm({
               <Label htmlFor="reminder-due-at" className="text-xs">
                 Due Date & Time <span className="text-destructive">*</span>
               </Label>
-              <Input
-                id="reminder-due-at"
-                type="datetime-local"
+              <ReminderDateTimePicker
                 value={dueAt}
-                onChange={(e) => setDueAt(e.target.value)}
-                className="h-9"
+                onChange={setDueAt}
               />
             </div>
 
