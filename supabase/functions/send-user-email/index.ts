@@ -239,6 +239,8 @@ function generateShortToken(): string {
 
 /**
  * Create or retrieve a short booking token
+ * IMPORTANT: This function validates and resolves the correct association_id
+ * to prevent data integrity issues from mismatched associations
  */
 async function getOrCreateBookingToken(
   supabase: any,
@@ -256,13 +258,42 @@ async function getOrCreateBookingToken(
   userId: string
 ): Promise<string | null> {
   try {
-    // Check for existing valid token
+    // VALIDATION: Resolve and validate the correct association ID based on candidate_id + job_id
+    let validatedAssociationId = context.associationId;
+
+    if (context.jobId && context.candidateId) {
+      const { data: correctAssociation } = await supabase
+        .from('job_candidate_associations')
+        .select('id')
+        .eq('job_id', context.jobId)
+        .eq('candidate_id', context.candidateId)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (correctAssociation) {
+        if (context.associationId && context.associationId !== correctAssociation.id) {
+          console.error(
+            `[send-user-email] CRITICAL: Token association mismatch! ` +
+            `Passed: ${context.associationId}, Correct: ${correctAssociation.id}. ` +
+            `Candidate: ${context.candidateId}, Job: ${context.jobId}. Using correct association.`
+          );
+        }
+        validatedAssociationId = correctAssociation.id;
+      } else if (context.associationId) {
+        console.warn(
+          `[send-user-email] No active association found for candidate ${context.candidateId} / job ${context.jobId}. ` +
+          `Using passed association ${context.associationId}`
+        );
+      }
+    }
+
+    // Check for existing valid token using validated association
     const { data: existingToken } = await supabase
       .from('booking_link_tokens')
       .select('token')
       .eq('job_id', context.jobId)
       .eq('candidate_id', context.candidateId)
-      .eq('association_id', context.associationId)
+      .eq('association_id', validatedAssociationId)
       .eq('short_code', shortCode)
       .gt('expires_at', new Date().toISOString())
       .maybeSingle();
@@ -293,7 +324,7 @@ async function getOrCreateBookingToken(
       return null;
     }
 
-    // Insert the new token
+    // Insert the new token with validated association ID
     const { error: insertError } = await supabase
       .from('booking_link_tokens')
       .insert({
@@ -301,7 +332,7 @@ async function getOrCreateBookingToken(
         job_id: context.jobId,
         candidate_id: context.candidateId,
         jhs_id: context.jhsId || null,
-        association_id: context.associationId,
+        association_id: validatedAssociationId,
         candidate_name: context.candidateName || null,
         candidate_email: context.candidateEmail || null,
         job_title: context.jobTitle || null,

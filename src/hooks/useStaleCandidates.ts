@@ -56,14 +56,16 @@ export function useStaleCandidates() {
       if (!potentialStale || potentialStale.length === 0) return [];
 
       // Get unique IDs for subsequent queries
-      const associationIds = potentialStale.map(r => r.id);
       const candidateIds = potentialStale.map(r => r.candidate_id);
+      const jobIds = potentialStale.map(r => r.job_id);
 
-      // Step 2: Get upcoming bookings for these candidates
+      // Step 2: Get upcoming bookings by candidate_id + job_id (more reliable than association_id)
+      // This handles cases where historical bookings may have had incorrect association IDs
       const { data: upcomingBookings } = await supabase
         .from('scheduled_bookings')
-        .select('job_candidate_association_id')
-        .in('job_candidate_association_id', associationIds)
+        .select('candidate_id, job_id')
+        .in('candidate_id', candidateIds)
+        .in('job_id', jobIds)
         .eq('status', 'confirmed')
         .gte('scheduled_start', now);
 
@@ -74,9 +76,9 @@ export function useStaleCandidates() {
         .in('candidate_id', candidateIds)
         .is('completed_at', null);
 
-      // Build sets for O(1) lookup
-      const associationsWithBookings = new Set(
-        upcomingBookings?.map(b => b.job_candidate_association_id) || []
+      // Build sets for O(1) lookup using candidate_id + job_id composite keys
+      const candidatesWithBookings = new Set(
+        upcomingBookings?.map(b => `${b.candidate_id}-${b.job_id}`) || []
       );
       
       const candidatesWithReminders = new Set(
@@ -95,8 +97,8 @@ export function useStaleCandidates() {
           continue;
         }
 
-        // Skip if has upcoming confirmed booking
-        if (associationsWithBookings.has(row.id)) {
+        // Skip if has upcoming confirmed booking (using candidate+job key for reliability)
+        if (candidatesWithBookings.has(`${row.candidate_id}-${row.job_id}`)) {
           continue;
         }
 
