@@ -241,7 +241,14 @@ export function useDashboardReminders(tab: 'upcoming' | 'past' = 'upcoming') {
     queryFn: async () => {
       if (!user?.id || !organizationId) return []
 
-      const now = new Date().toISOString()
+      const now = new Date()
+      const nowIso = now.toISOString()
+      
+      // Calculate current month boundaries
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+      const startOfMonthIso = startOfMonth.toISOString()
+      const endOfMonthIso = endOfMonth.toISOString()
 
       let query = supabase
         .from('candidate_reminders')
@@ -253,11 +260,17 @@ export function useDashboardReminders(tab: 'upcoming' | 'past' = 'upcoming') {
         .eq('organization_id', organizationId)
 
       if (tab === 'upcoming') {
-        // Upcoming: not completed, due in the future OR past due but not completed
-        query = query.is('completed_at', null)
+        // Upcoming: not completed AND (past-due OR due within current month)
+        // Past-due reminders always show to surface forgotten items
+        query = query
+          .is('completed_at', null)
+          .or(`due_at.lt.${nowIso},and(due_at.gte.${startOfMonthIso},due_at.lte.${endOfMonthIso})`)
       } else {
-        // Past: completed reminders
-        query = query.not('completed_at', 'is', null)
+        // Past: completed reminders from the current month only
+        query = query
+          .not('completed_at', 'is', null)
+          .gte('completed_at', startOfMonthIso)
+          .lte('completed_at', endOfMonthIso)
       }
 
       query = query.order('due_at', { ascending: tab === 'upcoming' })
