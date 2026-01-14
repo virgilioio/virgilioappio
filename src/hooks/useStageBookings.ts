@@ -1,10 +1,42 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export function useStageBookings(
   jhsId: string | null,
   candidateId: string | null
 ) {
+  const queryClient = useQueryClient();
+
+  // Real-time subscription for booking updates
+  useEffect(() => {
+    if (!jhsId || !candidateId) return;
+
+    const channel = supabase
+      .channel(`stage-bookings-${jhsId}-${candidateId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'scheduled_bookings',
+          filter: `candidate_id=eq.${candidateId}`,
+        },
+        (payload) => {
+          console.log('[StageBookings] Real-time update received:', payload.eventType);
+          // Invalidate query to refetch with updated data
+          queryClient.invalidateQueries({ 
+            queryKey: ['stage-bookings', jhsId, candidateId] 
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [jhsId, candidateId, queryClient]);
+
   return useQuery({
     queryKey: ['stage-bookings', jhsId, candidateId],
     queryFn: async () => {
