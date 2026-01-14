@@ -22,8 +22,10 @@ export function useStaleCandidates() {
     queryFn: async (): Promise<StaleCandidate[]> => {
       const thresholdDate = new Date();
       thresholdDate.setDate(thresholdDate.getDate() - STALE_THRESHOLD_DAYS);
+      const now = new Date().toISOString();
 
-      const { data, error } = await supabase
+      // Step 1: Get potential stale candidates (fetch more to account for filtering)
+      const { data: potentialStale, error } = await supabase
         .from('job_candidate_associations')
         .select(`
           id,
@@ -44,24 +46,62 @@ export function useStaleCandidates() {
         .not('entered_stage_at', 'is', null)
         .lt('entered_stage_at', thresholdDate.toISOString())
         .order('entered_stage_at', { ascending: true })
-        .limit(50);
+        .limit(100);
 
       if (error) {
         console.error('Error fetching stale candidates:', error);
         throw error;
       }
 
-      if (!data) return [];
+      if (!potentialStale || potentialStale.length === 0) return [];
 
-      // Filter out terminal stages and map to our interface
+      // Get unique IDs for subsequent queries
+      const associationIds = potentialStale.map(r => r.id);
+      const candidateIds = potentialStale.map(r => r.candidate_id);
+
+      // Step 2: Get upcoming bookings for these candidates
+      const { data: upcomingBookings } = await supabase
+        .from('scheduled_bookings')
+        .select('job_candidate_association_id')
+        .in('job_candidate_association_id', associationIds)
+        .eq('status', 'confirmed')
+        .gte('scheduled_start', now);
+
+      // Step 3: Get pending reminders for these candidates
+      const { data: pendingReminders } = await supabase
+        .from('candidate_reminders')
+        .select('candidate_id, job_id')
+        .in('candidate_id', candidateIds)
+        .is('completed_at', null);
+
+      // Build sets for O(1) lookup
+      const associationsWithBookings = new Set(
+        upcomingBookings?.map(b => b.job_candidate_association_id) || []
+      );
+      
+      const candidatesWithReminders = new Set(
+        pendingReminders?.map(r => `${r.candidate_id}-${r.job_id}`) || []
+      );
+
+      // Step 4: Filter and map to our interface
       const staleCandidates: StaleCandidate[] = [];
 
-      for (const row of data) {
+      for (const row of potentialStale) {
         const stage = row.job_hiring_stages as any;
         const stageInfo = stage?.job_stages;
         
         // Skip terminal stages (offer, onboarding)
         if (!stageInfo || ['offer', 'onboarding'].includes(stageInfo.stage_type)) {
+          continue;
+        }
+
+        // Skip if has upcoming confirmed booking
+        if (associationsWithBookings.has(row.id)) {
+          continue;
+        }
+
+        // Skip if has pending reminder for this job
+        if (candidatesWithReminders.has(`${row.candidate_id}-${row.job_id}`)) {
           continue;
         }
 
@@ -84,6 +124,9 @@ export function useStaleCandidates() {
           enteredStageAt: row.entered_stage_at!,
           daysInStage,
         });
+
+        // Limit to 50 after filtering
+        if (staleCandidates.length >= 50) break;
       }
 
       return staleCandidates;
