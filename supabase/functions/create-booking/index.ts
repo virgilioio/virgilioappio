@@ -49,6 +49,35 @@ serve(async (req) => {
 
     console.log('[create-booking] Creating booking for:', candidate_email);
 
+    // VALIDATION: Always resolve and use the correct association ID based on candidate_id + job_id
+    let validatedAssociationId = job_candidate_association_id;
+
+    if (job_id && candidate_id) {
+      const { data: correctAssociation } = await supabase
+        .from('job_candidate_associations')
+        .select('id')
+        .eq('job_id', job_id)
+        .eq('candidate_id', candidate_id)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (correctAssociation) {
+        if (job_candidate_association_id && job_candidate_association_id !== correctAssociation.id) {
+          console.error(
+            `[create-booking] CRITICAL: Association mismatch! ` +
+            `Passed: ${job_candidate_association_id}, Correct: ${correctAssociation.id}. ` +
+            `Candidate: ${candidate_id}, Job: ${job_id}. Using correct association.`
+          );
+        }
+        validatedAssociationId = correctAssociation.id;
+      } else {
+        console.warn(
+          `[create-booking] No active association found for candidate ${candidate_id} / job ${job_id}. ` +
+          `Using passed association ${job_candidate_association_id || 'null'}`
+        );
+      }
+    }
+
     // Fetch stage name and job title if this is an internal booking
     let stageName = 'Interview';
     let jobTitle = '';
@@ -419,10 +448,10 @@ serve(async (req) => {
         interviewer_confirmation_status: 'pending',
         candidate_confirmation_status: send_invitation ? 'pending' : null,
         candidate_confirmed_at: send_invitation ? new Date().toISOString() : null,
-        // Internal booking context
+        // Internal booking context (using validated association ID)
         candidate_id: candidate_id || null,
         job_id: job_id || null,
-        job_candidate_association_id: job_candidate_association_id || null,
+        job_candidate_association_id: validatedAssociationId || null,
         job_hiring_stage_id: job_hiring_stage_id || null,
         booked_by: booked_by_user_id || null,
         // Transcript ingest
