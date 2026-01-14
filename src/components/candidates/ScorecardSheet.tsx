@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -94,10 +94,95 @@ export function ScorecardSheet({
   const [isDeleting, setIsDeleting] = useState(false);
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const [loadingResume, setLoadingResume] = useState(true);
+  const [hasDraft, setHasDraft] = useState(false);
+  const draftTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const isReadOnly = useMemo(() => !editMode, [editMode]);
   const isAiDraft = existing?.is_ai_draft === true;
   const aiSuggestedRating = existing?.ai_suggested_rating;
+
+  // Draft storage key - unique per candidate+stage
+  const draftKey = `scorecard-draft-${associationId}-${stageInstanceId}`;
+
+  // Clear draft helper
+  const clearDraft = useCallback(() => {
+    localStorage.removeItem(draftKey);
+    setHasDraft(false);
+  }, [draftKey]);
+
+  // Discard draft handler
+  const handleDiscardDraft = useCallback(() => {
+    clearDraft();
+    setRating('yes');
+    setOverview('');
+    setResponses({});
+    toast({
+      title: 'Draft discarded',
+      description: 'Your draft has been cleared.'
+    });
+  }, [clearDraft]);
+
+  // Load draft on mount (only if no existing scorecard)
+  useEffect(() => {
+    if (!open) return;
+    
+    // Only load draft if there's no existing scorecard
+    if (!existing) {
+      try {
+        const savedDraft = localStorage.getItem(draftKey);
+        if (savedDraft) {
+          const draft = JSON.parse(savedDraft);
+          // Check if draft is less than 7 days old
+          if (Date.now() - draft.lastUpdated < 7 * 24 * 60 * 60 * 1000) {
+            setRating(draft.rating || 'yes');
+            setOverview(draft.overview || '');
+            setResponses(draft.responses || {});
+            setHasDraft(true);
+            toast({ 
+              title: 'Draft restored', 
+              description: 'Your previous notes have been restored.' 
+            });
+          } else {
+            // Clear expired draft
+            localStorage.removeItem(draftKey);
+          }
+        }
+      } catch (e) {
+        console.debug('Failed to load draft:', e);
+      }
+    }
+  }, [open, existing, draftKey]);
+
+  // Auto-save draft on changes (debounced)
+  useEffect(() => {
+    if (!open || existing || isReadOnly) return;
+    
+    // Debounce saves by 1 second
+    if (draftTimeoutRef.current) {
+      clearTimeout(draftTimeoutRef.current);
+    }
+    
+    draftTimeoutRef.current = setTimeout(() => {
+      try {
+        const draft = {
+          rating,
+          overview,
+          responses,
+          lastUpdated: Date.now()
+        };
+        localStorage.setItem(draftKey, JSON.stringify(draft));
+        setHasDraft(true);
+      } catch (e) {
+        console.debug('Failed to save draft:', e);
+      }
+    }, 1000);
+    
+    return () => {
+      if (draftTimeoutRef.current) {
+        clearTimeout(draftTimeoutRef.current);
+      }
+    };
+  }, [open, existing, isReadOnly, rating, overview, responses, draftKey]);
 
   // Load resume when sheet opens
   useEffect(() => {
@@ -376,6 +461,9 @@ export function ScorecardSheet({
           .eq('id', scorecardId);
       }
 
+      // Clear draft on successful save
+      clearDraft();
+
       setEditMode(false);
     } catch (err: any) {
       const msg = err?.message || 'Failed to save scorecard';
@@ -515,8 +603,23 @@ export function ScorecardSheet({
                       AI-Generated Draft
                     </Badge>
                   )}
+                  {hasDraft && !existing && (
+                    <Badge variant="outline" className="text-xs text-muted-foreground">
+                      Draft saved
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
+                  {hasDraft && !existing && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleDiscardDraft}
+                      className="text-muted-foreground"
+                    >
+                      Discard Draft
+                    </Button>
+                  )}
                   {existing && (
                     <Button
                       variant="outline"
