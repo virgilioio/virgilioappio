@@ -15,7 +15,9 @@ import {
   AlignCenter,
   AlignRight,
   Table,
-  Link
+  Link,
+  IndentIncrease,
+  IndentDecrease
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { saveTextCursorPosition, restoreTextCursorPosition, type TextCursorPosition } from '@/lib/cursorUtils'
@@ -359,10 +361,29 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
     setIsFocused(false)
   }, [])
 
-  // Handle keyboard events to prevent editing placeholders
+  // Handle keyboard events to prevent editing placeholders and handle Tab for indentation
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
     const selection = window.getSelection()
     if (!selection || !selection.anchorNode) return
+    
+    // Handle Tab key for indent/outdent in lists
+    if (e.key === 'Tab') {
+      // Check if we're inside a list item
+      const listItem = selection.anchorNode.parentElement?.closest('li') || 
+                       (selection.anchorNode.nodeType === Node.TEXT_NODE && 
+                        selection.anchorNode.parentElement?.closest('li'))
+      
+      if (listItem) {
+        e.preventDefault() // Prevent focus change
+        if (e.shiftKey) {
+          execCommand('outdent')
+        } else {
+          execCommand('indent')
+        }
+        if (editorRef.current) updateContent(editorRef.current.innerHTML)
+        return
+      }
+    }
     
     // Check if cursor is next to a placeholder badge
     const anchorElement = selection.anchorNode.parentElement
@@ -387,7 +408,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
         e.preventDefault()
       }
     }
-  }, [updateContent])
+  }, [execCommand, updateContent])
 
   const insertPlaceholder = useCallback((placeholder: string) => {
     if (!editorRef.current) return
@@ -557,6 +578,24 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
           className="h-8 w-8"
         >
           <ListOrdered className="h-3.5 w-3.5" />
+        </Toggle>
+
+        <Toggle
+          size="sm"
+          onPressedChange={() => handleCommand('outdent')}
+          className="h-8 w-8"
+          title="Decrease indent (Shift+Tab)"
+        >
+          <IndentDecrease className="h-3.5 w-3.5" />
+        </Toggle>
+        
+        <Toggle
+          size="sm"
+          onPressedChange={() => handleCommand('indent')}
+          className="h-8 w-8"
+          title="Increase indent (Tab)"
+        >
+          <IndentIncrease className="h-3.5 w-3.5" />
         </Toggle>
 
         <Separator orientation="vertical" className="mx-1 h-6" />
