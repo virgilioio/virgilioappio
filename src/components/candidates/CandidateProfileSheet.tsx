@@ -828,6 +828,23 @@ const stageHasAutomation = useMemo(() => {
                   setScoreOpen(true)
                 }}
               />
+              
+              {/* Submit Scorecard Button - show for all stages if user hasn't submitted yet */}
+              {!myScorecardsByStage[opt.jhsId] && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setScoreStageInstId(opt.jhsId)
+                    setScoreStageName(opt.stage.stage_name)
+                    setScoreOpen(true)
+                  }}
+                  className="gap-2"
+                >
+                  <Star className="h-4 w-4" />
+                  Submit Scorecard
+                </Button>
+              )}
             </div>
           )}
 
@@ -880,22 +897,6 @@ const stageHasAutomation = useMemo(() => {
                 />
               )}
               
-              {/* Submit Scorecard Button - for all stages that support scorecards */}
-              {supportsScorecard(opt.stage.stage_type) && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setScoreStageInstId(opt.jhsId)
-                    setScoreStageName(opt.stage.stage_name)
-                    setScoreOpen(true)
-                  }}
-                  className="gap-2"
-                >
-                  <Star className="h-4 w-4" />
-                  Submit Scorecard
-                </Button>
-              )}
             </div>
           )}
 
