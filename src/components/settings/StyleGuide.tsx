@@ -8,6 +8,7 @@ import { BadgeGuide } from './styleguide/BadgeGuide'
 import { TabsGuide } from './styleguide/TabsGuide'
 import { ShadowGuide } from './styleguide/ShadowGuide'
 import { SkeletonGuide } from './styleguide/SkeletonGuide'
+import { DateTimePickerGuide } from './styleguide/DateTimePickerGuide'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
 export function StyleGuide() {
@@ -31,6 +32,7 @@ export function StyleGuide() {
         <CardGuide />
         <BadgeGuide />
         <TabsGuide />
+        <DateTimePickerGuide />
         <SkeletonGuide />
         <ShadowGuide />
       </div>
