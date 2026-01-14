@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -14,20 +14,22 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
-  Calendar,
+  CalendarCheck,
   ChevronDown,
   ChevronUp,
 } from 'lucide-react'
 import { useScheduledBookings, type ScheduledBooking } from '@/hooks/useScheduledBookings'
+import { useDashboardReminders } from '@/hooks/useCandidateReminders'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
 import { BookingDetailsDialog } from '@/components/booking/BookingDetailsDialog'
-import { InterviewRow } from './InterviewRow'
+import { ActivityRow } from './ActivityRow'
 import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/integrations/supabase/client'
 import { useQueryClient } from '@tanstack/react-query'
+import type { UnifiedActivity } from '@/types/activity'
 
-export function MyInterviews() {
+export function UpcomingActivities() {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming')
   const [isExpanded, setIsExpanded] = useState(false)
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null)
@@ -40,8 +42,43 @@ export function MyInterviews() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   
-  const { bookings, isLoading, cancelBooking, updateStatus, isCancelling, isUpdating } =
+  // Fetch bookings
+  const { bookings, isLoading: isLoadingBookings, cancelBooking, updateStatus, isCancelling, isUpdating } =
     useScheduledBookings(activeTab, permissions)
+
+  // Fetch reminders
+  const { reminders, isLoading: isLoadingReminders, completeReminder, isCompleting } =
+    useDashboardReminders(activeTab)
+
+  const isLoading = isLoadingBookings || isLoadingReminders
+
+  // Merge and sort activities
+  const activities = useMemo<UnifiedActivity[]>(() => {
+    const interviewActivities: UnifiedActivity[] = bookings.map(b => ({
+      type: 'interview' as const,
+      id: b.id,
+      candidateId: b.candidate_id,
+      candidateName: b.candidate?.candidate_name || b.candidate_name || 'Unknown',
+      jobId: b.job?.id || null,
+      jobTitle: b.job?.title || null,
+      dateTime: b.scheduled_start,
+      interview: b
+    }))
+    
+    const reminderActivities: UnifiedActivity[] = reminders.map(r => ({
+      type: 'reminder' as const,
+      id: r.id,
+      candidateId: r.candidate_id,
+      candidateName: r.candidate?.candidate_name || 'Unknown',
+      jobId: r.job?.id || null,
+      jobTitle: r.job?.title || null,
+      dateTime: r.due_at,
+      reminder: r
+    }))
+    
+    return [...interviewActivities, ...reminderActivities]
+      .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime())
+  }, [bookings, reminders])
 
   // Set up realtime listener for Google Calendar sync updates
   useEffect(() => {
@@ -62,7 +99,6 @@ export function MyInterviews() {
           const oldBooking = payload.old as ScheduledBooking;
           
           if (newBooking.sync_source === 'google_calendar') {
-            // Determine what changed
             if (newBooking.status === 'cancelled' && oldBooking.status !== 'cancelled') {
               toast({
                 title: "Interview Cancelled",
@@ -76,7 +112,6 @@ export function MyInterviews() {
               });
             }
             
-            // Refetch bookings to show updated data
             queryClient.invalidateQueries({ queryKey: ['scheduled-bookings'] });
           }
         }
@@ -88,7 +123,7 @@ export function MyInterviews() {
     };
   }, [user?.id, queryClient]);
 
-  const displayedBookings = isExpanded ? bookings : bookings.slice(0, 5)
+  const displayedActivities = isExpanded ? activities : activities.slice(0, 5)
 
   const showInterviewer = permissions.isRecruiter || permissions.isHiringManager || 
     permissions.isAdmin || permissions.isWorkspaceOwner || permissions.isPlatformAdmin
@@ -144,14 +179,14 @@ export function MyInterviews() {
 
   const EmptyState = ({ type }: { type: 'upcoming' | 'past' }) => (
     <div className="text-center py-8 text-muted-foreground">
-      <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
+      <CalendarCheck className="h-12 w-12 mx-auto mb-3 opacity-50" />
       <p className="text-sm">
-        {type === 'upcoming' ? 'No upcoming interviews scheduled' : 'No past interviews yet'}
+        {type === 'upcoming' ? 'No upcoming activities' : 'No past activities yet'}
       </p>
       <p className="text-xs mt-1">
         {type === 'upcoming'
-          ? 'Interviews will appear here once candidates book time with you'
-          : 'Completed and cancelled interviews will appear here'}
+          ? 'Scheduled interviews and reminders will appear here'
+          : 'Completed interviews and reminders will appear here'}
       </p>
     </div>
   )
@@ -165,7 +200,7 @@ export function MyInterviews() {
   )
 
   const ShowMoreButton = () => (
-    bookings.length > 5 && (
+    activities.length > 5 && (
       <div className="mt-4 flex justify-center">
         <Button
           variant="ghost"
@@ -179,7 +214,7 @@ export function MyInterviews() {
             </>
           ) : (
             <>
-              Show More ({bookings.length - 5} more) <ChevronDown className="h-4 w-4" />
+              Show More ({activities.length - 5} more) <ChevronDown className="h-4 w-4" />
             </>
           )}
         </Button>
@@ -192,8 +227,8 @@ export function MyInterviews() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            My Interviews
+            <CalendarCheck className="h-5 w-5" />
+            Upcoming Activities
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -206,26 +241,28 @@ export function MyInterviews() {
             <TabsContent value="upcoming" className="mt-0">
               {isLoading ? (
                 <LoadingState />
-              ) : bookings.length === 0 ? (
+              ) : activities.length === 0 ? (
                 <EmptyState type="upcoming" />
               ) : (
                 <div className={isExpanded ? 'max-h-[400px] overflow-y-auto' : ''}>
                   <div className="space-y-2">
-                    {displayedBookings.map((booking) => (
-                      <InterviewRow
-                        key={booking.id}
-                        booking={booking}
+                    {displayedActivities.map((activity) => (
+                      <ActivityRow
+                        key={`${activity.type}-${activity.id}`}
+                        activity={activity}
                         currentUserId={user?.id}
                         showInterviewer={showInterviewer}
                         isPastTab={false}
                         onViewDetails={handleViewDetails}
                         onNavigate={handleNavigateToCandidate}
                         onCopyMeetingLink={handleCopyMeetingLink}
-                        onMarkCompleted={(id) => handleStatusUpdate(id, 'completed')}
+                        onMarkInterviewCompleted={(id) => handleStatusUpdate(id, 'completed')}
                         onMarkNoShow={(id) => handleStatusUpdate(id, 'no_show')}
-                        onCancel={handleCancelBooking}
+                        onCancelInterview={handleCancelBooking}
+                        onCompleteReminder={completeReminder}
                         isUpdating={isUpdating}
                         isCancelling={isCancelling}
+                        isCompletingReminder={isCompleting}
                       />
                     ))}
                   </div>
@@ -237,15 +274,15 @@ export function MyInterviews() {
             <TabsContent value="past" className="mt-0">
               {isLoading ? (
                 <LoadingState />
-              ) : bookings.length === 0 ? (
+              ) : activities.length === 0 ? (
                 <EmptyState type="past" />
               ) : (
                 <div className={isExpanded ? 'max-h-[400px] overflow-y-auto' : ''}>
                   <div className="space-y-2">
-                    {displayedBookings.map((booking) => (
-                      <InterviewRow
-                        key={booking.id}
-                        booking={booking}
+                    {displayedActivities.map((activity) => (
+                      <ActivityRow
+                        key={`${activity.type}-${activity.id}`}
+                        activity={activity}
                         currentUserId={user?.id}
                         showInterviewer={showInterviewer}
                         isPastTab={true}

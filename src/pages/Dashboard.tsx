@@ -1,5 +1,5 @@
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
-import { MyInterviews } from '@/components/dashboard/MyInterviews'
+import { UpcomingActivities } from '@/components/dashboard/UpcomingActivities'
 import { JobsOverview } from '@/components/dashboard/JobsOverview'
 import { TrialCountdownBanner } from '@/components/dashboard/TrialCountdownBanner'
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist'
@@ -56,7 +56,7 @@ export default function Dashboard() {
             
             {/* Right Column - Tasks */}
             <div className="space-y-6">
-              <MyInterviews />
+              <UpcomingActivities />
               <MyTasks />
               <StaleCandidates />
             </div>
