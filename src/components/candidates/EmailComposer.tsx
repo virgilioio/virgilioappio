@@ -269,15 +269,15 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
                   setSelectedTemplateId(value);
                   const template = templates.find(t => t.id === value);
                   if (template) {
-                    // Convert placeholders to badges in subject and body
-                    const subjectWithBadges = convertPlaceholdersToHtml(template.subject);
-                    const bodyWithBadges = convertPlaceholdersToHtml(template.body);
+                    // Normalize to plain text with {{placeholders}} - the Lexical editors handle badge rendering
+                    const subjectNormalized = convertHtmlToPlaceholders(template.subject);
+                    const bodyNormalized = convertHtmlToPlaceholders(template.body);
                     
-                    setSubjectHtml(subjectWithBadges);
-                    setValue('subject', subjectWithBadges);
-                    setBodyHtml(bodyWithBadges);
-                    setValue('body_html', bodyWithBadges);
-                    toast.success('Template applied - placeholders shown as badges');
+                    setSubjectHtml(subjectNormalized);
+                    setValue('subject', subjectNormalized);
+                    setBodyHtml(bodyNormalized);
+                    setValue('body_html', bodyNormalized);
+                    toast.success('Template applied');
                   }
                 }
               }}
