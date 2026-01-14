@@ -53,6 +53,34 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
     queryFn: async () => {
       if (!user || !jobId) throw new Error('No user or job ID')
 
+      // SECURITY: Verify the job belongs to the user's tenant (defense in depth)
+      const { data: memberData, error: memberError } = await supabase
+        .from('members')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .eq('user_status', 'active')
+        .single()
+
+      if (memberError || !memberData?.tenant_id) {
+        console.error('[JobAnalytics] Failed to get tenant_id:', memberError)
+        throw new Error('Unable to determine tenant context')
+      }
+
+      const tenantId = memberData.tenant_id
+
+      // Verify the job belongs to this tenant before fetching any analytics
+      const { data: jobData, error: jobError } = await supabase
+        .from('jobs')
+        .select('id, tenant_id')
+        .eq('id', jobId)
+        .eq('tenant_id', tenantId)
+        .single()
+
+      if (jobError || !jobData) {
+        console.error('[JobAnalytics] Job not accessible or not in tenant:', { jobId, tenantId, error: jobError })
+        throw new Error('Job not accessible')
+      }
+
       // Helper functions to get UTC day boundaries
       const startOfDayUTC = (date: Date): string => {
         const d = new Date(date)
