@@ -15,7 +15,7 @@ import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeVi
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Link2 } from 'lucide-react'
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Link2, Bell } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -54,6 +54,7 @@ import { GenerateBookingLinkButton } from '@/components/candidates/GenerateBooki
 import { RejectionDialog } from './RejectionDialog'
 import { RejectionStatusBanner } from './RejectionStatusBanner'
 import { CreateOfferLetterSheet } from './CreateOfferLetterDialog'
+import { CandidateReminders } from './CandidateReminders'
 import { useQuery } from '@tanstack/react-query'
 import { useBookingConfig } from '@/hooks/useBookingConfig'
 import { useUserProfile } from '@/hooks/useUserProfile'
@@ -105,7 +106,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [jobCandidateId, setJobCandidateId] = useState<string | null>(null)
   const [job, setJob] = useState<any | null>(null)
   const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'overview'>('job')
-  const [rightActiveTab, setRightActiveTab] = useState<'feed' | 'notes' | 'emails'>('feed')
+  const [rightActiveTab, setRightActiveTab] = useState<'feed' | 'notes' | 'emails' | 'reminders'>('feed')
   const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
   const [education, setEducation] = useState<CandidateEducation[]>([])
   const [editOpen, setEditOpen] = useState(false)
@@ -1384,9 +1385,10 @@ const stageHasAutomation = useMemo(() => {
                          { value: 'feed', label: 'Feed', Icon: Activity },
                          { value: 'notes', label: 'Notes', Icon: StickyNote },
                          { value: 'emails', label: 'Emails', Icon: Mail },
+                         { value: 'reminders', label: 'Reminders', Icon: Bell },
                        ]}
                        activeTab={rightActiveTab}
-                       onTabChange={(v) => setRightActiveTab(v as 'feed' | 'notes' | 'emails')}
+                       onTabChange={(v) => setRightActiveTab(v as 'feed' | 'notes' | 'emails' | 'reminders')}
                      />
 
                      {/* Feed Tab */}
@@ -1445,6 +1447,11 @@ const stageHasAutomation = useMemo(() => {
                             </ScrollArea>
                           </CardContent>
                         </Card>
+                      )}
+
+                      {/* Reminders Tab */}
+                      {rightActiveTab === 'reminders' && candidateId && (
+                        <CandidateReminders candidateId={candidateId} jobId={jobId} />
                       )}
 
                       {/* Job Information */}

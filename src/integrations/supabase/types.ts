@@ -908,6 +908,83 @@ export type Database = {
           },
         ]
       }
+      candidate_reminders: {
+        Row: {
+          candidate_id: string
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          due_at: string
+          id: string
+          is_team_visible: boolean
+          job_id: string | null
+          organization_id: string
+          subject: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          candidate_id: string
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          due_at: string
+          id?: string
+          is_team_visible?: boolean
+          job_id?: string | null
+          organization_id: string
+          subject: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          candidate_id?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          due_at?: string
+          id?: string
+          is_team_visible?: boolean
+          job_id?: string | null
+          organization_id?: string
+          subject?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_reminders_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_reminders_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_reminders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_reminders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_urls: {
         Row: {
           candidate_id: string

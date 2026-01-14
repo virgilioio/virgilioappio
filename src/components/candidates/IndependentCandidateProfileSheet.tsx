@@ -14,7 +14,7 @@ import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import { CandidateJobSidebar } from '@/components/candidates/CandidateJobSidebar'
-import { Edit, FileText, Download, ChevronLeft, ChevronRight, Mail, Phone, Copy, ExternalLink, Send, Activity, StickyNote, Sparkles, User, Globe, Loader2 } from 'lucide-react'
+import { Edit, FileText, Download, ChevronLeft, ChevronRight, Mail, Phone, Copy, ExternalLink, Send, Activity, StickyNote, Sparkles, User, Globe, Loader2, Bell } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -36,6 +36,7 @@ import { formatQuotedReply, formatForwardedMessage, getReplySubject, getForwardS
 import { ActivityFeedList } from './ActivityFeedList'
 import AddToJobPipelineDialog from './AddToJobPipelineDialog'
 import { Separator } from '@/components/ui/separator'
+import { CandidateReminders } from './CandidateReminders'
 import { useEnrichCandidate } from '@/hooks/useEnrichCandidate'
 
 interface IndependentCandidateProfileSheetProps {
@@ -63,7 +64,7 @@ export function IndependentCandidateProfileSheet({
   const [loading, setLoading] = useState(false)
   const [candidate, setCandidate] = useState<any | null>(null)
   const [activeTab, setActiveTab] = useState<'overview' | 'resume' | 'comments'>('overview')
-  const [rightActiveTab, setRightActiveTab] = useState<'feed' | 'notes' | 'emails'>('feed')
+  const [rightActiveTab, setRightActiveTab] = useState<'feed' | 'notes' | 'emails' | 'reminders'>('feed')
   const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
   const [education, setEducation] = useState<CandidateEducation[]>([])
   const [editOpen, setEditOpen] = useState(false)
@@ -719,9 +720,10 @@ export function IndependentCandidateProfileSheet({
                           { value: 'feed', label: 'Feed', Icon: Activity },
                           { value: 'notes', label: 'Notes', Icon: StickyNote },
                           { value: 'emails', label: 'Emails', Icon: Mail },
+                          { value: 'reminders', label: 'Reminders', Icon: Bell },
                         ]}
                         activeTab={rightActiveTab}
-                        onTabChange={(v) => setRightActiveTab(v as 'feed' | 'notes' | 'emails')}
+                        onTabChange={(v) => setRightActiveTab(v as 'feed' | 'notes' | 'emails' | 'reminders')}
                       />
 
                       {/* Feed Tab */}
@@ -778,6 +780,11 @@ export function IndependentCandidateProfileSheet({
                             </ScrollArea>
                           </CardContent>
                         </Card>
+                      )}
+
+                      {/* Reminders Tab */}
+                      {rightActiveTab === 'reminders' && candidateId && (
+                        <CandidateReminders candidateId={candidateId} />
                       )}
                     </div>
                   </div>
