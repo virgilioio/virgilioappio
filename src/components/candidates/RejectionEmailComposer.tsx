@@ -4,16 +4,14 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SubjectTemplateEditor, BodyTemplateEditor } from '@/components/editors';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio';
+import { TimePickerVirgilio } from '@/components/ui/time-picker-virgilio';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useMailIdentities } from '@/hooks/useMailIdentities';
 import { useRejectionEmailTemplates } from '@/hooks/useRejectionEmailTemplates';
 import { convertHtmlToPlaceholders, containsPlaceholders } from '@/utils/placeholderUtils';
-import { CalendarIcon, Clock } from 'lucide-react';
-import { format, addHours, setHours, setMinutes } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { setHours, setMinutes } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
 import { Mail } from 'lucide-react';
@@ -224,48 +222,17 @@ export function RejectionEmailComposer({
 
         {sendOption === 'later' && (
           <div className="flex items-center gap-3 pl-6">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    'w-[200px] justify-start text-left font-normal',
-                    !scheduledDate && 'text-muted-foreground'
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {scheduledDate ? format(scheduledDate, 'PPP') : 'Pick a date'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={scheduledDate}
-                  onSelect={setScheduledDate}
-                  disabled={(date) => date < new Date()}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <Select value={scheduledTime} onValueChange={setScheduledTime}>
-                <SelectTrigger className="w-[120px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 24 }, (_, h) => {
-                    const hour = h.toString().padStart(2, '0');
-                    return ['00', '30'].map(min => (
-                      <SelectItem key={`${hour}:${min}`} value={`${hour}:${min}`}>
-                        {hour}:{min}
-                      </SelectItem>
-                    ));
-                  }).flat()}
-                </SelectContent>
-              </Select>
-            </div>
+            <DatePickerVirgilio
+              value={scheduledDate}
+              onChange={setScheduledDate}
+              minDate={new Date()}
+              className="w-[200px]"
+            />
+            <TimePickerVirgilio
+              value={scheduledTime}
+              onChange={setScheduledTime}
+              className="w-[130px]"
+            />
           </div>
         )}
       </div>

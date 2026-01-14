@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
+import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 import { Calendar } from 'lucide-react'
 import { format, addDays } from 'date-fns'
 
@@ -30,7 +30,7 @@ export function ExtendTrialDialog({
   currentTrialEnd,
   isPending = false
 }: ExtendTrialDialogProps) {
-  const [endDate, setEndDate] = useState('')
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined)
 
   // Set default date when dialog opens
   useEffect(() => {
@@ -39,13 +39,13 @@ export function ExtendTrialDialog({
         ? addDays(new Date(currentTrialEnd), 14)
         : addDays(new Date(), 30)
       
-      setEndDate(format(defaultDate, 'yyyy-MM-dd'))
+      setEndDate(defaultDate)
     }
   }, [open, currentTrialEnd])
 
   const handleConfirm = () => {
     if (endDate) {
-      onConfirm(new Date(endDate))
+      onConfirm(endDate)
       onOpenChange(false)
     }
   }
@@ -53,8 +53,6 @@ export function ExtendTrialDialog({
   const handleCancel = () => {
     onOpenChange(false)
   }
-
-  const minDate = format(new Date(), 'yyyy-MM-dd')
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -85,13 +83,11 @@ export function ExtendTrialDialog({
 
           <div className="space-y-2">
             <Label htmlFor="trial-end-date">New trial end date *</Label>
-            <Input
-              id="trial-end-date"
-              type="date"
+            <DatePickerVirgilio
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              min={minDate}
-              disabled={isPending}
+              onChange={setEndDate}
+              minDate={new Date()}
+              className="w-full"
             />
             <p className="text-sm text-muted-foreground">
               The organization's status will be set to "trialing" until this date.
