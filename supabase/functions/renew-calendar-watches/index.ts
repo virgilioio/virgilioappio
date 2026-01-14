@@ -51,10 +51,21 @@ serve(async (req) => {
 
     for (const identity of expiringWatches) {
       try {
-        // Call setup-calendar-watch to renew
-        const { error: renewError } = await supabase.functions.invoke('setup-calendar-watch', {
-          body: { calendar_identity_id: identity.id }
+        // Call setup-calendar-watch directly via HTTP with service role key
+        const functionUrl = `${supabaseUrl}/functions/v1/setup-calendar-watch`;
+        const response = await fetch(functionUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            calendar_identity_id: identity.id,
+            is_service_call: true 
+          }),
         });
+        
+        const renewError = !response.ok ? await response.text() : null;
 
         if (renewError) {
           console.error(`[renew-calendar-watches] Failed to renew watch for ${identity.id}:`, renewError);

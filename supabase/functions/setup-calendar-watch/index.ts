@@ -21,27 +21,40 @@ serve(async (req) => {
       throw new Error('No authorization header');
     }
 
-    // Get authenticated user
-    const { data: { user }, error: userError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
-    if (userError || !user) {
-      throw new Error('Unauthorized');
+    const { calendar_identity_id, is_service_call } = await req.json();
+    
+    let userId: string | null = null;
+    
+    // Check if this is a service-role call (for cron jobs/internal calls)
+    const token = authHeader.replace('Bearer ', '');
+    const isServiceRole = token === supabaseServiceKey;
+    
+    if (!isServiceRole) {
+      // Get authenticated user for regular calls
+      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+      if (userError || !user) {
+        throw new Error('Unauthorized');
+      }
+      userId = user.id;
     }
 
-    const { calendar_identity_id } = await req.json();
+    console.log('[setup-calendar-watch] Setting up watch for calendar:', calendar_identity_id, 'isServiceRole:', isServiceRole);
 
-    console.log('[setup-calendar-watch] Setting up watch for calendar:', calendar_identity_id);
-
-    // Fetch calendar identity
-    const { data: calIdentity, error: calError } = await supabase
+    // Fetch calendar identity - skip user check for service role calls
+    let query = supabase
       .from('calendar_identities')
       .select('*')
-      .eq('id', calendar_identity_id)
-      .eq('user_id', user.id)
-      .single();
+      .eq('id', calendar_identity_id);
+    
+    // Only filter by user_id for non-service calls
+    if (!isServiceRole && userId) {
+      query = query.eq('user_id', userId);
+    }
+    
+    const { data: calIdentity, error: calError } = await query.single();
 
     if (calError || !calIdentity) {
+      console.error('[setup-calendar-watch] Calendar identity not found:', calError);
       throw new Error('Calendar identity not found');
     }
 
