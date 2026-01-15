@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTenant } from '@/hooks/useTenant'
 import { toast } from '@/hooks/use-toast'
 import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
 import { log } from '@/lib/logger'
@@ -78,6 +79,7 @@ export function useIndependentCandidates() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { user, organizationId, userType } = useAuth()
+  const { tenant } = useTenant()
 
   const getCandidates = async () => {
     if (!user || !organizationId) return
@@ -135,8 +137,8 @@ export function useIndependentCandidates() {
     try {
       log.debug('Adding independent candidate:', candidateData)
       
-      // Check for duplicates using shared helper
-      const duplicateCheck = await checkForDuplicateCandidate(candidateData, organizationId)
+      // Check for duplicates using shared helper - pass tenantId for cross-tenant isolation
+      const duplicateCheck = await checkForDuplicateCandidate(candidateData, organizationId, tenant?.id)
       
       if (duplicateCheck) {
         // Found duplicate - return for UI to handle

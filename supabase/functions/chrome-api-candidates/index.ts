@@ -194,10 +194,12 @@ serve(async (req) => {
     let existingCandidate = null;
     let wasDuplicate = false;
 
+    // CRITICAL: Check for duplicates WITHIN TENANT (not just organization)
     if (email) {
       const { data: byEmail } = await supabase
         .from('candidates')
         .select('id')
+        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant_id first
         .eq('organization_id', organization_id)
         .eq('email', email)
         .is('deleted_at', null)
@@ -206,7 +208,7 @@ serve(async (req) => {
       if (byEmail) {
         existingCandidate = byEmail;
         wasDuplicate = true;
-        console.log(`🔍 Found duplicate by email: ${email}`);
+        console.log(`🔍 Found duplicate by email within tenant: ${email}`);
       }
     }
 
@@ -214,6 +216,7 @@ serve(async (req) => {
       const { data: byLinkedIn } = await supabase
         .from('candidates')
         .select('id')
+        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant_id first
         .eq('organization_id', organization_id)
         .eq('linkedin_url', linkedin_url)
         .is('deleted_at', null)
@@ -222,7 +225,7 @@ serve(async (req) => {
       if (byLinkedIn) {
         existingCandidate = byLinkedIn;
         wasDuplicate = true;
-        console.log(`🔍 Found duplicate by LinkedIn: ${linkedin_url}`);
+        console.log(`🔍 Found duplicate by LinkedIn within tenant: ${linkedin_url}`);
       }
     }
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrgContext } from '@/contexts/OrgContext'
+import { useTenant } from '@/hooks/useTenant'
 import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
 import { toast } from '@/hooks/use-toast'
 import { log } from '@/lib/logger'
@@ -87,6 +88,7 @@ export function useCandidates(jobId: string) {
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuth()
   const { organizationId } = useOrgContext()
+  const { tenant } = useTenant()
   const queryClient = useQueryClient()
 
   const getCandidates = async () => {
@@ -271,8 +273,8 @@ export function useCandidates(jobId: string) {
       
       log.debug('Job organization verified:', jobData.organization_id)
 
-      // Check for duplicates using shared helper
-      const duplicateCheck = await checkForDuplicateCandidate(candidateData, jobData.organization_id)
+      // Check for duplicates using shared helper - pass tenantId for cross-tenant isolation
+      const duplicateCheck = await checkForDuplicateCandidate(candidateData, jobData.organization_id, tenant?.id)
       
       if (duplicateCheck) {
         // Return duplicate info for UI to handle - don't merge automatically
