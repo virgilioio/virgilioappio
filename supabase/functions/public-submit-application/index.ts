@@ -95,10 +95,10 @@ serve(async (req) => {
       });
     }
 
-    // Get job from posting
+    // Get job from posting (include tenant_id for proper isolation)
     const { data: posting, error: postingErr } = await supabase
       .from("job_postings")
-      .select("id, job_id, is_active, job:jobs(organization_id)")
+      .select("id, job_id, is_active, tenant_id, job:jobs(organization_id)")
       .eq("id", postingId)
       .maybeSingle();
 
@@ -204,14 +204,16 @@ serve(async (req) => {
     const candidateName = body.candidate_name?.trim()?.slice(0, 200) || "Applicant";
     console.log("📝 Candidate name:", candidateName);
 
-    // Find or create global candidate record - email-only matching
+    // Find or create global candidate record - email-only matching WITHIN TENANT
     let globalCandidateId: string | null = null;
+    const postingTenantId = posting.tenant_id;
 
-    console.log('📧 Looking for existing candidate by email:', candidateEmail);
+    console.log('📧 Looking for existing candidate by email within tenant:', candidateEmail, 'tenant:', postingTenantId);
     const { data: existingCandidate, error: lookupErr } = await supabase
       .from("candidates")
       .select("id, candidate_name, email")
       .eq("email", candidateEmail)
+      .eq("tenant_id", postingTenantId)  // CRITICAL: Filter by tenant_id
       .maybeSingle();
 
     if (lookupErr) {
@@ -233,6 +235,7 @@ serve(async (req) => {
           profile_summary: body.profile_summary || null,
           skills: body.skills ? [body.skills] : null,
           source: "public_posting",
+          tenant_id: postingTenantId,  // CRITICAL: Set tenant_id for proper isolation
         };
 
         // Parse location if provided

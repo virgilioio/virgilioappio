@@ -95,27 +95,49 @@ export const smartMerge = (existing: any, incoming: any): any => {
 
 /**
  * Check for duplicate candidates and return merge info if found
+ * CRITICAL: tenantId parameter ensures cross-tenant isolation
  */
 export async function checkForDuplicateCandidate(
   candidateData: Partial<CandidateData>,
-  organizationId: string
+  organizationId: string,
+  tenantId?: string  // Optional for defense-in-depth tenant isolation
 ): Promise<DuplicateCheckResult | null> {
-  log.debug('Checking for duplicate candidate:', { email: candidateData.email, name: candidateData.candidate_name })
+  log.debug('Checking for duplicate candidate:', { 
+    email: candidateData.email, 
+    name: candidateData.candidate_name,
+    tenantId 
+  })
 
   if (!candidateData.email && !candidateData.candidate_name) {
     return null
   }
 
   const duplicateQuery = candidateData.email 
-    ? async () => await supabase.from('candidates').select('*')
-        .eq('email', candidateData.email!)
-        .eq('organization_id', organizationId)
-        .limit(1)
-    : async () => await supabase.from('candidates').select('*')
-        .eq('candidate_name', candidateData.candidate_name!)
-        .eq('organization_id', organizationId)
-        .is('email', null)
-        .limit(1)
+    ? async () => {
+        let query = supabase.from('candidates').select('*')
+          .eq('email', candidateData.email!)
+          .eq('organization_id', organizationId)
+        
+        // CRITICAL: Add tenant filter for proper cross-tenant isolation
+        if (tenantId) {
+          query = query.eq('tenant_id', tenantId)
+        }
+        
+        return await query.limit(1)
+      }
+    : async () => {
+        let query = supabase.from('candidates').select('*')
+          .eq('candidate_name', candidateData.candidate_name!)
+          .eq('organization_id', organizationId)
+          .is('email', null)
+        
+        // CRITICAL: Add tenant filter for proper cross-tenant isolation
+        if (tenantId) {
+          query = query.eq('tenant_id', tenantId)
+        }
+        
+        return await query.limit(1)
+      }
   
   const result = await withAuthRetry(duplicateQuery)
 
