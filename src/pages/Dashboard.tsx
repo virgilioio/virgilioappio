@@ -4,7 +4,7 @@ import { JobsOverview } from '@/components/dashboard/JobsOverview'
 import { TrialCountdownBanner } from '@/components/dashboard/TrialCountdownBanner'
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist'
 import { RecentSourcingProjects } from '@/components/dashboard/RecentSourcingProjects'
-import { MyTasks } from '@/components/dashboard/MyTasks'
+import { PendingActivities } from '@/components/dashboard/PendingActivities'
 import { StaleCandidates } from '@/components/dashboard/StaleCandidates'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -57,7 +57,7 @@ export default function Dashboard() {
             {/* Right Column - Tasks */}
             <div className="space-y-6">
               <UpcomingActivities />
-              <MyTasks />
+              <PendingActivities />
               <StaleCandidates />
             </div>
           </div>
