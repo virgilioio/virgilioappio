@@ -199,32 +199,54 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Authenticate user
+    // Authenticate - support both user JWT and service role key
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       throw new Error('Missing authorization header');
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-      throw new Error('Unauthorized');
+    let userId: string | null = null;
+    let isServiceRole = false;
+
+    // Check if this is a service role call (from cron)
+    if (token === supabaseServiceKey) {
+      isServiceRole = true;
+      console.log('[Gmail Sync] Service role authentication (cron job)');
+    } else {
+      // User JWT authentication
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+      if (authError || !user) {
+        throw new Error('Unauthorized');
+      }
+      userId = user.id;
+      console.log('[Gmail Sync] User authentication:', userId);
     }
 
     const { mail_identity_id }: SyncRequest = await req.json();
-
     console.log('[Gmail Sync] Starting sync for identity:', mail_identity_id);
 
-    // Get mail identity
-    const { data: identity, error: identityError } = await supabase
+    // Get mail identity - with or without user_id check
+    let query = supabase
       .from('user_mail_identities')
       .select('*')
-      .eq('id', mail_identity_id)
-      .eq('user_id', user.id)
-      .maybeSingle();
+      .eq('id', mail_identity_id);
+
+    // Only check user_id ownership if this is a user-initiated request
+    if (!isServiceRole && userId) {
+      query = query.eq('user_id', userId);
+    }
+
+    const { data: identity, error: identityError } = await query.maybeSingle();
 
     if (identityError || !identity) {
       throw new Error('Mail identity not found');
+    }
+
+    // For service role calls, use the identity's user_id
+    if (isServiceRole) {
+      userId = identity.user_id;
+      console.log('[Gmail Sync] Using identity user_id:', userId);
     }
 
     // Determine mailbox email (the email address of this identity)
@@ -350,7 +372,7 @@ const handler = async (req: Request): Promise<Response> => {
         // Prepare upsert data
         // CRITICAL: provider_message_id = Gmail msg.id (NOT RFC822 Message-ID)
         const emailData: Record<string, any> = {
-          user_id: user.id,
+          user_id: userId,
           organization_id: identity.organization_id,
           tenant_id: identity.tenant_id,
           mail_identity_id: identity.id,

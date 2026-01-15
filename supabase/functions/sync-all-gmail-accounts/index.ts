@@ -76,23 +76,6 @@ const handler = async (req: Request): Promise<Response> => {
 
         console.log(`[Cron] Syncing ${identity.email_address}...`);
 
-        // Generate a temporary auth token for this user
-        const { data: authData, error: authError } = await supabase.auth.admin.generateLink({
-          type: 'magiclink',
-          email: identity.email_address,
-        });
-
-        if (authError || !authData) {
-          console.error(`[Cron] Failed to generate auth token for ${identity.email_address}:`, authError);
-          results.push({
-            identity_id: identity.id,
-            email: identity.email_address,
-            status: 'error',
-            error: 'Failed to generate auth token',
-          });
-          continue;
-        }
-
         // Invoke sync-gmail-messages function
         const { data: syncData, error: syncError } = await supabase.functions.invoke('sync-gmail-messages', {
           body: { mail_identity_id: identity.id },
