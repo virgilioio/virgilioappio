@@ -49,17 +49,19 @@ export function UserDeletionDialog({
     try {
       // Handle members without user_id (never registered) vs registered members differently
       if (!userToDelete.id) {
-        // For invited members, just delete from members table
-        const { error: deleteError } = await supabase
-          .from('members')
-          .delete()
-          .eq('id', userToDelete.memberId)
+        // For invited members, use admin_manage_member RPC to bypass RLS
+        const { data: deleteData, error: deleteError } = await supabase
+          .rpc('admin_manage_member', {
+            p_member_id: userToDelete.memberId,
+            p_changes: { _delete: true }
+          })
 
-        if (deleteError) {
-          console.error('Error deleting invited member:', deleteError)
+        const result = deleteData as { success?: boolean; message?: string } | null
+        if (deleteError || (result && !result.success)) {
+          console.error('Error deleting invited member:', deleteError || result)
           toast({
             title: 'Error',
-            description: deleteError.message || 'Failed to delete invited member',
+            description: deleteError?.message || result?.message || 'Failed to delete invited member',
             variant: 'destructive'
           })
           return
