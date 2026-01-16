@@ -115,6 +115,8 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAs
   const [selectedOrgId, setSelectedOrgId] = useState<string>('')
   const [isCreatingProject, setIsCreatingProject] = useState(false)
   const [projectConversationId, setProjectConversationId] = useState<string | null>(null)
+  const [orgSelectError, setOrgSelectError] = useState<string | null>(null)
+  const orgSelectRef = useRef<HTMLDivElement>(null)
   
   // Chat mode state
   const [chatMode, setChatMode] = useState(false)
@@ -418,7 +420,28 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAs
   const handleSaveDraft = async () => {
     if (!editableJobSpec) return
 
-    // Organization is now optional - no validation required
+    // Clear previous errors
+    setOrgSelectError(null)
+
+    // Validate required fields - Job Folder is mandatory
+    if (!selectedOrgId && !selectedJobId) {
+      setOrgSelectError('Please select a Job Folder (Department)')
+      
+      // Scroll to the field with highlight
+      if (orgSelectRef.current) {
+        orgSelectRef.current.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        })
+        
+        // Add highlight animation
+        orgSelectRef.current.classList.add('onboarding-highlight')
+        setTimeout(() => {
+          orgSelectRef.current?.classList.remove('onboarding-highlight')
+        }, 3000)
+      }
+      return
+    }
 
     setIsCreatingProject(true)
     try {
@@ -845,10 +868,10 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAs
                 {/* Step 2: Specs */}
                 {currentStep === 'specs' && (
                   <div className="space-y-6 pt-6">
-                    {/* Organization Selector - Optional */}
-                    <div className="space-y-2">
+                    {/* Organization Selector - Required */}
+                    <div ref={orgSelectRef} className="space-y-2">
                       <Label htmlFor="organization-select">
-                        Job Folder (Department) <span className="text-muted-foreground text-xs">(optional)</span>
+                        Job Folder (Department) <span className="text-destructive">*</span>
                       </Label>
                       <SearchableSelect
                         options={(childOrgs || []).map(org => ({
@@ -859,15 +882,18 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAs
                         onValueChange={(value) => {
                           setSelectedOrgId(value)
                           setSelectedJobId('')  // Reset job selection when org changes
+                          setOrgSelectError(null)  // Clear error on selection
                         }}
                         placeholder={isLoadingOrgs ? "Loading organizations..." : "Select a job folder..."}
                         disabled={isLoadingOrgs}
                         searchPlaceholder="Search folders..."
                         onCreateNew={() => setIsOrgFormOpen(true)}
                         createNewLabel="Create Department"
+                        error={orgSelectError || undefined}
+                        required
                       />
                       <p className="text-xs text-muted-foreground">
-                        You can link this search to a job later from the project settings.
+                        Select or create a job folder to organize your search.
                       </p>
                     </div>
 
