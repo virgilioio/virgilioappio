@@ -17,6 +17,9 @@ interface FilterCardProps {
   onSelectedUsersChange: (users: string[]) => void;
   userOptions: { value: string; label: string }[];
   showUserFilter: boolean;
+  selectedDepartments: string[];
+  onSelectedDepartmentsChange: (departments: string[]) => void;
+  departmentOptions: { value: string; label: string }[];
 }
 
 export function FilterCard({
@@ -28,6 +31,9 @@ export function FilterCard({
   onSelectedUsersChange,
   userOptions,
   showUserFilter,
+  selectedDepartments,
+  onSelectedDepartmentsChange,
+  departmentOptions,
 }: FilterCardProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -61,6 +67,15 @@ export function FilterCard({
                 selectedValues={selectedUsers}
                 onSelectionChange={onSelectedUsersChange}
                 placeholder="Filter by user..."
+                className="sm:w-[220px]"
+              />
+            )}
+            {departmentOptions.length > 0 && (
+              <MultiSelect
+                options={departmentOptions}
+                selectedValues={selectedDepartments}
+                onSelectionChange={onSelectedDepartmentsChange}
+                placeholder="Filter by department..."
                 className="sm:w-[220px]"
               />
             )}
