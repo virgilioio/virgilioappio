@@ -101,7 +101,7 @@ export function PendingActivities() {
         <CardHeader className="pb-3">
           <CardTitle className="text-lg font-semibold flex items-center gap-2">
             <ClipboardList className="h-5 w-5" />
-            Pending Activities
+            Pending Tasks
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -132,7 +132,7 @@ export function PendingActivities() {
       <CardHeader className="pb-3">
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
           <ClipboardList className="h-5 w-5" />
-          Pending Activities
+          Pending Tasks
           {allActivities.length > 0 && (
             <span className="ml-auto text-sm font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
               {allActivities.length}
@@ -148,7 +148,7 @@ export function PendingActivities() {
               You're all caught up<span className="text-purple-period">.</span>
             </h3>
             <p className="text-sm text-virgilio-muted mt-2">
-              {isAdmin ? 'No pending activities in your organization' : 'No pending activities'}
+              {isAdmin ? 'No pending tasks in your organization' : 'No pending tasks'}
             </p>
           </div>
         ) : (
