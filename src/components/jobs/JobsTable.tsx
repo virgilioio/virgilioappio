@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -11,9 +11,12 @@ import { Plus, Search, FileText, Building, ChevronLeft, ChevronRight, MoreHorizo
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PermissionGate } from '@/components/auth/PermissionGate'
+import { MultiSelect } from '@/components/ui/multi-select'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useMembers } from '@/hooks/useMembers'
+import { useUserAssignedJobIds } from '@/hooks/useUserAssignedJobIds'
+import { jobMatchesUsers } from '@/utils/jobInvolvement'
 import { Job } from '@/hooks/useJobs'
 
 interface JobsTableProps {
@@ -39,12 +42,15 @@ export function JobsTable({
   const { members, isLoading: membersLoading } = useMembers()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('open')
-  const [organizationFilter, setOrganizationFilter] = useState<string>('all')
-  const [hiringTeamFilter, setHiringTeamFilter] = useState<string>('all')
+  const [selectedOrganizations, setSelectedOrganizations] = useState<string[]>([])
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([])
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
+  
+  // Fetch job assignments for selected users (like Pipeline page)
+  const { assignedJobIds } = useUserAssignedJobIds(selectedUsers)
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -62,46 +68,49 @@ export function JobsTable({
   }
 
 
-  const getAllOrganizationMembers = () => {
-    // Get all active members from the organization
-    const activeMembers = members.filter(member => 
-      member.user_status === 'active' && 
-      member.user_id &&
-      (member.user_type === 'member' || member.user_type === 'workspace_owner')
-    )
-    
-    return activeMembers.map(member => ({
-      id: member.user_id!,
-      memberId: member.id,
-      name: `${member.user_first_name || ''} ${member.user_last_name || ''}`.trim() || member.user_email || 'Unnamed User',
-      email: member.user_email
-    })).sort((a, b) => a.name.localeCompare(b.name))
-  }
+  // User options for filter (consistent with Pipeline page)
+  const userOptions = useMemo(() => {
+    return members
+      .filter(m => m.user_status === 'active' && m.user_id && (m.user_type === 'member' || m.user_type === 'workspace_owner'))
+      .map(m => ({
+        value: m.user_id!,
+        label: `${m.user_first_name || ''} ${m.user_last_name || ''}`.trim() || m.user_email || 'Unknown',
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+  }, [members])
 
-  const filteredJobs = jobs.filter(job => {
-    const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         job.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         job.department?.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesStatus = statusFilter === 'all' || job.status === statusFilter
-    
-    // Check if user can view organizations for the organization filter
-    const canViewOrganizations = permissions.canViewOrganizations || permissions.isPlatformAdmin
-    const matchesOrganization = !canViewOrganizations || organizationFilter === 'all' || job.organization_id === organizationFilter
-    
-    const matchesHiringTeam = hiringTeamFilter === 'all' || (() => {
-      // Check if the selected user is in the hiring team by user ID
-      const isInHiringTeam = job.hiring_team && Array.isArray(job.hiring_team) && 
-        job.hiring_team.some((member: any) => 
-          (typeof member === 'string' && member === hiringTeamFilter) ||
-          (typeof member === 'object' && (member?.id === hiringTeamFilter || member?.user_id === hiringTeamFilter))
-        )
+  // Organization options for filter (consistent with Pipeline page)
+  const organizationOptions = useMemo(() => {
+    return organizations
+      .filter(org => org.status === 'active')
+      .map(org => ({
+        value: org.id,
+        label: org.name,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+  }, [organizations])
+
+  // Client-side filter with AND logic (consistent with Pipeline page)
+  const filteredJobs = useMemo(() => {
+    return jobs.filter(job => {
+      // Search filter
+      const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           job.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           job.department?.toLowerCase().includes(searchTerm.toLowerCase())
+      if (!matchesSearch) return false
       
-      return isInHiringTeam
-    })()
-    
-    return matchesSearch && matchesStatus && matchesOrganization && matchesHiringTeam
-  })
+      // Status filter
+      if (statusFilter !== 'all' && job.status !== statusFilter) return false
+      
+      // Organization filter - supports multiple selections (AND with other filters, OR within)
+      if (selectedOrganizations.length > 0 && !selectedOrganizations.includes(job.organization_id)) return false
+      
+      // User filter - uses shared utility to check hiring_team AND job_assignments
+      if (!jobMatchesUsers(job, selectedUsers, assignedJobIds)) return false
+      
+      return true
+    })
+  }, [jobs, searchTerm, statusFilter, selectedOrganizations, selectedUsers, assignedJobIds])
 
   // Calculate pagination
   const totalPages = Math.ceil(filteredJobs.length / itemsPerPage)
@@ -112,7 +121,7 @@ export function JobsTable({
   // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, statusFilter, organizationFilter, hiringTeamFilter])
+  }, [searchTerm, statusFilter, selectedOrganizations, selectedUsers])
 
   // Generate page numbers for pagination
   const getPageNumbers = () => {
@@ -196,43 +205,25 @@ export function JobsTable({
               </SelectContent>
             </Select>
 
-            {(permissions.canViewOrganizations || permissions.isPlatformAdmin) && organizations.length > 0 && (
-              <Select value={organizationFilter} onValueChange={setOrganizationFilter}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Organization" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Organizations</SelectItem>
-                  {organizations
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map((org) => (
-                      <SelectItem key={org.id} value={org.id}>
-                        {org.name}
-                      </SelectItem>
-                    ))
-                  }
-                </SelectContent>
-              </Select>
+            {(permissions.canViewOrganizations || permissions.isPlatformAdmin) && organizationOptions.length > 0 && (
+              <MultiSelect
+                options={organizationOptions}
+                selectedValues={selectedOrganizations}
+                onSelectionChange={setSelectedOrganizations}
+                placeholder="Filter by organization..."
+                className="w-full sm:w-[220px]"
+              />
             )}
 
-            {(() => {
-              const organizationMembers = getAllOrganizationMembers()
-              return !membersLoading && organizationMembers.length > 0 ? (
-                <Select value={hiringTeamFilter} onValueChange={setHiringTeamFilter}>
-                  <SelectTrigger className="w-full sm:w-[160px]">
-                    <SelectValue placeholder="Team Members" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Team Members</SelectItem>
-                    {organizationMembers.map((member) => (
-                      <SelectItem key={member.id} value={member.id}>
-                        {member.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : null
-            })()}
+            {!membersLoading && userOptions.length > 0 && (
+              <MultiSelect
+                options={userOptions}
+                selectedValues={selectedUsers}
+                onSelectionChange={setSelectedUsers}
+                placeholder="Filter by user..."
+                className="w-full sm:w-[220px]"
+              />
+            )}
 
             <div className="flex gap-2">
               <PermissionGate permission="canCreateJobs">
