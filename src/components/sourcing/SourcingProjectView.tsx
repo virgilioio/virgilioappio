@@ -26,6 +26,7 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
   const { data: project, isLoading: projectLoading, refetch: refetchProject } = useSourcingProject(projectId)
   const { 
     candidates, 
+    matchingResult,
     isLoading: candidatesLoading, 
     refetch: refetchCandidates 
   } = useSourcingProjectCandidates({
@@ -332,6 +333,7 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
           <SourcingProjectHeader 
             project={project}
             breakdown={breakdown}
+            searchMetadata={matchingResult?.search_metadata}
             onRefresh={handleRefresh}
             onArchive={handleArchive}
             onDelete={handleDelete}

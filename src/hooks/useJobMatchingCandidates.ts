@@ -32,6 +32,9 @@ export interface MatchedCandidate {
   // Apollo availability indicators
   has_email?: boolean
   has_phone?: boolean
+  // LOCAL KEYWORD SCORING - transparent matching
+  keyword_score?: number
+  matched_keywords?: string[]
 }
 
 export interface JobMatchingResult {
@@ -43,6 +46,15 @@ export interface JobMatchingResult {
     averageMatch: number
     creditsUsed?: number
     collectCreditsUsed?: number
+  }
+  // TRANSPARENT SEARCH METADATA - shows keyword scoring results
+  search_metadata?: {
+    keyword_stats?: {
+      keywords_searched: string[]
+      total_candidates: number
+      keyword_match_count: number
+      keyword_match_rate: number
+    }
   }
 }
 
