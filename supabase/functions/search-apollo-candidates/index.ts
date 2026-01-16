@@ -193,16 +193,10 @@ function buildApolloSearchUrl(criteria: SearchCriteria, perPage: number = 100, p
     params.append('q_organization_name', companyNamesString);
     console.log(`🏢 Apollo target company names: ${companyNamesString}`);
   } else if (criteria.keywords && criteria.keywords.length > 0) {
-    // Deduplicate: remove keywords already covered by title_keywords to prevent over-filtering
-    const uniqueKeywords = deduplicateKeywords(criteria.keywords, criteria.title_keywords || []);
-    
-    if (uniqueKeywords.length > 0) {
-      const keywordsString = uniqueKeywords.slice(0, 5).join(' ');
-      params.append('q_keywords', keywordsString);
-      console.log(`🔑 Apollo keywords (deduplicated): ${keywordsString}`);
-    } else {
-      console.log(`⚠️ All keywords redundant with titles - skipping q_keywords for broader results`);
-    }
+    // TRANSPARENT KEYWORD APPROACH: Do NOT send keywords to Apollo
+    // Keywords create restrictive AND conditions that severely limit results
+    // Instead, keywords are used for LOCAL scoring/ranking after Apollo returns broad results
+    console.log(`📊 Keywords will be used for LOCAL scoring (not sent to Apollo): ${criteria.keywords.join(', ')}`);
   }
 
   // Locations → person_locations[]
@@ -263,16 +257,39 @@ function buildApolloSearchUrl(criteria: SearchCriteria, perPage: number = 100, p
 }
 
 /**
- * Map Apollo SEARCH result to our preview format
+ * Map Apollo SEARCH result to our preview format with LOCAL keyword scoring
  * IMPORTANT: Search API returns ONLY preview data with obfuscated names and availability flags
  * Full data (linkedin_url, email, phone, location values) is ONLY available after ENRICHMENT
+ * 
+ * Keywords are scored LOCALLY (not by Apollo) for transparent, predictable ranking
  */
-function mapApolloSearchCandidate(apolloCandidate: ApolloSearchCandidate): any {
+function mapApolloSearchCandidate(apolloCandidate: ApolloSearchCandidate, keywords?: string[]): any {
   // Construct display name with obfuscated last name (e.g., "Andrew Hu***n")
   const displayName = `${apolloCandidate.first_name} ${apolloCandidate.last_name_obfuscated}`.trim();
 
   // Determine location availability (NOT actual values - those come from enrichment)
   const hasLocation = apolloCandidate.has_city || apolloCandidate.has_state || apolloCandidate.has_country;
+
+  // LOCAL KEYWORD SCORING: Calculate keyword match score
+  // This happens in YOUR platform, not Apollo - transparent and predictable
+  let keywordScore = 0;
+  const matchedKeywords: string[] = [];
+  
+  if (keywords && keywords.length > 0) {
+    // Search in title and company name (the fields we have from search preview)
+    const searchableText = [
+      apolloCandidate.title,
+      apolloCandidate.organization?.name
+    ].filter(Boolean).join(' ').toLowerCase();
+    
+    for (const keyword of keywords) {
+      const keywordLower = keyword.toLowerCase().trim();
+      if (keywordLower && searchableText.includes(keywordLower)) {
+        keywordScore += 25; // 25 points per keyword match
+        matchedKeywords.push(keyword);
+      }
+    }
+  }
 
   return {
     apollo_id: apolloCandidate.id,
@@ -302,7 +319,10 @@ function mapApolloSearchCandidate(apolloCandidate: ApolloSearchCandidate): any {
     // Flag indicating this is preview data that needs enrichment
     is_preview: true,
     needs_enrichment: true,
-    _score: 100
+    // LOCAL KEYWORD SCORING RESULTS - transparent ranking
+    keyword_score: keywordScore,
+    matched_keywords: matchedKeywords,
+    _score: 100 + keywordScore  // Base score + keyword bonus for sorting
   };
 }
 
@@ -509,9 +529,31 @@ serve(async (req) => {
       }, null, 2));
     }
 
-    // Map Apollo candidates to our format (limit to effectiveMaxResults)
-    const candidates = allApolloPeople.slice(0, effectiveMaxResults).map(mapApolloSearchCandidate);
+    // Map Apollo candidates to our format WITH keyword scoring (limit to effectiveMaxResults)
+    const candidates = allApolloPeople
+      .slice(0, effectiveMaxResults)
+      .map(c => mapApolloSearchCandidate(c, criteria.keywords));
+    
+    // Sort by keyword score (highest first) - candidates matching keywords rank higher
+    candidates.sort((a, b) => (b.keyword_score || 0) - (a.keyword_score || 0));
+    
     const totalCount = totalAvailable;
+    
+    // Calculate keyword statistics for transparent reporting
+    const keywordMatchCount = candidates.filter(c => (c.keyword_score || 0) > 0).length;
+    const keywordStats = {
+      keywords_searched: criteria.keywords || [],
+      total_candidates: candidates.length,
+      keyword_match_count: keywordMatchCount,
+      keyword_match_rate: candidates.length > 0 
+        ? Math.round((keywordMatchCount / candidates.length) * 100) 
+        : 0
+    };
+    
+    console.log(`📊 Keyword scoring: ${keywordMatchCount}/${candidates.length} candidates match keywords (${keywordStats.keyword_match_rate}%)`);
+    if (criteria.keywords?.length) {
+      console.log(`   Keywords used: ${criteria.keywords.join(', ')}`);
+    }
 
     // Store in cache if project_id provided
     if (project_id && candidates.length > 0) {
@@ -572,7 +614,9 @@ serve(async (req) => {
       cached: false,
       provider: 'apollo',
       search_is_free: true,
-      message: 'Search is free. Credits are only used when revealing contact info.'
+      // TRANSPARENT KEYWORD STATS - shows how local scoring worked
+      keyword_stats: keywordStats,
+      message: 'Search is free. Keywords used for ranking only (not sent to Apollo).'
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json', ...cors },

@@ -44,6 +44,9 @@ export interface MatchedCandidate {
   has_email?: boolean
   has_phone?: boolean
   has_location?: boolean
+  // LOCAL KEYWORD SCORING - transparent matching
+  keyword_score?: number
+  matched_keywords?: string[]
 }
 
 export interface SourcingProjectMatchingResult {
@@ -55,6 +58,24 @@ export interface SourcingProjectMatchingResult {
     averageMatch: number
     creditsUsed?: number
     collectCreditsUsed?: number
+  }
+  // TRANSPARENT SEARCH METADATA - shows keyword scoring results
+  search_metadata?: {
+    search_expanded?: boolean
+    expanded_steps?: string[]
+    result_pool_size?: number
+    returned_count?: number
+    overflow_warning?: boolean
+    title_match_rate?: number
+    fallback_trigger_reason?: string | null
+    has_user_companies?: boolean
+    // KEYWORD STATS - transparent local scoring
+    keyword_stats?: {
+      keywords_searched: string[]
+      total_candidates: number
+      keyword_match_count: number
+      keyword_match_rate: number
+    }
   }
 }
 

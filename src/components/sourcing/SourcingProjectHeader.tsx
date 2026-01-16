@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { 
   Edit2, MoreHorizontal, RefreshCw, Archive, Trash2, 
-  MapPin, Coins, Globe, Lock, Link2, Briefcase, Plus, Eye
+  MapPin, Coins, Globe, Lock, Link2, Briefcase, Plus, Eye, Search
 } from 'lucide-react'
 import { useSourcingCredits } from '@/hooks/useSourcingCredits'
 import { Button } from '@/components/ui/button'
@@ -35,6 +35,14 @@ interface SourcingProjectHeaderProps {
     creditsUsed?: number
     collectCreditsUsed?: number
   }
+  searchMetadata?: {
+    keyword_stats?: {
+      keywords_searched: string[]
+      total_candidates: number
+      keyword_match_count: number
+      keyword_match_rate: number
+    }
+  }
   onRefresh: () => void
   onArchive: () => void
   onDelete: () => void
@@ -46,6 +54,7 @@ interface SourcingProjectHeaderProps {
 export function SourcingProjectHeader({
   project,
   breakdown,
+  searchMetadata,
   onRefresh,
   onArchive,
   onDelete,
@@ -272,6 +281,28 @@ export function SourcingProjectHeader({
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-muted-foreground">
                   Candidates: {(breakdown.localCandidates || 0) + (breakdown.apolloCandidates || 0)}
+                </span>
+              </div>
+            </>
+          )}
+
+          {/* Transparent Keyword Stats - Shows local scoring results */}
+          {searchMetadata?.keyword_stats && searchMetadata.keyword_stats.keywords_searched.length > 0 && (
+            <>
+              <span className="text-muted-foreground">•</span>
+              <div className="flex items-center gap-2">
+                <Search className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">
+                    {searchMetadata.keyword_stats.keyword_match_count}
+                  </span>
+                  {' of '}
+                  {searchMetadata.keyword_stats.total_candidates}
+                  {' match keywords '}
+                  <span className="text-xs">
+                    ({searchMetadata.keyword_stats.keywords_searched.slice(0, 3).join(', ')}
+                    {searchMetadata.keyword_stats.keywords_searched.length > 3 && '...'})
+                  </span>
                 </span>
               </div>
             </>

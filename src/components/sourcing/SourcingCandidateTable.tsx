@@ -59,6 +59,9 @@ interface MatchedCandidate {
   has_email?: boolean
   has_phone?: boolean
   has_location?: boolean  // Indicates location is available after enrichment
+  // LOCAL KEYWORD SCORING - transparent matching
+  keyword_score?: number
+  matched_keywords?: string[]
 }
 
 interface SourcingCandidateTableProps {
@@ -643,6 +646,13 @@ export function SourcingCandidateTable({
                             {(candidate.candidate_id || collectedApolloIds.has(candidate.apollo_id || '')) && (
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-green-500 text-green-600 bg-green-50">
                                 Collected
+                              </Badge>
+                            )}
+                            {/* Keyword match indicator - shows which keywords matched */}
+                            {candidate.matched_keywords && candidate.matched_keywords.length > 0 && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-purple-400 text-purple-600 bg-purple-50">
+                                {candidate.matched_keywords.slice(0, 2).join(', ')}
+                                {candidate.matched_keywords.length > 2 && ` +${candidate.matched_keywords.length - 2}`}
                               </Badge>
                             )}
                             {/* Only show LinkedIn icon if URL is available (after enrichment) */}

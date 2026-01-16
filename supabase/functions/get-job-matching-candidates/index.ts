@@ -180,6 +180,13 @@ interface SearchMetadata {
   title_match_rate?: number;
   fallback_trigger_reason?: 'zero_results' | 'low_quality' | null;
   has_user_companies?: boolean;
+  // TRANSPARENT KEYWORD STATS - shows local keyword scoring results
+  keyword_stats?: {
+    keywords_searched: string[];
+    total_candidates: number;
+    keyword_match_count: number;
+    keyword_match_rate: number;
+  };
 }
 
 interface MatchedCandidate {
@@ -215,6 +222,9 @@ interface MatchedCandidate {
   has_email?: boolean;
   has_phone?: boolean;
   relevance_score?: number;
+  // LOCAL KEYWORD SCORING - transparent matching
+  keyword_score?: number;
+  matched_keywords?: string[];
 }
 
 interface JobMatchingResult {
@@ -663,6 +673,12 @@ serve(async (req) => {
         } else {
           console.log(`✅ Search A: ${searchAResults.length} candidates, total_count: ${searchATotalCount}`);
           creditsUsed = apolloResponseA?.credits_used || 0;
+          
+          // Capture keyword stats from Apollo response for transparency
+          if (apolloResponseA?.keyword_stats) {
+            searchMetadata.keyword_stats = apolloResponseA.keyword_stats;
+            console.log(`📊 Keyword stats: ${searchMetadata.keyword_stats.keyword_match_count}/${searchMetadata.keyword_stats.total_candidates} match keywords`);
+          }
         }
 
         // Calculate title match rate using synonym-aware matching
@@ -847,7 +863,10 @@ serve(async (req) => {
               phone: apolloCandidate.phone,
               has_email: apolloCandidate.has_email,
               has_phone: apolloCandidate.has_phone,
-              candidate_id: null
+              candidate_id: null,
+              // TRANSPARENT KEYWORD SCORING - propagate from Apollo search
+              keyword_score: apolloCandidate.keyword_score || 0,
+              matched_keywords: apolloCandidate.matched_keywords || []
             });
           }
         }

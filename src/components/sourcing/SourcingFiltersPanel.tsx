@@ -122,7 +122,10 @@ export function SourcingFiltersPanel({
               )}
               {project.search_criteria.keywords && (
                 <div className="space-y-1.5">
-                  <span className="text-xs font-medium text-virgilio-muted">Keywords:</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-medium text-virgilio-muted">Keywords:</span>
+                    <span className="text-xs text-muted-foreground italic">(used for ranking)</span>
+                  </div>
                   <div className="flex flex-wrap gap-1.5">
                     {Array.isArray(project.search_criteria.keywords) 
                       ? project.search_criteria.keywords.map(kw => (
