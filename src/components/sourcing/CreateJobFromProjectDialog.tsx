@@ -157,7 +157,9 @@ export function CreateJobFromProjectDialog({
                   🏢 {jobSpecData.department}
                 </div>
               )}
-              {jobSpecData.salary_range && (
+              {jobSpecData.salary_range && 
+               jobSpecData.salary_range.min != null && 
+               jobSpecData.salary_range.max != null && (
                 <div className="text-sm text-muted-foreground">
                   💰 {jobSpecData.salary_range.currency} {jobSpecData.salary_range.min.toLocaleString()} - {jobSpecData.salary_range.max.toLocaleString()}
                 </div>
