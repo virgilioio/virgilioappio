@@ -149,25 +149,76 @@ async function searchCandidates(query: string, limit: number) {
     .is('deleted_at', null)
 
   // Get limited results
-  const { data, error } = await supabase
+  const { data: candidates, error } = await supabase
     .from('candidates')
-    .select('id, candidate_name, email, location_city, location_country, role_current, company_current')
+    .select('id, candidate_name, location_city, location_country')
     .or(`candidate_name.ilike.${searchPattern},email.ilike.${searchPattern},location_city.ilike.${searchPattern},role_current.ilike.${searchPattern}`)
     .is('deleted_at', null)
     .order('updated_at', { ascending: false })
     .limit(limit)
 
   if (error) throw error
+  if (!candidates || candidates.length === 0) {
+    return { results: [], count: count || 0 }
+  }
 
-  const results: SearchResult[] = (data || []).map(candidate => ({
-    id: candidate.id,
-    type: 'candidate' as const,
-    title: candidate.candidate_name,
-    subtitle: candidate.email || 'No email',
-    metadata: [candidate.location_city, candidate.location_country].filter(Boolean).join(', ') || 'No location',
-    route: `/candidates/${candidate.id}`,
-    icon: Users
-  }))
+  // Fetch job associations for these candidates
+  const candidateIds = candidates.map(c => c.id)
+  const { data: associations } = await supabase
+    .from('job_candidate_associations')
+    .select(`
+      candidate_id,
+      jobs!inner(id, title, status, deleted_at)
+    `)
+    .in('candidate_id', candidateIds)
+    .is('jobs.deleted_at', null)
+
+  // Group jobs by candidate, prioritizing open jobs
+  const jobsByCandidate = new Map<string, { title: string; status: string }[]>()
+  
+  if (associations) {
+    for (const assoc of associations) {
+      const job = assoc.jobs as unknown as { id: string; title: string; status: string; deleted_at: string | null }
+      if (!job) continue
+      
+      const jobs = jobsByCandidate.get(assoc.candidate_id) || []
+      jobs.push({ title: job.title, status: job.status })
+      jobsByCandidate.set(assoc.candidate_id, jobs)
+    }
+  }
+
+  // Sort jobs within each candidate: open jobs first
+  for (const [candidateId, jobs] of jobsByCandidate) {
+    jobs.sort((a, b) => {
+      if (a.status === 'open' && b.status !== 'open') return -1
+      if (a.status !== 'open' && b.status === 'open') return 1
+      return 0
+    })
+    jobsByCandidate.set(candidateId, jobs)
+  }
+
+  const results: SearchResult[] = candidates.map(candidate => {
+    const candidateJobs = jobsByCandidate.get(candidate.id) || []
+    
+    let subtitle: string
+    if (candidateJobs.length === 0) {
+      subtitle = 'No associated jobs'
+    } else if (candidateJobs.length === 1) {
+      subtitle = candidateJobs[0].title
+    } else {
+      subtitle = `${candidateJobs[0].title} +${candidateJobs.length - 1}`
+    }
+
+    return {
+      id: candidate.id,
+      type: 'candidate' as const,
+      title: candidate.candidate_name,
+      subtitle,
+      metadata: [candidate.location_city, candidate.location_country].filter(Boolean).join(', ') || 'No location',
+      route: `/candidates/${candidate.id}`,
+      icon: Users
+    }
+  })
 
   return { results, count: count || 0 }
 }
