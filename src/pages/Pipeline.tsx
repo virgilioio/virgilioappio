@@ -10,6 +10,7 @@ import { usePipelineGlobalMetrics, PipelineFilters } from '@/hooks/usePipelineGl
 import { usePipelineJobMetrics } from '@/hooks/usePipelineJobMetrics';
 import { useJobs } from '@/hooks/useJobs';
 import { useMembers } from '@/hooks/useMembers';
+import { useOrganizations } from '@/hooks/useOrganizations';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUserAssignedJobIds } from '@/hooks/useUserAssignedJobIds';
 import { jobMatchesUsers } from '@/utils/jobInvolvement';
@@ -19,9 +20,11 @@ export default function Pipeline() {
   const permissions = usePermissions();
   const { jobs, isLoading: jobsLoading } = useJobs();
   const { members } = useMembers();
+  const { organizations } = useOrganizations();
 
   // Filters
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
   const [jobStatus, setJobStatus] = useState<string>('open');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -37,7 +40,7 @@ export default function Pipeline() {
   // Fetch job assignments for selected users
   const { assignedJobIds, isLoading: assignmentsLoading } = useUserAssignedJobIds(selectedUsers);
 
-  // Client-side filter to apply status, search & user filters
+  // Client-side filter to apply status, search, user & department filters (AND logic)
   const filteredJobs = useMemo(() => {
     return jobs.filter(job => {
       // Status filter
@@ -49,9 +52,12 @@ export default function Pipeline() {
       // User filter - check if any selected user is in the hiring_team OR job_assignments
       if (!jobMatchesUsers(job, selectedUsers, assignedJobIds)) return false;
       
+      // Department filter - check if job belongs to any selected department
+      if (selectedDepartments.length > 0 && !selectedDepartments.includes(job.organization_id)) return false;
+      
       return true;
     });
-  }, [jobs, jobStatus, searchTerm, selectedUsers, assignedJobIds]);
+  }, [jobs, jobStatus, searchTerm, selectedUsers, assignedJobIds, selectedDepartments]);
 
   const isFilteringUsers = selectedUsers.length > 0 && assignmentsLoading;
 
@@ -73,6 +79,16 @@ export default function Pipeline() {
         label: `${m.user_first_name || ''} ${m.user_last_name || ''}`.trim() || m.user_email || m.invited_email || 'Unknown',
       }));
   }, [members]);
+
+  // Department options for filter (only active organizations)
+  const departmentOptions = useMemo(() => {
+    return organizations
+      .filter(org => org.status === 'active')
+      .map(org => ({
+        value: org.id,
+        label: org.name,
+      }));
+  }, [organizations]);
 
   const showUserFilter = permissions.isAdmin || permissions.isPlatformAdmin || permissions.isWorkspaceOwner; // Only admins/owners see user filter
 
@@ -96,6 +112,9 @@ export default function Pipeline() {
                 onSelectedUsersChange={setSelectedUsers}
                 userOptions={userOptions}
                 showUserFilter={showUserFilter}
+                selectedDepartments={selectedDepartments}
+                onSelectedDepartmentsChange={setSelectedDepartments}
+                departmentOptions={departmentOptions}
               />
 
               {/* Top Metrics Row */}
