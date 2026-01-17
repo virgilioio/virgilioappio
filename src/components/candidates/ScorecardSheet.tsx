@@ -325,7 +325,9 @@ export function ScorecardSheet({
           question_text: q.question_text,
           answer_type: q.answer_type,
           answerText: response?.answerText,
-          answerOptions: response?.answerOptions
+          answerOptions: response?.answerOptions,
+          // Include salary config for salary_expectations questions
+          salary_config: q.answer_type === 'salary_expectations' ? q.salary_config : undefined
         };
       });
 

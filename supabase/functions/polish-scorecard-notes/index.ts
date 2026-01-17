@@ -73,7 +73,16 @@ serve(async (req) => {
     const formattedQuestionsAndAnswers = questions.map((q: any, idx: number) => {
       let answer = 'Not answered';
       
-      if (q.answerText) {
+      if (q.answer_type === 'salary_expectations' && q.answerText) {
+        // Format salary with currency and period for better AI context
+        const amount = parseFloat(q.answerText);
+        const formattedAmount = !isNaN(amount) 
+          ? amount.toLocaleString('en-US') 
+          : q.answerText;
+        const currency = q.salary_config?.currency || 'USD';
+        const period = q.salary_config?.period || 'annually';
+        answer = `${formattedAmount} ${currency} (${period})`;
+      } else if (q.answerText) {
         answer = q.answerText;
       } else if (q.answerOptions && q.answerOptions.length > 0) {
         answer = q.answerOptions.join(', ');
