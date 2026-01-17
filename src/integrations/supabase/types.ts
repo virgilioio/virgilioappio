@@ -3582,7 +3582,9 @@ export type Database = {
           display_order: number
           id: string
           is_required: boolean
+          notes_for_interviewer: string | null
           question_text: string
+          salary_config: Json | null
           scorecard_template_id: string
           select_options: Json | null
           updated_at: string
@@ -3593,7 +3595,9 @@ export type Database = {
           display_order: number
           id?: string
           is_required?: boolean
+          notes_for_interviewer?: string | null
           question_text: string
+          salary_config?: Json | null
           scorecard_template_id: string
           select_options?: Json | null
           updated_at?: string
@@ -3604,7 +3608,9 @@ export type Database = {
           display_order?: number
           id?: string
           is_required?: boolean
+          notes_for_interviewer?: string | null
           question_text?: string
+          salary_config?: Json | null
           scorecard_template_id?: string
           select_options?: Json | null
           updated_at?: string
@@ -5198,6 +5204,7 @@ export type Database = {
         | "yes_no"
         | "single_select"
         | "multi_select"
+        | "salary_expectations"
       job_status: "draft" | "open" | "closed" | "archived"
       member_role: "admin" | "recruiter" | "hiring_manager" | "interviewer"
       org_kind_enum: "tenant" | "client" | "department" | "root"
@@ -5437,6 +5444,7 @@ export const Constants = {
         "yes_no",
         "single_select",
         "multi_select",
+        "salary_expectations",
       ],
       job_status: ["draft", "open", "closed", "archived"],
       member_role: ["admin", "recruiter", "hiring_manager", "interviewer"],

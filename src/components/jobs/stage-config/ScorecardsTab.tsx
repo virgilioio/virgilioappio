@@ -11,7 +11,7 @@ interface ScorecardsTabProps {
   jobId: string
 }
 
-export function ScorecardsTab({ jhsId }: ScorecardsTabProps) {
+export function ScorecardsTab({ jhsId, jobId }: ScorecardsTabProps) {
   const {
     template,
     isLoading,
@@ -129,6 +129,7 @@ export function ScorecardsTab({ jhsId }: ScorecardsTabProps) {
         existingQuestion={editingQuestion}
         nextDisplayOrder={nextDisplayOrder}
         isSaving={createQuestion.isPending || updateQuestion.isPending}
+        jobId={jobId}
       />
     </div>
   )

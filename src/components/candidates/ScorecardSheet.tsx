@@ -9,9 +9,10 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import type { ScoreRating, ScorecardRow } from "@/hooks/useScorecards";
-import { ThumbsDown, ThumbsUp, Star, Octagon, Loader2, Sparkles, Lightbulb, Trash2, FileText } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Star, Octagon, Loader2, Sparkles, Lightbulb, Trash2, FileText, DollarSign } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabaseClient";
-import type { InterviewQuestion, SelectOption } from "@/hooks/useScorecardsConfiguration";
+import type { InterviewQuestion, SelectOption, SalaryConfig } from "@/hooks/useScorecardsConfiguration";
 import { markdownToHtml } from "@/utils/markdown";
 import gioIcon from "@/assets/gio-icon.png";
 import { RecommendedNextStepsDialog } from "./RecommendedNextStepsDialog";
@@ -271,10 +272,12 @@ export function ScorecardSheet({
           const formattedQuestions: InterviewQuestion[] = questionsData.map(q => ({
             id: q.id,
             question_text: q.question_text,
-            answer_type: q.answer_type as 'text' | 'yes_no' | 'single_select' | 'multi_select',
+            answer_type: q.answer_type as 'text' | 'yes_no' | 'single_select' | 'multi_select' | 'salary_expectations',
             is_required: q.is_required,
             display_order: q.display_order,
-            select_options: (q.select_options as unknown) as SelectOption[] | undefined
+            select_options: (q.select_options as unknown) as SelectOption[] | undefined,
+            notes_for_interviewer: q.notes_for_interviewer,
+            salary_config: (q.salary_config as unknown) as SalaryConfig | undefined
           }));
           setQuestions(formattedQuestions);
 
@@ -402,6 +405,9 @@ export function ScorecardSheet({
       if (question.answer_type === 'multi_select' && (!response.answerOptions || response.answerOptions.length === 0)) {
         return false;
       }
+      if (question.answer_type === 'salary_expectations' && !response.answerText?.trim()) {
+        return false;
+      }
     }
     return true;
   };
@@ -451,6 +457,34 @@ export function ScorecardSheet({
             .from('scorecard_question_responses')
             .insert(responsesToInsert);
         }
+
+        // Sync salary expectations to candidate profile if applicable
+        const salaryQuestion = questions.find(q => q.answer_type === 'salary_expectations');
+        if (salaryQuestion) {
+          const salaryResponse = responses[salaryQuestion.id];
+          if (salaryResponse?.answerText) {
+            const salaryAmount = parseFloat(salaryResponse.answerText);
+            if (!isNaN(salaryAmount)) {
+              // Get candidate_id from association
+              const { data: association } = await supabase
+                .from('job_candidate_associations')
+                .select('candidate_id')
+                .eq('id', associationId)
+                .single();
+
+              if (association) {
+                await supabase
+                  .from('candidates')
+                  .update({
+                    salary_amount: salaryAmount,
+                    salary_currency: salaryQuestion.salary_config?.currency || 'USD',
+                    salary_period: salaryQuestion.salary_config?.period || 'annually'
+                  })
+                  .eq('id', association.candidate_id);
+              }
+            }
+          }
+        }
       }
 
       // Clear AI draft flag after saving
@@ -494,6 +528,9 @@ export function ScorecardSheet({
               {question.question_text}
               {question.is_required && <span className="text-destructive ml-1">*</span>}
             </Label>
+            {question.notes_for_interviewer && (
+              <p className="text-sm text-muted-foreground italic">{question.notes_for_interviewer}</p>
+            )}
             <Textarea
               id={`question-${question.id}`}
               value={response?.answerText || ''}
@@ -512,6 +549,9 @@ export function ScorecardSheet({
               {question.question_text}
               {question.is_required && <span className="text-destructive ml-1">*</span>}
             </Label>
+            {question.notes_for_interviewer && (
+              <p className="text-sm text-muted-foreground italic">{question.notes_for_interviewer}</p>
+            )}
             <RadioGroup
               value={response?.answerText || ''}
               onValueChange={(value) => handleResponseChange(question.id, { answerText: value })}
@@ -537,6 +577,9 @@ export function ScorecardSheet({
               {question.question_text}
               {question.is_required && <span className="text-destructive ml-1">*</span>}
             </Label>
+            {question.notes_for_interviewer && (
+              <p className="text-sm text-muted-foreground italic">{question.notes_for_interviewer}</p>
+            )}
             <RadioGroup
               value={response?.answerText || ''}
               onValueChange={(value) => handleResponseChange(question.id, { answerText: value })}
@@ -562,6 +605,9 @@ export function ScorecardSheet({
               {question.question_text}
               {question.is_required && <span className="text-destructive ml-1">*</span>}
             </Label>
+            {question.notes_for_interviewer && (
+              <p className="text-sm text-muted-foreground italic">{question.notes_for_interviewer}</p>
+            )}
             <div className="space-y-2">
               {question.select_options?.map((option) => (
                 <div key={option.value} className="flex items-center space-x-2">
@@ -583,6 +629,51 @@ export function ScorecardSheet({
                 </div>
               ))}
             </div>
+          </div>
+        );
+
+      case 'salary_expectations':
+        const formatPeriod = (period: string) => {
+          switch(period) {
+            case 'hourly': return 'per hour';
+            case 'monthly': return 'per month';
+            case 'annually': return 'per year';
+            default: return period;
+          }
+        };
+        
+        return (
+          <div key={question.id} className="space-y-3 p-4 bg-green-50/50 border border-green-200 rounded-lg">
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-green-600" />
+              <Label className="text-green-800 font-medium">
+                {question.question_text}
+                {question.is_required && <span className="text-destructive ml-1">*</span>}
+              </Label>
+            </div>
+            {question.notes_for_interviewer && (
+              <p className="text-sm text-muted-foreground italic">{question.notes_for_interviewer}</p>
+            )}
+            <div className="flex items-center gap-3">
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="Enter amount..."
+                value={response?.answerText || ''}
+                onChange={(e) => handleResponseChange(question.id, { answerText: e.target.value })}
+                disabled={isReadOnly}
+                className="max-w-[200px]"
+              />
+              <Badge variant="outline" className="bg-white font-mono">
+                {question.salary_config?.currency || 'USD'}
+              </Badge>
+              <Badge variant="outline" className="bg-white">
+                {formatPeriod(question.salary_config?.period || 'annually')}
+              </Badge>
+            </div>
+            <p className="text-xs text-green-600">
+              This answer will update the candidate's salary expectations on their profile.
+            </p>
           </div>
         );
     }

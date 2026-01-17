@@ -28,7 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { GripVertical, Edit, Trash2, Type, CheckCircle2, List, ListChecks } from 'lucide-react'
+import { GripVertical, Edit, Trash2, Type, CheckCircle2, List, ListChecks, DollarSign, Link2, MessageSquare } from 'lucide-react'
 import type { InterviewQuestion } from '@/hooks/useScorecardsConfiguration'
 import { cn } from '@/lib/utils'
 
@@ -72,6 +72,8 @@ function SortableQuestionItem({
         return <List className="h-4 w-4" />
       case 'multi_select':
         return <ListChecks className="h-4 w-4" />
+      case 'salary_expectations':
+        return <DollarSign className="h-4 w-4" />
     }
   }
 
@@ -85,21 +87,25 @@ function SortableQuestionItem({
         return 'Single Select'
       case 'multi_select':
         return 'Multi Select'
+      case 'salary_expectations':
+        return 'Salary Expectations'
     }
   }
+
+  const isSalaryType = question.answer_type === 'salary_expectations'
 
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={cn(
-        'flex items-center gap-3 p-4 bg-white border border-virgilio-border rounded-lg',
+        'flex items-start gap-3 p-4 bg-white border border-virgilio-border rounded-lg',
         'hover:border-virgilio-purple/50 transition-all duration-200',
         isDragging && 'opacity-50 shadow-lg'
       )}
     >
       <button
-        className="cursor-grab active:cursor-grabbing text-virgilio-muted hover:text-virgilio-text"
+        className="cursor-grab active:cursor-grabbing text-virgilio-muted hover:text-virgilio-text mt-1"
         {...attributes}
         {...listeners}
       >
@@ -107,21 +113,47 @@ function SortableQuestionItem({
       </button>
 
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-virgilio-text truncate">{question.question_text}</p>
-        <div className="flex items-center gap-2 mt-1">
-          <Badge variant="outline" className="text-xs bg-virgilio-purple/10 text-virgilio-purple border-virgilio-purple/30">
+        <p className="font-medium text-virgilio-text">{question.question_text}</p>
+        
+        <div className="flex flex-wrap items-center gap-2 mt-2">
+          <Badge variant="outline" className={cn(
+            "text-xs border-virgilio-purple/30",
+            isSalaryType ? "bg-green-500/10 text-green-700 border-green-300" : "bg-virgilio-purple/10 text-virgilio-purple"
+          )}>
             {getAnswerTypeIcon()}
             <span className="ml-1">{getAnswerTypeLabel()}</span>
           </Badge>
+          
           {question.is_required && (
-            <Badge variant="outline" className="text-xs bg-green-500/10 text-green-700 border-green-300">
+            <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-700 border-amber-300">
               Required
             </Badge>
           )}
+          
+          {isSalaryType && (
+            <>
+              <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-300 gap-1">
+                <Link2 className="h-3 w-3" />
+                Syncs to Profile
+              </Badge>
+              {question.salary_config && (
+                <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600">
+                  {question.salary_config.currency} / {question.salary_config.period}
+                </Badge>
+              )}
+            </>
+          )}
         </div>
+
+        {question.notes_for_interviewer && (
+          <div className="mt-2 flex items-start gap-1.5 text-xs text-virgilio-muted">
+            <MessageSquare className="h-3 w-3 mt-0.5 shrink-0" />
+            <span className="line-clamp-2">{question.notes_for_interviewer}</span>
+          </div>
+        )}
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 shrink-0">
         <Button
           variant="ghost"
           size="icon"
