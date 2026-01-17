@@ -3,11 +3,16 @@ import { supabase } from '@/lib/supabaseClient'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
-export type AnswerType = 'text' | 'yes_no' | 'single_select' | 'multi_select'
+export type AnswerType = 'text' | 'yes_no' | 'single_select' | 'multi_select' | 'salary_expectations'
 
 export interface SelectOption {
   value: string
   label: string
+}
+
+export interface SalaryConfig {
+  currency: string
+  period: 'hourly' | 'monthly' | 'annually'
 }
 
 export interface InterviewQuestion {
@@ -17,6 +22,8 @@ export interface InterviewQuestion {
   is_required: boolean
   display_order: number
   select_options?: SelectOption[]
+  notes_for_interviewer?: string | null
+  salary_config?: SalaryConfig | null
 }
 
 export interface ScorecardTemplate {
@@ -82,7 +89,9 @@ export function useScorecardsConfiguration(jhsId: string | null) {
         answer_type: q.answer_type as AnswerType,
         is_required: q.is_required,
         display_order: q.display_order,
-        select_options: (q.select_options as unknown) as SelectOption[] | undefined
+        select_options: (q.select_options as unknown) as SelectOption[] | undefined,
+        notes_for_interviewer: q.notes_for_interviewer,
+        salary_config: (q.salary_config as unknown) as SalaryConfig | undefined
       }))
 
       setTemplate({
@@ -114,7 +123,9 @@ export function useScorecardsConfiguration(jhsId: string | null) {
           answer_type: question.answer_type,
           is_required: question.is_required,
           display_order: question.display_order,
-          select_options: question.select_options as any || null
+          select_options: question.select_options as any || null,
+          notes_for_interviewer: question.notes_for_interviewer || null,
+          salary_config: question.salary_config as any || null
         })
         .select()
         .single()
