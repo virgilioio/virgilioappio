@@ -7,7 +7,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.check-calendar-availability]
-verify_jwt = true
+verify_jwt = false
 
 [functions.chat-with-gio]
 verify_jwt = true

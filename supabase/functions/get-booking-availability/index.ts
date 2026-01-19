@@ -102,24 +102,35 @@ serve(async (req) => {
 
     console.log('[get-booking-availability] After booking rules:', filteredSlots.length, 'slots');
 
-    // Fetch Google Calendar busy times
+    // Fetch Google Calendar busy times using direct fetch with service role for internal call
     let googleBusySlots: Array<{ start: Date; end: Date }> = [];
     try {
-      const { data: busyData, error: busyError } = await supabase.functions.invoke('check-calendar-availability', {
-        body: {
+      const calendarResponse = await fetch(`${supabaseUrl}/functions/v1/check-calendar-availability`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           user_id: config.user_id,
           start_date: start_date,
           end_date: end_date,
           timezone: config.timezone,
-        },
+        }),
       });
 
-      if (!busyError && busyData?.busy_slots) {
-        googleBusySlots = busyData.busy_slots.map((slot: any) => ({
-          start: new Date(slot.start),
-          end: new Date(slot.end),
-        }));
-        console.log('[get-booking-availability] Google Calendar:', googleBusySlots.length, 'busy slots');
+      if (calendarResponse.ok) {
+        const busyData = await calendarResponse.json();
+        if (busyData?.busy_slots) {
+          googleBusySlots = busyData.busy_slots.map((slot: any) => ({
+            start: new Date(slot.start),
+            end: new Date(slot.end),
+          }));
+          console.log('[get-booking-availability] Google Calendar:', googleBusySlots.length, 'busy slots');
+        }
+      } else {
+        const errorText = await calendarResponse.text();
+        console.warn('[get-booking-availability] Calendar availability error:', calendarResponse.status, errorText);
       }
     } catch (error) {
       console.warn('[get-booking-availability] Failed to fetch Google Calendar, continuing...', error);

@@ -28,17 +28,26 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify auth
+    // Verify auth - support both user JWT and service role key (for internal calls)
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       throw new Error('Missing authorization header');
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    let isServiceRoleCall = false;
 
-    if (authError || !user) {
-      throw new Error('Unauthorized');
+    // Check if this is a service role call (internal function-to-function)
+    if (token === supabaseServiceKey) {
+      console.log('[check-calendar-availability] Service role authentication (internal call)');
+      isServiceRoleCall = true;
+    } else {
+      // Regular user authentication
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+      if (authError || !user) {
+        throw new Error('Unauthorized');
+      }
+      console.log('[check-calendar-availability] User authenticated:', user.id);
     }
 
     const { user_id, start_date, end_date, timezone }: CheckAvailabilityRequest = await req.json();
