@@ -222,26 +222,39 @@ serve(async (req) => {
           continue;
         }
 
-        // Extract event times
+        // Extract event times - convert to timestamps for proper comparison
         const googleStart = eventData.start?.dateTime;
         const googleEnd = eventData.end?.dateTime;
-        const currentStart = new Date(booking.scheduled_start).toISOString();
-        const currentEnd = new Date(booking.scheduled_end).toISOString();
-
+        
         // Initialize update tracking
         let needsUpdate = false;
         const updateData: any = {};
 
-        // Detect time changes
-        if (googleStart && googleEnd && (googleStart !== currentStart || googleEnd !== currentEnd)) {
-          console.log(`[google-calendar-webhook] Time change detected for booking ${booking.id}`);
-          console.log(`  Current: ${currentStart} - ${currentEnd}`);
-          console.log(`  Google:  ${googleStart} - ${googleEnd}`);
+        // Detect time changes using timestamp comparison (not string comparison)
+        // This fixes the timezone format mismatch between Google (offset) and DB (UTC)
+        if (googleStart && googleEnd) {
+          const googleStartTime = new Date(googleStart).getTime();
+          const googleEndTime = new Date(googleEnd).getTime();
+          const currentStartTime = new Date(booking.scheduled_start).getTime();
+          const currentEndTime = new Date(booking.scheduled_end).getTime();
           
-          updateData.scheduled_start = googleStart;
-          updateData.scheduled_end = googleEnd;
-          updateData.status = 'rescheduled';
-          needsUpdate = true;
+          // Only flag as changed if times actually differ (1 second tolerance for rounding)
+          const hasTimeChanged = 
+            Math.abs(googleStartTime - currentStartTime) > 1000 || 
+            Math.abs(googleEndTime - currentEndTime) > 1000;
+          
+          if (hasTimeChanged) {
+            console.log(`[google-calendar-webhook] Time change detected for booking ${booking.id}`);
+            console.log(`  Current: ${booking.scheduled_start} (${currentStartTime})`);
+            console.log(`  Google:  ${googleStart} (${googleStartTime})`);
+            
+            updateData.scheduled_start = new Date(googleStart).toISOString();
+            updateData.scheduled_end = new Date(googleEnd).toISOString();
+            updateData.rescheduled_at = new Date().toISOString();
+            // Note: Don't change status to 'rescheduled' as it's not in the CHECK constraint
+            // Valid statuses are: 'confirmed', 'cancelled', 'completed', 'no_show'
+            needsUpdate = true;
+          }
         }
 
         // Detect meeting location changes
@@ -347,12 +360,28 @@ serve(async (req) => {
           updateData.sync_source = 'google_calendar';
           updateData.last_synced_at = new Date().toISOString();
 
-          await supabase
+          const { error: updateError } = await supabase
             .from('scheduled_bookings')
             .update(updateData)
             .eq('id', booking.id);
 
-          updatedCount++;
+          if (updateError) {
+            console.error(`[google-calendar-webhook] Failed to update booking ${booking.id}:`, updateError);
+            // Store the error for debugging
+            const syncErrors = Array.isArray(booking.sync_errors) ? booking.sync_errors : [];
+            await supabase
+              .from('scheduled_bookings')
+              .update({
+                sync_errors: [
+                  ...syncErrors.slice(-9),
+                  { timestamp: new Date().toISOString(), error: updateError.message, details: updateError.details }
+                ]
+              })
+              .eq('id', booking.id);
+          } else {
+            console.log(`[google-calendar-webhook] Successfully updated booking ${booking.id}:`, Object.keys(updateData));
+            updatedCount++;
+          }
         }
       } catch (error: any) {
         console.error(`[google-calendar-webhook] Error syncing booking ${booking.id}:`, error);
