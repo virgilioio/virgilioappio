@@ -31,6 +31,7 @@ import { useJobsForCandidateAssignment } from '@/hooks/useJobsForCandidateAssign
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { CandidateMergeDialog } from './CandidateMergeDialog'
+import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment'
 
 interface CandidateFormSheetProps {
   isOpen: boolean
@@ -81,6 +82,7 @@ export function CandidateFormSheet({
   const [dragOver, setDragOver] = useState(false)
   const [isUploadingResume, setIsUploadingResume] = useState(false)
   const isMountedRef = useRef(true)
+  const [capturedResumeText, setCapturedResumeText] = useState<string>('')
   
   // Job assignment state (only for create mode)
   const [selectedJobId, setSelectedJobId] = useState<string>('')
@@ -421,6 +423,18 @@ export function CandidateFormSheet({
       } else {
         console.log('📎 Skipping file upload:', { hasPendingFiles: pendingFiles.length > 0, hasCandidateId: !!candidateId })
       }
+      
+      // Trigger background AI enrichment if we have resume text
+      if (candidateId && capturedResumeText) {
+        console.log('🧠 Triggering background AI enrichment for candidate:', candidateId)
+        triggerBackgroundEnrichment(
+          candidateId,
+          capturedResumeText,
+          form.getValues('candidate_name')
+        )
+        setCapturedResumeText('') // Clear after triggering
+      }
+      
       clearPersistedData()
     }
   }
@@ -603,6 +617,7 @@ export function CandidateFormSheet({
                     }
                   }
                   
+                  // For quick parse mode, profileSummary may be empty - that's fine, AI enrichment will fill it
                   if (parsed.profileSummary) {
                     const html = sanitizeHtmlForEditor(
                       parsed.profileSummary.includes('<')
@@ -620,12 +635,18 @@ export function CandidateFormSheet({
                 isUploading={isUploadingResume}
                 candidateId={candidate?.id}
                 candidateName={form.watch('candidate_name')}
-                autoGenerateSkills={true}
+                autoGenerateSkills={!!candidate} // Only auto-generate for existing candidates (new candidates use background)
                 showUpload={!!candidate} // Only upload for existing candidates
                 parseOnly={!candidate} // For new candidates, just parse
+                useQuickParse={!candidate} // Use fast regex parsing for new candidates
                 onFileCaptured={(file) => {
                   if (!candidate) {
                     addPendingFile(file)
+                  }
+                }}
+                onResumeTextCaptured={(text) => {
+                  if (!candidate) {
+                    setCapturedResumeText(text)
                   }
                 }}
               />

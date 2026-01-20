@@ -35,6 +35,9 @@ interface EnhancedResumeDropzoneProps {
   showUpload?: boolean // Whether to actually upload files
   parseOnly?: boolean // Only parse, don't upload
   onFileCaptured?: (file: File) => void // Capture the raw file even when not uploading immediately
+  // Quick parse mode for background enrichment
+  useQuickParse?: boolean // Use fast regex parsing instead of AI (for new candidates)
+  onResumeTextCaptured?: (resumeText: string) => void // Callback for captured resume text (for background enrichment)
 }
 
 export function EnhancedResumeDropzone({
@@ -50,13 +53,15 @@ export function EnhancedResumeDropzone({
   className = '',
   showUpload = true,
   parseOnly = false,
-  onFileCaptured
+  onFileCaptured,
+  useQuickParse = false,
+  onResumeTextCaptured
 }: EnhancedResumeDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   
-  const { isParsing, parseResume, parseAndUpdateCandidate } = useResumeParsing()
+  const { isParsing, parseResume, parseResumeQuick, parseAndUpdateCandidate } = useResumeParsing()
   const { generateSkills, isGenerating, generatedSkills } = useSkillsGeneration()
 
   const isActive = isProcessing || isParsing || isGenerating || isUploading
@@ -85,44 +90,69 @@ export function EnhancedResumeDropzone({
         await onUpload(file)
       }
 
-      // ✨ PARALLEL EXECUTION: Start both operations simultaneously
-      const parsingPromise = (async () => {
-        if (candidateId && !parseOnly) {
-          return await parseAndUpdateCandidate(file, candidateId)
-        } else {
-          return await parseResume(file)
+      // Use quick parse mode for new candidates (background enrichment will handle AI tasks)
+      let parsed: ParsedResumeData | undefined
+      let resumeText: string | undefined
+
+      if (useQuickParse) {
+        // Fast regex-based extraction - AI enrichment happens in background after candidate creation
+        const result = await parseResumeQuick(file)
+        if (result) {
+          parsed = result.parsed
+          resumeText = result.resumeText
+          // Pass resume text to parent for background enrichment
+          if (resumeText) {
+            onResumeTextCaptured?.(resumeText)
+          }
         }
-      })()
+        // Skip skills generation here - will be done in background enrichment
+      } else {
+        // Full AI parsing for existing candidates or when quick parse is disabled
+        const parsingPromise = (async () => {
+          if (candidateId && !parseOnly) {
+            return await parseAndUpdateCandidate(file, candidateId)
+          } else {
+            return await parseResume(file)
+          }
+        })()
 
-      const skillsPromise = autoGenerateSkills
-        ? (async () => {
-            // Wait for parsing to get profile summary
-            const parsedData = await parsingPromise
-            if (parsedData?.profileSummary) {
-              try {
-                return await generateSkills(
-                  parsedData.profileSummary,
-                  parsedData.name || candidateName || 'Candidate',
-                  { 
-                    context: 'candidate', 
-                    desiredCount: 20, 
-                    minCount: 12 
-                  }
-                )
-              } catch (error) {
-                console.error('Skills generation failed:', error)
-                return null
+        const skillsPromise = autoGenerateSkills
+          ? (async () => {
+              // Wait for parsing to get profile summary
+              const parsedData = await parsingPromise
+              if (parsedData?.profileSummary) {
+                try {
+                  return await generateSkills(
+                    parsedData.profileSummary,
+                    parsedData.name || candidateName || 'Candidate',
+                    { 
+                      context: 'candidate', 
+                      desiredCount: 20, 
+                      minCount: 12 
+                    }
+                  )
+                } catch (error) {
+                  console.error('Skills generation failed:', error)
+                  return null
+                }
               }
-            }
-            return null
-          })()
-        : null
+              return null
+            })()
+          : null
 
-      // Wait for both to complete (parsing finishes first, then skills)
-      const [parsed, skillsResult] = await Promise.all([
-        parsingPromise,
-        skillsPromise
-      ])
+        // Wait for both to complete (parsing finishes first, then skills)
+        const [parsedResult, skillsResult] = await Promise.all([
+          parsingPromise,
+          skillsPromise
+        ])
+        
+        parsed = parsedResult
+        
+        if (skillsResult?.skills) {
+          const skillNames = skillsResult.skills.map(s => s.name).filter(Boolean)
+          onSkillsGenerated?.(skillNames)
+        }
+      }
 
       console.log('[EnhancedResumeDropzone] Parsed data received:', {
         name: parsed?.name,
@@ -139,14 +169,11 @@ export function EnhancedResumeDropzone({
         onParsed?.(parsed)
         console.log('[EnhancedResumeDropzone] onParsed callback invoked');
 
-        if (skillsResult?.skills) {
-          const skillNames = skillsResult.skills.map(s => s.name).filter(Boolean)
-          onSkillsGenerated?.(skillNames)
-        }
-
-        const message = autoGenerateSkills 
-          ? 'Information extracted and skills generated from your resume.'
-          : 'Information extracted from your resume.'
+        const message = useQuickParse 
+          ? 'Basic info extracted. AI enrichment will complete in background.'
+          : autoGenerateSkills 
+            ? 'Information extracted and skills generated from your resume.'
+            : 'Information extracted from your resume.'
           
         toast({ 
           title: parseOnly ? 'Resume parsed' : 'Resume uploaded and parsed', 

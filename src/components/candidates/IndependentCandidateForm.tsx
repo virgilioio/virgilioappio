@@ -19,6 +19,7 @@ import { EnhancedResumeDropzone, ParsedResumeData } from './EnhancedResumeDropzo
 import { ContactEmailsInput, ContactEmail } from './ContactEmailsInput'
 import { ContactPhonesInput, ContactPhone } from './ContactPhonesInput'
 import { parseContactEntry } from '@/utils/parseContactEntry'
+import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment'
 
 const candidateSchema = z.object({
   candidate_name: z.string().min(1, 'Name is required'),
@@ -40,7 +41,7 @@ type CandidateFormData = z.infer<typeof candidateSchema>
 interface IndependentCandidateFormProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (data: CreateIndependentCandidateData) => Promise<void>
+  onSubmit: (data: CreateIndependentCandidateData) => Promise<{ id: string } | void>
   isLoading: boolean
   initialData?: Partial<CreateIndependentCandidateData>
   title?: string
@@ -56,6 +57,7 @@ export function IndependentCandidateForm({
 }: IndependentCandidateFormProps) {
   const [skills, setSkills] = useState<string[]>(initialData?.skills || [])
   const [newSkill, setNewSkill] = useState('')
+  const [capturedResumeText, setCapturedResumeText] = useState<string>('')
 
   // Initialize contact emails from initialData or create one empty entry
   const [contactEmails, setContactEmails] = useState<ContactEmail[]>(() => {
@@ -155,7 +157,20 @@ export function IndependentCandidateForm({
         source: data.source || 'direct',
       }
 
-      await onSubmit(formattedData)
+      const result = await onSubmit(formattedData)
+      
+      // Trigger background AI enrichment if we have resume text and got a candidate ID back
+      const candidateId = result && typeof result === 'object' && 'id' in result ? result.id : null
+      if (candidateId && capturedResumeText) {
+        console.log('🧠 Triggering background AI enrichment for independent candidate:', candidateId)
+        triggerBackgroundEnrichment(
+          candidateId,
+          capturedResumeText,
+          data.candidate_name
+        )
+        setCapturedResumeText('') // Clear after triggering
+      }
+      
       handleClose()
     } catch (error) {
       console.error('Error submitting candidate form:', error)
@@ -168,6 +183,7 @@ export function IndependentCandidateForm({
     setNewSkill('')
     setContactEmails([{ type: 'work', email: '', status: null }])
     setContactPhones([{ type: 'mobile', number: '', raw_number: null }])
+    setCapturedResumeText('')
     onClose()
   }
 
@@ -262,6 +278,7 @@ export function IndependentCandidateForm({
                   console.log('[IndependentCandidateForm] WARNING: No location in parsed data');
                 }
                 
+                // For quick parse mode, profileSummary may be empty - that's fine, AI enrichment will fill it
                 if (parsed.profileSummary && parsed.profileSummary.trim().length > 0) {
                   const html = markdownToHtml(parsed.profileSummary)
                   const sanitized = sanitizeHtmlForEditor(html)
@@ -274,8 +291,10 @@ export function IndependentCandidateForm({
                 setSkills(uniqueSkills)
               }}
               candidateName={watch('candidate_name')}
-              autoGenerateSkills={true}
+              autoGenerateSkills={false} // Disable - will be done in background enrichment
               parseOnly={true}
+              useQuickParse={true} // Use fast regex parsing for new candidates
+              onResumeTextCaptured={(text) => setCapturedResumeText(text)}
               accept=".pdf,.doc,.docx,.txt,.rtf"
               maxSizeMb={15}
             />
