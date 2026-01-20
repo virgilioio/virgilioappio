@@ -4,7 +4,8 @@ import { PipelineOverview } from '@/components/jobs/PipelineOverview';
 import { Job } from '@/hooks/useJobs';
 import { PipelineJobMetric } from '@/hooks/usePipelineJobMetrics';
 import { formatDistanceToNow } from 'date-fns';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, ExternalLink } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface JobRowProps {
   job: Job;
@@ -39,7 +40,7 @@ export function JobRow({ job, metrics }: JobRowProps) {
 
   return (
     <AccordionItem value={job.id} className="border rounded-lg px-4">
-      <AccordionTrigger className="hover:no-underline">
+      <AccordionTrigger className="hover:no-underline group">
         <div className="flex items-center justify-between w-full pr-2">
           <div className="flex items-center gap-3 min-w-0">
             <div className="min-w-0 flex-1">
@@ -48,6 +49,18 @@ export function JobRow({ job, metrics }: JobRowProps) {
                 <Badge variant={statusVariants[job.status] || 'default'} className="capitalize">
                   {job.status}
                 </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(`/jobs/${job.id}`, '_blank');
+                  }}
+                  title="Open job in new tab"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </Button>
               </div>
               <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
                 <span>Active candidates: {metrics?.active_candidates || 0}</span>
