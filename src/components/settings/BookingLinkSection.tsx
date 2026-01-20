@@ -39,7 +39,7 @@ export function BookingLinkSection() {
   const [minNoticeHours, setMinNoticeHours] = useState(24);
   const [maxDaysAhead, setMaxDaysAhead] = useState(30);
   const [meetingLocation, setMeetingLocation] = useState('');
-
+  const [customEventTitle, setCustomEventTitle] = useState('Interview with {candidate_name}');
   // Track if we've done initial sync to prevent resetting after saves
   const hasInitializedRef = useRef(false);
 
@@ -53,6 +53,7 @@ export function BookingLinkSection() {
       setMinNoticeHours(config.min_notice_hours || 24);
       setMaxDaysAhead(config.max_days_ahead || 30);
       setMeetingLocation(config.meeting_location || '');
+      setCustomEventTitle(config.custom_event_title || 'Interview with {candidate_name}');
       hasInitializedRef.current = true;
     }
     
@@ -79,6 +80,7 @@ export function BookingLinkSection() {
       min_notice_hours: minNoticeHours,
       max_days_ahead: maxDaysAhead,
       meeting_location: meetingLocation || null,
+      custom_event_title: customEventTitle || null,
     });
   };
 
@@ -255,6 +257,21 @@ export function BookingLinkSection() {
 
           {/* Tab 2: Meeting Details */}
           <TabsContent value="meeting-details" className="space-y-6 mt-6">
+            <div className="space-y-2">
+              <Label htmlFor="event-title">Event Title</Label>
+              <Input
+                id="event-title"
+                value={customEventTitle}
+                onChange={(e) => setCustomEventTitle(e.target.value)}
+                placeholder="Interview with {candidate_name}"
+              />
+              <p className="text-xs text-text-secondary">
+                This title appears on calendar events when someone books using your generic booking link. Use <code className="bg-muted px-1 rounded">{'{candidate_name}'}</code> to include their name.
+              </p>
+            </div>
+            
+            <Separator />
+            
             <MeetingDurationSelector 
               value={durationMinutes} 
               onChange={setDurationMinutes} 

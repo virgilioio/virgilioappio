@@ -38,6 +38,7 @@ export interface BookingConfig {
   min_notice_hours: number;
   max_days_ahead: number;
   meeting_location: string | null;
+  custom_event_title: string | null; // Custom event title for generic booking links
   created_at: string;
   updated_at: string;
 }
