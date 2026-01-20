@@ -81,8 +81,10 @@ serve(async (req) => {
     // Fetch stage name and job title if this is an internal booking
     let stageName = 'Interview';
     let jobTitle = '';
+    let isJobSpecificBooking = false;
 
     if (job_hiring_stage_id) {
+      isJobSpecificBooking = true;
       const { data: stageData } = await supabase
         .from('job_hiring_stages')
         .select('stage:job_stages(stage_name)')
@@ -95,6 +97,7 @@ serve(async (req) => {
     }
 
     if (job_id) {
+      isJobSpecificBooking = true;
       const { data: jobData } = await supabase
         .from('jobs')
         .select('title')
@@ -105,8 +108,6 @@ serve(async (req) => {
         jobTitle = ` - ${jobData.title}`;
       }
     }
-
-    const interviewTitle = `${stageName} with ${candidate_name}${jobTitle}`;
 
     // Load booking config
     const { data: config, error: configError } = await supabase
@@ -125,6 +126,18 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // Generate interview title based on booking type
+    let interviewTitle: string;
+    if (isJobSpecificBooking) {
+      // Job+stage specific booking - use contextual title
+      interviewTitle = `${stageName} with ${candidate_name}${jobTitle}`;
+    } else {
+      // Generic booking - use custom title from config with placeholder replacement
+      const customTitle = config.custom_event_title || 'Interview with {candidate_name}';
+      interviewTitle = customTitle.replace(/{candidate_name}/g, candidate_name);
+    }
+    console.log('[create-booking] Interview title:', interviewTitle, '(job-specific:', isJobSpecificBooking, ')');
 
     // Fetch profile separately
     const { data: profile, error: profileError } = await supabase

@@ -447,6 +447,7 @@ export type Database = {
           available_days: number[] | null
           buffer_time_minutes: number | null
           created_at: string | null
+          custom_event_title: string | null
           description: string | null
           display_name: string
           duration_minutes: number
@@ -468,6 +469,7 @@ export type Database = {
           available_days?: number[] | null
           buffer_time_minutes?: number | null
           created_at?: string | null
+          custom_event_title?: string | null
           description?: string | null
           display_name: string
           duration_minutes?: number
@@ -489,6 +491,7 @@ export type Database = {
           available_days?: number[] | null
           buffer_time_minutes?: number | null
           created_at?: string | null
+          custom_event_title?: string | null
           description?: string | null
           display_name?: string
           duration_minutes?: number
