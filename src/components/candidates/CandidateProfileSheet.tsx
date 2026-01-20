@@ -864,17 +864,16 @@ const stageHasAutomation = useMemo(() => {
                                 </Button>
                                 
                                 {/* Mark as Hired - only show when in offer status */}
-                                {associationStatus === 'offer' && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handleHire}
-                                    className="text-success hover:text-success"
-                                  >
-                                    <Check className="h-4 w-4 mr-2" />
-                                    Mark as Hired
-                                  </Button>
-                                )}
+                  {associationStatus === 'offer' && (
+                    <Button
+                      variant="success"
+                      size="sm"
+                      onClick={handleHire}
+                    >
+                      <Check className="h-4 w-4 mr-2" />
+                      Mark as Hired
+                    </Button>
+                  )}
                               </div>
                            </div>
                         </CardContent>
