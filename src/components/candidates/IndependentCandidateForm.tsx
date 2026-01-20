@@ -20,6 +20,7 @@ import { ContactEmailsInput, ContactEmail } from './ContactEmailsInput'
 import { ContactPhonesInput, ContactPhone } from './ContactPhonesInput'
 import { parseContactEntry } from '@/utils/parseContactEntry'
 import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment'
+import { BackgroundEnrichmentBanner } from './BackgroundEnrichmentBanner'
 
 const candidateSchema = z.object({
   candidate_name: z.string().min(1, 'Name is required'),
@@ -58,6 +59,7 @@ export function IndependentCandidateForm({
   const [skills, setSkills] = useState<string[]>(initialData?.skills || [])
   const [newSkill, setNewSkill] = useState('')
   const [capturedResumeText, setCapturedResumeText] = useState<string>('')
+  const [showEnrichmentBanner, setShowEnrichmentBanner] = useState(false)
 
   // Initialize contact emails from initialData or create one empty entry
   const [contactEmails, setContactEmails] = useState<ContactEmail[]>(() => {
@@ -184,6 +186,7 @@ export function IndependentCandidateForm({
     setContactEmails([{ type: 'work', email: '', status: null }])
     setContactPhones([{ type: 'mobile', number: '', raw_number: null }])
     setCapturedResumeText('')
+    setShowEnrichmentBanner(false)
     onClose()
   }
 
@@ -294,10 +297,21 @@ export function IndependentCandidateForm({
               autoGenerateSkills={false} // Disable - will be done in background enrichment
               parseOnly={true}
               useQuickParse={true} // Use fast regex parsing for new candidates
-              onResumeTextCaptured={(text) => setCapturedResumeText(text)}
+              onResumeTextCaptured={(text) => {
+                setCapturedResumeText(text)
+                setShowEnrichmentBanner(true)
+              }}
               accept=".pdf,.doc,.docx,.txt,.rtf"
               maxSizeMb={15}
             />
+            
+            {/* Background Enrichment Banner */}
+            {showEnrichmentBanner && capturedResumeText && (
+              <BackgroundEnrichmentBanner 
+                isVisible={true}
+                onDismiss={() => setShowEnrichmentBanner(false)}
+              />
+            )}
           </div>
 
           {/* Basic Information */}
