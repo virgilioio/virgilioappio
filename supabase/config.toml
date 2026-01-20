@@ -63,6 +63,9 @@ verify_jwt = false
 [functions.parse-resume]
 verify_jwt = true
 
+[functions.enrich-candidate-profile]
+verify_jwt = true
+
 [functions.process-automation-emails]
 verify_jwt = false
 

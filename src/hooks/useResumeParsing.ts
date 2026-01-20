@@ -15,6 +15,8 @@ export type ParsedResume = {
   profileSummary?: string;
 };
 
+export type ParseMode = 'quick' | 'full';
+
 function uniquePush<T>(arr: T[] | null | undefined, value: T | null | undefined): T[] {
   const base = Array.isArray(arr) ? arr.slice() : [];
   if (value == null) return base;
@@ -45,51 +47,102 @@ function parseLocationString(location: string): { city?: string; state?: string;
 export function useResumeParsing() {
   const [isParsing, setIsParsing] = useState(false);
 
-  const parseResume = async (file: File) => {
-    if (!file) return;
+  /**
+   * Internal function to parse resume with mode support
+   */
+  const parseResumeInternal = async (file: File, mode: ParseMode = 'full'): Promise<{ parsed: ParsedResume; resumeText: string } | null> => {
+    if (!file) return null;
+
+    let textContent = '';
+    textContent = await extractTextFromFile(file);
+    if (!textContent) {
+      toast.info('Could not extract text from this file type. Try PDF or DOCX.');
+      return null;
+    }
+
+    if (!textContent || textContent.length < 30) {
+      toast.error('Could not extract enough text from the PDF to parse.');
+      return null;
+    }
+
+    const { data, error } = await supabase.functions.invoke('parse-resume', {
+      body: {
+        textContent,
+        fileName: file.name,
+        mimeType: file.type,
+        mode,
+      },
+    });
+
+    if (error) {
+      console.error('parse-resume error:', error);
+      toast.error('Failed to parse the resume.');
+      return null;
+    }
+
+    console.log(`[useResumeParsing] Mode: ${mode}, Raw data from edge function:`, data);
+    const parsed = (data || {}) as ParsedResume;
+    
+    return { parsed, resumeText: textContent };
+  };
+
+  /**
+   * Parse a resume file (backward compatible - returns ParsedResume)
+   * Uses full AI-powered parsing
+   */
+  const parseResume = async (file: File): Promise<ParsedResume | undefined> => {
+    if (!file) return undefined;
     setIsParsing(true);
 
     try {
-      let textContent = '';
-      textContent = await extractTextFromFile(file);
-      if (!textContent) {
-        toast.info('Could not extract text from this file type. Try PDF or DOCX.');
-        return;
-      }
-
-      if (!textContent || textContent.length < 30) {
-        toast.error('Could not extract enough text from the PDF to parse.');
-        return;
-      }
-
-      const { data, error } = await supabase.functions.invoke('parse-resume', {
-        body: {
-          textContent,
-          fileName: file.name,
-          mimeType: file.type,
-        },
-      });
-
-      if (error) {
-        console.error('parse-resume error:', error);
-        toast.error('Failed to parse the resume.');
-        return;
-      }
-
-      console.log('[useResumeParsing] Raw data from edge function:', data);
-      const parsed = (data || {}) as ParsedResume;
+      const result = await parseResumeInternal(file, 'full');
+      if (!result) return undefined;
+      
       console.log('[useResumeParsing] Returning parsed data:', {
-        name: parsed.name,
-        email: parsed.email,
-        phone: parsed.phone,
-        linkedinUrl: parsed.linkedinUrl,
-        location: parsed.location,
-        profileSummary: parsed.profileSummary ? '(exists)' : '(missing)'
+        name: result.parsed.name,
+        email: result.parsed.email,
+        phone: result.parsed.phone,
+        linkedinUrl: result.parsed.linkedinUrl,
+        location: result.parsed.location,
+        profileSummary: result.parsed.profileSummary ? '(exists)' : '(missing)'
       });
-      return parsed;
+      
+      return result.parsed;
     } catch (err) {
       console.error('parseResume error:', err);
       toast.error('Resume parsing failed.');
+      return undefined;
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
+  /**
+   * Quick parse a resume file - uses regex-only extraction for speed
+   * Returns parsed data AND resumeText for background enrichment
+   */
+  const parseResumeQuick = async (file: File): Promise<{ parsed: ParsedResume; resumeText: string } | null> => {
+    if (!file) return null;
+    setIsParsing(true);
+
+    try {
+      const result = await parseResumeInternal(file, 'quick');
+      if (!result) return null;
+      
+      console.log('[useResumeParsing] Quick parse returning:', {
+        name: result.parsed.name,
+        email: result.parsed.email,
+        phone: result.parsed.phone,
+        linkedinUrl: result.parsed.linkedinUrl,
+        location: result.parsed.location,
+        hasResumeText: !!result.resumeText
+      });
+      
+      return result;
+    } catch (err) {
+      console.error('parseResumeQuick error:', err);
+      toast.error('Resume parsing failed.');
+      return null;
     } finally {
       setIsParsing(false);
     }
@@ -210,5 +263,5 @@ export function useResumeParsing() {
     }
   };
 
-  return { isParsing, parseResume, parseAndUpdateCandidate };
+  return { isParsing, parseResume, parseResumeQuick, parseAndUpdateCandidate };
 }
