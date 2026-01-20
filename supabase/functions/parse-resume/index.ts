@@ -10,6 +10,7 @@ type ParseRequest = {
   textContent?: string;
   fileName?: string;
   mimeType?: string;
+  mode?: 'quick' | 'full'; // 'quick' = regex only, 'full' = AI-powered (default)
 };
 
 type ParseResult = {
@@ -68,13 +69,37 @@ function extractLocation(text: string): string | undefined {
   return undefined;
 }
 
+function quickExtract(text: string): ParseResult {
+  // Fast regex-only extraction for quick mode
+  const result: ParseResult = {
+    email: extractEmail(text),
+    phone: extractPhone(text),
+    linkedinUrl: extractLinkedIn(text),
+    location: extractLocation(text),
+  };
+
+  // Try to extract name from common patterns
+  const namePatterns = [
+    /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})\s*$/m, // "John Smith" at start of line
+    /(?:^|\n)([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})(?:\s*\n|\s*$)/m, // Name followed by newline
+    /(?:Name|Nombre):\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})/i, // "Name: John Smith"
+  ];
+
+  for (const pattern of namePatterns) {
+    const match = text.slice(0, 500).match(pattern);
+    if (match && match[1]) {
+      result.name = match[1].trim();
+      break;
+    }
+  }
+
+  return result;
+}
+
 async function aiExtract(text: string, fileName?: string): Promise<ParseResult> {
   if (!OPENAI_API_KEY) {
     // Without an API key, return basic regex-based fields only
-    return {
-      email: extractEmail(text),
-      phone: extractPhone(text),
-    };
+    return quickExtract(text);
   }
 
   const system = `You are an expert ATS resume parser.
@@ -217,8 +242,19 @@ serve(async (req) => {
       });
     }
 
-    console.log('Parsing resume text. Approx length:', text.length, 'fileName:', body.fileName);
+    const mode = body.mode || 'full';
+    console.log('Parsing resume text. Mode:', mode, 'Approx length:', text.length, 'fileName:', body.fileName);
 
+    // Quick mode: regex-only extraction (instant)
+    if (mode === 'quick') {
+      const result = quickExtract(text);
+      console.log('Quick parse result:', JSON.stringify(result, null, 2));
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Full mode: AI-powered extraction
     const result = await aiExtract(text, body.fileName);
 
     return new Response(JSON.stringify(result), {

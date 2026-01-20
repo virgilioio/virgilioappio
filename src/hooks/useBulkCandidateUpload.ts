@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useResumeParsing } from './useResumeParsing'
 import { useIndependentCandidates } from './useIndependentCandidates'
-import { useSkillsGeneration } from './useSkillsGeneration'
 import { usePipelineActions } from './usePipelineActions'
 import { toast } from './use-toast'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
+import { triggerBackgroundEnrichment } from './useCandidateEnrichment'
 
 export interface BulkUploadOptions {
   autoGenerateSkills: boolean
@@ -32,9 +32,8 @@ export function useBulkCandidateUpload() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [fileResults, setFileResults] = useState<FileProcessingResult[]>([])
   
-  const { parseResume } = useResumeParsing()
+  const { parseResumeQuick } = useResumeParsing()
   const { addCandidate, updateCandidate } = useIndependentCandidates()
-  const { generateSkills } = useSkillsGeneration()
   const { createAssociationAndMove } = usePipelineActions()
   const { user } = useAuth()
 
@@ -101,80 +100,73 @@ export function useBulkCandidateUpload() {
     options: BulkUploadOptions
   ) => {
     try {
-      // 1. Parse resume
-      updateFileStatus(fileIndex, 'parsing', 20)
+      // 1. Quick parse resume (instant - regex only)
+      updateFileStatus(fileIndex, 'parsing', 30)
       
-      const parsed = await parseResume(file)
-      if (!parsed) {
+      const result = await parseResumeQuick(file)
+      if (!result) {
         throw new Error('Failed to parse resume')
       }
+      
+      const { parsed, resumeText } = result
 
-      updateFileStatus(fileIndex, 'parsing', 50)
+      updateFileStatus(fileIndex, 'creating', 60)
 
-      // 2. Generate skills if enabled
-      let skills: string[] = []
-      if (options.autoGenerateSkills && parsed.profileSummary) {
-        try {
-          const { skills: generatedSkills } = await generateSkills(
-            parsed.profileSummary,
-            parsed.name || file.name
-          )
-          skills = generatedSkills.map(s => s.name)
-        } catch (err) {
-          console.warn('Skills generation failed, continuing without skills:', err)
-        }
-      }
-
-      updateFileStatus(fileIndex, 'creating', 70)
-
-      // 3. Parse location
+      // 2. Parse location
       const locationParts = parsed.location?.split(',').map(s => s.trim()) || []
       
-      // 4. Create candidate data
+      // 3. Create candidate data (without AI-generated content)
       const candidateData = {
         candidate_name: parsed.name || file.name.replace(/\.[^/.]+$/, ''),
         email: parsed.email,
         phone: parsed.phone,
         linkedin_url: parsed.linkedinUrl,
-        profile_summary: parsed.profileSummary,
-        skills: skills.length > 0 ? skills : undefined,
+        // No profile_summary or skills - will be added by background enrichment
         location_city: locationParts[0],
         location_state: locationParts[1],
         location_country: locationParts[2] || locationParts[1],
+        enrichment_status: options.autoGenerateSkills ? 'pending' : undefined,
       }
 
-      const result = await addCandidate(candidateData)
+      const createResult = await addCandidate(candidateData)
 
-      // 5. Handle duplicate detection
-      if (result && 'isDuplicate' in result) {
-        // Auto-merge duplicates in bulk mode
-        await updateCandidate(result.existingCandidate.id, result.mergedData)
+      // 4. Handle duplicate detection
+      if (createResult && 'isDuplicate' in createResult) {
+        await updateCandidate(createResult.existingCandidate.id, createResult.mergedData)
         
-        // Upload resume file for duplicate candidate too
-        updateFileStatus(fileIndex, 'uploading', 85)
+        updateFileStatus(fileIndex, 'uploading', 80)
         try {
-          await uploadResumeFile(result.existingCandidate.id, file)
+          await uploadResumeFile(createResult.existingCandidate.id, file)
         } catch (uploadError) {
           console.warn('Resume upload failed for merged candidate:', uploadError)
         }
         
-        updateFileStatus(fileIndex, 'duplicate', 100, result.existingCandidate)
-      } else if (result && 'id' in result) {
-        // Upload resume file for new candidate
-        updateFileStatus(fileIndex, 'uploading', 85)
+        // Trigger background enrichment for merged candidate
+        if (options.autoGenerateSkills && resumeText) {
+          triggerBackgroundEnrichment(createResult.existingCandidate.id, resumeText, parsed.name)
+        }
+        
+        updateFileStatus(fileIndex, 'duplicate', 100, createResult.existingCandidate)
+      } else if (createResult && 'id' in createResult) {
+        updateFileStatus(fileIndex, 'uploading', 80)
         try {
-          await uploadResumeFile(result.id, file)
+          await uploadResumeFile(createResult.id, file)
         } catch (uploadError) {
           console.warn('Resume upload failed, but candidate was created:', uploadError)
         }
         
-        updateFileStatus(fileIndex, 'success', 100, result)
+        // Trigger background enrichment for new candidate
+        if (options.autoGenerateSkills && resumeText) {
+          triggerBackgroundEnrichment(createResult.id, resumeText, parsed.name)
+        }
+        
+        updateFileStatus(fileIndex, 'success', 100, createResult)
 
-        // 6. Assign to job if specified
-        if (options.assignToJob && options.assignToStage && result.id) {
+        // 5. Assign to job if specified
+        if (options.assignToJob && options.assignToStage && createResult.id) {
           try {
             await createAssociationAndMove(
-              result.id,
+              createResult.id,
               options.assignToJob,
               options.assignToStage
             )
