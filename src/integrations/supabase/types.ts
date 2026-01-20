@@ -1848,6 +1848,8 @@ export type Database = {
           id: string
           job_id: string
           notes: string | null
+          offered_at: string | null
+          offered_by: string | null
           pipeline_position: number | null
           rejected_at: string | null
           rejected_by: string | null
@@ -1869,6 +1871,8 @@ export type Database = {
           id?: string
           job_id: string
           notes?: string | null
+          offered_at?: string | null
+          offered_by?: string | null
           pipeline_position?: number | null
           rejected_at?: string | null
           rejected_by?: string | null
@@ -1890,6 +1894,8 @@ export type Database = {
           id?: string
           job_id?: string
           notes?: string | null
+          offered_at?: string | null
+          offered_by?: string | null
           pipeline_position?: number | null
           rejected_at?: string | null
           rejected_by?: string | null

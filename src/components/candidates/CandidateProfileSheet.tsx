@@ -53,6 +53,7 @@ import { ScheduleInterviewSheet } from './ScheduleInterviewSheet'
 import { GenerateBookingLinkButton } from '@/components/candidates/GenerateBookingLinkButton'
 import { RejectionDialog } from './RejectionDialog'
 import { RejectionStatusBanner } from './RejectionStatusBanner'
+import { OfferStatusBanner } from './OfferStatusBanner'
 import { CreateOfferLetterSheet } from './CreateOfferLetterDialog'
 import { CandidateReminders } from './CandidateReminders'
 import { useQuery } from '@tanstack/react-query'
@@ -121,6 +122,10 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
     rejectionReason: { id: string; name: string; category: string } | null;
     rejectionEmailSentAt: string | null;
     rejectionEmailScheduledFor: string | null;
+  } | null>(null)
+  const [offerDetails, setOfferDetails] = useState<{
+    offeredAt: string | null;
+    offeredByName: string | null;
   } | null>(null)
   const [viewingScorecardId, setViewingScorecardId] = useState<string | null>(null)
   const [viewingScorecard, setViewingScorecard] = useState<any>(null)
@@ -299,7 +304,9 @@ const stageHasAutomation = useMemo(() => {
             rejected_by,
             rejection_email_sent_at,
             rejection_email_scheduled_for,
-            rejection_reason:rejection_reasons(id, name, category)
+            rejection_reason:rejection_reasons(id, name, category),
+            offered_at,
+            offered_by
           `)
           .eq('job_id', jobId)
           .eq('candidate_id', candidateId)
@@ -331,6 +338,27 @@ const stageHasAutomation = useMemo(() => {
           })
         } else {
           setRejectionDetails(null)
+        }
+        
+        // Set offer details if in offer status
+        if (assoc?.status === 'offer') {
+          let offeredByName = null
+          if ((assoc as any).offered_by) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('first_name, last_name')
+              .eq('user_id', (assoc as any).offered_by)
+              .maybeSingle()
+            if (profile) {
+              offeredByName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || null
+            }
+          }
+          setOfferDetails({
+            offeredAt: (assoc as any).offered_at,
+            offeredByName,
+          })
+        } else {
+          setOfferDetails(null)
         }
       }
     }
@@ -459,6 +487,7 @@ const stageHasAutomation = useMemo(() => {
 
   const handleMoveToOffer = async () => {
     try {
+      const now = new Date().toISOString()
       if (!associationId) {
         // If no association yet, create a basic one with status 'offer'
         if (candidateId) {
@@ -468,6 +497,8 @@ const stageHasAutomation = useMemo(() => {
               job_id: jobId,
               candidate_id: candidateId,
               status: 'offer',
+              offered_at: now,
+              offered_by: user?.id,
             }])
             .select('id')
             .single()
@@ -478,14 +509,54 @@ const stageHasAutomation = useMemo(() => {
           return
         }
       } else {
-        await updateAssociationStatus(associationId, 'offer')
+        // Update with offered_at and offered_by
+        const { error } = await supabase
+          .from('job_candidate_associations')
+          .update({
+            status: 'offer',
+            offered_at: now,
+            offered_by: user?.id,
+          })
+          .eq('id', associationId)
+        if (error) throw error
       }
 
       setAssociationStatus('offer')
+      setOfferDetails({
+        offeredAt: now,
+        offeredByName: null, // Current user's name would require profile lookup
+      })
       onStageChanged?.()
     } catch (e) {
       console.error('Move to Offers failed:', e)
       toast({ title: 'Error', description: 'Could not move candidate to Job Offers.', variant: 'destructive' })
+    }
+  }
+  
+  const handleReturnToPipeline = async () => {
+    if (!associationId) return
+    try {
+      // Clear offer tracking when returning to pipeline
+      const { error } = await supabase
+        .from('job_candidate_associations')
+        .update({
+          status: 'active',
+          offered_at: null,
+          offered_by: null,
+        })
+        .eq('id', associationId)
+      if (error) throw error
+      
+      setAssociationStatus('active')
+      setOfferDetails(null)
+      toast({
+        title: 'Returned to Pipeline',
+        description: 'Candidate has been moved back to active status.',
+      })
+      onStageChanged?.()
+    } catch (e) {
+      console.error('Return to pipeline failed:', e)
+      toast({ title: 'Error', description: 'Could not return candidate to pipeline.', variant: 'destructive' })
     }
   }
 
@@ -495,7 +566,7 @@ const stageHasAutomation = useMemo(() => {
     }
   }
   
-  // Refetch association status and rejection details
+  // Refetch association status and rejection/offer details
   const refetchAssociationStatus = async () => {
     if (!candidateId || !jobId) return;
     
@@ -509,7 +580,9 @@ const stageHasAutomation = useMemo(() => {
         rejected_by,
         rejection_email_sent_at,
         rejection_email_scheduled_for,
-        rejection_reason:rejection_reasons(id, name, category)
+        rejection_reason:rejection_reasons(id, name, category),
+        offered_at,
+        offered_by
       `)
       .eq('job_id', jobId)
       .eq('candidate_id', candidateId)
@@ -542,6 +615,27 @@ const stageHasAutomation = useMemo(() => {
       } else {
         setRejectionDetails(null);
       }
+      
+      // Handle offer details
+      if (assoc.status === 'offer') {
+        let offeredByName = null;
+        if ((assoc as any).offered_by) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('user_id', (assoc as any).offered_by)
+            .maybeSingle();
+          if (profile) {
+            offeredByName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || null;
+          }
+        }
+        setOfferDetails({
+          offeredAt: (assoc as any).offered_at,
+          offeredByName,
+        });
+      } else {
+        setOfferDetails(null);
+      }
     }
   };
   
@@ -553,6 +647,7 @@ const stageHasAutomation = useMemo(() => {
   const handleReactivate = () => {
     handleSetStatus('active')
     setRejectionDetails(null)
+    setOfferDetails(null)
   }
   const handleHire = () => handleSetStatus('hired')
 
@@ -689,6 +784,17 @@ const stageHasAutomation = useMemo(() => {
                       />
                     </div>
                   )}
+                  
+                  {/* Offer Status Banner - Full width above both columns */}
+                  {associationStatus === 'offer' && (
+                    <div className="mb-6">
+                      <OfferStatusBanner
+                        offeredAt={offerDetails?.offeredAt || null}
+                        offeredByName={offerDetails?.offeredByName || undefined}
+                        onCreateOffer={() => setOfferFormOpen(true)}
+                      />
+                    </div>
+                  )}
                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                    {/* Left column (50%) */}
                    <div className="space-y-6">
@@ -724,14 +830,30 @@ const stageHasAutomation = useMemo(() => {
                                     onClose={() => onOpenChange(false)}
                                   />
                                 )}
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={handleMoveToOffer}
-                                >
-                                  <MoveRight className="h-4 w-4 mr-2" />
-                                  Move to Offer
-                                </Button>
+                                {/* Move to Offer - only show when not already in offer */}
+                                {associationStatus !== 'offer' && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleMoveToOffer}
+                                  >
+                                    <MoveRight className="h-4 w-4 mr-2" />
+                                    Move to Offer
+                                  </Button>
+                                )}
+                                
+                                {/* Return to Pipeline - only show when in offer status */}
+                                {associationStatus === 'offer' && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleReturnToPipeline}
+                                  >
+                                    <RotateCcw className="h-4 w-4 mr-2" />
+                                    Return to Pipeline
+                                  </Button>
+                                )}
+                                
                                 <Button
                                   variant="destructive"
                                   size="sm"
@@ -740,18 +862,18 @@ const stageHasAutomation = useMemo(() => {
                                   <ThumbsDown className="h-4 w-4 mr-2" />
                                   Reject
                                 </Button>
+                                
+                                {/* Mark as Hired - only show when in offer status */}
                                 {associationStatus === 'offer' && (
-                                  <>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={handleHire}
-                                      className="text-success hover:text-success"
-                                    >
-                                      <Check className="h-4 w-4 mr-2" />
-                                      Mark as Hired
-                                    </Button>
-                                  </>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleHire}
+                                    className="text-success hover:text-success"
+                                  >
+                                    <Check className="h-4 w-4 mr-2" />
+                                    Mark as Hired
+                                  </Button>
                                 )}
                               </div>
                            </div>
