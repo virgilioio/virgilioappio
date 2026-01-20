@@ -32,6 +32,7 @@ import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { CandidateMergeDialog } from './CandidateMergeDialog'
 import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment'
+import { BackgroundEnrichmentBanner } from './BackgroundEnrichmentBanner'
 
 interface CandidateFormSheetProps {
   isOpen: boolean
@@ -83,6 +84,7 @@ export function CandidateFormSheet({
   const [isUploadingResume, setIsUploadingResume] = useState(false)
   const isMountedRef = useRef(true)
   const [capturedResumeText, setCapturedResumeText] = useState<string>('')
+  const [showEnrichmentBanner, setShowEnrichmentBanner] = useState(false)
   
   // Job assignment state (only for create mode)
   const [selectedJobId, setSelectedJobId] = useState<string>('')
@@ -647,9 +649,18 @@ export function CandidateFormSheet({
                 onResumeTextCaptured={(text) => {
                   if (!candidate) {
                     setCapturedResumeText(text)
+                    setShowEnrichmentBanner(true)
                   }
                 }}
               />
+
+              {/* Background Enrichment Banner */}
+              {!candidate && showEnrichmentBanner && capturedResumeText && (
+                <BackgroundEnrichmentBanner 
+                  isVisible={true}
+                  onDismiss={() => setShowEnrichmentBanner(false)}
+                />
+              )}
 
               {!candidate && pendingFiles.length > 0 && (
                 <div className="mt-2 text-left space-y-2">

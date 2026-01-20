@@ -78,17 +78,38 @@ function quickExtract(text: string): ParseResult {
     location: extractLocation(text),
   };
 
-  // Try to extract name from common patterns
+  // More robust name extraction patterns
   const namePatterns = [
-    /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})\s*$/m, // "John Smith" at start of line
-    /(?:^|\n)([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})(?:\s*\n|\s*$)/m, // Name followed by newline
-    /(?:Name|Nombre):\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})/i, // "Name: John Smith"
+    // Spanish/Latin names with accents (e.g., "José García López")
+    /^([A-ZÁÉÍÓÚÑÜ][a-záéíóúñü]+(?:\s+[A-ZÁÉÍÓÚÑÜ][a-záéíóúñü]+){1,4})\s*$/m,
+    
+    // ALL CAPS names at start (e.g., "JOHN SMITH")
+    /^([A-ZÁÉÍÓÚÑÜ]{2,}(?:\s+[A-ZÁÉÍÓÚÑÜ]{2,}){1,3})\s*$/m,
+    
+    // Name followed by contact info or separator
+    /^([A-Za-záéíóúñüÁÉÍÓÚÑÜ]+(?:\s+[A-Za-záéíóúñüÁÉÍÓÚÑÜ]+){1,4})[\s\n]*(?:[|\-–—]|Email|Correo|Phone|Tel|LinkedIn)/im,
+    
+    // Name at very first line (before any special chars)
+    /^([A-Za-záéíóúñüÁÉÍÓÚÑÜ]{2,}(?:\s+[A-Za-záéíóúñüÁÉÍÓÚÑÜ]{2,}){1,3})\s*\n/,
+    
+    // Labeled name field
+    /(?:Name|Nombre|Full Name|Nombre Completo):\s*([A-Za-záéíóúñüÁÉÍÓÚÑÜ]+(?:\s+[A-Za-záéíóúñüÁÉÍÓÚÑÜ]+){1,4})/i,
+    
+    // Simple mixed case name at start of line
+    /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})\s*$/m,
   ];
 
+  // Search in first 800 characters for name
+  const searchText = text.slice(0, 800);
   for (const pattern of namePatterns) {
-    const match = text.slice(0, 500).match(pattern);
+    const match = searchText.match(pattern);
     if (match && match[1]) {
-      result.name = match[1].trim();
+      // Normalize: Title Case if all caps
+      let name = match[1].trim();
+      if (name === name.toUpperCase()) {
+        name = name.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+      }
+      result.name = name;
       break;
     }
   }

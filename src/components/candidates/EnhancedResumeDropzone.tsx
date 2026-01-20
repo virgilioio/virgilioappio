@@ -257,6 +257,7 @@ export function EnhancedResumeDropzone({
             <Loader2 className="h-6 w-6 text-pastel-purple-foreground animate-spin mb-2" />
             <ParsingAnimation 
               isActive={isActive}
+              mode={useQuickParse ? 'quick' : 'full'}
             />
           </div>
         )}
