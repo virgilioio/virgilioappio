@@ -9,7 +9,7 @@ export function AppUpdateNotification() {
   if (!updateAvailable) return null;
 
   return createPortal(
-    <div className="fixed bottom-4 right-4 z-[9999] pointer-events-none animate-in slide-in-from-bottom-5 fade-in duration-300">
+    <div className="fixed bottom-4 left-4 z-[9999] pointer-events-none animate-in slide-in-from-bottom-5 fade-in duration-300">
       <div className="pointer-events-auto flex items-center gap-3 bg-background border border-border rounded-lg shadow-lg p-4 max-w-sm">
         <div className="flex-1">
           <p className="text-sm font-medium text-foreground">
