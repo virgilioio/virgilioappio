@@ -1447,16 +1447,6 @@ const stageHasAutomation = useMemo(() => {
                                 <Download className="h-4 w-4 mr-2" />
                                 Download
                               </Button>
-                              {associationStatus === 'offer' && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setOfferFormOpen(true)}
-                                >
-                                  <FileText className="h-4 w-4 mr-2" />
-                                  Offer Form
-                                </Button>
-                              )}
                             </div>
                            
                            <Separator orientation="vertical" className="h-6" />
