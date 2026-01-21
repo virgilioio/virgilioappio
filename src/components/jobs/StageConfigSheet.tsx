@@ -137,6 +137,8 @@ export function StageConfigSheet({ open, onOpenChange, jhsId, jobId }: StageConf
               <ScorecardsTab 
                 jhsId={jhsId} 
                 jobId={jobId}
+                stageName={config.customStageName || config.stageName}
+                stageType={config.stageType}
               />
             )}
           </TabsContent>
