@@ -272,6 +272,7 @@ serve(async (req) => {
       : null;
 
     // Generate unique transcript ingest code (8 alphanumeric chars)
+    // Only generate for job-specific bookings (not simple/generic bookings)
     const generateIngestCode = (): string => {
       const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
       let code = '';
@@ -280,9 +281,11 @@ serve(async (req) => {
       }
       return code;
     };
-    const transcriptIngestCode = generateIngestCode();
-    const transcriptIngestEmail = `int_${transcriptIngestCode}@ingest.gogio.io`;
-    console.log('[create-booking] Generated transcript ingest email:', transcriptIngestEmail);
+    
+    // Simple bookings (Calendly-like) don't get transcript ingest
+    const transcriptIngestCode = isJobSpecificBooking ? generateIngestCode() : null;
+    const transcriptIngestEmail = isJobSpecificBooking ? `int_${transcriptIngestCode}@ingest.gogio.io` : null;
+    console.log('[create-booking] Transcript ingest:', isJobSpecificBooking ? transcriptIngestEmail : 'disabled (simple booking)');
 
     if (accessToken && calendarIdentity) {
       try {
@@ -299,7 +302,7 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               summary: `Interview: ${candidate_name}`,
-              description: `Interview scheduled via GoGio\n\nCANDIDATE DETAILS:\nName: ${candidate_name}\nEmail: ${candidate_email}${candidate_phone ? `\nPhone: ${candidate_phone}` : ''}${notes ? `\n\nNOTES:\n${notes}` : ''}${meeting_type_preference === 'custom' && custom_meeting_location ? `\n\nMEETING LOCATION:\n${custom_meeting_location}` : ''}${candidateProfileUrl ? `\n\n📝 SUBMIT SCORECARD:\n${candidateProfileUrl}` : ''}\n\n🎙️ TRANSCRIPT EMAIL:\n${transcriptIngestEmail}\n(Add this to your note-taking app to auto-generate interview notes)`,
+              description: `Interview scheduled via GoGio\n\nCANDIDATE DETAILS:\nName: ${candidate_name}\nEmail: ${candidate_email}${candidate_phone ? `\nPhone: ${candidate_phone}` : ''}${notes ? `\n\nNOTES:\n${notes}` : ''}${meeting_type_preference === 'custom' && custom_meeting_location ? `\n\nMEETING LOCATION:\n${custom_meeting_location}` : ''}${candidateProfileUrl ? `\n\n📝 SUBMIT SCORECARD:\n${candidateProfileUrl}` : ''}${transcriptIngestEmail ? `\n\n🎙️ TRANSCRIPT EMAIL:\n${transcriptIngestEmail}\n(Add this to your note-taking app to auto-generate interview notes)` : ''}`,
               start: {
                 dateTime: scheduled_start,
                 timeZone: config.timezone,
@@ -310,7 +313,8 @@ serve(async (req) => {
               },
               attendees: [
                 { email: profile.email }, // Interviewer
-                { email: transcriptIngestEmail, optional: true, responseStatus: 'accepted' }, // Transcript ingest (optional attendee)
+                // Only add transcript ingest for job-specific bookings
+                ...(transcriptIngestEmail ? [{ email: transcriptIngestEmail, optional: true, responseStatus: 'accepted' }] : []),
               ],
               conferenceData: meeting_type_preference === 'google_meet' ? {
                 createRequest: {

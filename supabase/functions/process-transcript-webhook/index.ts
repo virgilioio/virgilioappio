@@ -263,6 +263,19 @@ serve(async (req) => {
 
     console.log('[Transcript Webhook] Found booking:', booking.id, 'for candidate:', booking.candidate?.candidate_name);
 
+    // Check if this is a simple booking (no pipeline context) - skip AI processing
+    if (!booking.candidate_id || !booking.job_hiring_stage_id) {
+      console.log('[Transcript Webhook] Simple booking detected - skipping AI processing');
+      return new Response(JSON.stringify({ 
+        status: 'skipped', 
+        reason: 'simple_booking_no_pipeline_context',
+        booking_id: booking.id,
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Extract transcript content
     const { content, metadata } = extractTranscriptContent(emailData);
 

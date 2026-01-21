@@ -68,6 +68,19 @@ serve(async (req) => {
       interviewer = profileData;
     }
 
+    // Skip scorecard generation for simple bookings (no pipeline context)
+    if (!booking.candidate_id || !booking.job_hiring_stage_id) {
+      console.log('[generate-scorecard] Simple booking detected - skipping scorecard generation');
+      return new Response(JSON.stringify({ 
+        status: 'skipped',
+        reason: 'simple_booking_no_pipeline_context',
+        booking_id 
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (!booking.transcript_raw) {
       console.error('[generate-scorecard] No transcript found for booking');
       return new Response(JSON.stringify({ error: 'No transcript available' }), {
