@@ -28,6 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { LinkedInFilled } from "@/components/icons/LinkedInFilled";
 
 interface ScorecardSheetProps {
   open: boolean;
@@ -41,6 +42,8 @@ interface ScorecardSheetProps {
   isAuthor: boolean;
   candidateName?: string;
   jobId?: string;
+  linkedinUrl?: string | null;
+  jobTitle?: string;
   onMoveToNextStage?: () => void;
   onScheduleFollowUp?: () => void;
   onReject?: () => void;
@@ -78,6 +81,8 @@ export function ScorecardSheet({
   isAuthor,
   candidateName,
   jobId,
+  linkedinUrl,
+  jobTitle,
   onMoveToNextStage,
   onScheduleFollowUp,
   onReject,
@@ -688,18 +693,49 @@ export function ScorecardSheet({
           <div className="flex h-full flex-col">
             <SheetHeader className="p-6 border-b">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <SheetTitle>Scorecard{stageName ? ` • ${stageName}` : ""}</SheetTitle>
-                  {isAiDraft && (
-                    <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 gap-1">
-                      <Sparkles className="h-3 w-3" />
-                      AI-Generated Draft
-                    </Badge>
-                  )}
-                  {hasDraft && !existing && (
-                    <Badge variant="outline" className="text-xs text-muted-foreground">
-                      Draft saved
-                    </Badge>
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-3">
+                    <SheetTitle>Scorecard{stageName ? ` • ${stageName}` : ""}</SheetTitle>
+                    {isAiDraft && (
+                      <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 gap-1">
+                        <Sparkles className="h-3 w-3" />
+                        AI-Generated Draft
+                      </Badge>
+                    )}
+                    {hasDraft && !existing && (
+                      <Badge variant="outline" className="text-xs text-muted-foreground">
+                        Draft saved
+                      </Badge>
+                    )}
+                  </div>
+                  {/* Candidate context row */}
+                  {(candidateName || jobTitle) && (
+                    <div className="flex items-center gap-2 text-sm">
+                      {candidateName && (
+                        <span className="font-semibold text-virgilio-text">
+                          {candidateName}
+                        </span>
+                      )}
+                      {linkedinUrl && (
+                        <a 
+                          href={linkedinUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-[#0077B5] hover:opacity-80 transition-opacity"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <LinkedInFilled className="h-4 w-4" />
+                        </a>
+                      )}
+                      {candidateName && jobTitle && (
+                        <span className="text-virgilio-muted">•</span>
+                      )}
+                      {jobTitle && (
+                        <span className="text-virgilio-muted">
+                          {jobTitle}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
