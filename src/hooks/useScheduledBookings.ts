@@ -8,7 +8,7 @@ export type BookingStatus = 'upcoming' | 'past'
 
 export interface ScheduledBooking {
   id: string
-  tenant_id: string
+  tenant_id: string | null
   interviewer_id: string
   candidate_id: string | null
   candidate_email: string
@@ -54,6 +54,8 @@ export interface ScheduledBooking {
     id: string
     stage_name: string
   }
+  // Flag for simple/generic bookings (Calendly-like, no pipeline context)
+  isSimpleBooking?: boolean
 }
 
 interface BookingFromDB {
@@ -199,6 +201,8 @@ export function useScheduledBookings(status?: BookingStatus, permissions?: Permi
           id: booking.job_hiring_stages.id,
           stage_name: booking.job_hiring_stages.job_stages.stage_name,
         } : undefined,
+        // Flag simple/generic bookings (Calendly-like, no pipeline context)
+        isSimpleBooking: !booking.job_id && !booking.candidate_id,
       })) as ScheduledBooking[]
     },
     enabled: !!user,

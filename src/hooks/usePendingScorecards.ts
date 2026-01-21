@@ -35,6 +35,7 @@ export function usePendingScorecards() {
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
       // Build query - admins see all, others see only their own
+      // Use regular left joins so simple bookings don't break the query
       let bookingsQuery = supabase
         .from('scheduled_bookings')
         .select(`
@@ -45,7 +46,9 @@ export function usePendingScorecards() {
           interviewer_id,
           job_hiring_stage_id,
           job_candidate_association_id,
-          job_candidate_associations!inner(
+          candidate_id,
+          job_id,
+          job_candidate_associations(
             id,
             candidate_id,
             job_id,
@@ -53,7 +56,7 @@ export function usePendingScorecards() {
             candidates(id, candidate_name),
             jobs(id, title)
           ),
-          job_hiring_stages!inner(
+          job_hiring_stages(
             id,
             job_stages(stage_name)
           )
@@ -61,6 +64,9 @@ export function usePendingScorecards() {
         .lt('scheduled_start', new Date().toISOString())
         .gte('scheduled_start', thirtyDaysAgo.toISOString())
         .not('status', 'eq', 'cancelled')
+        // Filter out simple bookings (no pipeline context) at the query level
+        .not('candidate_id', 'is', null)
+        .not('job_hiring_stage_id', 'is', null)
         .order('scheduled_start', { ascending: false });
 
       // Non-admins only see their own bookings

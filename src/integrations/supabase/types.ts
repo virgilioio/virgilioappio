@@ -3275,7 +3275,7 @@ export type Database = {
           candidate_confirmed_at: string | null
           candidate_email: string
           candidate_google_event_id: string | null
-          candidate_id: string
+          candidate_id: string | null
           candidate_name: string
           candidate_phone: string | null
           candidate_timezone: string
@@ -3291,7 +3291,7 @@ export type Database = {
           interviewer_confirmed_at: string | null
           interviewer_id: string
           job_candidate_association_id: string | null
-          job_hiring_stage_id: string
+          job_hiring_stage_id: string | null
           job_id: string | null
           last_synced_at: string | null
           meeting_location: string | null
@@ -3304,7 +3304,7 @@ export type Database = {
           status: string
           sync_errors: Json | null
           sync_source: string | null
-          tenant_id: string
+          tenant_id: string | null
           transcript_ingest_code: string | null
           transcript_ingest_email: string | null
           transcript_metadata: Json | null
@@ -3323,7 +3323,7 @@ export type Database = {
           candidate_confirmed_at?: string | null
           candidate_email: string
           candidate_google_event_id?: string | null
-          candidate_id: string
+          candidate_id?: string | null
           candidate_name: string
           candidate_phone?: string | null
           candidate_timezone: string
@@ -3339,7 +3339,7 @@ export type Database = {
           interviewer_confirmed_at?: string | null
           interviewer_id: string
           job_candidate_association_id?: string | null
-          job_hiring_stage_id: string
+          job_hiring_stage_id?: string | null
           job_id?: string | null
           last_synced_at?: string | null
           meeting_location?: string | null
@@ -3352,7 +3352,7 @@ export type Database = {
           status?: string
           sync_errors?: Json | null
           sync_source?: string | null
-          tenant_id: string
+          tenant_id?: string | null
           transcript_ingest_code?: string | null
           transcript_ingest_email?: string | null
           transcript_metadata?: Json | null
@@ -3371,7 +3371,7 @@ export type Database = {
           candidate_confirmed_at?: string | null
           candidate_email?: string
           candidate_google_event_id?: string | null
-          candidate_id?: string
+          candidate_id?: string | null
           candidate_name?: string
           candidate_phone?: string | null
           candidate_timezone?: string
@@ -3387,7 +3387,7 @@ export type Database = {
           interviewer_confirmed_at?: string | null
           interviewer_id?: string
           job_candidate_association_id?: string | null
-          job_hiring_stage_id?: string
+          job_hiring_stage_id?: string | null
           job_id?: string | null
           last_synced_at?: string | null
           meeting_location?: string | null
@@ -3400,7 +3400,7 @@ export type Database = {
           status?: string
           sync_errors?: Json | null
           sync_source?: string | null
-          tenant_id?: string
+          tenant_id?: string | null
           transcript_ingest_code?: string | null
           transcript_ingest_email?: string | null
           transcript_metadata?: Json | null

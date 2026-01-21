@@ -220,10 +220,15 @@ export function BookingDetailsDialog({
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              Interview with {booking.candidate_name}
+              {/* Simple booking = Meeting, Pipeline booking = Interview */}
+              {!booking.job && !booking.candidate ? 'Meeting' : 'Interview'} with {booking.candidate_name}
               <Badge variant={getStatusBadgeVariant(booking.status)}>
                 {booking.status}
               </Badge>
+              {/* Show "Meeting" badge for simple bookings */}
+              {!booking.job && !booking.candidate && (
+                <Badge variant="secondary">Meeting</Badge>
+              )}
             </DialogTitle>
             <DialogDescription>
               Scheduled for {format(parseISO(booking.scheduled_start), 'PPpp')}
