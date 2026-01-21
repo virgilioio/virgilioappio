@@ -4,15 +4,19 @@ import { Plus, MessageSquareText, AlertCircle, RefreshCw } from 'lucide-react'
 import { useScorecardsConfiguration, type InterviewQuestion } from '@/hooks/useScorecardsConfiguration'
 import { InterviewQuestionForm } from './InterviewQuestionForm'
 import { InterviewQuestionsList } from './InterviewQuestionsList'
+import { ScorecardQuestionsGenerationPanel } from './ScorecardQuestionsGenerationPanel'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { toast } from 'sonner'
 
 interface ScorecardsTabProps {
   jhsId: string
   jobId: string
+  stageName: string
+  stageType: string
 }
 
-export function ScorecardsTab({ jhsId, jobId }: ScorecardsTabProps) {
+export function ScorecardsTab({ jhsId, jobId, stageName, stageType }: ScorecardsTabProps) {
   const {
     template,
     isLoading,
@@ -23,6 +27,7 @@ export function ScorecardsTab({ jhsId, jobId }: ScorecardsTabProps) {
     deleteQuestion,
     reorderQuestions
   } = useScorecardsConfiguration(jhsId)
+  const [isAddingMultiple, setIsAddingMultiple] = useState(false)
 
   const [formOpen, setFormOpen] = useState(false)
   const [editingQuestion, setEditingQuestion] = useState<InterviewQuestion | undefined>()
@@ -94,8 +99,33 @@ export function ScorecardsTab({ jhsId, jobId }: ScorecardsTabProps) {
   const nextDisplayOrder = template?.questions.length ? 
     Math.max(...template.questions.map(q => q.display_order)) + 1 : 1
 
+  const handleAddMultipleQuestions = async (questions: Omit<InterviewQuestion, 'id'>[]) => {
+    setIsAddingMultiple(true)
+    try {
+      for (const question of questions) {
+        await createQuestion.mutateAsync(question)
+      }
+      toast.success(`Added ${questions.length} interview questions`)
+    } catch (err) {
+      console.error('Error adding questions:', err)
+      toast.error('Failed to add some questions')
+    } finally {
+      setIsAddingMultiple(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
+      {/* AI Question Generator */}
+      <ScorecardQuestionsGenerationPanel
+        jobId={jobId}
+        stageName={stageName}
+        stageType={stageType}
+        existingQuestions={template?.questions || []}
+        onAddQuestions={handleAddMultipleQuestions}
+        isAdding={isAddingMultiple}
+      />
+
       {/* Header Info */}
       <div className="bg-gradient-to-b from-virgilio-purple/5 to-transparent border border-virgilio-border/50 rounded-lg p-6">
         <div className="flex items-start gap-4">

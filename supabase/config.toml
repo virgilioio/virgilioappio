@@ -45,6 +45,9 @@ verify_jwt = true
 [functions.generate-comprehensive-skills]
 verify_jwt = true
 
+[functions.generate-scorecard-questions]
+verify_jwt = true
+
 [functions.get-booking-availability]
 verify_jwt = false
 
