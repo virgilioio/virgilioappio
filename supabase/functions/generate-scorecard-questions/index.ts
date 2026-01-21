@@ -1,3 +1,4 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -91,10 +92,10 @@ Stage Type: ${stageType}${existingQuestionsText}
 
 Generate 5-8 tailored interview questions with interviewer notes.`;
 
-    // Call Lovable AI with tool calling for structured output
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      console.error("LOVABLE_API_KEY not configured");
+    // Call OpenAI with tool calling for structured output
+    const openAIApiKey = Deno.env.get("OPENAI_API_KEY");
+    if (!openAIApiKey) {
+      console.error("OPENAI_API_KEY not configured");
       return new Response(
         JSON.stringify({ error: "AI service not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -103,14 +104,14 @@ Generate 5-8 tailored interview questions with interviewer notes.`;
 
     console.log(`Generating questions for job "${job.title}" at stage "${stageName}" (${stageType})`);
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${openAIApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -148,37 +149,22 @@ Generate 5-8 tailored interview questions with interviewer notes.`;
                         },
                       },
                       required: ["question_text", "notes_for_interviewer", "answer_type", "suggested_reason"],
-                      additionalProperties: false,
                     },
                   },
                 },
                 required: ["questions"],
-                additionalProperties: false,
               },
             },
           },
         ],
         tool_choice: { type: "function", function: { name: "suggest_interview_questions" } },
+        temperature: 0.7,
       }),
     });
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error("AI API error:", aiResponse.status, errorText);
-      
-      if (aiResponse.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (aiResponse.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
+      console.error("OpenAI API error:", aiResponse.status, errorText);
       return new Response(
         JSON.stringify({ error: "Failed to generate questions" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
