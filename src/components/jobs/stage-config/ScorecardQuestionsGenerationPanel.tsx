@@ -116,7 +116,7 @@ export function ScorecardQuestionsGenerationPanel({
                 onClick={handleGenerate}
                 disabled={isGenerating}
                 size="sm"
-                className="bg-virgilio-purple hover:bg-virgilio-purple/90"
+                variant="virgilio"
               >
                 {isGenerating ? (
                   <>
