@@ -3298,6 +3298,7 @@ export type Database = {
           meeting_type: string | null
           notes: string | null
           organization_id: string | null
+          rescheduled_at: string | null
           scheduled_end: string
           scheduled_start: string
           status: string
@@ -3345,6 +3346,7 @@ export type Database = {
           meeting_type?: string | null
           notes?: string | null
           organization_id?: string | null
+          rescheduled_at?: string | null
           scheduled_end: string
           scheduled_start: string
           status?: string
@@ -3392,6 +3394,7 @@ export type Database = {
           meeting_type?: string | null
           notes?: string | null
           organization_id?: string | null
+          rescheduled_at?: string | null
           scheduled_end?: string
           scheduled_start?: string
           status?: string
