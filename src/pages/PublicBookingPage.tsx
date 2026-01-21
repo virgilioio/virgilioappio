@@ -106,14 +106,9 @@ export default function PublicBookingPage() {
         console.warn('Failed to load profile:', profileError);
       }
       
-      // Construct full avatar URL if avatar_url exists
-      let fullAvatarUrl = null;
-      if (profile?.avatar_url) {
-        const { data } = supabase.storage
-          .from('avatars')
-          .getPublicUrl(profile.avatar_url);
-        fullAvatarUrl = data.publicUrl;
-      }
+      // avatar_url in profiles table already contains the full URL
+      // (either Google OAuth URL or Supabase Storage public URL)
+      const fullAvatarUrl = profile?.avatar_url || null;
       
       return {
         ...bookingConfig,
