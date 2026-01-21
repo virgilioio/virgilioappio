@@ -1607,6 +1607,9 @@ const stageHasAutomation = useMemo(() => {
                   ? user?.id === viewingScorecard.created_by 
                   : myScorecardsByStage[scoreStageInstId] && user?.id === myScorecardsByStage[scoreStageInstId].created_by
               )}
+              candidateName={candidate?.candidate_name}
+              linkedinUrl={candidate?.linkedin_url}
+              jobTitle={job?.title}
               onSubmit={async (rating, overview) => {
                 await upsertMyScorecard(scoreStageInstId!, rating, overview || '')
                 await refetchScorecards()
