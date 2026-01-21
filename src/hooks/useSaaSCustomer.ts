@@ -1,6 +1,17 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 
+interface ActivityLog {
+  id: string
+  activity_type: string
+  title: string
+  description: string | null
+  created_at: string
+  user_id: string
+  entity_type: string | null
+  entity_id: string | null
+}
+
 export interface SaaSCustomerDetail {
   id: string
   name: string
@@ -18,6 +29,10 @@ export interface SaaSCustomerDetail {
   trial_end_date: string | null
   suspended_at: string | null
   suspended_reason: string | null
+  // Total counts
+  jobs_total: number
+  candidates_total: number
+  // 30-day trends
   jobs_created_30d: number
   candidates_added_30d: number
   members_active_count: number
@@ -27,6 +42,8 @@ export interface SaaSCustomerDetail {
     last_name: string | null
     email: string | null
   }
+  // Real activity logs
+  recent_activities: ActivityLog[]
   // Extended tenant fields
   subscription_plan?: string | null
   subscription_renewal_date?: string | null
@@ -93,31 +110,40 @@ async function fallbackFetch(customerId: string): Promise<SaaSCustomerDetail | n
   // Get job IDs for this tenant first
   const { data: tenantJobs } = await supabase
     .from('jobs')
-    .select('id')
+    .select('id, created_at')
     .eq('tenant_id', tenant.id)
+    .is('deleted_at', null)
   
   const jobIds = tenantJobs?.map(j => j.id) || []
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+
+  // Calculate totals
+  const totalJobs = tenantJobs?.length || 0
+  const jobsIn30Days = tenantJobs?.filter(j => j.created_at >= thirtyDaysAgo).length || 0
 
   // Get usage data
   const [
-    { count: jobsCount },
+    allAssociationsQuery,
     recentAssociationsQuery,
     { count: membersCount },
-    lastActivityQuery
+    lastActivityQuery,
+    recentActivitiesQuery
   ] = await Promise.all([
-    supabase
-      .from('jobs')
-      .select('*', { count: 'exact', head: true })
-      .eq('tenant_id', tenant.id)
-      .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
-    
-    // Get recent candidate associations for this tenant's jobs
+    // All candidate associations
     jobIds.length > 0 
       ? supabase
           .from('job_candidate_associations')
           .select('candidate_id')
           .in('job_id', jobIds)
-          .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+      : Promise.resolve({ data: [] }),
+    
+    // Recent candidate associations
+    jobIds.length > 0 
+      ? supabase
+          .from('job_candidate_associations')
+          .select('candidate_id')
+          .in('job_id', jobIds)
+          .gte('created_at', thirtyDaysAgo)
       : Promise.resolve({ data: [] }),
     
     supabase
@@ -132,11 +158,21 @@ async function fallbackFetch(customerId: string): Promise<SaaSCustomerDetail | n
       .eq('tenant_id', tenant.id)
       .order('created_at', { ascending: false })
       .limit(1)
-      .maybeSingle()
+      .maybeSingle(),
+
+    supabase
+      .from('activities')
+      .select('id, activity_type, title, description, created_at, user_id, entity_type, entity_id')
+      .eq('tenant_id', tenant.id)
+      .order('created_at', { ascending: false })
+      .limit(50)
   ])
   
   // Count distinct candidate_ids
-  const candidatesCount = new Set(
+  const totalCandidates = new Set(
+    (allAssociationsQuery.data || []).map((a: any) => a.candidate_id)
+  ).size
+  const candidatesIn30Days = new Set(
     (recentAssociationsQuery.data || []).map((a: any) => a.candidate_id)
   ).size
 
@@ -159,10 +195,13 @@ async function fallbackFetch(customerId: string): Promise<SaaSCustomerDetail | n
     renewal_date: tenant.subscription_renewal_date,
     billing_id: tenant.billing_email,
     organization_type: 'client',
-    jobs_created_30d: jobsCount || 0,
-    candidates_added_30d: candidatesCount || 0,
+    jobs_total: totalJobs,
+    candidates_total: totalCandidates,
+    jobs_created_30d: jobsIn30Days,
+    candidates_added_30d: candidatesIn30Days,
     members_active_count: membersCount || 0,
     last_active_at: lastActivityQuery.data?.created_at || null,
-    owner_details: ownerDetails
+    owner_details: ownerDetails,
+    recent_activities: recentActivitiesQuery.data || []
   } as SaaSCustomerDetail
 }

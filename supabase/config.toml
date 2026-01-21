@@ -138,6 +138,9 @@ verify_jwt = false
 [functions.saas-customer-metrics]
 verify_jwt = true
 
+[functions.saas-customer-members]
+verify_jwt = true
+
 [functions.enrich-by-linkedin]
 verify_jwt = true
 
