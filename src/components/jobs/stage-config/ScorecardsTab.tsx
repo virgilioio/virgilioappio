@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Plus, MessageSquareText } from 'lucide-react'
+import { Plus, MessageSquareText, AlertCircle, RefreshCw } from 'lucide-react'
 import { useScorecardsConfiguration, type InterviewQuestion } from '@/hooks/useScorecardsConfiguration'
 import { InterviewQuestionForm } from './InterviewQuestionForm'
 import { InterviewQuestionsList } from './InterviewQuestionsList'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 interface ScorecardsTabProps {
   jhsId: string
@@ -15,6 +16,8 @@ export function ScorecardsTab({ jhsId, jobId }: ScorecardsTabProps) {
   const {
     template,
     isLoading,
+    error,
+    refetch,
     createQuestion,
     updateQuestion,
     deleteQuestion,
@@ -69,6 +72,22 @@ export function ScorecardsTab({ jhsId, jobId }: ScorecardsTabProps) {
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-32 w-full" />
       </div>
+    )
+  }
+
+  if (error || !template) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Failed to load scorecard configuration</AlertTitle>
+        <AlertDescription className="flex items-center justify-between">
+          <span>There was an error loading the interview questions. Please try again.</span>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Retry
+          </Button>
+        </AlertDescription>
+      </Alert>
     )
   }
 

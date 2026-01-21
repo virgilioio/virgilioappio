@@ -35,6 +35,7 @@ export interface ScorecardTemplate {
 export function useScorecardsConfiguration(jhsId: string | null) {
   const [template, setTemplate] = useState<ScorecardTemplate | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<Error | null>(null)
   const queryClient = useQueryClient()
 
   const loadTemplate = async () => {
@@ -45,6 +46,7 @@ export function useScorecardsConfiguration(jhsId: string | null) {
 
     try {
       setIsLoading(true)
+      setError(null)
       
       // Check if template exists
       const { data: templateData, error: templateError } = await supabase
@@ -99,8 +101,9 @@ export function useScorecardsConfiguration(jhsId: string | null) {
         job_hiring_stage_id: jhsId,
         questions: formattedQuestions
       })
-    } catch (error) {
-      console.error('Error loading scorecard template:', error)
+    } catch (err) {
+      console.error('Error loading scorecard template:', err)
+      setError(err instanceof Error ? err : new Error('Failed to load scorecard configuration'))
       toast.error('Failed to load scorecard configuration')
     } finally {
       setIsLoading(false)
@@ -113,7 +116,7 @@ export function useScorecardsConfiguration(jhsId: string | null) {
 
   const createQuestion = useMutation({
     mutationFn: async (question: Omit<InterviewQuestion, 'id'>) => {
-      if (!template) throw new Error('No template loaded')
+      if (!template) throw new Error('Scorecard template not loaded. Please refresh the page and try again.')
 
       const { data, error } = await supabase
         .from('scorecard_interview_questions')
@@ -222,6 +225,7 @@ export function useScorecardsConfiguration(jhsId: string | null) {
   return {
     template,
     isLoading,
+    error,
     refetch: loadTemplate,
     createQuestion,
     updateQuestion,
