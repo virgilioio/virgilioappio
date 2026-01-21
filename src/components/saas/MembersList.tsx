@@ -4,26 +4,26 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Search, Users, Mail } from 'lucide-react'
 import { useState, useMemo } from 'react'
-import { useCustomerMembers } from '@/hooks/useCustomerMembers'
+import { useSaaSCustomerMembers, SaaSMember } from '@/hooks/useSaaSCustomerMembers'
 import { formatDistanceToNow } from 'date-fns'
 
 interface MembersListProps {
-  organizationId: string
+  tenantId: string
 }
 
-export function MembersList({ organizationId }: MembersListProps) {
+export function MembersList({ tenantId }: MembersListProps) {
   const [searchTerm, setSearchTerm] = useState('')
-  const { data: members, isLoading } = useCustomerMembers(organizationId)
+  const { data: members, isLoading } = useSaaSCustomerMembers(tenantId)
 
   const filteredMembers = useMemo(() => {
     if (!members) return []
     if (!searchTerm) return members
 
     const search = searchTerm.toLowerCase()
-    return members.filter(member => {
+    return members.filter((member: SaaSMember) => {
       const firstName = member.profile?.first_name?.toLowerCase() || ''
       const lastName = member.profile?.last_name?.toLowerCase() || ''
-      const email = member.profile?.email?.toLowerCase() || ''
+      const email = member.profile?.email?.toLowerCase() || member.invited_email?.toLowerCase() || ''
       const role = member.member_role?.toLowerCase() || ''
 
       return (
@@ -88,9 +88,16 @@ export function MembersList({ organizationId }: MembersListProps) {
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredMembers.map((member) => {
-              const initials = `${member.profile?.first_name?.[0] || ''}${member.profile?.last_name?.[0] || ''}`.toUpperCase() || 'U'
-              const fullName = `${member.profile?.first_name || ''} ${member.profile?.last_name || ''}`.trim() || 'Unknown User'
+            {filteredMembers.map((member: SaaSMember) => {
+              // Handle both active members (with profile) and invited members (without profile)
+              const hasProfile = !!member.profile
+              const initials = hasProfile
+                ? `${member.profile?.first_name?.[0] || ''}${member.profile?.last_name?.[0] || ''}`.toUpperCase() || 'U'
+                : member.invited_email?.[0]?.toUpperCase() || 'I'
+              const fullName = hasProfile
+                ? `${member.profile?.first_name || ''} ${member.profile?.last_name || ''}`.trim() || 'Unknown User'
+                : 'Pending Invitation'
+              const displayEmail = member.profile?.email || member.invited_email
 
               return (
                 <div
@@ -99,25 +106,25 @@ export function MembersList({ organizationId }: MembersListProps) {
                 >
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={member.profile?.avatar_url || undefined} />
-                    <AvatarFallback className="bg-virgilio-purple text-white text-sm font-semibold">
+                    <AvatarFallback className={`text-white text-sm font-semibold ${hasProfile ? 'bg-virgilio-purple' : 'bg-virgilio-muted'}`}>
                       {initials}
                     </AvatarFallback>
                   </Avatar>
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-virgilio-text truncate">
+                      <p className={`text-sm font-medium truncate ${hasProfile ? 'text-virgilio-text' : 'text-virgilio-muted italic'}`}>
                         {fullName}
                       </p>
                       <Badge variant={getRoleBadgeVariant(member.member_role)} className="text-xs">
                         {member.member_role}
                       </Badge>
                     </div>
-                    {member.profile?.email && (
+                    {displayEmail && (
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <Mail className="h-3 w-3 text-virgilio-muted" />
                         <p className="text-xs text-virgilio-muted truncate">
-                          {member.profile.email}
+                          {displayEmail}
                         </p>
                       </div>
                     )}

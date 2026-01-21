@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Briefcase, Users, Activity, Calendar, AlertTriangle, Mail } from 'lucide-react'
+import { ArrowLeft, Briefcase, Users, Activity, Calendar, AlertTriangle, Mail, TrendingUp } from 'lucide-react'
 import { format, formatDistanceToNow } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -102,32 +102,18 @@ export function SaaSCustomerDetail() {
     })
   }, [customer])
 
-  // Mock activity data (would come from actual activity tracking)
-  const recentActivities = useMemo(() => {
-    if (!customer) return []
+  // Map real activities from database to ActivityTimeline format
+  const formattedActivities = useMemo(() => {
+    if (!customer?.recent_activities) return []
     
-    const activities = []
-    
-    if (customer.jobs_created_30d > 0) {
-      activities.push({
-        id: '1',
-        type: 'job_created' as const,
-        description: `Created ${customer.jobs_created_30d} job${customer.jobs_created_30d > 1 ? 's' : ''} in the last 30 days`,
-        timestamp: customer.updated_at,
-      })
-    }
-    
-    if (customer.candidates_added_30d > 0) {
-      activities.push({
-        id: '2',
-        type: 'candidate_added' as const,
-        description: `Added ${customer.candidates_added_30d} candidate${customer.candidates_added_30d > 1 ? 's' : ''} in the last 30 days`,
-        timestamp: customer.updated_at,
-      })
-    }
-    
-    return activities
-  }, [customer])
+    return customer.recent_activities.map((activity: any) => ({
+      id: activity.id,
+      activity_type: activity.activity_type,
+      title: activity.title,
+      description: activity.description,
+      timestamp: activity.created_at,
+    }))
+  }, [customer?.recent_activities])
 
   if (isLoading) {
     return <div className="text-center py-8">Loading customer details...</div>
@@ -214,19 +200,35 @@ export function SaaSCustomerDetail() {
         </Alert>
       )}
 
-      {/* Quick Stats */}
+      {/* Quick Stats - Now with Total + 30-day trend */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
-          title="Jobs Created"
-          value={customer.jobs_created_30d}
+          title="Total Jobs"
+          value={customer.jobs_total ?? customer.jobs_created_30d}
           icon={<Briefcase />}
-          tooltip="Jobs created in the last 30 days"
+          tooltip="Total active jobs"
+          footer={
+            customer.jobs_created_30d > 0 ? (
+              <div className="flex items-center gap-1 text-xs text-virgilio-success">
+                <TrendingUp className="h-3 w-3" />
+                <span>+{customer.jobs_created_30d} this month</span>
+              </div>
+            ) : undefined
+          }
         />
         <MetricCard
-          title="Candidates Added"
-          value={customer.candidates_added_30d}
+          title="Total Candidates"
+          value={customer.candidates_total ?? customer.candidates_added_30d}
           icon={<Users />}
-          tooltip="Candidates added in the last 30 days"
+          tooltip="Total candidates across all jobs"
+          footer={
+            customer.candidates_added_30d > 0 ? (
+              <div className="flex items-center gap-1 text-xs text-virgilio-success">
+                <TrendingUp className="h-3 w-3" />
+                <span>+{customer.candidates_added_30d} this month</span>
+              </div>
+            ) : undefined
+          }
         />
         <MetricCard
           title="Active Members"
@@ -337,12 +339,12 @@ export function SaaSCustomerDetail() {
             />
           )}
 
-          {/* Activity Timeline */}
-          <ActivityTimeline activities={recentActivities} />
+          {/* Activity Timeline - Now using real activities */}
+          <ActivityTimeline activities={formattedActivities} />
         </TabsContent>
 
         <TabsContent value="members" className="space-y-6 mt-6">
-          <MembersList organizationId={customer.id} />
+          <MembersList tenantId={customer.tenant_id} />
         </TabsContent>
 
         <TabsContent value="billing" className="space-y-6 mt-6">
@@ -363,7 +365,7 @@ export function SaaSCustomerDetail() {
         </TabsContent>
 
         <TabsContent value="activity" className="space-y-6 mt-6">
-          <ActivityTimeline activities={recentActivities} />
+          <ActivityTimeline activities={formattedActivities} />
         </TabsContent>
       </Tabs>
 

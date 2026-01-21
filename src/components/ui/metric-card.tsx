@@ -9,6 +9,7 @@ interface MetricCardProps {
   variant?: 'default' | 'success' | 'warning' | 'destructive'
   backgroundColor?: string
   iconColor?: string
+  footer?: React.ReactNode
 }
 
 export function MetricCard({ 
@@ -18,7 +19,8 @@ export function MetricCard({
   tooltip, 
   variant = 'default',
   backgroundColor,
-  iconColor
+  iconColor,
+  footer
 }: MetricCardProps) {
   const card = (
     <Card 
@@ -43,6 +45,11 @@ export function MetricCard({
       </CardHeader>
       <CardContent className="pt-1">
         <div className="text-3xl font-bold tracking-tight text-virgilio-text">{value}</div>
+        {footer && (
+          <div className="mt-2">
+            {footer}
+          </div>
+        )}
       </CardContent>
     </Card>
   )

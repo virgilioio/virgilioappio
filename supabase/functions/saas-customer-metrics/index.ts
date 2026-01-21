@@ -5,6 +5,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+interface ActivityLog {
+  id: string
+  activity_type: string
+  title: string
+  description: string | null
+  created_at: string
+  user_id: string
+  entity_type: string | null
+  entity_id: string | null
+}
+
 interface CustomerMetrics {
   id: string
   name: string
@@ -18,6 +29,10 @@ interface CustomerMetrics {
   signup_source: string
   created_at: string
   updated_at: string
+  // Total counts
+  jobs_total: number
+  candidates_total: number
+  // 30-day trends
   jobs_created_30d: number
   candidates_added_30d: number
   members_active_count: number
@@ -33,6 +48,8 @@ interface CustomerMetrics {
   subscription_plan?: string | null
   subscription_renewal_date?: string | null
   billing_email?: string | null
+  // Real activity logs
+  recent_activities: ActivityLog[]
 }
 
 Deno.serve(async (req) => {
@@ -143,30 +160,33 @@ Deno.serve(async (req) => {
     const customersWithMetrics: CustomerMetrics[] = await Promise.all(
       tenants.map(async (tenant) => {
         try {
-          // Get all jobs for this tenant
+          // Get all jobs for this tenant (not deleted)
           const { data: allJobs } = await serviceClient
             .from('jobs')
-            .select('id')
+            .select('id, created_at')
             .eq('tenant_id', tenant.id)
             .is('deleted_at', null)
 
           const jobIds = allJobs?.map(j => j.id) || []
+          const totalJobs = allJobs?.length || 0
+          const jobsIn30Days = allJobs?.filter(j => j.created_at >= thirtyDaysAgo).length || 0
 
           // Get metrics in parallel
           const [
-            { count: jobsCount },
-            recentAssociationsResult,
+            allCandidateAssociationsResult,
+            recentCandidateAssociationsResult,
             { count: membersCount },
             lastActivityResult,
-            ownerProfileResult
+            ownerProfileResult,
+            recentActivitiesResult
           ] = await Promise.all([
-            // Jobs created in last 30 days
-            serviceClient
-              .from('jobs')
-              .select('*', { count: 'exact', head: true })
-              .eq('tenant_id', tenant.id)
-              .is('deleted_at', null)
-              .gte('created_at', thirtyDaysAgo),
+            // Total candidate associations (all time)
+            jobIds.length > 0
+              ? serviceClient
+                  .from('job_candidate_associations')
+                  .select('candidate_id')
+                  .in('job_id', jobIds)
+              : Promise.resolve({ data: [] }),
 
             // Candidate associations in last 30 days
             jobIds.length > 0
@@ -200,12 +220,23 @@ Deno.serve(async (req) => {
                   .select('first_name, last_name, email')
                   .eq('user_id', tenant.owner_id)
                   .maybeSingle()
-              : Promise.resolve({ data: null })
+              : Promise.resolve({ data: null }),
+
+            // Recent activities (last 50)
+            serviceClient
+              .from('activities')
+              .select('id, activity_type, title, description, created_at, user_id, entity_type, entity_id')
+              .eq('tenant_id', tenant.id)
+              .order('created_at', { ascending: false })
+              .limit(50)
           ])
 
-          // Count distinct candidates
-          const candidatesCount = new Set(
-            (recentAssociationsResult.data || []).map((a: any) => a.candidate_id)
+          // Count distinct candidates (total and 30-day)
+          const totalCandidates = new Set(
+            (allCandidateAssociationsResult.data || []).map((a: any) => a.candidate_id)
+          ).size
+          const candidatesIn30Days = new Set(
+            (recentCandidateAssociationsResult.data || []).map((a: any) => a.candidate_id)
           ).size
 
           const subscription = subscriptionMap.get(tenant.id)
@@ -223,8 +254,12 @@ Deno.serve(async (req) => {
             signup_source: tenant.signup_source || 'unknown',
             created_at: tenant.created_at,
             updated_at: tenant.updated_at,
-            jobs_created_30d: jobsCount || 0,
-            candidates_added_30d: candidatesCount,
+            // Total counts
+            jobs_total: totalJobs,
+            candidates_total: totalCandidates,
+            // 30-day trends
+            jobs_created_30d: jobsIn30Days,
+            candidates_added_30d: candidatesIn30Days,
             members_active_count: membersCount || 0,
             last_active_at: lastActivityResult.data?.created_at || null,
             trial_end_date: tenant.trial_ends_at,
@@ -234,6 +269,8 @@ Deno.serve(async (req) => {
             subscription_plan: tenant.subscription_plan,
             subscription_renewal_date: tenant.subscription_renewal_date,
             billing_email: tenant.billing_email,
+            // Real activity logs
+            recent_activities: (recentActivitiesResult.data || []) as ActivityLog[],
           } as CustomerMetrics
         } catch (err) {
           console.error('Error fetching metrics for tenant:', tenant.id, err)
@@ -251,6 +288,8 @@ Deno.serve(async (req) => {
             signup_source: tenant.signup_source || 'unknown',
             created_at: tenant.created_at,
             updated_at: tenant.updated_at,
+            jobs_total: 0,
+            candidates_total: 0,
             jobs_created_30d: 0,
             candidates_added_30d: 0,
             members_active_count: 0,
@@ -258,6 +297,7 @@ Deno.serve(async (req) => {
             trial_end_date: tenant.trial_ends_at,
             suspended_at: tenant.suspended_at,
             suspended_reason: tenant.suspended_reason,
+            recent_activities: [],
           } as CustomerMetrics
         }
       })
