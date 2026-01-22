@@ -65,7 +65,7 @@ async function fetchStageInterviewers(jhsId: string): Promise<InterviewerBooking
   const { data: assignmentsData, error: assignmentsError } = await supabase
     .from('stage_interviewer_assignments')
     .select('id, member_id, assignment_type')
-    .eq('jhs_id', jhsId);
+    .eq('job_hiring_stage_id', jhsId);
 
   const assignments = assignmentsData as AssignmentRow[] | null;
 
