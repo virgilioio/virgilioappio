@@ -128,18 +128,32 @@ export function ScorecardSheet({
     });
   }, [clearDraft]);
 
-  // Load draft on mount (only if no existing scorecard)
+  // Load draft on mount (for both new and existing scorecards)
   useEffect(() => {
     if (!open) return;
     
-    // Only load draft if there's no existing scorecard
-    if (!existing) {
-      try {
-        const savedDraft = localStorage.getItem(draftKey);
-        if (savedDraft) {
-          const draft = JSON.parse(savedDraft);
-          // Check if draft is less than 7 days old
-          if (Date.now() - draft.lastUpdated < 7 * 24 * 60 * 60 * 1000) {
+    try {
+      const savedDraft = localStorage.getItem(draftKey);
+      if (savedDraft) {
+        const draft = JSON.parse(savedDraft);
+        // Check if draft is less than 7 days old
+        if (Date.now() - draft.lastUpdated < 7 * 24 * 60 * 60 * 1000) {
+          // For existing scorecards, only restore if draft is newer than last DB update
+          if (existing?.updated_at) {
+            const dbUpdateTime = new Date(existing.updated_at).getTime();
+            if (draft.lastUpdated > dbUpdateTime) {
+              // Draft is newer - restore it
+              setRating(draft.rating || existing.rating || 'yes');
+              setOverview(draft.overview || existing.general_overview || '');
+              setResponses(draft.responses || {});
+              setHasDraft(true);
+              toast({ 
+                title: 'Unsaved changes restored', 
+                description: 'Your previous edits have been recovered.' 
+              });
+            }
+          } else {
+            // New scorecard - restore draft as before
             setRating(draft.rating || 'yes');
             setOverview(draft.overview || '');
             setResponses(draft.responses || {});
@@ -148,20 +162,20 @@ export function ScorecardSheet({
               title: 'Draft restored', 
               description: 'Your previous notes have been restored.' 
             });
-          } else {
-            // Clear expired draft
-            localStorage.removeItem(draftKey);
           }
+        } else {
+          // Clear expired draft
+          localStorage.removeItem(draftKey);
         }
-      } catch (e) {
-        console.debug('Failed to load draft:', e);
       }
+    } catch (e) {
+      console.debug('Failed to load draft:', e);
     }
-  }, [open, existing, draftKey]);
+  }, [open, existing?.id, existing?.updated_at, draftKey]);
 
-  // Auto-save draft on changes (debounced)
+  // Auto-save draft on changes (debounced) - works for both new and existing scorecards
   useEffect(() => {
-    if (!open || existing || isReadOnly) return;
+    if (!open || isReadOnly) return;
     
     // Debounce saves by 1 second
     if (draftTimeoutRef.current) {
@@ -702,7 +716,7 @@ export function ScorecardSheet({
                         AI-Generated Draft
                       </Badge>
                     )}
-                    {hasDraft && !existing && (
+                    {hasDraft && (
                       <Badge variant="outline" className="text-xs text-muted-foreground">
                         Draft saved
                       </Badge>
@@ -739,7 +753,7 @@ export function ScorecardSheet({
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {hasDraft && !existing && (
+                  {hasDraft && (
                     <Button
                       variant="ghost"
                       size="sm"
