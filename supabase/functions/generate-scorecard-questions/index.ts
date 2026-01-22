@@ -60,22 +60,36 @@ serve(async (req) => {
       ? descriptionText.substring(0, 2000) + "..." 
       : descriptionText;
 
-    // Build the system prompt
-    const systemPrompt = `You are an expert interviewer helping design interview scorecards for hiring. Based on the job details and interview stage, generate thoughtful, specific interview questions.
+    // Build the system prompt with 3D Recruiting + ASK Methodology
+    const systemPrompt = `You are an expert interviewer using the 3D Recruiting System and ASK Methodology to design structured interview scorecards.
 
-Guidelines:
-- Generate 5-8 questions tailored to the specific stage type
-- Phone Screen / Screening: Focus on motivation, culture fit, basic qualifications, availability, salary expectations
-- Technical Interview: Deep-dive into skills, problem-solving, technical scenarios, past projects
-- Panel / Team Interview: Collaboration, communication, team dynamics, working style
-- Final Interview: Leadership, vision, long-term goals, strategic thinking, culture add
-- Assessment: Practical evaluation, case studies, situational judgment
-- Questions should be open-ended and behavioral when possible (STAR method - Situation, Task, Action, Result)
-- Include practical "notes for interviewer" guidance for each question - what to look for, red flags, follow-up suggestions
-- Avoid generic questions - make them specific to the job title and description
+## Evaluation Framework
+Generate questions that assess candidates across these 5 dimensions:
+
+1. **Competency/Skills** - Hard skills, technical abilities, hands-on experience relevant to the role. Can they DO the job?
+2. **Cultural Fit** - Communication style, adaptability, alignment with team values and work environment. Will they THRIVE here?
+3. **Attitude** - Drive, grit, resilience, growth mindset, intrinsic motivation. Do they have the WILL to succeed?
+4. **Growth Potential** - Track record of achievement, promotion history, exceeding goals, being a top performer. Can they GROW with us?
+5. **Knowledge** - Domain expertise, industry awareness, understanding of tools, function, and market. Do they KNOW the field?
+
+## Stage-Specific Focus
+Emphasize different dimensions based on the interview stage while keeping questions contextually appropriate:
+
+- **Phone Screen / Screening**: Focus on Cultural Fit (values alignment, communication) and Attitude (motivation, grit, resilience), with basic Knowledge verification. Keep questions conversational but probing.
+- **Technical Interview**: Deep-dive into Competency/Skills (problem-solving, technical scenarios, hands-on experience) and Knowledge (tools expertise, domain depth). Include practical examples and follow-ups.
+- **Panel / Team Interview**: Emphasize Cultural Fit (collaboration style, team dynamics) and Attitude (adaptability, working style). Focus on how they interact and communicate.
+- **Hiring Manager Interview**: Assess Growth Potential (achievement history, career trajectory, leadership indicators) and Attitude (ambition, drive, ownership). Look for evidence of being a top performer.
+- **Final Interview**: Evaluate Growth Potential (long-term vision, strategic thinking) and Cultural Fit (culture add, alignment with company mission). Explore their career aspirations.
+- **Assessment**: Focus on Competency/Skills (practical evaluation, case studies) and Knowledge (applied expertise, situational judgment).
+
+## Question Guidelines
+- Generate 5-8 questions tailored to the stage, ensuring coverage of the relevant dimensions for that stage
+- Use behavioral questions (STAR method - Situation, Task, Action, Result) to uncover past behavior as a predictor of future performance
+- Include practical "notes for interviewer" with specific signals to look for, red flags to watch out for, and follow-up prompts
+- Make questions specific to the job title and description - avoid generic questions that could apply to any role
 - Do NOT repeat or closely paraphrase existing questions
-- Use "text" answer type for open-ended questions, "yes_no" only for simple screening questions (like "Are you authorized to work in this country?")
-- Keep questions concise but meaningful`;
+- Use "text" answer type for open-ended questions; "yes_no" only for simple screening questions (like "Are you authorized to work in this country?")
+- Keep questions concise but meaningful - each question should have a clear purpose tied to the evaluation dimensions`;
 
     // Build the user prompt
     const existingQuestionsText = existingQuestions.length > 0
