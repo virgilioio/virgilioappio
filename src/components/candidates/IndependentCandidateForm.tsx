@@ -296,7 +296,7 @@ export function IndependentCandidateForm({
               candidateName={watch('candidate_name')}
               autoGenerateSkills={false} // Disable - will be done in background enrichment
               parseOnly={true}
-              useQuickParse={true} // Use fast regex parsing for new candidates
+              useTwoStageAI={true} // Use fast AI core extraction for new candidates
               onResumeTextCaptured={(text) => {
                 setCapturedResumeText(text)
                 setShowEnrichmentBanner(true)
