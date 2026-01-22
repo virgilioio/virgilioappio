@@ -640,7 +640,7 @@ export function CandidateFormSheet({
                 autoGenerateSkills={!!candidate} // Only auto-generate for existing candidates (new candidates use background)
                 showUpload={!!candidate} // Only upload for existing candidates
                 parseOnly={!candidate} // For new candidates, just parse
-                useQuickParse={!candidate} // Use fast regex parsing for new candidates
+                useTwoStageAI={!candidate} // Use fast AI core extraction for new candidates
                 onFileCaptured={(file) => {
                   if (!candidate) {
                     addPendingFile(file)

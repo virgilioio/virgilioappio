@@ -15,7 +15,7 @@ export type ParsedResume = {
   profileSummary?: string;
 };
 
-export type ParseMode = 'quick' | 'full';
+export type ParseMode = 'core' | 'full';
 
 function uniquePush<T>(arr: T[] | null | undefined, value: T | null | undefined): T[] {
   const base = Array.isArray(arr) ? arr.slice() : [];
@@ -88,7 +88,7 @@ export function useResumeParsing() {
 
   /**
    * Parse a resume file (backward compatible - returns ParsedResume)
-   * Uses full AI-powered parsing
+   * Uses full AI-powered parsing including profile summary
    */
   const parseResume = async (file: File): Promise<ParsedResume | undefined> => {
     if (!file) return undefined;
@@ -98,7 +98,7 @@ export function useResumeParsing() {
       const result = await parseResumeInternal(file, 'full');
       if (!result) return undefined;
       
-      console.log('[useResumeParsing] Returning parsed data:', {
+      console.log('[useResumeParsing] Full parse returning:', {
         name: result.parsed.name,
         email: result.parsed.email,
         phone: result.parsed.phone,
@@ -118,18 +118,19 @@ export function useResumeParsing() {
   };
 
   /**
-   * Quick parse a resume file - uses regex-only extraction for speed
-   * Returns parsed data AND resumeText for background enrichment
+   * Parse core fields from a resume using AI (fast, ~3-5 seconds)
+   * Extracts: name, email, phone, linkedinUrl, location
+   * Returns parsed data AND resumeText for background enrichment (skills + profile summary)
    */
-  const parseResumeQuick = async (file: File): Promise<{ parsed: ParsedResume; resumeText: string } | null> => {
+  const parseResumeCoreFields = async (file: File): Promise<{ parsed: ParsedResume; resumeText: string } | null> => {
     if (!file) return null;
     setIsParsing(true);
 
     try {
-      const result = await parseResumeInternal(file, 'quick');
+      const result = await parseResumeInternal(file, 'core');
       if (!result) return null;
       
-      console.log('[useResumeParsing] Quick parse returning:', {
+      console.log('[useResumeParsing] Core fields parse returning:', {
         name: result.parsed.name,
         email: result.parsed.email,
         phone: result.parsed.phone,
@@ -140,13 +141,19 @@ export function useResumeParsing() {
       
       return result;
     } catch (err) {
-      console.error('parseResumeQuick error:', err);
+      console.error('parseResumeCoreFields error:', err);
       toast.error('Resume parsing failed.');
       return null;
     } finally {
       setIsParsing(false);
     }
   };
+
+  /**
+   * @deprecated Use parseResumeCoreFields instead
+   * Kept for backward compatibility
+   */
+  const parseResumeQuick = parseResumeCoreFields;
 
 
   const parseAndUpdateCandidate = async (file: File, candidateId: string) => {
@@ -263,5 +270,5 @@ export function useResumeParsing() {
     }
   };
 
-  return { isParsing, parseResume, parseResumeQuick, parseAndUpdateCandidate };
+  return { isParsing, parseResume, parseResumeCoreFields, parseResumeQuick, parseAndUpdateCandidate };
 }

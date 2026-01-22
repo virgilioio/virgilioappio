@@ -32,7 +32,7 @@ export function useBulkCandidateUpload() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [fileResults, setFileResults] = useState<FileProcessingResult[]>([])
   
-  const { parseResumeQuick } = useResumeParsing()
+  const { parseResumeCoreFields } = useResumeParsing()
   const { addCandidate, updateCandidate } = useIndependentCandidates()
   const { createAssociationAndMove } = usePipelineActions()
   const { user } = useAuth()
@@ -100,10 +100,10 @@ export function useBulkCandidateUpload() {
     options: BulkUploadOptions
   ) => {
     try {
-      // 1. Quick parse resume (instant - regex only)
+      // 1. AI Core Fields Parse (fast, ~3-5 seconds)
       updateFileStatus(fileIndex, 'parsing', 30)
       
-      const result = await parseResumeQuick(file)
+      const result = await parseResumeCoreFields(file)
       if (!result) {
         throw new Error('Failed to parse resume')
       }
@@ -115,7 +115,7 @@ export function useBulkCandidateUpload() {
       // 2. Parse location
       const locationParts = parsed.location?.split(',').map(s => s.trim()) || []
       
-      // 3. Create candidate data (without AI-generated content)
+      // 3. Create candidate data (without AI-generated skills/summary - will be added by background enrichment)
       const candidateData = {
         candidate_name: parsed.name || file.name.replace(/\.[^/.]+$/, ''),
         email: parsed.email,
@@ -141,7 +141,7 @@ export function useBulkCandidateUpload() {
           console.warn('Resume upload failed for merged candidate:', uploadError)
         }
         
-        // Trigger background enrichment for merged candidate
+        // Trigger background enrichment for merged candidate (generates skills + profile summary)
         if (options.autoGenerateSkills && resumeText) {
           triggerBackgroundEnrichment(createResult.existingCandidate.id, resumeText, parsed.name)
         }
@@ -155,7 +155,7 @@ export function useBulkCandidateUpload() {
           console.warn('Resume upload failed, but candidate was created:', uploadError)
         }
         
-        // Trigger background enrichment for new candidate
+        // Trigger background enrichment for new candidate (generates skills + profile summary)
         if (options.autoGenerateSkills && resumeText) {
           triggerBackgroundEnrichment(createResult.id, resumeText, parsed.name)
         }

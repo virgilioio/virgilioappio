@@ -10,7 +10,7 @@ type ParseRequest = {
   textContent?: string;
   fileName?: string;
   mimeType?: string;
-  mode?: 'quick' | 'full'; // 'quick' = regex only, 'full' = AI-powered (default)
+  mode?: 'core' | 'full'; // 'core' = AI for contact fields only (fast), 'full' = AI for everything (slow)
 };
 
 type ParseResult = {
@@ -69,58 +69,130 @@ function extractLocation(text: string): string | undefined {
   return undefined;
 }
 
-function quickExtract(text: string): ParseResult {
-  // Fast regex-only extraction for quick mode
-  const result: ParseResult = {
-    email: extractEmail(text),
-    phone: extractPhone(text),
-    linkedinUrl: extractLinkedIn(text),
-    location: extractLocation(text),
-  };
-
-  // More robust name extraction patterns
-  const namePatterns = [
-    // Spanish/Latin names with accents (e.g., "José García López")
-    /^([A-ZÁÉÍÓÚÑÜ][a-záéíóúñü]+(?:\s+[A-ZÁÉÍÓÚÑÜ][a-záéíóúñü]+){1,4})\s*$/m,
-    
-    // ALL CAPS names at start (e.g., "JOHN SMITH")
-    /^([A-ZÁÉÍÓÚÑÜ]{2,}(?:\s+[A-ZÁÉÍÓÚÑÜ]{2,}){1,3})\s*$/m,
-    
-    // Name followed by contact info or separator
-    /^([A-Za-záéíóúñüÁÉÍÓÚÑÜ]+(?:\s+[A-Za-záéíóúñüÁÉÍÓÚÑÜ]+){1,4})[\s\n]*(?:[|\-–—]|Email|Correo|Phone|Tel|LinkedIn)/im,
-    
-    // Name at very first line (before any special chars)
-    /^([A-Za-záéíóúñüÁÉÍÓÚÑÜ]{2,}(?:\s+[A-Za-záéíóúñüÁÉÍÓÚÑÜ]{2,}){1,3})\s*\n/,
-    
-    // Labeled name field
-    /(?:Name|Nombre|Full Name|Nombre Completo):\s*([A-Za-záéíóúñüÁÉÍÓÚÑÜ]+(?:\s+[A-Za-záéíóúñüÁÉÍÓÚÑÜ]+){1,4})/i,
-    
-    // Simple mixed case name at start of line
-    /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})\s*$/m,
-  ];
-
-  // Search in first 800 characters for name
-  const searchText = text.slice(0, 800);
-  for (const pattern of namePatterns) {
-    const match = searchText.match(pattern);
-    if (match && match[1]) {
-      // Normalize: Title Case if all caps
-      let name = match[1].trim();
-      if (name === name.toUpperCase()) {
-        name = name.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
-      }
-      result.name = name;
-      break;
-    }
+/**
+ * AI-powered extraction for CORE FIELDS ONLY (name, email, phone, linkedin, location)
+ * This is fast (~3-5 seconds) because the prompt is focused and response is small
+ */
+async function aiExtractCoreFields(text: string, fileName?: string): Promise<ParseResult> {
+  if (!OPENAI_API_KEY) {
+    console.log('[parse-resume] No OpenAI API key, falling back to regex extraction');
+    // Without an API key, return basic regex-based fields only
+    return {
+      email: extractEmail(text),
+      phone: extractPhone(text),
+      linkedinUrl: extractLinkedIn(text),
+      location: extractLocation(text),
+    };
   }
 
-  return result;
+  const systemPrompt = `You are an expert ATS resume parser. Extract ONLY contact information from this resume.
+
+Return ONLY valid JSON with these exact fields:
+{"name": "string or null", "email": "string or null", "phone": "string or null", "linkedinUrl": "string or null", "location": "string or null"}
+
+EXTRACTION RULES:
+- name: Full name of the candidate. Look at the very top of the resume, headers, and any "Name:" fields.
+- email: Primary contact email address.
+- phone: Phone number. Include country code if present (e.g., +52 for Mexico, +1 for US). Accept any format.
+- linkedinUrl: Full LinkedIn profile URL. Check headers, footers, contact sections. Format as https://linkedin.com/in/username
+- location: Current location as "City, State/Province, Country" (e.g., "Mexico City, CDMX, Mexico" or "San Francisco, CA, United States")
+
+BE THOROUGH: Check ALL sections including headers, footers, sidebars, and contact blocks.
+If a field is not found, set it to null.
+Return ONLY the JSON object, no markdown, no commentary.`;
+
+  console.log(`[parse-resume] Core AI extraction starting for: ${fileName || 'unknown'}`);
+  const startTime = Date.now();
+
+  try {
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Filename: ${fileName || 'resume.pdf'}\n\nResume text:\n${text.slice(0, 6000)}` },
+        ],
+        temperature: 0.1,
+        max_tokens: 300, // Small response = fast
+      }),
+    });
+
+    const elapsed = Date.now() - startTime;
+    console.log(`[parse-resume] Core AI extraction completed in ${elapsed}ms`);
+
+    if (!resp.ok) {
+      console.error('[parse-resume] OpenAI error:', resp.status, await resp.text());
+      // Fallback to regex
+      return {
+        email: extractEmail(text),
+        phone: extractPhone(text),
+        linkedinUrl: extractLinkedIn(text),
+        location: extractLocation(text),
+      };
+    }
+
+    const data = await resp.json();
+    const content: string = data.choices?.[0]?.message?.content ?? '';
+    console.log('[parse-resume] Core AI raw response:', content);
+
+    let parsed: ParseResult = {};
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      // Try extracting from markdown code block
+      const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) {
+        try {
+          parsed = JSON.parse(jsonMatch[1]);
+        } catch {
+          parsed = {};
+        }
+      }
+    }
+
+    // Ensure fields using regex fallback if AI missed them
+    if (!parsed.email) parsed.email = extractEmail(text);
+    if (!parsed.phone) parsed.phone = extractPhone(text);
+    if (!parsed.linkedinUrl) parsed.linkedinUrl = extractLinkedIn(text);
+    if (!parsed.location) parsed.location = extractLocation(text);
+
+    // Cleanup
+    if (parsed.name) parsed.name = parsed.name.trim();
+    if (parsed.linkedinUrl) parsed.linkedinUrl = parsed.linkedinUrl.trim();
+    if (parsed.location) parsed.location = parsed.location.trim();
+
+    console.log('[parse-resume] Core AI parsed result:', JSON.stringify(parsed, null, 2));
+    return parsed;
+  } catch (err) {
+    console.error('[parse-resume] Core AI extraction error:', err);
+    // Fallback to regex
+    return {
+      email: extractEmail(text),
+      phone: extractPhone(text),
+      linkedinUrl: extractLinkedIn(text),
+      location: extractLocation(text),
+    };
+  }
 }
 
-async function aiExtract(text: string, fileName?: string): Promise<ParseResult> {
+/**
+ * Full AI-powered extraction including profile summary
+ * This is slower (~10-15 seconds) because it generates a detailed profile
+ */
+async function aiExtractFull(text: string, fileName?: string): Promise<ParseResult> {
   if (!OPENAI_API_KEY) {
     // Without an API key, return basic regex-based fields only
-    return quickExtract(text);
+    return {
+      email: extractEmail(text),
+      phone: extractPhone(text),
+      linkedinUrl: extractLinkedIn(text),
+      location: extractLocation(text),
+    };
   }
 
   const system = `You are an expert ATS resume parser.
@@ -187,6 +259,9 @@ Return ONLY JSON. Do not include markdown fences or commentary.`;
 
   const user = `Follow the instructions precisely to produce a robust, comprehensive formatted profile in Spanish (200-300 words) with rich markdown formatting in the \"profileSummary\" field.\n\nFilename: ${fileName || 'unknown.pdf'}\nResume text:\n${text.slice(0, 12000)}`;
 
+  console.log(`[parse-resume] Full AI extraction starting for: ${fileName || 'unknown'}`);
+  const startTime = Date.now();
+
   const resp = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -203,6 +278,9 @@ Return ONLY JSON. Do not include markdown fences or commentary.`;
       max_tokens: 2500,
     }),
   });
+
+  const elapsed = Date.now() - startTime;
+  console.log(`[parse-resume] Full AI extraction completed in ${elapsed}ms`);
 
   if (!resp.ok) {
     console.error('OpenAI error status:', resp.status, await resp.text());
@@ -264,19 +342,19 @@ serve(async (req) => {
     }
 
     const mode = body.mode || 'full';
-    console.log('Parsing resume text. Mode:', mode, 'Approx length:', text.length, 'fileName:', body.fileName);
+    console.log('[parse-resume] Mode:', mode, 'Text length:', text.length, 'fileName:', body.fileName);
 
-    // Quick mode: regex-only extraction (instant)
-    if (mode === 'quick') {
-      const result = quickExtract(text);
-      console.log('Quick parse result:', JSON.stringify(result, null, 2));
+    // Core mode: AI extraction for contact fields only (fast, ~3-5 seconds)
+    if (mode === 'core') {
+      const result = await aiExtractCoreFields(text, body.fileName);
+      console.log('[parse-resume] Core mode result:', JSON.stringify(result, null, 2));
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Full mode: AI-powered extraction
-    const result = await aiExtract(text, body.fileName);
+    // Full mode: Complete AI-powered extraction including profile summary
+    const result = await aiExtractFull(text, body.fileName);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

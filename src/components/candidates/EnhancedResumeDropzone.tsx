@@ -35,8 +35,8 @@ interface EnhancedResumeDropzoneProps {
   showUpload?: boolean // Whether to actually upload files
   parseOnly?: boolean // Only parse, don't upload
   onFileCaptured?: (file: File) => void // Capture the raw file even when not uploading immediately
-  // Quick parse mode for background enrichment
-  useQuickParse?: boolean // Use fast regex parsing instead of AI (for new candidates)
+  // Two-stage AI parsing mode for new candidates
+  useTwoStageAI?: boolean // Use fast AI core extraction (3-5s), background enrichment for rest
   onResumeTextCaptured?: (resumeText: string) => void // Callback for captured resume text (for background enrichment)
 }
 
@@ -54,14 +54,14 @@ export function EnhancedResumeDropzone({
   showUpload = true,
   parseOnly = false,
   onFileCaptured,
-  useQuickParse = false,
+  useTwoStageAI = false,
   onResumeTextCaptured
 }: EnhancedResumeDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   
-  const { isParsing, parseResume, parseResumeQuick, parseAndUpdateCandidate } = useResumeParsing()
+  const { isParsing, parseResume, parseResumeCoreFields, parseAndUpdateCandidate } = useResumeParsing()
   const { generateSkills, isGenerating, generatedSkills } = useSkillsGeneration()
 
   const isActive = isProcessing || isParsing || isGenerating || isUploading
@@ -90,13 +90,14 @@ export function EnhancedResumeDropzone({
         await onUpload(file)
       }
 
-      // Use quick parse mode for new candidates (background enrichment will handle AI tasks)
+      // Use two-stage AI parsing for new candidates
       let parsed: ParsedResumeData | undefined
       let resumeText: string | undefined
 
-      if (useQuickParse) {
-        // Fast regex-based extraction - AI enrichment happens in background after candidate creation
-        const result = await parseResumeQuick(file)
+      if (useTwoStageAI) {
+        // Stage 1: Fast AI extraction of core fields (~3-5 seconds)
+        // Stage 2: Background enrichment handles skills + profile summary after candidate creation
+        const result = await parseResumeCoreFields(file)
         if (result) {
           parsed = result.parsed
           resumeText = result.resumeText
@@ -107,7 +108,7 @@ export function EnhancedResumeDropzone({
         }
         // Skip skills generation here - will be done in background enrichment
       } else {
-        // Full AI parsing for existing candidates or when quick parse is disabled
+        // Full AI parsing for existing candidates or when two-stage is disabled
         const parsingPromise = (async () => {
           if (candidateId && !parseOnly) {
             return await parseAndUpdateCandidate(file, candidateId)
@@ -169,8 +170,8 @@ export function EnhancedResumeDropzone({
         onParsed?.(parsed)
         console.log('[EnhancedResumeDropzone] onParsed callback invoked');
 
-        const message = useQuickParse 
-          ? 'Basic info extracted. AI enrichment will complete in background.'
+        const message = useTwoStageAI 
+          ? 'Contact info extracted. Skills & summary will be generated in background.'
           : autoGenerateSkills 
             ? 'Information extracted and skills generated from your resume.'
             : 'Information extracted from your resume.'
@@ -243,7 +244,7 @@ export function EnhancedResumeDropzone({
           {isActive ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              {isParsing ? 'Parsing…' : isGenerating ? 'Generating skills…' : isUploading ? 'Uploading…' : 'Processing…'}
+              {isParsing ? 'Analyzing…' : isGenerating ? 'Generating skills…' : isUploading ? 'Uploading…' : 'Processing…'}
             </>
           ) : (
             <>
@@ -257,7 +258,7 @@ export function EnhancedResumeDropzone({
             <Loader2 className="h-6 w-6 text-pastel-purple-foreground animate-spin mb-2" />
             <ParsingAnimation 
               isActive={isActive}
-              mode={useQuickParse ? 'quick' : 'full'}
+              mode={useTwoStageAI ? 'core' : 'full'}
             />
           </div>
         )}

@@ -2,21 +2,22 @@ import { useState, useEffect } from 'react'
 
 interface ParsingAnimationProps {
   isActive: boolean
-  mode?: 'quick' | 'full'
+  mode?: 'core' | 'full'
   onComplete?: () => void
 }
 
-const quickParsingSteps = [
-  "Reading Resume",
-  "Extracting Contact Info",
-  "Done!"
+const coreParsingSteps = [
+  "Analyzing Resume...",
+  "Extracting Contact Info...",
+  "Detecting Location...",
+  "Almost done..."
 ]
 
 const fullParsingSteps = [
-  "Analyzing Resume",
-  "Creating Profile Summary", 
-  "Extracting Important Data",
-  "Extracting Skills"
+  "Analyzing Resume...",
+  "Creating Profile Summary...", 
+  "Extracting Important Data...",
+  "Generating Skills..."
 ]
 
 export function ParsingAnimation({ isActive, mode = 'full', onComplete }: ParsingAnimationProps) {
@@ -25,7 +26,7 @@ export function ParsingAnimation({ isActive, mode = 'full', onComplete }: Parsin
   const [isTyping, setIsTyping] = useState(true)
   const [completed, setCompleted] = useState(false)
 
-  const parsingSteps = mode === 'quick' ? quickParsingSteps : fullParsingSteps
+  const parsingSteps = mode === 'core' ? coreParsingSteps : fullParsingSteps
 
   useEffect(() => {
     if (!isActive) {
@@ -40,13 +41,13 @@ export function ParsingAnimation({ isActive, mode = 'full', onComplete }: Parsin
     const currentStep = parsingSteps[currentStepIndex]
     
     if (isTyping && currentText.length < currentStep.length) {
-      // Typing characters
+      // Typing characters - faster for core mode
       const timeout = setTimeout(() => {
         setCurrentText(currentStep.slice(0, currentText.length + 1))
-      }, mode === 'quick' ? 30 : 50) // Faster typing for quick mode
+      }, mode === 'core' ? 40 : 50)
       return () => clearTimeout(timeout)
     } else if (isTyping && currentText.length === currentStep.length) {
-      // Finished typing this step
+      // Finished typing this step - pause before next
       const pauseTimeout = setTimeout(() => {
         if (currentStepIndex < parsingSteps.length - 1) {
           // Move to next step
@@ -58,7 +59,7 @@ export function ParsingAnimation({ isActive, mode = 'full', onComplete }: Parsin
           setCompleted(true)
           onComplete?.()
         }
-      }, mode === 'quick' ? 400 : 800) // Shorter pause for quick mode
+      }, mode === 'core' ? 600 : 800)
       
       return () => clearTimeout(pauseTimeout)
     }
@@ -75,7 +76,7 @@ export function ParsingAnimation({ isActive, mode = 'full', onComplete }: Parsin
         <div className="w-1.5 h-1.5 bg-pastel-purple-foreground rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
         <div className="w-1.5 h-1.5 bg-pastel-purple-foreground rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
       </div>
-      <span className="text-sm text-text-secondary font-medium min-w-[140px] text-left">
+      <span className="text-sm text-text-secondary font-medium min-w-[180px] text-left">
         {currentText}
         {!completed && <span className="animate-pulse">|</span>}
       </span>
