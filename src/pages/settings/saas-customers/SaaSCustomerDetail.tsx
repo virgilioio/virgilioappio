@@ -28,6 +28,7 @@ import { BillingOverview } from '@/components/saas/BillingOverview'
 import { SubscriptionTimeline } from '@/components/saas/SubscriptionTimeline'
 import { SeatManagementCard } from '@/components/saas/SeatManagementCard'
 import { PaymentHistory } from '@/components/saas/PaymentHistory'
+import { CreditManagementCard } from '@/components/saas/CreditManagementCard'
 import { calculateCustomerHealth, CustomerHealthResult } from '@/utils/customerHealth'
 
 export function SaaSCustomerDetail() {
@@ -345,6 +346,20 @@ export function SaaSCustomerDetail() {
 
         <TabsContent value="billing" className="space-y-6 mt-6">
           <BillingOverview customer={customer} />
+          
+          {/* Credit Management */}
+          {subscriptionData && (
+            <CreditManagementCard
+              tenantId={customer.tenant_id}
+              tenantName={customer.name}
+              bonusCreditsBalance={
+                (subscriptionData.bonus_credits_purchased || 0) - 
+                (subscriptionData.bonus_credits_used || 0)
+              }
+              bonusCreditsPurchased={subscriptionData.bonus_credits_purchased || 0}
+              bonusCreditsUsed={subscriptionData.bonus_credits_used || 0}
+            />
+          )}
           
           {/* Seat Management */}
           {subscriptionData && (
