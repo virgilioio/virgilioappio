@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 
 export interface BillingStatus {
-  billing_status: 'trialing' | 'active' | 'past_due' | 'canceled' | 'locked' | 'grace_period'
+  billing_status: 'pending_trial' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'locked' | 'grace_period'
   trial_ends_at: string | null
   trial_started_at: string | null
   subscription_end: string | null
@@ -14,7 +14,9 @@ export interface BillingStatus {
   billing_interval: 'month' | 'year' | null
   stripe_subscription_id: string | null
   subscribed: boolean
-  subscription_tier: 'solo' | 'launch' | 'growth' | 'business' | null
+  subscription_tier: 'per_seat' | 'solo' | 'launch' | 'growth' | 'business' | null // per_seat is new model
+  bonus_credits_purchased: number
+  bonus_credits_used: number
 }
 
 export function useBillingStatus() {
@@ -49,7 +51,9 @@ export function useBillingStatus() {
           billing_interval,
           stripe_subscription_id,
           subscribed,
-          subscription_tier
+          subscription_tier,
+          bonus_credits_purchased,
+          bonus_credits_used
         `)
         .eq('tenant_id', org.tenant_id)
         .single()
@@ -82,11 +86,11 @@ export function useBillingStatus() {
       }
 
       return {
-        billing_status: (data.billing_status || 'locked') as BillingStatus['billing_status'],
+        billing_status: (data.billing_status || 'pending_trial') as BillingStatus['billing_status'],
         trial_ends_at: data.trial_ends_at,
         trial_started_at: data.trial_started_at,
         subscription_end: data.subscription_end,
-        seat_quantity: data.seat_quantity || 0,
+        seat_quantity: data.seat_quantity || 1,
         billing_interval: data.billing_interval as BillingStatus['billing_interval'],
         stripe_subscription_id: data.stripe_subscription_id,
         subscribed: data.subscribed,
@@ -94,6 +98,8 @@ export function useBillingStatus() {
         days_until_trial_end: daysUntilTrialEnd,
         hours_until_trial_end: hoursUntilTrialEnd,
         days_until_lockout: daysUntilLockout,
+        bonus_credits_purchased: data.bonus_credits_purchased || 0,
+        bonus_credits_used: data.bonus_credits_used || 0,
       }
     },
     enabled: !!organizationId,

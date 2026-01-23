@@ -330,11 +330,10 @@ serve(async (req) => {
       tenantId 
     });
 
-    // 4. Create trial subscription (idempotent)
-    const trialStart = new Date();
-    const trialEnd = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000);
+    // 4. Create pending_trial subscription (requires CC to start actual trial)
+    // GoGio ATS uses a credit card wall - trial doesn't start until checkout is completed
     
-    // Check if trial already exists
+    // Check if subscription record already exists
     const { data: existingTrial } = await supabase
       .from("tenant_subscriptions")
       .select("tenant_id")
@@ -342,12 +341,11 @@ serve(async (req) => {
       .maybeSingle();
     
     if (existingTrial) {
-      log(`⏭️ Trial already exists, skipping [${requestId}]`, { tenantId });
+      log(`⏭️ Subscription record already exists, skipping [${requestId}]`, { tenantId });
     } else {
-      log(`🎁 Creating trial subscription [${requestId}]`, { 
+      log(`🎁 Creating pending_trial subscription (CC required) [${requestId}]`, { 
         tenantId,
-        trialDays,
-        trialEndsAt: trialEnd.toISOString() 
+        note: 'User must add payment method to start 14-day trial'
       });
       
       const { error: upsertErr } = await supabase.from("tenant_subscriptions").insert({
@@ -356,28 +354,30 @@ serve(async (req) => {
         subscription_tier: null,
         billing_interval: null,
         seat_quantity: 1,
-        billing_status: 'trialing',
-        trial_started_at: trialStart.toISOString(),
-        trial_ends_at: trialEnd.toISOString(),
-        trial_source: 'self_signup',
-        trial_end: trialEnd.toISOString(), // Keep for backward compat
+        billing_status: 'pending_trial', // NEW: Requires CC to start trial
+        trial_started_at: null, // Trial hasn't started yet
+        trial_ends_at: null,
+        trial_source: 'self_signup_cc_required',
+        trial_end: null,
         subscription_end: null,
         last_seat_count: 1,
+        bonus_credits_purchased: 0,
+        bonus_credits_used: 0,
         updated_at: new Date().toISOString(),
       });
       
       if (upsertErr) {
-        log(`❌ Failed to create trial subscription [${requestId}]`, { 
+        log(`❌ Failed to create pending_trial subscription [${requestId}]`, { 
           error: upsertErr.message,
           code: upsertErr.code,
           details: upsertErr.details,
           hint: upsertErr.hint,
           tenantId
         });
-        throw new Error(`Failed to set trial: ${upsertErr.message}`);
+        throw new Error(`Failed to set pending_trial: ${upsertErr.message}`);
       }
       
-      log(`✅ Trial subscription created [${requestId}]`, { tenantId });
+      log(`✅ Pending trial subscription created (awaiting CC) [${requestId}]`, { tenantId });
     }
 
     log(`🎉 Provisioning complete [${requestId}]`, { 
