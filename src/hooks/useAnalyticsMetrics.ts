@@ -26,6 +26,7 @@ export interface AnalyticsMetrics {
   statusDistribution: { name: string; value: number; color: string }[]
   stageDistribution: { name: string; count: number }[]
   trendData: { date: string; applications: number; active: number; hires: number; interviewsScheduled: number }[]
+  finalJobIds: string[]
   isLoading: boolean
   error: Error | null
 }
@@ -147,7 +148,8 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
           rejectedCandidates: 0,
           statusDistribution: [],
           stageDistribution: [],
-          trendData: []
+          trendData: [],
+          finalJobIds: []
         }
       }
 
@@ -332,7 +334,8 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
         rejectedCandidates,
         statusDistribution,
         stageDistribution,
-        trendData
+        trendData,
+        finalJobIds
       }
     },
     enabled: !!user,
@@ -350,6 +353,7 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
     statusDistribution: data?.statusDistribution ?? [],
     stageDistribution: data?.stageDistribution ?? [],
     trendData: data?.trendData ?? [],
+    finalJobIds: data?.finalJobIds ?? [],
     isLoading,
     error: error as Error | null
   }
