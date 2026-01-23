@@ -43,7 +43,8 @@ export default function Analytics() {
   const [advancedFilters, setAdvancedFilters] = useState<AnalyticsFilters>({
     recruiterIds: [],
     jobIds: [],
-    organizationIds: []
+    organizationIds: [],
+    jobStatus: 'open'
   })
 
   const metrics = useAnalyticsMetrics({

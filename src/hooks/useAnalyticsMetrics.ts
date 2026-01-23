@@ -13,6 +13,7 @@ export interface AnalyticsFilters {
   recruiterIds?: string[]
   jobIds?: string[]
   organizationIds?: string[]
+  jobStatus?: string
 }
 
 export interface AnalyticsMetrics {
@@ -32,7 +33,7 @@ export interface AnalyticsMetrics {
 }
 
 export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics {
-  const { dateRange, recruiterIds, jobIds, organizationIds } = filters
+  const { dateRange, recruiterIds, jobIds, organizationIds, jobStatus } = filters
   const { user } = useAuth()
 
   const { data, isLoading, error } = useQuery({
@@ -43,7 +44,8 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
       dateRange.endDate.toISOString(),
       recruiterIds?.join(',') || '',
       jobIds?.join(',') || '',
-      organizationIds?.join(',') || ''
+      organizationIds?.join(',') || '',
+      jobStatus || 'all'
     ],
     queryFn: async () => {
       if (!user) throw new Error('No user')
@@ -81,7 +83,7 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
       
       console.log('[Analytics] Date range:', { startISO, endISO })
 
-      // Step 2: Fetch jobs for this tenant (with optional organization filter)
+      // Step 2: Fetch jobs for this tenant (with optional organization and status filter)
       let jobsQuery = supabase
         .from('jobs')
         .select('id, hiring_team')
@@ -90,6 +92,11 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
       // Apply organization filter if specified
       if (organizationIds && organizationIds.length > 0) {
         jobsQuery = jobsQuery.in('organization_id', organizationIds)
+      }
+
+      // Apply job status filter if specified and not 'all'
+      if (jobStatus && jobStatus !== 'all') {
+        jobsQuery = jobsQuery.eq('status', jobStatus as 'draft' | 'open' | 'closed' | 'archived')
       }
 
       const { data: tenantJobs, error: jobsError } = await jobsQuery
