@@ -4,8 +4,7 @@ import { toast } from '@/hooks/use-toast'
 
 interface AssignCreditsParams {
   tenantId: string
-  searchCreditsLimit?: number
-  collectCreditsLimit?: number
+  collectCreditsLimit: number
   resetUsage?: boolean
 }
 
@@ -13,11 +12,10 @@ export function useAssignTenantCredits() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ tenantId, searchCreditsLimit, collectCreditsLimit, resetUsage }: AssignCreditsParams) => {
+    mutationFn: async ({ tenantId, collectCreditsLimit, resetUsage }: AssignCreditsParams) => {
       const { data, error } = await supabase.functions.invoke('assign-tenant-credits', {
         body: {
           tenant_id: tenantId,
-          search_credits_limit: searchCreditsLimit,
           collect_credits_limit: collectCreditsLimit,
           reset_usage: resetUsage,
         },
