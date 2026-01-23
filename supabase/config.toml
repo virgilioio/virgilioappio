@@ -12,6 +12,9 @@ verify_jwt = false
 [functions.chat-with-gio]
 verify_jwt = true
 
+[functions.chrome-api-gateway]
+verify_jwt = false
+
 [functions.chrome-api-me]
 verify_jwt = false
 
@@ -172,4 +175,7 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.create-credit-purchase]
+verify_jwt = true
+
+[functions.admin-manage-subscription]
 verify_jwt = true
