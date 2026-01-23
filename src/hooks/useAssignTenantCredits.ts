@@ -32,9 +32,12 @@ export function useAssignTenantCredits() {
         description: data.message || 'Credit limits have been successfully updated.',
       })
 
+      console.log('✅ Credits assigned successfully:', data)
+      
       // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: ['sourcing-credits', variables.tenantId] })
+      queryClient.invalidateQueries({ queryKey: ['sourcing-credits-usage', variables.tenantId] })
       queryClient.invalidateQueries({ queryKey: ['saas-customer', variables.tenantId] })
+      queryClient.invalidateQueries({ queryKey: ['saas-customers'] })
     },
     onError: (error: any) => {
       toast({
