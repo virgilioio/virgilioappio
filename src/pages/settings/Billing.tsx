@@ -5,17 +5,19 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Skeleton, CardSkeleton } from '@/components/ui/skeleton'
 import { BillingTitle } from '@/components/ui/billing-title'
 import { MetricCard } from '@/components/ui/metric-card'
-import { AlertTriangle, CreditCard, Users, Calendar, ExternalLink, Check, RefreshCw, TrendingUp, UserPlus, Briefcase, Mail, Clock } from 'lucide-react'
+import { AlertTriangle, CreditCard, Users, ExternalLink, Check, RefreshCw, TrendingUp, UserPlus, Briefcase, Mail, Clock, Sparkles } from 'lucide-react'
 import { useBillingStatus } from '@/hooks/useBillingStatus'
 import { useOpenBillingPortal, useCreateCheckout } from '@/hooks/useBillingPortal'
 import { useAuth } from '@/contexts/AuthContext'
 import { format } from 'date-fns'
 import { useStripePricing } from '@/hooks/useStripePricing'
-import { formatPrice, calculateYearlySavings, formatInterval } from '@/utils/pricing'
+import { formatPrice } from '@/utils/pricing'
 import { useInvoiceHistory } from '@/hooks/useInvoiceHistory'
 import { useSwitchBillingInterval } from '@/hooks/useSwitchBillingInterval'
 import { useBillingPeriodUsage } from '@/hooks/useBillingPeriodUsage'
 import { InvoiceHistoryTable } from '@/components/billing/InvoiceHistoryTable'
+import { CreditBundleCard } from '@/components/billing/CreditBundleCard'
+import { PerSeatPricingCard } from '@/components/billing/PerSeatPricingCard'
 
 export function Billing() {
   const { organizationId, userType } = useAuth()
@@ -55,6 +57,7 @@ export function Billing() {
   }
 
   const isTrialing = billing.billing_status === 'trialing'
+  const isPendingTrial = billing.billing_status === 'pending_trial'
   const isActive = billing.billing_status === 'active'
   const isLocked = billing.billing_status === 'locked'
   const isPastDue = billing.billing_status === 'past_due'
@@ -62,9 +65,11 @@ export function Billing() {
   const isGracePeriod = billing.billing_status === 'grace_period'
 
   const showTrialWarning = isTrialing && billing.days_until_trial_end !== null && billing.days_until_trial_end <= 3
+  const needsSubscription = isTrialing || isPendingTrial || isLocked || isGracePeriod || isCanceled
 
   const getStatusBadge = () => {
     const variants: Record<string, { variant: any; label: string }> = {
+      pending_trial: { variant: 'secondary', label: 'Pending Trial' },
       trialing: { variant: 'secondary', label: 'Free Trial' },
       grace_period: { variant: 'warning', label: 'Grace Period' },
       active: { variant: 'success', label: 'Active' },
@@ -77,6 +82,10 @@ export function Billing() {
   }
   
   const canSwitchInterval = isActive && billing.stripe_subscription_id
+  
+  // Calculate credits per seat based on billing interval
+  const creditsPerSeat = billing.billing_interval === 'year' ? 120 : 100
+  const totalCredits = (billing.seat_quantity || 1) * creditsPerSeat
 
   return (
     <div className="space-y-6">
@@ -87,6 +96,29 @@ export function Billing() {
           Manage your subscription and view usage
         </p>
       </div>
+
+      {/* Pending Trial Banner - CC Wall */}
+      {isPendingTrial && (
+        <Alert variant="default">
+          <CreditCard className="h-4 w-4" />
+          <AlertTitle>Start Your 14-Day Free Trial</AlertTitle>
+          <AlertDescription className="flex items-center justify-between">
+            <span>
+              Add a payment method to start your free trial. You won't be charged until the trial ends.
+              Get 20 enrichment credits to try out candidate sourcing.
+            </span>
+            <Button
+              size="sm"
+              variant="virgilio"
+              onClick={() => createCheckout.mutate({ interval: 'month' })}
+              disabled={createCheckout.isPending}
+              className="ml-4"
+            >
+              {createCheckout.isPending ? 'Loading...' : 'Start Free Trial'}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Trial Warning Banner - Show when <= 3 days */}
       {showTrialWarning && (
@@ -117,7 +149,7 @@ export function Billing() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Access Locked</AlertTitle>
           <AlertDescription className="flex items-center justify-between">
-            <span>Your trial has expired. Subscribe to continue using Virgilio ATS.</span>
+            <span>Your trial has expired. Subscribe to continue using GoGio ATS.</span>
             <Button
               size="sm"
               variant="destructive"
@@ -209,9 +241,11 @@ export function Billing() {
             <div>
               <div className="text-sm text-muted-foreground mb-2">Plan</div>
               <div className="font-semibold">
-                {billing.billing_status === 'trialing' 
-                  ? 'GoGio: Free Trial' 
-                  : 'GoGio'}
+                {isPendingTrial 
+                  ? 'GoGio ATS (Pending)' 
+                  : isTrialing
+                    ? 'GoGio ATS (Trial)'
+                    : 'GoGio ATS'}
               </div>
               <div className="text-xs text-muted-foreground">
                 {billing.billing_interval === 'year' ? 'Annual billing' : 'Monthly billing'}
@@ -246,20 +280,32 @@ export function Billing() {
             </div>
           </div>
 
-          {/* Seat Count */}
-          <div className="pt-4 border-t">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <Users className="h-5 w-5 text-primary" />
+          {/* Seat Count & Credits */}
+          <div className="pt-4 border-t grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Users className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <div className="font-medium">
+                  {billing.seat_quantity || 1} Recruiter {(billing.seat_quantity || 1) === 1 ? 'Seat' : 'Seats'}
                 </div>
-                <div>
-                  <div className="font-medium">
-                    {billing.seat_quantity} Recruiter {billing.seat_quantity === 1 ? 'Seat' : 'Seats'}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Hiring Managers and Interviewers are free
-                  </div>
+                <div className="text-xs text-muted-foreground">
+                  {billing.billing_interval === 'year' ? '$999/seat/year' : '$99/seat/month'}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Sparkles className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <div className="font-medium">
+                  {totalCredits} Enrichment Credits/Month
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {creditsPerSeat} credits per seat ({billing.billing_interval === 'year' ? 'annual bonus!' : 'monthly'})
                 </div>
               </div>
             </div>
@@ -267,14 +313,14 @@ export function Billing() {
 
           {/* Action Buttons */}
           <div className="flex gap-3 pt-4 border-t">
-            {(isTrialing || isGracePeriod || isLocked || isCanceled) && (
+            {needsSubscription && (
               <Button
                 variant="virgilio"
                 onClick={() => createCheckout.mutate({ interval: 'month' })}
                 disabled={createCheckout.isPending}
               >
                 <CreditCard className="mr-2 h-4 w-4" />
-                {createCheckout.isPending ? 'Loading...' : isTrialing ? 'Start Subscription' : 'Subscribe'}
+                {createCheckout.isPending ? 'Loading...' : isPendingTrial ? 'Start Free Trial' : isTrialing ? 'Subscribe Now' : 'Subscribe'}
               </Button>
             )}
 
@@ -287,7 +333,7 @@ export function Billing() {
                 disabled={switchInterval.isPending}
               >
                 <RefreshCw className="mr-2 h-4 w-4" />
-                Switch to {billing.billing_interval === 'month' ? 'Annual' : 'Monthly'}
+                Switch to {billing.billing_interval === 'month' ? 'Annual (Save 17%)' : 'Monthly'}
               </Button>
             )}
 
@@ -305,209 +351,20 @@ export function Billing() {
         </CardContent>
       </Card>
 
-      {/* Pricing Plans Selector (for trial/locked users) */}
-      {(isTrialing || isLocked || isGracePeriod || isCanceled) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Choose Your Plan</CardTitle>
-            <CardDescription>Select the plan that best fits your team size and needs</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Solo Plan */}
-              <div className="border rounded-lg p-6 hover:border-primary transition-colors">
-                <div className="mb-4">
-                  <h3 className="text-xl font-bold">GoGio: Solo!</h3>
-                  <p className="text-sm text-muted-foreground mt-1">For individual recruiters</p>
-                </div>
-                
-                <div className="mb-6">
-                  <div className="text-3xl font-bold">$29</div>
-                  <div className="text-sm text-muted-foreground">per month</div>
-                  <div className="text-xs text-muted-foreground mt-1">$306/year (save 15%)</div>
-                </div>
+      {/* Per-Seat Pricing Card (for trial/locked/pending users) */}
+      {needsSubscription && (
+        <PerSeatPricingCard 
+          showTrialCTA={isPendingTrial || isTrialing}
+          currentSeats={billing.seat_quantity || 1}
+          billingInterval={billing.billing_interval as 'month' | 'year' || 'month'}
+        />
+      )}
 
-                <div className="space-y-3 mb-6">
-                  <div className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-success mt-0.5" />
-                    <span className="text-sm">1 user</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-success mt-0.5" />
-                    <span className="text-sm">25 searches / 10 enrichments per month</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-success mt-0.5" />
-                    <span className="text-sm">Full ATS features</span>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Button 
-                    className="w-full" 
-                    variant="outline"
-                    onClick={() => createCheckout.mutate({ tier: 'solo', interval: 'month' })}
-                    disabled={createCheckout.isPending}
-                  >
-                    Monthly
-                  </Button>
-                  <Button 
-                    className="w-full" 
-                    onClick={() => createCheckout.mutate({ tier: 'solo', interval: 'year' })}
-                    disabled={createCheckout.isPending}
-                  >
-                    Annual (Save 15%)
-                  </Button>
-                </div>
-              </div>
-
-              {/* Launch Plan */}
-              <div className="border rounded-lg p-6 hover:border-primary transition-colors">
-                <div className="mb-4">
-                  <h3 className="text-xl font-bold">GoGio: Launch!</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Perfect for small teams</p>
-                </div>
-                
-                <div className="mb-6">
-                  <div className="text-3xl font-bold">$149</div>
-                  <div className="text-sm text-muted-foreground">per month</div>
-                  <div className="text-xs text-muted-foreground mt-1">$1,519/year (save 15%)</div>
-                </div>
-
-                <div className="space-y-3 mb-6">
-                  <div className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-success mt-0.5" />
-                    <span className="text-sm">Up to 5 users</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-success mt-0.5" />
-                    <span className="text-sm">25 searches / 10 enrichments per month</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-success mt-0.5" />
-                    <span className="text-sm">Full ATS features</span>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Button 
-                    className="w-full" 
-                    variant="outline"
-                    onClick={() => createCheckout.mutate({ tier: 'launch', interval: 'month' })}
-                    disabled={createCheckout.isPending}
-                  >
-                    Monthly
-                  </Button>
-                  <Button 
-                    className="w-full" 
-                    onClick={() => createCheckout.mutate({ tier: 'launch', interval: 'year' })}
-                    disabled={createCheckout.isPending}
-                  >
-                    Annual (Save 15%)
-                  </Button>
-                </div>
-              </div>
-
-              {/* Growth Plan */}
-              <div className="border-2 border-primary rounded-lg p-6 relative">
-                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                  <Badge variant="default">Most Popular</Badge>
-                </div>
-                
-                <div className="mb-4">
-                  <h3 className="text-xl font-bold">GoGio: Growth!</h3>
-                  <p className="text-sm text-muted-foreground mt-1">For growing teams</p>
-                </div>
-                
-                <div className="mb-6">
-                  <div className="text-3xl font-bold">$399</div>
-                  <div className="text-sm text-muted-foreground">per month</div>
-                  <div className="text-xs text-muted-foreground mt-1">$4,069/year (save 15%)</div>
-                </div>
-
-                <div className="space-y-3 mb-6">
-                  <div className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-success mt-0.5" />
-                    <span className="text-sm">Up to 15 users</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-success mt-0.5" />
-                    <span className="text-sm">100 searches / 50 enrichments per month</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-success mt-0.5" />
-                    <span className="text-sm">Full ATS features</span>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Button 
-                    className="w-full" 
-                    variant="outline"
-                    onClick={() => createCheckout.mutate({ tier: 'growth', interval: 'month' })}
-                    disabled={createCheckout.isPending}
-                  >
-                    Monthly
-                  </Button>
-                  <Button 
-                    className="w-full" 
-                    onClick={() => createCheckout.mutate({ tier: 'growth', interval: 'year' })}
-                    disabled={createCheckout.isPending}
-                  >
-                    Annual (Save 15%)
-                  </Button>
-                </div>
-              </div>
-
-              {/* Business Plan */}
-              <div className="border rounded-lg p-6 hover:border-primary transition-colors">
-                <div className="mb-4">
-                  <h3 className="text-xl font-bold">GoGio: Business!</h3>
-                  <p className="text-sm text-muted-foreground mt-1">For established teams</p>
-                </div>
-                
-                <div className="mb-6">
-                  <div className="text-3xl font-bold">$799</div>
-                  <div className="text-sm text-muted-foreground">per month</div>
-                  <div className="text-xs text-muted-foreground mt-1">$8,149/year (save 15%)</div>
-                </div>
-
-                <div className="space-y-3 mb-6">
-                  <div className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-success mt-0.5" />
-                    <span className="text-sm">Up to 50 users</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-success mt-0.5" />
-                    <span className="text-sm">250 searches / 125 enrichments per month</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-success mt-0.5" />
-                    <span className="text-sm">Full ATS features</span>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Button 
-                    className="w-full" 
-                    variant="outline"
-                    onClick={() => createCheckout.mutate({ tier: 'business', interval: 'month' })}
-                    disabled={createCheckout.isPending}
-                  >
-                    Monthly
-                  </Button>
-                  <Button 
-                    className="w-full" 
-                    onClick={() => createCheckout.mutate({ tier: 'business', interval: 'year' })}
-                    disabled={createCheckout.isPending}
-                  >
-                    Annual (Save 15%)
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Credit Bundle Card - Show for active users */}
+      {isActive && (
+        <CreditBundleCard 
+          bonusCreditsAvailable={0}
+        />
       )}
 
       {/* Pricing Info Card */}
@@ -516,8 +373,52 @@ export function Billing() {
           <CardTitle>Pricing Details</CardTitle>
           <CardDescription>Simple, transparent per-seat pricing</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-...
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <h4 className="font-medium">Per-Seat Subscription</h4>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <div className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span><strong>$99/seat/month</strong> or <strong>$999/seat/year</strong> (~17% savings)</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>Only recruiters count as seats—hiring managers & interviewers are free</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>100 enrichment credits per seat/month (120 on annual plans)</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>Automatic scaling—seats added or removed are prorated</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-medium">Credit Bundles (Add-ons)</h4>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <div className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span><strong>500 credits</strong> for $49 ($0.098 each)</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span><strong>1,500 credits</strong> for $129 ($0.086 each, save 12%)</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span><strong>5,000 credits</strong> for $349 ($0.070 each, save 29%)</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                  <span>Bonus credits never expire while subscription is active</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

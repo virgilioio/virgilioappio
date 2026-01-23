@@ -1,9 +1,8 @@
-import { CreditCard, TrendingUp, Clock } from 'lucide-react'
+import { Coins, TrendingUp, Clock, Sparkles, Users, AlertTriangle } from 'lucide-react'
 import { useSourcingCredits } from '@/hooks/useSourcingCredits'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -20,23 +19,17 @@ export function SourcingCreditIndicator() {
 
   if (isLoading || !usage) return null
 
-  const showUpgrade = usage.collect_percentage > 80 
-    && usage.subscription_tier !== 'business' // business is top tier
-
-  const tierLabels: Record<string, string> = {
-    launch: 'Launch',
-    growth: 'Growth',
-    business: 'Business'
-  }
+  const isLow = usage.collect_percentage > 80
+  const totalAvailable = (usage.collect_credits_limit - usage.collect_credits_used) + (usage.bonus_credits_available || 0)
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="relative">
-          <CreditCard className="h-4 w-4 mr-2" />
-          Credits
-          {showUpgrade && (
-            <Badge variant="destructive" className="ml-2">
+        <Button variant="ghost" size="sm" className="relative h-8 gap-1.5 px-2">
+          <Coins className="h-4 w-4" />
+          <span className="text-xs font-medium">{totalAvailable}</span>
+          {isLow && (
+            <Badge variant="destructive" className="h-4 px-1 text-[10px]">
               Low
             </Badge>
           )}
@@ -44,22 +37,41 @@ export function SourcingCreditIndicator() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuLabel className="flex items-center justify-between">
-          <span>Sourcing Credits</span>
-          <Badge variant="outline">{tierLabels[usage.subscription_tier]}</Badge>
+          <span>Enrichment Credits</span>
+          <Badge variant="outline" className="text-xs">
+            <Users className="h-3 w-3 mr-1" />
+            {usage.seat_quantity} seat{usage.seat_quantity !== 1 ? 's' : ''}
+          </Badge>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         
         <div className="p-3 space-y-4">
-          {/* Enrichment Credits */}
+          {/* Monthly Pool Credits */}
           <div>
             <div className="flex justify-between text-sm mb-1">
-              <span className="font-medium">Enrichment</span>
+              <span className="font-medium">Monthly Pool</span>
               <span className="text-muted-foreground">
                 {usage.collect_credits_used} / {usage.collect_credits_limit}
               </span>
             </div>
             <Progress value={usage.collect_percentage} className="h-2" />
+            <p className="text-xs text-muted-foreground mt-1">
+              {usage.billing_interval === 'year' ? '120' : '100'} credits per seat/month
+            </p>
           </div>
+
+          {/* Bonus Credits */}
+          {(usage.bonus_credits_available || 0) > 0 && (
+            <div className="flex items-center justify-between bg-muted/50 rounded-md p-2">
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                <span className="text-sm">Bonus credits</span>
+              </div>
+              <span className="font-medium text-sm">
+                {(usage.bonus_credits_available || 0).toLocaleString()}
+              </span>
+            </div>
+          )}
 
           {/* Next Reset */}
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -69,20 +81,23 @@ export function SourcingCreditIndicator() {
             </span>
           </div>
 
-          {showUpgrade && (
+          {isLow && (
             <>
               <DropdownMenuSeparator />
-              <div className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-md">
-                <p className="text-xs text-orange-900 dark:text-orange-200 mb-2">
-                  Running low on credits? Upgrade for more capacity.
-                </p>
+              <div className="bg-destructive/10 p-3 rounded-md">
+                <div className="flex items-start gap-2 mb-2">
+                  <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-destructive">
+                    Running low on credits. Purchase add-on bundles to avoid interruption.
+                  </p>
+                </div>
                 <Button 
                   size="sm" 
                   className="w-full"
-                  onClick={() => navigate('/settings/billing')}
+                  onClick={() => navigate('/settings?tab=billing')}
                 >
                   <TrendingUp className="h-3 w-3 mr-1" />
-                  Upgrade Plan
+                  Buy More Credits
                 </Button>
               </div>
             </>

@@ -4,16 +4,31 @@ import { supabase } from '@/lib/supabaseClient'
 
 export interface SourcingCreditsUsage {
   tenant_id: string
-  billing_cycle_start: string
-  search_credits_used: number
+  
+  // Enrichment credits (pooled per organization based on seats)
   collect_credits_used: number
-  search_credits_limit: number
   collect_credits_limit: number
-  subscription_tier: 'solo' | 'launch' | 'growth' | 'business'
-  billing_status: string
-  next_reset: string
-  search_percentage: number
   collect_percentage: number
+  
+  // Bonus credits (purchased add-ons)
+  bonus_credits_available: number
+  bonus_credits_purchased: number
+  bonus_credits_used: number
+  
+  // Subscription info
+  subscription_tier: string | null
+  billing_status: string
+  billing_interval: 'month' | 'year' | null
+  seat_quantity: number
+  
+  // Cycle info
+  next_reset: string
+  billing_cycle_start: string
+  
+  // Legacy fields for backward compatibility
+  search_credits_used: number
+  search_credits_limit: number
+  search_percentage: number
   created_at: string
   updated_at: string
 }
@@ -40,10 +55,19 @@ export function useSourcingCredits() {
 
       const tenantId = org.tenant_id
 
-      // Step 2: Get subscription info
+      // Step 2: Get subscription info including seat count and bonus credits
       const { data: subscription, error: subError } = await supabase
         .from('tenant_subscriptions')
-        .select('subscription_tier, billing_status, current_period_start, billing_interval, trial_started_at')
+        .select(`
+          subscription_tier, 
+          billing_status, 
+          current_period_start, 
+          billing_interval, 
+          trial_started_at,
+          seat_quantity,
+          bonus_credits_purchased,
+          bonus_credits_used
+        `)
         .eq('tenant_id', tenantId)
         .single()
 
@@ -76,58 +100,74 @@ export function useSourcingCredits() {
         throw error
       }
 
+      // Calculate credits per seat based on billing interval (per-seat model)
+      const seatQuantity = subscription.seat_quantity || 1
+      const isAnnual = subscription.billing_interval === 'year'
+      const creditsPerSeat = isAnnual ? 120 : 100
+      const collectLimit = seatQuantity * creditsPerSeat
+
+      // Bonus credits calculation
+      const bonusPurchased = subscription.bonus_credits_purchased || 0
+      const bonusUsed = subscription.bonus_credits_used || 0
+      const bonusAvailable = Math.max(0, bonusPurchased - bonusUsed)
+
+      // Calculate next reset
+      const nextReset = new Date(billingCycleStart)
+      const interval = subscription.billing_interval === 'year' ? 12 : 1
+      nextReset.setMonth(nextReset.getMonth() + interval)
+
       // Create new record if doesn't exist
       if (!data) {
-        // Get correct credit limits based on subscription tier
-        const { data: limits, error: limitsError } = await supabase
-          .rpc('get_tenant_credit_limits', { p_tenant_id: tenantId })
-          .single()
-
-        if (limitsError) {
-          console.error('Failed to get credit limits:', limitsError)
-          throw limitsError
-        }
-
         const { data: newRecord, error: insertError } = await supabase
           .from('sourcing_credits_usage')
           .insert({
             tenant_id: tenantId,
             billing_cycle_start: billingCycleStart.toISOString(),
-            search_credits_limit: limits.search_limit,
-            collect_credits_limit: limits.collect_limit
+            search_credits_limit: 0, // Searches are now free
+            collect_credits_limit: collectLimit
           })
           .select()
           .single()
 
         if (insertError) throw insertError
 
-        const nextReset = new Date(billingCycleStart)
-        const interval = subscription.billing_interval === 'year' ? 12 : 1
-        nextReset.setMonth(nextReset.getMonth() + interval)
-
         return {
           ...newRecord,
-          subscription_tier: (subscription.subscription_tier || 'launch') as 'solo' | 'launch' | 'growth' | 'business',
+          collect_credits_limit: collectLimit,
+          collect_percentage: 0,
+          bonus_credits_available: bonusAvailable,
+          bonus_credits_purchased: bonusPurchased,
+          bonus_credits_used: bonusUsed,
+          subscription_tier: subscription.subscription_tier || null,
           billing_status: subscription.billing_status,
+          billing_interval: subscription.billing_interval as 'month' | 'year' | null,
+          seat_quantity: seatQuantity,
           next_reset: nextReset.toISOString(),
+          // Legacy fields
+          search_credits_used: 0,
+          search_credits_limit: 0,
           search_percentage: 0,
-          collect_percentage: 0
         }
       }
 
-      // Calculate next reset based on the actual billing_cycle_start from the record
-      const recordCycleStart = new Date(data.billing_cycle_start)
-      const nextReset = new Date(recordCycleStart)
-      const interval = subscription.billing_interval === 'year' ? 12 : 1
-      nextReset.setMonth(nextReset.getMonth() + interval)
+      const collectUsed = data.collect_credits_used || 0
 
       return {
         ...data,
-        subscription_tier: (subscription.subscription_tier || 'launch') as 'solo' | 'launch' | 'growth' | 'business',
+        collect_credits_limit: collectLimit,
+        collect_percentage: collectLimit > 0 ? Math.round((collectUsed / collectLimit) * 100) : 0,
+        bonus_credits_available: bonusAvailable,
+        bonus_credits_purchased: bonusPurchased,
+        bonus_credits_used: bonusUsed,
+        subscription_tier: subscription.subscription_tier || null,
         billing_status: subscription.billing_status,
+        billing_interval: subscription.billing_interval as 'month' | 'year' | null,
+        seat_quantity: seatQuantity,
         next_reset: nextReset.toISOString(),
-        search_percentage: Math.round((data.search_credits_used / data.search_credits_limit) * 100),
-        collect_percentage: Math.round((data.collect_credits_used / data.collect_credits_limit) * 100)
+        // Legacy fields (searches are now free)
+        search_credits_used: 0,
+        search_credits_limit: 0,
+        search_percentage: 0,
       }
     },
     enabled: !!organizationId,
