@@ -404,17 +404,15 @@ export function SaaSCustomerDetail() {
       <AssignCreditsDialog
         open={assignCreditsDialogOpen}
         onOpenChange={setAssignCreditsDialogOpen}
-        onConfirm={(searchLimit, collectLimit, resetUsage) => {
+        onConfirm={(collectLimit, resetUsage) => {
           assignCreditsMutation.mutate({
             tenantId: customer.tenant_id,
-            searchCreditsLimit: searchLimit,
             collectCreditsLimit: collectLimit,
             resetUsage,
           })
           setAssignCreditsDialogOpen(false)
         }}
         tenantName={customer.name}
-        currentSearchLimit={creditUsage?.search_credits_limit}
         currentCollectLimit={creditUsage?.collect_credits_limit}
         isPending={assignCreditsMutation.isPending}
       />

@@ -8,7 +8,6 @@ const corsHeaders = {
 
 interface AssignCreditsRequest {
   tenant_id: string
-  search_credits_limit?: number
   collect_credits_limit?: number
   reset_usage?: boolean
 }
@@ -52,7 +51,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { tenant_id, search_credits_limit, collect_credits_limit, reset_usage }: AssignCreditsRequest = await req.json()
+    const { tenant_id, collect_credits_limit, reset_usage }: AssignCreditsRequest = await req.json()
 
     if (!tenant_id) {
       return new Response(JSON.stringify({ error: 'tenant_id is required' }), {
@@ -64,16 +63,11 @@ serve(async (req) => {
     // Build update object
     const updates: any = { updated_at: new Date().toISOString() }
     
-    if (search_credits_limit !== undefined) {
-      updates.search_credits_limit = search_credits_limit
-    }
-    
     if (collect_credits_limit !== undefined) {
       updates.collect_credits_limit = collect_credits_limit
     }
 
     if (reset_usage) {
-      updates.search_credits_used = 0
       updates.collect_credits_used = 0
     }
 
@@ -119,8 +113,8 @@ serve(async (req) => {
         .insert({
           tenant_id,
           billing_cycle_start: billingCycleStart.toISOString(),
-          search_credits_limit: search_credits_limit ?? 25,
-          collect_credits_limit: collect_credits_limit ?? 10,
+          search_credits_limit: 0, // Searches are free with Apollo
+          collect_credits_limit: collect_credits_limit ?? 100,
           search_credits_used: 0,
           collect_credits_used: 0,
         })
@@ -131,14 +125,14 @@ serve(async (req) => {
       result = data
     }
 
-    console.log(`✅ Credits assigned for tenant ${tenant_id}: search=${search_credits_limit}, collect=${collect_credits_limit}, reset=${reset_usage}`)
+    console.log(`✅ Enrichment credits assigned for tenant ${tenant_id}: limit=${collect_credits_limit}, reset=${reset_usage}`)
 
     return new Response(JSON.stringify({
       success: true,
       usage: result,
       message: reset_usage 
-        ? 'Credits assigned and usage reset successfully'
-        : 'Credits assigned successfully'
+        ? 'Enrichment credits assigned and usage reset successfully'
+        : 'Enrichment credits assigned successfully'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })

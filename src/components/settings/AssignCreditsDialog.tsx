@@ -9,9 +9,8 @@ import { Coins, RefreshCw } from 'lucide-react'
 interface AssignCreditsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onConfirm: (searchLimit: number, collectLimit: number, resetUsage: boolean) => void
+  onConfirm: (collectLimit: number, resetUsage: boolean) => void
   tenantName: string
-  currentSearchLimit?: number
   currentCollectLimit?: number
   isPending: boolean
 }
@@ -21,26 +20,20 @@ export function AssignCreditsDialog({
   onOpenChange,
   onConfirm,
   tenantName,
-  currentSearchLimit,
   currentCollectLimit,
   isPending,
 }: AssignCreditsDialogProps) {
-  const [searchLimit, setSearchLimit] = useState(currentSearchLimit?.toString() || '25')
-  const [collectLimit, setCollectLimit] = useState(currentCollectLimit?.toString() || '10')
+  const [collectLimit, setCollectLimit] = useState(currentCollectLimit?.toString() || '100')
   const [resetUsage, setResetUsage] = useState(false)
 
   const handleConfirm = () => {
-    const searchNum = parseInt(searchLimit, 10)
     const collectNum = parseInt(collectLimit, 10)
 
-    if (isNaN(searchNum) || searchNum < 0) {
-      return
-    }
     if (isNaN(collectNum) || collectNum < 0) {
       return
     }
 
-    onConfirm(searchNum, collectNum, resetUsage)
+    onConfirm(collectNum, resetUsage)
   }
 
   return (
@@ -49,38 +42,23 @@ export function AssignCreditsDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Coins className="h-5 w-5 text-virgilio-purple" />
-            Assign Sourcing Credits
+            Assign Enrichment Credits
           </DialogTitle>
           <DialogDescription>
-            Manually set credit limits for <strong>{tenantName}</strong>
+            Manually set enrichment credit limits for <strong>{tenantName}</strong>
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="search-limit">Search Credits Limit</Label>
-            <Input
-              id="search-limit"
-              type="number"
-              min="0"
-              value={searchLimit}
-              onChange={(e) => setSearchLimit(e.target.value)}
-              placeholder="e.g., 100"
-            />
-            <p className="text-sm text-muted-foreground">
-              Number of candidate searches allowed per billing cycle
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="collect-limit">Collect/Enrichment Credits Limit</Label>
+            <Label htmlFor="collect-limit">Enrichment Credits Limit</Label>
             <Input
               id="collect-limit"
               type="number"
               min="0"
               value={collectLimit}
               onChange={(e) => setCollectLimit(e.target.value)}
-              placeholder="e.g., 50"
+              placeholder="e.g., 100"
             />
             <p className="text-sm text-muted-foreground">
               Number of profile enrichments allowed per billing cycle
