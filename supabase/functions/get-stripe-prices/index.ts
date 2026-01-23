@@ -65,23 +65,29 @@ serve(async (req) => {
       // Credit bundle add-ons (one-time purchases)
       creditBundles: [
         {
+          id: 'bundle_500',
           size: '500',
           credits: 500,
           amount: 4900, // $49
+          currency: 'usd',
           priceId: credits500PriceId || null,
           savings: null, // Base tier
         },
         {
+          id: 'bundle_1500',
           size: '1500',
           credits: 1500,
           amount: 12900, // $129
+          currency: 'usd',
           priceId: credits1500PriceId || null,
           savings: '12%', // Better per-credit rate
         },
         {
+          id: 'bundle_5000',
           size: '5000',
           credits: 5000,
           amount: 34900, // $349
+          currency: 'usd',
           priceId: credits5000PriceId || null,
           savings: '29%', // Best per-credit rate
         },

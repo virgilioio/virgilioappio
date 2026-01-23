@@ -363,7 +363,7 @@ export function Billing() {
       {/* Credit Bundle Card - Show for active users */}
       {isActive && (
         <CreditBundleCard 
-          bonusCreditsAvailable={0}
+          bonusCreditsAvailable={(billing.bonus_credits_purchased || 0) - (billing.bonus_credits_used || 0)}
         />
       )}
 
