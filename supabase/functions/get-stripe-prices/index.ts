@@ -1,115 +1,137 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import Stripe from "npm:stripe@16";
 import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/cors.ts";
 
 const corsHeaders = createSecureCorsHeaders();
 
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-  apiVersion: '2023-10-16',
-});
-
 serve(async (req) => {
-  // Handle CORS preflight requests
   const preflightResponse = handleSecureCorsPreFlight(req, corsHeaders);
   if (preflightResponse) return preflightResponse;
 
   try {
-    // Verify JWT authentication
-    const authHeader = req.headers.get('Authorization');
+    // Authenticate user
+    const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      console.error('Missing Authorization header');
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: "Authorization header required" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
-    if (authError || !user) {
-      console.error('Authentication failed:', authError);
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('Fetching Stripe prices for user:', user.id);
-
-    // Get Price IDs from environment variables
-    const monthlyPriceId = Deno.env.get('STRIPE_PRICE_MONTHLY');
-    const yearlyPriceId = Deno.env.get('STRIPE_PRICE_YEARLY');
-
-    console.log('Price IDs:', { monthlyPriceId, yearlyPriceId });
-
-    // Fetch prices from Stripe
-    const [monthlyPrice, yearlyPrice] = await Promise.all([
-      monthlyPriceId ? stripe.prices.retrieve(monthlyPriceId, { expand: ['product'] }).catch(err => {
-        console.error('Error fetching monthly price:', err);
-        return null;
-      }) : Promise.resolve(null),
-      yearlyPriceId ? stripe.prices.retrieve(yearlyPriceId, { expand: ['product'] }).catch(err => {
-        console.error('Error fetching yearly price:', err);
-        return null;
-      }) : Promise.resolve(null),
-    ]);
-
-    console.log('Fetched prices:', { 
-      monthly: monthlyPrice ? { amount: monthlyPrice.unit_amount, currency: monthlyPrice.currency } : null,
-      yearly: yearlyPrice ? { amount: yearlyPrice.unit_amount, currency: yearlyPrice.currency } : null
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const supabaseClient = createClient(supabaseUrl, supabaseKey, {
+      global: { headers: { Authorization: authHeader } },
     });
 
-    // Extract product data
-    const monthlyProduct = monthlyPrice?.product && typeof monthlyPrice.product === 'object' ? monthlyPrice.product : null;
-    const yearlyProduct = yearlyPrice?.product && typeof yearlyPrice.product === 'object' ? yearlyPrice.product : null;
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !userData?.user) {
+      return new Response(JSON.stringify({ error: "Authentication failed" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
+    // GoGio ATS Per-Seat Pricing Model
+    // $99/seat/month or $999/seat/year
+    // Credits: 100/seat/month (monthly) or 120/seat/month (annual, 20% bonus)
+    
+    const seatMonthlyPriceId = Deno.env.get("STRIPE_PRICE_SEAT_MONTHLY");
+    const seatAnnualPriceId = Deno.env.get("STRIPE_PRICE_SEAT_ANNUAL");
+    
+    // Credit bundle price IDs (optional - can use inline pricing if not set)
+    const credits500PriceId = Deno.env.get("STRIPE_PRICE_CREDITS_500");
+    const credits1500PriceId = Deno.env.get("STRIPE_PRICE_CREDITS_1500");
+    const credits5000PriceId = Deno.env.get("STRIPE_PRICE_CREDITS_5000");
+
+    // Build response with per-seat pricing
     const response = {
-      monthly: monthlyPrice ? {
-        priceId: monthlyPrice.id,
-        amount: monthlyPrice.unit_amount || 0,
-        currency: monthlyPrice.currency,
+      // Per-seat subscription pricing
+      seatMonthly: {
+        priceId: seatMonthlyPriceId || null,
+        amount: 9900, // $99 in cents
+        currency: 'usd',
         interval: 'month',
-        productImage: monthlyProduct?.images?.[0] || null,
-        productName: monthlyProduct?.name || null,
-      } : null,
-      yearly: yearlyPrice ? {
-        priceId: yearlyPrice.id,
-        amount: yearlyPrice.unit_amount || 0,
-        currency: yearlyPrice.currency,
+        creditsPerSeat: 100,
+      },
+      seatAnnual: {
+        priceId: seatAnnualPriceId || null,
+        amount: 99900, // $999 in cents
+        currency: 'usd',
         interval: 'year',
-        productImage: yearlyProduct?.images?.[0] || null,
-        productName: yearlyProduct?.name || null,
-      } : null,
-      trialDays: 14 // Default trial period
+        creditsPerSeat: 120, // 20% bonus for annual
+      },
+      
+      // Credit bundle add-ons (one-time purchases)
+      creditBundles: [
+        {
+          size: '500',
+          credits: 500,
+          amount: 4900, // $49
+          priceId: credits500PriceId || null,
+          savings: null, // Base tier
+        },
+        {
+          size: '1500',
+          credits: 1500,
+          amount: 12900, // $129
+          priceId: credits1500PriceId || null,
+          savings: '12%', // Better per-credit rate
+        },
+        {
+          size: '5000',
+          credits: 5000,
+          amount: 34900, // $349
+          priceId: credits5000PriceId || null,
+          savings: '29%', // Best per-credit rate
+        },
+      ],
+
+      // Trial configuration
+      trialDays: 14,
+      trialCredits: 20, // 15 search + 5 collect
+      requiresPaymentMethod: true, // CC wall
+      
+      // Feature highlights for UI
+      features: {
+        allFeaturesIncluded: true,
+        freeHiringManagers: true,
+        freeInterviewers: true,
+        creditsPooled: true,
+        creditsResetMonthly: true,
+        bonusCreditsNeverExpire: true,
+      },
+      
+      // Legacy compatibility (deprecated - use seatMonthly/seatAnnual)
+      monthly: {
+        priceId: seatMonthlyPriceId || '',
+        amount: 9900,
+        currency: 'usd',
+        interval: 'month',
+      },
+      yearly: {
+        priceId: seatAnnualPriceId || '',
+        amount: 99900,
+        currency: 'usd',
+        interval: 'year',
+      },
     };
 
-    return new Response(
-      JSON.stringify(response),
-      { 
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json',
-          'Cache-Control': 'public, max-age=300' // Cache for 5 minutes
-        } 
-      }
-    );
-
+    return new Response(JSON.stringify(response), {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+        "Cache-Control": "public, max-age=300", // Cache for 5 minutes
+      },
+    });
   } catch (error) {
-    console.error('Error in get-stripe-prices function:', error);
+    console.error("[get-stripe-prices] Error:", error);
     return new Response(
-      JSON.stringify({ 
-        error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      JSON.stringify({ error: error instanceof Error ? error.message : "Internal server error" }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
   }

@@ -173,3 +173,6 @@ verify_jwt = true
 
 [functions.renew-calendar-watches]
 verify_jwt = false
+
+[functions.create-credit-purchase]
+verify_jwt = true

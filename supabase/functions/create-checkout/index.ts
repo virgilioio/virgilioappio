@@ -32,11 +32,12 @@ serve(async (req) => {
     const user = userData.user;
     log("User", { id: user.id, email: user.email });
 
-    // Read requested interval, tier, and optional tenantId from client
+    // Read requested interval and optional tenantId from client
+    // Note: tier is no longer used - we're on per-seat pricing
     const body = await req.json().catch(() => ({}));
-    const tier = body?.tier || 'launch'; // default to launch
     const interval = body?.interval === "year" ? "year" : "month";
     const explicitTenantId = body?.tenantId as string | undefined;
+    const isTrialStart = body?.startTrial === true; // Flag to indicate starting a trial with CC
 
     // Resolve tenant id: prefer explicit, else use new RPC with explicit user_id
     let tenantId: string | null = explicitTenantId ?? null;
@@ -64,22 +65,18 @@ serve(async (req) => {
     if (subErr) throw new Error(`Failed loading tenant_subscriptions: ${subErr.message}`);
 
     if (!tenantSubRow) {
-      const trialStart = new Date();
-      const trialEnd = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-      
+      // Create pending_trial record - trial starts when they complete checkout with CC
       const { error: insertSubErr } = await supabase
         .from("tenant_subscriptions")
         .insert({ 
           tenant_id: tenantId, 
           subscribed: false, 
-          seat_quantity: 0,
-          billing_status: 'trialing',
-          trial_started_at: trialStart.toISOString(),
-          trial_ends_at: trialEnd.toISOString(),
-          trial_source: 'checkout_fallback'
+          seat_quantity: 1,
+          billing_status: 'pending_trial',
+          trial_source: 'checkout_cc_required'
         });
       if (insertSubErr) throw new Error(`Failed creating tenant_subscriptions row: ${insertSubErr.message}`);
-      log("Created tenant_subscriptions row with trial", { tenantId, trialEndsAt: trialEnd.toISOString() });
+      log("Created tenant_subscriptions row with pending_trial status", { tenantId });
     }
 
     // Compute current billable seats
@@ -127,59 +124,58 @@ serve(async (req) => {
       if (updErr) throw new Error(`Failed to update stripe_customer_id: ${updErr.message}`);
     }
 
-    // Map tier + interval to Price ID
-    const priceMap: Record<string, Record<string, string>> = {
-      solo: {
-        month: Deno.env.get("STRIPE_PRICE_SOLO_MONTHLY") || "",
-        year: Deno.env.get("STRIPE_PRICE_SOLO_ANNUAL") || "",
-      },
-      launch: {
-        month: Deno.env.get("STRIPE_PRICE_LAUNCH_MONTHLY") || Deno.env.get("STRIPE_PRICE_MONTHLY") || "",
-        year: Deno.env.get("STRIPE_PRICE_LAUNCH_ANNUAL") || Deno.env.get("STRIPE_PRICE_YEARLY") || "",
-      },
-      growth: {
-        month: Deno.env.get("STRIPE_PRICE_GROWTH_MONTHLY") || "",
-        year: Deno.env.get("STRIPE_PRICE_GROWTH_ANNUAL") || "",
-      },
-      business: {
-        month: Deno.env.get("STRIPE_PRICE_BUSINESS_MONTHLY") || "",
-        year: Deno.env.get("STRIPE_PRICE_BUSINESS_ANNUAL") || "",
-      },
-    };
-
-    const priceId = priceMap[tier]?.[interval];
+    // Per-seat pricing: single price based on interval
+    // $99/seat/month or $999/seat/year
+    const priceId = interval === "year"
+      ? Deno.env.get("STRIPE_PRICE_SEAT_ANNUAL")
+      : Deno.env.get("STRIPE_PRICE_SEAT_MONTHLY");
 
     if (!priceId) {
-      throw new Error(`Missing Stripe Price ID for tier: ${tier}, interval: ${interval}`);
+      throw new Error(`Missing Stripe Price ID for per-seat ${interval} pricing. Please configure STRIPE_PRICE_SEAT_${interval.toUpperCase()}`);
     }
 
     const origin = req.headers.get("origin") || "http://localhost:5173";
     const success_url = `${origin}/billing?session_id={CHECKOUT_SESSION_ID}`;
     const cancel_url = `${origin}/billing?canceled=true`;
 
-    const session = await stripe.checkout.sessions.create({
+    // Determine if this is a trial start or regular subscription
+    const isNewTrial = isTrialStart || subRow2?.billing_status === 'pending_trial';
+    
+    const sessionConfig: Stripe.Checkout.SessionCreateParams = {
       mode: "subscription",
       customer: customerId || undefined,
       customer_email: customerId ? undefined : user.email,
       line_items: [
         {
-          price: priceId,  // Use Price ID instead of price_data
+          price: priceId,
           quantity,
         },
       ],
       subscription_data: {
-        // No trial - subscription starts immediately after checkout
         metadata: {
           tenant_id: String(tenantId),
-          tier: tier, // Store tier in subscription metadata
         },
+        // 14-day trial when starting fresh subscription with CC
+        ...(isNewTrial ? { trial_period_days: 14 } : {}),
       },
+      // CRITICAL: Require payment method collection for trial (CC wall)
+      payment_method_collection: 'always',
       success_url,
       cancel_url,
       allow_promotion_codes: true,
-    });
+    };
 
-    log("Session created", { id: session.id, url: session.url, tier, interval, quantity, tenantId });
+    const session = await stripe.checkout.sessions.create(sessionConfig);
+
+    log("Session created", { 
+      id: session.id, 
+      url: session.url, 
+      interval, 
+      quantity, 
+      tenantId,
+      isNewTrial,
+      trialDays: isNewTrial ? 14 : 0
+    });
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -1377,6 +1377,56 @@ export type Database = {
           },
         ]
       }
+      credit_purchases: {
+        Row: {
+          amount_cents: number
+          bundle_type: string | null
+          created_at: string | null
+          credits_purchased: number
+          credits_remaining: number
+          id: string
+          purchased_at: string | null
+          purchased_by: string | null
+          stripe_payment_id: string | null
+          stripe_session_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          amount_cents: number
+          bundle_type?: string | null
+          created_at?: string | null
+          credits_purchased: number
+          credits_remaining: number
+          id?: string
+          purchased_at?: string | null
+          purchased_by?: string | null
+          stripe_payment_id?: string | null
+          stripe_session_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          amount_cents?: number
+          bundle_type?: string | null
+          created_at?: string | null
+          credits_purchased?: number
+          credits_remaining?: number
+          id?: string
+          purchased_at?: string | null
+          purchased_by?: string | null
+          stripe_payment_id?: string | null
+          stripe_session_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_purchases_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_logs: {
         Row: {
           attachments: Json | null
@@ -4407,6 +4457,8 @@ export type Database = {
         Row: {
           billing_interval: string | null
           billing_status: string | null
+          bonus_credits_purchased: number | null
+          bonus_credits_used: number | null
           cancel_at_period_end: boolean | null
           created_at: string
           current_period_end: string | null
@@ -4434,6 +4486,8 @@ export type Database = {
         Insert: {
           billing_interval?: string | null
           billing_status?: string | null
+          bonus_credits_purchased?: number | null
+          bonus_credits_used?: number | null
           cancel_at_period_end?: boolean | null
           created_at?: string
           current_period_end?: string | null
@@ -4461,6 +4515,8 @@ export type Database = {
         Update: {
           billing_interval?: string | null
           billing_status?: string | null
+          bonus_credits_purchased?: number | null
+          bonus_credits_used?: number | null
           cancel_at_period_end?: boolean | null
           created_at?: string
           current_period_end?: string | null
@@ -4833,6 +4889,10 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: Json
       }
+      consume_bonus_credits: {
+        Args: { p_credits_to_consume: number; p_tenant_id: string }
+        Returns: number
+      }
       copy_platform_template_to_tenant: {
         Args: {
           p_target_tenant_id: string
@@ -4977,6 +5037,10 @@ export type Database = {
       }
       get_tenant_billable_seat_count: {
         Args: { tenant_id_param: string }
+        Returns: number
+      }
+      get_tenant_bonus_credits: {
+        Args: { p_tenant_id: string }
         Returns: number
       }
       get_tenant_credit_limits: {

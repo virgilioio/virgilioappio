@@ -92,7 +92,7 @@ serve(async (req) => {
         break;
 
       case "invoice.payment_succeeded":
-        await handlePaymentSucceeded(supabaseClient, event.data.object as Stripe.Invoice);
+        await handlePaymentSucceeded(supabaseClient, stripe, event.data.object as Stripe.Invoice);
         break;
 
       case "invoice.payment_failed":
@@ -153,34 +153,13 @@ async function handleSubscriptionChange(supabaseClient: any, subscription: Strip
     return;
   }
 
-  // Extract tier from subscription metadata or price metadata
-  let tier = subscription.metadata?.tier;
-  
-  if (!tier) {
-    // Try to get tier from price metadata
-    const priceId = subscription.items.data[0]?.price.id;
-    if (priceId) {
-      // Fetch price with metadata
-      const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", { apiVersion: "2023-10-16" });
-      const price = await stripe.prices.retrieve(priceId);
-      tier = price.metadata?.tier || 'launch';
-    }
-  }
-  
-  tier = tier || 'launch'; // Default to launch
-
-  // Determine max_users based on tier (4 tiers)
-  const maxUsersMap: Record<string, number> = {
-    solo: 1,
-    launch: 5,
-    growth: 15,
-    business: 50,
-  };
-  const maxUsers = maxUsersMap[tier] || 5;
+  // Per-seat model: no tier mapping needed
+  // max_users is null (unlimited - billing handles it)
+  const maxUsers = null;
 
   // Map Stripe status to billing_status
   let billing_status = 'active';
-  if (subscription.status === 'trialing') billing_status = 'active';
+  if (subscription.status === 'trialing') billing_status = 'trialing';
   if (subscription.status === 'past_due') billing_status = 'past_due';
   if (subscription.status === 'canceled') billing_status = 'canceled';
   if (subscription.status === 'unpaid') billing_status = 'locked';
@@ -197,41 +176,57 @@ async function handleSubscriptionChange(supabaseClient: any, subscription: Strip
   const currentPeriodEnd = subscription.current_period_end 
     ? new Date(subscription.current_period_end * 1000).toISOString() 
     : null;
+  
+  // Handle trial dates
+  const trialStart = subscription.trial_start 
+    ? new Date(subscription.trial_start * 1000).toISOString() 
+    : null;
+  const trialEnd = subscription.trial_end 
+    ? new Date(subscription.trial_end * 1000).toISOString() 
+    : null;
 
-  // Update tenant_subscriptions with tier and max_users
+  // Update tenant_subscriptions for per-seat model
+  const updateData: Record<string, any> = {
+    stripe_customer_id: customerId,
+    stripe_subscription_id: subscription.id,
+    subscribed: isSubscribed,
+    subscription_status: subscription.status,
+    subscription_tier: 'per_seat', // New per-seat model
+    max_users: maxUsers, // null = unlimited (per-seat billing)
+    billing_status: billing_status,
+    billing_interval: interval,
+    seat_quantity: quantity,
+    current_period_start: currentPeriodStart,
+    current_period_end_at: currentPeriodEnd,
+    subscription_end: currentPeriodEnd,
+    cancel_at_period_end: subscription.cancel_at_period_end || false,
+    updated_at: new Date().toISOString(),
+  };
+
+  // Handle trial fields based on status
+  if (subscription.status === 'trialing') {
+    updateData.trial_started_at = trialStart;
+    updateData.trial_ends_at = trialEnd;
+    updateData.trial_end = trialEnd; // backward compat
+  } else if (subscription.status === 'active') {
+    // Clear trial fields when subscription is fully active (trial ended)
+    updateData.trial_started_at = null;
+    updateData.trial_ends_at = null;
+    updateData.trial_source = null;
+  }
+
   await supabaseClient
     .from("tenant_subscriptions")
-    .update({
-      stripe_customer_id: customerId,
-      stripe_subscription_id: subscription.id,
-      subscribed: isSubscribed,
-      subscription_status: subscription.status,
-      subscription_tier: tier, // Store tier
-      max_users: maxUsers, // Store user limit
-      billing_status: billing_status,
-      billing_interval: interval,
-      seat_quantity: quantity,
-      current_period_start: currentPeriodStart,
-      current_period_end_at: currentPeriodEnd,
-      subscription_end: currentPeriodEnd,
-      cancel_at_period_end: subscription.cancel_at_period_end || false,
-      
-      // Clear trial fields when subscription is active
-      trial_started_at: null,
-      trial_ends_at: null,
-      trial_source: null,
-      
-      updated_at: new Date().toISOString(),
-    })
+    .update(updateData)
     .eq("tenant_id", tenantId);
 
   logStep("Updated tenant subscription", { 
     tenantId, 
-    tier,
-    max_users: maxUsers,
     billing_status, 
     quantity,
-    subscribed: isSubscribed 
+    interval,
+    subscribed: isSubscribed,
+    isTrialing: subscription.status === 'trialing'
   });
 }
 
@@ -254,9 +249,41 @@ async function handleSubscriptionDeleted(supabaseClient: any, subscription: Stri
   logStep("Marked subscription as canceled", { customerId });
 }
 
-async function handlePaymentSucceeded(supabaseClient: any, invoice: Stripe.Invoice) {
+async function handlePaymentSucceeded(supabaseClient: any, stripe: Stripe, invoice: Stripe.Invoice) {
   logStep("Handling payment succeeded", { invoiceId: invoice.id });
 
+  // Check if this is a credit bundle purchase (one-time payment)
+  const metadata = invoice.metadata || {};
+  if (metadata.type === 'credit_bundle' && metadata.tenant_id) {
+    const credits = parseInt(metadata.credits || '0', 10);
+    const tenantId = metadata.tenant_id;
+    
+    logStep("Processing credit bundle purchase", { tenantId, credits });
+    
+    // Record the credit purchase
+    await supabaseClient.from("credit_purchases").insert({
+      tenant_id: tenantId,
+      stripe_payment_id: invoice.payment_intent as string,
+      credits_purchased: credits,
+      credits_remaining: credits,
+      amount_cents: invoice.amount_paid,
+      bundle_type: String(credits),
+    });
+
+    // Update tenant bonus credits total
+    await supabaseClient
+      .from("tenant_subscriptions")
+      .update({
+        bonus_credits_purchased: supabaseClient.raw(`COALESCE(bonus_credits_purchased, 0) + ${credits}`),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("tenant_id", tenantId);
+
+    logStep("Credit bundle recorded", { tenantId, credits });
+    return;
+  }
+
+  // Regular subscription payment
   if (invoice.subscription) {
     const customerId = invoice.customer as string;
     
@@ -305,8 +332,51 @@ async function handleCheckoutCompleted(
   stripe: Stripe, 
   session: Stripe.Checkout.Session
 ) {
-  logStep("Handling checkout completed", { sessionId: session.id });
+  logStep("Handling checkout completed", { sessionId: session.id, mode: session.mode });
 
+  // Handle one-time credit bundle purchase
+  if (session.mode === 'payment') {
+    const metadata = session.metadata || {};
+    if (metadata.type === 'credit_bundle' && metadata.tenant_id) {
+      const credits = parseInt(metadata.credits || '0', 10);
+      const tenantId = metadata.tenant_id;
+      
+      logStep("Processing credit bundle from checkout", { tenantId, credits });
+      
+      // Record the credit purchase
+      await supabaseClient.from("credit_purchases").insert({
+        tenant_id: tenantId,
+        stripe_session_id: session.id,
+        stripe_payment_id: session.payment_intent as string,
+        credits_purchased: credits,
+        credits_remaining: credits,
+        amount_cents: session.amount_total || 0,
+        bundle_type: String(credits),
+      });
+
+      // Update tenant bonus credits total using SQL increment
+      const { data: currentData } = await supabaseClient
+        .from("tenant_subscriptions")
+        .select("bonus_credits_purchased")
+        .eq("tenant_id", tenantId)
+        .single();
+
+      const currentCredits = currentData?.bonus_credits_purchased || 0;
+
+      await supabaseClient
+        .from("tenant_subscriptions")
+        .update({
+          bonus_credits_purchased: currentCredits + credits,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("tenant_id", tenantId);
+
+      logStep("Credit bundle recorded from checkout", { tenantId, credits, totalBonus: currentCredits + credits });
+      return;
+    }
+  }
+
+  // Handle subscription checkout
   const subscriptionId = session.subscription as string;
   if (!subscriptionId) {
     logStep("No subscription in checkout session", { sessionId: session.id });
@@ -316,7 +386,7 @@ async function handleCheckoutCompleted(
   // Retrieve full subscription object
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
   
-  // Reuse subscription handler to update DB and clear trial fields
+  // Reuse subscription handler to update DB
   await handleSubscriptionChange(supabaseClient, subscription);
   
   logStep("Checkout session processed", { sessionId: session.id, subscriptionId });
