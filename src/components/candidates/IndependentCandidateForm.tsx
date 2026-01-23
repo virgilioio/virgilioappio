@@ -173,18 +173,29 @@ export function IndependentCandidateForm({
         setCapturedResumeText('') // Clear after triggering
       }
       
-      handleClose()
+      handleCancel()
     } catch (error) {
       console.error('Error submitting candidate form:', error)
     }
   }
 
-  const handleClose = () => {
+  // Handler for clicking outside / dismiss - preserve data
+  const handleDismiss = (open: boolean) => {
+    if (!open) {
+      console.log('IndependentCandidateForm - Dismissed (clicking outside), preserving data')
+      onClose()
+    }
+  }
+
+  // Handler for Cancel button - clear all fields
+  const handleCancel = () => {
+    console.log('IndependentCandidateForm - Cancel clicked, clearing form')
     reset()
     setSkills([])
     setNewSkill('')
     setContactEmails([{ type: 'work', email: '', status: null }])
     setContactPhones([{ type: 'mobile', number: '', raw_number: null }])
+    setProfileSummary('')
     setCapturedResumeText('')
     setShowEnrichmentBanner(false)
     onClose()
@@ -210,7 +221,7 @@ export function IndependentCandidateForm({
 
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={handleDismiss}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
@@ -577,7 +588,7 @@ export function IndependentCandidateForm({
         </div>
 
         <DialogFooter className="border-t pt-4 mt-4 bg-background">
-          <Button type="button" variant="outline" onClick={handleClose}>
+          <Button type="button" variant="outline" onClick={handleCancel}>
             Cancel
           </Button>
           <Button type="submit" form="candidate-form" disabled={isLoading}>
