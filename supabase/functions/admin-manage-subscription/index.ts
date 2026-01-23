@@ -11,8 +11,8 @@ interface ManageSubscriptionRequest {
   params?: {
     reason?: string
     newEndDate?: string
-    newTier?: string
     newInterval?: string
+    newSeats?: number  // Optional admin override for seat count
   }
 }
 
@@ -166,44 +166,39 @@ Deno.serve(async (req) => {
         break
 
       case 'change_plan':
-        if (!params?.newTier || !params?.newInterval) {
+        // Per-seat pricing model: only interval and optional seat override
+        if (!params?.newInterval) {
           return new Response(
-            JSON.stringify({ error: 'newTier and newInterval required for plan change' }),
+            JSON.stringify({ error: 'newInterval required for plan change' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
 
-        const validTiers = ['solo', 'launch', 'growth', 'business']
-        const validIntervals = ['monthly', 'yearly']
-
-        if (!validTiers.includes(params.newTier.toLowerCase())) {
+        const validIntervals = ['month', 'year', 'monthly', 'yearly']
+        const normalizedInterval = params.newInterval.toLowerCase()
+        
+        if (!validIntervals.includes(normalizedInterval)) {
           return new Response(
-            JSON.stringify({ error: 'Invalid tier. Must be one of: solo, launch, growth, business' }),
+            JSON.stringify({ error: 'Invalid interval. Must be one of: month, year' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
 
-        if (!validIntervals.includes(params.newInterval.toLowerCase())) {
-          return new Response(
-            JSON.stringify({ error: 'Invalid interval. Must be one of: monthly, yearly' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
-        }
-
-        // Set max_users based on tier
-        const tierMaxUsers: Record<string, number> = {
-          solo: 1,
-          launch: 5,
-          growth: 15,
-          business: 50,
-        }
+        // Normalize interval to 'month' or 'year' format
+        const interval = normalizedInterval === 'monthly' ? 'month' : 
+                        normalizedInterval === 'yearly' ? 'year' : normalizedInterval
 
         updateData = {
           ...updateData,
-          subscription_tier: params.newTier.toLowerCase(),
-          billing_interval: params.newInterval.toLowerCase(),
-          max_users: tierMaxUsers[params.newTier.toLowerCase()],
+          subscription_tier: 'per_seat',  // All subscriptions are now per-seat
+          billing_interval: interval,
         }
+
+        // Optional admin seat override
+        if (params.newSeats && params.newSeats > 0) {
+          updateData.seat_quantity = params.newSeats
+        }
+
         auditAction = 'tenant_subscription_plan_changed'
         break
 

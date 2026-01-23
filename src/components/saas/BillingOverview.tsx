@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { ExternalLink, CreditCard, Calendar, DollarSign, Users, AlertTriangle, Clock } from 'lucide-react'
+import { ExternalLink, CreditCard, Calendar, DollarSign, Users, AlertTriangle, Clock, Coins } from 'lucide-react'
 import { SaaSCustomerDetail } from '@/hooks/useSaaSCustomer'
 import { format } from 'date-fns'
 import { useQuery } from '@tanstack/react-query'
@@ -11,6 +11,12 @@ import { supabase } from '@/lib/supabaseClient'
 interface BillingOverviewProps {
   customer: SaaSCustomerDetail
 }
+
+// Per-seat pricing constants
+const MONTHLY_PRICE_PER_SEAT = 99
+const YEARLY_PRICE_PER_SEAT = 999
+const MONTHLY_CREDITS_PER_SEAT = 100
+const YEARLY_CREDITS_PER_SEAT = 120
 
 export function BillingOverview({ customer }: BillingOverviewProps) {
   // Fetch full subscription data from tenant_subscriptions
@@ -28,15 +34,6 @@ export function BillingOverview({ customer }: BillingOverviewProps) {
     },
     enabled: !!customer.tenant_id
   })
-
-  const getTierBadgeVariant = (tier: string | null) => {
-    switch (tier?.toLowerCase()) {
-      case 'business': return 'default'
-      case 'growth': return 'secondary'
-      case 'launch': return 'outline'
-      default: return 'outline'
-    }
-  }
 
   const getBillingStatusVariant = (status: string | null) => {
     switch (status) {
@@ -63,15 +60,14 @@ export function BillingOverview({ customer }: BillingOverviewProps) {
     }
   }
 
-  const formatTierName = (tier: string | null) => {
-    if (!tier) return 'No Plan'
-    const tierMap: Record<string, string> = {
-      'launch': 'GoGio: Launch!',
-      'growth': 'GoGio: Growth!',
-      'business': 'GoGio: Business!'
-    }
-    return tierMap[tier.toLowerCase()] || tier
-  }
+  // Calculate per-seat pricing values
+  const seats = subscriptionData?.seat_quantity || 1
+  const interval = subscriptionData?.billing_interval
+  const pricePerSeat = interval === 'year' ? YEARLY_PRICE_PER_SEAT : MONTHLY_PRICE_PER_SEAT
+  const creditsPerSeat = interval === 'year' ? YEARLY_CREDITS_PER_SEAT : MONTHLY_CREDITS_PER_SEAT
+  const totalPrice = seats * pricePerSeat
+  const totalCredits = seats * creditsPerSeat
+  const bonusCreditsBalance = (subscriptionData?.bonus_credits_purchased || 0) - (subscriptionData?.bonus_credits_used || 0)
 
   return (
     <div className="space-y-6">
@@ -112,16 +108,22 @@ export function BillingOverview({ customer }: BillingOverviewProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
-                  <div className="text-sm text-virgilio-muted mb-2">Subscription Tier</div>
-                  <Badge variant={getTierBadgeVariant(subscriptionData?.subscription_tier)} className="text-base px-4 py-1.5">
-                    {formatTierName(subscriptionData?.subscription_tier)}
+                  <div className="text-sm text-virgilio-muted mb-2">Plan Type</div>
+                  <Badge variant="default" className="text-base px-4 py-1.5">
+                    GoGio ATS - Per Seat
                   </Badge>
                 </div>
                 
                 <div>
-                  <div className="text-sm text-virgilio-muted mb-2">Billing Interval</div>
-                  <div className="text-base font-medium text-virgilio-text capitalize">
-                    {subscriptionData?.billing_interval || 'Not set'}
+                  <div className="text-sm text-virgilio-muted mb-2 flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Billing
+                  </div>
+                  <div className="text-base font-medium text-virgilio-text">
+                    {seats} seat{seats !== 1 ? 's' : ''} × ${pricePerSeat}/{interval === 'year' ? 'yr' : 'mo'}
+                  </div>
+                  <div className="text-sm text-virgilio-muted">
+                    = ${totalPrice}/{interval === 'year' ? 'year' : 'month'}
                   </div>
                 </div>
 
@@ -143,11 +145,32 @@ export function BillingOverview({ customer }: BillingOverviewProps) {
               <div className="space-y-4">
                 <div>
                   <div className="text-sm text-virgilio-muted mb-2 flex items-center gap-2">
+                    <Coins className="h-4 w-4" />
+                    Monthly Credit Pool
+                  </div>
+                  <div className="text-base font-medium text-virgilio-text">
+                    {totalCredits} credits/month
+                  </div>
+                  <div className="text-xs text-virgilio-muted">
+                    ({seats} seats × {creditsPerSeat} credits)
+                  </div>
+                  {bonusCreditsBalance > 0 && (
+                    <div className="text-sm text-virgilio-success mt-1">
+                      + {bonusCreditsBalance} bonus credits
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <div className="text-sm text-virgilio-muted mb-2 flex items-center gap-2">
                     <Users className="h-4 w-4" />
                     Seat Count
                   </div>
                   <div className="text-base font-medium text-virgilio-text">
-                    {subscriptionData?.seat_quantity || 0} / {subscriptionData?.max_users || 'Unlimited'} seats
+                    {seats} recruiter seat{seats !== 1 ? 's' : ''}
+                  </div>
+                  <div className="text-xs text-virgilio-muted">
+                    Unlimited hiring managers included
                   </div>
                 </div>
 
