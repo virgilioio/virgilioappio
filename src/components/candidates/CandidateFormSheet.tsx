@@ -546,26 +546,64 @@ export function CandidateFormSheet({
     }
   }
 
-  const handleClose = () => {
-    console.log('CandidateFormSheet - Closing form:', {
-      candidate: candidate?.candidate_name,
-      currentCandidateId: currentCandidateId,
-      isEditing: !!candidate
-    })
-    
-    // Reset the current candidate ID when closing
+  // Handler for clicking outside / dismiss - preserve data
+  const handleDismiss = () => {
+    console.log('CandidateFormSheet - Dismissed (clicking outside), preserving data')
     if (candidate) {
       setCurrentCandidateId(null)
     }
+    onClose()
+  }
+
+  // Handler for Cancel button - clear all fields
+  const handleCancel = () => {
+    console.log('CandidateFormSheet - Cancel clicked, clearing form')
     
-    // Don't clear persisted data when closing - let it persist for later use
+    // Reset react-hook-form
+    form.reset({
+      candidate_name: '',
+      location_country: '',
+      location_state: '',
+      location_city: '',
+      salary_amount: '',
+      salary_currency: 'USD',
+      salary_period: 'annually',
+      profile_summary: '',
+      notes: '',
+      linkedin_url: '',
+      email: '',
+      phone: ''
+    })
+    
+    // Reset rich text editor values
+    setProfileSummary('')
+    setNotes('')
+    setSkills([])
+    setNewSkill('')
+    
+    // Reset job assignment state
+    setSelectedJobId('')
+    setSelectedStageId('')
+    setJobStages([])
+    
+    // Reset pending files
+    setPendingFiles([])
+    setCapturedResumeText('')
+    setShowEnrichmentBanner(false)
+    
+    // Clear persisted form data
+    clearPersistedData()
+    
+    // Reset the current candidate ID
+    setCurrentCandidateId(null)
+    
     onClose()
   }
 
   if (!user) return null
 
   return (
-    <Sheet open={isOpen} onOpenChange={handleClose}>
+    <Sheet open={isOpen} onOpenChange={handleDismiss}>
       <SheetContent className="sm:max-w-[540px] flex flex-col">
         <SheetHeader className="pb-6">
           <SheetTitle className="text-h4-mobile font-poppins font-bold text-virgilio-text tracking-page-title">
@@ -963,7 +1001,7 @@ export function CandidateFormSheet({
         </div>
 
         <div className="border-t pt-4 mt-4 bg-background flex justify-end gap-3">
-          <Button type="button" variant="outline" onClick={handleClose}>
+          <Button type="button" variant="outline" onClick={handleCancel}>
             Cancel
           </Button>
           <Button 
