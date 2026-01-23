@@ -9,6 +9,7 @@ import { ApplicationsTrendChart } from '@/components/analytics/ApplicationsTrend
 import { CandidateStatusPieChart } from '@/components/analytics/CandidateStatusPieChart'
 import { StageDistributionChart } from '@/components/analytics/StageDistributionChart'
 import { RecruitmentFunnelChart } from '@/components/analytics/RecruitmentFunnelChart'
+import { PipelineOverviewTable } from '@/components/analytics/PipelineOverviewTable'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { FileText, Users, UserCheck, CalendarPlus, CalendarCheck, UserX, BarChart3, Download, Loader2 } from 'lucide-react'
@@ -232,6 +233,12 @@ export default function Analytics() {
           </Card>
         ))}
       </div>
+
+      {/* Pipeline Overview Table */}
+      <PipelineOverviewTable 
+        jobIds={metrics.finalJobIds} 
+        isLoading={metrics.isLoading} 
+      />
 
       {/* Charts Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
