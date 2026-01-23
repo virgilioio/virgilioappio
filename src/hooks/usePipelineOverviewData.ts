@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { usePipelineJobMetrics, PipelineJobMetric } from './usePipelineJobMetrics'
+import { useAuth } from '@/contexts/AuthContext'
 
 export interface StageColumn {
   stageName: string
@@ -31,20 +32,38 @@ export interface PipelineOverviewData {
 }
 
 export function usePipelineOverviewData(jobIds: string[]): PipelineOverviewData {
+  const { user } = useAuth()
+  
   // Fetch pipeline metrics using existing hook
   const { data: pipelineMetrics, isLoading: metricsLoading, error: metricsError } = usePipelineJobMetrics(jobIds)
 
   // Fetch job titles and additional counts
   const { data: jobData, isLoading: jobsLoading, error: jobsError } = useQuery({
-    queryKey: ['pipeline-overview-jobs', jobIds],
+    queryKey: ['pipeline-overview-jobs', jobIds, user?.id],
     queryFn: async () => {
-      if (!jobIds || jobIds.length === 0) return { jobs: [], reviewCounts: {}, offerCounts: {}, hiredCounts: {} }
+      if (!jobIds || jobIds.length === 0 || !user) return { jobs: [], reviewCounts: {}, offerCounts: {}, hiredCounts: {} }
 
-      // Fetch job titles
+      // SECURITY: Get tenant_id for defense-in-depth isolation
+      const { data: memberData, error: memberError } = await supabase
+        .from('members')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .eq('user_status', 'active')
+        .single()
+
+      if (memberError || !memberData?.tenant_id) {
+        console.error('[PipelineOverview] Failed to get tenant_id:', memberError)
+        throw new Error('Unable to determine tenant context')
+      }
+
+      const tenantId = memberData.tenant_id
+
+      // Fetch job titles - explicitly filter by tenant_id for security
       const { data: jobs, error: jobsError } = await supabase
         .from('jobs')
         .select('id, title, status')
         .in('id', jobIds)
+        .eq('tenant_id', tenantId)
 
       if (jobsError) throw jobsError
 
