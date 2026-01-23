@@ -4,171 +4,95 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Check, Users, TrendingUp } from 'lucide-react'
-import { useCreateCheckout } from '@/hooks/useBillingPortal'
+import { Badge } from '@/components/ui/badge'
+import { Users, Check, Info } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface SeatLimitUpgradeDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  currentTier: 'solo' | 'launch' | 'growth' | 'business' | null
   currentSeats: number
-  seatLimit: number | null
-}
-
-const tierInfo = {
-  solo: { name: 'Solo', maxUsers: 1, price: 29, yearlyPrice: 306 },
-  launch: { name: 'Launch', maxUsers: 5, price: 149, yearlyPrice: 1519 },
-  growth: { name: 'Growth', maxUsers: 15, price: 399, yearlyPrice: 4069 },
-  business: { name: 'Business', maxUsers: 50, price: 799, yearlyPrice: 8149 },
+  billingInterval?: 'month' | 'year'
+  // Legacy props - kept for backward compatibility but ignored
+  currentTier?: string | null
+  seatLimit?: number | null
 }
 
 export function SeatLimitUpgradeDialog({
   open,
   onOpenChange,
-  currentTier,
   currentSeats,
-  seatLimit,
+  billingInterval = 'month',
 }: SeatLimitUpgradeDialogProps) {
-  const createCheckout = useCreateCheckout()
-
-  const getNextTier = (): 'launch' | 'growth' | 'business' | null => {
-    if (currentTier === 'solo') return 'launch'
-    if (currentTier === 'launch') return 'growth'
-    if (currentTier === 'growth') return 'business'
-    return null
-  }
-
-  const nextTier = getNextTier()
-  const nextTierInfo = nextTier ? tierInfo[nextTier] : null
-
-  const handleUpgrade = (interval: 'month' | 'year') => {
-    if (!nextTier) return
-    
-    createCheckout.mutate(
-      { tier: nextTier, interval },
-      {
-        onSuccess: () => {
-          onOpenChange(false)
-        },
-      }
-    )
-  }
+  const creditsPerSeat = billingInterval === 'year' ? 120 : 100
+  const seatPrice = billingInterval === 'year' ? '$999/year' : '$99/month'
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" />
-            Seat Limit Reached
+            <Users className="h-5 w-5" />
+            Add Team Members
           </DialogTitle>
           <DialogDescription>
-            You've reached your plan's user limit ({seatLimit} {seatLimit === 1 ? 'user' : 'users'}). 
-            Upgrade to add more team members.
+            Your per-seat subscription automatically scales with your team
           </DialogDescription>
         </DialogHeader>
 
-        {nextTierInfo ? (
-          <div className="space-y-6 mt-4">
-            {/* Current Status */}
-            <div className="bg-muted/50 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm text-muted-foreground">Current Plan</div>
-                  <div className="font-semibold">
-                    GoGio: {currentTier ? tierInfo[currentTier].name : 'Unknown'}!
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm text-muted-foreground">Users</div>
-                  <div className="font-semibold">
-                    {currentSeats} / {seatLimit}
-                  </div>
-                </div>
-              </div>
+        <div className="space-y-4 py-4">
+          {/* Current Status */}
+          <div className="bg-muted/50 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium">Current seats</span>
+              <Badge variant="secondary">{currentSeats} recruiter{currentSeats !== 1 ? 's' : ''}</Badge>
             </div>
-
-            {/* Upgrade Plan Card */}
-            <div className="border-2 border-primary rounded-lg p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-xl font-bold">GoGio: {nextTierInfo.name}!</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {nextTierInfo.maxUsers === null 
-                      ? 'Unlimited users' 
-                      : `Up to ${nextTierInfo.maxUsers} users`}
-                  </p>
-                </div>
-                <TrendingUp className="h-6 w-6 text-primary" />
-              </div>
-
-              <div className="space-y-3 mb-6">
-                <div className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-success mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">
-                    {nextTierInfo.maxUsers === null 
-                      ? 'Unlimited team members' 
-                      : `Up to ${nextTierInfo.maxUsers} team members`}
-                  </span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-success mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">
-                    {nextTier === 'launch' ? '25 searches / 10 enrichments per month' : 
-                     nextTier === 'growth' ? '100 searches / 50 enrichments per month' : 
-                     '250 searches / 125 enrichments per month'}
-                  </span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-success mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">All premium features</span>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <Button
-                  className="w-full"
-                  onClick={() => handleUpgrade('month')}
-                  disabled={createCheckout.isPending}
-                >
-                  Upgrade - ${nextTierInfo.price}/month
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => handleUpgrade('year')}
-                  disabled={createCheckout.isPending}
-                >
-                  Upgrade - ${nextTierInfo.yearlyPrice}/year
-                  <span className="ml-2 text-xs text-success">(Save 15%)</span>
-                </Button>
-              </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Per seat</span>
+              <span className="text-sm">{seatPrice}</span>
             </div>
+          </div>
 
-            <Button
-              variant="ghost"
-              className="w-full"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
+          {/* How it works */}
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium">How per-seat billing works:</h4>
+            <ul className="space-y-2">
+              <li className="flex items-start gap-2 text-sm text-muted-foreground">
+                <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                <span>Adding members automatically adjusts your subscription</span>
+              </li>
+              <li className="flex items-start gap-2 text-sm text-muted-foreground">
+                <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                <span>Billing is prorated—you only pay for the remainder of the cycle</span>
+              </li>
+              <li className="flex items-start gap-2 text-sm text-muted-foreground">
+                <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                <span>Each seat adds {creditsPerSeat} enrichment credits to your pool</span>
+              </li>
+              <li className="flex items-start gap-2 text-sm text-muted-foreground">
+                <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                <span>Hiring managers and interviewers are always free</span>
+              </li>
+            </ul>
           </div>
-        ) : (
-          <div className="text-center py-6">
-            <p className="text-muted-foreground">
-              You're already on our highest tier with unlimited users. Please contact support for assistance.
-            </p>
-            <Button
-              variant="outline"
-              className="mt-4"
-              onClick={() => onOpenChange(false)}
-            >
-              Close
-            </Button>
-          </div>
-        )}
+
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              Only users with the "Recruiter" role count as paid seats. 
+              Add unlimited hiring managers and interviewers at no extra cost.
+            </AlertDescription>
+          </Alert>
+        </div>
+
+        <DialogFooter>
+          <Button onClick={() => onOpenChange(false)} className="w-full">
+            Got it
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
