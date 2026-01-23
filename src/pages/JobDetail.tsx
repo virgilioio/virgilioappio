@@ -43,7 +43,8 @@ import { useJobMatchingCandidatesCount } from '@/hooks/useJobMatchingCandidatesC
 import { useRealTimeSkillMatching } from '@/hooks/useRealTimeSkillMatching'
 
 export default function JobDetail() {
-  const { id } = useParams<{ id: string }>()
+  const params = useParams<{ id?: string; jobId?: string }>()
+  const id = params.id || params.jobId
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user, userType } = useAuth()
