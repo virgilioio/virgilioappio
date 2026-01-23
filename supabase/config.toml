@@ -36,9 +36,6 @@ verify_jwt = false
 [functions.create-booking]
 verify_jwt = false
 
-[functions.create-dev-admin]
-verify_jwt = false
-
 [functions.download-attachment]
 verify_jwt = true
 
