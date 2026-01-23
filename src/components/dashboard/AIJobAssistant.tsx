@@ -127,7 +127,7 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAs
   const { jobs } = useJobs()
   const navigate = useNavigate()
   const { user, organizationId, userType } = useAuth()
-  const { isSearchDisabled } = useSourcingCreditWarnings()
+  useSourcingCreditWarnings() // Initialize credit warnings
   const { data: childOrgs, isLoading: isLoadingOrgs, refetch: refetchOrgs } = useChildOrganizationsForJobCreation()
   const { createOrganization, isLoading: isCreatingOrg } = useOrganizations()
   
@@ -275,15 +275,6 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAs
   const handleGenerate = async () => {
     if (!canGenerate) return
 
-    if (isSearchDisabled) {
-      toast({
-        title: 'Search credits exhausted',
-        description: 'You have used all your search credits for this month. Credits will reset on the 1st of next month.',
-        variant: 'destructive',
-        duration: 8000
-      })
-      return
-    }
 
     setIsGenerating(true)
     onGeneratingChange?.(true)
@@ -776,13 +767,11 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAs
               {prompt.trim().length > 0 && (
                 <button
                   onClick={chatMode ? handleSendChatMessage : handleGenerate}
-                  disabled={chatMode ? isChatLoading : (!canGenerate || isGenerating || isSearchDisabled)}
+                  disabled={chatMode ? isChatLoading : (!canGenerate || isGenerating)}
                   title={
-                    isSearchDisabled 
-                      ? 'Monthly search credit limit reached' 
-                      : chatMode 
-                        ? 'Send message to Gio'
-                        : canGenerate ? 'Generate job specification' : 'Enter at least 10 words'
+                    chatMode 
+                      ? 'Send message to Gio'
+                      : canGenerate ? 'Generate job specification' : 'Enter at least 10 words'
                   }
                   className="flex items-center justify-center h-8 w-8 rounded-full bg-virgilio-text hover:bg-black disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                 >

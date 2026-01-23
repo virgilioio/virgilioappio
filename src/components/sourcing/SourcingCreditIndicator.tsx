@@ -20,7 +20,7 @@ export function SourcingCreditIndicator() {
 
   if (isLoading || !usage) return null
 
-  const showUpgrade = (usage.search_percentage > 80 || usage.collect_percentage > 80) 
+  const showUpgrade = usage.collect_percentage > 80 
     && usage.subscription_tier !== 'business' // business is top tier
 
   const tierLabels: Record<string, string> = {
@@ -50,17 +50,6 @@ export function SourcingCreditIndicator() {
         <DropdownMenuSeparator />
         
         <div className="p-3 space-y-4">
-          {/* Search Credits */}
-          <div>
-            <div className="flex justify-between text-sm mb-1">
-              <span className="font-medium">Search</span>
-              <span className="text-muted-foreground">
-                {usage.search_credits_used} / {usage.search_credits_limit}
-              </span>
-            </div>
-            <Progress value={usage.search_percentage} className="h-2" />
-          </div>
-
           {/* Enrichment Credits */}
           <div>
             <div className="flex justify-between text-sm mb-1">
