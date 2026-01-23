@@ -104,7 +104,12 @@ export function useSourcingCredits() {
       const seatQuantity = subscription.seat_quantity || 1
       const isAnnual = subscription.billing_interval === 'year'
       const creditsPerSeat = isAnnual ? 120 : 100
-      const collectLimit = seatQuantity * creditsPerSeat
+      const calculatedLimit = seatQuantity * creditsPerSeat
+      
+      // Use the higher of: calculated per-seat limit OR manually assigned limit
+      // This allows admins to grant extra credits via "Assign Credits"
+      const databaseLimit = data?.collect_credits_limit || 0
+      const collectLimit = Math.max(calculatedLimit, databaseLimit)
 
       // Bonus credits calculation
       const bonusPurchased = subscription.bonus_credits_purchased || 0

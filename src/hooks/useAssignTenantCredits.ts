@@ -36,6 +36,11 @@ export function useAssignTenantCredits() {
       queryClient.invalidateQueries({ queryKey: ['sourcing-credits-usage', variables.tenantId] })
       queryClient.invalidateQueries({ queryKey: ['saas-customer', variables.tenantId] })
       queryClient.invalidateQueries({ queryKey: ['saas-customers'] })
+      // Also invalidate end-user credit queries (they use organizationId, but we don't have it here)
+      // Using a predicate to match all sourcing-credits queries
+      queryClient.invalidateQueries({ 
+        predicate: (query) => query.queryKey[0] === 'sourcing-credits' 
+      })
     },
     onError: (error: any) => {
       toast({
