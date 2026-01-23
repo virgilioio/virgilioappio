@@ -10,36 +10,9 @@ export function useSourcingCreditWarnings() {
   useEffect(() => {
     if (!usage) return
 
-    const searchUsagePercent = usage.search_percentage || 0
     const collectUsagePercent = usage.collect_percentage || 0
-    
-    // Search credit warnings
-    if (searchUsagePercent >= 100 && !shownWarnings.current.has('search-100')) {
-      toast({
-        title: 'Monthly credit limit reached',
-        description: `You've used all ${usage.search_credits_limit} search credits. Searches will resume on the 1st of next month.`,
-        variant: 'destructive',
-        duration: 10000
-      })
-      shownWarnings.current.add('search-100')
-    } else if (searchUsagePercent >= 95 && !shownWarnings.current.has('search-95')) {
-      toast({
-        title: 'Nearly out of search credits',
-        description: `You've used ${usage.search_credits_used}/${usage.search_credits_limit} search credits. Limit will be reached soon.`,
-        variant: 'destructive',
-        duration: 8000
-      })
-      shownWarnings.current.add('search-95')
-    } else if (searchUsagePercent >= 80 && !shownWarnings.current.has('search-80')) {
-      toast({
-        title: 'High search credit usage',
-        description: `You've used ${usage.search_credits_used}/${usage.search_credits_limit} search credits this month. Consider optimizing queries.`,
-        duration: 6000
-      })
-      shownWarnings.current.add('search-80')
-    }
 
-    // Collect credit warnings
+    // Collect/Enrichment credit warnings
     if (collectUsagePercent >= 100 && !shownWarnings.current.has('collect-100')) {
       toast({
         title: 'Monthly collect limit reached',
@@ -66,11 +39,9 @@ export function useSourcingCreditWarnings() {
     }
   }, [usage, toast])
 
-  const isSearchDisabled = usage ? (usage.search_credits_used >= usage.search_credits_limit) : false
   const isCollectDisabled = usage ? (usage.collect_credits_used >= usage.collect_credits_limit) : false
 
   return {
-    isSearchDisabled,
     isCollectDisabled,
     usage
   }
