@@ -20,6 +20,9 @@ export interface SaaSCustomer {
   members_active_count: number
   last_active_at: string | null
   churn_risk: HealthStatus
+  // Per-seat pricing fields
+  seat_quantity: number
+  billing_interval: string | null
 }
 
 export function useSaaSCustomers() {
@@ -69,7 +72,9 @@ export function useSaaSCustomers() {
           candidates_added_30d: customer.candidates_added_30d,
           members_active_count: customer.members_active_count,
           last_active_at: customer.last_active_at,
-          churn_risk: health.status
+          churn_risk: health.status,
+          seat_quantity: customer.seat_quantity || 1,
+          billing_interval: customer.billing_interval || null
         } as SaaSCustomer
       })
     },
@@ -106,7 +111,7 @@ async function fallbackFetch(): Promise<SaaSCustomer[]> {
   const tenantIds = (tenants || []).map(t => t.id)
   const { data: subscriptions } = await supabase
     .from('tenant_subscriptions')
-    .select('tenant_id, billing_status, subscription_tier')
+    .select('tenant_id, billing_status, subscription_tier, seat_quantity, billing_interval')
     .in('tenant_id', tenantIds)
   
   const subscriptionMap = new Map(
@@ -199,7 +204,9 @@ async function fallbackFetch(): Promise<SaaSCustomer[]> {
           candidates_added_30d: candidatesCount,
           members_active_count: membersCount || 0,
           last_active_at: lastActiveAt,
-          churn_risk: health.status
+          churn_risk: health.status,
+          seat_quantity: subscription?.seat_quantity || 1,
+          billing_interval: subscription?.billing_interval || null
         } as SaaSCustomer
       } catch (error) {
         console.error('Error fetching usage data for tenant:', tenant.id, error)
@@ -221,7 +228,9 @@ async function fallbackFetch(): Promise<SaaSCustomer[]> {
           candidates_added_30d: 0,
           members_active_count: 0,
           last_active_at: null,
-          churn_risk: 'inactive' as const
+          churn_risk: 'inactive' as const,
+          seat_quantity: subscription?.seat_quantity || 1,
+          billing_interval: subscription?.billing_interval || null
         } as SaaSCustomer
       }
     })

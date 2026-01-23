@@ -133,14 +133,10 @@ export function SaaSCustomerDetail() {
     }
   }
 
-  const getPlanVariant = (plan: string | null) => {
-    switch (plan) {
-      case 'enterprise': return 'default'
-      case 'pro': return 'secondary'
-      case 'starter': return 'outline'
-      case 'trial': return 'destructive'
-      default: return 'outline'
-    }
+  const formatPlanDisplay = () => {
+    const seats = subscriptionData?.seat_quantity || 1
+    const interval = subscriptionData?.billing_interval
+    return `${seats} seat${seats !== 1 ? 's' : ''} • ${interval === 'year' ? 'Annual' : 'Monthly'}`
   }
 
   return (
@@ -174,8 +170,8 @@ export function SaaSCustomerDetail() {
       {/* Status Badges */}
       <div className="flex items-center gap-3 flex-wrap">
         <CustomerHealthBadge health={customerHealth.status} />
-        <Badge variant={getPlanVariant(customer.plan_type)} className="px-3 py-1">
-          {customer.plan_type || 'No Plan'}
+        <Badge variant="default" className="px-3 py-1">
+          {formatPlanDisplay()}
         </Badge>
         <Badge variant={getStatusVariant(customer.status)} className="px-3 py-1">
           {customer.status}
@@ -395,12 +391,12 @@ export function SaaSCustomerDetail() {
       <ChangePlanDialog
         open={changePlanDialogOpen}
         onOpenChange={setChangePlanDialogOpen}
-        onConfirm={(newTier, newInterval) => {
-          changePlanMutation.mutate({ tenantId: customer.tenant_id, newTier, newInterval })
+        onConfirm={(newInterval, newSeats) => {
+          changePlanMutation.mutate({ tenantId: customer.tenant_id, newInterval, newSeats })
           setChangePlanDialogOpen(false)
         }}
         organizationName={customer.name}
-        currentTier={subscriptionData?.subscription_tier || null}
+        currentSeats={subscriptionData?.seat_quantity || 1}
         currentInterval={subscriptionData?.billing_interval || null}
         isPending={changePlanMutation.isPending}
       />

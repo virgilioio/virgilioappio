@@ -4,22 +4,22 @@ import { toast } from 'sonner'
 
 interface ChangePlanParams {
   tenantId: string
-  newTier: string
   newInterval: string
+  newSeats?: number  // Optional admin override for seat count
 }
 
 export function useChangePlan() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ tenantId, newTier, newInterval }: ChangePlanParams) => {
+    mutationFn: async ({ tenantId, newInterval, newSeats }: ChangePlanParams) => {
       const { data, error } = await supabase.functions.invoke('admin-manage-subscription', {
         body: {
           action: 'change_plan',
           tenantId,
           params: {
-            newTier,
             newInterval,
+            newSeats,
           },
         },
       })
@@ -32,8 +32,11 @@ export function useChangePlan() {
       return data
     },
     onSuccess: (_data, variables) => {
-      toast.success('Plan changed successfully', {
-        description: `Subscription updated to ${variables.newTier} (${variables.newInterval})`,
+      const intervalLabel = variables.newInterval === 'year' ? 'Annual' : 'Monthly'
+      const seatsLabel = variables.newSeats ? ` (${variables.newSeats} seats)` : ''
+      
+      toast.success('Subscription updated successfully', {
+        description: `Changed to ${intervalLabel} billing${seatsLabel}`,
       })
       
       // Invalidate relevant queries
@@ -43,7 +46,7 @@ export function useChangePlan() {
     },
     onError: (error: Error) => {
       console.error('Change plan mutation error:', error)
-      toast.error('Failed to change plan', {
+      toast.error('Failed to update subscription', {
         description: error.message || 'An unexpected error occurred',
       })
     },

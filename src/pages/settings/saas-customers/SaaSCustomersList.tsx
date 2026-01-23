@@ -57,14 +57,8 @@ export function SaaSCustomersList() {
     }
   }
 
-  const getPlanVariant = (plan: string | null) => {
-    switch (plan) {
-      case 'enterprise': return 'default'
-      case 'pro': return 'secondary'
-      case 'starter': return 'outline'
-      case 'trial': return 'destructive'
-      default: return 'outline'
-    }
+  const formatSeats = (seats: number) => {
+    return `${seats} seat${seats !== 1 ? 's' : ''}`
   }
 
   return (
@@ -148,9 +142,14 @@ export function SaaSCustomersList() {
                     </TableCell>
                     
                     <TableCell>
-                      <Badge variant={getPlanVariant(customer.plan_type)}>
-                        {customer.plan_type || 'No Plan'}
+                      <Badge variant="default">
+                        {formatSeats(customer.seat_quantity || 1)}
                       </Badge>
+                      {customer.billing_interval && (
+                        <span className="text-xs text-muted-foreground ml-2">
+                          {customer.billing_interval === 'year' ? 'Annual' : 'Monthly'}
+                        </span>
+                      )}
                     </TableCell>
                     
                     <TableCell>
