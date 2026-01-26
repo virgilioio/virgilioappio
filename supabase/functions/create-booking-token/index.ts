@@ -55,8 +55,6 @@ serve(async (req) => {
       candidate_id,
       jhs_id,
       association_id,
-      candidate_name,
-      candidate_email,
       job_title,
       stage_name,
       short_code
@@ -69,6 +67,26 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // CRITICAL: Fetch actual candidate data from database to ensure data integrity
+    // This prevents race conditions where stale frontend data could be stored
+    const { data: candidateData, error: candidateError } = await supabase
+      .from('candidates')
+      .select('candidate_name, email')
+      .eq('id', candidate_id)
+      .single();
+
+    if (candidateError || !candidateData) {
+      console.error('Failed to fetch candidate:', candidateError);
+      return new Response(
+        JSON.stringify({ error: 'Candidate not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Use verified data from database, NOT frontend input
+    const verifiedCandidateName = candidateData.candidate_name;
+    const verifiedCandidateEmail = candidateData.email;
 
     // Check for existing valid token for this exact context
     const { data: existingToken } = await supabase
@@ -113,7 +131,7 @@ serve(async (req) => {
       );
     }
 
-    // Insert the new token
+    // Insert the new token with VERIFIED candidate data from database
     const { error: insertError } = await supabase
       .from('booking_link_tokens')
       .insert({
@@ -122,8 +140,8 @@ serve(async (req) => {
         candidate_id,
         jhs_id: jhs_id || null,
         association_id,
-        candidate_name: candidate_name || null,
-        candidate_email: candidate_email || null,
+        candidate_name: verifiedCandidateName,
+        candidate_email: verifiedCandidateEmail,
         job_title: job_title || null,
         stage_name: stage_name || null,
         short_code,

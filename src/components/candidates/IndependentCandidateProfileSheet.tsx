@@ -154,6 +154,13 @@ export function IndependentCandidateProfileSheet({
 
   useEffect(() => {
     if (open) setActiveTab('overview')
+    
+    // CRITICAL: Clear stale data immediately when candidateId changes to prevent race conditions
+    // This fixes a data integrity bug where booking links could contain wrong candidate info
+    setCandidate(null)
+    setWorkExperience([])
+    setEducation([])
+    
     const load = async () => {
       if (!open || !candidateId) return
       setLoading(true)
