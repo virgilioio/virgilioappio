@@ -213,6 +213,18 @@ const stageHasAutomation = useMemo(() => {
 
   useEffect(() => {
     if (open) setActiveTab('job')
+    
+    // CRITICAL: Clear stale data immediately when candidateId changes to prevent race conditions
+    // This fixes a data integrity bug where booking links could contain wrong candidate info
+    setCandidate(null)
+    setAssociationId(null)
+    setAssociationStatus(null)
+    setCurrentStageId(null)
+    setRejectionDetails(null)
+    setOfferDetails(null)
+    setJobCandidate(null)
+    setJobCandidateId(null)
+    
     const load = async () => {
       if (!open || !candidateId) return
       setLoading(true)
@@ -1019,7 +1031,8 @@ const stageHasAutomation = useMemo(() => {
               )}
               
               {/* Generate Booking Link Button - for screening/interview stages with association */}
-              {(opt.stage.stage_type === 'screening' || opt.stage.stage_type === 'interview') && associationId && candidateId && (
+              {/* CRITICAL GUARD: Only show when candidate is loaded AND matches candidateId to prevent race conditions */}
+              {(opt.stage.stage_type === 'screening' || opt.stage.stage_type === 'interview') && associationId && candidateId && candidate?.id === candidateId && !loading && (
                 <GenerateBookingLinkButton
                   jobId={jobId}
                   candidateId={candidateId}
