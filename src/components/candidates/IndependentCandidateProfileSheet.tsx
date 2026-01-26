@@ -14,6 +14,7 @@ import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import { CandidateJobSidebar } from '@/components/candidates/CandidateJobSidebar'
+import { MobileJobSelector } from '@/components/candidates/MobileJobSelector'
 import { Edit, FileText, Download, ChevronLeft, ChevronRight, Mail, Phone, Copy, ExternalLink, Send, Activity, StickyNote, Sparkles, User, Globe, Loader2, Bell } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -256,25 +257,27 @@ export function IndependentCandidateProfileSheet({
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-sm">
+                <div className="flex items-center gap-1 sm:gap-sm">
                   <Button
                     variant="ghost"
-                    className="gap-sm text-text-secondary hover:text-text-primary"
+                    size="sm"
+                    className="gap-1 sm:gap-sm text-text-secondary hover:text-text-primary px-2 sm:px-3"
                     onClick={onNavigatePrev}
                     disabled={!hasPrev}
                     title="Previous candidate"
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    Previous
+                    <span className="hidden sm:inline">Previous</span>
                   </Button>
                   <Button
                     variant="ghost"
-                    className="gap-sm text-text-secondary hover:text-text-primary"
+                    size="sm"
+                    className="gap-1 sm:gap-sm text-text-secondary hover:text-text-primary px-2 sm:px-3"
                     onClick={onNavigateNext}
                     disabled={!hasNext}
                     title="Next candidate"
                   >
-                    Next
+                    <span className="hidden sm:inline">Next</span>
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
@@ -287,8 +290,19 @@ export function IndependentCandidateProfileSheet({
               ) : !candidate ? (
                 <div className="text-text-secondary text-sm">No data available.</div>
               ) : (
-                <div className="flex gap-6">
-                  {/* Job Associations Sidebar */}
+                <div className="flex flex-col lg:flex-row gap-6">
+                  {/* Mobile Job Selector - show on small screens */}
+                  {candidateId && (
+                    <div className="lg:hidden">
+                      <MobileJobSelector
+                        candidateId={candidateId}
+                        currentJobId=""
+                        onJobSelect={handleJobSelect}
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Job Associations Sidebar - desktop only */}
                   {candidateId && (
                     <CandidateJobSidebar
                       candidateId={candidateId}
@@ -303,12 +317,11 @@ export function IndependentCandidateProfileSheet({
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'overview' | 'resume' | 'comments')}>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Left column (50%) */}
-                    <div className="space-y-6">
+                    <div className="space-y-6 min-w-0">
                       {/* Controls Card */}
                       <Card className="bg-surface-primary border-border">
                         <CardContent className="p-4">
-                          <div className="flex items-center justify-between w-full">
-                            <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2 w-full">
                               {candidate.job_board_source && (
                                 <Badge variant="secondary" className="gap-1">
                                   <Globe className="h-3 w-3" />
@@ -332,7 +345,6 @@ export function IndependentCandidateProfileSheet({
                                   Enrich from LinkedIn
                                 </Button>
                               )}
-                            </div>
                           </div>
                         </CardContent>
                       </Card>

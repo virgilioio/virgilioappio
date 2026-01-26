@@ -41,6 +41,7 @@ import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { useCandidateResolver } from '@/hooks/useCandidateResolver'
 
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
+import { MobileJobSelector } from '@/components/candidates/MobileJobSelector'
 import { AddOrTransferCandidateDialog } from '@/components/candidates/AddOrTransferCandidateDialog'
 import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
 import { cn } from '@/lib/utils'
@@ -705,12 +706,24 @@ const stageHasAutomation = useMemo(() => {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-[96vw] sm:max-w-none h-full p-0" showOverlay={false}>
         <div className="flex h-full w-full">
-          {/* Job Navigation Sidebar */}
+          {/* Mobile Job Selector - show on small screens */}
+          {candidateId && (
+            <div className="lg:hidden p-4 border-b">
+              <MobileJobSelector
+                candidateId={candidateId}
+                currentJobId={jobId}
+                onJobSelect={handleJobChange}
+              />
+            </div>
+          )}
+          
+          {/* Job Navigation Sidebar - desktop only */}
           {candidateId && (
             <CandidateJobSidebar
               candidateId={candidateId}
               currentJobId={jobId}
               onJobSelect={handleJobChange}
+              className="hidden lg:flex"
             />
           )}
 
@@ -741,25 +754,27 @@ const stageHasAutomation = useMemo(() => {
                   </Badge>
                 )}
               </div>
-              <div className="flex items-center gap-sm">
+              <div className="flex items-center gap-1 sm:gap-sm">
                 <Button
                   variant="ghost"
-                  className="gap-sm text-text-secondary hover:text-text-primary"
+                  size="sm"
+                  className="gap-1 sm:gap-sm text-text-secondary hover:text-text-primary px-2 sm:px-3"
                   onClick={onNavigatePrev}
                   disabled={!hasPrev}
                   title="Previous candidate"
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  Previous
+                  <span className="hidden sm:inline">Previous</span>
                 </Button>
                 <Button
                   variant="ghost"
-                  className="gap-sm text-text-secondary hover:text-text-primary"
+                  size="sm"
+                  className="gap-1 sm:gap-sm text-text-secondary hover:text-text-primary px-2 sm:px-3"
                   onClick={onNavigateNext}
                   disabled={!hasNext}
                   title="Next candidate"
                 >
-                  Next
+                  <span className="hidden sm:inline">Next</span>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
                   </div>

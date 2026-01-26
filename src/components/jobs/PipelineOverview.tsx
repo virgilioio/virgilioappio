@@ -527,7 +527,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-xl font-semibold text-text-primary">Pipeline Overview</h1>
-            <p className="text-sm text-text-secondary">Columns reflect the job's hiring plan stages.</p>
+            <p className="text-sm text-text-secondary hidden md:block">Columns reflect the job's hiring plan stages.</p>
           </div>
           <div className="flex gap-2">
             <Button

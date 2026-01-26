@@ -17,6 +17,7 @@ import { JobAssignmentsPanel } from '@/components/jobs/JobAssignmentsPanel'
 import { JobSetupPanel } from '@/components/jobs/JobSetupPanel'
 import { JobFormSheet } from '@/components/jobs/JobFormSheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ArrowLeft, Archive, LayoutGrid, List, UserPlus, Sparkles, Mail } from 'lucide-react'
@@ -55,9 +56,11 @@ export default function JobDetail() {
   const [activeTab, setActiveTab] = useState('pipeline')
   const [showEditJobModal, setShowEditJobModal] = useState(false)
   const [pipelineView, setPipelineView] = useState<'board' | 'list'>(() => {
-    if (typeof window === 'undefined') return 'board'
+    if (typeof window === 'undefined') return isMobile ? 'list' : 'board'
     const saved = localStorage.getItem('jobPipelineView')
-    return saved === 'list' ? 'list' : 'board'
+    // Default to list view on mobile for better accessibility
+    if (saved) return saved === 'list' ? 'list' : 'board'
+    return isMobile ? 'list' : 'board'
   })
   useEffect(() => {
     try { localStorage.setItem('jobPipelineView', pipelineView) } catch {}
@@ -896,7 +899,76 @@ export default function JobDetail() {
                    <Card className="mb-4">
                      <CardHeader className="py-3">
                         <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
-                          <TabsList className="w-full h-14 p-2 gap-1 grid grid-cols-6">
+                          {/* Mobile: Dropdown selector */}
+                          <div className="md:hidden">
+                            <Select value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
+                              <SelectTrigger className="w-full h-12">
+                                <SelectValue>
+                                  <span className="flex items-center gap-2">
+                                    {pipelineSectionTab === 'suggested' && <Sparkles className="h-4 w-4 text-blue-600" />}
+                                    <span className="font-medium">
+                                      {pipelineSectionTab === 'suggested' && 'Suggested'}
+                                      {pipelineSectionTab === 'application' && 'Application Review'}
+                                      {pipelineSectionTab === 'recruiting' && 'Recruiting Process'}
+                                      {pipelineSectionTab === 'offers' && 'Job Offers'}
+                                      {pipelineSectionTab === 'hired' && 'Hired Candidates'}
+                                      {pipelineSectionTab === 'rejected' && 'Rejected Candidates'}
+                                    </span>
+                                    <Badge variant="secondary" className="text-xs">
+                                      {pipelineSectionTab === 'suggested' && suggestedCount}
+                                      {pipelineSectionTab === 'application' && applicationCount}
+                                      {pipelineSectionTab === 'recruiting' && recruitingCount}
+                                      {pipelineSectionTab === 'offers' && offerCount}
+                                      {pipelineSectionTab === 'hired' && hiredCount}
+                                      {pipelineSectionTab === 'rejected' && rejectedCount}
+                                    </Badge>
+                                  </span>
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="suggested" className="py-3">
+                                  <span className="flex items-center gap-2">
+                                    <Sparkles className="h-4 w-4 text-blue-600" />
+                                    <span>Suggested</span>
+                                    <Badge variant="secondary" className="text-xs">{suggestedCount}</Badge>
+                                  </span>
+                                </SelectItem>
+                                <SelectItem value="application" className="py-3">
+                                  <span className="flex items-center gap-2">
+                                    <span>Application Review</span>
+                                    <Badge variant="pastel-purple" className="text-xs">{applicationCount}</Badge>
+                                  </span>
+                                </SelectItem>
+                                <SelectItem value="recruiting" className="py-3">
+                                  <span className="flex items-center gap-2">
+                                    <span>Recruiting Process</span>
+                                    <Badge variant="pastel-yellow" className="text-xs">{recruitingCount}</Badge>
+                                  </span>
+                                </SelectItem>
+                                <SelectItem value="offers" className="py-3">
+                                  <span className="flex items-center gap-2">
+                                    <span>Job Offers</span>
+                                    <Badge variant="pastel-blue" className="text-xs">{offerCount}</Badge>
+                                  </span>
+                                </SelectItem>
+                                <SelectItem value="hired" className="py-3">
+                                  <span className="flex items-center gap-2">
+                                    <span>Hired Candidates</span>
+                                    <Badge variant="success" className="text-xs">{hiredCount}</Badge>
+                                  </span>
+                                </SelectItem>
+                                <SelectItem value="rejected" className="py-3">
+                                  <span className="flex items-center gap-2">
+                                    <span>Rejected Candidates</span>
+                                    <Badge variant="destructive" className="text-xs">{rejectedCount}</Badge>
+                                  </span>
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          {/* Desktop: Grid tabs */}
+                          <TabsList className="hidden md:grid w-full h-14 p-2 gap-1 grid-cols-6">
                             <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-text-primary data-[state=active]:from-blue-500 data-[state=active]:to-purple-500 data-[state=active]:text-white border border-blue-500/20 data-[state=active]:border-blue-500 data-[state=active]:shadow-[0_0_20px_rgba(59,130,246,0.5),0_0_40px_rgba(147,51,234,0.3)] data-[state=active]:animate-pulse" value="suggested">
                                <span className="flex items-center gap-1 truncate">
                                  <Sparkles className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
@@ -943,7 +1015,7 @@ export default function JobDetail() {
                       <div className="flex items-start justify-between">
                         <div>
                           <h1 className="text-xl font-semibold text-text-primary">Pipeline Overview</h1>
-                          <p className="text-sm text-text-secondary">Drag candidates across stages. Scroll horizontally to view more columns.</p>
+                          <p className="text-sm text-text-secondary hidden md:block">Drag candidates across stages. Scroll horizontally to view more columns.</p>
                         </div>
                         <div className="flex items-center gap-2">
                           {!selectionMode && (
