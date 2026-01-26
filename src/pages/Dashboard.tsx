@@ -46,16 +46,16 @@ export default function Dashboard() {
           <TrialCountdownBanner />
           
           {/* Layout: Two columns with 1:1 proportions */}
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-6 lg:grid-cols-2 overflow-hidden">
             {/* Left Column - Jobs & Searches */}
-            <div className="space-y-6">
+            <div className="space-y-6 min-w-0">
               <OnboardingChecklist isDeemphasized={!hasSeenValue} />
               {showSourcingPanel && <RecentSourcingProjects />}
               {hasJobContent && <JobsOverview permissions={permissions} />}
             </div>
             
             {/* Right Column - Tasks */}
-            <div className="space-y-6">
+            <div className="space-y-6 min-w-0">
               <UpcomingActivities />
               <PendingActivities />
               <StaleCandidates />
