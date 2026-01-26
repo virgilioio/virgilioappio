@@ -1012,12 +1012,12 @@ export default function JobDetail() {
                    </Card>
                    <Card className="h-full w-full overflow-hidden flex flex-col">
                     <CardHeader className="sticky top-0 z-10 bg-surface-primary/80 backdrop-blur supports-[backdrop-filter]:bg-surface-primary/60 border-b border-border">
-                      <div className="flex items-start justify-between">
+                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                         <div>
                           <h1 className="text-xl font-semibold text-text-primary">Pipeline Overview</h1>
                           <p className="text-sm text-text-secondary hidden md:block">Drag candidates across stages. Scroll horizontally to view more columns.</p>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-between md:justify-end">
                           {!selectionMode && (
                             <Button
                               size="sm"

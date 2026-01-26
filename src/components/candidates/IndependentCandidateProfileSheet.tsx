@@ -541,83 +541,89 @@ export function IndependentCandidateProfileSheet({
                             </Card>
                           </AccordionItem>
 
-                          {/* URLs */}
-                          <AccordionItem value="urls" className="border-0">
-                            {candidateId ? (
-                              <CandidateUrls candidateId={candidateId} />
-                            ) : (
+                          {/* URLs - hidden on mobile */}
+                          <div className="hidden md:block">
+                            <AccordionItem value="urls" className="border-0">
+                              {candidateId ? (
+                                <CandidateUrls candidateId={candidateId} />
+                              ) : (
+                                <Card className="bg-surface-primary border-border">
+                                  <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                                    <CardTitle>URLs</CardTitle>
+                                  </AccordionTrigger>
+                                  <AccordionContent>
+                                    <CardContent className="pt-0">
+                                      <div className="text-sm text-text-secondary">No candidate data available.</div>
+                                    </CardContent>
+                                  </AccordionContent>
+                                </Card>
+                              )}
+                            </AccordionItem>
+                          </div>
+
+                          {/* Attachments - hidden on mobile */}
+                          <div className="hidden md:block">
+                            <AccordionItem value="attachments" className="border-0">
+                              {candidateId ? (
+                                <CandidateAttachments candidateId={candidateId} />
+                              ) : (
+                                <Card className="bg-surface-primary border-border">
+                                  <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                                    <CardTitle>Attachments</CardTitle>
+                                  </AccordionTrigger>
+                                  <AccordionContent>
+                                    <CardContent className="pt-0">
+                                      <div className="text-sm text-text-secondary">No candidate data available.</div>
+                                    </CardContent>
+                                  </AccordionContent>
+                                </Card>
+                              )}
+                            </AccordionItem>
+                          </div>
+
+                          {/* Skills - hidden on mobile */}
+                          <div className="hidden md:block">
+                            <AccordionItem value="skills" className="border-0">
                               <Card className="bg-surface-primary border-border">
                                 <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                                  <CardTitle>URLs</CardTitle>
-                                </AccordionTrigger>
-                                <AccordionContent>
-                                  <CardContent className="pt-0">
-                                    <div className="text-sm text-text-secondary">No candidate data available.</div>
-                                  </CardContent>
-                                </AccordionContent>
-                              </Card>
-                            )}
-                          </AccordionItem>
-
-                          {/* Attachments */}
-                          <AccordionItem value="attachments" className="border-0">
-                            {candidateId ? (
-                              <CandidateAttachments candidateId={candidateId} />
-                            ) : (
-                              <Card className="bg-surface-primary border-border">
-                                <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                                  <CardTitle>Attachments</CardTitle>
-                                </AccordionTrigger>
-                                <AccordionContent>
-                                  <CardContent className="pt-0">
-                                    <div className="text-sm text-text-secondary">No candidate data available.</div>
-                                  </CardContent>
-                                </AccordionContent>
-                              </Card>
-                            )}
-                          </AccordionItem>
-
-                          {/* Skills */}
-                          <AccordionItem value="skills" className="border-0">
-                            <Card className="bg-surface-primary border-border">
-                              <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                                <div className="flex items-center justify-between flex-1 pr-4">
-                                  <CardTitle>Skills</CardTitle>
-                                  <div className="text-xs text-text-tertiary">
-                                    Added {new Date(candidate.created_at as string).toLocaleDateString()}
+                                  <div className="flex items-center justify-between flex-1 pr-4">
+                                    <CardTitle>Skills</CardTitle>
+                                    <div className="text-xs text-text-tertiary">
+                                      Added {new Date(candidate.created_at as string).toLocaleDateString()}
+                                    </div>
                                   </div>
-                                </div>
-                              </AccordionTrigger>
-                              <AccordionContent>
-                                <CardContent className="pt-0">
-                                  {(() => {
-                                    const manualSkills = candidate?.skills || []
-                                    const autoGenerated = Array.isArray((candidate as any)?.auto_generated_skills)
-                                      ? ((candidate as any).auto_generated_skills as any[]).map((s) => typeof s === 'string' ? s : s?.name).filter(Boolean)
-                                      : []
-                                    
-                                    const displaySkills = manualSkills.length > 0 ? manualSkills : autoGenerated
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                  <CardContent className="pt-0">
+                                    {(() => {
+                                      const manualSkills = candidate?.skills || []
+                                      const autoGenerated = Array.isArray((candidate as any)?.auto_generated_skills)
+                                        ? ((candidate as any).auto_generated_skills as any[]).map((s) => typeof s === 'string' ? s : s?.name).filter(Boolean)
+                                        : []
+                                      
+                                      const displaySkills = manualSkills.length > 0 ? manualSkills : autoGenerated
 
-                                    return displaySkills && displaySkills.length > 0 ? (
-                                      <div className="flex flex-wrap gap-2">
-                                        {displaySkills.map((s: string, i: number) => (
-                                          <EnhancedSkillBadge 
-                                            key={`${s}-${i}`} 
-                                            skill={s}
-                                            variant="compact"
-                                            showTooltip={true}
-                                            interactive={false}
-                                          />
-                                        ))}
-                                      </div>
-                                    ) : (
-                                      <div className="text-sm text-text-secondary">No skills specified</div>
-                                    )
-                                  })()}
-                                </CardContent>
-                              </AccordionContent>
-                            </Card>
-                          </AccordionItem>
+                                      return displaySkills && displaySkills.length > 0 ? (
+                                        <div className="flex flex-wrap gap-2">
+                                          {displaySkills.map((s: string, i: number) => (
+                                            <EnhancedSkillBadge 
+                                              key={`${s}-${i}`} 
+                                              skill={s}
+                                              variant="compact"
+                                              showTooltip={true}
+                                              interactive={false}
+                                            />
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <div className="text-sm text-text-secondary">No skills specified</div>
+                                      )
+                                    })()}
+                                  </CardContent>
+                                </AccordionContent>
+                              </Card>
+                            </AccordionItem>
+                          </div>
 
                           {/* Profile Summary */}
                           <AccordionItem value="summary" className="border-0">
@@ -645,21 +651,25 @@ export function IndependentCandidateProfileSheet({
                             </Card>
                           </AccordionItem>
 
-                          {/* Work Experience */}
-                          <AccordionItem value="experience" className="border-0">
-                            <CandidateWorkExperienceComponent experiences={workExperience} />
-                          </AccordionItem>
+                          {/* Work Experience - hidden on mobile */}
+                          <div className="hidden md:block">
+                            <AccordionItem value="experience" className="border-0">
+                              <CandidateWorkExperienceComponent experiences={workExperience} />
+                            </AccordionItem>
+                          </div>
 
-                          {/* Education */}
-                          <AccordionItem value="education" className="border-0">
-                            <CandidateEducationComponent education={education} />
-                          </AccordionItem>
+                          {/* Education - hidden on mobile */}
+                          <div className="hidden md:block">
+                            <AccordionItem value="education" className="border-0">
+                              <CandidateEducationComponent education={education} />
+                            </AccordionItem>
+                          </div>
                         </Accordion>
                       )}
                     </div>
 
-                    {/* Right column (50%) */}
-                    <div className="space-y-6">
+                    {/* Right column (50%) - hidden on mobile */}
+                    <div className="space-y-6 hidden lg:block">
                       {/* Controls Card - Right Side */}
                       <Card className="bg-surface-primary border-border">
                         <CardContent className="p-4">
