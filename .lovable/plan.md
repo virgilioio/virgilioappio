@@ -1,369 +1,293 @@
 
-# SaaS Customer Account Creation Flow: Complete Implementation with Edge Cases
 
-## Executive Summary
+# Fix: Scorecard Draft Loss Prevention with Cancel Confirmation
 
-This plan implements the 14-day credit card wall for new signups, handling edge cases like page refreshes, browser closures, and interrupted flows. All screens will follow the established GoGio style guide.
+## Overview
 
----
-
-## Current Flow Analysis
-
-### What Exists Today
-
-```text
-User Signup → Email Verification → Onboarding (Create Workspace)
-                                         ↓
-                              provision-tenant sets billing_status: 'pending_trial'
-                                         ↓
-                              Redirect to /find (PROBLEM: Full access without CC!)
-```
-
-### Target Flow
-
-```text
-User Signup → Email Verification → Onboarding (Create Workspace)
-                                         ↓
-                              provision-tenant sets billing_status: 'pending_trial'
-                                         ↓
-                              Redirect to /trial-activation (CC Wall Page)
-                                         ↓
-                              Stripe Checkout (14-day trial + CC collection)
-                                         ↓
-                              Webhook sets billing_status: 'trialing' + grants 20 credits
-                                         ↓
-                              Redirect to /billing?session_id=XXX → /dashboard
-```
+Implement a robust draft preservation system that:
+1. Saves drafts automatically when the sheet is dismissed (Esc, click outside, X button)
+2. Shows a confirmation dialog when the Cancel button is clicked explicitly
+3. Fixes the race condition between competing useEffects
 
 ---
 
-## Edge Cases & Recovery Mechanisms
+## Changes Summary
 
-### 1. User Leaves During Onboarding (Before Workspace Created)
+### 1. Add State Refs for Reliable Close-Time Saving
 
-**Scenario:** User closes browser on the "Create your workspace" screen.
+Track current values in refs so we can access them reliably during sheet close:
 
-**Current behavior:** No state persisted. User returns, still no tenant.
-
-**Recovery:** Works automatically:
-- User returns → RequireAuth detects no org context → Redirects to /onboarding
-- User simply enters workspace name again
-- Provision-tenant has idempotency check—if workspace exists, returns existing ID
-
-**No change needed.**
-
----
-
-### 2. User Leaves After Onboarding, Before Stripe Checkout
-
-**Scenario:** Workspace created, but user closes browser before reaching/completing Stripe Checkout.
-
-**Current behavior (BROKEN):** User returns with `pending_trial` status but BillingGuard doesn't block access.
-
-**Fix:**
-- BillingGuard must detect `pending_trial` and redirect to `/trial-activation`
-- User sees the trial activation page on every login until CC is added
-
-**Implementation:**
 ```typescript
-// BillingGuard.tsx
-if (billing?.billing_status === 'pending_trial') {
-  return <Navigate to="/trial-activation" replace />
-}
+// After line 104 (draftTimeoutRef)
+const overviewRef = useRef(overview);
+const ratingRef = useRef(rating);
+const responsesRef = useRef(responses);
+
+// Sync refs with state
+useEffect(() => { overviewRef.current = overview; }, [overview]);
+useEffect(() => { ratingRef.current = rating; }, [rating]);
+useEffect(() => { responsesRef.current = responses; }, [responses]);
 ```
 
 ---
 
-### 3. User Refreshes During Stripe Checkout
+### 2. Add Cancel Confirmation Dialog State
 
-**Scenario:** User is on Stripe Checkout page and refreshes.
-
-**Current behavior:** Stripe handles this—checkout session remains valid for 24 hours.
-
-**Recovery:** User stays on Stripe's page. If they close and return:
-- They land on `/trial-activation` (thanks to BillingGuard)
-- Clicking "Start Free Trial" creates a new checkout session
-- Old session expires harmlessly
-
-**No change needed.** Stripe's session-based checkout handles this.
-
----
-
-### 4. User Completes Checkout But Webhook Fails
-
-**Scenario:** Stripe receives payment, but webhook to update `tenant_subscriptions` fails.
-
-**Current behavior:** User returns to `/billing?session_id=XXX` but status remains `pending_trial`.
-
-**Recovery already exists:**
-- User sees "Pending Trial" banner on /billing page
-- They can click "Start Free Trial" again—Stripe will recognize existing subscription
-- Webhook retry mechanism (Stripe retries for up to 72 hours)
-
-**Enhancement (optional):** Add a "Check subscription status" button that calls `customer-portal` to refresh.
-
----
-
-### 5. User Closes Browser Mid-Onboarding Animation
-
-**Scenario:** User clicks "Create workspace," sees the `WorkspaceProvisioningLoader`, then closes browser.
-
-**Current behavior:** If provision-tenant completed, tenant exists. If not, nothing was created.
-
-**Recovery:**
-- If tenant exists → User returns → RequireAuth sees org context → Normal flow
-- If tenant doesn't exist → User returns → RequireAuth sees no org → Back to /onboarding
-- Idempotency check in provision-tenant prevents duplicate tenants
-
-**No change needed.**
-
----
-
-### 6. Browser Back Button from Stripe Checkout
-
-**Scenario:** User clicks browser back button while on Stripe Checkout.
-
-**Current behavior:** Returns to `cancel_url` which is `/billing?canceled=true`.
-
-**Issue:** `/billing` requires org context. For `pending_trial` users, BillingGuard should redirect them.
-
-**Fix:** Stripe's `cancel_url` should be `/trial-activation?canceled=true` instead of `/billing`.
-
----
-
-### 7. Multiple Browser Tabs / Concurrent Sessions
-
-**Scenario:** User opens signup in two tabs.
-
-**Recovery:** 
-- provision-tenant idempotency check prevents duplicate tenants
-- Second tab attempting to create workspace will get existing tenant ID
-- React Query cache ensures consistent state across components
-
-**No change needed.**
-
----
-
-### 8. Session Expiry During Checkout
-
-**Scenario:** User's Supabase session expires while on Stripe Checkout (e.g., 1 hour timeout).
-
-**Recovery:**
-- Stripe checkout completes successfully (independent of Supabase session)
-- Webhook updates database correctly
-- User returns to app → Session refresh → `trialing` status detected → Normal access
-
-**No change needed.**
-
----
-
-## Implementation Plan
-
-### Phase 1: Create Trial Activation Page
-
-**New File: `src/pages/TrialActivation.tsx`**
-
-A dedicated CC wall page following the established auth screen pattern (split layout with graphic).
-
-**Design Elements (Style Guide Compliance):**
-- Split layout: Left side with branded graphic, right side with content card
-- Background color: `#d7c5fb` (Lilac Frost) matching Login/Signup
-- Logo: `<GoGioLogo size="xl" />`
-- Typography: Poppins font family, `-0.06em` letter-spacing for headings
-- Card: White background, rounded-2xl, shadow-lg
-- CTA Button: Primary button with `h-12` height
-- Icons: Lucide icons (Check, CreditCard, Sparkles)
-
-**Key Features:**
-- Value proposition with trial benefits list
-- Clear "14 days free, then $99/seat/month" messaging
-- Primary CTA: "Start Free Trial" → Stripe Checkout
-- Secondary: "Not ready? Sign out" link
-- Auto-redirect if user is already trialing/active
-
-**Code Structure:**
 ```typescript
-export default function TrialActivation() {
-  const { data: billing, isLoading } = useBillingStatus()
-  const createCheckout = useCreateCheckout()
-  const navigate = useNavigate()
-  const { logout } = useAuth()
-  const [searchParams] = useSearchParams()
-  const wasCanceled = searchParams.get('canceled') === 'true'
-  
-  // If already trialing or active, redirect
-  useEffect(() => {
-    if (billing && ['trialing', 'active'].includes(billing.billing_status)) {
-      navigate('/dashboard', { replace: true })
+// After line 100 (showDeleteDialog state)
+const [showCancelDialog, setShowCancelDialog] = useState(false);
+```
+
+---
+
+### 3. Create handleSheetDismiss Function
+
+This handles accidental dismissal (Esc, click outside) - saves draft immediately:
+
+```typescript
+// New function after handleDiscardDraft
+const handleSheetDismiss = useCallback((newOpen: boolean) => {
+  if (!newOpen && !isReadOnly) {
+    // Sheet is being dismissed - save draft immediately
+    if (draftTimeoutRef.current) {
+      clearTimeout(draftTimeoutRef.current);
+      draftTimeoutRef.current = null;
     }
-  }, [billing, navigate])
+    
+    // Force editor to sync its content
+    const editorElement = document.querySelector('[contenteditable="true"]');
+    if (editorElement instanceof HTMLElement) {
+      editorElement.blur();
+    }
+    
+    // Save current values to localStorage immediately
+    try {
+      const draft = {
+        rating: ratingRef.current,
+        overview: overviewRef.current,
+        responses: responsesRef.current,
+        lastUpdated: Date.now()
+      };
+      localStorage.setItem(draftKey, JSON.stringify(draft));
+      setHasDraft(true);
+    } catch (e) {
+      console.debug('Failed to save draft on close:', e);
+    }
+  }
   
-  // Render CC wall UI
-}
+  onOpenChange(newOpen);
+}, [draftKey, isReadOnly, onOpenChange]);
 ```
 
 ---
 
-### Phase 2: Update BillingGuard
+### 4. Create handleCancelClick Function
 
-**File: `src/components/auth/BillingGuard.tsx`**
-
-Add `pending_trial` detection to redirect users to the activation page.
-
-**Changes:**
-```typescript
-// After platform admin and role checks, before isBlocked calculation
-
-// Redirect pending_trial users to trial activation page
-if (billing?.billing_status === 'pending_trial') {
-  return <Navigate to="/trial-activation" replace />
-}
-```
-
-This ensures users cannot bypass the CC wall, even if they navigate directly to protected routes.
-
----
-
-### Phase 3: Update Onboarding Page
-
-**File: `src/pages/Onboarding.tsx`**
-
-1. **Fix incorrect copy (line 342):**
-   - Current: "30‑day free trial, no card needed"
-   - Updated: "14-day free trial with credit card"
-
-2. **Change redirect destination (line 158):**
-   - Current: `navigate('/find', { replace: true })`
-   - Updated: `navigate('/trial-activation', { replace: true })`
-
-3. **Remove first-run session storage flag** (line 155):
-   - Move `virgilio_first_run` flag setting to post-trial-activation
-
----
-
-### Phase 4: Update Stripe Checkout URLs
-
-**File: `supabase/functions/create-checkout/index.ts`**
-
-Update `cancel_url` for pending_trial users:
+This handles explicit Cancel button click - shows confirmation:
 
 ```typescript
-const isNewTrial = isTrialStart || subRow2?.billing_status === 'pending_trial';
-
-const cancel_url = isNewTrial 
-  ? `${origin}/trial-activation?canceled=true`
-  : `${origin}/billing?canceled=true`;
+// New function
+const handleCancelClick = useCallback(() => {
+  // Check if there are unsaved changes
+  const hasChanges = overview.trim() !== '' || 
+    Object.keys(responses).length > 0 || 
+    rating !== (existing?.rating || 'yes') ||
+    overview !== (existing?.general_overview || '');
+  
+  if (hasChanges) {
+    setShowCancelDialog(true);
+  } else {
+    // No changes, just close
+    clearDraft();
+    onOpenChange(false);
+  }
+}, [overview, responses, rating, existing, clearDraft, onOpenChange]);
 ```
-
-This ensures users who cancel checkout return to the CC wall, not the billing page.
 
 ---
 
-### Phase 5: Update App Routes
+### 5. Create handleConfirmCancel Function
 
-**File: `src/App.tsx`**
-
-Add `/trial-activation` route as an always-accessible route (like `/billing`):
+Called when user confirms they want to discard:
 
 ```typescript
-{/* Always accessible routes */}
-<Route path="/billing" element={<Settings />} />
-<Route path="/trial-activation" element={<TrialActivation />} />
-<Route path="/settings" element={<Settings />} />
+const handleConfirmCancel = useCallback(() => {
+  clearDraft();
+  setRating('yes');
+  setOverview('');
+  setResponses({});
+  setShowCancelDialog(false);
+  onOpenChange(false);
+}, [clearDraft, onOpenChange]);
 ```
 
 ---
 
-### Phase 6: Handle Checkout Success
+### 6. Remove Competing Reset Effect
 
-**File: `src/pages/TrialActivation.tsx` (or create success handler)**
+**Delete lines 394-400** (the effect that overwrites restored drafts):
 
-When user completes checkout, Stripe redirects to `/billing?session_id=XXX`. 
-
-The existing `/billing` page handles this correctly:
-- Shows the Current Plan card with "Free Trial" status
-- User can navigate to dashboard from there
-
-**Enhancement:** Add a success toast or redirect to `/dashboard` when `session_id` is present and status is `trialing`.
+```typescript
+// DELETE THIS ENTIRE BLOCK
+useEffect(() => {
+  if (open) {
+    setRating(existing?.rating || "yes");
+    setOverview(existing?.general_overview || "");
+    setEditMode(!existing || isAuthor);
+  }
+}, [open, existing?.id, existing?.rating, existing?.general_overview, isAuthor]);
+```
 
 ---
 
-## Files to Create
+### 7. Expand Draft Restoration Effect
 
-| File | Purpose |
-|------|---------|
-| `src/pages/TrialActivation.tsx` | CC wall page with trial benefits and Stripe checkout CTA |
+**Replace lines 131-174** with unified initialization:
 
-## Files to Modify
+```typescript
+// Unified initialization effect when sheet opens
+useEffect(() => {
+  if (!open) return;
+  
+  // Base values from existing scorecard (or defaults)
+  const baseRating = existing?.rating || "yes";
+  const baseOverview = existing?.general_overview || "";
+  
+  // Always set edit mode
+  setEditMode(!existing || isAuthor);
+  
+  // Check for local draft
+  try {
+    const savedDraft = localStorage.getItem(draftKey);
+    if (savedDraft) {
+      const draft = JSON.parse(savedDraft);
+      // Check if draft is less than 7 days old
+      if (Date.now() - draft.lastUpdated < 7 * 24 * 60 * 60 * 1000) {
+        // For existing scorecards, only restore if draft is newer than last DB update
+        if (existing?.updated_at) {
+          const dbUpdateTime = new Date(existing.updated_at).getTime();
+          if (draft.lastUpdated > dbUpdateTime) {
+            // Draft is newer - restore it
+            setRating(draft.rating || baseRating);
+            setOverview(draft.overview || baseOverview);
+            setResponses(draft.responses || {});
+            setHasDraft(true);
+            toast({ 
+              title: 'Unsaved changes restored', 
+              description: 'Your previous edits have been recovered.' 
+            });
+            return;
+          }
+        } else {
+          // New scorecard - restore draft
+          setRating(draft.rating || baseRating);
+          setOverview(draft.overview || baseOverview);
+          setResponses(draft.responses || {});
+          setHasDraft(true);
+          toast({ 
+            title: 'Draft restored', 
+            description: 'Your previous notes have been restored.' 
+          });
+          return;
+        }
+      } else {
+        localStorage.removeItem(draftKey);
+      }
+    }
+  } catch (e) {
+    console.debug('Failed to load draft:', e);
+  }
+  
+  // No valid draft - use base values
+  setRating(baseRating);
+  setOverview(baseOverview);
+  setHasDraft(false);
+  
+}, [open, existing?.id, existing?.updated_at, existing?.rating, existing?.general_overview, draftKey, isAuthor]);
+```
+
+---
+
+### 8. Update Sheet Component
+
+**Line 705** - Use new dismiss handler:
+
+| Before | After |
+|--------|-------|
+| `<Sheet open={open} onOpenChange={onOpenChange}>` | `<Sheet open={open} onOpenChange={handleSheetDismiss}>` |
+
+---
+
+### 9. Update Cancel Button
+
+**Lines 959-962** - Use new cancel click handler:
+
+| Before | After |
+|--------|-------|
+| `<Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>` | `<Button variant="outline" onClick={handleCancelClick} disabled={saving}>Cancel</Button>` |
+
+---
+
+### 10. Add Cancel Confirmation Dialog
+
+Add after the Delete Confirmation Dialog (after line 1025):
+
+```typescript
+{/* Cancel Confirmation Dialog */}
+<AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
+      <AlertDialogDescription>
+        You have unsaved notes in this scorecard. Are you sure you want to cancel? Your changes will be lost.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogCancel>Keep Editing</AlertDialogCancel>
+      <AlertDialogAction
+        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+        onClick={handleConfirmCancel}
+      >
+        Discard Changes
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+```
+
+---
+
+## Behavior Summary
+
+| Action | Behavior |
+|--------|----------|
+| Click outside sheet | Draft saved immediately, sheet closes |
+| Press Esc | Draft saved immediately, sheet closes |
+| Click X button | Draft saved immediately, sheet closes |
+| Click Cancel (no changes) | Sheet closes, no dialog |
+| Click Cancel (with changes) | Confirmation dialog appears |
+| Confirm "Discard Changes" | Draft cleared, form reset, sheet closes |
+| Click "Keep Editing" | Dialog closes, continue editing |
+| Click "Discard Draft" header button | Draft cleared, form reset (existing behavior) |
+| Submit Scorecard | Draft cleared after successful save |
+
+---
+
+## File Changes
 
 | File | Changes |
 |------|---------|
-| `src/components/auth/BillingGuard.tsx` | Redirect `pending_trial` to `/trial-activation` |
-| `src/pages/Onboarding.tsx` | Fix copy (14 days, card required), redirect to `/trial-activation` |
-| `src/App.tsx` | Add `/trial-activation` route |
-| `supabase/functions/create-checkout/index.ts` | Update `cancel_url` for pending_trial users |
+| `src/components/candidates/ScorecardSheet.tsx` | Add refs, new state, new handlers, unified initialization, confirmation dialog |
 
 ---
 
-## Style Guide Compliance Checklist
+## Testing Checklist
 
-The Trial Activation page will follow these established patterns:
-
-| Element | Pattern Source | Implementation |
-|---------|----------------|----------------|
-| Layout | Login.tsx, SignUp.tsx | Split layout (50/50), left graphic, right content |
-| Background | Login.tsx | `backgroundColor: '#d7c5fb'` |
-| Logo | All auth pages | `<GoGioLogo size="xl" />` centered |
-| Heading | Login.tsx | Poppins, `-0.06em` letter-spacing, accent dot |
-| Card | Login.tsx | White bg, `rounded-2xl`, `shadow-lg`, `p-8` |
-| Buttons | StyleGuide | Primary: `h-12`, full width; Ghost: for "Sign out" |
-| Icons | Lucide | Check (benefits), CreditCard, Sparkles |
-| Benefits list | PerSeatPricingCard | Check icons with benefit text |
-| Footer | Login.tsx | Privacy/Terms links, copyright |
-
----
-
-## Recovery Flow Summary
-
-| Scenario | User Returns To | System Behavior |
-|----------|-----------------|-----------------|
-| Left before onboarding | `/onboarding` | Shows workspace creation form |
-| Left after onboarding, before checkout | `/trial-activation` | Shows CC wall, can retry checkout |
-| Canceled Stripe checkout | `/trial-activation?canceled=true` | Shows CC wall with "checkout canceled" message |
-| Left mid-checkout | `/trial-activation` | New checkout session created on retry |
-| Webhook failed | `/trial-activation` | User retries, Stripe finds existing subscription |
-| Completed checkout successfully | `/billing` → `/dashboard` | Full access with trialing status |
-
----
-
-## Testing Scenarios
-
-1. **Happy path:** Signup → Verify → Onboard → Activate → Dashboard
-2. **Abandon at onboarding:** Close at workspace name → Reopen → Continue from onboarding
-3. **Abandon at trial activation:** Complete onboarding, close at CC wall → Reopen → Still at CC wall
-4. **Cancel Stripe checkout:** Click back on Stripe → Return to trial activation
-5. **Complete checkout:** Full flow → Dashboard access with trialing badge
-6. **Return after trial activated:** Login → Dashboard (skips activation page)
-
----
-
-## Technical Notes
-
-### Idempotency
-
-- `provision-tenant` checks for existing membership before creating tenant
-- Stripe checkout sessions expire after 24 hours
-- Webhook handler checks for already-processed events
-
-### State Persistence
-
-- Billing status stored in `tenant_subscriptions` table (server-side)
-- No reliance on `sessionStorage` for critical flow state
-- `useBillingStatus` hook fetches fresh data on mount
-
-### Error Handling
-
-- Toast notifications for checkout failures
-- Clear error states in UI
-- Retry mechanisms built into Stripe
+1. Type notes, press Esc - Reopen - Notes preserved
+2. Type notes, click outside - Reopen - Notes preserved  
+3. Type notes, click Cancel - See confirmation dialog
+4. Confirm discard - Notes gone on reopen
+5. Click "Keep Editing" - Continue editing, notes preserved
+6. Submit scorecard - Draft cleared, no restoration
+7. Existing scorecard with newer local draft - Shows draft with toast
 
