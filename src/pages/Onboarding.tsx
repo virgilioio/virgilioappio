@@ -151,11 +151,11 @@ export default function Onboarding() {
         // Non-fatal - continue
       }
       
-      // Set session flag to trigger first-run orientation in Find
+      // Set session flag to trigger first-run orientation in Find (after trial activation)
       sessionStorage.setItem('virgilio_first_run', 'true')
       
-      // Navigate to Find page (the new first-run destination)
-      navigate('/find', { replace: true })
+      // Navigate to Trial Activation page (CC wall)
+      navigate('/trial-activation', { replace: true })
       
     } catch (err: any) {
       console.error('[Onboarding] Onboarding failed', err)
@@ -339,7 +339,7 @@ export default function Onboarding() {
            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground mb-2" style={{ fontFamily: 'Poppins', letterSpacing: '-0.06em' }}>
              Set up your workspace<span style={{ color: '#d7c5fb' }}>.</span>
            </h1>
-           <p className="text-muted-foreground mt-2">Create your tenant and first workspace. 30‑day free trial, no card needed.</p>
+           <p className="text-muted-foreground mt-2">Create your workspace and start your 14-day free trial.</p>
         </div>
 
         {/* Content Container with max width */}

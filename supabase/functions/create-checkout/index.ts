@@ -136,7 +136,10 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "http://localhost:5173";
     const success_url = `${origin}/billing?session_id={CHECKOUT_SESSION_ID}`;
-    const cancel_url = `${origin}/billing?canceled=true`;
+    // For pending_trial users, return to trial activation page on cancel
+    const cancel_url = isNewTrial 
+      ? `${origin}/trial-activation?canceled=true`
+      : `${origin}/billing?canceled=true`;
 
     // Determine if this is a trial start or regular subscription
     const isNewTrial = isTrialStart || subRow2?.billing_status === 'pending_trial';

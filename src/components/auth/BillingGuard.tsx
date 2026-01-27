@@ -1,5 +1,5 @@
 import { ReactNode } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, Navigate } from 'react-router-dom'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle, CreditCard, Mail } from 'lucide-react'
@@ -42,6 +42,11 @@ export function BillingGuard({
         </div>
       </div>
     )
+  }
+
+  // Redirect pending_trial users to trial activation page (CC wall)
+  if (billing?.billing_status === 'pending_trial') {
+    return <Navigate to="/trial-activation" replace />
   }
 
   // Determine if user is blocked
