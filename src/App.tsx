@@ -43,6 +43,7 @@ import PublicCareersPage from './pages/PublicCareersPage'
 import PublicBookingPage from './pages/PublicBookingPage'
 import BookingConfirmed from './pages/BookingConfirmed'
 import Onboarding from './pages/Onboarding'
+import TrialActivation from './pages/TrialActivation'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import AuthCallback from './pages/AuthCallback'
@@ -80,6 +81,9 @@ function AppContent() {
 
         {/* Onboarding route - requires auth but NOT Layout (to bypass OrgGate) */}
         <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
+        
+        {/* Trial activation route - requires auth but accessible without org context */}
+        <Route path="/trial-activation" element={<RequireAuth><TrialActivation /></RequireAuth>} />
 
         {/* Authenticated routes wrapped with RequireAuth and Layout */}
         <Route element={<RequireAuth><Layout /></RequireAuth>}>
