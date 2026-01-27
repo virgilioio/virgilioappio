@@ -97,11 +97,22 @@ export function ScorecardSheet({
   const [isPolishing, setIsPolishing] = useState(false);
   const [showNextStepsDialog, setShowNextStepsDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const [loadingResume, setLoadingResume] = useState(true);
   const [hasDraft, setHasDraft] = useState(false);
   const draftTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Track current values in refs for reliable close-time saving
+  const overviewRef = useRef(overview);
+  const ratingRef = useRef(rating);
+  const responsesRef = useRef(responses);
+
+  // Sync refs with state
+  useEffect(() => { overviewRef.current = overview; }, [overview]);
+  useEffect(() => { ratingRef.current = rating; }, [rating]);
+  useEffect(() => { responsesRef.current = responses; }, [responses]);
 
   const isReadOnly = useMemo(() => !editMode, [editMode]);
   const isAiDraft = existing?.is_ai_draft === true;
@@ -128,10 +139,78 @@ export function ScorecardSheet({
     });
   }, [clearDraft]);
 
-  // Load draft on mount (for both new and existing scorecards)
+  // Handler for dismiss (clicking outside, Esc, X button) - save draft immediately
+  const handleSheetDismiss = useCallback((newOpen: boolean) => {
+    if (!newOpen && !isReadOnly) {
+      // Sheet is being dismissed - save draft immediately
+      if (draftTimeoutRef.current) {
+        clearTimeout(draftTimeoutRef.current);
+        draftTimeoutRef.current = null;
+      }
+      
+      // Force editor to sync its content
+      const editorElement = document.querySelector('[contenteditable="true"]');
+      if (editorElement instanceof HTMLElement) {
+        editorElement.blur();
+      }
+      
+      // Save current values to localStorage immediately
+      try {
+        const draft = {
+          rating: ratingRef.current,
+          overview: overviewRef.current,
+          responses: responsesRef.current,
+          lastUpdated: Date.now()
+        };
+        localStorage.setItem(draftKey, JSON.stringify(draft));
+        setHasDraft(true);
+      } catch (e) {
+        console.debug('Failed to save draft on close:', e);
+      }
+    }
+    
+    onOpenChange(newOpen);
+  }, [draftKey, isReadOnly, onOpenChange]);
+
+  // Handle explicit Cancel button click - shows confirmation if there are changes
+  const handleCancelClick = useCallback(() => {
+    // Check if there are unsaved changes
+    const hasChanges = overview.trim() !== '' || 
+      Object.keys(responses).length > 0 || 
+      rating !== (existing?.rating || 'yes') ||
+      overview !== (existing?.general_overview || '');
+    
+    if (hasChanges) {
+      setShowCancelDialog(true);
+    } else {
+      // No changes, just close
+      clearDraft();
+      onOpenChange(false);
+    }
+  }, [overview, responses, rating, existing, clearDraft, onOpenChange]);
+
+  // Handle confirmed cancel - discard changes and close
+  const handleConfirmCancel = useCallback(() => {
+    clearDraft();
+    setRating('yes');
+    setOverview('');
+    setResponses({});
+    setShowCancelDialog(false);
+    onOpenChange(false);
+  }, [clearDraft, onOpenChange]);
+
+  // Unified initialization effect when sheet opens
   useEffect(() => {
     if (!open) return;
     
+    // Base values from existing scorecard (or defaults)
+    const baseRating = existing?.rating || "yes";
+    const baseOverview = existing?.general_overview || "";
+    
+    // Always set edit mode
+    setEditMode(!existing || isAuthor);
+    
+    // Check for local draft
     try {
       const savedDraft = localStorage.getItem(draftKey);
       if (savedDraft) {
@@ -143,35 +222,42 @@ export function ScorecardSheet({
             const dbUpdateTime = new Date(existing.updated_at).getTime();
             if (draft.lastUpdated > dbUpdateTime) {
               // Draft is newer - restore it
-              setRating(draft.rating || existing.rating || 'yes');
-              setOverview(draft.overview || existing.general_overview || '');
+              setRating(draft.rating || baseRating);
+              setOverview(draft.overview || baseOverview);
               setResponses(draft.responses || {});
               setHasDraft(true);
               toast({ 
                 title: 'Unsaved changes restored', 
                 description: 'Your previous edits have been recovered.' 
               });
+              return;
             }
           } else {
-            // New scorecard - restore draft as before
-            setRating(draft.rating || 'yes');
-            setOverview(draft.overview || '');
+            // New scorecard - restore draft
+            setRating(draft.rating || baseRating);
+            setOverview(draft.overview || baseOverview);
             setResponses(draft.responses || {});
             setHasDraft(true);
             toast({ 
               title: 'Draft restored', 
               description: 'Your previous notes have been restored.' 
             });
+            return;
           }
         } else {
-          // Clear expired draft
           localStorage.removeItem(draftKey);
         }
       }
     } catch (e) {
       console.debug('Failed to load draft:', e);
     }
-  }, [open, existing?.id, existing?.updated_at, draftKey]);
+    
+    // No valid draft - use base values
+    setRating(baseRating);
+    setOverview(baseOverview);
+    setHasDraft(false);
+    
+  }, [open, existing?.id, existing?.updated_at, existing?.rating, existing?.general_overview, draftKey, isAuthor]);
 
   // Auto-save draft on changes (debounced) - works for both new and existing scorecards
   useEffect(() => {
@@ -391,13 +477,7 @@ export function ScorecardSheet({
     }
   };
 
-  useEffect(() => {
-    if (open) {
-      setRating(existing?.rating || "yes");
-      setOverview(existing?.general_overview || "");
-      setEditMode(!existing || isAuthor);
-    }
-  }, [open, existing?.id, existing?.rating, existing?.general_overview, isAuthor]);
+  // Note: Competing reset effect removed - initialization is now handled by the unified effect above
 
   const handleResponseChange = (questionId: string, response: Partial<QuestionResponse>) => {
     setResponses(prev => ({
@@ -702,7 +782,7 @@ export function ScorecardSheet({
 
   return (
     <>
-      <Sheet open={open} onOpenChange={onOpenChange}>
+      <Sheet open={open} onOpenChange={handleSheetDismiss}>
         <SheetContent side="right" className="w-[95vw] sm:w-[95vw] max-w-[1400px] sm:max-w-[1400px] p-0">
           <div className="flex h-full flex-col">
             <SheetHeader className="p-6 border-b">
@@ -957,7 +1037,7 @@ export function ScorecardSheet({
                   <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
                 ) : (
                   <>
-                    <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+                    <Button variant="outline" onClick={handleCancelClick} disabled={saving}>
                       Cancel
                     </Button>
                     <Button onClick={handleSave} disabled={saving}>
@@ -1019,6 +1099,27 @@ export function ScorecardSheet({
               }}
             >
               {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel Confirmation Dialog */}
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved notes in this scorecard. Are you sure you want to cancel? Your changes will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep Editing</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleConfirmCancel}
+            >
+              Discard Changes
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
