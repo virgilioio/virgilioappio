@@ -828,7 +828,8 @@ const stageHasAutomation = useMemo(() => {
                       <Card className="bg-surface-primary border-border">
                         <CardContent className="p-4">
                            <div className="flex items-center justify-between w-full">
-                              <div className="flex items-center gap-2">
+                              <div className="overflow-x-auto scrollbar-none">
+                                <div className="flex items-center gap-2 min-w-max">
                                 {candidate.job_board_source && (
                                   <Badge variant="secondary" className="gap-1">
                                     <Globe className="h-3 w-3" />
@@ -890,16 +891,17 @@ const stageHasAutomation = useMemo(() => {
                                 </Button>
                                 
                                 {/* Mark as Hired - only show when in offer status */}
-                  {associationStatus === 'offer' && (
-                    <Button
-                      variant="success"
-                      size="sm"
-                      onClick={handleHire}
-                    >
-                      <Check className="h-4 w-4 mr-2" />
-                      Mark as Hired
-                    </Button>
-                  )}
+                                {associationStatus === 'offer' && (
+                                  <Button
+                                    variant="success"
+                                    size="sm"
+                                    onClick={handleHire}
+                                  >
+                                    <Check className="h-4 w-4 mr-2" />
+                                    Mark as Hired
+                                  </Button>
+                                )}
+                                </div>
                               </div>
                            </div>
                         </CardContent>
