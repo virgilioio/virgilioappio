@@ -1,63 +1,44 @@
 
-# Update Login/SignUp Page Styling
+# Fix: Login/SignUp "Find your people." Typography
 
-## Changes Overview
+## Changes Required
 
-Update both authentication pages to:
-1. Change background color from `#d7c5fb` (Lilac Frost) to `#fffcf9` (Warm Off-White)
-2. Remove the left-side graphic section entirely
+Update the `<h1>` element in both Login.tsx and SignUp.tsx:
 
----
+### File: `src/pages/Login.tsx` (line ~73)
 
-## Files to Modify
+| Property | Before | After |
+|----------|--------|-------|
+| Font weight class | `font-extrabold` | `font-bold` |
+| Period color | `#7c3aed` | `#d7c5fb` |
 
-### 1. `src/pages/Login.tsx`
+### File: `src/pages/SignUp.tsx` (line ~78)
 
-**Remove:**
-- The left side div containing the `authGraphic` image (lines 63-70)
-- The `authGraphic` import at the top
-
-**Update:**
-- Change background color from `#d7c5fb` to `#fffcf9`
-- Update layout from split (50/50) to centered single column
-- Change right side from `lg:w-1/2` to full width centered
-
-### 2. `src/pages/SignUp.tsx`
-
-**Remove:**
-- The left side div containing the `authGraphic` image (lines 68-75)
-- The `authGraphic` import at the top
-
-**Update:**
-- Change background color from `#d7c5fb` to `#fffcf9`
-- Update layout from split (50/50) to centered single column
-- Change right side from `lg:w-1/2` to full width centered
+Same changes as Login.tsx.
 
 ---
 
-## Visual Result
+## Code Change
 
-| Before | After |
-|--------|-------|
-| Split layout (50/50) | Centered single column |
-| Left: Image on purple | No left section |
-| Right: Form on purple | Full-width centered form |
-| Background: `#d7c5fb` | Background: `#fffcf9` |
-
----
-
-## Code Changes Preview
-
-**Login.tsx structure after changes:**
+**Before:**
 ```tsx
-<div className="min-h-screen flex flex-col" style={{ backgroundColor: '#fffcf9' }}>
-  {/* Centered content - no more split layout */}
-  <div className="w-full flex flex-col justify-center items-center px-6 min-h-screen">
-    {/* Logo and tagline */}
-    {/* Form card */}
-    {/* Footer */}
-  </div>
-</div>
+<h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground mb-2" style={{ fontFamily: 'Poppins', letterSpacing: '-0.06em' }}>
+  Find your people<span style={{ color: '#7c3aed' }}>.</span>
+</h1>
 ```
 
-Same pattern for SignUp.tsx.
+**After:**
+```tsx
+<h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-2" style={{ fontFamily: 'Poppins', letterSpacing: '-0.06em' }}>
+  Find your people<span style={{ color: '#d7c5fb' }}>.</span>
+</h1>
+```
+
+---
+
+## Final Typography Specs
+
+- **Font**: Poppins
+- **Weight**: 700 (bold)
+- **Letter spacing**: -0.06em (-6%)
+- **Period color**: #d7c5fb (Lilac Frost)
