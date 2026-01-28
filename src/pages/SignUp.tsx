@@ -75,8 +75,8 @@ export default function SignUp() {
           <div className="mb-4 flex justify-center">
             <GoGioLogo size="xl" />
           </div>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground mb-2" style={{ fontFamily: 'Poppins', letterSpacing: '-0.06em' }}>
-            Find your people<span style={{ color: '#7c3aed' }}>.</span>
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-2" style={{ fontFamily: 'Poppins', letterSpacing: '-0.06em' }}>
+            Find your people<span style={{ color: '#d7c5fb' }}>.</span>
           </h1>
         </div>
 
