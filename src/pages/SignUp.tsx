@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { GoGioLogo } from '@/components/GoGioLogo'
-import authGraphic from '@/assets/auth-graphic.png'
 
 import { GoogleLogo } from '@/components/icons/GoogleLogo'
 import { useAuth } from '@/contexts/AuthContext'
@@ -68,20 +67,9 @@ export default function SignUp() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
-
-      {/* Left Side - Graphic */}
-      <div className="w-full lg:w-1/2 relative overflow-hidden flex items-center justify-center min-h-[50vh] lg:min-h-screen" style={{ backgroundColor: '#d7c5fb' }}>
-        <img 
-          src={authGraphic} 
-          alt="Find your people" 
-          className="max-h-[90%] max-w-[90%] object-contain"
-          style={{ filter: 'drop-shadow(0 4px 12px rgba(0, 0, 0, 0.08))' }}
-        />
-      </div>
-
-      {/* Right Side - Signup form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 sm:px-8 lg:px-8 xl:px-12 min-h-[50vh] lg:min-h-screen" style={{ backgroundColor: '#d7c5fb' }}>
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#fffcf9' }}>
+      {/* Centered content */}
+      <div className="w-full flex flex-col justify-center items-center px-6 sm:px-8 lg:px-8 xl:px-12 min-h-screen">
         {/* Logo and tagline - outside the card */}
         <div className="mb-8 text-center">
           <div className="mb-4 flex justify-center">
