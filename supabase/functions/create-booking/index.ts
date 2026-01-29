@@ -35,6 +35,8 @@ serve(async (req) => {
       // Meeting location preferences
       meeting_type_preference = 'google_meet', // 'google_meet' or 'custom'
       custom_meeting_location = null,
+      // Per-booking custom event title override (takes priority over config default)
+      custom_event_title = null,
     } = await req.json();
 
     // Validate custom location if specified
@@ -133,11 +135,11 @@ serve(async (req) => {
       // Job+stage specific booking - use contextual title
       interviewTitle = `${stageName} with ${candidate_name}${jobTitle}`;
     } else {
-      // Generic booking - use custom title from config with placeholder replacement
-      const customTitle = config.custom_event_title || 'Interview with {candidate_name}';
-      interviewTitle = customTitle.replace(/{candidate_name}/g, candidate_name);
+      // Generic booking - priority: request override > config default > fallback
+      const titleTemplate = custom_event_title || config.custom_event_title || 'Interview with {candidate_name}';
+      interviewTitle = titleTemplate.replace(/{candidate_name}/g, candidate_name);
     }
-    console.log('[create-booking] Interview title:', interviewTitle, '(job-specific:', isJobSpecificBooking, ')');
+    console.log('[create-booking] Interview title:', interviewTitle, '(job-specific:', isJobSpecificBooking, ', custom_event_title provided:', !!custom_event_title, ')');
 
     // Fetch profile separately
     const { data: profile, error: profileError } = await supabase
