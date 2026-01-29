@@ -15,7 +15,7 @@ import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/com
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import { CandidateJobSidebar } from '@/components/candidates/CandidateJobSidebar'
 import { MobileJobSelector } from '@/components/candidates/MobileJobSelector'
-import { Edit, FileText, Download, ChevronLeft, ChevronRight, Mail, Phone, Copy, ExternalLink, Send, Activity, StickyNote, Sparkles, User, Globe, Loader2, Bell } from 'lucide-react'
+import { Edit, FileText, Download, ChevronLeft, ChevronRight, Mail, Phone, Copy, ExternalLink, Send, Activity, StickyNote, Sparkles, User, Globe, Loader2, Bell, Calendar } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -39,6 +39,7 @@ import AddToJobPipelineDialog from './AddToJobPipelineDialog'
 import { Separator } from '@/components/ui/separator'
 import { CandidateReminders } from './CandidateReminders'
 import { useEnrichCandidate } from '@/hooks/useEnrichCandidate'
+import { SimpleScheduleInterviewSheet } from './SimpleScheduleInterviewSheet'
 
 interface IndependentCandidateProfileSheetProps {
   open: boolean
@@ -77,6 +78,7 @@ export function IndependentCandidateProfileSheet({
   const [emailComposerTo, setEmailComposerTo] = useState<string | undefined>(undefined)
   const [emailComposerCc, setEmailComposerCc] = useState<string | undefined>(undefined)
   const [emailComposerReplyToId, setEmailComposerReplyToId] = useState<string | undefined>(undefined)
+  const [scheduleOpen, setScheduleOpen] = useState(false)
 
   // Handler for job sidebar navigation
   const handleJobSelect = (jobId: string) => {
@@ -736,6 +738,14 @@ export function IndependentCandidateProfileSheet({
                                 <Mail className="h-4 w-4 mr-2" />
                                 Send Email
                               </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setScheduleOpen(true)}
+                              >
+                                <Calendar className="h-4 w-4 mr-2" />
+                                Schedule Interview
+                              </Button>
                             </div>
                           </div>
                         </CardContent>
@@ -848,6 +858,19 @@ export function IndependentCandidateProfileSheet({
             defaultBody={emailComposerBody}
             defaultCc={emailComposerCc}
           />
+
+          {/* Simple Schedule Interview Sheet */}
+          {candidateId && organizationId && candidate && (
+            <SimpleScheduleInterviewSheet
+              open={scheduleOpen}
+              onOpenChange={setScheduleOpen}
+              candidateId={candidateId}
+              candidateName={candidate.candidate_name || 'Candidate'}
+              candidateEmail={candidate.email || ''}
+              candidatePhone={candidate.phone}
+              organizationId={organizationId}
+            />
+          )}
         </SheetContent>
       </Sheet>
     </>
