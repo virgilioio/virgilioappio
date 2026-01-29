@@ -1,44 +1,88 @@
 
-# Fix: Login/SignUp "Find your people." Typography
+# Fix: Mobile Clipboard Error for Stage-Specific Booking Links
 
-## Changes Required
+## Problem Identified
 
-Update the `<h1>` element in both Login.tsx and SignUp.tsx:
+The booking link copy functions in `useStageBookingInterviewers.ts` and `useContextualBookingLink.ts` directly use `navigator.clipboard.writeText()` without a fallback. On mobile browsers (especially in-app browsers like those from social media apps), the Clipboard API may be restricted or unavailable, causing the copy operation to fail silently and show an error toast.
 
-### File: `src/pages/Login.tsx` (line ~73)
-
-| Property | Before | After |
-|----------|--------|-------|
-| Font weight class | `font-extrabold` | `font-bold` |
-| Period color | `#7c3aed` | `#d7c5fb` |
-
-### File: `src/pages/SignUp.tsx` (line ~78)
-
-Same changes as Login.tsx.
+The project already has a `copyToClipboard` utility in `src/utils/clipboard.ts` that includes a fallback mechanism using the legacy `document.execCommand('copy')` method, but it's not being used in these hooks.
 
 ---
 
-## Code Change
+## Solution
 
-**Before:**
-```tsx
-<h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground mb-2" style={{ fontFamily: 'Poppins', letterSpacing: '-0.06em' }}>
-  Find your people<span style={{ color: '#7c3aed' }}>.</span>
-</h1>
+Replace direct `navigator.clipboard.writeText()` calls with a reusable helper function that includes proper fallback support for mobile browsers.
+
+---
+
+## Files to Modify
+
+### 1. `src/utils/clipboard.ts`
+
+Add an async version that returns success/failure status (for use in hooks that need to control their own toast messages):
+
+```typescript
+// Add this new function
+export const copyToClipboardSilent = async (text: string): Promise<boolean> => {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (err) {
+    // Fallback for mobile/restricted browsers
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      return true;
+    } catch (fallbackErr) {
+      return false;
+    }
+  }
+};
 ```
 
-**After:**
-```tsx
-<h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-2" style={{ fontFamily: 'Poppins', letterSpacing: '-0.06em' }}>
-  Find your people<span style={{ color: '#d7c5fb' }}>.</span>
-</h1>
+### 2. `src/hooks/useStageBookingInterviewers.ts`
+
+**Line 197** - Replace:
+```typescript
+await navigator.clipboard.writeText(link);
+```
+
+With:
+```typescript
+import { copyToClipboardSilent } from '@/utils/clipboard';
+// ...
+const success = await copyToClipboardSilent(link);
+if (!success) throw new Error('Clipboard copy failed');
+```
+
+### 3. `src/hooks/useContextualBookingLink.ts`
+
+**Line 216** - Replace:
+```typescript
+await navigator.clipboard.writeText(contextualLink);
+```
+
+With:
+```typescript
+import { copyToClipboardSilent } from '@/utils/clipboard';
+// ...
+const success = await copyToClipboardSilent(contextualLink);
+if (!success) throw new Error('Clipboard copy failed');
 ```
 
 ---
 
-## Final Typography Specs
+## Technical Notes
 
-- **Font**: Poppins
-- **Weight**: 700 (bold)
-- **Letter spacing**: -0.06em (-6%)
-- **Period color**: #d7c5fb (Lilac Frost)
+- The fallback uses `document.execCommand('copy')` which is deprecated but has wider mobile browser support
+- The textarea is positioned off-screen to avoid visual flicker
+- Both hooks already have try/catch blocks that will show appropriate error toasts if the fallback also fails
+- This approach maintains the existing toast behavior in each hook while adding mobile compatibility
