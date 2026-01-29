@@ -1,88 +1,148 @@
 
-# Fix: Mobile Clipboard Error for Stage-Specific Booking Links
+# Feature: Open Candidate Profile Sheet After Creation
 
-## Problem Identified
+## Summary
 
-The booking link copy functions in `useStageBookingInterviewers.ts` and `useContextualBookingLink.ts` directly use `navigator.clipboard.writeText()` without a fallback. On mobile browsers (especially in-app browsers like those from social media apps), the Clipboard API may be restricted or unavailable, causing the copy operation to fail silently and show an error toast.
-
-The project already has a `copyToClipboard` utility in `src/utils/clipboard.ts` that includes a fallback mechanism using the legacy `document.execCommand('copy')` method, but it's not being used in these hooks.
-
----
-
-## Solution
-
-Replace direct `navigator.clipboard.writeText()` calls with a reusable helper function that includes proper fallback support for mobile browsers.
+When a user creates a new candidate from the Candidates page and saves it, the system should:
+1. Close the creation form
+2. Automatically open the candidate profile sheet with the newly created candidate
+3. If the candidate was associated with a job during creation → open the job-context profile sheet
+4. If no job association → open the independent candidate profile sheet
 
 ---
 
-## Files to Modify
+## Current Behavior
 
-### 1. `src/utils/clipboard.ts`
+**Flow in `Candidates.tsx`:**
+1. User clicks "Add Candidate" → `setIsFormOpen(true)`
+2. `CandidateFormSheet` opens
+3. User fills form and clicks Save
+4. `handleSubmit` in `Candidates.tsx` calls `addCandidate()` 
+5. Returns result with `id` property
+6. Calls `handleFormClose()` → closes form
+7. **Nothing happens after** - user stays on table
 
-Add an async version that returns success/failure status (for use in hooks that need to control their own toast messages):
+---
 
+## Proposed Solution
+
+Add state management to track the newly created candidate and open the appropriate profile sheet.
+
+### Files to Modify
+
+**`src/pages/Candidates.tsx`**
+
+1. Add state for the newly created candidate profile sheet:
 ```typescript
-// Add this new function
-export const copyToClipboardSilent = async (text: string): Promise<boolean> => {
+const [newCandidateId, setNewCandidateId] = useState<string | null>(null)
+const [newCandidateJobId, setNewCandidateJobId] = useState<string | null>(null)
+const [showNewCandidateSheet, setShowNewCandidateSheet] = useState(false)
+```
+
+2. Update `handleSubmit` to capture the created candidate info:
+```typescript
+const handleSubmit = async (candidateData) => {
   try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch (err) {
-    // Fallback for mobile/restricted browsers
-    try {
-      const textArea = document.createElement('textarea');
-      textArea.value = text;
-      textArea.style.position = 'fixed';
-      textArea.style.left = '-999999px';
-      textArea.style.top = '-999999px';
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      return true;
-    } catch (fallbackErr) {
-      return false;
+    if (selectedCandidate) {
+      // Editing - no change
+      const { assignedJobId, assignedStageId, ...updateData } = candidateData
+      await updateCandidate(selectedCandidate.id, updateData)
+      handleFormClose()
+    } else {
+      // Creating new candidate
+      const { assignedJobId, assignedStageId, ...createData } = candidateData
+      const result = await addCandidate(createData)
+      
+      // Handle duplicate detection
+      if (result && 'isDuplicate' in result) {
+        setDuplicateInfo({...})
+        setShowMergeDialog(true)
+        return null
+      }
+      
+      // Success - capture candidate info and open profile sheet
+      if (result?.id) {
+        setNewCandidateId(result.id)
+        setNewCandidateJobId(assignedJobId || null)
+        setShowNewCandidateSheet(true)
+      }
+      
+      handleFormClose()
     }
+    return result
+  } catch (error) {
+    console.error('Error submitting candidate:', error)
+    throw error
   }
-};
+}
 ```
 
-### 2. `src/hooks/useStageBookingInterviewers.ts`
-
-**Line 197** - Replace:
-```typescript
-await navigator.clipboard.writeText(link);
+3. Add `UniversalCandidateProfileSheet` component to JSX:
+```tsx
+<UniversalCandidateProfileSheet
+  open={showNewCandidateSheet}
+  onOpenChange={setShowNewCandidateSheet}
+  candidateId={newCandidateId}
+  jobId={newCandidateJobId}
+  context={newCandidateJobId ? 'job' : 'independent'}
+/>
 ```
 
-With:
+4. Add import for `UniversalCandidateProfileSheet`:
 ```typescript
-import { copyToClipboardSilent } from '@/utils/clipboard';
-// ...
-const success = await copyToClipboardSilent(link);
-if (!success) throw new Error('Clipboard copy failed');
-```
-
-### 3. `src/hooks/useContextualBookingLink.ts`
-
-**Line 216** - Replace:
-```typescript
-await navigator.clipboard.writeText(contextualLink);
-```
-
-With:
-```typescript
-import { copyToClipboardSilent } from '@/utils/clipboard';
-// ...
-const success = await copyToClipboardSilent(contextualLink);
-if (!success) throw new Error('Clipboard copy failed');
+import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 ```
 
 ---
 
-## Technical Notes
+## Technical Details
 
-- The fallback uses `document.execCommand('copy')` which is deprecated but has wider mobile browser support
-- The textarea is positioned off-screen to avoid visual flicker
-- Both hooks already have try/catch blocks that will show appropriate error toasts if the fallback also fails
-- This approach maintains the existing toast behavior in each hook while adding mobile compatibility
+### Why `UniversalCandidateProfileSheet`?
+
+This component already handles the routing logic:
+- If `jobId` is provided → renders `CandidateProfileSheet` (job context)
+- If no `jobId` → renders `IndependentCandidateProfileSheet`
+
+This matches the existing pattern used in `IndependentCandidateTable.tsx` (line 571).
+
+### Data Flow
+
+```
+User saves candidate
+        ↓
+CandidateFormSheet.handleSubmit()
+        ↓
+Candidates.handleSubmit() called with result
+        ↓
+result.id captured + assignedJobId from form data
+        ↓
+Close form + Open UniversalCandidateProfileSheet
+        ↓
+User sees full candidate profile immediately
+```
+
+### Edge Cases Handled
+
+| Scenario | Behavior |
+|----------|----------|
+| Candidate created without job | Opens `IndependentCandidateProfileSheet` |
+| Candidate created with job assignment | Opens `CandidateProfileSheet` with job context |
+| Duplicate detected | Shows merge dialog first, then opens profile after merge |
+| Creation fails | Error thrown, form stays open, no profile sheet |
+
+---
+
+## Files Changed
+
+| File | Change |
+|------|--------|
+| `src/pages/Candidates.tsx` | Add state, update handleSubmit, add UniversalCandidateProfileSheet |
+
+---
+
+## Testing Notes
+
+1. Create candidate without job assignment → profile sheet should open in independent mode
+2. Create candidate with job assignment → profile sheet should open with job context
+3. Create duplicate candidate → merge dialog appears, after confirm profile opens
+4. Cancel creation → no profile sheet opens
