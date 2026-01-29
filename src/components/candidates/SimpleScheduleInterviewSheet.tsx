@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
-import { AlertCircle, Calendar, CheckCircle2, Clock, MapPin, Globe } from 'lucide-react';
+import { AlertCircle, Calendar, Clock, MapPin, Globe } from 'lucide-react';
 import googleMeetIcon from '@/assets/google-meet-icon.png';
 import { startOfMonth, endOfMonth, isSameDay, parseISO, format } from 'date-fns';
 import { useBookingAvailability } from '@/hooks/useBookingAvailability';
@@ -46,6 +46,8 @@ function SimpleBookingConfirmationForm({
   candidatePhone,
   meetingType,
   customLocation,
+  customEventTitle,
+  onCustomEventTitleChange,
 }: {
   selectedSlot: { start: string; end: string };
   candidateTimezone: string;
@@ -56,6 +58,8 @@ function SimpleBookingConfirmationForm({
   candidatePhone?: string;
   meetingType: 'google_meet' | 'custom';
   customLocation: string;
+  customEventTitle: string;
+  onCustomEventTitleChange: (value: string) => void;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sendInvitation, setSendInvitation] = useState(true);
@@ -142,6 +146,20 @@ function SimpleBookingConfirmationForm({
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+              {/* Custom Event Title */}
+              <div className="space-y-2">
+                <Label htmlFor="custom-event-title">Meeting Title</Label>
+                <Input 
+                  id="custom-event-title"
+                  placeholder="Interview with {candidate_name}" 
+                  value={customEventTitle}
+                  onChange={(e) => onCustomEventTitleChange(e.target.value)}
+                />
+                <p className="text-xs text-text-secondary">
+                  Leave blank to use default. Use {'{candidate_name}'} to include their name.
+                </p>
+              </div>
+
               <FormField
                 control={form.control}
                 name="candidate_name"
@@ -258,6 +276,7 @@ export function SimpleScheduleInterviewSheet({
   const [selectedDuration, setSelectedDuration] = useState<number>(30);
   const [meetingType, setMeetingType] = useState<'google_meet' | 'custom'>('google_meet');
   const [customLocation, setCustomLocation] = useState('');
+  const [customEventTitle, setCustomEventTitle] = useState('');
   const candidateTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   // Fetch availability for selected interviewer
@@ -321,6 +340,8 @@ export function SimpleScheduleInterviewSheet({
       send_invitation: sendInvitation,
       meeting_type_preference: meetingType,
       custom_meeting_location: meetingType === 'custom' ? customLocation : null,
+      // Per-booking custom event title override
+      custom_event_title: customEventTitle || null,
     };
 
     await createBookingMutation.mutateAsync(bookingData);
@@ -376,6 +397,7 @@ export function SimpleScheduleInterviewSheet({
     setSelectedDuration(30);
     setMeetingType('google_meet');
     setCustomLocation('');
+    setCustomEventTitle('');
   };
 
   const handleInterviewerSelect = (interviewer: TeamInterviewer) => {
@@ -388,9 +410,15 @@ export function SimpleScheduleInterviewSheet({
     }
   };
 
-  const handleDateSelect = (date: Date) => {
-    setSelectedDate(date);
-    setSelectedSlot(null);
+  // Handle back navigation
+  const handleBack = () => {
+    if (selectedSlot) {
+      setSelectedSlot(null);
+    } else if (selectedDate) {
+      setSelectedDate(null);
+    } else if (selectedInterviewer) {
+      setSelectedInterviewer(null);
+    }
   };
 
   // Check if candidate has email
@@ -434,126 +462,125 @@ export function SimpleScheduleInterviewSheet({
                 />
               )}
 
-              {/* Selected Interviewer Display */}
+              {/* Step 2: Select Date & Time */}
               {selectedInterviewer && !selectedSlot && (
-                <div className="space-y-6">
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={selectedInterviewer.profiles?.avatar_url || undefined} />
-                            <AvatarFallback>
-                              {selectedInterviewer.profiles?.first_name?.[0] || 'I'}
-                              {selectedInterviewer.profiles?.last_name?.[0] || ''}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="font-medium">
-                              {selectedInterviewer.profiles?.first_name || 'Unknown'}{' '}
-                              {selectedInterviewer.profiles?.last_name || ''}
-                            </div>
-                            <div className="text-sm text-text-secondary">
-                              {selectedInterviewer.booking_configurations?.display_name}
-                            </div>
-                          </div>
-                        </div>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => setSelectedInterviewer(null)}
-                        >
-                          Change
-                        </Button>
+                <div className="space-y-4">
+                  <Button variant="ghost" size="sm" onClick={handleBack}>
+                    ← Back to interviewers
+                  </Button>
+                  
+                  <div className="flex items-center gap-3 p-4 bg-secondary/30 rounded-lg">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={selectedInterviewer.profiles?.avatar_url || undefined} />
+                      <AvatarFallback>
+                        {selectedInterviewer.profiles?.first_name?.[0] || 'I'}
+                        {selectedInterviewer.profiles?.last_name?.[0] || ''}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">
+                        {selectedInterviewer.profiles?.first_name || 'Unknown'}{' '}
+                        {selectedInterviewer.profiles?.last_name || ''}
                       </div>
+                      <div className="flex items-center gap-2 text-xs text-text-secondary">
+                        <Clock className="h-3 w-3" />
+                        {selectedInterviewer.booking_configurations?.duration_minutes} minutes
+                      </div>
+                    </div>
+                  </div>
+
+                  <h3 className="text-lg font-semibold">Select Date & Time</h3>
+
+                  <Card>
+                    <CardContent className="p-6">
+                      <InterviewDurationSelector
+                        value={selectedDuration}
+                        onChange={(duration) => {
+                          setSelectedDuration(duration);
+                          setSelectedDate(null);
+                          setSelectedSlot(null);
+                        }}
+                      />
                     </CardContent>
                   </Card>
 
-                  {/* Duration Selector */}
-                  <InterviewDurationSelector
-                    value={selectedDuration}
-                    onChange={(duration) => {
-                      setSelectedDuration(duration);
-                      setSelectedDate(null);
-                      setSelectedSlot(null);
-                    }}
-                  />
+                  <Card>
+                    <CardContent className="p-6">
+                      <MeetingLocationSelector
+                        meetingType={meetingType}
+                        onMeetingTypeChange={setMeetingType}
+                        customLocation={customLocation}
+                        onCustomLocationChange={setCustomLocation}
+                      />
+                    </CardContent>
+                  </Card>
 
-                  {/* Meeting Location Selector */}
-                  <MeetingLocationSelector
-                    meetingType={meetingType}
-                    onMeetingTypeChange={setMeetingType}
-                    customLocation={customLocation}
-                    onCustomLocationChange={setCustomLocation}
-                  />
+                  <Card>
+                    <CardContent className="p-6">
+                      <MonthCalendar
+                        availableDates={availableDates}
+                        selectedDate={selectedDate}
+                        onDateSelect={setSelectedDate}
+                        currentMonth={currentMonth}
+                        onMonthChange={setCurrentMonth}
+                      />
+                    </CardContent>
+                  </Card>
 
-                  {/* Calendar and Time Slots */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Card>
-                      <CardContent className="p-6">
-                        <MonthCalendar
-                          availableDates={availableDates}
-                          selectedDate={selectedDate}
-                          onDateSelect={handleDateSelect}
-                          currentMonth={currentMonth}
-                          onMonthChange={setCurrentMonth}
-                        />
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardContent className="p-6">
-                        <TimeSlotsList
-                          selectedDate={selectedDate}
-                          timeSlots={timeSlotsForSelectedDate}
-                          selectedSlot={selectedSlot}
-                          onSlotSelect={setSelectedSlot}
-                          isLoading={isLoadingAvailability}
-                        />
-                      </CardContent>
-                    </Card>
-                  </div>
+                  <Card>
+                    <CardContent className="p-6">
+                      <TimeSlotsList
+                        selectedDate={selectedDate}
+                        timeSlots={timeSlotsForSelectedDate}
+                        selectedSlot={selectedSlot}
+                        onSlotSelect={setSelectedSlot}
+                        isLoading={isLoadingAvailability}
+                      />
+                    </CardContent>
+                  </Card>
                 </div>
               )}
 
-              {/* Confirmation Form */}
+              {/* Step 3: Confirmation Form */}
               {selectedSlot && selectedInterviewer && (
                 <div className="space-y-4">
+                  <Button variant="ghost" size="sm" onClick={handleBack}>
+                    ← Back to time selection
+                  </Button>
+
                   {/* Selected interviewer info */}
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={selectedInterviewer.profiles?.avatar_url || undefined} />
-                          <AvatarFallback>
-                            {selectedInterviewer.profiles?.first_name?.[0] || 'I'}
-                            {selectedInterviewer.profiles?.last_name?.[0] || ''}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium">
-                            Meeting with {selectedInterviewer.profiles?.first_name || 'Unknown'}{' '}
-                            {selectedInterviewer.profiles?.last_name || ''}
-                          </div>
-                          <div className="text-sm text-text-secondary">
-                            {selectedDuration} minutes
-                          </div>
-                        </div>
-                        <CheckCircle2 className="h-5 w-5 text-primary ml-auto" />
+                  <div className="flex items-center gap-3 p-4 bg-secondary/30 rounded-lg">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={selectedInterviewer.profiles?.avatar_url || undefined} />
+                      <AvatarFallback>
+                        {selectedInterviewer.profiles?.first_name?.[0] || 'I'}
+                        {selectedInterviewer.profiles?.last_name?.[0] || ''}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">
+                        Meeting with {selectedInterviewer.profiles?.first_name || 'Unknown'}{' '}
+                        {selectedInterviewer.profiles?.last_name || ''}
                       </div>
-                    </CardContent>
-                  </Card>
+                      <div className="flex items-center gap-2 text-xs text-text-secondary">
+                        <Clock className="h-3 w-3" />
+                        {selectedDuration} minutes
+                      </div>
+                    </div>
+                  </div>
 
                   <SimpleBookingConfirmationForm
                     selectedSlot={selectedSlot}
                     candidateTimezone={candidateTimezone}
-                    onCancel={() => setSelectedSlot(null)}
+                    onCancel={handleBack}
                     onConfirm={handleConfirmBooking}
                     candidateName={candidateName}
                     candidateEmail={candidateEmail}
                     candidatePhone={candidatePhone}
                     meetingType={meetingType}
                     customLocation={customLocation}
+                    customEventTitle={customEventTitle}
+                    onCustomEventTitleChange={setCustomEventTitle}
                   />
                 </div>
               )}
