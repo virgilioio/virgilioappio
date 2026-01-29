@@ -1,148 +1,207 @@
 
-# Feature: Open Candidate Profile Sheet After Creation
+# Feature: Add "Schedule Interview" Button to Independent Candidate Profile
 
 ## Summary
 
-When a user creates a new candidate from the Candidates page and saves it, the system should:
-1. Close the creation form
-2. Automatically open the candidate profile sheet with the newly created candidate
-3. If the candidate was associated with a job during creation → open the job-context profile sheet
-4. If no job association → open the independent candidate profile sheet
+Replace the current (non-existent) booking link copy functionality in the Independent Candidate Profile Sheet with a proper "Schedule Interview" button. This allows users to directly schedule meetings with candidates who are not associated with any job pipeline.
 
 ---
 
-## Current Behavior
+## Current State Analysis
 
-**Flow in `Candidates.tsx`:**
-1. User clicks "Add Candidate" → `setIsFormOpen(true)`
-2. `CandidateFormSheet` opens
-3. User fills form and clicks Save
-4. `handleSubmit` in `Candidates.tsx` calls `addCandidate()` 
-5. Returns result with `id` property
-6. Calls `handleFormClose()` → closes form
-7. **Nothing happens after** - user stays on table
+### IndependentCandidateProfileSheet (Right Controls Card - lines 680-742)
+Currently has:
+- Edit button
+- Download button  
+- Add Note button
+- Send Email button
+- **No booking/scheduling button**
+
+### CandidateProfileSheet (Job-Context - lines 1506-1521)
+Has:
+- Edit, Download, Add Note, Send Email
+- "Copy [user's name]'s Link" button (copies user's generic booking URL)
+
+The user wants the Independent sheet to have "Schedule Interview" instead, allowing direct interview scheduling without a stage context.
 
 ---
 
-## Proposed Solution
+## Solution Overview
 
-Add state management to track the newly created candidate and open the appropriate profile sheet.
+Create a simplified scheduling flow for non-stage-associated interviews:
 
-### Files to Modify
+1. **New Component**: `SimpleScheduleInterviewSheet.tsx` - A stripped-down version of `ScheduleInterviewSheet` that:
+   - Uses the current user's booking configuration
+   - Allows selecting any team member with an active booking config
+   - Schedules a "simple/generic" booking (no job_id, stage_id, or association_id)
+   - Creates calendar events without transcript ingestion
 
-**`src/pages/Candidates.tsx`**
+2. **Integration**: Add the button to `IndependentCandidateProfileSheet.tsx` in the right controls card
 
-1. Add state for the newly created candidate profile sheet:
-```typescript
-const [newCandidateId, setNewCandidateId] = useState<string | null>(null)
-const [newCandidateJobId, setNewCandidateJobId] = useState<string | null>(null)
-const [showNewCandidateSheet, setShowNewCandidateSheet] = useState(false)
+---
+
+## Files to Create
+
+### `src/components/candidates/SimpleScheduleInterviewSheet.tsx`
+
+A new sheet component for scheduling standalone interviews:
+
+```text
+┌──────────────────────────────────────────────┐
+│  📅 Schedule Interview                        │
+│  ──────────────────────────────────────────  │
+│  Candidate: John Doe                          │
+│                                               │
+│  ┌─ Step 1: Select Interviewer ─────────────┐ │
+│  │ ◯ Alice Smith (30 min slots)             │ │
+│  │ ◯ Bob Johnson (45 min slots)             │ │
+│  │ ◯ Current User (30 min slots)            │ │
+│  └──────────────────────────────────────────┘ │
+│                                               │
+│  ┌─ Step 2: Select Duration ────────────────┐ │
+│  │ [15 min] [30 min] [60 min]               │ │
+│  └──────────────────────────────────────────┘ │
+│                                               │
+│  ┌─ Step 3: Select Date & Time ─────────────┐ │
+│  │ [Calendar] [Time Slots]                  │ │
+│  └──────────────────────────────────────────┘ │
+│                                               │
+│  ┌─ Step 4: Confirm Details ────────────────┐ │
+│  │ Name: John Doe                           │ │
+│  │ Email: john@example.com                  │ │
+│  │ ☑ Send invitation to candidate           │ │
+│  │                    [Cancel] [Schedule]   │ │
+│  └──────────────────────────────────────────┘ │
+└──────────────────────────────────────────────┘
 ```
 
-2. Update `handleSubmit` to capture the created candidate info:
+**Key differences from `ScheduleInterviewSheet`:**
+- No `jhsId`, `stageName`, `jobId`, `jobTitle`, `associationId` props
+- Uses `ManualInterviewerSelector` (already supports manual selection)
+- Calls `create-booking` edge function WITHOUT job/stage context
+- Creates a "simple booking" (per memory: `generic-vs-pipeline-booking-logic`)
+
+**Props:**
 ```typescript
-const handleSubmit = async (candidateData) => {
-  try {
-    if (selectedCandidate) {
-      // Editing - no change
-      const { assignedJobId, assignedStageId, ...updateData } = candidateData
-      await updateCandidate(selectedCandidate.id, updateData)
-      handleFormClose()
-    } else {
-      // Creating new candidate
-      const { assignedJobId, assignedStageId, ...createData } = candidateData
-      const result = await addCandidate(createData)
-      
-      // Handle duplicate detection
-      if (result && 'isDuplicate' in result) {
-        setDuplicateInfo({...})
-        setShowMergeDialog(true)
-        return null
-      }
-      
-      // Success - capture candidate info and open profile sheet
-      if (result?.id) {
-        setNewCandidateId(result.id)
-        setNewCandidateJobId(assignedJobId || null)
-        setShowNewCandidateSheet(true)
-      }
-      
-      handleFormClose()
-    }
-    return result
-  } catch (error) {
-    console.error('Error submitting candidate:', error)
-    throw error
-  }
+interface SimpleScheduleInterviewSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  candidateId: string;
+  candidateName: string;
+  candidateEmail: string;
+  candidatePhone?: string;
+  organizationId: string;
 }
 ```
 
-3. Add `UniversalCandidateProfileSheet` component to JSX:
-```tsx
-<UniversalCandidateProfileSheet
-  open={showNewCandidateSheet}
-  onOpenChange={setShowNewCandidateSheet}
-  candidateId={newCandidateId}
-  jobId={newCandidateJobId}
-  context={newCandidateJobId ? 'job' : 'independent'}
-/>
+---
+
+## Files to Modify
+
+### `src/components/candidates/IndependentCandidateProfileSheet.tsx`
+
+**1. Add imports (top of file):**
+```typescript
+import { SimpleScheduleInterviewSheet } from './SimpleScheduleInterviewSheet';
+import { Calendar } from 'lucide-react';
 ```
 
-4. Add import for `UniversalCandidateProfileSheet`:
+**2. Add state (after line ~78):**
 ```typescript
-import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
+const [scheduleOpen, setScheduleOpen] = useState(false);
+```
+
+**3. Add button in right controls card (around line 738, after "Send Email" button):**
+```typescript
+<Button
+  variant="outline"
+  size="sm"
+  onClick={() => setScheduleOpen(true)}
+>
+  <Calendar className="h-4 w-4 mr-2" />
+  Schedule Interview
+</Button>
+```
+
+**4. Add sheet component (before closing `</>` of the fragment, after `MinimizableEmailComposer`):**
+```typescript
+{candidateId && organizationId && candidate && (
+  <SimpleScheduleInterviewSheet
+    open={scheduleOpen}
+    onOpenChange={setScheduleOpen}
+    candidateId={candidateId}
+    candidateName={candidate.candidate_name || 'Candidate'}
+    candidateEmail={candidate.email || ''}
+    candidatePhone={candidate.phone}
+    organizationId={organizationId}
+  />
+)}
 ```
 
 ---
 
-## Technical Details
+## Technical Implementation Notes
 
-### Why `UniversalCandidateProfileSheet`?
+### Booking Creation Flow
 
-This component already handles the routing logic:
-- If `jobId` is provided → renders `CandidateProfileSheet` (job context)
-- If no `jobId` → renders `IndependentCandidateProfileSheet`
+The `create-booking` edge function already supports non-job bookings:
 
-This matches the existing pattern used in `IndependentCandidateTable.tsx` (line 571).
-
-### Data Flow
-
-```
-User saves candidate
-        ↓
-CandidateFormSheet.handleSubmit()
-        ↓
-Candidates.handleSubmit() called with result
-        ↓
-result.id captured + assignedJobId from form data
-        ↓
-Close form + Open UniversalCandidateProfileSheet
-        ↓
-User sees full candidate profile immediately
+```typescript
+// When these are NOT provided, it creates a "simple booking"
+job_id: null,              // No job association
+candidate_id: candidateId, // Still link to candidate record
+job_candidate_association_id: null, // No pipeline association  
+job_hiring_stage_id: null, // No stage association
 ```
 
-### Edge Cases Handled
+Per the memory `generic-vs-pipeline-booking-logic`:
+- Simple bookings skip transcript ingestion
+- Skip AI scorecard generation
+- Use custom event title from booking config
+- Are excluded from recruiting-specific task lists
+
+### Reusable Components
+
+The new sheet will reuse existing components:
+- `ManualInterviewerSelector` - For selecting team members with booking configs
+- `InterviewDurationSelector` - For duration selection
+- `MeetingLocationSelector` - For Google Meet vs custom location
+- `MonthCalendar` - For date selection
+- `TimeSlotsList` - For time slot selection
+- `useBookingAvailability` - For fetching available slots
+
+### Calendar Event Details
+
+For simple bookings, the calendar event title uses the interviewer's `custom_event_title` setting (or defaults to "Interview with {candidate_name}"), per memory `generic-booking-custom-title`.
+
+---
+
+## Database Impact
+
+No schema changes required. The `scheduled_bookings` table already supports nullable job-related columns:
+- `job_id` (nullable)
+- `job_candidate_association_id` (nullable)
+- `job_hiring_stage_id` (nullable)
+
+---
+
+## Edge Cases
 
 | Scenario | Behavior |
 |----------|----------|
-| Candidate created without job | Opens `IndependentCandidateProfileSheet` |
-| Candidate created with job assignment | Opens `CandidateProfileSheet` with job context |
-| Duplicate detected | Shows merge dialog first, then opens profile after merge |
-| Creation fails | Error thrown, form stays open, no profile sheet |
+| No team members have booking configs | Show alert with link to booking settings |
+| Candidate has no email | Show alert requiring email before scheduling |
+| Time slot becomes unavailable | 409 error handled, prompt to select different time |
+| User schedules interview | Booking created, linked to candidate_id only |
 
 ---
 
-## Files Changed
+## Testing Checklist
 
-| File | Change |
-|------|--------|
-| `src/pages/Candidates.tsx` | Add state, update handleSubmit, add UniversalCandidateProfileSheet |
-
----
-
-## Testing Notes
-
-1. Create candidate without job assignment → profile sheet should open in independent mode
-2. Create candidate with job assignment → profile sheet should open with job context
-3. Create duplicate candidate → merge dialog appears, after confirm profile opens
-4. Cancel creation → no profile sheet opens
+1. Open independent candidate profile → Schedule Interview button visible
+2. Click Schedule Interview → Sheet opens with interviewer selection
+3. Select interviewer → Calendar shows their availability
+4. Select date and time → Confirmation form appears
+5. Submit → Booking created, calendar events sent
+6. Verify booking is NOT linked to any job/stage
+7. Verify booking appears in candidate's activity feed
