@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
 import { createShortBookingToken, generateShortBookingLink, generateContextualBookingLink, BookingContext } from '@/lib/bookingLinkUtils';
 import { useCallback, useState } from 'react';
+import { copyToClipboardSilent } from '@/utils/clipboard';
 
 export interface InterviewerBookingInfo {
   memberId: string;
@@ -194,7 +195,8 @@ export function useStageBookingInterviewers(params: UseStageBookingInterviewersP
         : generateContextualBookingLink({ shortCode: interviewer.bookingConfig.short_code, context });
 
       // Copy to clipboard
-      await navigator.clipboard.writeText(link);
+      const success = await copyToClipboardSilent(link);
+      if (!success) throw new Error('Clipboard copy failed');
 
       const name = interviewer.fullName;
       toast({

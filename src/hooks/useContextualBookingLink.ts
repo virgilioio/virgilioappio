@@ -9,6 +9,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { useQuery } from '@tanstack/react-query';
+import { copyToClipboardSilent } from '@/utils/clipboard';
 
 interface UseContextualBookingLinkParams {
   jobId: string;
@@ -213,7 +214,8 @@ export function useContextualBookingLink(params: UseContextualBookingLinkParams 
     }
 
     try {
-      await navigator.clipboard.writeText(contextualLink);
+      const success = await copyToClipboardSilent(contextualLink);
+      if (!success) throw new Error('Clipboard copy failed');
       toast({
         title: 'Link Copied',
         description: assignedInterviewer?.displayName || assignedInterviewer?.fullName
