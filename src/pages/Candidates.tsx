@@ -10,6 +10,7 @@ import { IndependentCandidateTable } from '@/components/candidates/IndependentCa
 import { CandidateFormSheet } from '@/components/candidates/CandidateFormSheet'
 import { CandidateMergeDialog } from '@/components/candidates/CandidateMergeDialog'
 import { MinimizableBulkUploadDialog } from '@/components/candidates/MinimizableBulkUploadDialog'
+import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 import { useIndependentCandidates, CreateIndependentCandidateData } from '@/hooks/useIndependentCandidates'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useCandidateSync } from '@/hooks/useCandidateSync'
@@ -26,6 +27,11 @@ export default function Candidates() {
     incoming: any
     merged: any
   } | null>(null)
+  
+  // State for opening profile sheet after candidate creation
+  const [newCandidateId, setNewCandidateId] = useState<string | null>(null)
+  const [newCandidateJobId, setNewCandidateJobId] = useState<string | null>(null)
+  const [showNewCandidateSheet, setShowNewCandidateSheet] = useState(false)
   
   const {
     candidates,
@@ -84,6 +90,13 @@ export default function Candidates() {
           })
           setShowMergeDialog(true)
           return null // Don't close the form yet
+        }
+        
+        // Success - capture candidate info and open profile sheet
+        if (result?.id) {
+          setNewCandidateId(result.id)
+          setNewCandidateJobId(assignedJobId || null)
+          setShowNewCandidateSheet(true)
         }
         
         handleFormClose()
@@ -216,6 +229,15 @@ export default function Candidates() {
               setIsBulkUploadOpen(false)
               getCandidates()
             }}
+          />
+
+          {/* Profile Sheet for newly created candidate */}
+          <UniversalCandidateProfileSheet
+            open={showNewCandidateSheet}
+            onOpenChange={setShowNewCandidateSheet}
+            candidateId={newCandidateId}
+            jobId={newCandidateJobId}
+            context={newCandidateJobId ? 'job' : 'independent'}
           />
         </div>
       </PermissionGate>
