@@ -15,7 +15,7 @@ import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeVi
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Link2, Bell } from 'lucide-react'
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -51,6 +51,7 @@ import { EmailHistoryCardEmail } from './EmailHistoryCard'
 import { formatQuotedReply, formatForwardedMessage, getReplySubject, getForwardSubject } from '@/utils/emailFormatUtils'
 import { ActivityFeedList } from './ActivityFeedList'
 import { ScheduleInterviewSheet } from './ScheduleInterviewSheet'
+import { SimpleScheduleInterviewSheet } from './SimpleScheduleInterviewSheet'
 import { GenerateBookingLinkButton } from '@/components/candidates/GenerateBookingLinkButton'
 import { RejectionDialog } from './RejectionDialog'
 import { RejectionStatusBanner } from './RejectionStatusBanner'
@@ -58,8 +59,6 @@ import { OfferStatusBanner } from './OfferStatusBanner'
 import { CreateOfferLetterSheet } from './CreateOfferLetterDialog'
 import { CandidateReminders } from './CandidateReminders'
 import { useQuery } from '@tanstack/react-query'
-import { useBookingConfig } from '@/hooks/useBookingConfig'
-import { useUserProfile } from '@/hooks/useUserProfile'
 
 interface StageScorecardProps {
   stageInstanceId: string;
@@ -167,9 +166,10 @@ const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false)
 // Offer Form Sheet
 const [offerFormOpen, setOfferFormOpen] = useState(false)
 
-// Generic booking link for quick scheduling
-const { bookingUrl } = useBookingConfig()
-const { profile: userProfile } = useUserProfile()
+// Simple schedule interview (not stage-specific)
+const [simpleScheduleOpen, setSimpleScheduleOpen] = useState(false)
+
+// Stage automations query for lightning icon
 
 // Stage automations query for lightning icon
 const { data: stageAutomations } = useQuery({
@@ -1503,22 +1503,14 @@ const stageHasAutomation = useMemo(() => {
                                <Mail className="h-4 w-4 mr-2" />
                                Send Email
                              </Button>
-                             {bookingUrl && (
-                               <Button
-                                 variant="outline"
-                                 size="sm"
-                                 onClick={() => {
-                                   navigator.clipboard.writeText(bookingUrl)
-                                   toast({
-                                     title: 'Link Copied',
-                                     description: 'Your booking link has been copied to clipboard.'
-                                   })
-                                 }}
-                               >
-                                 <Link2 className="h-4 w-4 mr-2" />
-                                 Copy {userProfile?.first_name ? `${userProfile.first_name}'s` : 'My'} Link
-                               </Button>
-                             )}
+<Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSimpleScheduleOpen(true)}
+                              >
+                                <Calendar className="h-4 w-4 mr-2" />
+                                Schedule Interview
+                              </Button>
                            </div>
                          </div>
                        </CardContent>
@@ -1736,6 +1728,19 @@ const stageHasAutomation = useMemo(() => {
           candidate={candidate}
           job={job}
           organization={null}
+        />
+      )}
+
+      {/* Simple Schedule Interview Sheet (not stage-specific) */}
+      {candidateId && organizationId && candidate && (
+        <SimpleScheduleInterviewSheet
+          open={simpleScheduleOpen}
+          onOpenChange={setSimpleScheduleOpen}
+          candidateId={candidateId}
+          candidateName={candidate.candidate_name || 'Candidate'}
+          candidateEmail={candidate.email || ''}
+          candidatePhone={candidate.phone}
+          organizationId={organizationId}
         />
       )}
       </SheetContent>
