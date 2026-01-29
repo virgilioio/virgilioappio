@@ -1,5 +1,29 @@
 import { toast } from '@/hooks/use-toast'
 
+export const copyToClipboardSilent = async (text: string): Promise<boolean> => {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (err) {
+    // Fallback for mobile/restricted browsers
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      return true;
+    } catch (fallbackErr) {
+      return false;
+    }
+  }
+};
+
 export const copyToClipboard = async (text: string, successMessage: string = 'Copied to clipboard') => {
   try {
     await navigator.clipboard.writeText(text)
