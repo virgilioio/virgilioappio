@@ -7,9 +7,12 @@ import { Button } from '@/components/ui/button'
 import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { GoGioLogo } from '@/components/GoGioLogo'
 import { log } from '@/lib/logger'
+import { reconcilePendingInvitation, wasInvitationAccepted } from '@/lib/invitationReconciliation'
+import { useToast } from '@/hooks/use-toast'
 
 export default function AuthCallback() {
   const navigate = useNavigate()
+  const { toast } = useToast()
   const [status, setStatus] = useState<'validating' | 'success' | 'error'>('validating')
   const [errorMessage, setErrorMessage] = useState('')
   const processedRef = useRef(false)
@@ -44,6 +47,20 @@ export default function AuthCallback() {
           // Optional: Clean URL hash before navigation
           if (window.location.hash) {
             window.history.replaceState(null, '', '/auth/callback')
+          }
+
+          // 🎯 Enterprise invitation reconciliation: Auto-link pending invitations
+          // This ensures OAuth users who were invited are automatically joined to their org
+          const reconcileResult = await reconcilePendingInvitation(session.user.id)
+          
+          if (wasInvitationAccepted(reconcileResult)) {
+            toast({
+              title: `Welcome to ${reconcileResult?.organization_name}!`,
+              description: `You've been added as ${reconcileResult?.member_role?.replace('_', ' ')}.`,
+            })
+            // User was auto-linked to org - go straight to dashboard
+            navigate('/dashboard', { replace: true })
+            return
           }
 
           // Check if user has completed profile setup

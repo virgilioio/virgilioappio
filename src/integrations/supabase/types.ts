@@ -5141,6 +5141,16 @@ export type Database = {
         Args: { stage_id_param: string }
         Returns: undefined
       }
+      reconcile_pending_invitation: {
+        Args: { p_user_id: string }
+        Returns: {
+          action_taken: string
+          member_role: string
+          organization_id: string
+          organization_name: string
+          success: boolean
+        }[]
+      }
       resequence_posting_fields_for_library_order: {
         Args: { p_posting_id: string }
         Returns: undefined
