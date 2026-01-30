@@ -7,6 +7,7 @@ import { readOrgCache, writeOrgCache, clearOrgCache } from '@/lib/orgContextCach
 import { log } from '@/lib/logger';
 import { toast } from '@/hooks/use-toast';
 import { debounce } from '@/utils/debounce';
+import { reconcilePendingInvitation, wasInvitationAccepted } from '@/lib/invitationReconciliation';
 
 const VIRGILIO_ORG_ID = '5ba7b145-f251-4b18-8900-724cb06028ab';
 
@@ -109,6 +110,25 @@ export function useAuthBootstrap(): AuthBootstrapReturn {
     abortControllerRef.current = new AbortController();
 
     try {
+      // 🎯 Enterprise invitation reconciliation: Check for pending invitations first
+      // This ensures users who authenticated via any path are linked to their invitations
+      const reconcileResult = await reconcilePendingInvitation(userId);
+      
+      if (wasInvitationAccepted(reconcileResult)) {
+        log.info('🎉 Bootstrap: Auto-linked pending invitation', {
+          orgName: reconcileResult?.organization_name,
+          role: reconcileResult?.member_role
+        });
+        
+        toast({
+          title: `Welcome to ${reconcileResult?.organization_name}!`,
+          description: `You've been added as ${reconcileResult?.member_role?.replace('_', ' ')}.`,
+        });
+        
+        // Clear cache to force refresh with new org context
+        clearOrgCache();
+      }
+
       const startTime = Date.now();
       const resolved = await resolveOrgContextWithRetry(supabase, {
         signal: abortControllerRef.current.signal,

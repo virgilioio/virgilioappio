@@ -13,6 +13,7 @@ import { useOrgContext } from '@/contexts/OrgContext'
 import onboardingHero from '@/assets/onboarding-hero-new.png'
 import { WorkspaceProvisioningLoader } from '@/components/onboarding/WorkspaceProvisioningLoader'
 import { PendingInvitationAlert } from '@/components/onboarding/PendingInvitationAlert'
+import { reconcilePendingInvitation, wasInvitationAccepted } from '@/lib/invitationReconciliation'
 
 interface PendingInvitation {
   organization_name: string
@@ -208,7 +209,23 @@ export default function Onboarding() {
         return;
       }
 
-      // Check for pending invitations (user was invited but hasn't joined yet)
+      // 🎯 Enterprise invitation reconciliation: Auto-accept pending invitations
+      // Instead of just showing an alert, we actively try to link the user
+      const reconcileResult = await reconcilePendingInvitation(user.id);
+      
+      if (wasInvitationAccepted(reconcileResult)) {
+        console.log('[Onboarding] Auto-accepted pending invitation', reconcileResult);
+        toast({
+          title: `Welcome to ${reconcileResult?.organization_name}!`,
+          description: 'Taking you to your dashboard...',
+        });
+        await refreshOrgContext();
+        navigate('/dashboard', { replace: true });
+        return;
+      }
+
+      // Check for pending invitations that couldn't be auto-accepted (e.g., expired)
+      // Show informational alert for these cases
       const { data: pendingInvite } = await supabase
         .from('members')
         .select(`
@@ -224,7 +241,7 @@ export default function Onboarding() {
         .maybeSingle();
 
       if (pendingInvite && pendingInvite.organizations) {
-        console.log('[Onboarding] User has pending invitation', pendingInvite);
+        console.log('[Onboarding] User has pending invitation (not auto-accepted)', pendingInvite);
         setPendingInvitation({
           organization_name: (pendingInvite.organizations as any).name || 'Unknown',
           member_role: pendingInvite.member_role,
