@@ -1,77 +1,66 @@
 
-# Fix: Frontend Credit Display Should Respect Trial Limits
+# Fix: Admin Credit Assignments Should Override Trial Limits
 
-## Problem
+## Problem Identified
 
-The frontend shows **100 credits** while the backend enforces **5 credits** for trial users, causing confusion when users hit the 429 error.
+When you assign 200 credits to Motive via the SaaS Customer profile, the database correctly stores 200 credits. However, the frontend still displays only 5 credits.
 
-### Data Mismatch
+### Current Data State
 
-| Layer | Credit Limit | Source |
-|-------|-------------|--------|
-| Database (`sourcing_credits_usage`) | 5 | Correct (set by `get_tenant_credit_limits`) |
-| Backend (edge function) | 5 | Correct (reads from DB) |
-| Frontend (displayed to user) | 100 | **WRONG** (ignores trial status) |
+| Field | Value |
+|-------|-------|
+| Database `collect_credits_limit` | 200 (correct) |
+| `billing_status` | trialing |
+| Frontend displayed | 5 (wrong) |
 
-### Root Cause in `useSourcingCredits.ts`
+### Root Cause
 
-```typescript
-// Lines 103-112 - The bug
-const creditsPerSeat = isAnnual ? 120 : 100
-const calculatedLimit = seatQuantity * creditsPerSeat  // Always 100 for 1 seat
-
-// This MAX logic causes trial users to see 100 instead of 5
-const collectLimit = Math.max(calculatedLimit, databaseLimit)
-```
-
-The frontend calculates credits purely from `seat_quantity` and `billing_interval`, completely ignoring `billing_status = 'trialing'`.
-
-## Solution
-
-Modify `useSourcingCredits.ts` to respect trial status when calculating the displayed limit.
-
-### Logic Change
+The recent fix introduced this logic:
 
 ```typescript
-// BEFORE (broken):
-const creditsPerSeat = isAnnual ? 120 : 100
-const calculatedLimit = seatQuantity * creditsPerSeat
-const collectLimit = Math.max(calculatedLimit, databaseLimit)
-
-// AFTER (fixed):
-const isTrialing = subscription.billing_status === 'trialing'
-
-// Trial users get fixed 5 credits, paid users get per-seat calculation
-const calculatedLimit = isTrialing 
-  ? 5  // Trial limit (matches get_tenant_credit_limits)
-  : seatQuantity * (isAnnual ? 120 : 100)
-
-// For paid users, allow manual overrides via Math.max
-// For trial users, use the lower of calculated or DB (no inflated display)
+// Lines 117-119 in useSourcingCredits.ts
 const collectLimit = isTrialing
-  ? Math.min(calculatedLimit, databaseLimit || calculatedLimit)
+  ? Math.min(calculatedLimit, databaseLimit || calculatedLimit)  // BUG: caps at 5
   : Math.max(calculatedLimit, databaseLimit)
 ```
 
-This ensures:
-1. **Trial users** see the real 5 credit limit
-2. **Paid users** still benefit from admin overrides (Math.max behavior preserved)
-3. The frontend and backend are now in sync
+For trial users, `Math.min(5, 200) = 5` - the admin's override is being ignored.
 
-## File to Modify
+## Solution
+
+Change the logic so that:
+- **If admin assigned credits** (database limit > default trial limit): respect the override
+- **If no admin assignment**: use the default trial limit of 5
+
+```typescript
+// Fixed logic
+const calculatedLimit = isTrialing 
+  ? 5 
+  : seatQuantity * (isAnnual ? 120 : 100)
+
+const databaseLimit = data?.collect_credits_limit || 0
+
+// Admin overrides should ALWAYS win - use Math.max for both cases
+// This respects manual credit assignments regardless of billing status
+const collectLimit = Math.max(calculatedLimit, databaseLimit)
+```
+
+This reverts to using `Math.max` for all users, which means:
+- Trial user with no admin override: `Math.max(5, 0) = 5`
+- Trial user with admin override of 200: `Math.max(5, 200) = 200`
+- Paid user with 2 seats: `Math.max(200, 200) = 200`
+
+## File Change
 
 | File | Change |
 |------|--------|
-| `src/hooks/useSourcingCredits.ts` | Add trial-aware credit calculation |
+| `src/hooks/useSourcingCredits.ts` | Replace `Math.min` with `Math.max` for trial users |
 
-## Result After Fix
+## Expected Result
 
-For the Motive tenant (`billing_status = 'trialing'`):
+After the fix, Motive will see **200 credits** (the admin-assigned value) instead of 5.
 
-| Display | Before Fix | After Fix |
-|---------|-----------|-----------|
-| Credit indicator | 100 credits | 5 credits |
-| Usage bar | 5% full | 100% full (with warning) |
-| User expectation | Plenty left | "Limit reached" |
-
-The user will now see accurate credit availability and understand why collection is blocked.
+| Before Fix | After Fix |
+|-----------|-----------|
+| 5 credits displayed | 200 credits displayed |
+| "Limit reached" errors | Full access to assigned credits |
