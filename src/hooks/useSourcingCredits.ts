@@ -111,12 +111,10 @@ export function useSourcingCredits() {
         ? 5 
         : seatQuantity * (isAnnual ? 120 : 100)
       
-      // For paid users, allow manual overrides via Math.max
-      // For trial users, use the lower of calculated or DB (no inflated display)
+      // Admin overrides should ALWAYS win - use Math.max for both cases
+      // This respects manual credit assignments regardless of billing status
       const databaseLimit = data?.collect_credits_limit || 0
-      const collectLimit = isTrialing
-        ? Math.min(calculatedLimit, databaseLimit || calculatedLimit)
-        : Math.max(calculatedLimit, databaseLimit)
+      const collectLimit = Math.max(calculatedLimit, databaseLimit)
 
       // Bonus credits calculation
       const bonusPurchased = subscription.bonus_credits_purchased || 0
