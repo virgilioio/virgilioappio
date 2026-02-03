@@ -103,13 +103,20 @@ export function useSourcingCredits() {
       // Calculate credits per seat based on billing interval (per-seat model)
       const seatQuantity = subscription.seat_quantity || 1
       const isAnnual = subscription.billing_interval === 'year'
-      const creditsPerSeat = isAnnual ? 120 : 100
-      const calculatedLimit = seatQuantity * creditsPerSeat
+      const isTrialing = subscription.billing_status === 'trialing'
       
-      // Use the higher of: calculated per-seat limit OR manually assigned limit
-      // This allows admins to grant extra credits via "Assign Credits"
+      // Trial users get fixed 5 credits (matches get_tenant_credit_limits backend)
+      // Paid users get per-seat calculation
+      const calculatedLimit = isTrialing 
+        ? 5 
+        : seatQuantity * (isAnnual ? 120 : 100)
+      
+      // For paid users, allow manual overrides via Math.max
+      // For trial users, use the lower of calculated or DB (no inflated display)
       const databaseLimit = data?.collect_credits_limit || 0
-      const collectLimit = Math.max(calculatedLimit, databaseLimit)
+      const collectLimit = isTrialing
+        ? Math.min(calculatedLimit, databaseLimit || calculatedLimit)
+        : Math.max(calculatedLimit, databaseLimit)
 
       // Bonus credits calculation
       const bonusPurchased = subscription.bonus_credits_purchased || 0
