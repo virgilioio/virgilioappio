@@ -1,101 +1,49 @@
 
-# Fix: Resume Not Appearing After Candidate Creation
+
+# Fix: Polish Notes Should Preserve Input Language
+
+## Problem
+
+The `polish-scorecard-notes` edge function always generates output in **English**, regardless of the language used in the interviewer's raw notes and question responses. If notes are written in Spanish, Portuguese, or any other language, the polished output should match that language.
 
 ## Root Cause
 
-**The resume file is never actually uploaded to storage/database** when creating a candidate via the Global Create button (the "+" button in the header).
+The system prompt (lines 95-131) and user prompt (lines 133-150) in `supabase/functions/polish-scorecard-notes/index.ts` are entirely in English and contain no instruction to detect or preserve the input language.
 
-### The Bug
+## Solution
 
-In `GlobalCreateButton.tsx`, the `handleCandidateSubmit` function **never returns the candidate result** back to `CandidateFormSheet`:
+Add a language-awareness instruction to the **user prompt** that tells the AI to:
 
-```text
-GlobalCreateButton.handleCandidateSubmit:
-  1. Creates candidate via addCandidate() --> gets result with { id: "abc123" }
-  2. Creates job association (if needed)
-  3. Closes the form sheet
-  4. *** NEVER RETURNS result ***   <-- THE BUG
+1. Detect the language of the interviewer's raw notes and question responses
+2. Generate the entire polished output in that same language
+3. Keep section headings in the detected language as well
 
-CandidateFormSheet.handleSubmit:
-  1. const result = await onSubmit(data)  --> result is UNDEFINED
-  2. if (result) {                        --> false, skips entirely
-  3.   await handlePostSubmitActions()     --> NEVER CALLED
-  4. }                                    --> Resume files NEVER uploaded
-```
+This is the simplest, most reliable approach -- LLMs are excellent at detecting input language and responding accordingly without needing a separate language detection step.
 
-The user sees the resume parsed during creation (AI extracts name, email, etc.), but the actual file is never persisted to storage. When they open the profile, there's nothing in `candidate_attachments`.
-
-### Secondary Issue: Timing Race Condition
-
-Even on pages where the result IS returned (Candidates.tsx, JobDetail.tsx), there's a race condition:
-
-1. The parent's `onSubmit` handler opens the profile sheet **inside** the handler
-2. Then returns the result to CandidateFormSheet
-3. CandidateFormSheet THEN uploads the files
-4. But the profile sheet already fetched attachments (empty) and won't re-fetch
-
-```text
-Timeline:
-  [Parent handler]  Create candidate --> Open profile sheet --> Close form --> Return result
-  [Profile sheet]   Mount --> Fetch attachments (empty!) --> Show "No resume"
-  [Form sheet]      Receive result --> Upload files --> Done (but profile already showing empty)
-```
-
-## Fix Plan
-
-### Fix 1: GlobalCreateButton.tsx - Return the result (PRIMARY FIX)
-
-Add `return newCandidate` at the end of `handleCandidateSubmit` so `CandidateFormSheet` receives the candidate ID and can upload the pending resume files.
-
-```typescript
-// Current (broken):
-} else {
-  toast({ title: 'Success', description: 'Candidate created successfully!' })
-  navigate('/candidates')
-}
-setCandidateSheetOpen(false)
-// Function ends without returning -- result is lost
-
-// Fixed:
-} else {
-  toast({ title: 'Success', description: 'Candidate created successfully!' })
-  navigate('/candidates')
-}
-setCandidateSheetOpen(false)
-return newCandidate  // <-- Return the result so files get uploaded
-```
-
-### Fix 2: CandidateFormSheet.tsx - Guard against race conditions
-
-Capture `pendingFiles` in a local variable before calling `onSubmit`, so even if state changes during the async call, we still have the correct file references:
-
-```typescript
-// In handleSubmit, before calling onSubmit:
-const filesToUpload = [...pendingFiles]  // Capture before parent might trigger state changes
-
-const result = await onSubmit(submitData as any)
-
-if (result) {
-  await handlePostSubmitActions(result, filesToUpload)  // Pass captured files
-}
-```
-
-Update `handlePostSubmitActions` to accept and use the captured files array instead of reading from state.
-
-### Fix 3: CandidateFormSheet.tsx - Re-order close vs upload
-
-Move the `onClose()` call to happen AFTER file upload completes, not before. Currently the parent closes the form inside `onSubmit`, which can interfere with the upload. Add a flag so that `CandidateFormSheet` controls when to close after new candidate creation with pending files.
-
-## Files to Modify
+## File to Modify
 
 | File | Change |
 |------|--------|
-| `src/components/layout/GlobalCreateButton.tsx` | Add `return newCandidate` in `handleCandidateSubmit` |
-| `src/components/candidates/CandidateFormSheet.tsx` | Capture `pendingFiles` locally before `onSubmit`, pass to `handlePostSubmitActions` |
+| `supabase/functions/polish-scorecard-notes/index.ts` | Add language-matching instruction to the user prompt |
 
-## Expected Result
+## Specific Change
 
-After the fix:
-1. User creates candidate with resume via Global Create button
-2. Resume file is uploaded to storage and `candidate_attachments` table
-3. Opening the candidate profile shows the resume in the Resume tab
+At the end of the user prompt (around line 150), add a clear instruction:
+
+```
+IMPORTANT - Language Rule: Detect the language used in the "Interviewer's Raw Notes" 
+and "Interview Questions & Candidate Responses" sections above. Generate the ENTIRE 
+output (including section headings, bullet points, and recommendation) in that SAME 
+language. For example, if the notes are in Spanish, write everything in Spanish. 
+If in Portuguese, write everything in Portuguese. If in English, write in English. 
+Do NOT translate -- match the original language exactly.
+```
+
+This single addition ensures:
+- Spanish notes produce Spanish polished output
+- Portuguese notes produce Portuguese polished output
+- English notes continue to work as before
+- Mixed-language input defaults to the dominant language of the raw notes
+
+No frontend changes are needed -- the fix is entirely in the edge function prompt.
+
