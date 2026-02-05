@@ -109,6 +109,7 @@ export function GlobalCreateButton() {
       }
       
       setCandidateSheetOpen(false)
+      return newCandidate
     } catch (error) {
       console.error('Error creating candidate:', error)
       // Error handling is done in the hook

@@ -397,19 +397,21 @@ export function CandidateFormSheet({
     }
   }
 
-  const handlePostSubmitActions = async (result: any) => {
-    console.log('📎 handlePostSubmitActions called', { result, pendingFilesCount: pendingFiles.length, isNewCandidate: !candidate })
+  const handlePostSubmitActions = async (result: any, filesToUpload?: File[]) => {
+    // Use captured files if provided, otherwise fall back to state (for merge flow)
+    const files = filesToUpload || pendingFiles
+    console.log('📎 handlePostSubmitActions called', { result, pendingFilesCount: files.length, isNewCandidate: !candidate })
     
     if (!candidate) {
       const candidateId = result?.id
       console.log('📎 Candidate ID from result:', candidateId)
       
-      if (pendingFiles.length > 0 && candidateId) {
+      if (files.length > 0 && candidateId) {
         try {
           setIsUploadingResume(true)
-          console.log('📎 Uploading pending files:', pendingFiles.length)
+          console.log('📎 Uploading pending files:', files.length)
           
-          for (const [index, f] of pendingFiles.entries()) {
+          for (const [index, f] of files.entries()) {
             console.log('📎 Uploading file:', f.name)
             await uploadFileForCandidate(candidateId, f, index === 0)
           }
@@ -423,7 +425,7 @@ export function CandidateFormSheet({
           setIsUploadingResume(false)
         }
       } else {
-        console.log('📎 Skipping file upload:', { hasPendingFiles: pendingFiles.length > 0, hasCandidateId: !!candidateId })
+        console.log('📎 Skipping file upload:', { hasPendingFiles: files.length > 0, hasCandidateId: !!candidateId })
       }
       
       // Trigger background AI enrichment if we have resume text
@@ -504,6 +506,10 @@ export function CandidateFormSheet({
     // Store for later if merge dialog appears
     setPendingSubmitData(submitData)
 
+    // Capture pending files BEFORE calling onSubmit (parent may trigger state changes)
+    const filesToUpload = [...pendingFiles]
+    console.log('📎 Captured filesToUpload before onSubmit:', filesToUpload.length)
+
     const result = await onSubmit(submitData as any)
     console.log('📎 onSubmit result:', result)
 
@@ -522,7 +528,7 @@ export function CandidateFormSheet({
     // Normal flow for new candidates
     console.log('📎 Normal flow - calling handlePostSubmitActions')
     if (result) {
-      await handlePostSubmitActions(result)
+      await handlePostSubmitActions(result, filesToUpload)
     } else {
       console.log('📎 No result returned from onSubmit')
     }
