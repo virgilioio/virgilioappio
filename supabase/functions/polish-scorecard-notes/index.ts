@@ -147,7 +147,9 @@ ${currentNotes || "No additional notes provided."}
 
 ---
 
-Based on the above information, create professional interview notes following the exact structure specified in your system instructions. Ensure all sections are complete, factual, and provide actionable insights for the hiring team.`;
+Based on the above information, create professional interview notes following the exact structure specified in your system instructions. Ensure all sections are complete, factual, and provide actionable insights for the hiring team.
+
+IMPORTANT - Language Rule: Detect the language used in the "Interviewer's Raw Notes" and "Interview Questions & Candidate Responses" sections above. Generate the ENTIRE output (including section headings, bullet points, and recommendation) in that SAME language. For example, if the notes are in Spanish, write everything in Spanish. If in Portuguese, write everything in Portuguese. If in English, write in English. Do NOT translate -- match the original language exactly. If the input is mixed-language, default to the dominant language of the raw notes.`;
 
     console.log('Calling OpenAI API...');
 
