@@ -11,17 +11,14 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { GoGioLogo } from '@/components/GoGioLogo'
-import { MapPin, Briefcase, DollarSign, Sparkles, Loader2, ArrowLeft } from 'lucide-react'
+import { MapPin, Briefcase, DollarSign, Loader2, ArrowLeft } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
-import { useResumeParsing } from '@/hooks/useResumeParsing'
-import { useSkillsGeneration } from '@/hooks/useSkillsGeneration'
-import { getSkillColor } from '@/utils/skillColors'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
-import { sanitizeHtml, sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
+import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 import { markdownToHtml } from '@/utils/markdown'
-import { ParsingAnimation } from '@/components/ui/parsing-animation'
+import { EnhancedResumeDropzone, type ParsedResumeData } from '@/components/candidates/EnhancedResumeDropzone'
 import { ApplicationConfirmationDialog } from '@/components/candidates/ApplicationConfirmationDialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Clock, Shield } from 'lucide-react'
@@ -68,7 +65,7 @@ export default function PublicJobPosting() {
   const [tab, setTab] = useState<'overview' | 'application'>('overview')
   const { toast } = useToast()
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
-  const { isParsing, parseResume } = useResumeParsing()
+  const [capturedResumeText, setCapturedResumeText] = useState('')
   const [coreFieldValues, setCoreFieldValues] = useState({
     candidate_name: '',
     email: '',
@@ -77,7 +74,6 @@ export default function PublicJobPosting() {
     profile_summary: ''
   })
   const [customFieldResponses, setCustomFieldResponses] = useState<Record<string, any>>({})
-  const { generateSkills, isGenerating, generatedSkills } = useSkillsGeneration()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showConfirmationDialog, setShowConfirmationDialog] = useState(false)
   const [organizationName, setOrganizationName] = useState<string>('')
@@ -225,38 +221,25 @@ export default function PublicJobPosting() {
     return { first: parts.join(' '), last }
   }
 
-  const handleParsedFile = async (file: File) => {
-    const parsed = await parseResume(file)
-    if (parsed) {
-      console.log('🔄 Applying parsed data to core fields:', parsed)
-      
-      // Update core field values with parsed data
-      setCoreFieldValues(prev => {
-        // Convert markdown profile summary to HTML
-        let profileSummary = prev.profile_summary
-        if (parsed.profileSummary) {
-          const html = markdownToHtml(parsed.profileSummary)
-          profileSummary = sanitizeHtmlForEditor(html)
-        }
-        
-        return {
-          ...prev,
-          candidate_name: parsed.name || prev.candidate_name,
-          email: parsed.email || prev.email,
-          phone: parsed.phone || prev.phone,
-          profile_summary: profileSummary
-        }
-      })
-
+  const handleParsedData = (parsed: ParsedResumeData) => {
+    console.log('🔄 Applying parsed data to core fields:', parsed)
+    
+    setCoreFieldValues(prev => {
+      let profileSummary = prev.profile_summary
       if (parsed.profileSummary) {
-        try {
-          await generateSkills(parsed.profileSummary, parsed.name || 'Candidate', { context: 'candidate', desiredCount: 20, minCount: 12 })
-        } catch {
-          // Ignore generation errors; toast already handled in hook
-        }
+        const html = markdownToHtml(parsed.profileSummary)
+        profileSummary = sanitizeHtmlForEditor(html)
       }
-      toast({ title: 'Parsed from resume', description: 'Prefilled basic info. Please review before submitting.' })
-    }
+      
+      return {
+        ...prev,
+        candidate_name: parsed.name || prev.candidate_name,
+        email: parsed.email || prev.email,
+        phone: parsed.phone || prev.phone,
+        linkedin_url: parsed.linkedinUrl || prev.linkedin_url,
+        profile_summary: profileSummary
+      }
+    })
   }
 
   function JobDetailsCard({ details }: { details: { location: string | null; employmentType: string | null; locationType: string | null; salaryCurrency: string | null; salaryAmount: number | null; salaryPeriod: string | null; showSalary: boolean; hasCommissions: boolean; commissionsCurrency: string | null; commissionsAmount: number | null; } }) {
@@ -348,7 +331,14 @@ export default function PublicJobPosting() {
     // Validate core fields
     const missingFields: string[] = []
     if (!coreFieldValues.candidate_name.trim()) missingFields.push('Full Name')
-    if (!coreFieldValues.email.trim()) missingFields.push('Email')
+    if (!coreFieldValues.email.trim()) {
+      missingFields.push('Email')
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(coreFieldValues.email.trim())) {
+        missingFields.push('Valid Email Address')
+      }
+    }
     
     // Validate resume upload (required)
     if (uploadedFiles.length === 0) {
@@ -404,7 +394,6 @@ export default function PublicJobPosting() {
       console.log('🚀 Starting application submission')
       console.log('📋 Core field values:', coreFieldValues)
       console.log('📋 Custom field responses:', customFieldResponses)
-      console.log('🧠 Generated skills:', generatedSkills)
 
       // Convert resume to base64 if present
       const resumeFile = uploadedFiles[0]
@@ -430,7 +419,7 @@ export default function PublicJobPosting() {
       // Prepare application data in the format expected by the edge function
       const applicationData = {
         ...coreFieldValues,
-        generatedSkills: generatedSkills, // Include generated skills
+        resumeText: capturedResumeText, // For server-side AI enrichment
         custom_fields: mappedCustomFields, // Use field names instead of IDs
         uploadedFiles: resumeBase64 ? [{ name: resumeFile!.name, data: resumeBase64, type: resumeFile!.type, size: resumeFile!.size }] : [],
         posting_id: posting.id
@@ -635,78 +624,19 @@ export default function PublicJobPosting() {
                             <label className="text-sm font-medium">
                               Resume/CV <Badge variant="secondary" className="ml-2">Required</Badge>
                             </label>
-                            <div className="relative group mt-1">
-                              <div className="pointer-events-none absolute -inset-[2px] rounded-lg bg-gradient-to-r from-pastel-purple via-pastel-blue to-info blur-md transition-opacity duration-300 opacity-50 pulse" />
-                              <div
-                                className="relative border-2 border-dashed rounded-lg p-6 text-center transition-colors bg-pastel-purple/10 border-pastel-purple/70 hover:border-pastel-purple"
-                                onDrop={(e) => { 
-                                  e.preventDefault(); 
-                                  const file = e.dataTransfer.files?.[0]; 
-                                  if (file) { 
-                                    setUploadedFiles([file]); 
-                                    void handleParsedFile(file); 
-                                  } 
-                                }}
-                                onDragOver={(e) => e.preventDefault()}
-                                onDragLeave={(e) => e.preventDefault()}
-                                aria-busy={isParsing || isGenerating}
-                                aria-live="polite"
-                              >
-                                <input
-                                  id="resume-upload"
-                                  type="file"
-                                  className="hidden"
-                                  onChange={(e) => { 
-                                    const file = e.target.files?.[0] || null; 
-                                    setUploadedFiles(file ? [file] : []); 
-                                    if (file) { 
-                                      void handleParsedFile(file); 
-                                    } 
-                                    e.currentTarget.value = ''; 
-                                  }}
-                                  accept=".pdf,.doc,.docx,.txt,.rtf,.jpg,.jpeg,.png,.gif,.webp"
-                                />
-                                <Sparkles className="h-8 w-8 mx-auto text-pastel-purple-foreground mb-2" />
-                                <p className="text-sm text-text-secondary mb-2">Upload here, and watch some magic!</p>
-                                <p className="text-xs text-text-secondary mb-4">PDF, DOC, DOCX, TXT or images up to 15MB</p>
-                                <Button
-                                  type="button"
-                                  variant="default"
-                                  onClick={() => document.getElementById('resume-upload')?.click()}
-                                  disabled={isParsing || isGenerating}
-                                  className="gap-sm bg-pastel-purple text-pastel-purple-foreground border border-pastel-purple-foreground/30 hover:bg-pastel-purple/80 shadow-button"
-                                >
-                                  {(isParsing || isGenerating) ? (
-                                    <>
-                                      <Loader2 className="h-4 w-4 animate-spin" />
-                                      {isParsing ? 'Parsing…' : 'Generating skills…'}
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Sparkles className="h-4 w-4" /> Choose File
-                                    </>
-                                  )}
-                                </Button>
-                                {uploadedFiles[0] && (
-                                  <p className="mt-3 text-xs text-text-secondary">Selected: {uploadedFiles[0].name}</p>
-                                )}
-                                {(isParsing || isGenerating) && (
-                                  <div className="absolute inset-0 rounded-lg bg-background/60 backdrop-blur-sm flex flex-col items-center justify-center animate-fade-in">
-                                    <Loader2 className="h-6 w-6 text-pastel-purple-foreground animate-spin mb-2" />
-                                    <ParsingAnimation 
-                                      isActive={isParsing || isGenerating}
-                                    />
-                                  </div>
-                                )}
-                              </div>
-                              {generatedSkills.length > 0 && (
-                                <div className="mt-4 flex flex-wrap gap-2">
-                                  {generatedSkills.slice(0, 30).map((s, idx) => (
-                                    <Badge key={`${s.name}-${idx}`} variant={getSkillColor(s.name)}>
-                                      {s.name}
-                                    </Badge>
-                                  ))}
-                                </div>
+                            <div className="mt-1">
+                              <EnhancedResumeDropzone
+                                onParsed={handleParsedData}
+                                isUploading={false}
+                                autoGenerateSkills={false}
+                                showUpload={false}
+                                parseOnly={true}
+                                useTwoStageAI={true}
+                                onFileCaptured={(file) => setUploadedFiles([file])}
+                                onResumeTextCaptured={(text) => setCapturedResumeText(text)}
+                              />
+                              {uploadedFiles[0] && (
+                                <p className="mt-2 text-xs text-text-secondary">Selected: {uploadedFiles[0].name}</p>
                               )}
                             </div>
                           </div>
@@ -733,7 +663,11 @@ export default function PublicJobPosting() {
                               placeholder="your.email@example.com"
                               value={coreFieldValues.email}
                               onChange={(e) => setCoreFieldValues(prev => ({ ...prev, email: e.target.value }))}
+                              className={coreFieldValues.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(coreFieldValues.email.trim()) ? 'border-destructive focus-visible:ring-destructive' : ''}
                             />
+                            {coreFieldValues.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(coreFieldValues.email.trim()) && (
+                              <p className="text-xs text-destructive mt-1">Please enter a valid email address</p>
+                            )}
                           </div>
                           
                           {/* Phone Field */}
@@ -872,7 +806,7 @@ export default function PublicJobPosting() {
                           onClick={handleSubmitApplication} 
                           className="w-full sm:w-auto" 
                           aria-label="Submit application" 
-                          disabled={isSubmitting || isParsing || isGenerating}
+                          disabled={isSubmitting}
                         >
                           {isSubmitting ? (
                             <span className="inline-flex items-center gap-2">

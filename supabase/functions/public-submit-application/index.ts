@@ -14,6 +14,7 @@ interface SubmitApplicationPayload {
   linkedin_url?: string;
   skills?: string;
   profile_summary?: string;
+  resumeText?: string;
   resume?: File;
   // Custom fields from application_fields table
   custom_fields?: Record<string, any>;
@@ -555,6 +556,19 @@ serve(async (req) => {
       globalCandidateId,
       fileUploadResults: fileUploadResults.length > 0 ? fileUploadResults : undefined
     });
+
+    // Fire-and-forget background AI enrichment (skills + profile summary)
+    if (globalCandidateId) {
+      supabase.functions.invoke('enrich-candidate-profile', {
+        body: {
+          candidateId: globalCandidateId,
+          resumeText: body.resumeText || '',
+          candidateName: candidateName,
+        }
+      }).catch(err => console.error('Background enrichment call failed:', err));
+      
+      console.log('🧠 Triggered background enrichment for candidate:', globalCandidateId);
+    }
 
     // Check if any required file uploads failed
     const failedUploads = fileUploadResults.filter(result => !result.success);
