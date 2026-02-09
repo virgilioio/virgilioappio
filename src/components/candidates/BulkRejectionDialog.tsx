@@ -18,6 +18,7 @@ import { TimePickerVirgilio } from '@/components/ui/time-picker-virgilio';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { RejectionReasonSelector } from './RejectionReasonSelector';
+import { Textarea } from '@/components/ui/textarea';
 
 import { useBulkRejectCandidates } from '@/hooks/useBulkRejectCandidates';
 import { useMailIdentities } from '@/hooks/useMailIdentities';
@@ -47,6 +48,7 @@ export function BulkRejectionDialog({
 }: BulkRejectionDialogProps) {
   const [associationIds, setAssociationIds] = useState<string[]>([]);
   const [rejectionReasonId, setRejectionReasonId] = useState<string | undefined>();
+  const [rejectionNotes, setRejectionNotes] = useState('');
   const [sendEmail, setSendEmail] = useState(true);
   const [fromEmail, setFromEmail] = useState('');
   const [subjectHtml, setSubjectHtml] = useState('');
@@ -118,6 +120,7 @@ export function BulkRejectionDialog({
       await bulkReject.mutateAsync({
         associationIds,
         rejectionReasonId,
+        rejectionNotes: rejectionNotes.trim() || undefined,
         sendEmail: sendEmail && !!fromEmail && !!subjectHtml && !!bodyHtml,
         emailData: sendEmail && fromEmail && subjectHtml && bodyHtml ? {
           fromEmail,
@@ -137,6 +140,7 @@ export function BulkRejectionDialog({
 
   const resetState = () => {
     setRejectionReasonId(undefined);
+    setRejectionNotes('');
     setSendEmail(true);
     setFromEmail('');
     setSubjectHtml('');
@@ -201,6 +205,17 @@ export function BulkRejectionDialog({
               <p className="text-xs text-muted-foreground">
                 This reason will be applied to all selected candidates
               </p>
+            </div>
+
+            {/* Rejection Notes */}
+            <div className="space-y-2">
+              <Label>Notes (optional)</Label>
+              <Textarea
+                value={rejectionNotes}
+                onChange={(e) => setRejectionNotes(e.target.value)}
+                placeholder="Add context about why these candidates are being rejected..."
+                className="min-h-[80px]"
+              />
             </div>
 
             {/* Send Email Toggle */}

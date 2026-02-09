@@ -8,6 +8,7 @@ import { renderTemplate, buildPlaceholderData } from '@/utils/templateUtils';
 export interface BulkRejectInput {
   associationIds: string[];
   rejectionReasonId?: string;
+  rejectionNotes?: string;
   sendEmail: boolean;
   emailData?: {
     fromEmail: string;
@@ -30,7 +31,7 @@ export function useBulkRejectCandidates() {
 
   const mutation = useMutation({
     mutationFn: async (input: BulkRejectInput) => {
-      const { associationIds, rejectionReasonId, sendEmail, emailData, scheduleFor } = input;
+      const { associationIds, rejectionReasonId, rejectionNotes, sendEmail, emailData, scheduleFor } = input;
 
       setProgress({ total: associationIds.length, completed: 0, failed: 0 });
 
@@ -62,6 +63,7 @@ export function useBulkRejectCandidates() {
             const updateData: any = {
               status: 'rejected',
               rejection_reason_id: rejectionReasonId || null,
+              rejection_notes: rejectionNotes || null,
               rejected_at: new Date().toISOString(),
               rejected_by: user?.id,
             };

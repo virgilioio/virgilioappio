@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 export interface RejectCandidateInput {
   associationId: string;
   rejectionReasonId?: string;
+  rejectionNotes?: string;
   sendEmail: boolean;
   emailData?: {
     fromEmail: string;
@@ -26,7 +27,7 @@ export function useRejectCandidate() {
 
   return useMutation({
     mutationFn: async (input: RejectCandidateInput) => {
-      const { associationId, rejectionReasonId, sendEmail, emailData, scheduleFor } = input;
+      const { associationId, rejectionReasonId, rejectionNotes, sendEmail, emailData, scheduleFor } = input;
 
       // Get tenant_id from the association's job
       const { data: association, error: assocError } = await supabase
@@ -44,6 +45,7 @@ export function useRejectCandidate() {
       const updateData: any = {
         status: 'rejected',
         rejection_reason_id: rejectionReasonId || null,
+        rejection_notes: rejectionNotes || null,
         rejected_at: new Date().toISOString(),
         rejected_by: user?.id,
       };

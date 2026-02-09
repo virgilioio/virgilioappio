@@ -1905,6 +1905,7 @@ export type Database = {
           rejected_by: string | null
           rejection_email_scheduled_for: string | null
           rejection_email_sent_at: string | null
+          rejection_notes: string | null
           rejection_reason_id: string | null
           status: string | null
           updated_at: string
@@ -1928,6 +1929,7 @@ export type Database = {
           rejected_by?: string | null
           rejection_email_scheduled_for?: string | null
           rejection_email_sent_at?: string | null
+          rejection_notes?: string | null
           rejection_reason_id?: string | null
           status?: string | null
           updated_at?: string
@@ -1951,6 +1953,7 @@ export type Database = {
           rejected_by?: string | null
           rejection_email_scheduled_for?: string | null
           rejection_email_sent_at?: string | null
+          rejection_notes?: string | null
           rejection_reason_id?: string | null
           status?: string | null
           updated_at?: string
