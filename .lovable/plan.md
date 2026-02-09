@@ -1,155 +1,108 @@
 
 
-# Plan: Upgrade Public Job Application Form to Match Internal Candidate Creation Flow
+# Fix Candidate Email Reply Capture
 
-## Overview
+## Problem
 
-The public job application form (`src/pages/PublicJobPosting.tsx`) has fallen behind the internal candidate creation flow (`CandidateFormSheet.tsx`). This plan brings it to parity across 6 areas, ordered by priority.
+Candidate replies to emails sent through GoGio never appear in the platform. Three issues compound:
 
----
+1. The ingest address (`jc_xxx@ingest.gogio.io`) is added as **BCC**, which only delivers the outbound email -- replies from candidates never reach it
+2. Resend inbound webhooks appear unconfigured (zero logs ever)
+3. Gmail sync (the backup path) is failing with OAuth token errors
 
-## Change 1: Fix LinkedIn URL Auto-Fill from Resume Parsing
+## How Greenhouse/Ashby/Lever Solve This
 
-**Problem:** The `handleParsedFile` function (line 228-260) ignores `parsed.linkedinUrl` entirely. The internal flow sets it correctly.
+They use a **Reply-To header** containing both the recruiter's address AND a unique ingest address. When the candidate replies, the reply goes to both destinations -- the recruiter sees it in Gmail and the platform captures it via webhook.
 
-**Fix:** In `handleParsedFile`, add LinkedIn URL assignment from parsed data:
+## Solution
 
-```typescript
-setCoreFieldValues(prev => ({
-  ...prev,
-  candidate_name: parsed.name || prev.candidate_name,
-  email: parsed.email || prev.email,
-  phone: parsed.phone || prev.phone,
-  linkedin_url: parsed.linkedinUrl || prev.linkedin_url,  // <-- ADD THIS
-  profile_summary: profileSummary
-}))
+### Change 1: Add Reply-To Header with Dual Addresses
+
+**File:** `supabase/functions/send-user-email/index.ts`
+
+In the `buildRFC822Email` function (around line 74), add a `Reply-To` header that includes BOTH the sender's address and the ingest address. This ensures:
+- Candidate replies land in the recruiter's Gmail (natural behavior preserved)
+- Candidate replies also go to `jc_xxx@ingest.gogio.io` (captured by webhook)
+
+The change is in the RFC822 email builder -- add a new optional `replyTo` parameter:
+
+```
+Reply-To: recruiter@company.com, jc_xxx@ingest.gogio.io
 ```
 
-**File:** `src/pages/PublicJobPosting.tsx` (line ~243)
+Then pass the ingest email into the builder call at line ~894 where the email is constructed.
 
----
+### Change 2: Pass Ingest Email Through to the Email Builder
 
-## Change 2: Add Proper Email Format Validation
+**File:** `supabase/functions/send-user-email/index.ts`
 
-**Problem:** The public form only checks `if (!coreFieldValues.email.trim())` -- it never validates email format. The internal flow uses `react-hook-form` validation.
+Currently, the ingest email is added to BCC (lines 879-891). Instead:
+- Keep the BCC addition (for outbound email logging at the ingest address -- useful for record-keeping)
+- ALSO pass the ingest email to `buildRFC822Email` so it's included in the Reply-To header
+- Modify `buildRFC822Email` signature to accept an optional `replyToAddresses` parameter
 
-**Fix:** Add a regex-based email format validation in `handleSubmitApplication` (line ~351), after the emptiness check:
-
-```typescript
-// After checking email is not empty:
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-if (!emailRegex.test(coreFieldValues.email.trim())) {
-  missingFields.push('Valid Email Address')
-}
+The updated builder will output:
+```
+From: recruiter@company.com
+To: candidate@gmail.com
+Reply-To: recruiter@company.com, jc_xxx@ingest.gogio.io
 ```
 
-Also add real-time visual feedback on the email `Input` component using the `error` prop when the format is invalid.
+### Change 3: Update process-candidate-reply-webhook to Check All Address Fields
 
-**File:** `src/pages/PublicJobPosting.tsx`
+**File:** `supabase/functions/process-candidate-reply-webhook/index.ts`
 
----
+The webhook currently only checks `to` and `cc` for the `jc_` ingest code. When candidates reply, the ingest address might appear in:
+- `to` (if Reply-To had both addresses and client uses the first)
+- `cc` (less likely)
+- The full recipient list from Resend's envelope
 
-## Change 3: Replace Inline Resume Dropzone with EnhancedResumeDropzone
+Update `findCandidateIngestCode` to also check the `bcc` field and the raw envelope recipients, making the matching more robust.
 
-**Problem:** Lines 634-711 contain a hand-coded dropzone that duplicates the `EnhancedResumeDropzone` component but without its features (two-stage parsing, file capture callbacks, proper loading states).
+### Change 4: Handle Email Threading in the Webhook
 
-**Fix:** Replace the 77-line inline dropzone with `EnhancedResumeDropzone`, configured for the public form context:
+**File:** `supabase/functions/process-candidate-reply-webhook/index.ts`
 
-```typescript
-<EnhancedResumeDropzone
-  onParsed={(parsed) => {
-    // Apply parsed data to coreFieldValues (name, email, phone, linkedin, profile_summary)
-  }}
-  onSkillsGenerated={(skills) => { /* store generated skills */ }}
-  isUploading={false}
-  autoGenerateSkills={false}  // Skills handled by background enrichment
-  showUpload={false}          // Don't upload yet -- edge function handles it
-  parseOnly={true}            // Just parse the file
-  useTwoStageAI={true}        // Fast core extraction
-  onFileCaptured={(file) => setUploadedFiles([file])}
-  onResumeTextCaptured={(text) => setCapturedResumeText(text)}
-/>
-```
+Currently the webhook logs the received email but doesn't capture threading information. Add:
+- Extract `In-Reply-To` and `References` headers from the incoming email data
+- Look up the original sent email's `thread_id` and `provider_message_id` from `email_logs`
+- Store these on the received email log for proper thread grouping in the UI
 
-This also requires:
-- Adding a `capturedResumeText` state variable (for background enrichment)
-- Removing the old inline dropzone JSX
-
-**File:** `src/pages/PublicJobPosting.tsx`
+This makes the reply appear in the same conversation thread as the original email.
 
 ---
 
-## Change 4: Enable Two-Stage AI Parsing
+## Infrastructure Setup Required (Manual Steps)
 
-**Problem:** The public form calls `parseResume(file)` (full single-pass parsing, slow ~8-10s). The internal flow uses `parseResumeCoreFields(file)` (fast ~3-5s) + background enrichment.
+These are configuration steps in Resend's dashboard that cannot be done via code:
 
-**Fix:** This is mostly handled by Change 3 above -- setting `useTwoStageAI={true}` on `EnhancedResumeDropzone` switches from `parseResume` to `parseResumeCoreFields` internally.
-
-The `handleParsedFile` function can be simplified or removed since `EnhancedResumeDropzone`'s `onParsed` callback handles everything directly.
-
-**File:** `src/pages/PublicJobPosting.tsx`
-
----
-
-## Change 5: Trigger Server-Side AI Enrichment After Submission
-
-**Problem:** After a public application is submitted, the candidate record never receives background AI enrichment (skills + profile summary). The internal flow calls `triggerBackgroundEnrichment()` after creation.
-
-**Fix:** Add enrichment trigger in the `public-submit-application` edge function, after the candidate is created and files are uploaded:
-
-```typescript
-// After successful candidate creation + file upload, if we have resume text:
-// Fire-and-forget call to enrich-candidate-profile
-if (globalCandidateId) {
-  // Extract resume text from the uploaded file (if base64 PDF)
-  // OR accept resumeText from the frontend payload
-  const enrichUrl = `${SUPABASE_URL}/functions/v1/enrich-candidate-profile`;
-  fetch(enrichUrl, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      candidateId: globalCandidateId,
-      resumeText: body.resumeText || '',
-      candidateName: candidateName,
-    }),
-  }).catch(err => console.error('Background enrichment call failed:', err));
-}
-```
-
-Frontend changes:
-- Pass `capturedResumeText` (from the two-stage parsing) in the application payload as `resumeText`
-- Add `resumeText` to the `SubmitApplicationPayload` interface
-
-**Files:**
-- `src/pages/PublicJobPosting.tsx` -- add `resumeText` to submission payload
-- `supabase/functions/public-submit-application/index.ts` -- add enrichment trigger
+1. **Verify MX records** for `ingest.gogio.io` point to Resend's inbound servers
+2. **Create/verify an inbound webhook** in Resend dashboard:
+   - Domain: `ingest.gogio.io`
+   - Webhook URL: `https://etrxjxstjfcozdjumfsj.supabase.co/functions/v1/process-candidate-reply-webhook`
+   - Events: `email.received`
+3. **Test the webhook** by sending a test email to any `@ingest.gogio.io` address and checking edge function logs
 
 ---
 
-## Change 6: Remove Dead PublicApplicationForm.tsx
+## Summary of Code Changes
 
-**Problem:** `src/components/forms/PublicApplicationForm.tsx` is an old, unused component (not referenced anywhere in routing or active code).
+| File | Change |
+|------|--------|
+| `supabase/functions/send-user-email/index.ts` | Add `Reply-To` header with sender + ingest addresses in `buildRFC822Email`; pass ingest email through to builder |
+| `supabase/functions/process-candidate-reply-webhook/index.ts` | Check all address fields for ingest code; add email threading (In-Reply-To, References, thread_id) |
 
-**Fix:** Delete the file entirely.
+## What This Achieves
 
-**File:** `src/components/forms/PublicApplicationForm.tsx` (DELETE)
-
----
-
-## Summary of Files Modified
-
-| File | Changes |
-|------|---------|
-| `src/pages/PublicJobPosting.tsx` | LinkedIn auto-fill, email validation, replace inline dropzone with `EnhancedResumeDropzone`, add `capturedResumeText` state, pass `resumeText` in submission payload, remove unused imports |
-| `supabase/functions/public-submit-application/index.ts` | Accept `resumeText` field, trigger background enrichment after candidate creation |
-| `src/components/forms/PublicApplicationForm.tsx` | DELETE (dead code) |
+- Candidate replies to any email sent through GoGio will be captured in near-real-time
+- The reply appears in the candidate's email thread in the platform
+- The recruiter still sees the reply in their Gmail inbox naturally
+- Activity feed shows "Reply received" with the email content
+- No changes needed to the frontend -- `useEmailLogs` already queries by `candidate_id` and has Realtime subscriptions
 
 ## Risk Assessment
 
-- **Low risk**: Changes 1, 2, 6 are isolated fixes with no side effects
-- **Medium risk**: Changes 3-4 replace the dropzone UI -- needs testing to verify file capture, parsing animation, and state flow work correctly in the public (unauthenticated) context
-- **Low risk**: Change 5 is fire-and-forget; if enrichment fails, the application still succeeds
+- **Low risk**: Reply-To is a standard RFC 2822 header, supported by all email clients
+- **Low risk**: Adding a second Reply-To address is well-supported (Gmail, Outlook, Apple Mail all handle it)
+- **Note**: Some candidates may notice the extra address in their reply. This is the same as Greenhouse/Ashby -- it's industry standard and candidates are accustomed to it
 
