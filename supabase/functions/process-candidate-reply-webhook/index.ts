@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { crypto } from "https://deno.land/std@0.190.0/crypto/mod.ts";
-import { encode as hexEncode } from "https://deno.land/std@0.190.0/encoding/hex.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,15 +15,12 @@ async function verifyWebhookSignature(
 ): Promise<boolean> {
   const encoder = new TextEncoder();
   
-  // Extract the actual secret (remove whsec_ prefix if present)
   const secretBytes = secret.startsWith('whsec_') 
     ? Uint8Array.from(atob(secret.slice(6)), c => c.charCodeAt(0))
     : encoder.encode(secret);
   
-  // Create the signed content
   const signedContent = `${headers.id}.${headers.timestamp}.${payload}`;
   
-  // Import the key for HMAC
   const key = await crypto.subtle.importKey(
     "raw",
     secretBytes,
@@ -33,11 +29,9 @@ async function verifyWebhookSignature(
     ["sign"]
   );
   
-  // Sign the content
   const signatureBytes = await crypto.subtle.sign("HMAC", key, encoder.encode(signedContent));
   const expectedSignature = btoa(String.fromCharCode(...new Uint8Array(signatureBytes)));
   
-  // Parse the signature header (format: v1,<sig1> v1,<sig2> ...)
   const signatures = headers.signature.split(' ');
   
   for (const sig of signatures) {
@@ -75,18 +69,79 @@ function isCalendarInvite(emailData: any): boolean {
   );
 }
 
-// Find ingest code in recipients
+// Find ingest code in ALL recipient fields (to, cc, bcc, envelope)
 function findCandidateIngestCode(emailData: any): { code: string | null; foundIn: string } {
   const check = (addrs: any, label: string) => {
     const list = Array.isArray(addrs) ? addrs : [addrs].filter(Boolean);
     for (const addr of list) {
-      const code = extractCandidateIngestCode(addr);
-      if (code) return { code, foundIn: `${label}:${addr}` };
+      const email = typeof addr === 'string' ? addr : addr?.address || addr?.email || '';
+      const code = extractCandidateIngestCode(email);
+      if (code) return { code, foundIn: `${label}:${email}` };
     }
     return null;
   };
   
-  return check(emailData.to, 'to') || check(emailData.cc, 'cc') || { code: null, foundIn: '' };
+  return (
+    check(emailData.to, 'to') ||
+    check(emailData.cc, 'cc') ||
+    check(emailData.bcc, 'bcc') ||
+    check(emailData.envelope_to, 'envelope_to') ||
+    check(emailData.recipients, 'recipients') ||
+    { code: null, foundIn: '' }
+  );
+}
+
+// Look up the original sent email to establish threading
+async function findOriginalThread(
+  supabase: any,
+  inReplyToHeader: string | null,
+  referencesHeader: string | null,
+  candidateId: string,
+  jobId: string
+): Promise<{ threadId: string | null; inReplyTo: string | null; references: string | null }> {
+  // Strategy 1: Match by In-Reply-To header against provider_message_id or rfc822_message_id
+  if (inReplyToHeader) {
+    const cleanId = inReplyToHeader.replace(/[<>]/g, '').trim();
+    
+    const { data: byProvider } = await supabase
+      .from('email_logs')
+      .select('thread_id, provider_message_id, rfc822_message_id')
+      .eq('candidate_id', candidateId)
+      .eq('job_id', jobId)
+      .or(`rfc822_message_id.eq.${cleanId},rfc822_message_id.eq.<${cleanId}>`)
+      .order('sent_at', { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
+    
+    if (byProvider?.thread_id) {
+      return {
+        threadId: byProvider.thread_id,
+        inReplyTo: cleanId,
+        references: referencesHeader || cleanId,
+      };
+    }
+  }
+
+  // Strategy 2: Find the most recent sent email in this candidate+job pair
+  const { data: latestSent } = await supabase
+    .from('email_logs')
+    .select('thread_id, provider_message_id, rfc822_message_id')
+    .eq('candidate_id', candidateId)
+    .eq('job_id', jobId)
+    .eq('direction', 'sent')
+    .order('sent_at', { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (latestSent?.thread_id) {
+    return {
+      threadId: latestSent.thread_id,
+      inReplyTo: latestSent.rfc822_message_id || latestSent.provider_message_id || null,
+      references: referencesHeader || latestSent.rfc822_message_id || null,
+    };
+  }
+
+  return { threadId: null, inReplyTo: null, references: null };
 }
 
 serve(async (req) => {
@@ -113,7 +168,6 @@ serve(async (req) => {
       });
     }
 
-    // Verify signature
     const isValid = await verifyWebhookSignature(
       rawPayload,
       { id: svixId, timestamp: svixTimestamp, signature: svixSignature },
@@ -151,14 +205,14 @@ serve(async (req) => {
     const { code: ingestCode, foundIn } = findCandidateIngestCode(emailData);
 
     if (!ingestCode) {
-      console.log('[Candidate Reply] No jc_ code found');
+      console.log('[Candidate Reply] No jc_ code found in any address field');
       return new Response(JSON.stringify({ status: 'ignored', reason: 'no_jc_code' }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log('[Candidate Reply] Ingest code:', ingestCode, 'in:', foundIn);
+    console.log('[Candidate Reply] Ingest code:', ingestCode, 'found in:', foundIn);
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -224,6 +278,26 @@ serve(async (req) => {
       }
     }
 
+    // Extract threading headers from the incoming email
+    const incomingHeaders = emailData.headers || {};
+    const inReplyToHeader = incomingHeaders['in-reply-to'] || incomingHeaders['In-Reply-To'] || null;
+    const referencesHeader = incomingHeaders['references'] || incomingHeaders['References'] || null;
+
+    // Find the original thread
+    const threading = await findOriginalThread(
+      supabase,
+      inReplyToHeader,
+      referencesHeader,
+      association.candidate_id,
+      association.job_id
+    );
+
+    console.log('[Candidate Reply] Threading:', {
+      threadId: threading.threadId,
+      inReplyTo: threading.inReplyTo,
+      hasReferences: !!threading.references,
+    });
+
     const toAddrs = Array.isArray(emailData.to) ? emailData.to : [emailData.to].filter(Boolean);
     const ccAddrs = Array.isArray(emailData.cc) ? emailData.cc : [emailData.cc].filter(Boolean);
 
@@ -246,13 +320,17 @@ serve(async (req) => {
         job_id: association.job_id,
         rfc822_message_id: messageId || null,
         snippet: emailData.text?.substring(0, 200) || null,
+        // Threading fields
+        thread_id: threading.threadId || null,
+        in_reply_to: threading.inReplyTo || null,
+        references_header: threading.references || null,
       })
       .select()
       .single();
 
     if (insertErr) throw insertErr;
 
-    console.log('[Candidate Reply] Logged:', emailLog.id);
+    console.log('[Candidate Reply] Logged:', emailLog.id, 'thread:', threading.threadId);
 
     // Log activity
     await supabase.rpc('log_activity', {
@@ -261,12 +339,12 @@ serve(async (req) => {
       p_activity_type: 'candidate_email_received',
       p_title: `Reply received: ${emailData.subject || '(No Subject)'}`,
       p_description: `${candidate?.candidate_name || 'Candidate'} replied`,
-      p_metadata: { email_log_id: emailLog.id, from: emailData.from },
+      p_metadata: { email_log_id: emailLog.id, from: emailData.from, thread_id: threading.threadId },
       p_entity_type: 'candidate',
       p_entity_id: association.candidate_id,
     });
 
-    return new Response(JSON.stringify({ status: 'success', email_log_id: emailLog.id }), {
+    return new Response(JSON.stringify({ status: 'success', email_log_id: emailLog.id, thread_id: threading.threadId }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

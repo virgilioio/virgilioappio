@@ -71,7 +71,7 @@ async function refreshAccessToken(supabase: any, identity: any): Promise<string>
   return tokens.access_token;
 }
 
-function buildRFC822Email(request: SendEmailRequest, threadId?: string, inReplyTo?: string, references?: string): string {
+function buildRFC822Email(request: SendEmailRequest, threadId?: string, inReplyTo?: string, references?: string, replyToAddresses?: string[]): string {
   const boundary = `boundary_${Date.now()}_${Math.random().toString(36).substring(7)}`;
   const lines: string[] = [];
 
@@ -81,6 +81,9 @@ function buildRFC822Email(request: SendEmailRequest, threadId?: string, inReplyT
   if (request.cc?.length) lines.push(`Cc: ${request.cc.join(', ')}`);
   if (request.bcc?.length) lines.push(`Bcc: ${request.bcc.join(', ')}`);
   lines.push(`Subject: ${request.subject}`);
+  if (replyToAddresses?.length) {
+    lines.push(`Reply-To: ${replyToAddresses.join(', ')}`);
+  }
   
   // Add threading headers for replies
   if (inReplyTo) {
@@ -876,7 +879,8 @@ const handler = async (req: Request): Promise<Response> => {
       body_html: processedBodyHtml,
     };
 
-    // Add ingest email to Bcc for reply tracking
+    // Add ingest email to Bcc AND Reply-To for reply tracking
+    let replyToAddresses: string[] | undefined;
     if (request.candidate_id && request.job_id) {
       const ingestEmail = await getOrCreateIngestEmail(
         supabase,
@@ -886,12 +890,14 @@ const handler = async (req: Request): Promise<Response> => {
       
       if (ingestEmail) {
         processedRequest.bcc = [...(processedRequest.bcc || []), ingestEmail];
-        console.log('Added ingest email to Bcc for reply tracking:', ingestEmail);
+        // Dual Reply-To: sender + ingest address (Greenhouse/Ashby pattern)
+        replyToAddresses = [processedRequest.from_email, ingestEmail];
+        console.log('Added ingest email to Bcc + Reply-To for reply tracking:', ingestEmail);
       }
     }
 
-    // Build RFC822 email with threading headers
-    const rfc822 = buildRFC822Email(processedRequest, threadId, inReplyTo, references);
+    // Build RFC822 email with threading headers and Reply-To
+    const rfc822 = buildRFC822Email(processedRequest, threadId, inReplyTo, references, replyToAddresses);
     const encodedEmail = base64UrlEncode(rfc822);
 
     // Send via Gmail API
