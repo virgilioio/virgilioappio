@@ -115,10 +115,7 @@ export default function PublicJobPosting() {
           title,
           description,
           details,
-          tenant_id,
-          jobs!inner(
-            organizations!inner(name)
-          )
+          tenant_id
         `)
         .eq('slug', slug)
         .maybeSingle()
@@ -128,9 +125,7 @@ export default function PublicJobPosting() {
         return
       }
       setPosting(p as Posting)
-      // Extract organization name
-      const orgName = (p as any)?.jobs?.organizations?.name || 'our company'
-      setOrganizationName(orgName)
+      setOrganizationName('our company')
 
       // Fetch tenant data (about and company slug)
       const { data: tenantData } = await supabase
