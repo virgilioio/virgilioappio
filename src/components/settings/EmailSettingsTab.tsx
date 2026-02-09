@@ -27,7 +27,7 @@ export function EmailSettingsTab() {
       <div>
         <h3 className="text-lg font-medium">Email Accounts</h3>
         <p className="text-sm text-muted-foreground">
-          Connect your email accounts to send emails directly from Virgilio.
+          Connect your email accounts to send emails directly from GoGio.
         </p>
       </div>
 

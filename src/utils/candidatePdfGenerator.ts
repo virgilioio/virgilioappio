@@ -404,7 +404,7 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
     console.warn('[PDF] Failed to load logo, using text fallback:', error)
     // Fallback to text if logo fails to load
     setH3Style()
-    pdf.text('VIRGILIO', margin, yPosition)
+    pdf.text('GOGIO', margin, yPosition)
     yPosition += 8
   }
 

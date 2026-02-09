@@ -209,7 +209,7 @@ export function createEmailTemplate(options: EmailTemplateOptions): string {
           <strong>GoGio</strong> - Modern Recruiting Platform
         </p>
         <p style="margin: 0 0 16px 0;">
-          Need help? Contact us at <a href="mailto:support@virgilio.tech">support@virgilio.tech</a>
+          Need help? Contact us at <a href="mailto:support@gogio.io">support@gogio.io</a>
         </p>
         <p style="margin: 0; font-size: 12px;">
           © ${new Date().getFullYear()} GoGio. All rights reserved.

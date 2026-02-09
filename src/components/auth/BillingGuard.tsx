@@ -59,7 +59,7 @@ export function BillingGuard({
     const statusMessages = {
       locked: {
         title: 'Access Locked - Subscription Required',
-        description: 'Your trial and grace period have ended. Subscribe to continue using Virgilio ATS.',
+        description: 'Your trial and grace period have ended. Subscribe to continue using GoGio ATS.',
       },
       past_due: {
         title: 'Payment Past Due',
@@ -67,7 +67,7 @@ export function BillingGuard({
       },
       canceled: {
         title: 'Subscription Canceled',
-        description: 'Your subscription has been canceled. Reactivate to continue using Virgilio ATS.',
+        description: 'Your subscription has been canceled. Reactivate to continue using GoGio ATS.',
       },
     }
 

@@ -39,7 +39,7 @@ export default function Terms() {
         <section className="prose max-w-none">
           <h2 className="heading-lg text-primary">1. Overview</h2>
           <p>
-            These Terms govern your use of Virgilio. By accessing or using the app, you agree to be bound by them.
+            These Terms govern your use of GoGio. By accessing or using the app, you agree to be bound by them.
           </p>
           <h2 className="heading-lg text-primary mt-4">2. Accounts and Access</h2>
           <ul className="list-disc pl-5 space-y-1">
