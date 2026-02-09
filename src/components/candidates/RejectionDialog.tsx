@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import { RejectionReasonSelector } from './RejectionReasonSelector';
 import { RejectionEmailComposer } from './RejectionEmailComposer';
 import { useRejectCandidate } from '@/hooks/useRejectCandidate';
@@ -38,6 +39,7 @@ export function RejectionDialog({
   onSuccess,
 }: RejectionDialogProps) {
   const [rejectionReasonId, setRejectionReasonId] = useState<string | undefined>();
+  const [rejectionNotes, setRejectionNotes] = useState('');
   const [sendEmail, setSendEmail] = useState(true);
   const [emailData, setEmailData] = useState<{
     fromEmail: string;
@@ -54,6 +56,7 @@ export function RejectionDialog({
       await rejectCandidate.mutateAsync({
         associationId,
         rejectionReasonId,
+        rejectionNotes: rejectionNotes.trim() || undefined,
         sendEmail: sendEmail && !!emailData,
         emailData: sendEmail && emailData ? {
           ...emailData,
@@ -69,6 +72,7 @@ export function RejectionDialog({
       
       // Reset state
       setRejectionReasonId(undefined);
+      setRejectionNotes('');
       setSendEmail(true);
       setEmailData(null);
       setScheduleFor(undefined);
@@ -115,6 +119,17 @@ export function RejectionDialog({
               <p className="text-xs text-muted-foreground">
                 Select a reason for rejection (for internal tracking)
               </p>
+            </div>
+
+            {/* Rejection Notes */}
+            <div className="space-y-2">
+              <Label>Notes (optional)</Label>
+              <Textarea
+                value={rejectionNotes}
+                onChange={(e) => setRejectionNotes(e.target.value)}
+                placeholder="Add context about why this candidate is being rejected..."
+                className="min-h-[80px]"
+              />
             </div>
 
             {/* Send Email Toggle */}

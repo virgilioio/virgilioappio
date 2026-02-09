@@ -6,6 +6,7 @@ interface RejectionStatusBannerProps {
   rejectedAt: string | null;
   rejectedByName?: string;
   rejectionReason?: { id: string; name: string; category: string } | null;
+  rejectionNotes?: string | null;
   onReactivate: () => void;
 }
 
@@ -13,6 +14,7 @@ export function RejectionStatusBanner({
   rejectedAt,
   rejectedByName,
   rejectionReason,
+  rejectionNotes,
   onReactivate,
 }: RejectionStatusBannerProps) {
   if (!rejectedAt) return null;
@@ -25,6 +27,9 @@ export function RejectionStatusBanner({
           {rejectionReason?.name || 'No reason specified'} • {format(new Date(rejectedAt), 'MMM d, yyyy')}
           {rejectedByName && ` • By ${rejectedByName}`}
         </p>
+        {rejectionNotes && (
+          <p className="text-xs text-white/70 italic mt-1">"{rejectionNotes}"</p>
+        )}
       </div>
       <Button variant="outline" size="sm" onClick={onReactivate} className="bg-white hover:bg-white/90 text-foreground border-0">
         <RotateCcw className="h-4 w-4 mr-2" /> Reactivate

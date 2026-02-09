@@ -120,6 +120,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
     rejectedAt: string | null;
     rejectedByName: string | null;
     rejectionReason: { id: string; name: string; category: string } | null;
+    rejectionNotes: string | null;
     rejectionEmailSentAt: string | null;
     rejectionEmailScheduledFor: string | null;
   } | null>(null)
@@ -315,6 +316,7 @@ const stageHasAutomation = useMemo(() => {
             current_stage_id,
             rejected_at,
             rejected_by,
+            rejection_notes,
             rejection_email_sent_at,
             rejection_email_scheduled_for,
             rejection_reason:rejection_reasons(id, name, category),
@@ -346,6 +348,7 @@ const stageHasAutomation = useMemo(() => {
             rejectedAt: assoc.rejected_at,
             rejectedByName,
             rejectionReason: assoc.rejection_reason as any,
+            rejectionNotes: (assoc as any).rejection_notes || null,
             rejectionEmailSentAt: assoc.rejection_email_sent_at,
             rejectionEmailScheduledFor: assoc.rejection_email_scheduled_for,
           })
@@ -591,6 +594,7 @@ const stageHasAutomation = useMemo(() => {
         current_stage_id,
         rejected_at,
         rejected_by,
+        rejection_notes,
         rejection_email_sent_at,
         rejection_email_scheduled_for,
         rejection_reason:rejection_reasons(id, name, category),
@@ -622,6 +626,7 @@ const stageHasAutomation = useMemo(() => {
           rejectedAt: assoc.rejected_at,
           rejectedByName,
           rejectionReason: assoc.rejection_reason as any,
+          rejectionNotes: (assoc as any).rejection_notes || null,
           rejectionEmailSentAt: assoc.rejection_email_sent_at,
           rejectionEmailScheduledFor: assoc.rejection_email_scheduled_for,
         });
@@ -806,6 +811,7 @@ const stageHasAutomation = useMemo(() => {
                         rejectedAt={rejectionDetails.rejectedAt}
                         rejectedByName={rejectionDetails.rejectedByName || undefined}
                         rejectionReason={rejectionDetails.rejectionReason}
+                        rejectionNotes={rejectionDetails.rejectionNotes}
                         onReactivate={handleReactivate}
                       />
                     </div>
