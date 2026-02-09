@@ -50,16 +50,16 @@ export function CreateDevAdmin() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <CardTitle>Virgilio Platform Setup</CardTitle>
+        <CardTitle>GoGio Platform Setup</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Set up Virgilio as the platform organization and create the Platform Admin user.
+            Set up GoGio as the platform organization and create the Platform Admin user.
           </p>
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">
-              <strong>Organization:</strong> Virgilio (Platform)
+              <strong>Organization:</strong> GoGio (Platform)
             </p>
             <p className="text-xs text-muted-foreground">
               <strong>Admin Email:</strong> allan@virgilio.tech
@@ -76,7 +76,7 @@ export function CreateDevAdmin() {
             disabled={isCreating}
             className="w-full"
           >
-            {isCreating ? 'Setting up...' : 'Set Up Virgilio Platform'}
+            {isCreating ? 'Setting up...' : 'Set Up GoGio Platform'}
           </Button>
         </div>
       </CardContent>
