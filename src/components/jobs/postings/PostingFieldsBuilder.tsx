@@ -426,19 +426,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
             </DndContext>
           )}
           
-          {hasChanges && !readOnly && (
-            <div className="flex justify-end pt-4 border-t border-border/40">
-              <Button 
-                onClick={handleSaveChanges}
-                disabled={isSaving}
-                size="sm"
-                className="gap-2"
-              >
-                <Save className="h-4 w-4" />
-                {isSaving ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </div>
-          )}
+          
         </CardContent>
       </Card>
 
@@ -509,6 +497,33 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
           </div>
         </CardContent>
       </Card>
+      {hasChanges && !readOnly && (
+        <div className="sticky bottom-0 z-10 bg-background border-t border-border p-4 flex justify-end gap-3 -mx-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setEditedFields({})
+              setDeletedIds(new Set())
+              setPendingAdditions([])
+              setPendingLibraryAdditions([])
+              setOrderedIds(fields.map(f => f.id))
+            }}
+            disabled={isSaving}
+          >
+            Discard
+          </Button>
+          <Button
+            onClick={handleSaveChanges}
+            disabled={isSaving}
+            size="sm"
+            className="gap-2"
+          >
+            <Save className="h-4 w-4" />
+            {isSaving ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
