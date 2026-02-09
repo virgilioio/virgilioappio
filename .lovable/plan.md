@@ -1,68 +1,64 @@
 
 
-# Rebrand: Replace "Virgilio" with "GoGio" in All User-Facing Text
+# Fix: Public Job Posting "About" + Application Form Save Button
 
-## Overview
+## Issue 1: "About the Company" Not Visible on Public Job Postings
 
-Several user-facing strings still reference "Virgilio" instead of "GoGio". This plan updates every instance where a customer or candidate could see the old name -- in billing screens, email templates, PDF exports, and the Terms page. Internal dev tooling and CSS class names are left as-is since they're not visible to users.
+### Problem
+The `tenants` table has RLS enabled but no policy allowing anonymous (unauthenticated) access. When candidates view a public job posting at `/p/:slug`, the query to fetch `tenants.about` silently returns nothing.
 
-## Changes
+### Solution
+Add a narrow RLS policy allowing anonymous SELECT on tenants rows only when that tenant has at least one active job posting (meaning they've opted into public visibility).
 
-### 1. BillingGuard.tsx (Locked/Canceled screens)
+```sql
+CREATE POLICY tenants_public_read_for_postings ON public.tenants
+  FOR SELECT
+  TO anon
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.job_postings jp
+      WHERE jp.tenant_id = tenants.id
+        AND jp.status = 'active'
+    )
+  );
+```
 
-**Lines 62 and 70** -- Replace both instances:
-- "Subscribe to continue using Virgilio ATS." --> "Subscribe to continue using GoGio ATS."
+No frontend code changes needed -- the query in `PublicJobPosting.tsx` already fetches `tenants.about` correctly; it's just blocked by RLS.
 
-### 2. EmailSettingsTab.tsx (Settings page)
+---
 
-**Line 30** -- Replace:
-- "Connect your email accounts to send emails directly from Virgilio." --> "Connect your email accounts to send emails directly from GoGio."
+## Issue 2: Application Form Save Button Not Obvious
 
-### 3. Terms.tsx (Terms of Service page)
+### Problem
+The `PostingFieldsBuilder` component (the "Application Form" tab when editing a job posting) already has a Save button, but it only appears **conditionally** when `hasChanges` is true, and it's positioned inside the "Form Fields" card -- easy to miss. Users may add or edit fields and not realize they need to scroll up to save, or not notice the button appearing.
 
-**Line 42** -- Replace:
-- "These Terms govern your use of Virgilio." --> "These Terms govern your use of GoGio."
+### Solution
+Move the Save button out of the "Form Fields" card and place it as a sticky footer at the bottom of the Application Form tab content, so it's always visible when there are unsaved changes.
 
-### 4. candidatePdfGenerator.ts (PDF export fallback)
+### File Changed
+`src/components/jobs/postings/PostingFieldsBuilder.tsx`
 
-**Line 407** -- Replace:
-- `pdf.text('VIRGILIO', ...)` --> `pdf.text('GOGIO', ...)`
+- Remove the save button from inside the first `CardContent` (lines 429-441)
+- Add a sticky footer div at the very end of the component's root `div`, outside both cards, that renders when `hasChanges && !readOnly`
+- Style it with `sticky bottom-0 bg-background border-t p-4` so it stays pinned at the bottom of the sheet's scrollable area
+- Add a "Discard" button alongside "Save Changes" to let users reset their pending changes
 
-### 5. emailTemplate.ts (Shared email footer)
-
-**Line 212** -- Replace:
-- `support@virgilio.tech` --> `support@gogio.io` (or the correct GoGio support email)
-
-### 6. CreateDevAdmin.tsx (Internal dev tool -- low priority but still visible)
-
-**Lines 53, 58, 62, 65, 79** -- Replace all references:
-- "Virgilio Platform Setup" --> "GoGio Platform Setup"
-- "Set up Virgilio as the platform organization..." --> "Set up GoGio as the platform organization..."
-- "Organization: Virgilio (Platform)" --> "Organization: GoGio (Platform)"
-- "allan@virgilio.tech" --> update if email has changed
-- "Set Up Virgilio Platform" --> "Set Up GoGio Platform"
+### Updated UI (bottom of the component)
+```
+[Form Fields Card]
+[Add Field Card]
+---------- sticky footer ----------
+[Discard]              [Save Changes]
+------------------------------------
+```
 
 ## Files Modified
 
-| File | Type of Change |
-|------|----------------|
-| `src/components/auth/BillingGuard.tsx` | 2 string replacements |
-| `src/components/settings/EmailSettingsTab.tsx` | 1 string replacement |
-| `src/pages/Terms.tsx` | 1 string replacement |
-| `src/utils/candidatePdfGenerator.ts` | 1 string replacement |
-| `supabase/functions/_shared/emailTemplate.ts` | 1 email address update |
-| `src/components/dev/CreateDevAdmin.tsx` | 5 string replacements |
-
-## What Is NOT Changed (intentionally)
-
-- **CSS classes** like `text-virgilio-purple`, `border-virgilio-border` -- these are part of the design token system and not visible to users
-- **Component names** like `DatePickerVirgilio`, `TimePickerVirgilio` -- internal code references
-- **Button variants** like `variant="virgilio"` -- internal code
-- **Tailwind config comments** -- developer-only
-- **Edge function fallback lookups** (`ilike("name", "virgilio")`) -- these query the database for the platform org row; changing them requires also updating the database record
-- **Documentation files** (CHANGELOG.md, docs/) -- internal reference
+| File | Change |
+|------|--------|
+| New migration | Add `tenants_public_read_for_postings` RLS policy |
+| `src/components/jobs/postings/PostingFieldsBuilder.tsx` | Move Save to sticky footer + add Discard button |
 
 ## Risk Assessment
 
-- **Zero risk**: Pure string replacements with no logic changes
-
+- **Very low risk**: Additive RLS policy scoped narrowly; UI change is cosmetic repositioning of an existing button
