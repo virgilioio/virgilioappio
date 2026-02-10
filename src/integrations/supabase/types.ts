@@ -4740,6 +4740,66 @@ export type Database = {
           },
         ]
       }
+      validation_point_resolutions: {
+        Row: {
+          association_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          point_index: number
+          point_question: string
+          resolved_at: string
+          resolved_by: string
+          resolved_in_stage: string
+          scorecard_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          association_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          point_index: number
+          point_question: string
+          resolved_at?: string
+          resolved_by: string
+          resolved_in_stage: string
+          scorecard_id?: string | null
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          association_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          point_index?: number
+          point_question?: string
+          resolved_at?: string
+          resolved_by?: string
+          resolved_in_stage?: string
+          scorecard_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "validation_point_resolutions_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "job_candidate_associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "validation_point_resolutions_scorecard_id_fkey"
+            columns: ["scorecard_id"]
+            isOneToOne: false
+            referencedRelation: "job_stage_scorecards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       coresignal_usage: {
