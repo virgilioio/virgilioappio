@@ -29,6 +29,7 @@ import { format } from 'date-fns';
 import { Globe } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { GuestEmailInput } from '@/components/scheduling/GuestEmailInput';
 
 const formSchema = z.object({
   candidate_name: z.string().min(2, 'Name must be at least 2 characters').max(100),
@@ -50,6 +51,8 @@ function InternalBookingConfirmationForm({
   candidatePhone,
   meetingType,
   customLocation,
+  guestEmails,
+  onGuestEmailsChange,
 }: {
   selectedSlot: { start: string; end: string };
   candidateTimezone: string;
@@ -60,6 +63,8 @@ function InternalBookingConfirmationForm({
   candidatePhone: string;
   meetingType: 'google_meet' | 'custom';
   customLocation: string;
+  guestEmails: string[];
+  onGuestEmailsChange: (emails: string[]) => void;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sendInvitation, setSendInvitation] = useState(true);
@@ -209,6 +214,11 @@ function InternalBookingConfirmationForm({
                 )}
               />
 
+              <GuestEmailInput
+                emails={guestEmails}
+                onChange={onGuestEmailsChange}
+              />
+
               <div className="flex gap-3 pt-2">
                 <Button
                   type="button"
@@ -293,6 +303,7 @@ export function ScheduleInterviewSheet({
   const [selectedDuration, setSelectedDuration] = useState<number>(30);
   const [meetingType, setMeetingType] = useState<'google_meet' | 'custom'>('google_meet');
   const [customLocation, setCustomLocation] = useState('');
+  const [guestEmails, setGuestEmails] = useState<string[]>([]);
   const candidateTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   // Fetch stage interviewer assignments
@@ -445,6 +456,7 @@ export function ScheduleInterviewSheet({
       send_invitation: sendInvitation,
       meeting_type_preference: meetingType,
       custom_meeting_location: meetingType === 'custom' ? customLocation : null,
+      guest_emails: guestEmails.length > 0 ? guestEmails : undefined,
     };
 
     await createBookingMutation.mutateAsync(bookingData);
@@ -505,6 +517,7 @@ export function ScheduleInterviewSheet({
       setSelectedDuration(30);
       setMeetingType('google_meet');
       setCustomLocation('');
+      setGuestEmails([]);
       onOpenChange(false);
     },
     onError: (error: any) => {
@@ -541,6 +554,7 @@ export function ScheduleInterviewSheet({
       setSelectedSlot(null);
       setMeetingType('google_meet');
       setCustomLocation('');
+      setGuestEmails([]);
     }
     onOpenChange(newOpen);
   };
@@ -717,6 +731,8 @@ export function ScheduleInterviewSheet({
                     candidatePhone={candidatePhone || ''}
                     meetingType={meetingType}
                     customLocation={customLocation}
+                    guestEmails={guestEmails}
+                    onGuestEmailsChange={setGuestEmails}
                   />
                 </div>
               )}

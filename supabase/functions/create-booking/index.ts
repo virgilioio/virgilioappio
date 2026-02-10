@@ -37,6 +37,8 @@ serve(async (req) => {
       custom_meeting_location = null,
       // Per-booking custom event title override (takes priority over config default)
       custom_event_title = null,
+      // Guest emails for additional attendees
+      guest_emails = [],
     } = await req.json();
 
     // Validate custom location if specified
@@ -317,6 +319,8 @@ serve(async (req) => {
                 { email: profile.email }, // Interviewer
                 // Only add transcript ingest for job-specific bookings
                 ...(transcriptIngestEmail ? [{ email: transcriptIngestEmail, optional: true, responseStatus: 'accepted' }] : []),
+                // Add guest emails as attendees
+                ...(guest_emails || []).map((ge: string) => ({ email: ge })),
               ],
               conferenceData: meeting_type_preference === 'google_meet' ? {
                 createRequest: {
@@ -476,6 +480,8 @@ serve(async (req) => {
         // Transcript ingest
         transcript_ingest_code: transcriptIngestCode,
         transcript_ingest_email: transcriptIngestEmail,
+        // Guest emails
+        guest_emails: guest_emails && guest_emails.length > 0 ? guest_emails : [],
       })
       .select()
       .single();
@@ -494,9 +500,13 @@ serve(async (req) => {
     };
 
     // Only include candidate in ICS if send_invitation is true
-    const icsAttendees = send_invitation 
-      ? `ATTENDEE;CN=${escapeICSText(candidate_name)};RSVP=TRUE:mailto:${candidate_email}\r\n`
-      : '';
+    const icsAttendees = [
+      ...(send_invitation 
+        ? [`ATTENDEE;CN=${escapeICSText(candidate_name)};RSVP=TRUE:mailto:${candidate_email}`]
+        : []),
+      ...(guest_emails || []).map((ge: string) => `ATTENDEE;RSVP=TRUE:mailto:${ge}`),
+    ].join('\r\n');
+    const icsAttendeesLine = icsAttendees ? icsAttendees + '\r\n' : '';
 
     const icsContent = [
       'BEGIN:VCALENDAR',
@@ -517,7 +527,7 @@ serve(async (req) => {
           : (custom_meeting_location || '')
       )}`,
       `ORGANIZER;CN=${escapeICSText(`${profile.first_name} ${profile.last_name}`)}:mailto:${profile.email}`,
-      icsAttendees,
+      icsAttendeesLine,
       'STATUS:CONFIRMED',
       'SEQUENCE:0',
       'END:VEVENT',
@@ -680,6 +690,76 @@ serve(async (req) => {
       console.log('[create-booking] Interviewer notification email sent');
     } catch (emailError) {
       console.error('[create-booking] Failed to send interviewer email:', emailError);
+    }
+
+    // Send ICS invite emails to guests
+    if (guest_emails && guest_emails.length > 0) {
+      try {
+        const { createEmailTemplate, formatEmailList } = await import('../_shared/emailTemplate.ts');
+
+        const formattedDateGuest = new Date(scheduled_start).toLocaleString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          timeZone: candidate_timezone,
+        });
+
+        const guestMeetingDetails = [
+          `<strong>Date & Time:</strong> ${formattedDateGuest}`,
+          `<strong>Duration:</strong> ${config.duration_minutes} minutes`,
+          `<strong>Candidate:</strong> ${candidate_name}`,
+          `<strong>Interviewer:</strong> ${profile.first_name} ${profile.last_name}`,
+        ];
+
+        if (googleMeetLink) {
+          guestMeetingDetails.push(`<strong>Join via:</strong> <a href="${googleMeetLink}" style="color: #7e3eff;">Google Meet</a>`);
+        } else if (custom_meeting_location) {
+          guestMeetingDetails.push(`<strong>Location:</strong> ${custom_meeting_location}`);
+        } else if (config.meeting_location) {
+          guestMeetingDetails.push(`<strong>Location:</strong> ${config.meeting_location}`);
+        }
+
+        const guestEmailContent = `
+          <p>You've been invited to an interview.</p>
+          <div class="divider"></div>
+          <p><strong>Interview Details:</strong></p>
+          ${formatEmailList(guestMeetingDetails)}
+          ${notes ? `<p style="margin-top: 16px;"><strong>Notes:</strong><br/>${notes}</p>` : ''}
+          <p style="margin-top: 24px;">A calendar invite is attached to this email.</p>
+        `;
+
+        for (const guestEmail of guest_emails) {
+          try {
+            const guestEmailBody = createEmailTemplate({
+              recipientName: 'there',
+              preheaderText: `Interview invite for ${formattedDateGuest}`,
+              title: `Interview Invite: ${stageName}${jobTitle}`,
+              content: guestEmailContent,
+            });
+
+            await supabase.functions.invoke('send-user-email', {
+              body: {
+                to: [guestEmail],
+                subject: `Interview Invite: ${stageName} with ${candidate_name}${jobTitle}`,
+                body_html: guestEmailBody,
+                attachments: [{
+                  filename: 'interview.ics',
+                  content: icsBase64,
+                  content_type: 'text/calendar',
+                }],
+              },
+            });
+            console.log('[create-booking] Guest email sent to:', guestEmail);
+          } catch (guestError) {
+            console.error('[create-booking] Failed to send guest email to', guestEmail, ':', guestError);
+          }
+        }
+      } catch (guestSetupError) {
+        console.error('[create-booking] Failed to set up guest emails:', guestSetupError);
+      }
     }
 
     // Log activity

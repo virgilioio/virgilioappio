@@ -1,0 +1,1 @@
+ALTER TABLE public.scheduled_bookings ADD COLUMN guest_emails text[] DEFAULT '{}';

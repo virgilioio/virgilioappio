@@ -25,6 +25,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { GuestEmailInput } from '@/components/scheduling/GuestEmailInput';
 
 const formSchema = z.object({
   candidate_name: z.string().min(2, 'Name must be at least 2 characters').max(100),
@@ -48,6 +49,8 @@ function SimpleBookingConfirmationForm({
   customLocation,
   customEventTitle,
   onCustomEventTitleChange,
+  guestEmails,
+  onGuestEmailsChange,
 }: {
   selectedSlot: { start: string; end: string };
   candidateTimezone: string;
@@ -60,6 +63,8 @@ function SimpleBookingConfirmationForm({
   customLocation: string;
   customEventTitle: string;
   onCustomEventTitleChange: (value: string) => void;
+  guestEmails: string[];
+  onGuestEmailsChange: (emails: string[]) => void;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sendInvitation, setSendInvitation] = useState(true);
@@ -223,6 +228,11 @@ function SimpleBookingConfirmationForm({
                 )}
               />
 
+              <GuestEmailInput
+                emails={guestEmails}
+                onChange={onGuestEmailsChange}
+              />
+
               <div className="flex gap-3 pt-2">
                 <Button
                   type="button"
@@ -277,6 +287,7 @@ export function SimpleScheduleInterviewSheet({
   const [meetingType, setMeetingType] = useState<'google_meet' | 'custom'>('google_meet');
   const [customLocation, setCustomLocation] = useState('');
   const [customEventTitle, setCustomEventTitle] = useState('');
+  const [guestEmails, setGuestEmails] = useState<string[]>([]);
   const candidateTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   // Fetch availability for selected interviewer
@@ -342,6 +353,7 @@ export function SimpleScheduleInterviewSheet({
       custom_meeting_location: meetingType === 'custom' ? customLocation : null,
       // Per-booking custom event title override
       custom_event_title: customEventTitle || null,
+      guest_emails: guestEmails.length > 0 ? guestEmails : undefined,
     };
 
     await createBookingMutation.mutateAsync(bookingData);
@@ -398,6 +410,7 @@ export function SimpleScheduleInterviewSheet({
     setMeetingType('google_meet');
     setCustomLocation('');
     setCustomEventTitle('');
+    setGuestEmails([]);
   };
 
   const handleInterviewerSelect = (interviewer: TeamInterviewer) => {
@@ -581,6 +594,8 @@ export function SimpleScheduleInterviewSheet({
                     customLocation={customLocation}
                     customEventTitle={customEventTitle}
                     onCustomEventTitleChange={setCustomEventTitle}
+                    guestEmails={guestEmails}
+                    onGuestEmailsChange={setGuestEmails}
                   />
                 </div>
               )}
