@@ -1,44 +1,95 @@
 
-# Fix: Background Enrichment Not Triggering for Existing Candidates
 
-## Root Cause
+# Fix: Dashboard Data Leaking Across Job Boundaries
 
-There are two code paths for resume uploads, but only one triggers AI enrichment:
+## Problem
 
-1. **New candidate creation** (CandidateFormSheet, create mode): Resume text is captured, and after saving, `triggerBackgroundEnrichment` fires. This works.
+Several dashboard widgets show data from ALL jobs in the tenant, even to users (Hiring Managers, Interviewers) who should only see data for jobs they're assigned to. This violates the job visibility rules where HMs/Interviewers should only see jobs they're explicitly assigned to.
 
-2. **Existing candidate edit** (CandidateFormSheet, edit mode + EnhancedResumeDropzone): The resume is parsed via `parseAndUpdateCandidate`, which updates contact fields but **never calls `triggerBackgroundEnrichment`**. Additionally, the `onResumeTextCaptured` callback is blocked by an `if (!candidate)` guard, so the resume text is never even captured in edit mode.
+### Affected Components
 
-Result: Any candidate who was created first and got a resume uploaded later never gets an AI profile summary or skills generated.
+| Widget | Issue | Severity |
+|--------|-------|----------|
+| **Stale Candidates** | No job filtering at all -- shows all stale candidates across tenant | High |
+| **Pending Tasks (Decisions)** | `fetchNeedsDecision` shows all candidates needing decisions, no job filter | High |
+| **Pending Tasks (Emails)** | `fetchUnreadEmails` shows all unread emails, no job/user filter | High |
+| **Upcoming Activities (Reminders)** | `useDashboardReminders` shows all org reminders, no job filter | Medium |
+| **Recent Searches** | Tenant-scoped, acceptable for recruiter-level feature | Low (acceptable) |
+| **Upcoming Activities (Bookings)** | Already properly filtered by role/assignment | None |
+| **Pending Tasks (Scorecards)** | Already filtered by `interviewer_id` for non-admins | None |
 
-## Fix
+### Who is affected?
 
-Add `triggerBackgroundEnrichment` to the `parseAndUpdateCandidate` function in `src/hooks/useResumeParsing.ts`. This is the cleanest single fix because this function already has access to both the `candidateId` and the extracted `textContent`, and it's the code path used for all existing-candidate resume uploads.
+- **Admins, Workspace Owners, Platform Admins**: Should see everything within their tenant (no change needed for them)
+- **Recruiters**: Per existing rules, recruiters see all jobs -- so they should see all dashboard data within the tenant (no change needed)
+- **Hiring Managers and Interviewers**: Should ONLY see data for jobs they're assigned to. This is currently broken.
 
-### Changes
+## Solution
 
-**File: `src/hooks/useResumeParsing.ts`**
+For each affected hook, add a job-scoping step for non-admin/non-recruiter users:
 
-- Import `triggerBackgroundEnrichment` from `useCandidateEnrichment`
-- At the end of `parseAndUpdateCandidate` (after updating candidate fields), call `triggerBackgroundEnrichment(candidateId, textContent, parsed.name)` to queue background AI generation of profile summary and skills
-- Only trigger if the candidate doesn't already have a complete profile summary (check from the fetched `existing` record to avoid overwriting good data)
+1. Fetch the user's assigned job IDs from `job_assignments`
+2. Filter query results to only include data from those jobs
+3. Admins and recruiters bypass this filter (they see all jobs)
 
-### Technical Detail
+### File Changes
+
+### 1. `src/hooks/useStaleCandidates.ts`
+
+- Add `useAuth` and `usePermissions` imports
+- Accept the current user context
+- For non-admin/non-recruiter users, fetch their assigned job IDs from `job_assignments`
+- Add `.in('job_id', assignedJobIds)` filter to the main query
+- Admins/recruiters skip this filter
+
+### 2. `src/hooks/usePendingActivities.ts`
+
+**`fetchNeedsDecision` function:**
+- For non-admin users, pass an array of accessible job IDs
+- Add `.in('job_id', accessibleJobIds)` to the associations query
+- This ensures HMs/Interviewers only see decision prompts for their assigned jobs
+
+**`fetchUnreadEmails` function:**
+- For non-admin users, filter emails by accessible job IDs
+- Add `.in('job_id', accessibleJobIds)` to the emails query
+- Also add a user-level filter: only show emails where the current user sent the original outbound email (by checking thread ownership), or fall back to job-based filtering
+
+### 3. `src/hooks/useCandidateReminders.ts` (`useDashboardReminders`)
+
+- For non-admin/non-recruiter users, fetch assigned job IDs
+- Filter reminders to only show those linked to assigned jobs
+- Additionally, always show reminders created by the current user (they set the reminder, they should see it)
+
+### Implementation Pattern
+
+Each hook will follow this pattern:
 
 ```text
-parseAndUpdateCandidate(file, candidateId)
-  1. Extract text from file           (already exists)
-  2. Call parse-resume edge function   (already exists)
-  3. Update missing contact fields     (already exists)
-  4. NEW: triggerBackgroundEnrichment() (adds profile_summary + skills)
+1. Check user role (admin/recruiter vs HM/interviewer)
+2. If restricted role:
+   a. Fetch job_assignments for current user
+   b. Extract job IDs
+   c. Add .in('job_id', jobIds) to query
+3. If admin/recruiter: no additional filtering (tenant isolation is sufficient)
 ```
 
-The enrichment function already handles the "only update if missing" logic on the server side for profile_summary, but to be safe we'll also gate the trigger on `!existing.profile_summary` or `existing.profile_summary.length < 50` (same logic already used for the inline update).
+### What stays unchanged
+
+- **Recent Searches**: Tenant-scoped, only visible to admin/recruiter roles anyway (controlled by `showSourcingPanel` in Dashboard.tsx)
+- **Scheduled Bookings**: Already properly filtered
+- **Pending Scorecards**: Already filtered by `interviewer_id`
+
+## Technical Details
+
+- The `job_assignments` table is the source of truth for user-to-job assignment
+- All filtering is additive (AND with existing tenant isolation)
+- RLS on `jobs` already enforces visibility, but these dashboard queries join through other tables (associations, bookings, emails) that may not have the same RLS constraints, so application-level filtering is necessary as defense-in-depth
 
 ## Files Modified
 
 | File | Change |
 |------|--------|
-| `src/hooks/useResumeParsing.ts` | Import `triggerBackgroundEnrichment`, call it at end of `parseAndUpdateCandidate` when profile summary is missing/short |
+| `src/hooks/useStaleCandidates.ts` | Add job-scoping for non-admin/non-recruiter users |
+| `src/hooks/usePendingActivities.ts` | Add job-scoping to `fetchNeedsDecision` and `fetchUnreadEmails` |
+| `src/hooks/useCandidateReminders.ts` | Add job-scoping to `useDashboardReminders` for restricted roles |
 
-One file, ~5 lines added.
