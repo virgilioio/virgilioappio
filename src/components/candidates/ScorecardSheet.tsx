@@ -18,6 +18,7 @@ import { markdownToHtml } from "@/utils/markdown";
 import gioIcon from "@/assets/gio-icon.png";
 import { RecommendedNextStepsDialog } from "./RecommendedNextStepsDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScorecardValidationPoints } from "./ScorecardValidationPoints";
 import { PDFResumeViewer } from "@/components/candidates/PDFResumeViewer";
 import {
   AlertDialog,
@@ -42,6 +43,7 @@ interface ScorecardSheetProps {
   onDelete?: () => Promise<void>;
   isAuthor: boolean;
   candidateName?: string;
+  candidateId?: string;
   jobId?: string;
   linkedinUrl?: string | null;
   jobTitle?: string;
@@ -81,6 +83,7 @@ export function ScorecardSheet({
   onDelete,
   isAuthor,
   candidateName,
+  candidateId,
   jobId,
   linkedinUrl,
   jobTitle,
@@ -923,6 +926,15 @@ export function ScorecardSheet({
 
               {/* Right Panel - Scorecard Form */}
               <div className="w-[50%] overflow-y-auto p-6 space-y-6">
+                {/* Validation Points Panel */}
+                {candidateId && jobId && stageName && (
+                  <ScorecardValidationPoints
+                    candidateId={candidateId}
+                    jobId={jobId}
+                    associationId={associationId}
+                    stageName={stageName}
+                  />
+                )}
                 {/* AI Suggested Rating Banner */}
                 {isAiDraft && aiSuggestedRating && (
                   <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg flex items-center justify-between">

@@ -1655,6 +1655,7 @@ const stageHasAutomation = useMemo(() => {
                   : myScorecardsByStage[scoreStageInstId] && user?.id === myScorecardsByStage[scoreStageInstId].created_by
               )}
               candidateName={candidate?.candidate_name}
+              candidateId={candidateId || undefined}
               linkedinUrl={candidate?.linkedin_url}
               jobTitle={job?.title}
               onSubmit={async (rating, overview) => {
