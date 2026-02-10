@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import { isRestrictedRole, fetchAssignedJobIds } from '@/utils/jobScoping';
 
 export type ActivityType = 'scorecard' | 'decision' | 'email';
 
@@ -30,24 +31,32 @@ export function usePendingActivities() {
   const queryClient = useQueryClient();
   
   const isAdmin = permissions.isAdmin || permissions.isWorkspaceOwner || permissions.isPlatformAdmin;
+  const restricted = isRestrictedRole(permissions);
 
   const query = useQuery({
-    queryKey: ['pending-activities', user?.id, isAdmin],
+    queryKey: ['pending-activities', user?.id, isAdmin, restricted],
     queryFn: async (): Promise<PendingActivity[]> => {
       if (!user?.id) return [];
 
+      // For restricted roles, fetch assigned job IDs once for all sub-queries
+      let assignedJobIds: string[] | null = null;
+      if (restricted) {
+        assignedJobIds = await fetchAssignedJobIds(user.id);
+        if (assignedJobIds.length === 0) return [];
+      }
+
       const activities: PendingActivity[] = [];
 
-      // 1. Fetch pending scorecards (reuse existing logic)
+      // 1. Fetch pending scorecards (already filtered by interviewer_id for non-admins)
       const scorecardActivities = await fetchPendingScorecards(user.id, isAdmin);
       activities.push(...scorecardActivities);
 
       // 2. Fetch candidates needing decision
-      const decisionActivities = await fetchNeedsDecision(user.id, isAdmin);
+      const decisionActivities = await fetchNeedsDecision(user.id, isAdmin, assignedJobIds);
       activities.push(...decisionActivities);
 
       // 3. Fetch unread email replies
-      const emailActivities = await fetchUnreadEmails(user.id, isAdmin);
+      const emailActivities = await fetchUnreadEmails(user.id, isAdmin, assignedJobIds);
       activities.push(...emailActivities);
 
       // Sort all activities by timestamp (oldest/most urgent first)
@@ -204,11 +213,10 @@ async function fetchPendingScorecards(userId: string, isAdmin: boolean): Promise
   return activities;
 }
 
-async function fetchNeedsDecision(userId: string, isAdmin: boolean): Promise<PendingActivity[]> {
+async function fetchNeedsDecision(userId: string, isAdmin: boolean, assignedJobIds: string[] | null): Promise<PendingActivity[]> {
   // Fetch active candidates that have scorecards submitted for their current stage
-  // These are candidates that need a decision (move forward or reject)
   
-  const { data: associations, error } = await supabase
+  let query = supabase
     .from('job_candidate_associations')
     .select(`
       id,
@@ -225,6 +233,13 @@ async function fetchNeedsDecision(userId: string, isAdmin: boolean): Promise<Pen
     `)
     .eq('status', 'active')
     .not('current_stage_id', 'is', null);
+
+  // Apply job-scoping for restricted roles
+  if (assignedJobIds) {
+    query = query.in('job_id', assignedJobIds);
+  }
+
+  const { data: associations, error } = await query;
 
   if (error || !associations || associations.length === 0) return [];
 
@@ -279,9 +294,9 @@ async function fetchNeedsDecision(userId: string, isAdmin: boolean): Promise<Pen
   return activities;
 }
 
-async function fetchUnreadEmails(userId: string, isAdmin: boolean): Promise<PendingActivity[]> {
+async function fetchUnreadEmails(userId: string, isAdmin: boolean, assignedJobIds: string[] | null): Promise<PendingActivity[]> {
   // Fetch unread emails received from candidates
-  const { data: emails, error } = await supabase
+  let query = supabase
     .from('email_logs')
     .select(`
       id,
@@ -298,6 +313,13 @@ async function fetchUnreadEmails(userId: string, isAdmin: boolean): Promise<Pend
     .not('candidate_id', 'is', null)
     .order('received_at', { ascending: false })
     .limit(50);
+
+  // Apply job-scoping for restricted roles
+  if (assignedJobIds) {
+    query = query.in('job_id', assignedJobIds);
+  }
+
+  const { data: emails, error } = await query;
 
   if (error || !emails || emails.length === 0) return [];
 

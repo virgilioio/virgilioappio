@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrgContext } from '@/contexts/OrgContext'
+import { usePermissions } from '@/hooks/usePermissions'
+import { isRestrictedRole, fetchAssignedJobIds } from '@/utils/jobScoping'
 import { toast } from '@/hooks/use-toast'
 
 export interface CandidateReminder {
@@ -232,14 +234,22 @@ export function useCandidateReminders(candidateId: string | null | undefined, jo
 export function useDashboardReminders(tab: 'upcoming' | 'past' = 'upcoming') {
   const { user } = useAuth()
   const { organizationId } = useOrgContext()
+  const permissions = usePermissions()
+  const restricted = isRestrictedRole(permissions)
   const queryClient = useQueryClient()
 
-  const queryKey = ['dashboard-reminders', tab, organizationId]
+  const queryKey = ['dashboard-reminders', tab, organizationId, restricted]
 
   const { data: reminders = [], isLoading, error } = useQuery({
     queryKey,
     queryFn: async () => {
       if (!user?.id || !organizationId) return []
+
+      // For restricted roles, fetch assigned job IDs
+      let assignedJobIds: string[] | null = null
+      if (restricted) {
+        assignedJobIds = await fetchAssignedJobIds(user.id)
+      }
 
       const now = new Date()
       const nowIso = now.toISOString()
@@ -260,13 +270,10 @@ export function useDashboardReminders(tab: 'upcoming' | 'past' = 'upcoming') {
         .eq('organization_id', organizationId)
 
       if (tab === 'upcoming') {
-        // Upcoming: not completed AND (past-due OR due within current month)
-        // Past-due reminders always show to surface forgotten items
         query = query
           .is('completed_at', null)
           .or(`due_at.lt.${nowIso},and(due_at.gte.${startOfMonthIso},due_at.lte.${endOfMonthIso})`)
       } else {
-        // Past: completed reminders from the current month only
         query = query
           .not('completed_at', 'is', null)
           .gte('completed_at', startOfMonthIso)
@@ -278,7 +285,19 @@ export function useDashboardReminders(tab: 'upcoming' | 'past' = 'upcoming') {
       const { data, error } = await query
 
       if (error) throw error
-      return (data || []) as CandidateReminder[]
+      
+      let results = (data || []) as CandidateReminder[]
+
+      // For restricted roles, filter to assigned jobs OR reminders created by the user
+      if (restricted && assignedJobIds) {
+        const jobIdSet = new Set(assignedJobIds)
+        results = results.filter(r => 
+          r.created_by === user.id || // Always show own reminders
+          (r.job_id && jobIdSet.has(r.job_id)) // Show reminders for assigned jobs
+        )
+      }
+
+      return results
     },
     enabled: !!user?.id && !!organizationId
   })

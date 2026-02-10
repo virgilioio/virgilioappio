@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { differenceInDays } from 'date-fns';
+import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
+import { isRestrictedRole, fetchAssignedJobIds } from '@/utils/jobScoping';
 
 export interface StaleCandidate {
   associationId: string;
@@ -17,15 +20,28 @@ export interface StaleCandidate {
 const STALE_THRESHOLD_DAYS = 7;
 
 export function useStaleCandidates() {
+  const { user } = useAuth();
+  const permissions = usePermissions();
+  const restricted = isRestrictedRole(permissions);
+
   return useQuery({
-    queryKey: ['stale-candidates'],
+    queryKey: ['stale-candidates', user?.id, restricted],
     queryFn: async (): Promise<StaleCandidate[]> => {
+      if (!user?.id) return [];
+
+      // For restricted roles, fetch assigned job IDs first
+      let assignedJobIds: string[] | null = null;
+      if (restricted) {
+        assignedJobIds = await fetchAssignedJobIds(user.id);
+        if (assignedJobIds.length === 0) return []; // No assigned jobs = no results
+      }
+
       const thresholdDate = new Date();
       thresholdDate.setDate(thresholdDate.getDate() - STALE_THRESHOLD_DAYS);
       const now = new Date().toISOString();
 
-      // Step 1: Get potential stale candidates (fetch more to account for filtering)
-      const { data: potentialStale, error } = await supabase
+      // Step 1: Get potential stale candidates
+      let query = supabase
         .from('job_candidate_associations')
         .select(`
           id,
@@ -48,6 +64,13 @@ export function useStaleCandidates() {
         .order('entered_stage_at', { ascending: true })
         .limit(100);
 
+      // Apply job-scoping for restricted roles
+      if (assignedJobIds) {
+        query = query.in('job_id', assignedJobIds);
+      }
+
+      const { data: potentialStale, error } = await query;
+
       if (error) {
         console.error('Error fetching stale candidates:', error);
         throw error;
@@ -59,8 +82,7 @@ export function useStaleCandidates() {
       const candidateIds = potentialStale.map(r => r.candidate_id);
       const jobIds = potentialStale.map(r => r.job_id);
 
-      // Step 2: Get upcoming bookings by candidate_id + job_id (more reliable than association_id)
-      // This handles cases where historical bookings may have had incorrect association IDs
+      // Step 2: Get upcoming bookings by candidate_id + job_id
       const { data: upcomingBookings } = await supabase
         .from('scheduled_bookings')
         .select('candidate_id, job_id')
@@ -97,7 +119,7 @@ export function useStaleCandidates() {
           continue;
         }
 
-        // Skip if has upcoming confirmed booking (using candidate+job key for reliability)
+        // Skip if has upcoming confirmed booking
         if (candidatesWithBookings.has(`${row.candidate_id}-${row.job_id}`)) {
           continue;
         }
@@ -134,5 +156,6 @@ export function useStaleCandidates() {
       return staleCandidates;
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
+    enabled: !!user?.id,
   });
 }
