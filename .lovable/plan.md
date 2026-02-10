@@ -1,39 +1,44 @@
 
-# Fix: Pass `jobId` to ScorecardSheet
+# Fix: Background Enrichment Not Triggering for Existing Candidates
 
-## Problem
+## Root Cause
 
-The `ScorecardValidationPoints` component IS in the `ScorecardSheet` template (line 930), but it's guarded by:
+There are two code paths for resume uploads, but only one triggers AI enrichment:
 
-```tsx
-{candidateId && jobId && stageName && (
-  <ScorecardValidationPoints ... />
-)}
-```
+1. **New candidate creation** (CandidateFormSheet, create mode): Resume text is captured, and after saving, `triggerBackgroundEnrichment` fires. This works.
 
-The issue is that `CandidateProfileSheet` never passes `jobId` to `ScorecardSheet` (lines 1639-1675). Since `jobId` is `undefined`, the condition fails silently and the panel never renders.
+2. **Existing candidate edit** (CandidateFormSheet, edit mode + EnhancedResumeDropzone): The resume is parsed via `parseAndUpdateCandidate`, which updates contact fields but **never calls `triggerBackgroundEnrichment`**. Additionally, the `onResumeTextCaptured` callback is blocked by an `if (!candidate)` guard, so the resume text is never even captured in edit mode.
+
+Result: Any candidate who was created first and got a resume uploaded later never gets an AI profile summary or skills generated.
 
 ## Fix
 
-One line addition in `src/components/candidates/CandidateProfileSheet.tsx` -- add `jobId={jobId}` to the `ScorecardSheet` usage around line 1639:
+Add `triggerBackgroundEnrichment` to the `parseAndUpdateCandidate` function in `src/hooks/useResumeParsing.ts`. This is the cleanest single fix because this function already has access to both the `candidateId` and the extracted `textContent`, and it's the code path used for all existing-candidate resume uploads.
 
-```tsx
-<ScorecardSheet
-  open={scoreOpen}
-  ...
-  candidateId={candidateId || undefined}
-  jobId={jobId}              // <-- ADD THIS LINE
-  linkedinUrl={candidate?.linkedin_url}
-  ...
-/>
+### Changes
+
+**File: `src/hooks/useResumeParsing.ts`**
+
+- Import `triggerBackgroundEnrichment` from `useCandidateEnrichment`
+- At the end of `parseAndUpdateCandidate` (after updating candidate fields), call `triggerBackgroundEnrichment(candidateId, textContent, parsed.name)` to queue background AI generation of profile summary and skills
+- Only trigger if the candidate doesn't already have a complete profile summary (check from the fetched `existing` record to avoid overwriting good data)
+
+### Technical Detail
+
+```text
+parseAndUpdateCandidate(file, candidateId)
+  1. Extract text from file           (already exists)
+  2. Call parse-resume edge function   (already exists)
+  3. Update missing contact fields     (already exists)
+  4. NEW: triggerBackgroundEnrichment() (adds profile_summary + skills)
 ```
 
-`jobId` is already available as a prop of `CandidateProfileSheet` (line 93), so no other changes needed.
+The enrichment function already handles the "only update if missing" logic on the server side for profile_summary, but to be safe we'll also gate the trigger on `!existing.profile_summary` or `existing.profile_summary.length < 50` (same logic already used for the inline update).
 
 ## Files Modified
 
 | File | Change |
 |------|--------|
-| `src/components/candidates/CandidateProfileSheet.tsx` | Add `jobId={jobId}` prop to `ScorecardSheet` |
+| `src/hooks/useResumeParsing.ts` | Import `triggerBackgroundEnrichment`, call it at end of `parseAndUpdateCandidate` when profile summary is missing/short |
 
-One-line fix.
+One file, ~5 lines added.
