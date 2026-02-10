@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { SafeHtml } from '@/components/ui/safe-html'
+import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMarkdown'
 import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, FileText, ChevronLeft, ChevronRight, Clock, Download, Briefcase } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
 // removed unused LinkedInFilled import (now handled inside CandidateNameCard)
@@ -484,12 +485,10 @@ export default function CandidateProfile() {
                       <CardTitle className="text-lg font-medium text-text-primary">Profile Summary</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="prose prose-sm max-w-none text-text-primary">
-                        <SafeHtml
-                          content={candidate.profile_summary}
-                          className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
-                        />
-                      </div>
+                      <ProfileSummaryMarkdown
+                        content={candidate.profile_summary}
+                        className="text-text-primary leading-relaxed"
+                      />
                     </CardContent>
                   </Card>
                 )}
