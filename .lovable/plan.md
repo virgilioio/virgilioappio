@@ -1,42 +1,44 @@
 
 
-# Fix: Edit Job Sheet Width and Skills Panel Responsiveness
+# Fix: Profile Summary Showing Raw Markdown
 
 ## Problem
 
-1. **Width mismatch**: The "Create New Job" wizard is 900px total, but its left sidebar is 256px (`w-64`), making the actual form content area roughly **636px**. The "Edit Job" sheet currently uses `w-[600px] sm:w-[800px]` -- too narrow on mobile (fixed 600px overflows) and too wide on desktop (800px is wider than the wizard's form area).
+The AI enrichment function generates profile summaries using **markdown formatting** (e.g., `**bold**`, `*italics*`, `---`). However, the display in `CandidateProfileSheet.tsx` uses the `SafeHtml` component, which only renders HTML. Since the content is markdown -- not HTML -- it shows the raw markup characters as literal text.
 
-2. **Skills panel overflow**: When skills are generated, 3 action buttons ("Clear All", "Accept All", "Add Selected") sit in one row with the title. On narrower screens this overflows. The category tabs also use a rigid `grid-cols-7` that cramps on smaller widths.
+A `ProfileSummaryMarkdown` component already exists in the codebase (using `react-markdown`) but is not being used anywhere.
 
-## Changes
+## Fix
 
-### 1. JobFormSheet.tsx (line 203) -- Match form content width
+### `src/components/candidates/CandidateProfileSheet.tsx` (around line 1431-1436)
 
-Change:
+Replace:
+```tsx
+<SafeHtml
+  content={candidate.profile_summary}
+  className="leading-relaxed ..."
+/>
 ```
-w-[600px] sm:w-[800px]
+
+With:
+```tsx
+<ProfileSummaryMarkdown
+  content={candidate.profile_summary}
+  className="text-text-primary leading-relaxed"
+/>
 ```
-To:
-```
-w-full sm:max-w-[640px]
-```
 
-- On mobile: fills the screen (`w-full`) instead of forcing 600px
-- On desktop: caps at 640px, matching the wizard's form content area (900px minus the 256px sidebar)
+This uses the existing `ProfileSummaryMarkdown` component which properly renders markdown with styled headings, bold, italics, lists, and horizontal rules.
 
-### 2. JobSkillsGenerationPanel.tsx (lines 155-211) -- Responsive header buttons
+### Check other display points
 
-Change the header layout from a single-row `flex items-center justify-between` to a stacking layout:
-- Title and buttons wrap to separate lines on smaller screens using `flex flex-col sm:flex-row gap-2`
-- Action buttons group uses `flex flex-wrap gap-2` so they wrap gracefully
+The same fix should be applied anywhere `profile_summary` is displayed using `SafeHtml` or plain text. I'll audit `ApolloPreviewSheet.tsx` and any other files that render profile summaries.
 
-### 3. JobSkillsGenerationPanel.tsx (line 227) -- Responsive category tabs
+## Files Modified
 
-Change `TabsList` from `grid grid-cols-7` to `flex flex-wrap h-auto gap-1` so tabs wrap to multiple rows instead of cramming into 7 fixed columns.
+| File | Change |
+|------|--------|
+| `src/components/candidates/CandidateProfileSheet.tsx` | Swap `SafeHtml` for `ProfileSummaryMarkdown` when rendering profile summary |
 
-### 4. SkillsGenerationPanel.tsx -- Same fixes for consistency
-
-Apply the identical header-stacking and tabs-wrapping fixes to the candidate-side skills panel, which shares the same layout patterns (lines ~120-196).
-
-## No functionality changes -- pure CSS/layout adjustments.
+## No functionality or backend changes needed.
 
