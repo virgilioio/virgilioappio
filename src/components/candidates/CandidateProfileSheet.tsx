@@ -1656,6 +1656,7 @@ const stageHasAutomation = useMemo(() => {
               )}
               candidateName={candidate?.candidate_name}
               candidateId={candidateId || undefined}
+              jobId={jobId}
               linkedinUrl={candidate?.linkedin_url}
               jobTitle={job?.title}
               onSubmit={async (rating, overview) => {
