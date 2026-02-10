@@ -12,6 +12,7 @@ import type { ScoreRating, ScorecardRow } from "@/hooks/useScorecards";
 import { ThumbsDown, ThumbsUp, Star, Octagon, Loader2, Sparkles, Lightbulb, Trash2, FileText, DollarSign } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabaseClient";
+import { triggerFitAnalysis } from "@/utils/triggerFitAnalysis";
 import type { InterviewQuestion, SelectOption, SalaryConfig } from "@/hooks/useScorecardsConfiguration";
 import { markdownToHtml } from "@/utils/markdown";
 import gioIcon from "@/assets/gio-icon.png";
@@ -600,6 +601,18 @@ export function ScorecardSheet({
       clearDraft();
 
       setEditMode(false);
+
+      // Trigger AI fit analysis refresh
+      if (jobId) {
+        const { data: assocData } = await supabase
+          .from('job_candidate_associations')
+          .select('candidate_id')
+          .eq('id', associationId)
+          .maybeSingle();
+        if (assocData?.candidate_id) {
+          triggerFitAnalysis(assocData.candidate_id, jobId);
+        }
+      }
     } catch (err: any) {
       const msg = err?.message || 'Failed to save scorecard';
       toast({ title: 'Save failed', description: msg, variant: 'destructive' });
