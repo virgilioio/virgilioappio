@@ -24,6 +24,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 
 import { Link } from 'react-router-dom'
 import { SafeHtml } from '@/components/ui/safe-html'
+import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMarkdown'
 import { getSkillColor } from '@/utils/skillColors'
 import { ScorecardSheet } from '@/components/candidates/ScorecardSheet'
 import { useMyScorecards } from '@/hooks/useScorecards'
@@ -1429,12 +1430,10 @@ const stageHasAutomation = useMemo(() => {
                             <AccordionContent>
                               <CardContent className="pt-0">
                                 {candidate.profile_summary ? (
-                                  <div className="prose prose-sm max-w-none text-text-primary">
-                                    <SafeHtml
-                                      content={candidate.profile_summary}
-                                      className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
-                                    />
-                                  </div>
+                                  <ProfileSummaryMarkdown
+                                    content={candidate.profile_summary}
+                                    className="text-text-primary leading-relaxed"
+                                  />
                                 ) : (
                                   <div className="text-sm text-text-secondary">No summary available.</div>
                                 )}

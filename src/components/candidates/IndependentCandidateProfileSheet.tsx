@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { SafeHtml } from '@/components/ui/safe-html'
+import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMarkdown'
 import { Badge } from '@/components/ui/badge'
 import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
@@ -646,12 +647,10 @@ export function IndependentCandidateProfileSheet({
                               <AccordionContent>
                                 <CardContent className="pt-0">
                                   {candidate.profile_summary ? (
-                                    <div className="prose prose-sm max-w-none text-text-primary">
-                                      <SafeHtml
-                                        content={candidate.profile_summary}
-                                        className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
-                                      />
-                                    </div>
+                                    <ProfileSummaryMarkdown
+                                      content={candidate.profile_summary}
+                                      className="text-text-primary leading-relaxed"
+                                    />
                                   ) : (
                                     <div className="text-sm text-text-secondary">No summary available.</div>
                                   )}
