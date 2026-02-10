@@ -125,12 +125,12 @@ export const SkillsGenerationPanel: React.FC<SkillsGenerationPanelProps> = ({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
             AI Skills Generation
           </CardTitle>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {!hasGeneratedSkills && (
               <Button
                 type="button"
@@ -184,7 +184,7 @@ export const SkillsGenerationPanel: React.FC<SkillsGenerationPanelProps> = ({
           </div>
 
           <Tabs defaultValue="all" className="w-full">
-            <TabsList className="grid w-full grid-cols-7">
+            <TabsList className="flex flex-wrap h-auto gap-1 w-full">
               <TabsTrigger value="all">All ({generatedSkills.length})</TabsTrigger>
               {Object.entries(skillsByCategory).map(([category, skills]) => (
                 skills.length > 0 && (

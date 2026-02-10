@@ -200,7 +200,7 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
   return (
     <>
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="w-[600px] sm:w-[800px] flex flex-col">
+      <SheetContent className="w-full sm:max-w-[640px] flex flex-col">
         <SheetHeader>
           <SheetTitle className="text-h4-mobile font-poppins font-bold text-virgilio-text tracking-page-title">
             {job ? 'Edit Job' : 'Create New Job'}<span className="text-purple-period">.</span>
