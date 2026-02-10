@@ -1,6 +1,5 @@
 
 import { useAuth } from '@/contexts/AuthContext'
-import { useUserProfile } from '@/hooks/useUserProfile'
 import { useIsPlatformAdmin } from '@/hooks/useIsPlatformAdmin'
 
 export interface PermissionsState {
@@ -62,7 +61,6 @@ export interface PermissionsState {
 
 export function usePermissions(): PermissionsState {
   const { user, organizationId, userType, memberRole, hasOrganizationContext } = useAuth()
-  const { profile } = useUserProfile()
   const isGoGioAdmin = useIsPlatformAdmin()
   
   // Simplified user type classification
