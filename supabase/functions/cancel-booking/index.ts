@@ -208,6 +208,8 @@ serve(async (req) => {
       `DESCRIPTION:${escapeICSText('This interview has been cancelled.' + (reason ? '\n\nReason: ' + reason : ''))}`,
       `ORGANIZER;CN=${escapeICSText(interviewerProfile ? `${interviewerProfile.first_name} ${interviewerProfile.last_name}` : 'Interviewer')}:mailto:${interviewerProfile?.email || 'no-reply@app.gogio.io'}`,
       `ATTENDEE;CN=${escapeICSText(booking.candidate_name)};RSVP=TRUE:mailto:${booking.candidate_email}`,
+      // Add guest attendees to cancellation ICS
+      ...((booking.guest_emails || []) as string[]).map((ge: string) => `ATTENDEE;RSVP=TRUE:mailto:${ge}`),
       'STATUS:CANCELLED',
       'SEQUENCE:1',
       'END:VEVENT',
@@ -309,7 +311,53 @@ serve(async (req) => {
       });
     }
 
-    // Log activity
+    // Send cancellation emails to guests
+    const guestEmails = (booking.guest_emails || []) as string[];
+    if (guestEmails.length > 0) {
+      const guestCancellationDetails = [
+        `<strong>Interview:</strong> ${interviewTitle}`,
+        `<strong>Originally Scheduled:</strong> ${formattedDate}`,
+      ];
+
+      if (reason) {
+        guestCancellationDetails.push(`<strong>Reason:</strong> ${reason}`);
+      }
+
+      const guestContent = `
+        <p>An interview you were invited to has been cancelled.</p>
+        <div class="divider"></div>
+        ${formatEmailList(guestCancellationDetails)}
+        <p style="margin-top: 24px;">A calendar cancellation has been attached to update your calendar.</p>
+      `;
+
+      for (const guestEmail of guestEmails) {
+        try {
+          const guestEmailHtml = createEmailTemplate({
+            recipientName: 'there',
+            preheaderText: `Interview scheduled for ${formattedDate} has been cancelled`,
+            title: 'Interview Cancelled',
+            content: guestContent,
+          });
+
+          await supabase.functions.invoke('send-user-email', {
+            body: {
+              to: [guestEmail],
+              subject: `Interview Cancelled: ${interviewTitle}`,
+              html: guestEmailHtml,
+              attachments: [{
+                filename: 'cancellation.ics',
+                content: icsBase64,
+                encoding: 'base64',
+                contentType: 'text/calendar',
+              }],
+            },
+          });
+          console.log('[cancel-booking] Guest cancellation email sent to:', guestEmail);
+        } catch (guestError) {
+          console.error('[cancel-booking] Failed to send guest cancellation to', guestEmail, ':', guestError);
+        }
+      }
+    }
     if (booking.candidate_id && booking.job_id) {
       await supabase.from('activities').insert({
         user_id: user.id,

@@ -3353,6 +3353,7 @@ export type Database = {
           google_calendar_cancelled: boolean | null
           google_event_id: string | null
           google_meet_link: string | null
+          guest_emails: string[] | null
           ics_uid: string | null
           id: string
           interviewer_confirmation_status: string | null
@@ -3401,6 +3402,7 @@ export type Database = {
           google_calendar_cancelled?: boolean | null
           google_event_id?: string | null
           google_meet_link?: string | null
+          guest_emails?: string[] | null
           ics_uid?: string | null
           id?: string
           interviewer_confirmation_status?: string | null
@@ -3449,6 +3451,7 @@ export type Database = {
           google_calendar_cancelled?: boolean | null
           google_event_id?: string | null
           google_meet_link?: string | null
+          guest_emails?: string[] | null
           ics_uid?: string | null
           id?: string
           interviewer_confirmation_status?: string | null
