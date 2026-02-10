@@ -182,3 +182,6 @@ verify_jwt = true
 
 [functions.grant-tenant-credits]
 verify_jwt = true
+
+[functions.analyze-candidate-fit]
+verify_jwt = true

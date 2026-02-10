@@ -58,6 +58,7 @@ import { RejectionStatusBanner } from './RejectionStatusBanner'
 import { OfferStatusBanner } from './OfferStatusBanner'
 import { CreateOfferLetterSheet } from './CreateOfferLetterDialog'
 import { CandidateReminders } from './CandidateReminders'
+import { CandidateInsightsTab } from './insights/CandidateInsightsTab'
 import { useQuery } from '@tanstack/react-query'
 
 interface StageScorecardProps {
@@ -107,7 +108,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [jobCandidateId, setJobCandidateId] = useState<string | null>(null)
   const [job, setJob] = useState<any | null>(null)
   const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'overview'>('job')
-  const [rightActiveTab, setRightActiveTab] = useState<'feed' | 'notes' | 'emails' | 'reminders'>('feed')
+  const [rightActiveTab, setRightActiveTab] = useState<'feed' | 'notes' | 'emails' | 'reminders' | 'insights'>('feed')
   const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
   const [education, setEducation] = useState<CandidateEducation[]>([])
   const [editOpen, setEditOpen] = useState(false)
@@ -296,7 +297,7 @@ const stageHasAutomation = useMemo(() => {
       // Load job info
       const { data: jobData } = await supabase
         .from('jobs')
-        .select('id, title')
+        .select('id, title, description')
         .eq('id', jobId)
         .maybeSingle()
       setJob(jobData || null)
@@ -1526,14 +1527,15 @@ const stageHasAutomation = useMemo(() => {
                      <CandidateNameCard
                        email={candidate.email}
                        phone={candidate.phone}
-                       tabs={[
-                         { value: 'feed', label: 'Feed', Icon: Activity },
-                         { value: 'notes', label: 'Notes', Icon: StickyNote },
-                         { value: 'emails', label: 'Emails', Icon: Mail },
-                         { value: 'reminders', label: 'Reminders', Icon: Bell },
-                       ]}
-                       activeTab={rightActiveTab}
-                       onTabChange={(v) => setRightActiveTab(v as 'feed' | 'notes' | 'emails' | 'reminders')}
+                        tabs={[
+                          { value: 'feed', label: 'Feed', Icon: Activity },
+                          { value: 'notes', label: 'Notes', Icon: StickyNote },
+                          { value: 'emails', label: 'Emails', Icon: Mail },
+                          { value: 'reminders', label: 'Reminders', Icon: Bell },
+                          { value: 'insights', label: 'Insights', Icon: Sparkles },
+                        ]}
+                        activeTab={rightActiveTab}
+                        onTabChange={(v) => setRightActiveTab(v as 'feed' | 'notes' | 'emails' | 'reminders' | 'insights')}
                      />
 
                      {/* Feed Tab */}
@@ -1595,9 +1597,18 @@ const stageHasAutomation = useMemo(() => {
                       )}
 
                       {/* Reminders Tab */}
-                      {rightActiveTab === 'reminders' && candidateId && (
+                       {rightActiveTab === 'reminders' && candidateId && (
                         <CandidateReminders candidateId={candidateId} jobId={jobId} />
-                      )}
+                       )}
+
+                       {/* Insights Tab */}
+                       {rightActiveTab === 'insights' && candidateId && (
+                         <CandidateInsightsTab
+                           candidateId={candidateId}
+                           jobId={jobId}
+                           jobDescription={job?.description}
+                         />
+                       )}
 
                       {/* Job Information */}
                        <Card className="bg-surface-primary border-border">

@@ -1888,6 +1888,11 @@ export type Database = {
       job_candidate_associations: {
         Row: {
           added_by: string | null
+          ai_fit_analysis: Json | null
+          ai_fit_confidence: string | null
+          ai_fit_generated_at: string | null
+          ai_fit_score: number | null
+          ai_fit_version: number | null
           booking_link_sent_at: string | null
           candidate_id: string
           created_at: string
@@ -1912,6 +1917,11 @@ export type Database = {
         }
         Insert: {
           added_by?: string | null
+          ai_fit_analysis?: Json | null
+          ai_fit_confidence?: string | null
+          ai_fit_generated_at?: string | null
+          ai_fit_score?: number | null
+          ai_fit_version?: number | null
           booking_link_sent_at?: string | null
           candidate_id: string
           created_at?: string
@@ -1936,6 +1946,11 @@ export type Database = {
         }
         Update: {
           added_by?: string | null
+          ai_fit_analysis?: Json | null
+          ai_fit_confidence?: string | null
+          ai_fit_generated_at?: string | null
+          ai_fit_score?: number | null
+          ai_fit_version?: number | null
           booking_link_sent_at?: string | null
           candidate_id?: string
           created_at?: string
