@@ -5,6 +5,7 @@ import { markdownToHtml } from '@/utils/markdown';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 import { extractTextFromFile } from '@/utils/pdfText';
+import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment';
 
 export type ParsedResume = {
   name?: string;
@@ -259,6 +260,13 @@ export function useResumeParsing() {
         }
       } else {
         toast.success('Resume parsed; no updates were needed.');
+      }
+
+      // Trigger background enrichment if profile summary is missing/short
+      const needsEnrichment = !existing?.profile_summary || existing.profile_summary.trim().length < 50;
+      if (needsEnrichment && textContent) {
+        console.log('[Resume Parsing] Triggering background enrichment for candidate', candidateId);
+        triggerBackgroundEnrichment(candidateId, textContent, parsed.name);
       }
 
       return parsed;
