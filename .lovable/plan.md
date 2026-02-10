@@ -1,44 +1,64 @@
 
 
-# Fix: Profile Summary Showing Raw Markdown
+# Bypass Credit Card Wall via Feature Flag
 
-## Problem
+## Approach
 
-The AI enrichment function generates profile summaries using **markdown formatting** (e.g., `**bold**`, `*italics*`, `---`). However, the display in `CandidateProfileSheet.tsx` uses the `SafeHtml` component, which only renders HTML. Since the content is markdown -- not HTML -- it shows the raw markup characters as literal text.
+Use your existing **feature flag system** to add a `skip_cc_wall` flag. When active, new signups go straight into a 14-day trial (`trialing`) instead of being stuck at `pending_trial`. You can toggle this on/off from your platform admin dashboard without any code changes.
 
-A `ProfileSummaryMarkdown` component already exists in the codebase (using `react-markdown`) but is not being used anywhere.
+This means:
+- **Flag ON** (demo/promo mode): New users skip the credit card page and land directly on the dashboard with a full 14-day trial.
+- **Flag OFF** (normal mode): Users see the credit card wall as usual.
 
-## Fix
+You keep full control and can flip it back the moment you're done promoting.
 
-### `src/components/candidates/CandidateProfileSheet.tsx` (around line 1431-1436)
+## Changes
 
-Replace:
-```tsx
-<SafeHtml
-  content={candidate.profile_summary}
-  className="leading-relaxed ..."
-/>
+### 1. Backend: `supabase/functions/provision-tenant/index.ts`
+
+After tenant creation, check the `skip_cc_wall` feature flag. If active, set `billing_status = 'trialing'` with `trial_started_at = now` and `trial_ends_at = now + 14 days` instead of `pending_trial`.
+
+```
+// Pseudocode inside provision-tenant
+const { data: skipCCWall } = await supabase.rpc('get_feature_flag', { flag_name_param: 'skip_cc_wall' })
+
+if (skipCCWall) {
+  // Start trial immediately, no CC required
+  billing_status = 'trialing'
+  trial_started_at = new Date()
+  trial_ends_at = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+} else {
+  // Normal CC wall flow
+  billing_status = 'pending_trial'
+}
 ```
 
-With:
-```tsx
-<ProfileSummaryMarkdown
-  content={candidate.profile_summary}
-  className="text-text-primary leading-relaxed"
-/>
+### 2. Frontend: `src/components/auth/BillingGuard.tsx`
+
+No changes needed -- it already allows `trialing` users through. Since the backend sets them to `trialing` directly, they'll never hit the `pending_trial` redirect.
+
+### 3. Database: Add the feature flag
+
+Insert a new row into `platform_feature_flags`:
+
+```sql
+INSERT INTO platform_feature_flags (flag_name, is_active, description)
+VALUES ('skip_cc_wall', true, 'When active, new signups skip the credit card wall and start a 14-day trial immediately');
 ```
 
-This uses the existing `ProfileSummaryMarkdown` component which properly renders markdown with styled headings, bold, italics, lists, and horizontal rules.
-
-### Check other display points
-
-The same fix should be applied anywhere `profile_summary` is displayed using `SafeHtml` or plain text. I'll audit `ApolloPreviewSheet.tsx` and any other files that render profile summaries.
+You can toggle `is_active` to `false` from your admin dashboard whenever you want to re-enable the CC wall.
 
 ## Files Modified
 
 | File | Change |
 |------|--------|
-| `src/components/candidates/CandidateProfileSheet.tsx` | Swap `SafeHtml` for `ProfileSummaryMarkdown` when rendering profile summary |
+| `supabase/functions/provision-tenant/index.ts` | Check `skip_cc_wall` flag; set `trialing` instead of `pending_trial` when active |
+| Database (`platform_feature_flags`) | Insert new `skip_cc_wall` flag row |
 
-## No functionality or backend changes needed.
+## What This Gives You
+
+- **Instant toggle**: Flip it on from admin dashboard before a demo, flip it off after.
+- **Real-time**: The flag system uses Postgres realtime, so changes propagate immediately.
+- **No code deploys**: Once implemented, toggling is purely a database flag change.
+- **Trial still enforced**: Users still get exactly 14 days, and all grace period / lockout logic works normally after the trial expires.
 
