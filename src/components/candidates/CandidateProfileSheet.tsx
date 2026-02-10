@@ -39,6 +39,7 @@ import { getEmailFromEntry, getPhoneFromEntry } from '@/utils/parseContactEntry'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { useCandidateResolver } from '@/hooks/useCandidateResolver'
+import { triggerFitAnalysis } from '@/utils/triggerFitAnalysis'
 
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 import { MobileJobSelector } from '@/components/candidates/MobileJobSelector'
@@ -201,10 +202,11 @@ const stageHasAutomation = useMemo(() => {
   // Resume helpers
   const resumeAttachment = attachments.find((a) => a.is_resume)
   const replaceResumeInputRef = useRef<HTMLInputElement>(null)
-  const handleReplaceResumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleReplaceResumeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      void uploadResume(file, true)
+      await uploadResume(file, true)
+      if (candidateId) triggerFitAnalysis(candidateId, jobId)
     }
     e.currentTarget.value = ''
   }
@@ -455,6 +457,8 @@ const stageHasAutomation = useMemo(() => {
       setJobCandidate(data)
       toast({ title: 'Success', description: 'Candidate updated successfully' })
       setEditOpen(false)
+      // Trigger AI fit analysis refresh
+      triggerFitAnalysis(candidateId, jobId)
     } catch (err) {
       console.error('Error updating candidate:', err)
       toast({ title: 'Error', description: 'Failed to update candidate', variant: 'destructive' })
