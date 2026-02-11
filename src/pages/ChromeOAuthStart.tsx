@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { GoGioLogo } from '@/components/GoGioLogo';
 import { supabase } from '@/integrations/supabase/client';
-import { getChromeExtensionRedirectUrl } from '@/constants/chromeExtension';
+import { getChromeExtensionRedirectUrl, validateChromeRedirectUri } from '@/constants/chromeExtension';
 import { Chrome, LogIn } from 'lucide-react';
 
 /**
@@ -22,8 +22,22 @@ export default function ChromeOAuthStart() {
   const [isChecking, setIsChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Read and validate redirect_uri from query string
+  const redirectUriParam = new URLSearchParams(window.location.search).get('redirect_uri');
+  const validatedRedirectUri = redirectUriParam && validateChromeRedirectUri(redirectUriParam)
+    ? redirectUriParam
+    : null;
+  const invalidRedirectUri = redirectUriParam && !validatedRedirectUri;
+
   useEffect(() => {
     const checkSessionAndRedirect = async () => {
+      // If redirect_uri was provided but invalid, show error immediately
+      if (invalidRedirectUri) {
+        setError('Invalid redirect URI. This extension is not authorized.');
+        setIsChecking(false);
+        return;
+      }
+
       try {
         // First check if there's any session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -59,7 +73,8 @@ export default function ChromeOAuthStart() {
         console.log('[ChromeOAuth] Got fresh token, length:', freshToken.length);
 
         // Redirect to Chrome extension with the FRESH token
-        const redirectUrl = `${getChromeExtensionRedirectUrl()}#token=${encodeURIComponent(freshToken)}`;
+        const baseRedirect = validatedRedirectUri || getChromeExtensionRedirectUrl();
+        const redirectUrl = `${baseRedirect}#token=${encodeURIComponent(freshToken)}`;
         
         // Use replace to avoid adding to history and ensure clean redirect
         window.location.replace(redirectUrl);
@@ -75,8 +90,11 @@ export default function ChromeOAuthStart() {
   }, []);
 
   const handleLoginClick = () => {
-    // Redirect to login with a redirect parameter to come back here
-    navigate('/auth?redirect=/chrome-oauth/start');
+    // Redirect to login with a redirect parameter to come back here, preserving redirect_uri
+    const loginPath = validatedRedirectUri
+      ? `/auth?redirect=${encodeURIComponent(`/chrome-oauth/start?redirect_uri=${encodeURIComponent(validatedRedirectUri)}`)}`
+      : '/auth?redirect=/chrome-oauth/start';
+    navigate(loginPath);
   };
 
   // Show loading spinner while checking session
