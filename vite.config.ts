@@ -37,7 +37,7 @@ export default defineConfig(({ mode }) => ({
           vendor: ['react', 'react-dom', 'react-router-dom'],
           ui: ['@radix-ui/react-dialog', '@radix-ui/react-popover', '@radix-ui/react-tabs', '@radix-ui/react-tooltip', '@radix-ui/react-dropdown-menu'],
           query: ['@tanstack/react-query'],
-          editor: ['lexical', '@lexical/react', '@lexical/rich-text', '@lexical/list', '@lexical/link'],
+          editor: ['lexical'],
         },
       },
     },
