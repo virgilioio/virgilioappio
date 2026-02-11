@@ -12,46 +12,47 @@ import { Layout } from './components/layout/Layout'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { log } from './lib/logger'
 import { BillingGuard } from './components/auth/BillingGuard'
-import Dashboard from './pages/Dashboard'
-import Find from './pages/Find'
-import Jobs from './pages/Jobs'
-import Pipeline from './pages/Pipeline'
-import JobDetail from './pages/JobDetail'
-import Members from './pages/Members'
-import Organizations from './pages/Organizations'
-import Candidates from './pages/Candidates'
-import Settings from './pages/Settings'
-import Login from './pages/Login'
-import SignUp from './pages/SignUp'
-import ForgotPassword from './pages/ForgotPassword'
-import ResetPassword from './pages/ResetPassword'
-import AcceptInvite from './pages/AcceptInvite'
-import VerifyEmail from './pages/VerifyEmail'
 import { useAuth } from './contexts/AuthContext'
 import { useOrgContext } from './contexts/OrgContext'
-import { useRef, useEffect } from 'react'
-import NotFound from './pages/NotFound'
-import CandidateProfile from '@/pages/CandidateProfile'
-import IndependentCandidateProfile from '@/pages/IndependentCandidateProfile'
+import { lazy, Suspense, useRef, useEffect } from 'react'
 import { useFavicon } from './hooks/useFavicon'
 import { useBrowserTitle } from './hooks/useBrowserTitle'
 import { Toaster } from '@/components/ui/toaster'
 import { AppUpdateNotification } from '@/components/layout/AppUpdateNotification'
 import { useAuthBootstrap } from './hooks/useAuthBootstrap'
-import PublicJobPosting from './pages/PublicJobPosting'
-import PublicCareersPage from './pages/PublicCareersPage'
-import PublicBookingPage from './pages/PublicBookingPage'
-import BookingConfirmed from './pages/BookingConfirmed'
-import Onboarding from './pages/Onboarding'
-import TrialActivation from './pages/TrialActivation'
-import Privacy from './pages/Privacy'
-import Terms from './pages/Terms'
-import AuthCallback from './pages/AuthCallback'
-import MailOAuthCallback from './pages/MailOAuthCallback'
-import ChromeOAuthStart from './pages/ChromeOAuthStart'
-import AccountSetup from './pages/AccountSetup'
-import { SaaSCustomerDetail } from './pages/settings/saas-customers/SaaSCustomerDetail'
-import Analytics from './pages/Analytics'
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Find = lazy(() => import('./pages/Find'))
+const Jobs = lazy(() => import('./pages/Jobs'))
+const Pipeline = lazy(() => import('./pages/Pipeline'))
+const JobDetail = lazy(() => import('./pages/JobDetail'))
+const Members = lazy(() => import('./pages/Members'))
+const Candidates = lazy(() => import('./pages/Candidates'))
+const Settings = lazy(() => import('./pages/Settings'))
+const Login = lazy(() => import('./pages/Login'))
+const SignUp = lazy(() => import('./pages/SignUp'))
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
+const ResetPassword = lazy(() => import('./pages/ResetPassword'))
+const AcceptInvite = lazy(() => import('./pages/AcceptInvite'))
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail'))
+const NotFound = lazy(() => import('./pages/NotFound'))
+const CandidateProfile = lazy(() => import('@/pages/CandidateProfile'))
+const IndependentCandidateProfile = lazy(() => import('@/pages/IndependentCandidateProfile'))
+const PublicJobPosting = lazy(() => import('./pages/PublicJobPosting'))
+const PublicCareersPage = lazy(() => import('./pages/PublicCareersPage'))
+const PublicBookingPage = lazy(() => import('./pages/PublicBookingPage'))
+const BookingConfirmed = lazy(() => import('./pages/BookingConfirmed'))
+const Onboarding = lazy(() => import('./pages/Onboarding'))
+const TrialActivation = lazy(() => import('./pages/TrialActivation'))
+const Privacy = lazy(() => import('./pages/Privacy'))
+const Terms = lazy(() => import('./pages/Terms'))
+const AuthCallback = lazy(() => import('./pages/AuthCallback'))
+const MailOAuthCallback = lazy(() => import('./pages/MailOAuthCallback'))
+const ChromeOAuthStart = lazy(() => import('./pages/ChromeOAuthStart'))
+const AccountSetup = lazy(() => import('./pages/AccountSetup'))
+const SaaSCustomerDetail = lazy(() =>
+  import('./pages/settings/saas-customers/SaaSCustomerDetail').then(m => ({ default: m.SaaSCustomerDetail }))
+)
+const Analytics = lazy(() => import('./pages/Analytics'))
 const queryClient = new QueryClient()
 
 function AppContent() {
@@ -61,6 +62,14 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <Suspense fallback={
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin mx-auto" />
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+      }>
       <Routes>
         {/* Public routes - no authentication required */}
         <Route path="/auth" element={<Login />} />
@@ -116,6 +125,7 @@ function AppContent() {
         {/* 404 catch-all - must be last */}
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </Suspense>
       <Toaster />
       <AppUpdateNotification />
     </div>
