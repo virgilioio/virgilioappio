@@ -38,9 +38,18 @@ export function RejectionDialog({
   jobId,
   onSuccess,
 }: RejectionDialogProps) {
-  const [rejectionReasonId, setRejectionReasonId] = useState<string | undefined>();
+const getStoredPrefs = () => {
+    try {
+      const stored = localStorage.getItem('rejection-dialog-prefs');
+      if (stored) return JSON.parse(stored) as { rejectionReasonId?: string; sendEmail: boolean };
+    } catch {}
+    return null;
+  };
+
+  const storedPrefs = getStoredPrefs();
+  const [rejectionReasonId, setRejectionReasonId] = useState<string | undefined>(storedPrefs?.rejectionReasonId);
   const [rejectionNotes, setRejectionNotes] = useState('');
-  const [sendEmail, setSendEmail] = useState(true);
+  const [sendEmail, setSendEmail] = useState(storedPrefs?.sendEmail ?? true);
   const [emailData, setEmailData] = useState<{
     fromEmail: string;
     toEmails: string[];
@@ -66,14 +75,18 @@ export function RejectionDialog({
         scheduleFor,
       });
 
+      // Save preferences for next rejection
+      localStorage.setItem('rejection-dialog-prefs', JSON.stringify({
+        rejectionReasonId,
+        sendEmail: sendEmail && !!emailData ? sendEmail : sendEmail,
+      }));
+
       // Success - close dialog and notify parent
       onSuccess?.();
       onOpenChange(false);
       
-      // Reset state
-      setRejectionReasonId(undefined);
+      // Reset per-candidate state only (keep reason & toggle)
       setRejectionNotes('');
-      setSendEmail(true);
       setEmailData(null);
       setScheduleFor(undefined);
     } catch (error) {
