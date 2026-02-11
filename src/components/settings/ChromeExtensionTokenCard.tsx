@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { copyToClipboard } from '@/utils/clipboard'
 import { useAuth } from '@/contexts/AuthContext'
 
-const CHROME_STORE_URL = 'https://chromewebstore.google.com/detail/gogio-linkedin-extension/jgponggkkjcgocipplfgfganalkpjjnn'
+const CHROME_STORE_URL = 'https://chromewebstore.google.com/detail/gogio-linkedin-extension/nhkooggcjgdckjlpbogeanhohjkndhcj'
 
 export function ChromeExtensionTokenCard() {
   const { user } = useAuth()
