@@ -1,45 +1,81 @@
 
 
-# Remember Last Rejection Settings
+# Post-Booking Experience on Stage-Specific Booking Links
 
-## Problem
-When rejecting multiple candidates one after another, the user has to re-select the rejection reason and re-toggle the email switch each time. This adds unnecessary clicks for a repetitive workflow.
+## Overview
 
-## Solution
-Persist the rejection reason and send-email toggle to `localStorage` after each successful rejection. When the dialog opens next, initialize from those saved values instead of defaults.
+When a candidate revisits a job+stage booking link after scheduling, they currently see the booking form again and can double-book. This plan adds three behaviors:
 
-**What gets remembered (per session / until cleared):**
-- Rejection reason selection
-- Send email toggle (on/off)
+1. **Already booked** -- If an active (confirmed) future booking exists for this candidate+stage, show the booking details with reschedule/cancel controls instead of the calendar
+2. **Past event** -- If the booking's scheduled time has passed (or the token itself expired), show a "link expired" message
+3. **Cancelled** -- If the candidate cancels via the link, the token remains valid so they can rebook (until the event window passes)
 
-**What does NOT get remembered (unique per candidate):**
-- Rejection notes (always starts blank)
-- Email content, schedule, recipient (always fresh per candidate)
+## Detailed Changes
 
-## Technical Details
+### 1. Update `resolve-booking-token` edge function
 
-### File: `src/components/candidates/RejectionDialog.tsx`
+After resolving the token, also query `scheduled_bookings` for an existing confirmed booking matching `candidate_id + job_hiring_stage_id`. Return the booking data alongside the context:
 
-1. Define a localStorage key, e.g. `rejection-dialog-prefs`
-2. On mount, read saved preferences and use them as initial state:
-   - `rejectionReasonId` defaults to saved value or `undefined`
-   - `sendEmail` defaults to saved value or `true`
-3. On successful submission (inside `handleSubmit`, after `mutateAsync` succeeds), save the current `rejectionReasonId` and `sendEmail` to localStorage before resetting state
-4. Remove the full reset of `rejectionReasonId` and `sendEmail` on success -- instead keep them (or re-read from storage) so the next open already has them
-
-### File: `src/components/candidates/BulkRejectionDialog.tsx`
-
-Apply the same pattern for consistency: read `rejectionReasonId` and `sendEmail` from the same localStorage key on mount, and save on successful bulk rejection.
-
-### Storage shape
-
-```typescript
-interface RejectionPrefs {
-  rejectionReasonId?: string;
-  sendEmail: boolean;
+```
+response: {
+  context: { ... },
+  existing_booking: { ...booking fields } | null,
+  token_status: 'active' | 'expired'
 }
-// key: 'rejection-dialog-prefs'
 ```
 
-No new files, no new dependencies, no database changes.
+Also add a check: if a confirmed booking exists AND `scheduled_end` is in the past, return `token_status: 'expired'`.
+
+If the token's `expires_at` has passed (already checked), the existing 404 behavior handles it.
+
+### 2. New component: `src/components/booking/ExistingBookingView.tsx`
+
+A public-facing card that displays existing booking details and action buttons. Shows:
+- Interviewer info, date/time, duration, meeting location
+- Download ICS button (reuse pattern from `BookingConfirmed`)
+- **Reschedule** button -- returns the candidate to the calendar/time-slot picker with the existing booking ID tracked so `create-booking` can cancel the old one
+- **Cancel** button -- calls a new public cancel endpoint, then shows a "cancelled" state with option to rebook
+
+### 3. New edge function: `cancel-booking-public`
+
+A lightweight public endpoint (no auth required, uses service_role) that:
+- Accepts `{ token, booking_id }` 
+- Validates the token is valid and matches the booking's candidate_id + job_hiring_stage_id
+- Cancels the booking (updates status to 'cancelled', deletes Google Calendar event, sends cancellation emails) by reusing logic from `cancel-booking`
+- Does NOT invalidate the token (so candidate can rebook)
+
+### 4. Update `PublicBookingPage.tsx`
+
+After resolving the token context, check for `existing_booking` in the response:
+
+- If `existing_booking` exists and is in the future and status is `confirmed` -- render `ExistingBookingView` instead of the calendar
+- If `token_status === 'expired'` -- show a "This link has expired" message
+- If no existing booking or booking was cancelled -- show the normal calendar flow (current behavior)
+
+Add a `rescheduleMode` state: when candidate clicks "Reschedule", store the old booking ID, show the calendar, and on successful new booking, the `create-booking` function cancels the old one.
+
+### 5. Update `create-booking` edge function
+
+Add an optional `reschedule_booking_id` parameter. When provided:
+- Cancel the old booking (update status, delete calendar event, send cancellation emails)
+- Create the new booking as usual
+- This keeps the reschedule atomic from the candidate's perspective
+
+### 6. Token expiry logic (compliance)
+
+The token already expires after 90 days (DB default). The new addition: `resolve-booking-token` checks if an existing confirmed booking's `scheduled_end` is in the past. If so, it returns `token_status: 'expired'` and the frontend shows the expired page. This means:
+- Before the interview: link shows booking details with controls
+- After the interview: link is effectively dead
+- No token stored in the DB needs to be modified
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `supabase/functions/resolve-booking-token/index.ts` | Query for existing booking, return `existing_booking` and `token_status` |
+| `supabase/functions/cancel-booking-public/index.ts` | New edge function for unauthenticated candidate cancellation (token-validated) |
+| `supabase/functions/create-booking/index.ts` | Add optional `reschedule_booking_id` parameter to cancel old booking atomically |
+| `src/components/booking/ExistingBookingView.tsx` | New component showing booking details + reschedule/cancel controls |
+| `src/pages/PublicBookingPage.tsx` | Check for existing booking in token response, render `ExistingBookingView` or expired state |
+| `src/lib/bookingLinkUtils.ts` | Update `resolveBookingToken` return type to include `existing_booking` and `token_status` |
 
