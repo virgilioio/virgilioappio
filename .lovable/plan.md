@@ -1,24 +1,20 @@
 
 
-# Fix: Update Chrome Extension ID to Production
+# Fix: Remove @lexical/* subpath packages from manualChunks
 
-## Problem
+## Change
 
-The OAuth redirect is using the wrong (dev) extension ID `jgponggkkjcgocipplfgfganalkpjjnn`, causing `DNS_PROBE_FINISHED_NXDOMAIN` because the redirect URL resolves to a non-existent `.chromiumapp.org` domain.
+**File: `vite.config.ts`, line 39**
 
-## Changes
+Replace:
+```
+editor: ['lexical', '@lexical/react', '@lexical/rich-text', '@lexical/list', '@lexical/link'],
+```
 
-Two files need the extension ID updated to `nhkooggcjgdckjlpbogeanhohjkndhcj`:
+With:
+```
+editor: ['lexical'],
+```
 
-| File | What changes |
-|------|-------------|
-| `src/constants/chromeExtension.ts` | Update `CHROME_EXTENSION_ID` constant from old ID to `nhkooggcjgdckjlpbogeanhohjkndhcj` |
-| `src/components/settings/ChromeExtensionTokenCard.tsx` | Update the Chrome Web Store URL to use the new extension ID |
-
-This fixes the redirect URL from:
-`https://jgponggkkjcgocipplfgfganalkpjjnn.chromiumapp.org/provider_cb`
-to:
-`https://nhkooggcjgdckjlpbogeanhohjkndhcj.chromiumapp.org/provider_cb`
-
-No edge function changes needed -- the redirect URL is built entirely on the frontend in `ChromeOAuthStart.tsx` using the constant from `chromeExtension.ts`.
+One line change. This fixes the build error because `@lexical/react` and the other `@lexical/*` packages don't have root entry points.
 
