@@ -7,12 +7,13 @@ import { InterviewerCard } from '@/components/booking/InterviewerCard';
 import { MonthCalendar } from '@/components/booking/MonthCalendar';
 import { TimeSlotsList } from '@/components/booking/TimeSlotsList';
 import { BookingConfirmationForm } from '@/components/booking/BookingConfirmationForm';
+import { ExistingBookingView, ExistingBookingData } from '@/components/booking/ExistingBookingView';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { AlertCircle, Globe } from 'lucide-react';
+import { AlertCircle, Globe, ShieldX } from 'lucide-react';
 import { startOfMonth, endOfMonth, isSameDay, parseISO } from 'date-fns';
 import { useBookingAvailability } from '@/hooks/useBookingAvailability';
 import { 
@@ -20,7 +21,8 @@ import {
   BookingContext, 
   hasShortToken, 
   getShortToken, 
-  resolveBookingToken 
+  resolveBookingToken,
+  ExistingBookingInfo,
 } from '@/lib/bookingLinkUtils';
 import gioAvatar from '@/assets/gio-avatar.png';
 
@@ -50,11 +52,18 @@ export default function PublicBookingPage() {
   const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string } | null>(null);
   const [resolvedContext, setResolvedContext] = useState<BookingContext | null>(null);
   const [isResolvingToken, setIsResolvingToken] = useState(false);
+  const [existingBooking, setExistingBooking] = useState<ExistingBookingData | null>(null);
+  const [tokenStatus, setTokenStatus] = useState<'active' | 'expired' | null>(null);
+  const [rescheduleBookingId, setRescheduleBookingId] = useState<string | null>(null);
+  const [bookingCancelled, setBookingCancelled] = useState(false);
 
   // Parse contextual booking context from URL (legacy base64)
   const legacyContext = useMemo(() => {
     return parseBookingContextFromUrl(searchParams);
   }, [searchParams]);
+
+  // The short token value (needed for cancel-booking-public)
+  const shortToken = useMemo(() => getShortToken(searchParams), [searchParams]);
 
   // Resolve short token if present
   useEffect(() => {
@@ -64,8 +73,16 @@ export default function PublicBookingPage() {
         if (token) {
           setIsResolvingToken(true);
           try {
-            const context = await resolveBookingToken(token);
-            setResolvedContext(context);
+            const result = await resolveBookingToken(token);
+            if (result) {
+              setResolvedContext(result.context);
+              setTokenStatus(result.token_status);
+              if (result.existing_booking) {
+                setExistingBooking(result.existing_booking as ExistingBookingData);
+              }
+            } else {
+              setTokenStatus('expired');
+            }
           } catch (e) {
             console.error('Failed to resolve booking token:', e);
           } finally {
@@ -81,11 +98,14 @@ export default function PublicBookingPage() {
   // Use resolved context (short token) or legacy context (base64)
   const bookingContext = resolvedContext || legacyContext;
 
+  // Determine what view to show
+  const showExpiredView = tokenStatus === 'expired' && !bookingCancelled;
+  const showExistingBookingView = !!existingBooking && !rescheduleBookingId && !bookingCancelled;
+
   // Fetch booking configuration
   const { data: config, isLoading, error } = useQuery({
     queryKey: ['public-booking-config', shortCode],
     queryFn: async () => {
-      // First get the booking config
       const { data: bookingConfig, error: configError } = await supabase
         .from('booking_configurations')
         .select('*')
@@ -95,7 +115,6 @@ export default function PublicBookingPage() {
       
       if (configError) throw configError;
       
-      // Then get the profile separately
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('first_name, last_name, avatar_url')
@@ -106,8 +125,6 @@ export default function PublicBookingPage() {
         console.warn('Failed to load profile:', profileError);
       }
       
-      // avatar_url in profiles table already contains the full URL
-      // (either Google OAuth URL or Supabase Storage public URL)
       const fullAvatarUrl = profile?.avatar_url || null;
       
       return {
@@ -182,6 +199,11 @@ export default function PublicBookingPage() {
             job_hiring_stage_id: bookingContext.jhsId,
             job_candidate_association_id: bookingContext.associationId,
           }),
+          // Pass reschedule booking ID if rescheduling
+          ...(rescheduleBookingId && {
+            reschedule_booking_id: rescheduleBookingId,
+            reschedule_token: shortToken,
+          }),
         },
       });
 
@@ -189,7 +211,6 @@ export default function PublicBookingPage() {
       return data;
     },
     onSuccess: (data) => {
-      // Navigate to confirmation page
       window.location.href = `/schedule/${shortCode}/confirmed/${data.booking_id}`;
     },
     onError: (error: any) => {
@@ -201,7 +222,19 @@ export default function PublicBookingPage() {
     },
   });
 
-  if (isLoading) {
+  // Handlers for existing booking view
+  const handleReschedule = () => {
+    if (existingBooking) {
+      setRescheduleBookingId(existingBooking.id);
+    }
+  };
+
+  const handleCancelled = () => {
+    setExistingBooking(null);
+    setBookingCancelled(true);
+  };
+
+  if (isLoading || isResolvingToken) {
     return (
       <div className="min-h-screen bg-background">
         <header className="border-b border-border bg-background-elevated">
@@ -249,6 +282,69 @@ export default function PublicBookingPage() {
       </div>
     );
   }
+
+  // Expired token view
+  if (showExpiredView) {
+    return (
+      <div className="min-h-screen bg-white">
+        <header className="sticky top-0 z-50 border-b border-virgilio-border bg-white/95 backdrop-blur-sm">
+          <div className="container mx-auto px-4 md:px-6 lg:px-8 py-4">
+            <Link to="/">
+              <GoGioLogo />
+            </Link>
+          </div>
+        </header>
+        <main className="container mx-auto px-4 md:px-6 lg:px-8 py-16 max-w-lg">
+          <Card className="shadow-calendly border-virgilio-border">
+            <CardContent className="pt-8 pb-8 text-center space-y-4">
+              <ShieldX className="w-16 h-16 text-virgilio-muted mx-auto" />
+              <h1 className="text-2xl font-poppins font-bold text-virgilio-text">
+                This Link Has Expired<span className="text-virgilio-purple">.</span>
+              </h1>
+              <p className="text-virgilio-muted">
+                This booking link is no longer active. If you need to schedule an interview, please contact the person who sent you this link.
+              </p>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
+  // Existing booking view (candidate already has a confirmed future booking)
+  if (showExistingBookingView && existingBooking && shortToken) {
+    return (
+      <div className="min-h-screen bg-white">
+        <header className="sticky top-0 z-50 border-b border-virgilio-border bg-white/95 backdrop-blur-sm">
+          <div className="container mx-auto px-4 md:px-6 lg:px-8 py-4">
+            <Link to="/">
+              <GoGioLogo />
+            </Link>
+          </div>
+        </header>
+        <main className="container mx-auto px-4 md:px-6 lg:px-8 py-8 md:py-12">
+          {bookingContext?.candidateName && (
+            <p className="font-poppins font-bold tracking-page-title text-virgilio-text text-lg md:text-xl mb-2 text-center">
+              Hi, {bookingContext.candidateName.split(' ')[0]}
+              <span className="text-purple-period">!</span> 👋
+            </p>
+          )}
+          <h1 className="text-h1-mobile md:text-h1-desktop font-poppins font-bold text-virgilio-text mb-8 text-center">
+            Your Interview Details<span className="text-virgilio-purple">.</span>
+          </h1>
+          <ExistingBookingView
+            booking={existingBooking}
+            token={shortToken}
+            onReschedule={handleReschedule}
+            onCancelled={handleCancelled}
+            jobTitle={bookingContext?.jobTitle}
+            stageName={bookingContext?.stageName}
+          />
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white">
       <header className="sticky top-0 z-50 border-b border-virgilio-border bg-white/95 backdrop-blur-sm">
@@ -268,11 +364,34 @@ export default function PublicBookingPage() {
           </p>
         )}
         <h1 className="text-h1-mobile md:text-h1-desktop font-poppins font-bold text-virgilio-text mb-6">
-          Select a Date & Time<span className="text-virgilio-purple">.</span>
+          {rescheduleBookingId ? 'Reschedule Your Interview' : 'Select a Date & Time'}<span className="text-virgilio-purple">.</span>
         </h1>
 
+        {/* Reschedule banner */}
+        {rescheduleBookingId && (
+          <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-sm text-amber-800">
+              Select a new date and time below. Your previous interview will be automatically cancelled when you confirm the new time.
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-2 text-amber-700 hover:text-amber-900 p-0 h-auto"
+              onClick={() => {
+                setRescheduleBookingId(null);
+                // Re-show existing booking view
+                if (existingBooking) {
+                  setBookingCancelled(false);
+                }
+              }}
+            >
+              ← Back to interview details
+            </Button>
+          </div>
+        )}
+
         {/* Contextual Booking Header - show job/stage info if available */}
-        {bookingContext?.jobTitle && (
+        {bookingContext?.jobTitle && !rescheduleBookingId && (
           <div className="mb-8 p-4 bg-virgilio-purple/10 border border-virgilio-purple/25 rounded-lg">
             <div className="flex items-center gap-3">
               <img src={gioAvatar} alt="Gio" className="h-10 w-10 rounded-full bg-white" />

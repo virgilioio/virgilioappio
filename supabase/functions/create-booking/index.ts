@@ -39,6 +39,9 @@ serve(async (req) => {
       custom_event_title = null,
       // Guest emails for additional attendees
       guest_emails = [],
+      // Reschedule support: cancel old booking atomically
+      reschedule_booking_id = null,
+      reschedule_token = null,
     } = await req.json();
 
     // Validate custom location if specified
@@ -242,6 +245,69 @@ serve(async (req) => {
             console.log('[create-booking] Token refreshed successfully');
           }
         }
+      }
+    }
+
+    // If rescheduling, cancel the old booking first
+    if (reschedule_booking_id) {
+      console.log('[create-booking] Rescheduling: cancelling old booking', reschedule_booking_id);
+
+      // Validate token if provided (public reschedule)
+      if (reschedule_token) {
+        const { data: tokenData } = await supabase
+          .from('booking_link_tokens')
+          .select('candidate_id, jhs_id')
+          .eq('token', reschedule_token)
+          .gt('expires_at', new Date().toISOString())
+          .maybeSingle();
+
+        if (!tokenData) {
+          return new Response(JSON.stringify({ error: 'Invalid or expired reschedule token' }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+
+      // Fetch old booking
+      const { data: oldBooking } = await supabase
+        .from('scheduled_bookings')
+        .select('id, google_event_id, candidate_google_event_id, interviewer_id, status')
+        .eq('id', reschedule_booking_id)
+        .eq('status', 'confirmed')
+        .maybeSingle();
+
+      if (oldBooking) {
+        // Delete old Google Calendar events if they exist
+        if (oldBooking.google_event_id && accessToken) {
+          try {
+            await fetch(
+              `https://www.googleapis.com/calendar/v3/calendars/primary/events/${oldBooking.google_event_id}`,
+              { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } }
+            );
+            if (oldBooking.candidate_google_event_id) {
+              await fetch(
+                `https://www.googleapis.com/calendar/v3/calendars/primary/events/${oldBooking.candidate_google_event_id}`,
+                { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } }
+              );
+            }
+            console.log('[create-booking] Old calendar events deleted');
+          } catch (calErr) {
+            console.error('[create-booking] Error deleting old calendar events:', calErr);
+          }
+        }
+
+        // Mark old booking as cancelled
+        await supabase
+          .from('scheduled_bookings')
+          .update({
+            status: 'cancelled',
+            cancelled_at: new Date().toISOString(),
+            cancellation_reason: 'Rescheduled by candidate',
+          })
+          .eq('id', reschedule_booking_id);
+
+        console.log('[create-booking] Old booking cancelled for reschedule');
       }
     }
 

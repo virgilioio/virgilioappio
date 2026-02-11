@@ -17,13 +17,46 @@ export interface BookingContext {
   stageName?: string;
 }
 
+export interface ExistingBookingInfo {
+  id: string;
+  scheduled_start: string;
+  scheduled_end: string;
+  duration_minutes: number;
+  candidate_name: string;
+  candidate_email: string;
+  candidate_phone?: string;
+  candidate_timezone: string;
+  meeting_location?: string;
+  meeting_type?: string;
+  google_meet_link?: string;
+  notes?: string;
+  ics_uid?: string;
+  booking_config_id?: string;
+  interviewer_id?: string;
+  interviewer_profile?: {
+    first_name: string;
+    last_name: string;
+    avatar_url?: string;
+    email?: string;
+  };
+  booking_config?: {
+    display_name: string;
+    description?: string;
+  };
+}
+
+export interface ResolvedTokenResult {
+  context: BookingContext | null;
+  existing_booking: ExistingBookingInfo | null;
+  token_status: 'active' | 'expired';
+}
+
 /**
  * Encode booking context to a URL-safe base64 string (legacy method)
  */
 export function encodeBookingContext(context: BookingContext): string {
   try {
     const json = JSON.stringify(context);
-    // Use base64url encoding (URL-safe)
     return btoa(json)
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
@@ -39,7 +72,6 @@ export function encodeBookingContext(context: BookingContext): string {
  */
 export function decodeBookingContext(encoded: string): BookingContext | null {
   try {
-    // Restore base64 padding and characters
     let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
     while (base64.length % 4) {
       base64 += '=';
@@ -47,7 +79,6 @@ export function decodeBookingContext(encoded: string): BookingContext | null {
     const json = atob(base64);
     const context = JSON.parse(json) as BookingContext;
     
-    // Validate required fields
     if (!context.jobId || !context.candidateId || !context.jhsId || !context.associationId) {
       console.warn('Invalid booking context: missing required fields');
       return null;
@@ -72,7 +103,6 @@ export function generateContextualBookingLink(params: {
   const encodedContext = encodeBookingContext(context);
   
   if (!encodedContext) {
-    // Fallback to generic booking link
     return `${baseUrl}/schedule/${shortCode}`;
   }
   
@@ -126,27 +156,36 @@ export function generateShortBookingLink(params: {
 }
 
 /**
- * Resolve a short token to booking context via the edge function
+ * Resolve a short token to booking context via the edge function.
+ * Now also returns existing_booking and token_status.
  */
-export async function resolveBookingToken(token: string): Promise<BookingContext | null> {
+export async function resolveBookingToken(token: string): Promise<ResolvedTokenResult | null> {
   try {
     const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL || 'https://etrxjxstjfcozdjumfsj.supabase.co'}/functions/v1/resolve-booking-token?token=${encodeURIComponent(token)}`,
+      `https://etrxjxstjfcozdjumfsj.supabase.co/functions/v1/resolve-booking-token?token=${encodeURIComponent(token)}`,
       {
         headers: {
           'Content-Type': 'application/json',
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0cnhqeHN0amZjb3pkanVtZnNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1MzM3MjMsImV4cCI6MjA2NTEwOTcyM30.xhhEmT2ikIqFO9IiZZC22zhWlSTC-ytBxP6EGGXtC44',
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0cnhqeHN0amZjb3pkanVtZnNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1MzM3MjMsImV4cCI6MjA2NTEwOTcyM30.xhhEmT2ikIqFO9IiZZC22zhWlSTC-ytBxP6EGGXtC44',
         },
       }
     );
 
     if (!response.ok) {
+      // If 404, token is expired/not found
+      if (response.status === 404) {
+        return { context: null, existing_booking: null, token_status: 'expired' };
+      }
       console.error('Failed to resolve booking token:', response.status);
       return null;
     }
 
     const data = await response.json();
-    return data?.context || null;
+    return {
+      context: data?.context || null,
+      existing_booking: data?.existing_booking || null,
+      token_status: data?.token_status || 'active',
+    };
   } catch (e) {
     console.error('Failed to resolve booking token:', e);
     return null;
@@ -158,13 +197,11 @@ export async function resolveBookingToken(token: string): Promise<BookingContext
  * Supports both short tokens (?t=) and legacy base64 (?ctx=)
  */
 export function parseBookingContextFromUrl(searchParams: URLSearchParams): BookingContext | null {
-  // Legacy base64 context
   const ctx = searchParams.get('ctx');
   if (ctx) {
     return decodeBookingContext(ctx);
   }
   
-  // Note: Short token resolution is async and must be done separately
   return null;
 }
 
