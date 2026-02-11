@@ -1,70 +1,45 @@
 
 
-# Support Multiple Chrome Extension IDs in OAuth Flow
+# Remember Last Rejection Settings
 
-## What Changes
+## Problem
+When rejecting multiple candidates one after another, the user has to re-select the rejection reason and re-toggle the email switch each time. This adds unnecessary clicks for a repetitive workflow.
 
-Update `ChromeOAuthStart.tsx` to accept a `redirect_uri` query parameter so multiple Chrome extensions can authenticate, while strictly validating the URI against an allowlist.
+## Solution
+Persist the rejection reason and send-email toggle to `localStorage` after each successful rejection. When the dialog opens next, initialize from those saved values instead of defaults.
 
-## Details
+**What gets remembered (per session / until cleared):**
+- Rejection reason selection
+- Send email toggle (on/off)
 
-### 1. Add allowlist to `src/constants/chromeExtension.ts`
+**What does NOT get remembered (unique per candidate):**
+- Rejection notes (always starts blank)
+- Email content, schedule, recipient (always fresh per candidate)
 
-Add an array of allowed extension IDs and a validation helper:
+## Technical Details
+
+### File: `src/components/candidates/RejectionDialog.tsx`
+
+1. Define a localStorage key, e.g. `rejection-dialog-prefs`
+2. On mount, read saved preferences and use them as initial state:
+   - `rejectionReasonId` defaults to saved value or `undefined`
+   - `sendEmail` defaults to saved value or `true`
+3. On successful submission (inside `handleSubmit`, after `mutateAsync` succeeds), save the current `rejectionReasonId` and `sendEmail` to localStorage before resetting state
+4. Remove the full reset of `rejectionReasonId` and `sendEmail` on success -- instead keep them (or re-read from storage) so the next open already has them
+
+### File: `src/components/candidates/BulkRejectionDialog.tsx`
+
+Apply the same pattern for consistency: read `rejectionReasonId` and `sendEmail` from the same localStorage key on mount, and save on successful bulk rejection.
+
+### Storage shape
 
 ```typescript
-export const ALLOWED_EXTENSION_IDS = [
-  "nhkooggcjgdckjlpbogeanhohjkndhcj",
-  "jgponggkkjcgocipplfgfganalkpjjnn",
-];
-
-export function validateChromeRedirectUri(uri: string): boolean {
-  try {
-    const url = new URL(uri);
-    const match = url.hostname.match(/^([a-z]{32})\.chromiumapp\.org$/);
-    if (!match) return false;
-    if (url.pathname !== '/provider_cb') return false;
-    if (url.protocol !== 'https:') return false;
-    return ALLOWED_EXTENSION_IDS.includes(match[1]);
-  } catch {
-    return false;
-  }
+interface RejectionPrefs {
+  rejectionReasonId?: string;
+  sendEmail: boolean;
 }
+// key: 'rejection-dialog-prefs'
 ```
 
-### 2. Update `src/pages/ChromeOAuthStart.tsx`
+No new files, no new dependencies, no database changes.
 
-At the top of the component, read and validate `redirect_uri` from the query string:
-
-```typescript
-const redirectUriParam = new URLSearchParams(window.location.search).get('redirect_uri');
-const validatedRedirectUri = redirectUriParam && validateChromeRedirectUri(redirectUriParam)
-  ? redirectUriParam
-  : null;
-```
-
-If `redirect_uri` is present but invalid, show an error immediately.
-
-On successful auth (line 62), use the validated URI if available, otherwise fall back to existing `getChromeExtensionRedirectUrl()`:
-
-```typescript
-const baseRedirect = validatedRedirectUri || getChromeExtensionRedirectUrl();
-const redirectUrl = `${baseRedirect}#token=${encodeURIComponent(freshToken)}`;
-```
-
-Preserve `redirect_uri` in the login redirect so it survives the auth round-trip:
-
-```typescript
-const loginPath = validatedRedirectUri
-  ? `/auth?redirect=${encodeURIComponent(`/chrome-oauth/start?redirect_uri=${encodeURIComponent(validatedRedirectUri)}`)}`
-  : '/auth?redirect=/chrome-oauth/start';
-```
-
-### Files Changed
-
-| File | Change |
-|------|--------|
-| `src/constants/chromeExtension.ts` | Add `ALLOWED_EXTENSION_IDS` array and `validateChromeRedirectUri()` helper |
-| `src/pages/ChromeOAuthStart.tsx` | Read `redirect_uri` from query string, validate against allowlist, use for redirect or fall back to existing behavior |
-
-No routing, no editor logic, no other files affected.
