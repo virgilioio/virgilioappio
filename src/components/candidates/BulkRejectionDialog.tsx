@@ -47,9 +47,18 @@ export function BulkRejectionDialog({
   onSuccess,
 }: BulkRejectionDialogProps) {
   const [associationIds, setAssociationIds] = useState<string[]>([]);
-  const [rejectionReasonId, setRejectionReasonId] = useState<string | undefined>();
+  const getStoredPrefs = () => {
+    try {
+      const stored = localStorage.getItem('rejection-dialog-prefs');
+      if (stored) return JSON.parse(stored) as { rejectionReasonId?: string; sendEmail: boolean };
+    } catch {}
+    return null;
+  };
+
+  const storedPrefs = getStoredPrefs();
+  const [rejectionReasonId, setRejectionReasonId] = useState<string | undefined>(storedPrefs?.rejectionReasonId);
   const [rejectionNotes, setRejectionNotes] = useState('');
-  const [sendEmail, setSendEmail] = useState(true);
+  const [sendEmail, setSendEmail] = useState(storedPrefs?.sendEmail ?? true);
   const [fromEmail, setFromEmail] = useState('');
   const [subjectHtml, setSubjectHtml] = useState('');
   const [bodyHtml, setBodyHtml] = useState('');
@@ -129,6 +138,12 @@ export function BulkRejectionDialog({
         } : undefined,
         scheduleFor,
       });
+
+      // Save preferences for next rejection
+      localStorage.setItem('rejection-dialog-prefs', JSON.stringify({
+        rejectionReasonId,
+        sendEmail,
+      }));
 
       onSuccess?.();
       onOpenChange(false);
