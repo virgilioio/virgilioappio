@@ -28,7 +28,18 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
-    // Generate source maps for production to enable Sentry error tracking
-    sourcemap: true,
+    // Generate source maps only in production to enable Sentry error tracking
+    // Disabled in dev builds to prevent heap out of memory crashes
+    sourcemap: mode === 'production',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['@radix-ui/react-dialog', '@radix-ui/react-popover', '@radix-ui/react-tabs', '@radix-ui/react-tooltip', '@radix-ui/react-dropdown-menu'],
+          query: ['@tanstack/react-query'],
+          editor: ['lexical', '@lexical/react', '@lexical/rich-text', '@lexical/list', '@lexical/link'],
+        },
+      },
+    },
   },
 }));
