@@ -265,7 +265,7 @@ export function ScorecardSheet({
 
   // Auto-save draft on changes (debounced) - works for both new and existing scorecards
   useEffect(() => {
-    if (!open || isReadOnly) return;
+    if (!open || isReadOnly || loadingQuestions) return;
     
     // Debounce saves by 1 second
     if (draftTimeoutRef.current) {
@@ -406,6 +406,8 @@ export function ScorecardSheet({
                 };
               });
               setResponses(responsesMap);
+              clearDraft();
+              setHasDraft(false);
             }
           }
         }
