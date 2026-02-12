@@ -1,81 +1,62 @@
 
 
-# Post-Booking Experience on Stage-Specific Booking Links
+# Fix Salary Question Not Displaying Saved Value in Scorecards
 
-## Overview
+## Problem
 
-When a candidate revisits a job+stage booking link after scheduling, they currently see the booking form again and can double-book. This plan adds three behaviors:
+When a user submits a scorecard with a salary field filled out, then re-opens the scorecard, the salary field appears empty -- even though the data IS saved correctly in the database.
 
-1. **Already booked** -- If an active (confirmed) future booking exists for this candidate+stage, show the booking details with reschedule/cancel controls instead of the calendar
-2. **Past event** -- If the booking's scheduled time has passed (or the token itself expired), show a "link expired" message
-3. **Cancelled** -- If the candidate cancels via the link, the token remains valid so they can rebook (until the event window passes)
+The salary data is also correctly synced to the candidate profile and does trigger AI Insights re-evaluation. The issue is purely a display/state bug on re-open.
 
-## Detailed Changes
+## Root Cause
 
-### 1. Update `resolve-booking-token` edge function
+There is a race condition between three effects in `ScorecardSheet.tsx`:
 
-After resolving the token, also query `scheduled_bookings` for an existing confirmed booking matching `candidate_id + job_hiring_stage_id`. Return the booking data alongside the context:
+1. **Initialization effect** (line 207): Runs on `open` -- checks for a localStorage draft and restores it, or sets defaults. Does NOT reset `responses` when no draft exists.
+2. **Load questions effect** (line 357): Runs on `open` -- starts an async DB fetch for questions AND responses. On completion, calls `setResponses(responsesMap)` with the correct salary data.
+3. **Auto-save draft effect** (line 266): Runs whenever `responses` changes -- saves current state to localStorage after a 1-second debounce.
 
+The race:
+- On mount, `responses` starts as `{}` (empty object)
+- The auto-save effect sees `responses = {}` and saves an empty draft to localStorage
+- The async load completes and sets the correct responses from DB
+- But if `existing` prop updates (e.g., `viewingScorecardId` resets), the init effect re-runs, finds the recently-saved empty draft, sees its timestamp is newer than the DB record, and restores `responses = {}` -- wiping the loaded data
+
+## Fix (in `src/components/candidates/ScorecardSheet.tsx`)
+
+### 1. Skip auto-save while questions are loading
+
+Add `loadingQuestions` to the auto-save draft effect's guard clause. If questions are still loading, the responses are not yet meaningful and should not be persisted:
+
+```typescript
+// Line ~268
+if (!open || isReadOnly || loadingQuestions) return;
 ```
-response: {
-  context: { ... },
-  existing_booking: { ...booking fields } | null,
-  token_status: 'active' | 'expired'
-}
+
+### 2. Clear stale draft after DB responses are loaded
+
+After successfully loading responses from the database in `loadQuestionsAndResponses`, clear any existing draft to prevent the init effect from restoring stale/empty data on subsequent re-runs:
+
+```typescript
+// After setResponses(responsesMap) at line ~408
+clearDraft();
+setHasDraft(false);
 ```
 
-Also add a check: if a confirmed booking exists AND `scheduled_end` is in the past, return `token_status: 'expired'`.
+This ensures that once authoritative DB data is loaded, it won't be overwritten by a draft that was saved during the loading window.
 
-If the token's `expires_at` has passed (already checked), the existing 404 behavior handles it.
+## AI Insights Re-evaluation
 
-### 2. New component: `src/components/booking/ExistingBookingView.tsx`
+Already working correctly:
+- On scorecard save, the salary amount is synced to the `candidates` table (salary_amount, salary_currency, salary_period)
+- `triggerFitAnalysis()` is called after save, which invokes the `analyze-candidate-fit` edge function
+- The edge function reads the updated candidate profile including salary data
 
-A public-facing card that displays existing booking details and action buttons. Shows:
-- Interviewer info, date/time, duration, meeting location
-- Download ICS button (reuse pattern from `BookingConfirmed`)
-- **Reschedule** button -- returns the candidate to the calendar/time-slot picker with the existing booking ID tracked so `create-booking` can cancel the old one
-- **Cancel** button -- calls a new public cancel endpoint, then shows a "cancelled" state with option to rebook
+No changes needed for AI insights.
 
-### 3. New edge function: `cancel-booking-public`
-
-A lightweight public endpoint (no auth required, uses service_role) that:
-- Accepts `{ token, booking_id }` 
-- Validates the token is valid and matches the booking's candidate_id + job_hiring_stage_id
-- Cancels the booking (updates status to 'cancelled', deletes Google Calendar event, sends cancellation emails) by reusing logic from `cancel-booking`
-- Does NOT invalidate the token (so candidate can rebook)
-
-### 4. Update `PublicBookingPage.tsx`
-
-After resolving the token context, check for `existing_booking` in the response:
-
-- If `existing_booking` exists and is in the future and status is `confirmed` -- render `ExistingBookingView` instead of the calendar
-- If `token_status === 'expired'` -- show a "This link has expired" message
-- If no existing booking or booking was cancelled -- show the normal calendar flow (current behavior)
-
-Add a `rescheduleMode` state: when candidate clicks "Reschedule", store the old booking ID, show the calendar, and on successful new booking, the `create-booking` function cancels the old one.
-
-### 5. Update `create-booking` edge function
-
-Add an optional `reschedule_booking_id` parameter. When provided:
-- Cancel the old booking (update status, delete calendar event, send cancellation emails)
-- Create the new booking as usual
-- This keeps the reschedule atomic from the candidate's perspective
-
-### 6. Token expiry logic (compliance)
-
-The token already expires after 90 days (DB default). The new addition: `resolve-booking-token` checks if an existing confirmed booking's `scheduled_end` is in the past. If so, it returns `token_status: 'expired'` and the frontend shows the expired page. This means:
-- Before the interview: link shows booking details with controls
-- After the interview: link is effectively dead
-- No token stored in the DB needs to be modified
-
-### Files Changed
+## Files Changed
 
 | File | Change |
 |------|--------|
-| `supabase/functions/resolve-booking-token/index.ts` | Query for existing booking, return `existing_booking` and `token_status` |
-| `supabase/functions/cancel-booking-public/index.ts` | New edge function for unauthenticated candidate cancellation (token-validated) |
-| `supabase/functions/create-booking/index.ts` | Add optional `reschedule_booking_id` parameter to cancel old booking atomically |
-| `src/components/booking/ExistingBookingView.tsx` | New component showing booking details + reschedule/cancel controls |
-| `src/pages/PublicBookingPage.tsx` | Check for existing booking in token response, render `ExistingBookingView` or expired state |
-| `src/lib/bookingLinkUtils.ts` | Update `resolveBookingToken` return type to include `existing_booking` and `token_status` |
+| `src/components/candidates/ScorecardSheet.tsx` | Add `loadingQuestions` guard to auto-save effect; clear draft after DB responses load |
 
