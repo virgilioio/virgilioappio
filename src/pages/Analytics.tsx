@@ -12,7 +12,7 @@ import { RecruitmentFunnelChart } from '@/components/analytics/RecruitmentFunnel
 import { PipelineOverviewTable } from '@/components/analytics/PipelineOverviewTable'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { FileText, Users, UserCheck, CalendarPlus, CalendarCheck, UserX, BarChart3, Download, Loader2 } from 'lucide-react'
+import { FileText, Users, UserCheck, CalendarPlus, CalendarCheck, UserX, BarChart3, Download, Loader2, Clock } from 'lucide-react'
 import { subDays } from 'date-fns'
 import { generateAnalyticsReport } from '@/utils/analyticsReportGenerator'
 
@@ -161,6 +161,14 @@ export default function Analytics() {
       bgColor: 'hsl(0 70% 92%)',
       iconColor: 'hsl(0 70% 50%)',
       tooltip: 'Total rejected candidates (all time)'
+    },
+    {
+      title: 'Avg Time to Hire',
+      value: metrics.avgTimeToHire,
+      icon: Clock,
+      bgColor: 'hsl(280 80% 90%)',
+      iconColor: 'hsl(280 80% 45%)',
+      tooltip: 'Average days from candidate creation to hire'
     }
   ]
 
@@ -216,7 +224,7 @@ export default function Analytics() {
                     {metrics.isLoading ? (
                       <span className="inline-block w-12 h-8 bg-virgilio-border/50 rounded animate-pulse" />
                     ) : (
-                      card.value.toLocaleString()
+                      card.value !== null ? (card.title === 'Avg Time to Hire' ? `${card.value}d` : card.value.toLocaleString()) : 'N/A'
                     )}
                   </p>
                 </div>
