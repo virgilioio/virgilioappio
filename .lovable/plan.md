@@ -1,62 +1,31 @@
 
 
-# Fix Salary Question Not Displaying Saved Value in Scorecards
+## Add "Time to Hire" Metric Card to Analytics Dashboard
 
-## Problem
+### What It Does
+Adds a new metric card showing the **average number of days** from when a candidate was created in the system to when they were marked as hired. This metric respects all existing filters (date range, recruiters, jobs, departments, job status) and is strictly tenant-bound.
 
-When a user submits a scorecard with a salary field filled out, then re-opens the scorecard, the salary field appears empty -- even though the data IS saved correctly in the database.
+### Calculation Logic
+For each candidate association with `status = 'hired'` within the selected date range:
+- **Start**: `created_at` (when the candidate entered the system for that job)
+- **End**: `updated_at` (when they were marked as hired)
+- **Result**: Average of all individual durations, displayed in days (e.g., "18d")
 
-The salary data is also correctly synced to the candidate profile and does trigger AI Insights re-evaluation. The issue is purely a display/state bug on re-open.
+If no hires exist in the range, it displays "N/A".
 
-## Root Cause
+### Files Changed
 
-There is a race condition between three effects in `ScorecardSheet.tsx`:
+**1. `src/hooks/useAnalyticsMetrics.ts`**
+- Add `avgTimeToHire` (number | null) to the `AnalyticsMetrics` interface and return value
+- In the query function, after computing `totalHires`, calculate the average days between `created_at` and `updated_at` for all hired associations within the date range
+- Return the rounded average (or null if no hires)
 
-1. **Initialization effect** (line 207): Runs on `open` -- checks for a localStorage draft and restores it, or sets defaults. Does NOT reset `responses` when no draft exists.
-2. **Load questions effect** (line 357): Runs on `open` -- starts an async DB fetch for questions AND responses. On completion, calls `setResponses(responsesMap)` with the correct salary data.
-3. **Auto-save draft effect** (line 266): Runs whenever `responses` changes -- saves current state to localStorage after a 1-second debounce.
+**2. `src/pages/Analytics.tsx`**
+- Add a new metric card object to the `metricCards` array for "Avg Time to Hire"
+- Use the `Clock` icon (already imported pattern exists in other pages)
+- Display value as `Xd` or `N/A`
+- Update the grid from 6 columns to 7 (adjusting `lg:grid-cols-6` to `lg:grid-cols-7`) or keep at 6 and let it wrap naturally -- keeping 6 columns and adding a 7th card that wraps to the next row is cleaner
 
-The race:
-- On mount, `responses` starts as `{}` (empty object)
-- The auto-save effect sees `responses = {}` and saves an empty draft to localStorage
-- The async load completes and sets the correct responses from DB
-- But if `existing` prop updates (e.g., `viewingScorecardId` resets), the init effect re-runs, finds the recently-saved empty draft, sees its timestamp is newer than the DB record, and restores `responses = {}` -- wiping the loaded data
-
-## Fix (in `src/components/candidates/ScorecardSheet.tsx`)
-
-### 1. Skip auto-save while questions are loading
-
-Add `loadingQuestions` to the auto-save draft effect's guard clause. If questions are still loading, the responses are not yet meaningful and should not be persisted:
-
-```typescript
-// Line ~268
-if (!open || isReadOnly || loadingQuestions) return;
-```
-
-### 2. Clear stale draft after DB responses are loaded
-
-After successfully loading responses from the database in `loadQuestionsAndResponses`, clear any existing draft to prevent the init effect from restoring stale/empty data on subsequent re-runs:
-
-```typescript
-// After setResponses(responsesMap) at line ~408
-clearDraft();
-setHasDraft(false);
-```
-
-This ensures that once authoritative DB data is loaded, it won't be overwritten by a draft that was saved during the loading window.
-
-## AI Insights Re-evaluation
-
-Already working correctly:
-- On scorecard save, the salary amount is synced to the `candidates` table (salary_amount, salary_currency, salary_period)
-- `triggerFitAnalysis()` is called after save, which invokes the `analyze-candidate-fit` edge function
-- The edge function reads the updated candidate profile including salary data
-
-No changes needed for AI insights.
-
-## Files Changed
-
-| File | Change |
-|------|--------|
-| `src/components/candidates/ScorecardSheet.tsx` | Add `loadingQuestions` guard to auto-save effect; clear draft after DB responses load |
+### No New Dependencies or Database Changes Required
+The data needed (`created_at`, `updated_at`, `status`) is already fetched in the existing associations query. No new Supabase calls needed. Tenant isolation is already enforced by the existing `tenant_id` filtering on the jobs query.
 
