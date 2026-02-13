@@ -145,7 +145,57 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
         })
       }
 
-      if (finalJobIds.length === 0) {
+      // Build status-agnostic job IDs for Avg Time to Hire
+      // (respects tenant, org, recruiter, and specific job filters — but NOT job status)
+      let statusAgnosticJobIds = finalJobIds
+      if (jobStatus && jobStatus !== 'all') {
+        let agnosticQuery = supabase
+          .from('jobs')
+          .select('id, hiring_team')
+          .eq('tenant_id', tenantId)
+
+        if (organizationIds && organizationIds.length > 0) {
+          agnosticQuery = agnosticQuery.in('organization_id', organizationIds)
+        }
+        // NOTE: no .eq('status', ...) here
+
+        const { data: agnosticJobs, error: agnosticError } = await agnosticQuery
+        if (agnosticError) throw agnosticError
+
+        let agnosticIds = agnosticJobs?.map(j => j.id) || []
+
+        if (jobIds && jobIds.length > 0) {
+          const agnosticSet = new Set(agnosticIds)
+          agnosticIds = jobIds.filter(id => agnosticSet.has(id))
+        }
+
+        if (recruiterIds && recruiterIds.length > 0) {
+          const { data: agnosticAssignments } = await supabase
+            .from('job_assignments')
+            .select('job_id')
+            .in('user_id', recruiterIds)
+            .is('deleted_at', null)
+
+          const agnosticAssignedSet = new Set(agnosticAssignments?.map(a => a.job_id) || [])
+          const recruiterIdSet = new Set(recruiterIds)
+
+          agnosticIds = agnosticIds.filter(jobId => {
+            if (agnosticAssignedSet.has(jobId)) return true
+            const job = agnosticJobs?.find(j => j.id === jobId)
+            if (job) {
+              const htUserIds = extractHiringTeamUserIds(job.hiring_team)
+              for (const uid of recruiterIdSet) {
+                if (htUserIds.has(uid)) return true
+              }
+            }
+            return false
+          })
+        }
+
+        statusAgnosticJobIds = agnosticIds
+      }
+
+      if (finalJobIds.length === 0 && statusAgnosticJobIds.length === 0) {
         return {
           applications: 0,
           activeCandidates: 0,
@@ -162,57 +212,73 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
         }
       }
 
-      // Step 3: Fetch job_candidate_associations for these jobs (no recruiter filter on associations)
-      const associationsQuery = supabase
-        .from('job_candidate_associations')
-        .select(`
-          id,
-          status,
-          created_at,
-          updated_at,
-          current_stage_id,
-          added_by,
-          job_hiring_stages!inner(
+      // Step 3: Fetch job_candidate_associations for status-filtered jobs
+      let allAssociations: any[] = []
+      if (finalJobIds.length > 0) {
+        const { data: associations, error: assocError } = await supabase
+          .from('job_candidate_associations')
+          .select(`
             id,
-            custom_stage_name,
-            job_stages!inner(
+            status,
+            created_at,
+            updated_at,
+            current_stage_id,
+            added_by,
+            job_id,
+            job_hiring_stages!inner(
               id,
-              stage_name,
-              stage_type
+              custom_stage_name,
+              job_stages!inner(
+                id,
+                stage_name,
+                stage_type
+              )
             )
-          )
-        `)
-        .in('job_id', finalJobIds)
+          `)
+          .in('job_id', finalJobIds)
 
-      const { data: associations, error: assocError } = await associationsQuery
+        if (assocError) throw assocError
+        allAssociations = associations || []
+      }
 
-      if (assocError) throw assocError
+      // Fetch status-agnostic associations for Avg Time to Hire
+      // (only the extra job IDs not already in finalJobIds)
+      let avgTimeToHireAssociations: any[] = [...allAssociations]
+      const extraJobIds = statusAgnosticJobIds.filter(id => !new Set(finalJobIds).has(id))
+      if (extraJobIds.length > 0) {
+        const { data: extraAssocs, error: extraError } = await supabase
+          .from('job_candidate_associations')
+          .select('id, status, created_at, updated_at, job_id')
+          .in('job_id', extraJobIds)
+
+        if (extraError) throw extraError
+        avgTimeToHireAssociations = [...allAssociations, ...(extraAssocs || [])]
+      }
 
       // Step 4: Fetch scheduled bookings for involved jobs
-      // Fetch by created_at for "scheduled" metric, and all for "completed" calculation
-      const bookingsQuery = supabase
-        .from('scheduled_bookings')
-        .select('id, status, scheduled_start, created_at, job_id, booked_by')
-        .in('job_id', finalJobIds)
-        .gte('created_at', startISO)
-        .lte('created_at', endISO)
-        .not('status', 'eq', 'cancelled')
+      let bookings: any[] = []
+      let allBookings: any[] = []
+      if (finalJobIds.length > 0) {
+        const { data: b, error: bErr } = await supabase
+          .from('scheduled_bookings')
+          .select('id, status, scheduled_start, created_at, job_id, booked_by')
+          .in('job_id', finalJobIds)
+          .gte('created_at', startISO)
+          .lte('created_at', endISO)
+          .not('status', 'eq', 'cancelled')
+        if (bErr) throw bErr
+        bookings = b || []
 
-      const { data: bookings, error: bookingsError } = await bookingsQuery
-      if (bookingsError) throw bookingsError
-
-      // Fetch ALL bookings for completed interviews calculation
-      const { data: allBookings, error: allBookingsError } = await supabase
-        .from('scheduled_bookings')
-        .select('id, status, scheduled_start, created_at, job_id')
-        .in('job_id', finalJobIds)
-        .not('status', 'eq', 'cancelled')
-
-      if (allBookingsError) throw allBookingsError
+        const { data: ab, error: abErr } = await supabase
+          .from('scheduled_bookings')
+          .select('id, status, scheduled_start, created_at, job_id')
+          .in('job_id', finalJobIds)
+          .not('status', 'eq', 'cancelled')
+        if (abErr) throw abErr
+        allBookings = ab || []
+      }
 
       // Calculate metrics
-      const allAssociations = associations || []
-      
       // Filter by date range for applications (created_at)
       const applicationsInRange = allAssociations.filter(a => {
         const createdAt = new Date(a.created_at)
@@ -246,15 +312,20 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
       })
       const totalHires = hiredInRange.length
 
-      // Avg Time to Hire: average days from created_at to updated_at for hired candidates
+      // Avg Time to Hire: uses status-AGNOSTIC associations (ignores job status filter)
       let avgTimeToHire: number | null = null
-      if (hiredInRange.length > 0) {
-        const totalDays = hiredInRange.reduce((sum, a) => {
+      const hiredForAvg = avgTimeToHireAssociations.filter(a => {
+        if (a.status !== 'hired') return false
+        const updatedAt = new Date(a.updated_at)
+        return updatedAt >= dateRange.startDate && updatedAt <= dateRange.endDate
+      })
+      if (hiredForAvg.length > 0) {
+        const totalDays = hiredForAvg.reduce((sum, a) => {
           const created = new Date(a.created_at).getTime()
           const hired = new Date(a.updated_at).getTime()
           return sum + (hired - created) / (1000 * 60 * 60 * 24)
         }, 0)
-        avgTimeToHire = Math.round(totalDays / hiredInRange.length)
+        avgTimeToHire = Math.round(totalDays / hiredForAvg.length)
       }
 
       // Interviews SCHEDULED within date range (based on created_at)
