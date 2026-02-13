@@ -1,31 +1,29 @@
 
 
-## Add "Time to Hire" Metric Card to Analytics Dashboard
+## Make "Avg Time to Hire" Ignore Job Status Filter
 
-### What It Does
-Adds a new metric card showing the **average number of days** from when a candidate was created in the system to when they were marked as hired. This metric respects all existing filters (date range, recruiters, jobs, departments, job status) and is strictly tenant-bound.
+### Problem
+Currently, the Avg Time to Hire metric is calculated from associations tied to `finalJobIds`, which are already filtered by job status. This means if the filter is set to "Open", hired candidates from closed jobs are excluded -- but jobs are often closed *because* someone was hired.
 
-### Calculation Logic
-For each candidate association with `status = 'hired'` within the selected date range:
-- **Start**: `created_at` (when the candidate entered the system for that job)
-- **End**: `updated_at` (when they were marked as hired)
-- **Result**: Average of all individual durations, displayed in days (e.g., "18d")
+### Solution
+Fetch a **second set of job IDs** that applies all filters *except* job status, and use those specifically for the Avg Time to Hire calculation.
 
-If no hires exist in the range, it displays "N/A".
+### Changes
 
-### Files Changed
+**File: `src/hooks/useAnalyticsMetrics.ts`**
 
-**1. `src/hooks/useAnalyticsMetrics.ts`**
-- Add `avgTimeToHire` (number | null) to the `AnalyticsMetrics` interface and return value
-- In the query function, after computing `totalHires`, calculate the average days between `created_at` and `updated_at` for all hired associations within the date range
-- Return the rounded average (or null if no hires)
+1. After the existing `jobsQuery` (which applies the status filter), run a second query for jobs **without** the status filter -- but still applying tenant_id, organization, and recruiter filters.
+2. Compute a `statusAgnosticJobIds` array from this second query.
+3. Fetch associations for those job IDs (or reuse the existing ones if `statusAgnosticJobIds` is a superset of `finalJobIds`) to calculate `avgTimeToHire`.
+4. If the job status filter is "all", no extra query is needed -- the existing data already covers everything.
 
-**2. `src/pages/Analytics.tsx`**
-- Add a new metric card object to the `metricCards` array for "Avg Time to Hire"
-- Use the `Clock` icon (already imported pattern exists in other pages)
-- Display value as `Xd` or `N/A`
-- Update the grid from 6 columns to 7 (adjusting `lg:grid-cols-6` to `lg:grid-cols-7`) or keep at 6 and let it wrap naturally -- keeping 6 columns and adding a 7th card that wraps to the next row is cleaner
+Specifically:
+- Only run the extra query when `jobStatus` is not `'all'` (to avoid redundant fetches)
+- The extra query reuses the same tenant_id and organization filters, just skips the `.eq('status', ...)` call
+- Apply the same recruiter and specific jobIds intersection logic to get `statusAgnosticJobIds`
+- Fetch a separate set of associations scoped to `statusAgnosticJobIds` for the avgTimeToHire calculation
+- All other metrics continue using the existing `finalJobIds` (status-filtered) as before
 
-### No New Dependencies or Database Changes Required
-The data needed (`created_at`, `updated_at`, `status`) is already fetched in the existing associations query. No new Supabase calls needed. Tenant isolation is already enforced by the existing `tenant_id` filtering on the jobs query.
+### No Other Files Changed
+The Analytics page component doesn't need changes -- it already displays `avgTimeToHire` correctly. This is purely a data-layer adjustment.
 
