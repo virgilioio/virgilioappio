@@ -24,6 +24,7 @@ export interface AnalyticsMetrics {
   interviewsScheduled: number
   interviewsCompleted: number
   rejectedCandidates: number
+  avgTimeToHire: number | null
   statusDistribution: { name: string; value: number; color: string }[]
   stageDistribution: { name: string; count: number }[]
   trendData: { date: string; applications: number; active: number; hires: number; interviewsScheduled: number }[]
@@ -153,6 +154,7 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
           interviewsScheduled: 0,
           interviewsCompleted: 0,
           rejectedCandidates: 0,
+          avgTimeToHire: null,
           statusDistribution: [],
           stageDistribution: [],
           trendData: [],
@@ -237,11 +239,23 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
       }).length
 
       // Total hires (status = 'hired') within date range
-      const totalHires = allAssociations.filter(a => {
+      const hiredInRange = allAssociations.filter(a => {
         if (a.status !== 'hired') return false
         const updatedAt = new Date(a.updated_at)
         return updatedAt >= dateRange.startDate && updatedAt <= dateRange.endDate
-      }).length
+      })
+      const totalHires = hiredInRange.length
+
+      // Avg Time to Hire: average days from created_at to updated_at for hired candidates
+      let avgTimeToHire: number | null = null
+      if (hiredInRange.length > 0) {
+        const totalDays = hiredInRange.reduce((sum, a) => {
+          const created = new Date(a.created_at).getTime()
+          const hired = new Date(a.updated_at).getTime()
+          return sum + (hired - created) / (1000 * 60 * 60 * 24)
+        }, 0)
+        avgTimeToHire = Math.round(totalDays / hiredInRange.length)
+      }
 
       // Interviews SCHEDULED within date range (based on created_at)
       const interviewsScheduled = bookings?.length || 0
@@ -339,6 +353,7 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
         interviewsScheduled,
         interviewsCompleted,
         rejectedCandidates,
+        avgTimeToHire,
         statusDistribution,
         stageDistribution,
         trendData,
@@ -357,6 +372,7 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
     interviewsScheduled: data?.interviewsScheduled ?? 0,
     interviewsCompleted: data?.interviewsCompleted ?? 0,
     rejectedCandidates: data?.rejectedCandidates ?? 0,
+    avgTimeToHire: data?.avgTimeToHire ?? null,
     statusDistribution: data?.statusDistribution ?? [],
     stageDistribution: data?.stageDistribution ?? [],
     trendData: data?.trendData ?? [],
