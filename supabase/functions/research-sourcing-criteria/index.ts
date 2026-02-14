@@ -41,6 +41,33 @@ serve(async (req) => {
     
     console.log('🔍 Research input:', JSON.stringify(input, null, 2));
 
+    // Sanitize input title to remove any Spanish words that may have leaked through
+    const SPANISH_TITLE_MAP: Record<string, string> = {
+      'Gerente': 'Manager', 'Ingeniero': 'Engineer', 'Desarrollador': 'Developer',
+      'Analista': 'Analyst', 'Analistas': 'Analysts', 'Coordinador': 'Coordinator',
+      'Especialista': 'Specialist', 'Consultor': 'Consultant', 'Ejecutivo': 'Executive',
+      'Representante': 'Representative', 'Arquitecto': 'Architect', 'Programador': 'Programmer',
+      'Líder': 'Lead', 'Lider': 'Lead', 'Jefe': 'Head', 'Supervisor': 'Supervisor',
+      'Equipo': 'Team', 'Ventas': 'Sales', 'Comercial': 'Commercial',
+      'Operaciones': 'Operations', 'Recursos': 'Resources', 'Humanos': 'Human',
+      'Finanzas': 'Finance', 'Datos': 'Data', 'Proyecto': 'Project', 'Proyectos': 'Projects',
+      'Gestion': 'Management', 'Analisis': 'Analysis', 'Negocios': 'Business',
+      'Producto': 'Product', 'Tecnico': 'Technical', 'Calidad': 'Quality',
+      'del': 'of the', 'de': 'of', 'y': 'and', 'el': 'the', 'la': 'the', 'los': 'the', 'las': 'the',
+    };
+
+    if (!input.detected_language || input.detected_language === 'English') {
+      let sanitized = input.job_title;
+      for (const [es, en] of Object.entries(SPANISH_TITLE_MAP)) {
+        sanitized = sanitized.replace(new RegExp(`\\b${es}\\b`, 'gi'), en);
+      }
+      sanitized = sanitized.replace(/\s+/g, ' ').trim();
+      if (sanitized !== input.job_title) {
+        console.log(`🔧 Research: Sanitized input title: "${input.job_title}" -> "${sanitized}"`);
+        input.job_title = sanitized;
+      }
+    }
+
     if (!input.job_title) {
       return new Response(
         JSON.stringify({ error: 'job_title is required' }),
@@ -77,7 +104,7 @@ serve(async (req) => {
     // Language instruction for research outputs
     const languageInstruction = input.detected_language && input.detected_language !== 'English'
       ? `\n\n🌐 LANGUAGE REQUIREMENT: The user's prompt is in ${input.detected_language}. Generate all alternative titles and keywords in ${input.detected_language} to match how candidates in that language market describe themselves.`
-      : '\n\n🌐 LANGUAGE RULE: ALL output MUST be in English. Do not use Spanish, Portuguese, or any other non-English language for titles, keywords, or reasoning. Even if the job location is in a non-English-speaking country, all output text must be in English.';
+      : '';
 
     // Updated prompt with reduced caps
     const researchPrompt = `You are a recruiting research assistant specializing in talent sourcing. Given a job specification, research and provide enriched search criteria.
@@ -99,7 +126,7 @@ Provide the following research outputs with STRICT LIMITS:
    - Specific tools, technologies, or methodologies
    - Key achievements or metrics (e.g., "quota attainment", "revenue growth")
    - Industry-specific terminology${input.detected_language && input.detected_language !== 'English' ? `\n   Generate keywords in ${input.detected_language} where appropriate.` : ''}
-   Do NOT include generic terms.
+    Do NOT include generic terms.
 
 5. **Research Reasoning**: A brief 1-2 sentence explanation of your research logic.
 
@@ -109,7 +136,13 @@ CRITICAL CONSTRAINTS:
 - Alternative titles must be what candidates ACTUALLY use, not theoretical variations
 - If user specified companies, return empty array for researched_companies
 - Industries must always be empty array
-- Keywords should be specific and actionable`;
+- Keywords should be specific and actionable${!input.detected_language || input.detected_language === 'English' ? `
+
+ABSOLUTE LANGUAGE RULE:
+ALL output — alternative titles, keywords, reasoning — MUST be in English.
+Do NOT generate Spanish, Portuguese, or any non-English text.
+The job location does NOT determine the output language.
+Even if the role is in Latin America, all titles and keywords must be in English.` : ''}`;
 
     console.log('🤖 Calling OpenAI for research with reduced caps...');
 

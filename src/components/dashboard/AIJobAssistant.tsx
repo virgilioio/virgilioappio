@@ -96,15 +96,23 @@ interface AIJobAssistantProps {
 // Fallback: detect and fix Spanish job titles when prompt was in English
 const SPANISH_TO_ENGLISH_TITLES: Record<string, string> = {
   'Gerente': 'Manager', 'Director': 'Director', 'Ingeniero': 'Engineer',
-  'Desarrollador': 'Developer', 'Analista': 'Analyst', 'Coordinador': 'Coordinator',
-  'Especialista': 'Specialist', 'Consultor': 'Consultant', 'Ejecutivo': 'Executive',
-  'Representante': 'Representative', 'Arquitecto': 'Architect', 'Diseñador': 'Designer',
-  'Investigador': 'Researcher', 'Administrador': 'Administrator', 'Contador': 'Accountant',
-  'Vendedor': 'Sales Representative', 'Reclutador': 'Recruiter', 'Programador': 'Programmer',
-  'Líder': 'Lead', 'Jefe': 'Head', 'Supervisor': 'Supervisor',
-  'Ventas': 'Sales', 'Comercial': 'Commercial', 'Operaciones': 'Operations',
-  'Recursos Humanos': 'Human Resources', 'Mercadotecnia': 'Marketing',
+  'Desarrollador': 'Developer', 'Analista': 'Analyst', 'Analistas': 'Analysts',
+  'Coordinador': 'Coordinator', 'Especialista': 'Specialist', 'Consultor': 'Consultant',
+  'Ejecutivo': 'Executive', 'Representante': 'Representative', 'Arquitecto': 'Architect',
+  'Diseñador': 'Designer', 'Disenador': 'Designer', 'Investigador': 'Researcher',
+  'Administrador': 'Administrator', 'Contador': 'Accountant', 'Vendedor': 'Sales Representative',
+  'Reclutador': 'Recruiter', 'Programador': 'Programmer',
+  'Líder': 'Lead', 'Lider': 'Lead', 'Jefe': 'Head', 'Supervisor': 'Supervisor',
+  'Equipo': 'Team', 'Ventas': 'Sales', 'Comercial': 'Commercial', 'Comerciales': 'Commercial',
+  'Operaciones': 'Operations', 'Recursos': 'Resources', 'Humanos': 'Human',
+  'Recursos Humanos': 'Human Resources', 'Mercadotecnia': 'Marketing', 'Mercadeo': 'Marketing',
   'Tecnología': 'Technology', 'Finanzas': 'Finance', 'Contabilidad': 'Accounting',
+  'Tecnico': 'Technical', 'Producto': 'Product', 'Proyecto': 'Project', 'Proyectos': 'Projects',
+  'Datos': 'Data', 'Seguridad': 'Security', 'Calidad': 'Quality', 'Investigacion': 'Research',
+  'Soporte': 'Support', 'Atencion': 'Service', 'Cliente': 'Client', 'Clientes': 'Clients',
+  'Cuenta': 'Account', 'Cuentas': 'Accounts', 'Negocios': 'Business', 'Gestion': 'Management',
+  'Estrategia': 'Strategy', 'Analisis': 'Analysis',
+  'Asistente': 'Assistant', 'Asociado': 'Associate',
 }
 
 function sanitizeText(text: string): string {
@@ -132,12 +140,21 @@ function sanitizeJobTitle(title: string, promptText: string): string {
 
 function sanitizeJobSpec(spec: any, promptText: string): any {
   if (!isEnglishPrompt(promptText)) return spec
-  return {
+  const sanitized = {
     ...spec,
     job_title: sanitizeText(spec.job_title || ''),
     alt_titles: (spec.alt_titles || []).map((t: string) => sanitizeText(t)),
     department: spec.department ? sanitizeText(spec.department) : spec.department,
   }
+  // Also sanitize research metadata if present
+  if (sanitized.research_metadata) {
+    sanitized.research_metadata = {
+      ...sanitized.research_metadata,
+      researched_titles: (sanitized.research_metadata.researched_titles || []).map((t: string) => sanitizeText(t)),
+      researched_keywords: (sanitized.research_metadata.researched_keywords || []).map((k: string) => sanitizeText(k)),
+    }
+  }
+  return sanitized
 }
 
 export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAssistantProps = {}) {
@@ -399,7 +416,7 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAs
           search_criteria: {
             skills: skills,
             locations: normalizedLocations,
-            title_keywords: [title, ...(generatedSpec.alt_titles || [])].filter((t: string) => t && t.length > 0),
+            title_keywords: [title, ...(generatedSpec.alt_titles || [])].filter((t: string) => t && t.length > 0).map((t: string) => isEnglishPrompt(prompt) ? sanitizeText(t) : t),
             salary_min: generatedSpec.salary_range?.min,
             salary_max: generatedSpec.salary_range?.max,
             currency: generatedSpec.salary_range?.currency

@@ -510,7 +510,7 @@ Return ONLY valid JSON in this format:
     "state": "State/Province name if applicable or null",
     "country": "Full country name",
     "country_code": "Two-letter ISO code (US, MX, CO, AR, BR, etc.) — use for SINGLE country only",
-    "country_codes": ["ISO codes"] or null — "USE THIS when multiple specific countries are mentioned (e.g., ['IN', 'PH']). Set country_code to null when using this.",
+    "country_codes": ["ISO codes when SPECIFIC countries are mentioned. REQUIRED when 2+ countries are named. Example: 'India or Philippines' -> ['IN', 'PH']. Leave as empty array [] only if no specific countries mentioned. Do NOT use region instead of country_codes when specific countries are named."],
     "region": "LATAM | EMEA | APAC | NORTH_AMERICA if regional, else null",
     "is_remote": true | false
   },
@@ -542,7 +542,7 @@ DO NOT translate, adapt, or localize text fields to match the geographic locatio
           ...conversationMessages,
           // Prompt goes first, then language rule LAST (recency bias = model focuses on last message)
           { role: 'user', content: effectivePrompt },
-          { role: 'user', content: `FINAL INSTRUCTION — READ THIS CAREFULLY: Your ENTIRE JSON response MUST be in ${detectedLanguage}. Every field — job_title, alt_titles, department, recommendations, job_description — MUST be in ${detectedLanguage}. Do NOT use ${detectedLanguage === 'English' ? 'Spanish, Portuguese, French, or any other language' : 'any language other than ' + detectedLanguage} for ANY text field. The job's geographic location does NOT change the response language. Skills array stays in English. This rule overrides everything above.` }
+          { role: 'user', content: `FINAL INSTRUCTION — READ THIS CAREFULLY: Your ENTIRE JSON response MUST be in ${detectedLanguage}. Every field — job_title, alt_titles, department, recommendations, job_description — MUST be in ${detectedLanguage}. Do NOT use ${detectedLanguage === 'English' ? 'Spanish, Portuguese, French, or any other language' : 'any language other than ' + detectedLanguage} for ANY text field. The job's geographic location does NOT change the response language. Skills array stays in English. If the prompt mentions specific countries by name, you MUST use country_codes with those exact countries as ISO codes. Do NOT use region instead. This rule overrides everything above.` }
         ],
         temperature: 0.7,
         max_tokens: 1500,
@@ -580,18 +580,49 @@ DO NOT translate, adapt, or localize text fields to match the geographic locatio
       
       // Sanitize title server-side before passing to research (prevents Spanish titles from priming research AI)
       const SPANISH_TITLE_MAP: Record<string, string> = {
+        // Role titles
         'Gerente': 'Manager', 'Ingeniero': 'Engineer', 'Desarrollador': 'Developer',
-        'Analista': 'Analyst', 'Coordinador': 'Coordinator', 'Especialista': 'Specialist',
-        'Líder': 'Lead', 'Jefe': 'Head', 'Supervisor': 'Supervisor', 'Equipo': 'Team',
-        'Consultor': 'Consultant', 'Ejecutivo': 'Executive', 'Representante': 'Representative',
+        'Analista': 'Analyst', 'Analistas': 'Analysts', 'Coordinador': 'Coordinator',
+        'Especialista': 'Specialist', 'Consultor': 'Consultant', 'Ejecutivo': 'Executive',
+        'Representante': 'Representative', 'Arquitecto': 'Architect', 'Programador': 'Programmer',
+        'Diseñador': 'Designer', 'Disenador': 'Designer', 'Investigador': 'Researcher',
+        'Administrador': 'Administrator', 'Contador': 'Accountant', 'Vendedor': 'Sales Representative',
+        'Reclutador': 'Recruiter', 'Líder': 'Lead', 'Lider': 'Lead', 'Jefe': 'Head',
+        'Supervisor': 'Supervisor',
+        // Department / function words
+        'Equipo': 'Team', 'Ventas': 'Sales', 'Comercial': 'Commercial', 'Comerciales': 'Commercial',
+        'Operaciones': 'Operations', 'Recursos': 'Resources', 'Humanos': 'Human',
+        'Contabilidad': 'Accounting', 'Finanzas': 'Finance', 'Mercadeo': 'Marketing',
+        'Mercadotecnia': 'Marketing', 'Tecnología': 'Technology', 'Tecnico': 'Technical',
+        'Producto': 'Product', 'Proyecto': 'Project', 'Proyectos': 'Projects',
+        'Datos': 'Data', 'Seguridad': 'Security', 'Calidad': 'Quality',
+        'Investigacion': 'Research', 'Soporte': 'Support', 'Atencion': 'Service',
+        'Cliente': 'Client', 'Clientes': 'Clients', 'Cuenta': 'Account', 'Cuentas': 'Accounts',
+        'Negocios': 'Business', 'Gestion': 'Management', 'Estrategia': 'Strategy',
+        'Analisis': 'Analysis',
+        // Seniority / modifiers
+        'Asistente': 'Assistant', 'Asociado': 'Associate', 'Regional': 'Regional',
+        'Nacional': 'National', 'Internacional': 'International', 'General': 'General',
+        'Principal': 'Principal',
+        // Connectors
         'del': 'of the', 'de': 'of', 'y': 'and', 'el': 'the', 'la': 'the', 'los': 'the', 'las': 'the',
       };
-      let researchTitle = jobSpec.job_title;
-      if (detectedLanguage === 'English') {
+
+      function sanitizeSpanishText(text: string): string {
+        let sanitized = text;
         for (const [es, en] of Object.entries(SPANISH_TITLE_MAP)) {
-          researchTitle = researchTitle.replace(new RegExp(`\\b${es}\\b`, 'gi'), en);
+          sanitized = sanitized.replace(new RegExp(`\\b${es}\\b`, 'gi'), en);
         }
-        researchTitle = researchTitle.replace(/\s+/g, ' ').trim();
+        return sanitized.replace(/\s+/g, ' ').trim();
+      }
+
+      let researchTitle = jobSpec.job_title;
+      let researchAltTitles = jobSpec.alt_titles || [];
+      let researchDepartment = jobSpec.department || '';
+      if (detectedLanguage === 'English') {
+        researchTitle = sanitizeSpanishText(researchTitle);
+        researchAltTitles = researchAltTitles.map((t: string) => sanitizeSpanishText(t));
+        researchDepartment = sanitizeSpanishText(researchDepartment);
         if (researchTitle !== jobSpec.job_title) {
           console.log(`🔧 Sanitized title for research: "${jobSpec.job_title}" -> "${researchTitle}"`);
         }
@@ -606,7 +637,7 @@ DO NOT translate, adapt, or localize text fields to match the geographic locatio
             location: jobSpec.location,
             skills: jobSpec.skills,
             company_hint: companyHint,
-            department: jobSpec.department,
+            department: researchDepartment,
             detected_language: detectedLanguage  // Pass language for consistent outputs
           }
         }
