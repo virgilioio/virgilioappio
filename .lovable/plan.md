@@ -1,117 +1,124 @@
 
 
-## Fix: Comprehensive Language Enforcement for English Prompts
+## Fix: Three Critical Failures in Language + Location Grounding
 
-### Problem
-Despite previous fixes, the system still returns Spanish job titles, keywords, alt titles, and department names when processing English prompts about roles in non-English-speaking regions. The JD shared was entirely in English, yet the output came back in Spanish.
+### What Went Wrong (Evidence from Logs)
 
-### Root Causes Identified
+The latest sourcing project (`6a00291f`) created from an English JD about "Manager of the Analyst Team" for India/Philippines produced:
 
-**1. Sandwich message is in the wrong position (most critical)**
-In `generate-job-spec/index.ts`, the language enforcement message (line 544) comes BEFORE the actual prompt (line 545). The prompt — a long English JD — is the last thing the model reads. GPT-4o-mini has strong recency bias, so the language rule gets overshadowed by the content of the JD and the Spanish examples earlier in the system prompt.
+- **Title**: "Manager of the Equipo of Analistas" (mixed English/Spanish)
+- **Locations**: 12 APAC countries (IN, CN, JP, SG, AU, KR, ID, TH, VN, PH, MY, NZ) instead of just IN + PH
+- **Research titles**: "Gerente de Analisis", "Lider de Equipo de Analistas" (fully Spanish)
+- **Keywords**: "Analisis de Datos", "Gestion de Proyectos" (fully Spanish)
+- **Apollo results**: 0 — because no one has the title "Manager of the Equipo of Analistas"
 
-**2. No post-prompt language reminder**
-There is no final message AFTER the user's prompt to reinforce the language rule. The "sandwich" technique requires the instruction to wrap AROUND the content, not just precede it.
+Three independent failures need three targeted fixes.
 
-**3. Research function receives already-Spanish titles**
-When `generate-job-spec` returns a Spanish title (e.g., "Gerente del Equipo de Analistas"), that title is passed directly to `research-sourcing-criteria` (line 586). Even though `detected_language` is "English", the Spanish title primes the research AI to generate Spanish keywords and alt titles.
+---
 
-**4. Frontend sanitization is too narrow**
-`sanitizeJobTitle` only cleans the `job_title` field. But `alt_titles`, `department`, and `keywords` from research can all be in Spanish too, and they flow directly into the search criteria and project display.
+### Fix 1: Expand the Server-Side Spanish Title Map
 
-### Solution (4 changes)
+**File**: `supabase/functions/generate-job-spec/index.ts` (lines 582-588)
 
-**File 1: `supabase/functions/generate-job-spec/index.ts`**
+**Problem**: The `SPANISH_TITLE_MAP` used to sanitize titles before passing to research is missing words like "Equipo" (Team), "Analistas" (Analysts), "Ventas" (Sales), etc. The frontend `sanitizeJobSpec` in `AIJobAssistant.tsx` has a larger map, but the server-side map is incomplete.
 
-- Move the language enforcement user message to AFTER the actual prompt (swap lines 544-545), so the last thing the model reads is the language rule
-- Add an explicit "assistant" priming message that forces the model to acknowledge the language before generating: `{ role: "assistant", content: "I will respond entirely in English." }`
-- This creates a true sandwich: system prompt (end) -> prompt -> language reminder (last)
+**Fix**: Expand the server-side map to match and exceed the frontend map. Add all common Spanish business/role words:
 
-**File 2: `supabase/functions/generate-job-spec/index.ts` (same file, research call)**
-
-- Apply `sanitizeJobTitle` logic server-side before passing `job_title` to `research-sourcing-criteria` (around line 586)
-- Add a simple server-side Spanish-to-English title cleanup so the research function never receives a Spanish title
-
-**File 3: `supabase/functions/research-sourcing-criteria/index.ts`**
-
-- When `detected_language` is "English", add an explicit instruction: "All output MUST be in English. Do not use Spanish or any other non-English language for titles, keywords, or reasoning."
-- Currently this instruction is only added when `detected_language !== 'English'` (line 78-80), meaning English gets NO language enforcement at all in the research function
-
-**File 4: `src/components/dashboard/AIJobAssistant.tsx`**
-
-- Extend `sanitizeJobTitle` logic to also sanitize `alt_titles` array and `department` field before they go into `search_criteria` and `job_spec_data`
-- Create a `sanitizeJobSpec` wrapper that cleans all text fields, not just the title
-- Apply it after receiving the AI response (around line 333-335)
-
-### Detailed Changes
-
-#### Change 1: Fix the sandwich order in generate-job-spec
-
-Current (broken):
 ```
-...conversationMessages,
-{ role: 'user', content: 'LANGUAGE RULE: ...' },    // <- before prompt
-{ role: 'user', content: effectivePrompt }            // <- last (model focuses here)
+'Analistas' -> 'Analysts', 'Equipo' -> 'Team', 'Ventas' -> 'Sales',
+'Operaciones' -> 'Operations', 'Recursos' -> 'Resources', 'Humanos' -> 'Human',
+'Contabilidad' -> 'Accounting', 'Finanzas' -> 'Finance', 'Mercadeo' -> 'Marketing',
+'Comercial' -> 'Commercial', 'Tecnico' -> 'Technical', 'Producto' -> 'Product',
+'Proyecto' -> 'Project', 'Proyectos' -> 'Projects', 'Datos' -> 'Data',
+'Seguridad' -> 'Security', 'Calidad' -> 'Quality', 'Investigacion' -> 'Research',
+'Soporte' -> 'Support', 'Atencion' -> 'Service', 'Cliente' -> 'Client',
+'Clientes' -> 'Clients', 'Cuenta' -> 'Account', 'Cuentas' -> 'Accounts',
+'Negocios' -> 'Business', 'Gestion' -> 'Management', 'Administrador' -> 'Administrator',
+'Programador' -> 'Programmer', 'Disenador' -> 'Designer', 'Arquitecto' -> 'Architect',
+'Estrategia' -> 'Strategy', 'Senior' -> 'Senior', 'Junior' -> 'Junior',
+'Asistente' -> 'Assistant', 'Asociado' -> 'Associate', 'Regional' -> 'Regional',
+'Nacional' -> 'National', 'Internacional' -> 'International', 'General' -> 'General',
+'Principal' -> 'Principal', 'Bienes' -> 'Real', 'Raices' -> 'Estate',
+'Comerciales' -> 'Commercial', 'Analisis' -> 'Analysis'
 ```
 
-Fixed:
-```
-...conversationMessages,
-{ role: 'user', content: effectivePrompt },            // <- prompt first
-{ role: 'user', content: 'FINAL INSTRUCTION: Your response MUST be entirely in English. Every field — job_title, alt_titles, department, recommendations — must be in English. Do NOT use Spanish.' }  // <- last (model focuses here)
-```
+Also apply this same sanitization to `jobSpec.alt_titles` and `jobSpec.department` before passing to the research function — not just the title.
 
-#### Change 2: Server-side title sanitization before research call
+---
 
-Around line 586, before passing `jobSpec.job_title` to research:
-```typescript
-// Simple Spanish word replacement for title before research
-const SPANISH_TITLE_MAP: Record<string, string> = {
-  'Gerente': 'Manager', 'Ingeniero': 'Engineer', 'Desarrollador': 'Developer',
-  'Analista': 'Analyst', 'Coordinador': 'Coordinator', 'Especialista': 'Specialist',
-  'Líder': 'Lead', 'Jefe': 'Head', 'Supervisor': 'Supervisor', 'Equipo': 'Team',
-  'Director': 'Director', 'Consultor': 'Consultant', 'Ejecutivo': 'Executive',
-  'del': 'of the', 'de': 'of', 'y': 'and', 'el': 'the', 'la': 'the', 'los': 'the', 'las': 'the',
-};
+### Fix 2: Force Country Codes Extraction with Stronger Prompt
 
-function sanitizeTitleForResearch(title: string, language: string): string {
-  if (language !== 'English') return title;
-  let sanitized = title;
-  for (const [es, en] of Object.entries(SPANISH_TITLE_MAP)) {
-    sanitized = sanitized.replace(new RegExp(`\\b${es}\\b`, 'gi'), en);
-  }
-  return sanitized.replace(/\s+/g, ' ').trim();
-}
+**File**: `supabase/functions/generate-job-spec/index.ts` (lines 492-496, 507-515)
+
+**Problem**: The grounding rule exists but the model still defaults to `region: "APAC"`. The JSON schema shows `country_codes` with `or null` which makes the model treat it as optional. The model takes the path of least resistance.
+
+**Fix**:
+- Make the JSON schema description more directive: remove `or null`, replace with explicit instructions
+- Move the CRITICAL LOCATION GROUNDING RULE to be right next to the JSON field definition (proximity matters)
+- In the FINAL INSTRUCTION message (line 545), add a location-specific reminder when the prompt mentions specific country names
+
+Updated JSON field:
+```json
+"country_codes": ["ISO codes when SPECIFIC countries are mentioned in the prompt. REQUIRED when 2+ countries are named. Example: prompt says 'India or Philippines' -> ['IN', 'PH']. Leave as empty array [] only if no specific countries mentioned."],
 ```
 
-#### Change 3: Add English enforcement to research function
-
-In `research-sourcing-criteria/index.ts`, change line 78-80 from:
-```typescript
-const languageInstruction = input.detected_language && input.detected_language !== 'English'
-  ? `\n\n... Generate in ${input.detected_language}...`
-  : '';
+Updated FINAL INSTRUCTION to include:
 ```
-To:
-```typescript
-const languageInstruction = input.detected_language && input.detected_language !== 'English'
-  ? `\n\n... Generate in ${input.detected_language}...`
-  : '\n\nLANGUAGE RULE: ALL output must be in English. Do not use Spanish, Portuguese, or any other language for titles, keywords, or reasoning. Even if the job location is in a non-English-speaking country, all output text must be English.';
+If the prompt mentions specific countries by name, you MUST use country_codes with those exact countries. Do NOT use region instead.
 ```
 
-#### Change 4: Expand frontend sanitization
+---
 
-In `AIJobAssistant.tsx`, create a `sanitizeJobSpec` function that applies the Spanish-to-English mapping to:
-- `job_title` (already done)
-- `alt_titles` array (NEW)
-- `department` (NEW)
+### Fix 3: Research Function Must Sanitize Its Own Input + Strengthen Output Rules
 
-And apply it to the generated spec before creating the project.
+**File**: `supabase/functions/research-sourcing-criteria/index.ts` (lines 78-100)
 
-### Why This Will Work
-- The model's last message is now the language rule (recency bias)
-- Even if the title slips through in Spanish, it gets caught server-side before research
-- The research function now has explicit English enforcement (previously had none for English)
-- Frontend catches any remaining Spanish in alt_titles and department
-- Four layers of defense instead of one
+**Problem**: Even with the English language rule (line 80), the research function received a half-Spanish title ("Manager of the Equipo of Analistas") and returned fully Spanish results. The input title primes the model toward Spanish. The current language instruction is a single line buried in context — not strong enough.
 
+**Fix**:
+- Add a server-side sanitization of the input `job_title` within the research function itself (same SPANISH_TITLE_MAP approach), so even if generate-job-spec leaks Spanish, research cleans it before using it in the prompt
+- Move the language instruction from a context line to a dedicated final paragraph with emphasis
+- Add it to the end of the research prompt (recency bias), not the beginning
+
+Updated structure:
+```
+...existing research prompt...
+
+ABSOLUTE LANGUAGE RULE:
+ALL output — alternative titles, keywords, reasoning — MUST be in English.
+Do NOT generate Spanish, Portuguese, or any non-English text.
+The job location does NOT determine the output language.
+```
+
+---
+
+### Fix 4: Expand Frontend sanitizeJobSpec
+
+**File**: `src/components/dashboard/AIJobAssistant.tsx`
+
+**Problem**: The frontend `sanitizeJobSpec` function needs to also sanitize `title_keywords` (the array used in search criteria on line 402) and `keywords` from research metadata. These flow directly into Apollo search and were Spanish.
+
+**Fix**: Apply the same sanitization to:
+- `title_keywords` array before it goes into `search_criteria` (line 402)
+- `research_metadata.researched_keywords` before storing in `job_spec_data`
+- `research_metadata.researched_titles` before storing
+
+This is a last-resort safety net — the server-side fixes above should prevent Spanish from reaching the frontend, but defense in depth.
+
+---
+
+### Summary of Changes
+
+| File | What Changes |
+|---|---|
+| `supabase/functions/generate-job-spec/index.ts` | Expand SPANISH_TITLE_MAP (30+ words), sanitize alt_titles + department, strengthen country_codes JSON schema, add location reminder to FINAL INSTRUCTION |
+| `supabase/functions/research-sourcing-criteria/index.ts` | Add input title sanitization, move language rule to end of prompt with emphasis |
+| `src/components/dashboard/AIJobAssistant.tsx` | Sanitize title_keywords, researched_keywords, and researched_titles arrays |
+
+### Expected Outcome
+For the same JD ("Manager of the Analyst Team... India or the Philippines"):
+- Title: "Manager of the Analyst Team" (English)
+- Locations: ["IN", "PH"] (only India and Philippines)
+- Research titles: "Analytics Manager", "Research Team Lead" (English)
+- Keywords: "Data Analysis", "Project Management" (English)
+- Apollo results: hundreds of matches (because the titles are now real English job titles)
