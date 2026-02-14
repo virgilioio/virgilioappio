@@ -1,36 +1,30 @@
 
 
-## Add Country-Level Location Options to Sourcing Filter
+## Fix: Country Options Not Appearing in Location Search
 
-### Problem
-The location selector in sourcing projects only has country-level entries for US, Canada, Mexico, and a handful of LATAM countries. If you want to search for candidates in, say, Germany, India, or Australia, there's no option available.
+### Root Cause
+There is a double-filtering conflict in the `LocationSelector` component. The code manually filters options by `label` (lines 55-58), but the `cmdk` library (`Command` component) also runs its **own built-in filtering** on the `value` prop of each `CommandItem`.
 
-### Solution
-Add a comprehensive list of country-level entries to `src/constants/locations.ts`. This covers all major hiring markets globally.
+For country entries, the `value` is a 2-letter code (e.g., `"IN"` for India). When you type "India":
+- The manual filter correctly matches `label: "India"` and includes it
+- But cmdk's internal filter checks `value: "IN"` against "India" and hides it
 
-### Countries to Add (grouped by region)
+For cities/states this was never a problem because their values contain full names (e.g., `"New York,New York,US"`).
 
-**Europe**: United Kingdom, Germany, France, Spain, Italy, Netherlands, Switzerland, Sweden, Norway, Denmark, Finland, Ireland, Austria, Belgium, Portugal, Poland, Czech Republic, Romania, Greece, Hungary, Ukraine, Croatia, Slovakia, Slovenia, Bulgaria, Lithuania, Latvia, Estonia, Luxembourg, Iceland
+### Fix
 
-**Asia-Pacific**: India, China, Japan, South Korea, Singapore, Australia, New Zealand, Philippines, Indonesia, Thailand, Vietnam, Malaysia, Taiwan, Hong Kong, Pakistan, Bangladesh, Sri Lanka, Nepal
+**File: `src/components/sourcing/LocationSelector.tsx`**
 
-**Middle East**: United Arab Emirates, Israel, Saudi Arabia, Qatar, Bahrain, Kuwait, Oman, Jordan, Lebanon, Turkey
+Set the `CommandItem` `value` prop to the **label** instead of the short code, so cmdk's built-in filtering matches on the human-readable name. Then use a data attribute or closure to pass the actual value to `onSelect`.
 
-**Africa**: South Africa, Nigeria, Kenya, Egypt, Ghana, Morocco, Tunisia, Ethiopia, Tanzania, Rwanda
+Specifically:
+- Change `value={location.value}` on CommandItem to `value={location.label}`
+- Update `onSelect` to receive the label (which cmdk lowercases), then look up the original location value from `LOCATION_OPTIONS`
+- Alternatively (simpler): disable cmdk's built-in filtering entirely by adding `shouldFilter={false}` to the `Command` component, since we already do manual filtering on lines 53-59
 
-**Caribbean / Central America**: Dominican Republic, Guatemala, Honduras, El Salvador, Nicaragua, Jamaica, Trinidad and Tobago, Puerto Rico
+The `shouldFilter={false}` approach is cleanest here since the manual filtering logic is already correct and complete.
 
-**South America (missing)**: Bolivia, Paraguay, Venezuela
-
-### File Changed
-
-**`src/constants/locations.ts`**
-- Add ~80-90 new country-type entries before the closing bracket of the array
-- Each follows the existing pattern: `{ value: "XX", label: "Country Name", country: "Country Name", countryCode: "XX", type: "country" }`
-- Organized by region with comments for readability
-
-### No Other Changes Needed
-- The `LocationSelector` component already supports `type: 'country'` and displays "Country" as the subtitle
-- The search/filter logic in the selector already works with all location types
-- The `locationNormalization.ts` utility already handles country-code-based matching
+### Changes
+- Add `shouldFilter={false}` to the `<Command>` element (1 line change)
+- No other files need changes
 
