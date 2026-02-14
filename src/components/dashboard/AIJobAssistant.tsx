@@ -93,6 +93,41 @@ interface AIJobAssistantProps {
   onGeneratingChange?: (isGenerating: boolean) => void
 }
 
+// Fallback: detect and fix Spanish job titles when prompt was in English
+const SPANISH_TO_ENGLISH_TITLES: Record<string, string> = {
+  'Gerente': 'Manager', 'Director': 'Director', 'Ingeniero': 'Engineer',
+  'Desarrollador': 'Developer', 'Analista': 'Analyst', 'Coordinador': 'Coordinator',
+  'Especialista': 'Specialist', 'Consultor': 'Consultant', 'Ejecutivo': 'Executive',
+  'Representante': 'Representative', 'Arquitecto': 'Architect', 'Diseñador': 'Designer',
+  'Investigador': 'Researcher', 'Administrador': 'Administrator', 'Contador': 'Accountant',
+  'Vendedor': 'Sales Representative', 'Reclutador': 'Recruiter', 'Programador': 'Programmer',
+  'Líder': 'Lead', 'Jefe': 'Head', 'Supervisor': 'Supervisor',
+  'Ventas': 'Sales', 'Comercial': 'Commercial', 'Operaciones': 'Operations',
+  'Recursos Humanos': 'Human Resources', 'Mercadotecnia': 'Marketing',
+  'Tecnología': 'Technology', 'Finanzas': 'Finance', 'Contabilidad': 'Accounting',
+}
+
+function sanitizeJobTitle(title: string, promptText: string): string {
+  // Only sanitize if prompt appears to be English
+  const englishWords = ['need', 'looking', 'want', 'hire', 'find', 'with', 'the', 'for', 'who', 'manager', 'engineer', 'developer']
+  const lowerPrompt = promptText.toLowerCase()
+  const isEnglishPrompt = englishWords.filter(w => lowerPrompt.includes(w)).length >= 2
+
+  if (!isEnglishPrompt) return title
+
+  // Check if title contains Spanish words and replace them
+  let sanitized = title
+  for (const [es, en] of Object.entries(SPANISH_TO_ENGLISH_TITLES)) {
+    const regex = new RegExp(`\\b${es}\\b`, 'gi')
+    if (regex.test(sanitized)) {
+      sanitized = sanitized.replace(regex, en)
+    }
+  }
+  // Clean up "de" prepositions that remain from Spanish structure
+  sanitized = sanitized.replace(/\bde\b/gi, 'of').replace(/\s+/g, ' ').trim()
+  return sanitized
+}
+
 export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAssistantProps = {}) {
   const [prompt, setPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
@@ -247,7 +282,7 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAs
         setJobSpec(data.jobSpec)
         setEditableJobSpec(data.jobSpec)
         setCandidateMatching(data.candidateMatching || null)
-        setSelectedTitle(data.jobSpec.job_title)
+        setSelectedTitle(sanitizeJobTitle(data.jobSpec.job_title, chatMessages.map(m => m.content).join(' ')))
         setEditableSkills(data.jobSpec.skills || [])
         setCurrentStep('specs')
         setShowModal(true)
@@ -297,7 +332,7 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAs
 
       const generatedSpec = data.jobSpec
       const skills = generatedSpec.skills || []
-      const title = generatedSpec.job_title
+      const title = sanitizeJobTitle(generatedSpec.job_title, prompt)
 
       // Step 2: Normalize location for sourcing
       const rawLocation = generatedSpec.location || ''
