@@ -79,18 +79,32 @@ const SENIORITY_MAPPING: Record<string, string> = {
 
 // Convert country codes to full names for Apollo
 const COUNTRY_CODE_TO_NAME: Record<string, string> = {
-  'US': 'United States', 'CA': 'Canada', 'GB': 'United Kingdom', 'DE': 'Germany',
-  'FR': 'France', 'ES': 'Spain', 'IT': 'Italy', 'NL': 'Netherlands', 'BE': 'Belgium',
-  'SE': 'Sweden', 'NO': 'Norway', 'DK': 'Denmark', 'FI': 'Finland', 'PL': 'Poland',
-  'PT': 'Portugal', 'GR': 'Greece', 'AT': 'Austria', 'CH': 'Switzerland', 'IE': 'Ireland',
-  'MX': 'Mexico', 'BR': 'Brazil', 'AR': 'Argentina', 'CL': 'Chile', 'CO': 'Colombia',
-  'PE': 'Peru', 'VE': 'Venezuela', 'EC': 'Ecuador', 'GT': 'Guatemala', 'CR': 'Costa Rica',
-  'PA': 'Panama', 'UY': 'Uruguay', 'BO': 'Bolivia', 'PY': 'Paraguay', 'HN': 'Honduras',
-  'SV': 'El Salvador', 'NI': 'Nicaragua', 'DO': 'Dominican Republic', 'IN': 'India',
-  'CN': 'China', 'JP': 'Japan', 'SG': 'Singapore', 'AU': 'Australia', 'NZ': 'New Zealand',
-  'KR': 'South Korea', 'TH': 'Thailand', 'VN': 'Vietnam', 'PH': 'Philippines',
-  'ID': 'Indonesia', 'MY': 'Malaysia', 'AE': 'United Arab Emirates', 'SA': 'Saudi Arabia',
-  'EG': 'Egypt', 'ZA': 'South Africa', 'KE': 'Kenya', 'NG': 'Nigeria'
+  // Americas
+  'US': 'United States', 'CA': 'Canada', 'MX': 'Mexico', 'BR': 'Brazil', 'AR': 'Argentina',
+  'CL': 'Chile', 'CO': 'Colombia', 'PE': 'Peru', 'VE': 'Venezuela', 'EC': 'Ecuador',
+  'GT': 'Guatemala', 'CR': 'Costa Rica', 'PA': 'Panama', 'UY': 'Uruguay', 'BO': 'Bolivia',
+  'PY': 'Paraguay', 'HN': 'Honduras', 'SV': 'El Salvador', 'NI': 'Nicaragua',
+  'DO': 'Dominican Republic', 'JM': 'Jamaica', 'TT': 'Trinidad and Tobago', 'PR': 'Puerto Rico',
+  // Europe
+  'GB': 'United Kingdom', 'DE': 'Germany', 'FR': 'France', 'ES': 'Spain', 'IT': 'Italy',
+  'NL': 'Netherlands', 'BE': 'Belgium', 'SE': 'Sweden', 'NO': 'Norway', 'DK': 'Denmark',
+  'FI': 'Finland', 'PL': 'Poland', 'PT': 'Portugal', 'GR': 'Greece', 'AT': 'Austria',
+  'CH': 'Switzerland', 'IE': 'Ireland', 'CZ': 'Czech Republic', 'RO': 'Romania',
+  'HU': 'Hungary', 'UA': 'Ukraine', 'HR': 'Croatia', 'SK': 'Slovakia', 'SI': 'Slovenia',
+  'BG': 'Bulgaria', 'LT': 'Lithuania', 'LV': 'Latvia', 'EE': 'Estonia', 'LU': 'Luxembourg',
+  'IS': 'Iceland',
+  // Asia-Pacific
+  'IN': 'India', 'CN': 'China', 'JP': 'Japan', 'SG': 'Singapore', 'AU': 'Australia',
+  'NZ': 'New Zealand', 'KR': 'South Korea', 'TH': 'Thailand', 'VN': 'Vietnam',
+  'PH': 'Philippines', 'ID': 'Indonesia', 'MY': 'Malaysia', 'TW': 'Taiwan',
+  'HK': 'Hong Kong', 'PK': 'Pakistan', 'BD': 'Bangladesh', 'LK': 'Sri Lanka', 'NP': 'Nepal',
+  // Middle East
+  'AE': 'United Arab Emirates', 'SA': 'Saudi Arabia', 'IL': 'Israel', 'QA': 'Qatar',
+  'BH': 'Bahrain', 'KW': 'Kuwait', 'OM': 'Oman', 'JO': 'Jordan', 'LB': 'Lebanon',
+  'TR': 'Turkey',
+  // Africa
+  'EG': 'Egypt', 'ZA': 'South Africa', 'KE': 'Kenya', 'NG': 'Nigeria', 'GH': 'Ghana',
+  'MA': 'Morocco', 'TN': 'Tunisia', 'ET': 'Ethiopia', 'TZ': 'Tanzania', 'RW': 'Rwanda'
 };
 
 // US State abbreviations to full names
