@@ -107,25 +107,37 @@ const SPANISH_TO_ENGLISH_TITLES: Record<string, string> = {
   'Tecnología': 'Technology', 'Finanzas': 'Finance', 'Contabilidad': 'Accounting',
 }
 
-function sanitizeJobTitle(title: string, promptText: string): string {
-  // Only sanitize if prompt appears to be English
-  const englishWords = ['need', 'looking', 'want', 'hire', 'find', 'with', 'the', 'for', 'who', 'manager', 'engineer', 'developer']
-  const lowerPrompt = promptText.toLowerCase()
-  const isEnglishPrompt = englishWords.filter(w => lowerPrompt.includes(w)).length >= 2
-
-  if (!isEnglishPrompt) return title
-
-  // Check if title contains Spanish words and replace them
-  let sanitized = title
+function sanitizeText(text: string): string {
+  let sanitized = text
   for (const [es, en] of Object.entries(SPANISH_TO_ENGLISH_TITLES)) {
     const regex = new RegExp(`\\b${es}\\b`, 'gi')
     if (regex.test(sanitized)) {
       sanitized = sanitized.replace(regex, en)
     }
   }
-  // Clean up "de" prepositions that remain from Spanish structure
-  sanitized = sanitized.replace(/\bde\b/gi, 'of').replace(/\s+/g, ' ').trim()
+  sanitized = sanitized.replace(/\bde\b/gi, 'of').replace(/\bdel\b/gi, 'of the').replace(/\bel\b/gi, 'the').replace(/\bla\b/gi, 'the').replace(/\blos\b/gi, 'the').replace(/\blas\b/gi, 'the').replace(/\by\b/gi, 'and').replace(/\s+/g, ' ').trim()
   return sanitized
+}
+
+function isEnglishPrompt(promptText: string): boolean {
+  const englishWords = ['need', 'looking', 'want', 'hire', 'find', 'with', 'the', 'for', 'who', 'manager', 'engineer', 'developer']
+  const lowerPrompt = promptText.toLowerCase()
+  return englishWords.filter(w => lowerPrompt.includes(w)).length >= 2
+}
+
+function sanitizeJobTitle(title: string, promptText: string): string {
+  if (!isEnglishPrompt(promptText)) return title
+  return sanitizeText(title)
+}
+
+function sanitizeJobSpec(spec: any, promptText: string): any {
+  if (!isEnglishPrompt(promptText)) return spec
+  return {
+    ...spec,
+    job_title: sanitizeText(spec.job_title || ''),
+    alt_titles: (spec.alt_titles || []).map((t: string) => sanitizeText(t)),
+    department: spec.department ? sanitizeText(spec.department) : spec.department,
+  }
 }
 
 export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAssistantProps = {}) {
@@ -330,9 +342,9 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAs
         throw new Error('Invalid response from AI service')
       }
 
-      const generatedSpec = data.jobSpec
+      const generatedSpec = sanitizeJobSpec(data.jobSpec, prompt)
       const skills = generatedSpec.skills || []
-      const title = sanitizeJobTitle(generatedSpec.job_title, prompt)
+      const title = generatedSpec.job_title
 
       // Step 2: Normalize location for sourcing
       const rawLocation = generatedSpec.location || ''
@@ -387,7 +399,7 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAs
           search_criteria: {
             skills: skills,
             locations: normalizedLocations,
-            title_keywords: [title, ...(generatedSpec.alt_titles || [])],
+            title_keywords: [title, ...(generatedSpec.alt_titles || [])].filter((t: string) => t && t.length > 0),
             salary_min: generatedSpec.salary_range?.min,
             salary_max: generatedSpec.salary_range?.max,
             currency: generatedSpec.salary_range?.currency

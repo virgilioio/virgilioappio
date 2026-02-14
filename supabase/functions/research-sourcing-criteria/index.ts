@@ -77,7 +77,7 @@ serve(async (req) => {
     // Language instruction for research outputs
     const languageInstruction = input.detected_language && input.detected_language !== 'English'
       ? `\n\n🌐 LANGUAGE REQUIREMENT: The user's prompt is in ${input.detected_language}. Generate all alternative titles and keywords in ${input.detected_language} to match how candidates in that language market describe themselves.`
-      : '';
+      : '\n\n🌐 LANGUAGE RULE: ALL output MUST be in English. Do not use Spanish, Portuguese, or any other non-English language for titles, keywords, or reasoning. Even if the job location is in a non-English-speaking country, all output text must be in English.';
 
     // Updated prompt with reduced caps
     const researchPrompt = `You are a recruiting research assistant specializing in talent sourcing. Given a job specification, research and provide enriched search criteria.

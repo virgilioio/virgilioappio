@@ -540,9 +540,9 @@ DO NOT translate, adapt, or localize text fields to match the geographic locatio
           // CRITICAL: Include conversation messages as proper OpenAI messages
           // This ensures the AI properly understands the full conversation context
           ...conversationMessages,
-          // Language enforcement sandwich: extra user message before the actual prompt
-          { role: 'user', content: `LANGUAGE RULE: Your ENTIRE response MUST be in ${detectedLanguage}. Do NOT use ${detectedLanguage === 'English' ? 'Spanish, Portuguese, French, or any other language' : 'any language other than ' + detectedLanguage} for text fields. Skills stay in English.` },
-          { role: 'user', content: effectivePrompt }
+          // Prompt goes first, then language rule LAST (recency bias = model focuses on last message)
+          { role: 'user', content: effectivePrompt },
+          { role: 'user', content: `FINAL INSTRUCTION — READ THIS CAREFULLY: Your ENTIRE JSON response MUST be in ${detectedLanguage}. Every field — job_title, alt_titles, department, recommendations, job_description — MUST be in ${detectedLanguage}. Do NOT use ${detectedLanguage === 'English' ? 'Spanish, Portuguese, French, or any other language' : 'any language other than ' + detectedLanguage} for ANY text field. The job's geographic location does NOT change the response language. Skills array stays in English. This rule overrides everything above.` }
         ],
         temperature: 0.7,
         max_tokens: 1500,
@@ -578,11 +578,30 @@ DO NOT translate, adapt, or localize text fields to match the geographic locatio
       const industryHint = extractIndustryHint(prompt, jobSpec);
       const companyHint = extractCompanyHint(prompt);
       
+      // Sanitize title server-side before passing to research (prevents Spanish titles from priming research AI)
+      const SPANISH_TITLE_MAP: Record<string, string> = {
+        'Gerente': 'Manager', 'Ingeniero': 'Engineer', 'Desarrollador': 'Developer',
+        'Analista': 'Analyst', 'Coordinador': 'Coordinator', 'Especialista': 'Specialist',
+        'Líder': 'Lead', 'Jefe': 'Head', 'Supervisor': 'Supervisor', 'Equipo': 'Team',
+        'Consultor': 'Consultant', 'Ejecutivo': 'Executive', 'Representante': 'Representative',
+        'del': 'of the', 'de': 'of', 'y': 'and', 'el': 'the', 'la': 'the', 'los': 'the', 'las': 'the',
+      };
+      let researchTitle = jobSpec.job_title;
+      if (detectedLanguage === 'English') {
+        for (const [es, en] of Object.entries(SPANISH_TITLE_MAP)) {
+          researchTitle = researchTitle.replace(new RegExp(`\\b${es}\\b`, 'gi'), en);
+        }
+        researchTitle = researchTitle.replace(/\s+/g, ' ').trim();
+        if (researchTitle !== jobSpec.job_title) {
+          console.log(`🔧 Sanitized title for research: "${jobSpec.job_title}" -> "${researchTitle}"`);
+        }
+      }
+
       const { data: researchResult, error: researchError } = await supabase.functions.invoke(
         'research-sourcing-criteria',
         {
           body: {
-            job_title: jobSpec.job_title,
+            job_title: researchTitle,
             industry_hint: industryHint,
             location: jobSpec.location,
             skills: jobSpec.skills,
