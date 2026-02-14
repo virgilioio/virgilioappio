@@ -1,48 +1,69 @@
 
 
-## Fix: Enforce English Output When User Prompts in English
+## Fix: Respect Explicit Country Mentions Instead of Generalizing to Regions
 
 ### Problem
-When prompting in English (e.g., "I need a sales manager in Mexico"), the AI frequently returns job titles, keywords, department names, and the project name in Spanish. This happens because GPT-4o-mini sees Spanish-speaking location context (LATAM, Mexico, etc.) and overrides the explicit language instruction, responding in Spanish despite the prompt being in English.
-
-The project name is constructed as `${job_title} - ${location}`, so a Spanish job title cascades into a Spanish project name, search criteria titles, and keywords.
+When a JD explicitly states "India or the Philippines," the AI generalizes this to `region: "APAC"`, which then gets expanded to 12 APAC countries (China, Japan, Singapore, Australia, etc.). The user gets candidates from countries they never asked for.
 
 ### Root Cause
-The `generate-job-spec` edge function has extensive language instructions in its system prompt, but GPT-4o-mini doesn't always follow them reliably — especially when the geographic context strongly implies a non-English language. The instructions are long and buried among many other directives, making them easy for the model to deprioritize.
+The `location_details` schema only has a single `country_code` field. When 2+ countries are mentioned, the AI cannot express them individually, so it generalizes to a region. The frontend then blindly expands the region to ALL member countries.
 
 ### Solution
-Two-part fix to make language enforcement more robust:
 
-**1. `supabase/functions/generate-job-spec/index.ts` -- Strengthen language enforcement**
-- Move the language instruction to the END of the system prompt (recency bias makes the model more likely to follow it)
-- Simplify and make the instruction more forceful with fewer words
-- Add a final `user` message right before the actual prompt that acts as a hard reminder: `"LANGUAGE RULE: Respond in English. Do not use Spanish or any other language for text fields."`
-- This "sandwich" approach (system prompt + user reminder) is a proven technique to enforce formatting/language constraints with smaller models
+**1. Update the AI prompt to extract specific countries** (`supabase/functions/generate-job-spec/index.ts`)
 
-**2. `src/components/dashboard/AIJobAssistant.tsx` -- Frontend fallback**
-- After receiving the AI response, detect if the `job_title` appears to be in a different language than the prompt
-- This is a safety net: if the AI still returns Spanish despite instructions, at minimum the user sees their original prompt language reflected in the project name
-- Specifically: if the detected language is English but the returned `job_title` contains common Spanish role words (e.g., "Gerente", "Ingeniero", "Desarrollador"), translate it to the English equivalent using a small lookup map
+Add a `country_codes` array field to the `location_details` JSON schema in the system prompt. Add an explicit instruction:
 
-### File Changes
+```
+CRITICAL LOCATION GROUNDING RULE:
+If the job description or prompt explicitly names specific countries (e.g., "India or the Philippines"),
+you MUST list ONLY those countries in country_codes. Do NOT generalize to a region.
+Only use region when the prompt itself uses regional language ("LATAM", "APAC", "Europe", etc.)
+or gives no specific country constraints.
+```
 
-**`supabase/functions/generate-job-spec/index.ts`**
-- Restructure the system prompt to place language enforcement at the very end (after all other instructions) as the last thing the model reads
-- Add a dedicated user-role message immediately before the actual prompt:
-  ```
-  { role: "user", content: "IMPORTANT: All text output must be in English. Do not respond in Spanish." }
-  ```
-  (Only added when detected language is English but location context suggests non-English region)
-- Remove redundant/scattered language instructions from the middle of the prompt to reduce noise
+Update the expected JSON output to include:
+```json
+"location_details": {
+  "country_codes": ["IN", "PH"],
+  "region": null,
+  "is_remote": true
+}
+```
 
-**`src/components/dashboard/AIJobAssistant.tsx`**
-- Add a small `sanitizeJobTitle` function that checks if a title returned for an English prompt contains obvious non-English words and maps them to English equivalents
-- Apply it to `title` before constructing the project name on line 339
-- This covers the most common failure cases (Spanish role words appearing in English-prompted results)
+**2. Update frontend location processing** (`src/components/dashboard/AIJobAssistant.tsx`, lines 337-367)
 
-### Why This Approach
-- Moving instructions to the end of the prompt exploits recency bias in language models
-- The extra user message creates a "sandwich" that is harder for the model to ignore
-- The frontend fallback handles edge cases where the model still misbehaves
-- No changes to the research function needed -- it already only adds non-English instructions when `detected_language !== 'English'`
+Change the location normalization logic to check for `country_codes` (plural) first:
 
+```
+Priority order:
+1. If location_details.country_codes exists and has entries -> use those directly
+2. If location_details.country_code exists (single, legacy) -> use that
+3. If location_details.region + is_remote -> expand region (existing behavior)
+4. Fall back to normalizeLocationForSourcing(rawLocation)
+```
+
+**3. Update TypeScript types** (`src/types/sourcing.ts`)
+
+Add `country_codes?: string[]` to the `location_details` type definition so the new field is properly typed.
+
+### Files Changed
+
+| File | Change |
+|---|---|
+| `supabase/functions/generate-job-spec/index.ts` | Add grounding rule to prompt; add `country_codes` array to expected JSON schema |
+| `src/components/dashboard/AIJobAssistant.tsx` | Add `country_codes` check before region expansion (lines 337-367) |
+| `src/types/sourcing.ts` | Add `country_codes?: string[]` to `location_details` type |
+
+### Why This Works
+- When the JD says "India or Philippines," the AI returns `country_codes: ["IN", "PH"]` instead of `region: "APAC"`
+- The frontend uses those exact codes -- no expansion to unwanted countries
+- When the prompt genuinely says "APAC" or "remote globally," the existing region expansion still works
+- The grounding rule in the prompt enforces: explicit mentions override inference
+
+### Edge Cases Handled
+- JD says "India or Philippines" -> `country_codes: ["IN", "PH"]` (exact match)
+- JD says "APAC region" -> `region: "APAC"` (region expansion, as before)
+- JD says "Remote" with no location -> global search (as before)
+- JD says "Mexico City" -> single city match via existing `country_code` path
+- Legacy responses without `country_codes` -> fall through to existing logic (backward compatible)
