@@ -1,29 +1,48 @@
 
 
-## Fix: Add Missing Countries to Apollo Edge Function
+## Fix: Enforce English Output When User Prompts in English
 
 ### Problem
-We added ~90 countries to the location selector, but the `COUNTRY_CODE_TO_NAME` map in the Apollo search edge function only covers ~40 of them. When a user selects a country like "Czech Republic" or "Israel", the code sends the raw code (`CZ`, `IL`) to Apollo instead of the full name -- Apollo won't return correct results.
+When prompting in English (e.g., "I need a sales manager in Mexico"), the AI frequently returns job titles, keywords, department names, and the project name in Spanish. This happens because GPT-4o-mini sees Spanish-speaking location context (LATAM, Mexico, etc.) and overrides the explicit language instruction, responding in Spanish despite the prompt being in English.
+
+The project name is constructed as `${job_title} - ${location}`, so a Spanish job title cascades into a Spanish project name, search criteria titles, and keywords.
+
+### Root Cause
+The `generate-job-spec` edge function has extensive language instructions in its system prompt, but GPT-4o-mini doesn't always follow them reliably — especially when the geographic context strongly implies a non-English language. The instructions are long and buried among many other directives, making them easy for the model to deprioritize.
 
 ### Solution
-Expand the `COUNTRY_CODE_TO_NAME` map in `supabase/functions/search-apollo-candidates/index.ts` to include all countries available in the location selector.
+Two-part fix to make language enforcement more robust:
 
-### Changes
+**1. `supabase/functions/generate-job-spec/index.ts` -- Strengthen language enforcement**
+- Move the language instruction to the END of the system prompt (recency bias makes the model more likely to follow it)
+- Simplify and make the instruction more forceful with fewer words
+- Add a final `user` message right before the actual prompt that acts as a hard reminder: `"LANGUAGE RULE: Respond in English. Do not use Spanish or any other language for text fields."`
+- This "sandwich" approach (system prompt + user reminder) is a proven technique to enforce formatting/language constraints with smaller models
 
-**File: `supabase/functions/search-apollo-candidates/index.ts`** (lines 81-94)
+**2. `src/components/dashboard/AIJobAssistant.tsx` -- Frontend fallback**
+- After receiving the AI response, detect if the `job_title` appears to be in a different language than the prompt
+- This is a safety net: if the AI still returns Spanish despite instructions, at minimum the user sees their original prompt language reflected in the project name
+- Specifically: if the detected language is English but the returned `job_title` contains common Spanish role words (e.g., "Gerente", "Ingeniero", "Desarrollador"), translate it to the English equivalent using a small lookup map
 
-Add the following country codes to the existing `COUNTRY_CODE_TO_NAME` map:
+### File Changes
 
-**Europe (missing):** CZ: Czech Republic, RO: Romania, HU: Hungary, UA: Ukraine, HR: Croatia, SK: Slovakia, SI: Slovenia, BG: Bulgaria, LT: Lithuania, LV: Latvia, EE: Estonia, LU: Luxembourg, IS: Iceland
+**`supabase/functions/generate-job-spec/index.ts`**
+- Restructure the system prompt to place language enforcement at the very end (after all other instructions) as the last thing the model reads
+- Add a dedicated user-role message immediately before the actual prompt:
+  ```
+  { role: "user", content: "IMPORTANT: All text output must be in English. Do not respond in Spanish." }
+  ```
+  (Only added when detected language is English but location context suggests non-English region)
+- Remove redundant/scattered language instructions from the middle of the prompt to reduce noise
 
-**Asia-Pacific (missing):** TW: Taiwan, HK: Hong Kong, PK: Pakistan, BD: Bangladesh, LK: Sri Lanka, NP: Nepal
+**`src/components/dashboard/AIJobAssistant.tsx`**
+- Add a small `sanitizeJobTitle` function that checks if a title returned for an English prompt contains obvious non-English words and maps them to English equivalents
+- Apply it to `title` before constructing the project name on line 339
+- This covers the most common failure cases (Spanish role words appearing in English-prompted results)
 
-**Middle East (missing):** IL: Israel, QA: Qatar, BH: Bahrain, KW: Kuwait, OM: Oman, JO: Jordan, LB: Lebanon, TR: Turkey
-
-**Africa (missing):** GH: Ghana, MA: Morocco, TN: Tunisia, ET: Ethiopia, TZ: Tanzania, RW: Rwanda
-
-**Caribbean (missing):** JM: Jamaica, TT: Trinidad and Tobago, PR: Puerto Rico
-
-### No Other Files Changed
-The rest of the pipeline (location selector, search criteria storage, Apollo API call construction) already works correctly. This is purely filling the gap in the country-code-to-name lookup so Apollo receives human-readable country names instead of raw ISO codes.
+### Why This Approach
+- Moving instructions to the end of the prompt exploits recency bias in language models
+- The extra user message creates a "sandwich" that is harder for the model to ignore
+- The frontend fallback handles edge cases where the model still misbehaves
+- No changes to the research function needed -- it already only adds non-English instructions when `detected_language !== 'English'`
 
