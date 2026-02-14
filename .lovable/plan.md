@@ -1,30 +1,29 @@
 
 
-## Fix: Country Options Not Appearing in Location Search
+## Fix: Add Missing Countries to Apollo Edge Function
 
-### Root Cause
-There is a double-filtering conflict in the `LocationSelector` component. The code manually filters options by `label` (lines 55-58), but the `cmdk` library (`Command` component) also runs its **own built-in filtering** on the `value` prop of each `CommandItem`.
+### Problem
+We added ~90 countries to the location selector, but the `COUNTRY_CODE_TO_NAME` map in the Apollo search edge function only covers ~40 of them. When a user selects a country like "Czech Republic" or "Israel", the code sends the raw code (`CZ`, `IL`) to Apollo instead of the full name -- Apollo won't return correct results.
 
-For country entries, the `value` is a 2-letter code (e.g., `"IN"` for India). When you type "India":
-- The manual filter correctly matches `label: "India"` and includes it
-- But cmdk's internal filter checks `value: "IN"` against "India" and hides it
-
-For cities/states this was never a problem because their values contain full names (e.g., `"New York,New York,US"`).
-
-### Fix
-
-**File: `src/components/sourcing/LocationSelector.tsx`**
-
-Set the `CommandItem` `value` prop to the **label** instead of the short code, so cmdk's built-in filtering matches on the human-readable name. Then use a data attribute or closure to pass the actual value to `onSelect`.
-
-Specifically:
-- Change `value={location.value}` on CommandItem to `value={location.label}`
-- Update `onSelect` to receive the label (which cmdk lowercases), then look up the original location value from `LOCATION_OPTIONS`
-- Alternatively (simpler): disable cmdk's built-in filtering entirely by adding `shouldFilter={false}` to the `Command` component, since we already do manual filtering on lines 53-59
-
-The `shouldFilter={false}` approach is cleanest here since the manual filtering logic is already correct and complete.
+### Solution
+Expand the `COUNTRY_CODE_TO_NAME` map in `supabase/functions/search-apollo-candidates/index.ts` to include all countries available in the location selector.
 
 ### Changes
-- Add `shouldFilter={false}` to the `<Command>` element (1 line change)
-- No other files need changes
+
+**File: `supabase/functions/search-apollo-candidates/index.ts`** (lines 81-94)
+
+Add the following country codes to the existing `COUNTRY_CODE_TO_NAME` map:
+
+**Europe (missing):** CZ: Czech Republic, RO: Romania, HU: Hungary, UA: Ukraine, HR: Croatia, SK: Slovakia, SI: Slovenia, BG: Bulgaria, LT: Lithuania, LV: Latvia, EE: Estonia, LU: Luxembourg, IS: Iceland
+
+**Asia-Pacific (missing):** TW: Taiwan, HK: Hong Kong, PK: Pakistan, BD: Bangladesh, LK: Sri Lanka, NP: Nepal
+
+**Middle East (missing):** IL: Israel, QA: Qatar, BH: Bahrain, KW: Kuwait, OM: Oman, JO: Jordan, LB: Lebanon, TR: Turkey
+
+**Africa (missing):** GH: Ghana, MA: Morocco, TN: Tunisia, ET: Ethiopia, TZ: Tanzania, RW: Rwanda
+
+**Caribbean (missing):** JM: Jamaica, TT: Trinidad and Tobago, PR: Puerto Rico
+
+### No Other Files Changed
+The rest of the pipeline (location selector, search criteria storage, Apollo API call construction) already works correctly. This is purely filling the gap in the country-code-to-name lookup so Apollo receives human-readable country names instead of raw ISO codes.
 
