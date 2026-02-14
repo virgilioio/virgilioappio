@@ -489,6 +489,12 @@ REGION DEFINITIONS FOR LOCATION:
 - APAC: India, China, Japan, Singapore, Australia, South Korea, Indonesia, Thailand, Vietnam, Philippines, Malaysia, New Zealand
 - North America: United States, Canada
 
+CRITICAL LOCATION GROUNDING RULE:
+If the job description or prompt explicitly names specific countries (e.g., "India or the Philippines", "Mexico and Colombia"),
+you MUST list ONLY those countries in the "country_codes" array. Do NOT generalize to a region.
+Only use "region" when the prompt itself uses regional language ("LATAM", "APAC", "Europe", etc.)
+or gives no specific country constraints. Explicit country mentions ALWAYS override regional inference.
+
 Return ONLY valid JSON in this format:
 
 {
@@ -503,7 +509,8 @@ Return ONLY valid JSON in this format:
     "city": "City name if applicable or null",
     "state": "State/Province name if applicable or null",
     "country": "Full country name",
-    "country_code": "Two-letter ISO code (US, MX, CO, AR, BR, etc.)",
+    "country_code": "Two-letter ISO code (US, MX, CO, AR, BR, etc.) — use for SINGLE country only",
+    "country_codes": ["ISO codes"] or null — "USE THIS when multiple specific countries are mentioned (e.g., ['IN', 'PH']). Set country_code to null when using this.",
     "region": "LATAM | EMEA | APAC | NORTH_AMERICA if regional, else null",
     "is_remote": true | false
   },
