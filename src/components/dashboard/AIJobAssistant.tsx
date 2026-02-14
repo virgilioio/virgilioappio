@@ -346,7 +346,14 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAs
         // Fallback to location_details if normalization returned empty
         if (normalizedLocations.length === 0 && generatedSpec.location_details) {
           const details = generatedSpec.location_details
-          if (details.country_code) {
+          
+          // Priority 1: Explicit country_codes array (e.g., ["IN", "PH"] from "India or Philippines")
+          if (details.country_codes && Array.isArray(details.country_codes) && details.country_codes.length > 0) {
+            normalizedLocations = details.country_codes
+            console.log('Using explicit country_codes from AI:', details.country_codes)
+          }
+          // Priority 2: Single country_code (legacy path)
+          else if (details.country_code) {
             if (details.city && details.state) {
               normalizedLocations = [`${details.city},${details.state},${details.country_code}`]
             } else if (details.state) {
@@ -354,7 +361,9 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAs
             } else {
               normalizedLocations = [details.country_code]
             }
-          } else if (details.region && details.is_remote) {
+          }
+          // Priority 3: Region expansion (only when no specific countries given)
+          else if (details.region && details.is_remote) {
             const regionCodes = {
               'LATAM': ['MX', 'CO', 'AR', 'BR', 'CL', 'PE'],
               'EMEA': ['GB', 'DE', 'FR', 'ES', 'IT', 'NL'],

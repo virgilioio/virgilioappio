@@ -18,6 +18,7 @@ export interface JobSpecData {
     city?: string
     state?: string
     country_code?: string
+    country_codes?: string[]
     region?: string
     is_remote?: boolean
   }
