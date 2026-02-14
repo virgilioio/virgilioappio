@@ -41,7 +41,7 @@ export function LocationSelector({ selectedLocations, onLocationsChange }: Locat
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[400px] p-0" align="start">
-          <Command>
+          <Command shouldFilter={false}>
             <CommandInput 
               placeholder="Search cities, states, or countries..." 
               value={searchValue}
