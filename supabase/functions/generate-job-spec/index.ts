@@ -387,22 +387,7 @@ ${hasConversation ?
   'Generate a job specification based on the user\'s prompt.'
 }
 
-🌐 **PRIMARY INSTRUCTION - LANGUAGE DETECTION (CRITICAL):**
-**IMPORTANT: The user's prompt is written in ${detectedLanguage}. You MUST respond in ${detectedLanguage}.**
-
-EXPLICIT RULES:
-1. ALL text fields MUST be in ${detectedLanguage}: job_title, alt_titles, job_description, department, recommendations
-2. DO NOT use the job location to determine language - a job in Mexico can be described in English
-3. DO NOT infer language from geographical context
-4. The prompt language is ${detectedLanguage} - use ONLY this language for your response
-5. Skills MUST ALWAYS be in English regardless of prompt language
-
-**Critical Examples:**
-- Prompt: "I need a software engineer in Barcelona, Spain" → Response in ENGLISH
-- Prompt: "Necesito un ingeniero en San Francisco, USA" → Response in SPANISH
-- Location does NOT determine language - prompt language does
-
-Now that language detection is clear, here are your other capabilities:
+Now here are your capabilities:
 
 CRITICAL GEOGRAPHICAL INTELLIGENCE:
 🌍 REGIONAL MAPPING & INFERENCE:
@@ -488,12 +473,6 @@ The job_description should be structured HTML like:
 <h3>Requirements</h3>
 <ul><li>...</li></ul>
 
-**FINAL REMINDER BEFORE GENERATING:**
-- Prompt language detected: ${detectedLanguage}
-- You MUST respond in: ${detectedLanguage}
-- Job location: IRRELEVANT to response language
-- Skills: Always English
-
 🔍 CRITICAL - LOCATION FORMAT FOR CORESIGNAL COMPATIBILITY:
 Your location output MUST be in a format that can be mapped to CoreSignal's expected structure.
 
@@ -536,16 +515,26 @@ Return ONLY valid JSON in this format:
   },
   "skills": ["Skill 1 in English", "Skill 2 in English", "Skill 3 in English", "Skill 4 in English", "Skill 5 in English"],
   "recommendations": [
-    "Insight about role commonness in detected prompt language",
-    "Hiring difficulty assessment in detected prompt language", 
-    "SPECIFIC market compensation insight using actual data when available in detected prompt language",
-    "Time-to-hire implication in detected prompt language"
+    "Insight about role commonness",
+    "Hiring difficulty assessment", 
+    "SPECIFIC market compensation insight using actual data when available",
+    "Time-to-hire implication"
   ]
-}`
+}
+
+===== ABSOLUTE LANGUAGE RULE (OVERRIDES EVERYTHING ABOVE) =====
+The user's prompt is written in ${detectedLanguage}.
+ALL text fields (job_title, alt_titles, job_description, department, recommendations) MUST be in ${detectedLanguage}.
+The job LOCATION does NOT determine the response language. A job in Mexico prompted in English = English output.
+Skills are ALWAYS in English regardless of prompt language.
+DO NOT translate, adapt, or localize text fields to match the geographic location.
+=============================================================`
           },
           // CRITICAL: Include conversation messages as proper OpenAI messages
           // This ensures the AI properly understands the full conversation context
           ...conversationMessages,
+          // Language enforcement sandwich: extra user message before the actual prompt
+          { role: 'user', content: `LANGUAGE RULE: Your ENTIRE response MUST be in ${detectedLanguage}. Do NOT use ${detectedLanguage === 'English' ? 'Spanish, Portuguese, French, or any other language' : 'any language other than ' + detectedLanguage} for text fields. Skills stay in English.` },
           { role: 'user', content: effectivePrompt }
         ],
         temperature: 0.7,
