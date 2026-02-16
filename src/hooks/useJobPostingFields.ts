@@ -4,7 +4,13 @@ import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/hooks/use-toast'
 import { ApplicationFieldWithRelations } from './useApplicationFields'
 
-export type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file' | 'url'
+export type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'checkbox_group' | 'date' | 'file' | 'url'
+
+export interface SelectOptionData {
+  option_value: string
+  option_label: string
+  display_order: number
+}
 
 export interface PostingField {
   id: string
@@ -77,9 +83,9 @@ export function useJobPostingFields(postingId: string) {
     }
   }
 
-  const addCustomField = useCallback(async ({ field_label, field_type, is_required }: { field_label: string; field_type: FieldType; is_required: boolean; }) => {
+  const addCustomField = useCallback(async ({ field_label, field_type, is_required, placeholder_text, help_text, accepted_file_types, max_file_size_mb, select_options }: { field_label: string; field_type: FieldType; is_required: boolean; placeholder_text?: string; help_text?: string; accepted_file_types?: string; max_file_size_mb?: number; select_options?: SelectOptionData[] }) => {
     const field_name = await uniqueFieldName(field_label)
-    const { error } = await supabase
+    const { data: inserted, error } = await supabase
       .from('job_posting_application_fields')
       .insert({
         posting_id: postingId,
@@ -89,12 +95,28 @@ export function useJobPostingFields(postingId: string) {
         field_label,
         field_type,
         is_required,
-        column_span: 4
+        column_span: 4,
+        placeholder_text: placeholder_text || null,
+        help_text: help_text || null,
+        accepted_file_types: accepted_file_types || null,
+        max_file_size_mb: max_file_size_mb ?? null
       })
-    if (error) {
+      .select()
+      .maybeSingle()
+    if (error || !inserted) {
       console.error('Error adding custom field:', error)
       toast({ title: 'Error', description: 'Could not add custom field', variant: 'destructive' })
     } else {
+      // Save select options if provided
+      if (select_options?.length && (field_type === 'select' || field_type === 'checkbox_group')) {
+        const rows = select_options.map((o, i) => ({
+          posting_field_id: inserted.id,
+          option_value: o.option_value,
+          option_label: o.option_label,
+          display_order: i
+        }))
+        await supabase.from('posting_field_select_options').insert(rows as any)
+      }
       await fetchFields()
       toast({ title: 'Added', description: 'Custom field added' })
     }
@@ -156,16 +178,30 @@ export function useJobPostingFields(postingId: string) {
     toast({ title: 'Added', description: 'Field added from library' })
   }, [postingId, fetchFields, toast])
 
-  const updateField = useCallback(async (id: string, updates: Partial<PostingField>) => {
+  const updateField = useCallback(async (id: string, updates: Partial<PostingField> & { select_options?: SelectOptionData[] }) => {
+    const { select_options, ...dbUpdates } = updates
     const { error } = await supabase
       .from('job_posting_application_fields')
-      .update(updates)
+      .update(dbUpdates)
       .eq('id', id)
     if (error) {
       console.error('Error updating field:', error)
       toast({ title: 'Error', description: 'Could not update field', variant: 'destructive' })
     } else {
-      setFields((prev) => prev.map((f) => (f.id === id ? { ...f, ...updates } as PostingField : f)))
+      // Persist select options if provided (delete + re-insert)
+      if (select_options !== undefined) {
+        await supabase.from('posting_field_select_options').delete().eq('posting_field_id', id)
+        if (select_options.length > 0) {
+          const rows = select_options.map((o, i) => ({
+            posting_field_id: id,
+            option_value: o.option_value,
+            option_label: o.option_label,
+            display_order: i
+          }))
+          await supabase.from('posting_field_select_options').insert(rows as any)
+        }
+      }
+      setFields((prev) => prev.map((f) => (f.id === id ? { ...f, ...dbUpdates } as PostingField : f)))
     }
   }, [toast])
 
