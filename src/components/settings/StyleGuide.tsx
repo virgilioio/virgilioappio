@@ -9,6 +9,7 @@ import { TabsGuide } from './styleguide/TabsGuide'
 import { ShadowGuide } from './styleguide/ShadowGuide'
 import { SkeletonGuide } from './styleguide/SkeletonGuide'
 import { DateTimePickerGuide } from './styleguide/DateTimePickerGuide'
+import { CurrencySelectGuide } from './styleguide/CurrencySelectGuide'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
 export function StyleGuide() {
@@ -33,6 +34,7 @@ export function StyleGuide() {
         <BadgeGuide />
         <TabsGuide />
         <DateTimePickerGuide />
+        <CurrencySelectGuide />
         <SkeletonGuide />
         <ShadowGuide />
       </div>

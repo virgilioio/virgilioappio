@@ -18,6 +18,7 @@ import type { InterviewQuestion, AnswerType, SelectOption, SalaryConfig } from '
 import { useSubmitShortcut } from '@/hooks/useSubmitShortcut'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
+import { CurrencySelect } from '@/components/ui/currency-select'
 
 interface InterviewQuestionFormProps {
   open: boolean
@@ -28,28 +29,6 @@ interface InterviewQuestionFormProps {
   isSaving: boolean
   jobId: string
 }
-
-const CURRENCIES = [
-  { value: 'USD', label: 'USD - US Dollar' },
-  { value: 'EUR', label: 'EUR - Euro' },
-  { value: 'GBP', label: 'GBP - British Pound' },
-  { value: 'CAD', label: 'CAD - Canadian Dollar' },
-  { value: 'AUD', label: 'AUD - Australian Dollar' },
-  { value: 'MXN', label: 'MXN - Mexican Peso' },
-  { value: 'BRL', label: 'BRL - Brazilian Real' },
-  { value: 'JPY', label: 'JPY - Japanese Yen' },
-  { value: 'CNY', label: 'CNY - Chinese Yuan' },
-  { value: 'INR', label: 'INR - Indian Rupee' },
-  { value: 'CHF', label: 'CHF - Swiss Franc' },
-  { value: 'SEK', label: 'SEK - Swedish Krona' },
-  { value: 'NZD', label: 'NZD - New Zealand Dollar' },
-  { value: 'SGD', label: 'SGD - Singapore Dollar' },
-  { value: 'HKD', label: 'HKD - Hong Kong Dollar' },
-  { value: 'COP', label: 'COP - Colombian Peso' },
-  { value: 'ARS', label: 'ARS - Argentine Peso' },
-  { value: 'CLP', label: 'CLP - Chilean Peso' },
-  { value: 'PEN', label: 'PEN - Peruvian Sol' },
-]
 
 const PERIODS = [
   { value: 'hourly', label: 'Hourly' },
@@ -223,18 +202,7 @@ export function InterviewQuestionForm({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="salary-currency">Currency</Label>
-                  <Select value={salaryCurrency} onValueChange={setSalaryCurrency}>
-                    <SelectTrigger id="salary-currency">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CURRENCIES.map(currency => (
-                        <SelectItem key={currency.value} value={currency.value}>
-                          {currency.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <CurrencySelect value={salaryCurrency} onChange={setSalaryCurrency} />
                 </div>
 
                 <div className="space-y-2">
