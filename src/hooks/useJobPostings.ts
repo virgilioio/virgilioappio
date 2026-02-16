@@ -84,8 +84,8 @@ export function useJobPostings(jobId: string) {
         description: description || null,
         slug,
         details: details ?? {},
-        // tenant_id will be auto-populated by trigger
-        tenant_id: '00000000-0000-0000-0000-000000000000', // placeholder, will be overwritten by trigger
+        // Pass null-ish placeholder; trigger overwrites with correct tenant_id
+        tenant_id: '00000000-0000-0000-0000-000000000000',
       })
       .select()
       .maybeSingle()
