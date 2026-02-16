@@ -9,9 +9,9 @@ import { Separator } from '@/components/ui/separator'
 import { FormField } from '@/components/ui/form-field'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Check, ChevronsUpDown, X, Plus, Sparkles, Loader2 } from 'lucide-react'
+import { ChevronsUpDown, X, Plus, Sparkles, Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { CURRENCIES } from '@/constants/currencies'
+import { CurrencySelect } from '@/components/ui/currency-select'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabaseClient'
@@ -70,7 +70,6 @@ export function CandidateFormSheet({
   preSelectedJob,
   isLoading 
 }: CandidateFormSheetProps) {
-  const [currencyOpen, setCurrencyOpen] = useState(false)
   const [profileSummary, setProfileSummary] = useState('')
   const [profileIsExternalUpdate, setProfileIsExternalUpdate] = useState(false)
   const [notes, setNotes] = useState('')
@@ -882,49 +881,10 @@ export function CandidateFormSheet({
                 </FormField>
 
                 <FormField label="Currency" htmlFor="salary_currency">
-                  <Popover open={currencyOpen} onOpenChange={setCurrencyOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={currencyOpen}
-                        className="w-full justify-between"
-                      >
-                        {form.watch('salary_currency')
-                          ? CURRENCIES.find((currency) => currency.value === form.watch('salary_currency'))?.label
-                          : "Select currency..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-0" align="start">
-                      <Command>
-                        <CommandInput placeholder="Search currency..." />
-                        <CommandList>
-                          <CommandEmpty>No currency found.</CommandEmpty>
-                          <CommandGroup>
-                            {CURRENCIES.map((currency) => (
-                              <CommandItem
-                                key={currency.value}
-                                value={currency.value}
-                                onSelect={(currentValue) => {
-                                  form.setValue('salary_currency', currentValue.toUpperCase())
-                                  setCurrencyOpen(false)
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    form.watch('salary_currency') === currency.value ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                {currency.label}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
+                  <CurrencySelect
+                    value={form.watch('salary_currency')}
+                    onChange={(value) => form.setValue('salary_currency', value)}
+                  />
                 </FormField>
 
                 <FormField label="Period" htmlFor="salary_period">

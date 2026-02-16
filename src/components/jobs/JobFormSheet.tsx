@@ -9,13 +9,13 @@ import { Badge } from '@/components/ui/badge'
 import { X } from 'lucide-react'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Check, ChevronsUpDown } from 'lucide-react'
+import { ChevronsUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Job, CreateJobData, UpdateJobData } from '@/hooks/useJobs'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useMembers } from '@/hooks/useMembers'
 import { useAuth } from '@/contexts/AuthContext'
-import { CURRENCIES } from '@/constants/currencies'
+import { CurrencySelect } from '@/components/ui/currency-select'
 import type { CategorizedSkill } from '@/hooks/useSkillsGeneration'
 import { JobSkillsGenerationPanel } from './JobSkillsGenerationPanel'
 import { getSkillColor } from '@/utils/skillColors'
@@ -50,7 +50,6 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
   const [autoSkills, setAutoSkills] = useState<CategorizedSkill[]>([])
   const [descriptionIsExternalUpdate, setDescriptionIsExternalUpdate] = useState(false)
 
-  const [currencyOpen, setCurrencyOpen] = useState(false)
   const [hiringTeamOpen, setHiringTeamOpen] = useState(false)
   const [isOrgFormOpen, setIsOrgFormOpen] = useState(false)
 
@@ -270,49 +269,10 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
 
             <div>
               <Label htmlFor="currency">Currency</Label>
-              <Popover open={currencyOpen} onOpenChange={setCurrencyOpen} modal={true}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={currencyOpen}
-                    className="w-full justify-between"
-                  >
-                    {formData.currency
-                      ? CURRENCIES.find((currency) => currency.value === formData.currency)?.label
-                      : "Select currency..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Search currency..." />
-                    <CommandList>
-                      <CommandEmpty>No currency found.</CommandEmpty>
-                      <CommandGroup>
-                        {CURRENCIES.map((currency) => (
-                          <CommandItem
-                            key={currency.value}
-                            value={currency.value}
-                            onSelect={(currentValue) => {
-                              setFormData(prev => ({ ...prev, currency: currentValue.toUpperCase() }))
-                              setCurrencyOpen(false)
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                formData.currency === currency.value ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {currency.label}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <CurrencySelect
+                value={formData.currency}
+                onChange={(value) => setFormData(prev => ({ ...prev, currency: value }))}
+              />
             </div>
 
             <div>

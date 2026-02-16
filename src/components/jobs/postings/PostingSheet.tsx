@@ -20,7 +20,7 @@ import { SafeHtml } from '@/components/ui/safe-html'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ExternalLink, Globe, Info } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { CURRENCIES } from '@/constants/currencies'
+import { CurrencySelect } from '@/components/ui/currency-select'
 
 interface PostingSheetProps {
   jobId: string
@@ -200,16 +200,7 @@ export function PostingSheet({
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <FormField label="Salary Currency">
-                    <Select value={salaryCurrency} onValueChange={setSalaryCurrency} disabled={!!readOnly}>
-                      <SelectTrigger><SelectValue placeholder="Currency" /></SelectTrigger>
-                      <SelectContent>
-                        {CURRENCIES.map((c) => (
-                          <SelectItem key={c.value} value={c.value}>
-                            {c.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <CurrencySelect value={salaryCurrency} onChange={setSalaryCurrency} disabled={!!readOnly} />
                   </FormField>
                   <FormField label="Salary Amount">
                     <Input
@@ -248,16 +239,7 @@ export function PostingSheet({
                 {hasCommissions && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField label="Average Commissions Currency">
-                      <Select value={commissionsCurrency} onValueChange={setCommissionsCurrency} disabled={!!readOnly}>
-                        <SelectTrigger><SelectValue placeholder="Currency" /></SelectTrigger>
-                          <SelectContent>
-                            {CURRENCIES.map((c) => (
-                              <SelectItem key={c.value} value={c.value}>
-                                {c.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                      </Select>
+                      <CurrencySelect value={commissionsCurrency} onChange={setCommissionsCurrency} disabled={!!readOnly} />
                     </FormField>
                     <FormField label="Average Commissions Amount">
                       <Input

@@ -4,15 +4,10 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SearchableSelect, SearchableSelectOption } from '@/components/ui/searchable-select'
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Button } from '@/components/ui/button'
-import { Check, ChevronsUpDown } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { CurrencySelect } from '@/components/ui/currency-select'
 import { CreateJobData } from '@/hooks/useJobs'
 import { useChildOrganizationsForJobCreation } from '@/hooks/useChildOrganizationsForJobCreation'
 import { useAuth } from '@/contexts/AuthContext'
-import { CURRENCIES } from '@/constants/currencies'
 import { usePermissions } from '@/hooks/usePermissions'
 import { OrganizationFormSheet } from '@/components/organizations/OrganizationFormSheet'
 import { useOrganizations } from '@/hooks/useOrganizations'
@@ -25,7 +20,6 @@ interface JobInfoStepProps {
 type JobStatus = 'draft' | 'open' | 'closed' | 'archived'
 
 export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
-  const [currencyOpen, setCurrencyOpen] = React.useState(false)
   const [isOrgFormOpen, setIsOrgFormOpen] = React.useState(false)
   const { data: childOrgs = [], isLoading: isLoadingOrgs, refetch: refetchOrgs } = useChildOrganizationsForJobCreation()
   const { userType, organizationId } = useAuth()
@@ -163,49 +157,10 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
         {/* Currency */}
         <div className="space-y-2">
           <Label htmlFor="currency">Currency</Label>
-          <Popover open={currencyOpen} onOpenChange={setCurrencyOpen} modal={true}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                role="combobox"
-                aria-expanded={currencyOpen}
-                className="w-full justify-between"
-              >
-                {jobData.currency
-                  ? CURRENCIES.find((currency) => currency.value === jobData.currency)?.label
-                  : "Select currency..."}
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-full p-0" align="start">
-              <Command>
-                <CommandInput placeholder="Search currency..." />
-                <CommandList>
-                  <CommandEmpty>No currency found.</CommandEmpty>
-                  <CommandGroup>
-                    {CURRENCIES.map((currency) => (
-                      <CommandItem
-                        key={currency.value}
-                        value={currency.value}
-                        onSelect={(currentValue) => {
-                          handleInputChange('currency', currentValue.toUpperCase())
-                          setCurrencyOpen(false)
-                        }}
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            jobData.currency === currency.value ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        {currency.label}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
+          <CurrencySelect
+            value={jobData.currency || ''}
+            onChange={(value) => handleInputChange('currency', value)}
+          />
         </div>
       </div>
 
