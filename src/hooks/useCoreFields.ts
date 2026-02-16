@@ -55,15 +55,6 @@ export const CORE_FIELDS: CoreField[] = [
     placeholder_text: 'https://linkedin.com/in/yourprofile',
     display_order: 4
   },
-  {
-    field_name: 'profile_summary',
-    field_label: 'Profile Summary',
-    field_type: 'textarea',
-    is_required: false,
-    placeholder_text: 'Tell us about yourself and your experience...',
-    help_text: 'Brief summary of your background and experience',
-    display_order: 5
-  }
 ]
 
 export function useCoreFields() {
