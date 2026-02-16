@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useApplicationFields } from '@/hooks/useApplicationFields'
-import { useJobPostingFields, FieldType, PostingField } from '@/hooks/useJobPostingFields'
+import { useJobPostingFields, FieldType, PostingField, SelectOptionData } from '@/hooks/useJobPostingFields'
 import { FormField } from '@/components/ui/form-field'
 import { GripVertical, Plus, Trash2, Save } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
@@ -49,6 +49,22 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
   const [type, setType] = useState<FieldType>('text')
   const [required, setRequired] = useState(false)
   const [selectedLibraryId, setSelectedLibraryId] = useState<string>('')
+  
+  // Type-specific config for Add Custom Field
+  const [newPlaceholder, setNewPlaceholder] = useState('')
+  const [newHelpText, setNewHelpText] = useState('')
+  const [newAcceptedFileTypes, setNewAcceptedFileTypes] = useState('')
+  const [newMaxFileSize, setNewMaxFileSize] = useState<number | ''>('')
+  const [newOptions, setNewOptions] = useState<Array<{ option_value: string; option_label: string }>>([])
+
+  // Reset type-specific state when type changes
+  useEffect(() => {
+    setNewPlaceholder('')
+    setNewHelpText('')
+    setNewAcceptedFileTypes('')
+    setNewMaxFileSize('')
+    setNewOptions([])
+  }, [type])
 
   // Initialize order from fetched fields
   useEffect(() => {
@@ -183,28 +199,30 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
     }
   }
 
-  const handleAddCustom = () => {
+  const handleAddCustom = async () => {
     if (!label.trim()) return
     
-    const tempId = `temp-${Date.now()}-${Math.random()}`
-    setPendingAdditions(prev => [...prev, {
-      tempId,
-      field: {
-        posting_id: postingId,
-        field_label: label.trim(),
-        field_name: label.trim().toLowerCase().replace(/\s+/g, '_'),
-        field_type: type,
-        is_required: required,
-        display_order: displayFields.length,
-        column_span: 4,
-        source: 'custom'
-      }
-    }])
+    await addCustomField({
+      field_label: label.trim(),
+      field_type: type,
+      is_required: required,
+      placeholder_text: newPlaceholder || undefined,
+      help_text: newHelpText || undefined,
+      accepted_file_types: newAcceptedFileTypes || undefined,
+      max_file_size_mb: newMaxFileSize === '' ? undefined : newMaxFileSize,
+      select_options: (type === 'select' || type === 'checkbox_group') && newOptions.length > 0
+        ? newOptions.map((o, i) => ({ ...o, display_order: i }))
+        : undefined,
+    })
     
-    setOrderedIds(prev => [...prev, tempId])
     setLabel('')
     setType('text')
     setRequired(false)
+    setNewPlaceholder('')
+    setNewHelpText('')
+    setNewAcceptedFileTypes('')
+    setNewMaxFileSize('')
+    setNewOptions([])
   }
 
   const availableLibraryFields = useMemo(() => libraryFields, [libraryFields])
@@ -387,9 +405,18 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                              <SortableRow id={f.id} disabled={(f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}>
                                {({ attributes, listeners }) => (
                                  <FieldEditor
-                                   field={f}
-                                   onUpdate={updateLocalField}
-                                   onDelete={(fieldId) => {
+                                    field={f}
+                                    onUpdate={async (fieldId, updates) => {
+                                      if (fieldId.startsWith('temp-')) {
+                                        // For pending fields, just update local state
+                                        updateLocalField(fieldId, updates)
+                                      } else {
+                                        // For existing fields, persist directly to DB
+                                        await updateField(fieldId, updates)
+                                        await refetch()
+                                      }
+                                    }}
+                                    onDelete={(fieldId) => {
                                      if (fieldId.startsWith('temp-')) {
                                        setPendingAdditions(prev => prev.filter(p => p.tempId !== fieldId))
                                        setPendingLibraryAdditions(prev => prev.filter(p => p.tempId !== fieldId))
@@ -461,6 +488,94 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
               </div>
             </FormField>
           </div>
+
+          {/* Type-specific configuration */}
+          {(type === 'select' || type === 'checkbox_group') && (
+            <div className="border border-border/30 rounded-brand p-3 space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                {type === 'select' ? 'Dropdown Options' : 'Checkbox Group Options'}
+              </p>
+              {newOptions.map((opt, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <Input
+                    value={opt.option_value}
+                    onChange={(e) => setNewOptions(prev => prev.map((o, idx) => idx === i ? { ...o, option_value: e.target.value } : o))}
+                    placeholder="Value"
+                    className="flex-1"
+                    disabled={readOnly}
+                  />
+                  <Input
+                    value={opt.option_label}
+                    onChange={(e) => setNewOptions(prev => prev.map((o, idx) => idx === i ? { ...o, option_label: e.target.value } : o))}
+                    placeholder="Label"
+                    className="flex-1"
+                    disabled={readOnly}
+                  />
+                  <Button variant="ghost" size="icon" onClick={() => setNewOptions(prev => prev.filter((_, idx) => idx !== i))} className="shrink-0 h-8 w-8" disabled={readOnly}>
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+              <Button variant="outline" size="sm" onClick={() => setNewOptions(prev => [...prev, { option_value: '', option_label: '' }])} className="h-7 text-xs" disabled={readOnly}>
+                <Plus className="h-3 w-3 mr-1" /> Add Option
+              </Button>
+            </div>
+          )}
+
+          {type === 'file' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <FormField label="Accepted File Types">
+                <Input
+                  value={newAcceptedFileTypes}
+                  onChange={(e) => setNewAcceptedFileTypes(e.target.value)}
+                  placeholder="e.g. .pdf,.docx,.doc"
+                  disabled={readOnly}
+                />
+              </FormField>
+              <FormField label="Max File Size (MB)">
+                <Input
+                  type="number"
+                  value={newMaxFileSize}
+                  onChange={(e) => setNewMaxFileSize(e.target.value ? Number(e.target.value) : '')}
+                  placeholder="e.g. 10"
+                  disabled={readOnly}
+                />
+              </FormField>
+            </div>
+          )}
+
+          {['text', 'number', 'email', 'url', 'textarea'].includes(type) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <FormField label="Placeholder Text">
+                <Input
+                  value={newPlaceholder}
+                  onChange={(e) => setNewPlaceholder(e.target.value)}
+                  placeholder="Placeholder shown in the field"
+                  disabled={readOnly}
+                />
+              </FormField>
+              <FormField label="Help Text">
+                <Input
+                  value={newHelpText}
+                  onChange={(e) => setNewHelpText(e.target.value)}
+                  placeholder="Help text shown below the field"
+                  disabled={readOnly}
+                />
+              </FormField>
+            </div>
+          )}
+
+          {['checkbox', 'date'].includes(type) && (
+            <FormField label="Help Text">
+              <Input
+                value={newHelpText}
+                onChange={(e) => setNewHelpText(e.target.value)}
+                placeholder="Help text shown below the field"
+                disabled={readOnly}
+              />
+            </FormField>
+          )}
+
           <div className="flex justify-end">
             <Button onClick={handleAddCustom} disabled={readOnly || !label.trim()}>
               <Plus className="h-4 w-4 mr-2" /> Add Custom Field
