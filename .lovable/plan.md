@@ -1,24 +1,27 @@
 
 
-## Fix Currency Selector Inside Job Sheet/Wizard
+## Fix Currency Selectors in Job Postings Form
 
 ### Problem
-The currency dropdown (Popover + Command combobox) cannot be interacted with when rendered inside a Sheet component. This is a known Radix UI issue where the parent Sheet's modal behavior (focus trapping and outside-click detection) interferes with the Popover's portaled content.
+In `src/components/jobs/postings/PostingSheet.tsx`, the currency dropdowns for both salary and commissions are empty. The file contains comments saying "Currency functionality removed" and the currencies array is hardcoded to an empty array:
+
+```ts
+const currencies: any[] = []
+```
+
+This means when creating or editing a job posting, no currency options appear in the salary or commissions currency dropdowns.
 
 ### Fix
-Add `modal={true}` to the `Popover` component wrapping the currency selector in both places where it appears:
-
-1. **`src/components/jobs/JobFormSheet.tsx`** (edit form) -- line 273
-2. **`src/components/jobs/wizard/JobInfoStep.tsx`** (creation wizard) -- line 166
-
-This single prop change tells Radix to give the Popover its own focus scope and dismiss handling, preventing the Sheet from swallowing click events on currency items.
+Import and use the existing `CURRENCIES` constant from `src/constants/currencies.ts` (already used by the Job forms). Update the two `<Select>` dropdowns to reference the correct property names (`value` and `label` instead of `code` and `name`).
 
 ### Technical Details
 
 | File | Change |
 |---|---|
-| `src/components/jobs/JobFormSheet.tsx` | Change `<Popover open={currencyOpen} onOpenChange={setCurrencyOpen}>` to `<Popover open={currencyOpen} onOpenChange={setCurrencyOpen} modal={true}>` |
-| `src/components/jobs/wizard/JobInfoStep.tsx` | Same change on the currency Popover |
+| `src/components/jobs/postings/PostingSheet.tsx` | 1. Add import: `import { CURRENCIES } from '@/constants/currencies'` |
+| | 2. Remove line 48-49 (the "removed" comment and empty array) |
+| | 3. Line ~208: Change `currencies.map((c) => <SelectItem key={c.code} value={c.code}>{c.code} - {c.name}</SelectItem>)` to `CURRENCIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)` |
+| | 4. Line ~256: Same change for the commissions currency dropdown |
 
-No other files or dependencies are affected.
+No new dependencies needed -- `CURRENCIES` already exists and is used elsewhere in the codebase.
 
