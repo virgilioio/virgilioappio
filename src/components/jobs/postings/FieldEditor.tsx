@@ -4,7 +4,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
-import { GripVertical, Trash2, Edit, Save, X, Plus } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { GripVertical, Trash2, Edit, Save, X, Plus, DollarSign, Link2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PostingField, FieldType, SelectOptionData, SalaryFieldConfig } from '@/hooks/useJobPostingFields'
 import { supabase } from '@/lib/supabaseClient'
@@ -232,28 +233,39 @@ export function FieldEditor({
               )}
 
               {showSalaryConfig && (
-                <div className="grid md:grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Currency</p>
-                    <Select value={localSalaryConfig.currency} onValueChange={(v) => setLocalSalaryConfig(prev => ({ ...prev, currency: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {['USD','EUR','GBP','CAD','AUD','CHF','JPY','INR','BRL','MXN','SGD','HKD','NZD','ZAR','AED','SAR'].map(c => (
-                          <SelectItem key={c} value={c}>{c}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                <div className="bg-virgilio-purple/5 border border-virgilio-purple/20 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-virgilio-purple">
+                    <Link2 className="h-4 w-4" />
+                    <span className="text-sm font-medium">Syncs to Candidate Profile</span>
                   </div>
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Period</p>
-                    <Select value={localSalaryConfig.period} onValueChange={(v: any) => setLocalSalaryConfig(prev => ({ ...prev, period: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="hourly">Hourly</SelectItem>
-                        <SelectItem value="monthly">Monthly</SelectItem>
-                        <SelectItem value="annually">Annually</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="bg-white border border-border/40 rounded-md p-3">
+                    <p className="text-xs text-muted-foreground">
+                      The salary value entered by the applicant will automatically update their candidate profile's salary fields.
+                    </p>
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Currency</p>
+                      <Select value={localSalaryConfig.currency} onValueChange={(v) => setLocalSalaryConfig(prev => ({ ...prev, currency: v }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {['USD','EUR','GBP','CAD','AUD','CHF','JPY','INR','BRL','MXN','SGD','HKD','NZD','ZAR','AED','SAR'].map(c => (
+                            <SelectItem key={c} value={c}>{c}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Period</p>
+                      <Select value={localSalaryConfig.period} onValueChange={(v: any) => setLocalSalaryConfig(prev => ({ ...prev, period: v }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="hourly">Hourly</SelectItem>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                          <SelectItem value="annually">Annually</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
               )}
@@ -284,10 +296,30 @@ export function FieldEditor({
             <div className="grid md:grid-cols-6 gap-3 items-center">
               <div className="md:col-span-2">
                 <div className="text-sm font-medium">{field.field_label}</div>
+                {field.field_type === 'salary' && (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                    <Badge variant="outline" className="text-xs bg-green-500/10 text-green-700 border-green-300 gap-1">
+                      <DollarSign className="h-3 w-3" />
+                      Salary
+                    </Badge>
+                    <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-300 gap-1">
+                      <Link2 className="h-3 w-3" />
+                      Syncs to Profile
+                    </Badge>
+                    {(field.field_config as SalaryFieldConfig) && (
+                      <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600">
+                        {(field.field_config as SalaryFieldConfig).currency} / {(field.field_config as SalaryFieldConfig).period}
+                      </Badge>
+                    )}
+                  </div>
+                )}
               </div>
-              <div>
-                <div className="text-sm text-muted-foreground capitalize">{field.field_type === 'checkbox_group' ? 'Checkbox Group' : field.field_type}</div>
-              </div>
+              {field.field_type !== 'salary' && (
+                <div>
+                  <div className="text-sm text-muted-foreground capitalize">{field.field_type === 'checkbox_group' ? 'Checkbox Group' : field.field_type}</div>
+                </div>
+              )}
+              {field.field_type === 'salary' && <div />}
               <div className="flex items-center">
                 <div className="text-sm text-muted-foreground">
                   {field.is_required ? 'Required' : 'Optional'}

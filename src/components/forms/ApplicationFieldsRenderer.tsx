@@ -281,9 +281,9 @@ export function ApplicationFieldsRenderer({
                   </FormControl>
                   <Badge variant="secondary" className="shrink-0 capitalize">{period}</Badge>
                 </div>
-                {field.help_text && (
-                  <FormDescription>{field.help_text}</FormDescription>
-                )}
+                <FormDescription className="text-green-600">
+                  This will be added to your candidate profile.
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
