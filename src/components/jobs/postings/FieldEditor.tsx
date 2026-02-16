@@ -5,9 +5,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { GripVertical, Trash2, Edit, Save, X, Plus, DollarSign, Link2 } from 'lucide-react'
+import { GripVertical, Trash2, Edit, Save, X, Plus, DollarSign, Link2, MapPin } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { PostingField, FieldType, SelectOptionData, SalaryFieldConfig } from '@/hooks/useJobPostingFields'
+import { PostingField, FieldType, SelectOptionData, SalaryFieldConfig, LocationFieldConfig } from '@/hooks/useJobPostingFields'
 import { supabase } from '@/lib/supabaseClient'
 
 interface FieldEditorProps {
@@ -23,7 +23,7 @@ interface FieldEditorProps {
   isDefaultLibraryField?: boolean
 }
 
-const ALL_FIELD_TYPES: FieldType[] = ['text','number','email','url','textarea','select','checkbox','checkbox_group','date','file','salary']
+const ALL_FIELD_TYPES: FieldType[] = ['text','number','email','url','textarea','select','checkbox','checkbox_group','date','file','salary','location']
 
 export function FieldEditor({ 
   field, 
@@ -45,6 +45,7 @@ export function FieldEditor({
   const [localMaxFileSize, setLocalMaxFileSize] = useState<number | ''>(field.max_file_size_mb ?? '')
   const [localOptions, setLocalOptions] = useState<SelectOptionData[]>([])
   const [localSalaryConfig, setLocalSalaryConfig] = useState<SalaryFieldConfig>({ currency: 'USD', period: 'annually' })
+  const [localLocationConfig, setLocalLocationConfig] = useState<LocationFieldConfig>({ fields: ['city', 'state', 'country'] })
   const handleEdit = async () => {
     setLocalLabel(field.field_label || '')
     setLocalType(field.field_type || 'text')
@@ -53,6 +54,7 @@ export function FieldEditor({
     setLocalAcceptedFileTypes(field.accepted_file_types || '')
     setLocalMaxFileSize(field.max_file_size_mb ?? '')
     setLocalSalaryConfig((field.field_config as SalaryFieldConfig) || { currency: 'USD', period: 'annually' })
+    setLocalLocationConfig((field.field_config as LocationFieldConfig) || { fields: ['city', 'state', 'country'] })
     
     // Load existing select options from DB
     if (field.field_type === 'select' || field.field_type === 'checkbox_group') {
@@ -77,7 +79,7 @@ export function FieldEditor({
       help_text: localHelpText || null,
       accepted_file_types: localAcceptedFileTypes || null,
       max_file_size_mb: localMaxFileSize === '' ? null : localMaxFileSize,
-      field_config: localType === 'salary' ? localSalaryConfig : null,
+      field_config: localType === 'salary' ? localSalaryConfig : localType === 'location' ? localLocationConfig : null,
     }
     if (localType === 'select' || localType === 'checkbox_group') {
       updates.select_options = localOptions
@@ -119,6 +121,7 @@ export function FieldEditor({
   const showOptions = ['select', 'checkbox_group'].includes(localType)
   const showFileConfig = localType === 'file'
   const showSalaryConfig = localType === 'salary'
+  const showLocationConfig = localType === 'location'
   
   const isDisabled = disabled || readOnly || isDefaultLibraryField
   
@@ -160,7 +163,7 @@ export function FieldEditor({
                     <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
                     <SelectContent>
                       {ALL_FIELD_TYPES.map((t) => (
-                        <SelectItem key={t} value={t} className="capitalize">{t === 'checkbox_group' ? 'Checkbox Group' : t === 'salary' ? 'Salary' : t}</SelectItem>
+                        <SelectItem key={t} value={t} className="capitalize">{t === 'checkbox_group' ? 'Checkbox Group' : t === 'salary' ? 'Salary' : t === 'location' ? 'Location' : t}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -270,6 +273,38 @@ export function FieldEditor({
                 </div>
               )}
 
+              {showLocationConfig && (
+                <div className="bg-virgilio-purple/5 border border-virgilio-purple/20 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-virgilio-purple">
+                    <Link2 className="h-4 w-4" />
+                    <span className="text-sm font-medium">Syncs to Candidate Profile</span>
+                  </div>
+                  <div className="bg-white border border-border/40 rounded-md p-3">
+                    <p className="text-xs text-muted-foreground">
+                      The location entered by the applicant will automatically update their candidate profile's location fields (city, state, country).
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Sub-fields to include</p>
+                    {([['city', 'City'], ['state', 'State / Province'], ['country', 'Country']] as const).map(([key, lbl]) => (
+                      <div key={key} className="flex items-center gap-2">
+                        <Checkbox
+                          checked={localLocationConfig.fields.includes(key)}
+                          onCheckedChange={(checked) => {
+                            setLocalLocationConfig(prev => ({
+                              fields: checked
+                                ? [...prev.fields, key]
+                                : prev.fields.filter(f => f !== key)
+                            }))
+                          }}
+                        />
+                        <span className="text-sm">{lbl}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center gap-2">
                 <Button
                   variant="default"
@@ -313,13 +348,30 @@ export function FieldEditor({
                     )}
                   </div>
                 )}
+                {field.field_type === 'location' && (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                    <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-700 border-orange-300 gap-1">
+                      <MapPin className="h-3 w-3" />
+                      Location
+                    </Badge>
+                    <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-300 gap-1">
+                      <Link2 className="h-3 w-3" />
+                      Syncs to Profile
+                    </Badge>
+                    {(field.field_config as LocationFieldConfig) && (
+                      <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600">
+                        {(field.field_config as LocationFieldConfig).fields?.map(f => f === 'city' ? 'City' : f === 'state' ? 'State' : 'Country').join(', ')}
+                      </Badge>
+                    )}
+                  </div>
+                )}
               </div>
-              {field.field_type !== 'salary' && (
+              {field.field_type !== 'salary' && field.field_type !== 'location' && (
                 <div>
                   <div className="text-sm text-muted-foreground capitalize">{field.field_type === 'checkbox_group' ? 'Checkbox Group' : field.field_type}</div>
                 </div>
               )}
-              {field.field_type === 'salary' && <div />}
+              {(field.field_type === 'salary' || field.field_type === 'location') && <div />}
               <div className="flex items-center">
                 <div className="text-sm text-muted-foreground">
                   {field.is_required ? 'Required' : 'Optional'}

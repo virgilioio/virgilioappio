@@ -20,6 +20,7 @@ interface SubmitApplicationPayload {
   custom_fields?: Record<string, any>;
   fields?: Record<string, any>;
   salary_sync?: { amount: number; currency: string; period: string } | null;
+  location_sync?: { city?: string; state?: string; country?: string } | null;
   uploadedFiles?: Record<string, {
     name: string;
     type: string;
@@ -286,6 +287,25 @@ serve(async (req) => {
         .eq('id', globalCandidateId);
       if (salaryErr) {
         console.error('⚠️ Warning: Failed to sync salary data:', salaryErr);
+      }
+    }
+
+    // Sync location data to candidate profile if location field was submitted
+    if (body.location_sync && globalCandidateId) {
+      console.log('📍 Syncing location data to candidate profile:', body.location_sync);
+      const locationUpdate: Record<string, string | null> = {};
+      if (body.location_sync.city !== undefined) locationUpdate.location_city = body.location_sync.city || null;
+      if (body.location_sync.state !== undefined) locationUpdate.location_state = body.location_sync.state || null;
+      if (body.location_sync.country !== undefined) locationUpdate.location_country = body.location_sync.country || null;
+      
+      if (Object.keys(locationUpdate).length > 0) {
+        const { error: locationErr } = await supabase
+          .from('candidates')
+          .update(locationUpdate)
+          .eq('id', globalCandidateId);
+        if (locationErr) {
+          console.error('⚠️ Warning: Failed to sync location data:', locationErr);
+        }
       }
     }
 

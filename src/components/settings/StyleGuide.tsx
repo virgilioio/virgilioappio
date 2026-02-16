@@ -10,6 +10,7 @@ import { ShadowGuide } from './styleguide/ShadowGuide'
 import { SkeletonGuide } from './styleguide/SkeletonGuide'
 import { DateTimePickerGuide } from './styleguide/DateTimePickerGuide'
 import { CurrencySelectGuide } from './styleguide/CurrencySelectGuide'
+import { SmartFieldsGuide } from './styleguide/SmartFieldsGuide'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
 export function StyleGuide() {
@@ -35,7 +36,9 @@ export function StyleGuide() {
         <TabsGuide />
         <DateTimePickerGuide />
         <CurrencySelectGuide />
+        <SmartFieldsGuide />
         <SkeletonGuide />
+        <ShadowGuide />
         <ShadowGuide />
       </div>
     </ScrollArea>

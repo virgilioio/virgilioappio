@@ -5,9 +5,10 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from '@/components/ui/form'
 import { ApplicationFieldWithRelations } from '@/hooks/useApplicationFields'
-import { PostingField, SalaryFieldConfig } from '@/hooks/useJobPostingFields'
+import { PostingField, SalaryFieldConfig, LocationFieldConfig } from '@/hooks/useJobPostingFields'
 import { Control } from 'react-hook-form'
 import { CURRENCY_SYMBOLS } from '@/constants/currencies'
+import { MapPin } from 'lucide-react'
 
 function getAutoPlaceholder(field: { field_label: string; field_type: string; placeholder_text?: string | null }): string {
   if (field.placeholder_text) return field.placeholder_text
@@ -287,6 +288,71 @@ export function ApplicationFieldsRenderer({
                 <FormMessage />
               </FormItem>
             )}
+          />
+        )
+
+      case 'location':
+        const locationConfig = ('field_config' in field ? field.field_config : null) as LocationFieldConfig | null
+        const locationFields = locationConfig?.fields || ['city', 'state', 'country']
+        return (
+          <FormField
+            key={field.field_name}
+            control={control}
+            name={field.field_name}
+            render={({ field: formField }) => {
+              const locationValue = (() => {
+                try {
+                  if (typeof formField.value === 'string') return JSON.parse(formField.value)
+                  return formField.value || {}
+                } catch { return {} }
+              })()
+              const updateLocation = (key: string, val: string) => {
+                const next = { ...locationValue, [key]: val }
+                formField.onChange(JSON.stringify(next))
+              }
+              return (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5" />
+                    {field.field_label}
+                    {field.is_required && <span className="text-destructive ml-1">*</span>}
+                  </FormLabel>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {locationFields.includes('city') && (
+                      <FormControl>
+                        <Input
+                          placeholder="City"
+                          value={locationValue.city || ''}
+                          onChange={(e) => updateLocation('city', e.target.value)}
+                        />
+                      </FormControl>
+                    )}
+                    {locationFields.includes('state') && (
+                      <FormControl>
+                        <Input
+                          placeholder="State / Province"
+                          value={locationValue.state || ''}
+                          onChange={(e) => updateLocation('state', e.target.value)}
+                        />
+                      </FormControl>
+                    )}
+                    {locationFields.includes('country') && (
+                      <FormControl>
+                        <Input
+                          placeholder="Country"
+                          value={locationValue.country || ''}
+                          onChange={(e) => updateLocation('country', e.target.value)}
+                        />
+                      </FormControl>
+                    )}
+                  </div>
+                  <FormDescription className="text-green-600">
+                    This will be added to your candidate profile.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )
+            }}
           />
         )
 

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useApplicationFields } from '@/hooks/useApplicationFields'
-import { useJobPostingFields, FieldType, PostingField, SelectOptionData, SalaryFieldConfig } from '@/hooks/useJobPostingFields'
+import { useJobPostingFields, FieldType, PostingField, SelectOptionData, SalaryFieldConfig, LocationFieldConfig } from '@/hooks/useJobPostingFields'
 import { FormField } from '@/components/ui/form-field'
 import { GripVertical, Plus, Trash2, Save, Link2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
@@ -56,6 +56,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
   const [newMaxFileSize, setNewMaxFileSize] = useState<number | ''>('')
   const [newOptions, setNewOptions] = useState<Array<{ option_value: string; option_label: string }>>([])
   const [newSalaryConfig, setNewSalaryConfig] = useState<SalaryFieldConfig>({ currency: 'USD', period: 'annually' })
+  const [newLocationConfig, setNewLocationConfig] = useState<LocationFieldConfig>({ fields: ['city', 'state', 'country'] })
 
   // Reset type-specific state when type changes
   useEffect(() => {
@@ -64,9 +65,13 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
     setNewMaxFileSize('')
     setNewOptions([])
     setNewSalaryConfig({ currency: 'USD', period: 'annually' })
-    // Auto-set label for salary type
+    setNewLocationConfig({ fields: ['city', 'state', 'country'] })
+    // Auto-set label for smart field types
     if (type === 'salary' && !label) {
       setLabel('Salary Expectations')
+    }
+    if (type === 'location' && !label) {
+      setLabel('Location')
     }
   }, [type])
 
@@ -216,7 +221,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
       select_options: (type === 'select' || type === 'checkbox_group') && newOptions.length > 0
         ? newOptions.map((o, i) => ({ ...o, display_order: i }))
         : undefined,
-      field_config: type === 'salary' ? newSalaryConfig : undefined,
+      field_config: type === 'salary' ? newSalaryConfig : type === 'location' ? newLocationConfig : undefined,
     })
     
     setLabel('')
@@ -227,6 +232,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
     setNewMaxFileSize('')
     setNewOptions([])
     setNewSalaryConfig({ currency: 'USD', period: 'annually' })
+    setNewLocationConfig({ fields: ['city', 'state', 'country'] })
   }
 
   const availableLibraryFields = useMemo(() => libraryFields, [libraryFields])
@@ -479,8 +485,8 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
               <Select value={type} onValueChange={(v: FieldType) => setType(v)} disabled={readOnly}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {(['text','number','email','url','textarea','select','checkbox','checkbox_group','date','file','salary'] as FieldType[]).map((t) => (
-                    <SelectItem key={t} value={t} className="capitalize">{t === 'checkbox_group' ? 'Checkbox Group' : t === 'salary' ? 'Salary' : t}</SelectItem>
+                  {(['text','number','email','url','textarea','select','checkbox','checkbox_group','date','file','salary','location'] as FieldType[]).map((t) => (
+                    <SelectItem key={t} value={t} className="capitalize">{t === 'checkbox_group' ? 'Checkbox Group' : t === 'salary' ? 'Salary' : t === 'location' ? 'Location' : t}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -580,6 +586,39 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                     </SelectContent>
                   </Select>
                 </FormField>
+              </div>
+            </div>
+          )}
+
+          {type === 'location' && (
+            <div className="bg-virgilio-purple/5 border border-virgilio-purple/20 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-2 text-virgilio-purple">
+                <Link2 className="h-4 w-4" />
+                <span className="text-sm font-medium">Syncs to Candidate Profile</span>
+              </div>
+              <div className="bg-white border border-border/40 rounded-md p-3">
+                <p className="text-xs text-muted-foreground">
+                  The location entered by the applicant will automatically update their candidate profile's location fields (city, state, country).
+                </p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Sub-fields to include</p>
+                {([['city', 'City'], ['state', 'State / Province'], ['country', 'Country']] as const).map(([key, lbl]) => (
+                  <div key={key} className="flex items-center gap-2">
+                    <Checkbox
+                      checked={newLocationConfig.fields.includes(key)}
+                      onCheckedChange={(checked) => {
+                        setNewLocationConfig(prev => ({
+                          fields: checked
+                            ? [...prev.fields, key]
+                            : prev.fields.filter(f => f !== key)
+                        }))
+                      }}
+                      disabled={readOnly}
+                    />
+                    <span className="text-sm">{lbl}</span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
