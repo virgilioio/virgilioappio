@@ -208,7 +208,7 @@ export function FieldEditor({
                         placeholder="Label"
                         className="flex-1"
                       />
-                      <Button variant="ghost" size="icon" onClick={() => removeOption(i)} className="shrink-0 h-8 w-8">
+                      <Button variant="ghost" size="sm" onClick={() => removeOption(i)} className="shrink-0 h-8">
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
@@ -394,12 +394,13 @@ export function FieldEditor({
                     </Button>
                     <Button
                       variant="outline"
-                      size="icon"
+                      size="sm"
                       onClick={() => onDelete(field.id)}
                       title="Delete field"
-                      className="h-8 w-8"
+                      className="h-8"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-3 w-3 mr-1" />
+                      Delete
                     </Button>
                   </>
                 )}
