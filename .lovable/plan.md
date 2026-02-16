@@ -1,77 +1,40 @@
 
 
-## Fix Location Smart Field Rendering on Public Job Posting
+## Fix: Select Field Options Not Saving in Form Builder
 
-### Problem
-The public job posting page (`PublicJobPosting.tsx`) renders custom fields inline with individual `if` blocks for each field type (text, email, select, salary, etc.). The `location` field type was never added here, so location smart fields silently fail to render. The `ApplicationFieldsRenderer` component has the correct location rendering, but it is not used on this page.
+### Root Cause
+
+The `posting_field_select_options` table is missing RLS policies for INSERT, UPDATE, and DELETE. It only has a single SELECT policy (for public viewing of active postings). When a recruiter edits a select field and clicks Save, the code does:
+
+1. `DELETE FROM posting_field_select_options WHERE posting_field_id = ?` -- **blocked by RLS**
+2. `INSERT INTO posting_field_select_options (...)` -- **blocked by RLS**
+
+Both fail silently (Supabase returns no error for zero-affected rows with RLS), so options are never persisted.
 
 ### Solution
-Add a `location` field type handler in the inline custom fields rendering block (after the existing `salary` handler at line 844), following the same pattern already established in `ApplicationFieldsRenderer`.
 
-### Technical Change
+Add INSERT, UPDATE, and DELETE RLS policies on `posting_field_select_options` matching the same access pattern used on the parent `job_posting_application_fields` table: allow org members with recruiter role or users assigned to the job, plus platform admins.
 
-**File: `src/pages/PublicJobPosting.tsx` (after line 844, inside the custom fields map)**
+### Technical Changes
 
-Add location field rendering:
-```tsx
-{field.field_type === 'location' && (() => {
-  const config = field.field_config || {}
-  const locationSubFields = config.fields || ['city', 'state', 'country']
-  const locationValue = (() => {
-    try {
-      return customFieldResponses[field.id] 
-        ? JSON.parse(customFieldResponses[field.id]) 
-        : {}
-    } catch { return {} }
-  })()
-  const updateLocation = (key: string, val: string) => {
-    const next = { ...locationValue, [key]: val }
-    setCustomFieldResponses(prev => ({ 
-      ...prev, 
-      [field.id]: JSON.stringify(next) 
-    }))
-  }
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-1.5 mb-1">
-        <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-        <span className="text-xs text-green-600">
-          Syncs to your candidate profile
-        </span>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {locationSubFields.includes('city') && (
-          <Input
-            placeholder="City"
-            value={locationValue.city || ''}
-            onChange={(e) => updateLocation('city', e.target.value)}
-          />
-        )}
-        {locationSubFields.includes('state') && (
-          <Input
-            placeholder="State / Province"
-            value={locationValue.state || ''}
-            onChange={(e) => updateLocation('state', e.target.value)}
-          />
-        )}
-        {locationSubFields.includes('country') && (
-          <Input
-            placeholder="Country"
-            value={locationValue.country || ''}
-            onChange={(e) => updateLocation('country', e.target.value)}
-          />
-        )}
-      </div>
-    </div>
-  )
-})()}
-```
+**1. Database Migration -- Add RLS policies for `posting_field_select_options`**
 
-Also add green "Syncs to profile" help text to the existing salary handler (lines 828-844) for visual consistency, matching the `ApplicationFieldsRenderer` pattern.
+Three new policies, mirroring the parent table's access pattern:
+
+- **INSERT**: Allow if the user is a platform admin OR has recruiter-level access to the org that owns the posting, OR is assigned to the job.
+- **DELETE**: Same condition as INSERT.
+- **UPDATE**: Same condition (for completeness).
+- **SELECT for org members**: Allow authenticated org members to view options for their postings (currently only public/active postings have a SELECT policy).
+
+The policies join through: `posting_field_select_options` -> `job_posting_application_fields` (via `posting_field_id`) -> `job_postings` -> `jobs` -> org check.
+
+**2. No code changes needed**
+
+The existing code in `useJobPostingFields.ts` (the delete + re-insert pattern at lines 202-213) and `FieldEditor.tsx` (passing `select_options` on save at lines 84-86) are already correct. They will work once RLS allows the operations.
 
 ### Files Modified
 
-| File | Change |
+| Target | Change |
 |---|---|
-| `src/pages/PublicJobPosting.tsx` | Add `location` field type rendering block after salary; add sync help text to salary |
+| New SQL migration | Add INSERT, DELETE, UPDATE, and org-member SELECT policies on `posting_field_select_options` |
 
