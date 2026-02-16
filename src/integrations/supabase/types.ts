@@ -5376,6 +5376,7 @@ export type Database = {
         | "date"
         | "file"
         | "url"
+        | "checkbox_group"
       interview_answer_type:
         | "text"
         | "yes_no"
@@ -5615,6 +5616,7 @@ export const Constants = {
         "date",
         "file",
         "url",
+        "checkbox_group",
       ],
       interview_answer_type: [
         "text",

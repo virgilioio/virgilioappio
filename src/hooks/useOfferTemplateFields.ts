@@ -59,7 +59,7 @@ export function useOfferTemplateFields(templateId?: string) {
         .order('display_order')
 
       if (error) throw error
-      setFields(data || [])
+      setFields((data || []) as any)
     } catch (error) {
       console.error('Error fetching offer template fields:', error)
       toast({

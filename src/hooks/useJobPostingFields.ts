@@ -93,7 +93,7 @@ export function useJobPostingFields(postingId: string) {
         application_field_id: null,
         field_name,
         field_label,
-        field_type,
+        field_type: field_type as any,
         is_required,
         column_span: 4,
         placeholder_text: placeholder_text || null,
@@ -182,7 +182,7 @@ export function useJobPostingFields(postingId: string) {
     const { select_options, ...dbUpdates } = updates
     const { error } = await supabase
       .from('job_posting_application_fields')
-      .update(dbUpdates)
+      .update(dbUpdates as any)
       .eq('id', id)
     if (error) {
       console.error('Error updating field:', error)

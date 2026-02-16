@@ -170,6 +170,47 @@ export function ApplicationFieldsRenderer({
           />
         )
 
+      case 'checkbox_group':
+        const groupOptions: any[] = 'select_options' in field ? (field as any).select_options || [] : []
+        return (
+          <FormField
+            key={field.field_name}
+            control={control}
+            name={field.field_name}
+            render={({ field: formField }) => (
+              <FormItem>
+                <FormLabel>
+                  {field.field_label}
+                  {field.is_required && <span className="text-destructive ml-1">*</span>}
+                </FormLabel>
+                <div className="space-y-2">
+                  {groupOptions.map((option) => {
+                    const values: string[] = formField.value || []
+                    return (
+                      <div key={option.id} className="flex items-center gap-2">
+                        <Checkbox
+                          checked={values.includes(option.option_value)}
+                          onCheckedChange={(checked) => {
+                            const next = checked
+                              ? [...values, option.option_value]
+                              : values.filter((v: string) => v !== option.option_value)
+                            formField.onChange(next)
+                          }}
+                        />
+                        <span className="text-sm">{option.option_label}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+                {field.help_text && (
+                  <FormDescription>{field.help_text}</FormDescription>
+                )}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )
+
       case 'date':
         return (
           <FormField
