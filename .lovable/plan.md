@@ -1,38 +1,65 @@
 
 
-## Remove Profile Summary from Public Job Application Form
+## Fix Job Postings Not Appearing on Careers Page
 
-### Problem
-The "Profile Summary" text field is shown to candidates on the public job application form, but anything they type gets silently overwritten seconds later by the AI-generated profile summary (background enrichment). This is misleading UX -- candidates waste time writing something that gets discarded.
+### Root Cause
 
-### What Changes
+There's a bug in the interaction between the frontend and the database trigger:
 
-**File 1: `src/pages/PublicJobPosting.tsx`**
+1. **Frontend** (`src/hooks/useJobPostings.ts` line 87) inserts job postings with `tenant_id: '00000000-0000-0000-0000-000000000000'` as a placeholder
+2. **Database trigger** (`auto_set_job_posting_tenant_id`) checks `IF NEW.tenant_id IS NOT NULL THEN RETURN NEW` -- since the placeholder UUID is NOT null, the trigger skips the lookup entirely
+3. The posting is saved with the all-zeros UUID, which doesn't match any tenant
+4. The careers page filters by the real tenant ID, so these postings are invisible
 
-- Remove the "Profile Summary" rich text editor block (lines 690-699) from the public form UI
-- Keep `profile_summary` in the state object (it still gets populated by AI resume parsing during the form session), but remove the manual text input
-- The AI-parsed profile summary from resume upload still flows through correctly -- it just won't have a visible editor for manual entry
+Two postings are currently broken:
+- "Sr Analyst Manager" 
+- "Especialista en Nominas"
 
-**File 2: `src/hooks/useCoreFields.ts`**
+### Fix (Two Parts)
 
-- Remove `profile_summary` from the `CORE_FIELDS` array (the entry at display_order 5)
-- This removes it from the default core fields that render in public forms
-- Internal candidate forms (`CandidateFormSheet`) have their own profile summary field (a rich text editor) that is NOT driven by `CORE_FIELDS`, so internal functionality is unaffected
+**Part 1: Fix the trigger (database migration)**
 
-### What Stays the Same
+Update the trigger function to also treat the all-zeros placeholder UUID as "not set":
 
-- Internal candidate creation forms still have the profile summary editor (it's hardcoded in `CandidateFormSheet`, not from `CORE_FIELDS`)
-- AI resume parsing during public form still populates `profile_summary` in the background state
-- Background enrichment (`enrich-candidate-profile`) still generates and saves the AI profile summary after submission
-- The `profile_summary` value from AI parsing is still sent in the submission payload and saved to the candidate record
+```sql
+-- Change from:
+IF NEW.tenant_id IS NOT NULL THEN RETURN NEW;
 
-### Technical Details
+-- Change to:
+IF NEW.tenant_id IS NOT NULL 
+   AND NEW.tenant_id != '00000000-0000-0000-0000-000000000000' THEN
+  RETURN NEW;
+END IF;
+```
 
-| Area | Impact |
+**Part 2: Fix the frontend code**
+
+In `src/hooks/useJobPostings.ts`, remove the `tenant_id` placeholder from the insert call entirely. The trigger will populate it automatically from the parent job. The column is NOT NULL with a default, so omitting it or passing null will let the trigger do its job.
+
+**Part 3: Backfill the two broken postings**
+
+Run a one-time update to fix the existing broken records:
+
+```sql
+UPDATE job_postings 
+SET tenant_id = j.tenant_id,
+    location = j.location,
+    job_type = j.level::text
+FROM jobs j
+WHERE job_postings.job_id = j.id
+  AND job_postings.tenant_id = '00000000-0000-0000-0000-000000000000';
+```
+
+### Files Changed
+
+| File | Change |
 |---|---|
-| Public form UI | Profile Summary text box removed -- cleaner form |
-| Core fields hook | `profile_summary` entry removed from defaults |
-| Internal forms | No change -- they use their own rich text editor |
-| AI enrichment | No change -- still runs after submission |
-| Data flow | profile_summary from AI resume parse still saved correctly |
+| Database migration | Fix trigger to treat all-zeros UUID as unset; backfill 2 broken records |
+| `src/hooks/useJobPostings.ts` | Remove `tenant_id: '00000000-...'` placeholder from insert (line 87) |
+
+### Result
+
+- The two missing job postings will immediately appear on the careers page
+- All future postings will have the correct tenant_id set by the trigger
+- No other tables or features are affected
 
