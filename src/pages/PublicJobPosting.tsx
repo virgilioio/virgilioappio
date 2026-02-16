@@ -830,15 +830,68 @@ export default function PublicJobPosting() {
                                     const currency = config.currency || 'USD'
                                     const period = config.period || 'annually'
                                     return (
-                                      <div className="flex items-center gap-2">
-                                        <Badge variant="outline" className="shrink-0">{currency}</Badge>
-                                        <Input
-                                          type="number"
-                                          placeholder="Enter amount"
-                                          value={customFieldResponses[field.id] || ''}
-                                          onChange={(e) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
-                                        />
-                                        <Badge variant="secondary" className="shrink-0 capitalize">{period}</Badge>
+                                      <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                          <Badge variant="outline" className="shrink-0">{currency}</Badge>
+                                          <Input
+                                            type="number"
+                                            placeholder="Enter amount"
+                                            value={customFieldResponses[field.id] || ''}
+                                            onChange={(e) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
+                                          />
+                                          <Badge variant="secondary" className="shrink-0 capitalize">{period}</Badge>
+                                        </div>
+                                        <p className="text-xs text-green-600">Syncs to your candidate profile</p>
+                                      </div>
+                                    )
+                                  })()}
+                                  {field.field_type === 'location' && (() => {
+                                    const config = field.field_config || {}
+                                    const locationSubFields = config.fields || ['city', 'state', 'country']
+                                    const locationValue = (() => {
+                                      try {
+                                        return customFieldResponses[field.id]
+                                          ? JSON.parse(customFieldResponses[field.id])
+                                          : {}
+                                      } catch { return {} }
+                                    })()
+                                    const updateLocation = (key: string, val: string) => {
+                                      const next = { ...locationValue, [key]: val }
+                                      setCustomFieldResponses(prev => ({
+                                        ...prev,
+                                        [field.id]: JSON.stringify(next)
+                                      }))
+                                    }
+                                    return (
+                                      <div className="space-y-2">
+                                        <div className="flex items-center gap-1.5 mb-1">
+                                          <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                                          <span className="text-xs text-green-600">Syncs to your candidate profile</span>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                          {locationSubFields.includes('city') && (
+                                            <Input
+                                              placeholder="City"
+                                              value={locationValue.city || ''}
+                                              onChange={(e) => updateLocation('city', e.target.value)}
+                                            />
+                                          )}
+                                          {locationSubFields.includes('state') && (
+                                            <Input
+                                              placeholder="State / Province"
+                                              value={locationValue.state || ''}
+                                              onChange={(e) => updateLocation('state', e.target.value)}
+                                            />
+                                          )}
+                                          {locationSubFields.includes('country') && (
+                                            <Input
+                                              placeholder="Country"
+                                              value={locationValue.country || ''}
+                                              onChange={(e) => updateLocation('country', e.target.value)}
+                                            />
+                                          )}
+                                        </div>
+                                        <p className="text-xs text-green-600">Syncs to your candidate profile</p>
                                       </div>
                                     )
                                   })()}
