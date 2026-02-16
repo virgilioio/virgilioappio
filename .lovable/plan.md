@@ -1,124 +1,41 @@
 
 
-## Fix: Three Critical Failures in Language + Location Grounding
+## Bug Fix: "About the Company" Not Displaying on Public Job Posts
 
-### What Went Wrong (Evidence from Logs)
+### Root Cause
 
-The latest sourcing project (`6a00291f`) created from an English JD about "Manager of the Analyst Team" for India/Philippines produced:
+The `anon` (anonymous/unauthenticated) PostgreSQL role has **no table-level grants** on the `tenants` table. Even though the RLS policy `tenants_public_read_for_postings` exists and correctly allows anonymous reads for tenants with active postings, PostgreSQL requires **both**:
 
-- **Title**: "Manager of the Equipo of Analistas" (mixed English/Spanish)
-- **Locations**: 12 APAC countries (IN, CN, JP, SG, AU, KR, ID, TH, VN, PH, MY, NZ) instead of just IN + PH
-- **Research titles**: "Gerente de Analisis", "Lider de Equipo de Analistas" (fully Spanish)
-- **Keywords**: "Analisis de Datos", "Gestion de Proyectos" (fully Spanish)
-- **Apollo results**: 0 — because no one has the title "Manager of the Equipo of Analistas"
+1. A table-level `GRANT SELECT` permission (missing)
+2. An RLS policy allowing the operation (exists)
 
-Three independent failures need three targeted fixes.
+Without the grant, the query on line 131-135 of `PublicJobPosting.tsx` silently returns `null` for anonymous visitors. The code handles this gracefully (no error), but the "About" section simply never renders.
 
----
+This is why it works when you're logged in (the `authenticated` role has grants) but fails for public visitors.
 
-### Fix 1: Expand the Server-Side Spanish Title Map
+### Fix
 
-**File**: `supabase/functions/generate-job-spec/index.ts` (lines 582-588)
+**New migration file** to grant `SELECT` on the `tenants` table to the `anon` role:
 
-**Problem**: The `SPANISH_TITLE_MAP` used to sanitize titles before passing to research is missing words like "Equipo" (Team), "Analistas" (Analysts), "Ventas" (Sales), etc. The frontend `sanitizeJobSpec` in `AIJobAssistant.tsx` has a larger map, but the server-side map is incomplete.
-
-**Fix**: Expand the server-side map to match and exceed the frontend map. Add all common Spanish business/role words:
-
-```
-'Analistas' -> 'Analysts', 'Equipo' -> 'Team', 'Ventas' -> 'Sales',
-'Operaciones' -> 'Operations', 'Recursos' -> 'Resources', 'Humanos' -> 'Human',
-'Contabilidad' -> 'Accounting', 'Finanzas' -> 'Finance', 'Mercadeo' -> 'Marketing',
-'Comercial' -> 'Commercial', 'Tecnico' -> 'Technical', 'Producto' -> 'Product',
-'Proyecto' -> 'Project', 'Proyectos' -> 'Projects', 'Datos' -> 'Data',
-'Seguridad' -> 'Security', 'Calidad' -> 'Quality', 'Investigacion' -> 'Research',
-'Soporte' -> 'Support', 'Atencion' -> 'Service', 'Cliente' -> 'Client',
-'Clientes' -> 'Clients', 'Cuenta' -> 'Account', 'Cuentas' -> 'Accounts',
-'Negocios' -> 'Business', 'Gestion' -> 'Management', 'Administrador' -> 'Administrator',
-'Programador' -> 'Programmer', 'Disenador' -> 'Designer', 'Arquitecto' -> 'Architect',
-'Estrategia' -> 'Strategy', 'Senior' -> 'Senior', 'Junior' -> 'Junior',
-'Asistente' -> 'Assistant', 'Asociado' -> 'Associate', 'Regional' -> 'Regional',
-'Nacional' -> 'National', 'Internacional' -> 'International', 'General' -> 'General',
-'Principal' -> 'Principal', 'Bienes' -> 'Real', 'Raices' -> 'Estate',
-'Comerciales' -> 'Commercial', 'Analisis' -> 'Analysis'
+```sql
+GRANT SELECT ON public.tenants TO anon;
 ```
 
-Also apply this same sanitization to `jobSpec.alt_titles` and `jobSpec.department` before passing to the research function — not just the title.
+That's it. One line. The existing RLS policy already restricts anonymous access to only tenants that have active, non-deleted job postings — so this grant is safe. Anonymous users cannot see tenants without public postings.
 
----
+### Technical Details
 
-### Fix 2: Force Country Codes Extraction with Stronger Prompt
-
-**File**: `supabase/functions/generate-job-spec/index.ts` (lines 492-496, 507-515)
-
-**Problem**: The grounding rule exists but the model still defaults to `region: "APAC"`. The JSON schema shows `country_codes` with `or null` which makes the model treat it as optional. The model takes the path of least resistance.
-
-**Fix**:
-- Make the JSON schema description more directive: remove `or null`, replace with explicit instructions
-- Move the CRITICAL LOCATION GROUNDING RULE to be right next to the JSON field definition (proximity matters)
-- In the FINAL INSTRUCTION message (line 545), add a location-specific reminder when the prompt mentions specific country names
-
-Updated JSON field:
-```json
-"country_codes": ["ISO codes when SPECIFIC countries are mentioned in the prompt. REQUIRED when 2+ countries are named. Example: prompt says 'India or Philippines' -> ['IN', 'PH']. Leave as empty array [] only if no specific countries mentioned."],
-```
-
-Updated FINAL INSTRUCTION to include:
-```
-If the prompt mentions specific countries by name, you MUST use country_codes with those exact countries. Do NOT use region instead.
-```
-
----
-
-### Fix 3: Research Function Must Sanitize Its Own Input + Strengthen Output Rules
-
-**File**: `supabase/functions/research-sourcing-criteria/index.ts` (lines 78-100)
-
-**Problem**: Even with the English language rule (line 80), the research function received a half-Spanish title ("Manager of the Equipo of Analistas") and returned fully Spanish results. The input title primes the model toward Spanish. The current language instruction is a single line buried in context — not strong enough.
-
-**Fix**:
-- Add a server-side sanitization of the input `job_title` within the research function itself (same SPANISH_TITLE_MAP approach), so even if generate-job-spec leaks Spanish, research cleans it before using it in the prompt
-- Move the language instruction from a context line to a dedicated final paragraph with emphasis
-- Add it to the end of the research prompt (recency bias), not the beginning
-
-Updated structure:
-```
-...existing research prompt...
-
-ABSOLUTE LANGUAGE RULE:
-ALL output — alternative titles, keywords, reasoning — MUST be in English.
-Do NOT generate Spanish, Portuguese, or any non-English text.
-The job location does NOT determine the output language.
-```
-
----
-
-### Fix 4: Expand Frontend sanitizeJobSpec
-
-**File**: `src/components/dashboard/AIJobAssistant.tsx`
-
-**Problem**: The frontend `sanitizeJobSpec` function needs to also sanitize `title_keywords` (the array used in search criteria on line 402) and `keywords` from research metadata. These flow directly into Apollo search and were Spanish.
-
-**Fix**: Apply the same sanitization to:
-- `title_keywords` array before it goes into `search_criteria` (line 402)
-- `research_metadata.researched_keywords` before storing in `job_spec_data`
-- `research_metadata.researched_titles` before storing
-
-This is a last-resort safety net — the server-side fixes above should prevent Spanish from reaching the frontend, but defense in depth.
-
----
-
-### Summary of Changes
-
-| File | What Changes |
+| Item | Detail |
 |---|---|
-| `supabase/functions/generate-job-spec/index.ts` | Expand SPANISH_TITLE_MAP (30+ words), sanitize alt_titles + department, strengthen country_codes JSON schema, add location reminder to FINAL INSTRUCTION |
-| `supabase/functions/research-sourcing-criteria/index.ts` | Add input title sanitization, move language rule to end of prompt with emphasis |
-| `src/components/dashboard/AIJobAssistant.tsx` | Sanitize title_keywords, researched_keywords, and researched_titles arrays |
+| File to create | `supabase/migrations/[timestamp]_grant_anon_select_tenants.sql` |
+| SQL | `GRANT SELECT ON public.tenants TO anon;` |
+| Why it's safe | The RLS policy `tenants_public_read_for_postings` already scopes anonymous reads to only tenants with `is_active = true` and `deleted_at IS NULL` postings |
+| What it fixes | The "About [Company]" section on public job posts (`/p/:slug`) and potentially the tenant name display too |
 
-### Expected Outcome
-For the same JD ("Manager of the Analyst Team... India or the Philippines"):
-- Title: "Manager of the Analyst Team" (English)
-- Locations: ["IN", "PH"] (only India and Philippines)
-- Research titles: "Analytics Manager", "Research Team Lead" (English)
-- Keywords: "Data Analysis", "Project Management" (English)
-- Apollo results: hundreds of matches (because the titles are now real English job titles)
+### Why This Was Missed
+
+The migration that created the RLS policy (`20260209224252`) added the policy but didn't add the corresponding `GRANT`. RLS policies define *what rows* a role can see, but without a `GRANT`, the role can't access the table at all. Both are required.
+
+### After Publishing
+
+Once this migration is published to the live environment, anonymous visitors to public job posts will see the "About the Company" section rendered with the content from Settings > Workspace > Company Profile.
