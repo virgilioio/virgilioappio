@@ -18,7 +18,8 @@ interface SubmitApplicationPayload {
   resume?: File;
   // Custom fields from application_fields table
   custom_fields?: Record<string, any>;
-  fields?: Record<string, any>; // Add fields property
+  fields?: Record<string, any>;
+  salary_sync?: { amount: number; currency: string; period: string } | null;
   uploadedFiles?: Record<string, {
     name: string;
     type: string;
@@ -270,6 +271,22 @@ serve(async (req) => {
       }
 
       globalCandidateId = newGlobalCandidate.id;
+    }
+
+    // Sync salary data to candidate profile if salary field was submitted
+    if (body.salary_sync && body.salary_sync.amount && globalCandidateId) {
+      console.log('💰 Syncing salary data to candidate profile:', body.salary_sync);
+      const { error: salaryErr } = await supabase
+        .from('candidates')
+        .update({
+          salary_amount: body.salary_sync.amount,
+          salary_currency: body.salary_sync.currency,
+          salary_period: body.salary_sync.period,
+        })
+        .eq('id', globalCandidateId);
+      if (salaryErr) {
+        console.error('⚠️ Warning: Failed to sync salary data:', salaryErr);
+      }
     }
 
     // No longer creating job-specific candidate records

@@ -2,10 +2,12 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Badge } from '@/components/ui/badge'
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from '@/components/ui/form'
 import { ApplicationFieldWithRelations } from '@/hooks/useApplicationFields'
-import { PostingField } from '@/hooks/useJobPostingFields'
+import { PostingField, SalaryFieldConfig } from '@/hooks/useJobPostingFields'
 import { Control } from 'react-hook-form'
+import { CURRENCY_SYMBOLS } from '@/constants/currencies'
 
 function getAutoPlaceholder(field: { field_label: string; field_type: string; placeholder_text?: string | null }): string {
   if (field.placeholder_text) return field.placeholder_text
@@ -243,6 +245,42 @@ export function ApplicationFieldsRenderer({
                     {...formField}
                   />
                 </FormControl>
+                {field.help_text && (
+                  <FormDescription>{field.help_text}</FormDescription>
+                )}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )
+
+      case 'salary':
+        const salaryConfig = ('field_config' in field ? field.field_config : null) as SalaryFieldConfig | null
+        const currency = salaryConfig?.currency || 'USD'
+        const period = salaryConfig?.period || 'annually'
+        const symbol = CURRENCY_SYMBOLS[currency] || currency
+        return (
+          <FormField
+            key={field.field_name}
+            control={control}
+            name={field.field_name}
+            render={({ field: formField }) => (
+              <FormItem>
+                <FormLabel>
+                  {field.field_label}
+                  {field.is_required && <span className="text-destructive ml-1">*</span>}
+                </FormLabel>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="shrink-0">{symbol}</Badge>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      placeholder={`Enter amount`}
+                      {...formField}
+                    />
+                  </FormControl>
+                  <Badge variant="secondary" className="shrink-0 capitalize">{period}</Badge>
+                </div>
                 {field.help_text && (
                   <FormDescription>{field.help_text}</FormDescription>
                 )}

@@ -4,7 +4,12 @@ import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/hooks/use-toast'
 import { ApplicationFieldWithRelations } from './useApplicationFields'
 
-export type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'checkbox_group' | 'date' | 'file' | 'url'
+export type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'checkbox_group' | 'date' | 'file' | 'url' | 'salary'
+
+export interface SalaryFieldConfig {
+  currency: string
+  period: 'hourly' | 'monthly' | 'annually'
+}
 
 export interface SelectOptionData {
   option_value: string
@@ -27,6 +32,7 @@ export interface PostingField {
   help_text?: string | null
   accepted_file_types?: string | null
   max_file_size_mb?: number | null
+  field_config?: SalaryFieldConfig | null
   created_at: string
   updated_at: string
 }
@@ -83,7 +89,7 @@ export function useJobPostingFields(postingId: string) {
     }
   }
 
-  const addCustomField = useCallback(async ({ field_label, field_type, is_required, placeholder_text, help_text, accepted_file_types, max_file_size_mb, select_options }: { field_label: string; field_type: FieldType; is_required: boolean; placeholder_text?: string; help_text?: string; accepted_file_types?: string; max_file_size_mb?: number; select_options?: SelectOptionData[] }) => {
+  const addCustomField = useCallback(async ({ field_label, field_type, is_required, placeholder_text, help_text, accepted_file_types, max_file_size_mb, select_options, field_config }: { field_label: string; field_type: FieldType; is_required: boolean; placeholder_text?: string; help_text?: string; accepted_file_types?: string; max_file_size_mb?: number; select_options?: SelectOptionData[]; field_config?: SalaryFieldConfig }) => {
     const field_name = await uniqueFieldName(field_label)
     const { data: inserted, error } = await supabase
       .from('job_posting_application_fields')
@@ -99,7 +105,8 @@ export function useJobPostingFields(postingId: string) {
         placeholder_text: placeholder_text || null,
         help_text: help_text || null,
         accepted_file_types: accepted_file_types || null,
-        max_file_size_mb: max_file_size_mb ?? null
+        max_file_size_mb: max_file_size_mb ?? null,
+        field_config: field_config ? (field_config as any) : null
       })
       .select()
       .maybeSingle()
