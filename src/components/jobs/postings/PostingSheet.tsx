@@ -20,7 +20,7 @@ import { SafeHtml } from '@/components/ui/safe-html'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ExternalLink, Globe, Info } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-// Currency functionality removed
+import { CURRENCIES } from '@/constants/currencies'
 
 interface PostingSheetProps {
   jobId: string
@@ -45,8 +45,6 @@ export function PostingSheet({
   const { getPosting, createPosting, updatePosting } = useJobPostings(jobId)
   const { tenant } = useTenant()
   const { integration: talentIntegration, isEnabled: talentEnabled } = useJobBoardIntegration('talent')
-  // Currency functionality removed
-  const currencies: any[] = []
 
   const [localId, setLocalId] = useState<string | undefined>(postingId)
   const [title, setTitle] = useState<string>(defaultTitle || '')
@@ -205,9 +203,9 @@ export function PostingSheet({
                     <Select value={salaryCurrency} onValueChange={setSalaryCurrency} disabled={!!readOnly}>
                       <SelectTrigger><SelectValue placeholder="Currency" /></SelectTrigger>
                       <SelectContent>
-                        {currencies.map((c) => (
-                          <SelectItem key={c.code} value={c.code}>
-                            {c.code} - {c.name}
+                        {CURRENCIES.map((c) => (
+                          <SelectItem key={c.value} value={c.value}>
+                            {c.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -253,9 +251,9 @@ export function PostingSheet({
                       <Select value={commissionsCurrency} onValueChange={setCommissionsCurrency} disabled={!!readOnly}>
                         <SelectTrigger><SelectValue placeholder="Currency" /></SelectTrigger>
                           <SelectContent>
-                            {currencies.map((c) => (
-                              <SelectItem key={c.code} value={c.code}>
-                                {c.code} - {c.name}
+                            {CURRENCIES.map((c) => (
+                              <SelectItem key={c.value} value={c.value}>
+                                {c.label}
                               </SelectItem>
                             ))}
                           </SelectContent>
