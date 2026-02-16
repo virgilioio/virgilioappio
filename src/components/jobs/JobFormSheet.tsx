@@ -270,7 +270,7 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
 
             <div>
               <Label htmlFor="currency">Currency</Label>
-              <Popover open={currencyOpen} onOpenChange={setCurrencyOpen}>
+              <Popover open={currencyOpen} onOpenChange={setCurrencyOpen} modal={true}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"

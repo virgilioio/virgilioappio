@@ -163,7 +163,7 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
         {/* Currency */}
         <div className="space-y-2">
           <Label htmlFor="currency">Currency</Label>
-          <Popover open={currencyOpen} onOpenChange={setCurrencyOpen}>
+          <Popover open={currencyOpen} onOpenChange={setCurrencyOpen} modal={true}>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
