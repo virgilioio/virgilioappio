@@ -687,16 +687,6 @@ export default function PublicJobPosting() {
                             />
                           </div>
                           
-                          {/* Profile Summary Field */}
-                          <div>
-                            <label className="text-sm font-medium">Profile Summary</label>
-                            <RichTextEditor
-                              value={coreFieldValues.profile_summary}
-                              onChange={(val) => setCoreFieldValues(prev => ({ ...prev, profile_summary: val }))}
-                              placeholder="Write a concise profile summary..."
-                              minHeight="180px"
-                            />
-                          </div>
                         </div>
                       </div>
 
