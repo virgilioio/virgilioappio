@@ -26,7 +26,7 @@ import { useCoreFields } from '@/hooks/useCoreFields'
 import { CoreFieldsRenderer } from '@/components/forms/CoreFieldsRenderer'
 import { ApplicationFieldsRenderer } from '@/components/forms/ApplicationFieldsRenderer'
 
-type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'checkbox_group' | 'date' | 'file' | 'url' | 'salary'
+type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'checkbox_group' | 'date' | 'file' | 'url' | 'salary' | 'location'
 
 interface Posting {
   id: string
@@ -406,6 +406,7 @@ export default function PublicJobPosting() {
       // Remap custom field responses from field.id to field.field_name
       const mappedCustomFields: Record<string, any> = {}
       let salarySync: { amount: number; currency: string; period: string } | null = null
+      let locationSync: { city?: string; state?: string; country?: string } | null = null
       Object.entries(customFieldResponses).forEach(([fieldId, value]) => {
         const field = customFields.find(f => f.id === fieldId)
         if (field?.field_name) {
@@ -420,6 +421,17 @@ export default function PublicJobPosting() {
             period: config.period || 'annually'
           }
         }
+        // Detect location field for candidate profile sync
+        if (field?.field_type === 'location' && value) {
+          try {
+            const parsed = typeof value === 'string' ? JSON.parse(value) : value
+            locationSync = {
+              city: parsed.city || undefined,
+              state: parsed.state || undefined,
+              country: parsed.country || undefined
+            }
+          } catch { /* ignore parse errors */ }
+        }
       })
 
       // Prepare application data in the format expected by the edge function
@@ -429,7 +441,8 @@ export default function PublicJobPosting() {
         custom_fields: mappedCustomFields, // Use field names instead of IDs
         uploadedFiles: resumeBase64 ? [{ name: resumeFile!.name, data: resumeBase64, type: resumeFile!.type, size: resumeFile!.size }] : [],
         posting_id: posting.id,
-        salary_sync: salarySync
+        salary_sync: salarySync,
+        location_sync: locationSync
       }
 
       const { data, error } = await supabase.functions.invoke('public-submit-application', {
