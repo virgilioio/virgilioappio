@@ -1,43 +1,77 @@
 
 
-## Fix: Delete Button Sizing in Field Editor
+## Fix Location Smart Field Rendering on Public Job Posting
 
 ### Problem
-The delete (Trash) button in the custom application form field editor uses `size="icon"` with a manual `className="h-8 w-8"` override. This conflicts with the design system's `icon` size variant, which sets `h-button w-button` plus mobile-friendly minimums (`min-h-[40px] min-w-[40px]`). The forced `h-8 w-8` (32px) can make the button appear as a thin line, especially on certain viewports.
+The public job posting page (`PublicJobPosting.tsx`) renders custom fields inline with individual `if` blocks for each field type (text, email, select, salary, etc.). The `location` field type was never added here, so location smart fields silently fail to render. The `ApplicationFieldsRenderer` component has the correct location rendering, but it is not used on this page.
 
 ### Solution
-Align the delete button with the Edit button's pattern: use `size="sm"` and add a text label "Delete" so it matches the style guide and is consistently tappable.
+Add a `location` field type handler in the inline custom fields rendering block (after the existing `salary` handler at line 844), following the same pattern already established in `ApplicationFieldsRenderer`.
 
 ### Technical Change
 
-**File: `src/components/jobs/postings/FieldEditor.tsx` (lines 395-403)**
+**File: `src/pages/PublicJobPosting.tsx` (after line 844, inside the custom fields map)**
 
-Change the delete button from:
+Add location field rendering:
 ```tsx
-<Button variant="outline" size="icon" onClick={...} title="Delete field" className="h-8 w-8">
-  <Trash2 className="h-4 w-4" />
-</Button>
+{field.field_type === 'location' && (() => {
+  const config = field.field_config || {}
+  const locationSubFields = config.fields || ['city', 'state', 'country']
+  const locationValue = (() => {
+    try {
+      return customFieldResponses[field.id] 
+        ? JSON.parse(customFieldResponses[field.id]) 
+        : {}
+    } catch { return {} }
+  })()
+  const updateLocation = (key: string, val: string) => {
+    const next = { ...locationValue, [key]: val }
+    setCustomFieldResponses(prev => ({ 
+      ...prev, 
+      [field.id]: JSON.stringify(next) 
+    }))
+  }
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-1.5 mb-1">
+        <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="text-xs text-green-600">
+          Syncs to your candidate profile
+        </span>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {locationSubFields.includes('city') && (
+          <Input
+            placeholder="City"
+            value={locationValue.city || ''}
+            onChange={(e) => updateLocation('city', e.target.value)}
+          />
+        )}
+        {locationSubFields.includes('state') && (
+          <Input
+            placeholder="State / Province"
+            value={locationValue.state || ''}
+            onChange={(e) => updateLocation('state', e.target.value)}
+          />
+        )}
+        {locationSubFields.includes('country') && (
+          <Input
+            placeholder="Country"
+            value={locationValue.country || ''}
+            onChange={(e) => updateLocation('country', e.target.value)}
+          />
+        )}
+      </div>
+    </div>
+  )
+})()}
 ```
 
-To:
-```tsx
-<Button variant="outline" size="sm" onClick={...} title="Delete field" className="h-8">
-  <Trash2 className="h-3 w-3 mr-1" />
-  Delete
-</Button>
-```
-
-This matches the adjacent Edit button's pattern exactly (`variant="outline"`, `size="sm"`, `className="h-8"`, icon + label), ensuring consistent sizing and proper touch targets on mobile.
-
-Also apply the same fix to the option-remove button at line 211 (`h-8 w-8` icon button for removing select options), changing it to match:
-```tsx
-<Button variant="ghost" size="sm" onClick={...} className="shrink-0 h-8">
-  <Trash2 className="h-3 w-3" />
-</Button>
-```
+Also add green "Syncs to profile" help text to the existing salary handler (lines 828-844) for visual consistency, matching the `ApplicationFieldsRenderer` pattern.
 
 ### Files Modified
+
 | File | Change |
 |---|---|
-| `src/components/jobs/postings/FieldEditor.tsx` | Update delete button from `size="icon"` to `size="sm"` with label, matching Edit button pattern |
+| `src/pages/PublicJobPosting.tsx` | Add `location` field type rendering block after salary; add sync help text to salary |
 
