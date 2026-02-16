@@ -448,8 +448,8 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
               <Select value={type} onValueChange={(v: FieldType) => setType(v)} disabled={readOnly}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {(['text','number','email','url','textarea','select','checkbox','date','file'] as FieldType[]).map((t) => (
-                    <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
+                  {(['text','number','email','url','textarea','select','checkbox','checkbox_group','date','file'] as FieldType[]).map((t) => (
+                    <SelectItem key={t} value={t} className="capitalize">{t === 'checkbox_group' ? 'Checkbox Group' : t}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

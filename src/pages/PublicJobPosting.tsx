@@ -26,7 +26,7 @@ import { useCoreFields } from '@/hooks/useCoreFields'
 import { CoreFieldsRenderer } from '@/components/forms/CoreFieldsRenderer'
 import { ApplicationFieldsRenderer } from '@/components/forms/ApplicationFieldsRenderer'
 
-type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file' | 'url'
+type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'checkbox_group' | 'date' | 'file' | 'url'
 
 interface Posting {
   id: string
@@ -161,7 +161,7 @@ export default function PublicJobPosting() {
       setCustomFields(fieldRows)
 
       // Fetch select options for select fields
-      const selectFieldIds = fieldRows.filter((r) => r.field_type === 'select').map((r) => r.id)
+      const selectFieldIds = fieldRows.filter((r) => r.field_type === 'select' || r.field_type === 'checkbox_group').map((r) => r.id)
       if (selectFieldIds.length) {
         const { data: allOpts } = await supabase
           .from('posting_field_select_options')
@@ -766,6 +766,28 @@ export default function PublicJobPosting() {
                                         onCheckedChange={(checked) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: checked ? 'true' : 'false' }))}
                                       />
                                       <span className="text-sm text-muted-foreground">I acknowledge</span>
+                                    </div>
+                                  )}
+                                  {field.field_type === 'checkbox_group' && (
+                                    <div className="space-y-2">
+                                      {(options[field.id] || []).map((option) => {
+                                        const selected: string[] = customFieldResponses[field.id] ? JSON.parse(customFieldResponses[field.id]) : []
+                                        const isChecked = selected.includes(option.option_value)
+                                        return (
+                                          <div key={option.id} className="flex items-center gap-2">
+                                            <Checkbox
+                                              checked={isChecked}
+                                              onCheckedChange={(checked) => {
+                                                const next = checked
+                                                  ? [...selected, option.option_value]
+                                                  : selected.filter(v => v !== option.option_value)
+                                                setCustomFieldResponses(prev => ({ ...prev, [field.id]: JSON.stringify(next) }))
+                                              }}
+                                            />
+                                            <span className="text-sm">{option.option_label}</span>
+                                          </div>
+                                        )
+                                      })}
                                     </div>
                                   )}
                                   {field.field_type === 'date' && (
