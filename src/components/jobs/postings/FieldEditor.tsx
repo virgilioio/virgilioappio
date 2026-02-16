@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { GripVertical, Trash2, Edit, Save, X, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { PostingField, FieldType, SelectOptionData } from '@/hooks/useJobPostingFields'
+import { PostingField, FieldType, SelectOptionData, SalaryFieldConfig } from '@/hooks/useJobPostingFields'
 import { supabase } from '@/lib/supabaseClient'
 
 interface FieldEditorProps {
@@ -22,7 +22,7 @@ interface FieldEditorProps {
   isDefaultLibraryField?: boolean
 }
 
-const ALL_FIELD_TYPES: FieldType[] = ['text','number','email','url','textarea','select','checkbox','checkbox_group','date','file']
+const ALL_FIELD_TYPES: FieldType[] = ['text','number','email','url','textarea','select','checkbox','checkbox_group','date','file','salary']
 
 export function FieldEditor({ 
   field, 
@@ -43,7 +43,7 @@ export function FieldEditor({
   const [localAcceptedFileTypes, setLocalAcceptedFileTypes] = useState(field.accepted_file_types || '')
   const [localMaxFileSize, setLocalMaxFileSize] = useState<number | ''>(field.max_file_size_mb ?? '')
   const [localOptions, setLocalOptions] = useState<SelectOptionData[]>([])
-  
+  const [localSalaryConfig, setLocalSalaryConfig] = useState<SalaryFieldConfig>({ currency: 'USD', period: 'annually' })
   const handleEdit = async () => {
     setLocalLabel(field.field_label || '')
     setLocalType(field.field_type || 'text')
@@ -51,6 +51,7 @@ export function FieldEditor({
     setLocalHelpText(field.help_text || '')
     setLocalAcceptedFileTypes(field.accepted_file_types || '')
     setLocalMaxFileSize(field.max_file_size_mb ?? '')
+    setLocalSalaryConfig((field.field_config as SalaryFieldConfig) || { currency: 'USD', period: 'annually' })
     
     // Load existing select options from DB
     if (field.field_type === 'select' || field.field_type === 'checkbox_group') {
@@ -75,6 +76,7 @@ export function FieldEditor({
       help_text: localHelpText || null,
       accepted_file_types: localAcceptedFileTypes || null,
       max_file_size_mb: localMaxFileSize === '' ? null : localMaxFileSize,
+      field_config: localType === 'salary' ? localSalaryConfig : null,
     }
     if (localType === 'select' || localType === 'checkbox_group') {
       updates.select_options = localOptions
@@ -115,6 +117,7 @@ export function FieldEditor({
   const showHelpText = ['text', 'number', 'email', 'url', 'textarea', 'checkbox', 'checkbox_group', 'date'].includes(localType)
   const showOptions = ['select', 'checkbox_group'].includes(localType)
   const showFileConfig = localType === 'file'
+  const showSalaryConfig = localType === 'salary'
   
   const isDisabled = disabled || readOnly || isDefaultLibraryField
   
@@ -156,7 +159,7 @@ export function FieldEditor({
                     <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
                     <SelectContent>
                       {ALL_FIELD_TYPES.map((t) => (
-                        <SelectItem key={t} value={t} className="capitalize">{t === 'checkbox_group' ? 'Checkbox Group' : t}</SelectItem>
+                        <SelectItem key={t} value={t} className="capitalize">{t === 'checkbox_group' ? 'Checkbox Group' : t === 'salary' ? 'Salary' : t}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -225,6 +228,33 @@ export function FieldEditor({
                     onChange={(e) => setLocalMaxFileSize(e.target.value ? Number(e.target.value) : '')}
                     placeholder="Max file size (MB)"
                   />
+                </div>
+              )}
+
+              {showSalaryConfig && (
+                <div className="grid md:grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Currency</p>
+                    <Select value={localSalaryConfig.currency} onValueChange={(v) => setLocalSalaryConfig(prev => ({ ...prev, currency: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {['USD','EUR','GBP','CAD','AUD','CHF','JPY','INR','BRL','MXN','SGD','HKD','NZD','ZAR','AED','SAR'].map(c => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Period</p>
+                    <Select value={localSalaryConfig.period} onValueChange={(v: any) => setLocalSalaryConfig(prev => ({ ...prev, period: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hourly">Hourly</SelectItem>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="annually">Annually</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               )}
 

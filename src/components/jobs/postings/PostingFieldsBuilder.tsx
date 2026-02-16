@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useApplicationFields } from '@/hooks/useApplicationFields'
-import { useJobPostingFields, FieldType, PostingField, SelectOptionData } from '@/hooks/useJobPostingFields'
+import { useJobPostingFields, FieldType, PostingField, SelectOptionData, SalaryFieldConfig } from '@/hooks/useJobPostingFields'
 import { FormField } from '@/components/ui/form-field'
 import { GripVertical, Plus, Trash2, Save } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
@@ -55,6 +55,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
   const [newAcceptedFileTypes, setNewAcceptedFileTypes] = useState('')
   const [newMaxFileSize, setNewMaxFileSize] = useState<number | ''>('')
   const [newOptions, setNewOptions] = useState<Array<{ option_value: string; option_label: string }>>([])
+  const [newSalaryConfig, setNewSalaryConfig] = useState<SalaryFieldConfig>({ currency: 'USD', period: 'annually' })
 
   // Reset type-specific state when type changes
   useEffect(() => {
@@ -62,6 +63,11 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
     setNewAcceptedFileTypes('')
     setNewMaxFileSize('')
     setNewOptions([])
+    setNewSalaryConfig({ currency: 'USD', period: 'annually' })
+    // Auto-set label for salary type
+    if (type === 'salary' && !label) {
+      setLabel('Salary Expectations')
+    }
   }, [type])
 
   // Initialize order from fetched fields
@@ -210,6 +216,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
       select_options: (type === 'select' || type === 'checkbox_group') && newOptions.length > 0
         ? newOptions.map((o, i) => ({ ...o, display_order: i }))
         : undefined,
+      field_config: type === 'salary' ? newSalaryConfig : undefined,
     })
     
     setLabel('')
@@ -219,6 +226,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
     setNewAcceptedFileTypes('')
     setNewMaxFileSize('')
     setNewOptions([])
+    setNewSalaryConfig({ currency: 'USD', period: 'annually' })
   }
 
   const availableLibraryFields = useMemo(() => libraryFields, [libraryFields])
@@ -471,8 +479,8 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
               <Select value={type} onValueChange={(v: FieldType) => setType(v)} disabled={readOnly}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {(['text','number','email','url','textarea','select','checkbox','checkbox_group','date','file'] as FieldType[]).map((t) => (
-                    <SelectItem key={t} value={t} className="capitalize">{t === 'checkbox_group' ? 'Checkbox Group' : t}</SelectItem>
+                  {(['text','number','email','url','textarea','select','checkbox','checkbox_group','date','file','salary'] as FieldType[]).map((t) => (
+                    <SelectItem key={t} value={t} className="capitalize">{t === 'checkbox_group' ? 'Checkbox Group' : t === 'salary' ? 'Salary' : t}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -536,6 +544,31 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                   placeholder="e.g. 10"
                   disabled={readOnly}
                 />
+              </FormField>
+            </div>
+          )}
+
+          {type === 'salary' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <FormField label="Currency">
+                <Select value={newSalaryConfig.currency} onValueChange={(v) => setNewSalaryConfig(prev => ({ ...prev, currency: v }))} disabled={readOnly}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {['USD','EUR','GBP','CAD','AUD','CHF','JPY','INR','BRL','MXN','SGD','HKD','NZD','ZAR','AED','SAR'].map(c => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+              <FormField label="Period">
+                <Select value={newSalaryConfig.period} onValueChange={(v: any) => setNewSalaryConfig(prev => ({ ...prev, period: v }))} disabled={readOnly}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hourly">Hourly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="annually">Annually</SelectItem>
+                  </SelectContent>
+                </Select>
               </FormField>
             </div>
           )}

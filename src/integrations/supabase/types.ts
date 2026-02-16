@@ -2111,6 +2111,7 @@ export type Database = {
           column_span: number
           created_at: string
           display_order: number
+          field_config: Json | null
           field_label: string
           field_name: string
           field_type: Database["public"]["Enums"]["field_type"]
@@ -2129,6 +2130,7 @@ export type Database = {
           column_span?: number
           created_at?: string
           display_order?: number
+          field_config?: Json | null
           field_label: string
           field_name: string
           field_type?: Database["public"]["Enums"]["field_type"]
@@ -2147,6 +2149,7 @@ export type Database = {
           column_span?: number
           created_at?: string
           display_order?: number
+          field_config?: Json | null
           field_label?: string
           field_name?: string
           field_type?: Database["public"]["Enums"]["field_type"]
@@ -5377,6 +5380,7 @@ export type Database = {
         | "file"
         | "url"
         | "checkbox_group"
+        | "salary"
       interview_answer_type:
         | "text"
         | "yes_no"
@@ -5617,6 +5621,7 @@ export const Constants = {
         "file",
         "url",
         "checkbox_group",
+        "salary",
       ],
       interview_answer_type: [
         "text",

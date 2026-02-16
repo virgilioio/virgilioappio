@@ -26,7 +26,7 @@ import { useCoreFields } from '@/hooks/useCoreFields'
 import { CoreFieldsRenderer } from '@/components/forms/CoreFieldsRenderer'
 import { ApplicationFieldsRenderer } from '@/components/forms/ApplicationFieldsRenderer'
 
-type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'checkbox_group' | 'date' | 'file' | 'url'
+type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'checkbox_group' | 'date' | 'file' | 'url' | 'salary'
 
 interface Posting {
   id: string
@@ -44,6 +44,7 @@ interface PostingField {
   placeholder_text?: string | null
   column_span?: number | null
   field_name?: string | null
+  field_config?: any | null
 }
 
 interface SelectOption {
@@ -153,7 +154,7 @@ export default function PublicJobPosting() {
 
       const { data: f } = await supabase
         .from('job_posting_application_fields')
-        .select('id, field_label, field_type, is_required, placeholder_text, column_span, field_name')
+        .select('id, field_label, field_type, is_required, placeholder_text, column_span, field_name, field_config')
         .eq('posting_id', p.id)
         .order('display_order', { ascending: true })
 
@@ -404,10 +405,20 @@ export default function PublicJobPosting() {
 
       // Remap custom field responses from field.id to field.field_name
       const mappedCustomFields: Record<string, any> = {}
+      let salarySync: { amount: number; currency: string; period: string } | null = null
       Object.entries(customFieldResponses).forEach(([fieldId, value]) => {
         const field = customFields.find(f => f.id === fieldId)
         if (field?.field_name) {
           mappedCustomFields[field.field_name] = value
+        }
+        // Detect salary field for candidate profile sync
+        if (field?.field_type === 'salary' && value) {
+          const config = field.field_config || {}
+          salarySync = {
+            amount: parseFloat(value as string),
+            currency: config.currency || 'USD',
+            period: config.period || 'annually'
+          }
         }
       })
 
@@ -417,7 +428,8 @@ export default function PublicJobPosting() {
         resumeText: capturedResumeText, // For server-side AI enrichment
         custom_fields: mappedCustomFields, // Use field names instead of IDs
         uploadedFiles: resumeBase64 ? [{ name: resumeFile!.name, data: resumeBase64, type: resumeFile!.type, size: resumeFile!.size }] : [],
-        posting_id: posting.id
+        posting_id: posting.id,
+        salary_sync: salarySync
       }
 
       const { data, error } = await supabase.functions.invoke('public-submit-application', {
@@ -800,6 +812,23 @@ export default function PublicJobPosting() {
                                   {field.field_type === 'file' && (
                                     <Input type="file" />
                                   )}
+                                  {field.field_type === 'salary' && (() => {
+                                    const config = field.field_config || {}
+                                    const currency = config.currency || 'USD'
+                                    const period = config.period || 'annually'
+                                    return (
+                                      <div className="flex items-center gap-2">
+                                        <Badge variant="outline" className="shrink-0">{currency}</Badge>
+                                        <Input
+                                          type="number"
+                                          placeholder="Enter amount"
+                                          value={customFieldResponses[field.id] || ''}
+                                          onChange={(e) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
+                                        />
+                                        <Badge variant="secondary" className="shrink-0 capitalize">{period}</Badge>
+                                      </div>
+                                    )
+                                  })()}
                                 </div>
                               </div>
                             ))}
