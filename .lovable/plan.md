@@ -1,70 +1,64 @@
 
 
-## Add "Salary" Answer Type to Job Posting Form Fields
+## Add Help Text and Scorecard-Consistent Visuals to Salary Field
 
-### Overview
-Reuse the same salary expectations pattern from scorecards as a new field type in the job posting form builder. When a recruiter selects "Salary" as the answer type, they configure the currency and period -- the public form then renders a numeric input with currency/period badges, and the submitted value syncs to the candidate's salary profile fields.
+### What Changes
 
-### How It Works
+There are two parts: (1) adding a help text to the salary field on the public form, and (2) aligning the visual treatment of the salary field across the builder (view mode, edit mode, add mode) with the scorecard's established design language.
 
-**Builder (recruiter configuring the form)**
-1. Recruiter picks "Salary" from the answer type dropdown
-2. Configuration section appears with Currency (using the existing `CurrencySelect` component) and Period (hourly/monthly/annually) dropdowns
-3. The label is auto-set to "Salary Expectations" (editable) and help text explains it syncs to the candidate profile
+### 1. Public Form -- Salary Help Text
 
-**Public form (candidate filling it out)**
-1. Renders a numeric input with currency and period badges beside it (same visual pattern as the scorecard salary field)
-2. Submitted value is stored alongside currency/period metadata
+**File: `src/components/forms/ApplicationFieldsRenderer.tsx`**
 
-**On submission**
-1. The salary value, currency, and period are written to the candidate's `salary_amount`, `salary_currency`, and `salary_period` fields automatically
+Add a green help text below the salary input (matching the scorecard's ScorecardSheet pattern):
+- "This will be added to your candidate profile." (candidate-facing wording)
+- Use `text-xs text-green-600` styling, matching the scorecard
 
-### Technical Details
+### 2. Builder View Mode -- Salary Field Visual Treatment
 
-**1. Database: Add `salary` to `field_type` enum + add config column**
+**File: `src/components/jobs/postings/FieldEditor.tsx`**
 
-| Change | Detail |
-|---|---|
-| Migration | `ALTER TYPE public.field_type ADD VALUE IF NOT EXISTS 'salary'` |
-| New column | Add `field_config JSONB DEFAULT NULL` to `job_posting_application_fields` -- stores `{ "currency": "USD", "period": "annually" }` for salary fields (generic enough for future field-type configs) |
+When a salary field is displayed in view mode (not editing), apply the scorecard's InterviewQuestionsList pattern:
+- Green answer-type badge: `bg-green-500/10 text-green-700 border-green-300` with DollarSign icon and "Salary" label (instead of plain gray text)
+- Blue "Syncs to Profile" badge: `bg-blue-500/10 text-blue-700 border-blue-300` with Link2 icon
+- Gray currency/period badge: `bg-gray-100 text-gray-600` showing e.g. "USD / annually"
 
-**2. Type updates**
+This replaces the plain `capitalize` text that currently just says "salary" for the type column.
 
-| File | Change |
-|---|---|
-| `src/hooks/useJobPostingFields.ts` | Add `'salary'` to `FieldType` union. Add `field_config` to `PostingField` interface. Pass `field_config` through `addCustomField` and `updateField`. |
+### 3. Builder Edit Mode -- Salary Config Container
 
-**3. Builder UI -- FieldEditor + PostingFieldsBuilder**
+**File: `src/components/jobs/postings/FieldEditor.tsx`**
 
-| File | Change |
-|---|---|
-| `src/components/jobs/postings/FieldEditor.tsx` | When type is `salary`: show Currency (`CurrencySelect`) + Period dropdown in edit mode. Load/save config from `field_config` JSON column. Hide placeholder/help text inputs (auto-generated). |
-| `src/components/jobs/postings/PostingFieldsBuilder.tsx` | Add "Salary" to the type dropdown (with DollarSign icon). When selected, show Currency + Period config inline. Pass `field_config` to `addCustomField`. Auto-set label to "Salary Expectations". |
+When editing a salary field, wrap the currency/period config in a styled container matching the scorecard's InterviewQuestionForm:
+- Purple container: `bg-virgilio-purple/5 border border-virgilio-purple/20 rounded-lg p-4`
+- Header with Link2 icon: "Syncs to Candidate Profile" in `text-virgilio-purple`
+- Info box: white background with border, explaining that the salary value will automatically update the candidate's salary fields
 
-**4. Public form rendering**
+### 4. Add Custom Field -- Salary Config Container
 
-| File | Change |
-|---|---|
-| `src/components/forms/ApplicationFieldsRenderer.tsx` | Add `salary` case: render a numeric input + currency badge + period badge (matching scorecard pattern). Store value as the raw number string. |
-| `src/pages/PublicJobPosting.tsx` | Add `salary` to the `FieldType` union. On form submission, detect salary fields and sync `salary_amount`, `salary_currency`, `salary_period` to the candidate record. |
+**File: `src/components/jobs/postings/PostingFieldsBuilder.tsx`**
 
-**5. Candidate profile sync**
+Same treatment as edit mode:
+- Wrap the currency/period selects in the purple container with the "Syncs to Candidate Profile" header and info box
+- Matches the scorecard's InterviewQuestionForm pattern exactly
 
-On public form submission, if a salary field exists:
-- Parse the numeric value from the form
-- Read currency and period from the field's `field_config`
-- Update the candidate's `salary_amount`, `salary_currency`, `salary_period` columns
+### Visual Reference (from scorecards)
 
-This mirrors exactly how the scorecard salary question syncs to the candidate profile.
+The scorecard uses three distinct visual treatments:
+- **Config/Form**: Purple container with "Syncs to Candidate Profile" + Link2 icon + info box
+- **List/View**: Green badge for type + Blue "Syncs to Profile" badge + Gray currency/period badge
+- **Fill/Public**: Green container with DollarSign icon + green help text about profile sync
+
+We map these 1:1:
+- Config/Form --> FieldEditor edit mode + PostingFieldsBuilder add section
+- List/View --> FieldEditor view mode
+- Fill/Public --> ApplicationFieldsRenderer salary case
 
 ### Files Changed
 
 | File | Change |
 |---|---|
-| New migration | Add `salary` enum value + `field_config JSONB` column |
-| `src/hooks/useJobPostingFields.ts` | Add salary type, field_config to interface and persistence |
-| `src/components/jobs/postings/FieldEditor.tsx` | Salary config UI in edit mode |
-| `src/components/jobs/postings/PostingFieldsBuilder.tsx` | Salary type in dropdown + config UI when adding |
-| `src/components/forms/ApplicationFieldsRenderer.tsx` | Salary field rendering (number input + badges) |
-| `src/pages/PublicJobPosting.tsx` | Salary type + candidate profile sync on submit |
+| `src/components/jobs/postings/FieldEditor.tsx` | Green/blue/gray badges in view mode for salary fields. Purple container with info box in edit mode for salary config. |
+| `src/components/jobs/postings/PostingFieldsBuilder.tsx` | Purple container with "Syncs to Candidate Profile" header and info box around salary config in Add Field section. |
+| `src/components/forms/ApplicationFieldsRenderer.tsx` | Add green help text below salary input on public form. |
 
