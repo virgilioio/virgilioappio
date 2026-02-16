@@ -1,77 +1,53 @@
 
 
-## Add Type-Specific Configuration to Job Posting Field Editor
+## Fix Field Editor Type-Specific Configuration
 
 ### Problem
-When customizing application form fields in the job posting form builder, selecting any field type (checkbox, select, file, etc.) shows no type-specific configuration options. Users cannot:
-- Define options for **Select** fields
-- Configure **Checkbox** behavior (currently only a single true/false toggle with no way to add multiple choices)
-- Set accepted file types or max size for **File** fields  
-- Add placeholder/help text for **Text**, **Textarea**, **URL**, **Number**, **Email** fields
+The FieldEditor component already has the correct UI for type-specific configuration (options editor for select/checkbox_group, file config, placeholder/help text). However, it doesn't work because:
 
-The Platform Library form (`ApplicationFieldForm`) already has these configuration panels, but the per-posting `FieldEditor` does not.
+1. **Options are silently dropped on save**: `PostingFieldsBuilder` passes `updateLocalField` as the `onUpdate` prop, which only stores flat `Partial<PostingField>` updates. The `select_options` key gets discarded and is never persisted when the user clicks "Save Changes."
+
+2. **"Add Custom Field" has no type-specific config**: When adding a new custom field of type select, checkbox_group, or file, there's no UI to configure options, accepted file types, or placeholder text before adding.
 
 ### Solution
-Enhance the `FieldEditor` component to show type-specific configuration sections when in edit mode, matching the capabilities already available in the platform library form. Also add a new "checkbox_group" field type for multi-option checkboxes.
 
-### What Each Field Type Will Show When Editing
+#### 1. Fix FieldEditor save flow (immediate persistence)
 
-| Type | Current Config | New Config Added |
-|---|---|---|
-| text, email, url | Label, Type, Required | + Placeholder text, Help text |
-| number | Label, Type, Required | + Placeholder text, Help text |
-| textarea | Label, Type, Required | + Placeholder text, Help text |
-| select | Label, Type, Required | + Options editor (add/remove value+label pairs) |
-| checkbox | Label, Type, Required | + Help text (remains a single true/false toggle) |
-| checkbox_group | N/A (new type) | + Options editor (add/remove choices), Help text |
-| date | Label, Type, Required | + Help text |
-| file | Label, Type, Required | + Accepted file types, Max file size |
+Change the FieldEditor to save directly to the database when the user clicks its "Save" button, rather than routing through the batch local-state pattern. The FieldEditor already has its own Edit/Save/Cancel flow with local state, so immediate save is the natural behavior.
 
-### Technical Details
+**File: `src/components/jobs/postings/PostingFieldsBuilder.tsx`**
+- Pass the hook's `updateField` function directly as `onUpdate` to FieldEditor (instead of `updateLocalField`)
+- After `updateField` completes, call `refetch()` to sync state
+- Keep the batch pattern for reordering and deleting (those still make sense as batch operations)
 
-**1. Add "checkbox_group" field type**
+#### 2. Add type-specific config to "Add Custom Field" section
 
-| File | Change |
-|---|---|
-| `src/hooks/useJobPostingFields.ts` | Add `'checkbox_group'` to the `FieldType` union |
-| `src/components/forms/ApplicationFieldsRenderer.tsx` | Add a `checkbox_group` case that renders multiple checkboxes from stored options |
+**File: `src/components/jobs/postings/PostingFieldsBuilder.tsx`**
+- Add local state for: `newPlaceholder`, `newHelpText`, `newAcceptedFileTypes`, `newMaxFileSize`, `newOptions` (array of value+label pairs)
+- When type is `select` or `checkbox_group`: show an inline options editor (add/remove rows with Value + Label inputs) -- same pattern as FieldEditor
+- When type is `file`: show accepted file types and max file size inputs
+- When type is `text`, `email`, `url`, `number`, `textarea`: show placeholder and help text inputs
+- When type is `checkbox` or `date`: show help text input only
+- Pass these values through `handleAddCustom` to `addCustomField`
+- Reset all type-specific state when the type dropdown changes or after adding
 
-**2. Enhance `FieldEditor` component**
+#### 3. Visual alignment
 
-| File | Change |
-|---|---|
-| `src/components/jobs/postings/FieldEditor.tsx` | Add local state for `placeholder_text`, `help_text`, `accepted_file_types`, `max_file_size_mb`, and `select_options`. Show type-specific configuration sections in edit mode. Load existing select options from `posting_field_select_options` table when entering edit mode. Save all type-specific data on Save. |
+- Options editor sections use a subtle bordered container with `border border-border/30 rounded-brand p-3` (matching the FieldEditor's existing pattern)
+- "Add Option" button uses `variant="outline" size="sm"` with a Plus icon
+- Remove option buttons use `variant="ghost" size="icon"` with a Trash icon
+- Type-specific fields appear below the Label/Type/Required row with smooth conditional rendering
 
-The FieldEditor edit mode will expand to show relevant configuration based on the selected type:
-- **select / checkbox_group**: An inline options editor (add/remove rows with value + label fields)
-- **file**: Checkboxes for accepted file types + max file size input
-- **text / textarea / email / url / number**: Placeholder text + help text inputs
-- **checkbox / date**: Help text input only
-
-**3. Save select/checkbox_group options to database**
+### Files Changed
 
 | File | Change |
 |---|---|
-| `src/hooks/useJobPostingFields.ts` | Extend `updateField` to accept and persist select options to `posting_field_select_options` table (delete existing + re-insert pattern) |
-| `src/components/jobs/postings/PostingFieldsBuilder.tsx` | Pass options data through the save flow |
+| `src/components/jobs/postings/PostingFieldsBuilder.tsx` | Pass `updateField` + `refetch` to FieldEditor instead of `updateLocalField`. Add type-specific config UI to "Add Custom Field" section with options editor, file config, and placeholder/help text inputs. |
 
-**4. Update Add Custom Field section**
+### What Users Will See
 
-| File | Change |
-|---|---|
-| `src/components/jobs/postings/PostingFieldsBuilder.tsx` | Add `checkbox_group` to the type dropdown. Show inline options editor when `select` or `checkbox_group` is chosen. Show file config when `file` is chosen. Show placeholder/help text inputs for other types. |
-
-**5. Update the public-facing renderer**
-
-| File | Change |
-|---|---|
-| `src/components/forms/ApplicationFieldsRenderer.tsx` | Add `checkbox_group` case: render a group of checkboxes based on field options, storing selected values as an array |
-| `src/pages/PublicJobPosting.tsx` | Ensure `checkbox_group` fields also fetch their options from `posting_field_select_options` |
-
-### Summary of Files Changed
-- `src/hooks/useJobPostingFields.ts` -- add type, extend updateField
-- `src/components/jobs/postings/FieldEditor.tsx` -- type-specific config UI in edit mode
-- `src/components/jobs/postings/PostingFieldsBuilder.tsx` -- type-specific config in "Add Field" section, add checkbox_group type
-- `src/components/forms/ApplicationFieldsRenderer.tsx` -- render checkbox_group
-- `src/pages/PublicJobPosting.tsx` -- fetch options for checkbox_group fields
+- **Editing existing fields**: Click Edit on a select/checkbox_group field, the options editor appears immediately. Click Save, options persist to the database.
+- **Adding new fields**: Select "Select" or "Checkbox Group" as the type, an inline options editor appears. Add value+label pairs before clicking "Add Custom Field."
+- **File fields**: Configuration for accepted types and max size appears when "File" type is selected.
+- **Text-based fields**: Placeholder and help text inputs appear for text, email, url, number, textarea types.
 
