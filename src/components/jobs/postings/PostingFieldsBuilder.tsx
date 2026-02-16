@@ -51,7 +51,6 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
   const [selectedLibraryId, setSelectedLibraryId] = useState<string>('')
   
   // Type-specific config for Add Custom Field
-  const [newPlaceholder, setNewPlaceholder] = useState('')
   const [newHelpText, setNewHelpText] = useState('')
   const [newAcceptedFileTypes, setNewAcceptedFileTypes] = useState('')
   const [newMaxFileSize, setNewMaxFileSize] = useState<number | ''>('')
@@ -59,7 +58,6 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
 
   // Reset type-specific state when type changes
   useEffect(() => {
-    setNewPlaceholder('')
     setNewHelpText('')
     setNewAcceptedFileTypes('')
     setNewMaxFileSize('')
@@ -206,7 +204,6 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
       field_label: label.trim(),
       field_type: type,
       is_required: required,
-      placeholder_text: newPlaceholder || undefined,
       help_text: newHelpText || undefined,
       accepted_file_types: newAcceptedFileTypes || undefined,
       max_file_size_mb: newMaxFileSize === '' ? undefined : newMaxFileSize,
@@ -218,7 +215,6 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
     setLabel('')
     setType('text')
     setRequired(false)
-    setNewPlaceholder('')
     setNewHelpText('')
     setNewAcceptedFileTypes('')
     setNewMaxFileSize('')
@@ -545,24 +541,14 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
           )}
 
           {['text', 'number', 'email', 'url', 'textarea'].includes(type) && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <FormField label="Placeholder Text">
-                <Input
-                  value={newPlaceholder}
-                  onChange={(e) => setNewPlaceholder(e.target.value)}
-                  placeholder="Placeholder shown in the field"
-                  disabled={readOnly}
-                />
-              </FormField>
-              <FormField label="Help Text">
-                <Input
-                  value={newHelpText}
-                  onChange={(e) => setNewHelpText(e.target.value)}
-                  placeholder="Help text shown below the field"
-                  disabled={readOnly}
-                />
-              </FormField>
-            </div>
+            <FormField label="Help Text (optional)">
+              <Input
+                value={newHelpText}
+                onChange={(e) => setNewHelpText(e.target.value)}
+                placeholder="Help text shown below the field"
+                disabled={readOnly}
+              />
+            </FormField>
           )}
 
           {['checkbox', 'date'].includes(type) && (

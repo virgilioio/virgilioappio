@@ -7,6 +7,20 @@ import { ApplicationFieldWithRelations } from '@/hooks/useApplicationFields'
 import { PostingField } from '@/hooks/useJobPostingFields'
 import { Control } from 'react-hook-form'
 
+function getAutoPlaceholder(field: { field_label: string; field_type: string; placeholder_text?: string | null }): string {
+  if (field.placeholder_text) return field.placeholder_text
+  const label = field.field_label
+  switch (field.field_type) {
+    case 'select':
+    case 'checkbox_group':
+      return `Select ${label}`
+    case 'file':
+      return `Upload ${label}`
+    default:
+      return `Enter your ${label}`
+  }
+}
+
 interface ApplicationFieldsRendererProps {
   fields: (ApplicationFieldWithRelations | PostingField)[]
   control: Control<any>
@@ -36,7 +50,7 @@ export function ApplicationFieldsRenderer({
                 <FormControl>
                   <Input
                     type={field.field_type}
-                    placeholder={field.placeholder_text || ''}
+                    placeholder={getAutoPlaceholder(field)}
                     {...formField}
                   />
                 </FormControl>
@@ -64,7 +78,7 @@ export function ApplicationFieldsRenderer({
                 <FormControl>
                   <Input
                     type="number"
-                    placeholder={field.placeholder_text || ''}
+                    placeholder={getAutoPlaceholder(field)}
                     {...formField}
                   />
                 </FormControl>
@@ -91,7 +105,7 @@ export function ApplicationFieldsRenderer({
                 </FormLabel>
                 <FormControl>
                   <Textarea
-                    placeholder={field.placeholder_text || ''}
+                    placeholder={getAutoPlaceholder(field)}
                     rows={4}
                     {...formField}
                   />
@@ -121,7 +135,7 @@ export function ApplicationFieldsRenderer({
                 <Select onValueChange={formField.onChange} value={formField.value}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder={field.placeholder_text || 'Select an option'} />
+                      <SelectValue placeholder={getAutoPlaceholder(field)} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
