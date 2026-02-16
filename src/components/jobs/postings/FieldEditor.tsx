@@ -39,7 +39,6 @@ export function FieldEditor({
   const [localLabel, setLocalLabel] = useState(field.field_label || '')
   const [localType, setLocalType] = useState(field.field_type || 'text')
   const [localRequired, setLocalRequired] = useState(field.is_required || false)
-  const [localPlaceholder, setLocalPlaceholder] = useState(field.placeholder_text || '')
   const [localHelpText, setLocalHelpText] = useState(field.help_text || '')
   const [localAcceptedFileTypes, setLocalAcceptedFileTypes] = useState(field.accepted_file_types || '')
   const [localMaxFileSize, setLocalMaxFileSize] = useState<number | ''>(field.max_file_size_mb ?? '')
@@ -49,7 +48,6 @@ export function FieldEditor({
     setLocalLabel(field.field_label || '')
     setLocalType(field.field_type || 'text')
     setLocalRequired(field.is_required || false)
-    setLocalPlaceholder(field.placeholder_text || '')
     setLocalHelpText(field.help_text || '')
     setLocalAcceptedFileTypes(field.accepted_file_types || '')
     setLocalMaxFileSize(field.max_file_size_mb ?? '')
@@ -74,7 +72,6 @@ export function FieldEditor({
       field_label: localLabel,
       field_type: localType,
       is_required: localRequired,
-      placeholder_text: localPlaceholder || null,
       help_text: localHelpText || null,
       accepted_file_types: localAcceptedFileTypes || null,
       max_file_size_mb: localMaxFileSize === '' ? null : localMaxFileSize,
@@ -115,7 +112,6 @@ export function FieldEditor({
     setLocalOptions(prev => prev.map((o, i) => i === index ? { ...o, [key]: value } : o))
   }
 
-  const showPlaceholder = ['text', 'number', 'email', 'url', 'textarea'].includes(localType)
   const showHelpText = ['text', 'number', 'email', 'url', 'textarea', 'checkbox', 'checkbox_group', 'date'].includes(localType)
   const showOptions = ['select', 'checkbox_group'].includes(localType)
   const showFileConfig = localType === 'file'
@@ -180,22 +176,7 @@ export function FieldEditor({
               </div>
 
               {/* Type-specific config */}
-              {showPlaceholder && (
-                <div className="grid md:grid-cols-2 gap-3">
-                  <Input
-                    value={localPlaceholder}
-                    onChange={(e) => setLocalPlaceholder(e.target.value)}
-                    placeholder="Placeholder text"
-                  />
-                  <Input
-                    value={localHelpText}
-                    onChange={(e) => setLocalHelpText(e.target.value)}
-                    placeholder="Help text (shown below field)"
-                  />
-                </div>
-              )}
-
-              {showHelpText && !showPlaceholder && (
+              {showHelpText && (
                 <Input
                   value={localHelpText}
                   onChange={(e) => setLocalHelpText(e.target.value)}
