@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { useApplicationFields } from '@/hooks/useApplicationFields'
 import { useJobPostingFields, FieldType, PostingField, SelectOptionData, SalaryFieldConfig } from '@/hooks/useJobPostingFields'
 import { FormField } from '@/components/ui/form-field'
-import { GripVertical, Plus, Trash2, Save } from 'lucide-react'
+import { GripVertical, Plus, Trash2, Save, Link2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, useDroppable, DragOverlay } from '@dnd-kit/core'
 import { SortableContext, rectSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable'
@@ -549,27 +549,38 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
           )}
 
           {type === 'salary' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <FormField label="Currency">
-                <Select value={newSalaryConfig.currency} onValueChange={(v) => setNewSalaryConfig(prev => ({ ...prev, currency: v }))} disabled={readOnly}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {['USD','EUR','GBP','CAD','AUD','CHF','JPY','INR','BRL','MXN','SGD','HKD','NZD','ZAR','AED','SAR'].map(c => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormField>
-              <FormField label="Period">
-                <Select value={newSalaryConfig.period} onValueChange={(v: any) => setNewSalaryConfig(prev => ({ ...prev, period: v }))} disabled={readOnly}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="hourly">Hourly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="annually">Annually</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormField>
+            <div className="bg-virgilio-purple/5 border border-virgilio-purple/20 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-2 text-virgilio-purple">
+                <Link2 className="h-4 w-4" />
+                <span className="text-sm font-medium">Syncs to Candidate Profile</span>
+              </div>
+              <div className="bg-white border border-border/40 rounded-md p-3">
+                <p className="text-xs text-muted-foreground">
+                  The salary value entered by the applicant will automatically update their candidate profile's salary fields.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <FormField label="Currency">
+                  <Select value={newSalaryConfig.currency} onValueChange={(v) => setNewSalaryConfig(prev => ({ ...prev, currency: v }))} disabled={readOnly}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {['USD','EUR','GBP','CAD','AUD','CHF','JPY','INR','BRL','MXN','SGD','HKD','NZD','ZAR','AED','SAR'].map(c => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormField>
+                <FormField label="Period">
+                  <Select value={newSalaryConfig.period} onValueChange={(v: any) => setNewSalaryConfig(prev => ({ ...prev, period: v }))} disabled={readOnly}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hourly">Hourly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="annually">Annually</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormField>
+              </div>
             </div>
           )}
 
