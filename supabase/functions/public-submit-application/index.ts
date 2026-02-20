@@ -239,6 +239,7 @@ serve(async (req) => {
           skills: body.skills ? [body.skills] : null,
           source: "public_posting",
           tenant_id: postingTenantId,  // CRITICAL: Set tenant_id for proper isolation
+          organization_id: (posting as any).job?.organization_id || null,  // Set org_id so activity feed works for inbound applicants
         };
 
         // Parse location if provided
