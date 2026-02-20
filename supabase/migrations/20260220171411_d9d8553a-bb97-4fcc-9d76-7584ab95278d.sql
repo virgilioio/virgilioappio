@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.accept_invitation(token_input text, new_user_id uuid);
