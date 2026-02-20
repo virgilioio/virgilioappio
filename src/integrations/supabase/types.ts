@@ -4860,29 +4860,17 @@ export type Database = {
       }
     }
     Functions: {
-      accept_invitation:
-        | {
-            Args: { new_user_id: string; token_input: string }
-            Returns: {
-              error_message: string
-              member_id: string
-              member_role: string
-              organization_id: string
-              success: boolean
-              user_type: string
-            }[]
-          }
-        | {
-            Args: { new_user_id: string; token_input: string }
-            Returns: {
-              error_message: string
-              member_id: string
-              member_role: string
-              organization_id: string
-              success: boolean
-              user_type: string
-            }[]
-          }
+      accept_invitation: {
+        Args: { new_user_id: string; token_input: string }
+        Returns: {
+          error_message: string
+          member_id: string
+          member_role: string
+          organization_id: string
+          success: boolean
+          user_type: string
+        }[]
+      }
       activate_platform_asset: {
         Args: { asset_type_param: string; new_asset_id: string }
         Returns: undefined
