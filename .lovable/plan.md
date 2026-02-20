@@ -1,42 +1,51 @@
 
-## Root Cause: Service Role Client Strips `auth.uid()` Context
+## The Problem: Missing NULL Guard on Activity-Logging Triggers
 
 ### What Is Happening
 
-The edge function passes the authorization check at the HTTP layer (JWT metadata confirms `platform_admin`), but then calls the SQL RPC functions (`admin_delete_candidate`, `admin_delete_job`, etc.) using the **service role client**.
+When a public applicant submits through a job posting, the `public-submit-application` edge function runs as the **service role** (no authenticated user). This means `auth.uid()` is `NULL` throughout the entire database session.
 
-When Postgres runs under the service role, `auth.uid()` returns `NULL`. The `is_platform_admin()` function relies on `auth.uid()` to look up the caller in the `members` table. With no UID, it always returns `false`, causing every admin RPC to raise:
+The flow that triggers the error:
 
+```text
+public-submit-application (service role, auth.uid() = NULL)
+  → INSERT into candidates          → trg_log_candidate_created → GUARDED ✅ (skips when uid=NULL)
+  → INSERT into job_candidate_associations → trg_log_candidate_assigned → NO GUARD ❌
+                                                        → log_activity(p_user_id = NULL)
+                                                        → INSERT into activities(user_id = NULL)
+                                                        → ERROR: NOT NULL violated
 ```
-Unauthorized: Only platform admins can delete candidates via this function
-```
 
-This is why the edge function log shows the authorization check passing (the "Admin operation requested by user" log line appears), but the database call then fails.
+This error is surface-level reported as a file upload failure because when the `job_candidate_associations` INSERT fails (transaction rolls back), the file attachment insert also fails with a confusing cascading error message.
 
-### The Fix
+### The Fix: Add NULL Guards to All Unprotected Activity Triggers
 
-Switch all four RPC calls in the edge function from the **service role client** to the **user JWT client** (`supabaseAuth`). Since `supabaseAuth` was created with the user's `Authorization` header, Postgres will see the correct `auth.uid()` when executing the SQL functions, and `is_platform_admin()` will correctly return `true`.
+The `log_candidate_created` trigger was correctly patched with a NULL guard in migration `20260220154610`. The same pattern needs to be applied to every other activity-logging trigger function that can fire during unauthenticated operations.
 
-The `SECURITY DEFINER` attribute on the SQL functions means they already run with elevated database privileges (owner permissions) — using the user JWT to call them does not reduce their power. It only restores the `auth.uid()` session context that the functions need for their internal authorization check.
+**Triggers that need NULL guards:**
+
+| Trigger Function | Fires On | Missing Guard |
+|---|---|---|
+| `log_candidate_job_assignment` | `job_candidate_associations` INSERT | Yes — uses `COALESCE(NEW.created_by, auth.uid())` but no `IF IS NULL THEN RETURN` |
+| `log_candidate_stage_activity` | `job_candidate_associations` UPDATE | Yes — uses `auth.uid()` directly |
+| `log_candidate_status_change` | `job_candidate_associations` UPDATE | Yes — uses `auth.uid()` directly |
+| `log_candidate_updated` | `candidates` UPDATE | Yes — uses `auth.uid()` directly |
 
 ### Technical Details
 
-| Client | `auth.uid()` in DB session | Outcome |
-|---|---|---|
-| Service role (`supabaseClient`) | `NULL` | `is_platform_admin()` → `false` → RAISE EXCEPTION |
-| User JWT (`supabaseAuth`) | Caller's UUID | `is_platform_admin()` → `true` → Success |
+The fix for each trigger is the same pattern already used in `log_candidate_created`:
+
+```sql
+-- Resolve user_id: prefer explicit column, fall back to JWT sub
+v_user_id := COALESCE(NEW.created_by, auth.uid());  -- or just auth.uid() where no created_by
+
+-- Guard: skip activity logging when there is no authenticated user
+-- (e.g. service-role inserts from public job applications)
+IF v_user_id IS NULL THEN
+  RETURN NEW;
+END IF;
+```
 
 ### Files Changed
 
-**`supabase/functions/admin-operations/index.ts`**
-
-Replace the four `supabaseClient.rpc(...)` calls with `supabaseAuth.rpc(...)`:
-
-- `admin_delete_job` → called via `supabaseAuth`
-- `admin_delete_candidate` → called via `supabaseAuth`
-- `admin_manage_member` → called via `supabaseAuth`
-- `admin_manage_organization` → called via `supabaseAuth`
-
-The service role client (`supabaseClient`) is removed entirely since it is no longer needed in this function.
-
-No database migrations are required. No other files need to change.
+**One database migration** — `CREATE OR REPLACE` for the four trigger functions above, each adding the NULL guard before calling `log_activity`. No edge function changes. No frontend changes.
