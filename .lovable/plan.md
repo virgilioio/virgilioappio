@@ -1,59 +1,78 @@
 
-## Root Cause
+## Root Cause: Missing NULL Guard on the Attachment Upload Activity Trigger
 
-The `public-submit-application` function performs a lookup for an existing candidate using `email + tenant_id`, but the `candidates` table has a **unique constraint on `(email, candidate_name)`**. When a candidate with the same email and name exists — even if the `tenant_id` lookup misses them — the `INSERT` throws a `23505` duplicate key violation. The function hard-returns a 500 instead of recovering.
+The file upload IS working (the PDF gets stored in the `candidate-attachments` bucket successfully), but the `candidate_attachments` database record fails to save, causing a rollback that also deletes the file from storage. The result: **the resume is not being saved** for public applicants.
 
-This hits any returning applicant or any applicant whose record was created through any other flow (e.g., internal import) with a matching email + name combination.
+### What Happens Step by Step
 
-## The Fix: Two-Layer Graceful Recovery
+1. Edge function uploads file to `candidate-attachments` storage bucket — **succeeds**
+2. Edge function inserts a row into `candidate_attachments` table with `uploaded_by: null`
+3. Database trigger `trg_log_attachment_uploaded` fires (`log_candidate_attachment_uploaded`)
+4. The trigger calls `log_activity(p_user_id := NEW.uploaded_by, ...)` — passes **null** as user_id
+5. `log_activity()` does `INSERT INTO activities (user_id, ...)` — hits the NOT NULL constraint
+6. **PostgreSQL error 23502** — entire `candidate_attachments` INSERT transaction rolls back
+7. Edge function catches the `dbError`, then deletes the file from storage as cleanup
+8. Edge function returns the upload as "failed" with the `Database error: null value in column "user_id"` message
 
-### Layer 1 — Better Lookup (Lines 215-229)
-Add `candidate_name` to the lookup query to match the exact unique constraint and avoid phantom misses:
-```typescript
-.eq("email", candidateEmail)
-.eq("candidate_name", candidateName)   // ← add this
-.eq("tenant_id", postingTenantId)
+So yes — the resume is genuinely **not being saved**. The error toast is accurate.
+
+### Why This Wasn't Caught Earlier
+
+Previous fixes applied NULL guards to these trigger functions:
+- `log_candidate_job_assignment`
+- `log_candidate_stage_activity`
+- `log_candidate_status_change`
+- `log_candidate_updated`
+
+But `log_candidate_attachment_uploaded` was created in a separate migration (`20251125052732`) and was never given the same guard. The pattern was missed.
+
+### The Fix
+
+A single SQL migration adding the same NULL guard pattern to `log_candidate_attachment_uploaded`:
+
+```sql
+CREATE OR REPLACE FUNCTION public.log_candidate_attachment_uploaded()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = 'public'
+AS $$
+DECLARE
+  v_candidate_name TEXT;
+  v_organization_id UUID;
+BEGIN
+  -- Skip activity logging for unauthenticated/service-role operations
+  -- (e.g., public job application submissions where uploaded_by is null)
+  IF NEW.uploaded_by IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  -- Get candidate name and organization
+  SELECT c.candidate_name, c.organization_id 
+  INTO v_candidate_name, v_organization_id
+  FROM public.candidates c 
+  WHERE c.id = NEW.candidate_id;
+  
+  -- Log the activity
+  PERFORM public.log_activity(
+    p_user_id := NEW.uploaded_by,
+    p_organization_id := v_organization_id,
+    p_activity_type := 'candidate_attachment_uploaded',
+    ...
+  );
+  
+  RETURN NEW;
+END;
+$$;
 ```
 
-### Layer 2 — Graceful 23505 Recovery (Lines 261-276)
-When the `INSERT` fails with code `23505` (duplicate), instead of returning a 500, the function should **fetch the existing candidate's ID and continue** the rest of the flow normally:
+### Files Changed
 
-```typescript
-if (globalInsertErr) {
-  if (globalInsertErr.code === '23505') {
-    // Duplicate — fetch the existing record and continue
-    const { data: dupeCandidate } = await supabase
-      .from("candidates")
-      .select("id")
-      .eq("email", candidateEmail)
-      .eq("candidate_name", candidateName)
-      .maybeSingle();
-    if (dupeCandidate) {
-      globalCandidateId = dupeCandidate.id;
-    } else {
-      // Fallback: lookup by email + tenant only
-      const { data: fallback } = await supabase
-        .from("candidates")
-        .select("id")
-        .eq("email", candidateEmail)
-        .eq("tenant_id", postingTenantId)
-        .maybeSingle();
-      if (fallback) globalCandidateId = fallback.id;
-    }
-    if (!globalCandidateId) {
-      return new Response(...500);  // truly unrecoverable
-    }
-    // else: fall through with existing candidate ID ✅
-  } else {
-    return new Response(...500);  // different DB error
-  }
-}
-```
+- **One database migration only** — `CREATE OR REPLACE FUNCTION public.log_candidate_attachment_uploaded()` with the NULL guard added at the top. No edge function changes, no frontend changes.
 
-## Files Changed
+### Impact
 
-- `supabase/functions/public-submit-application/index.ts` — update lookup query and add duplicate-key recovery in the candidate creation block. No schema changes needed.
-
-## Impact
-
-All applicants who previously had a record in the database (returning applicants, internally-imported candidates) will now complete their application successfully instead of receiving a 500 error.
+After this fix:
+- Public applicants' resumes will save correctly to both storage and the database
+- The "Some files failed to upload" error toast will no longer appear
+- Activity logging for internal uploads (where `uploaded_by` is a real user ID) continues to work exactly as before — the guard only skips logging when null
