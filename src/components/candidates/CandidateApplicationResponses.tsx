@@ -69,6 +69,15 @@ const formatFieldValue = (value: string | null, fieldType: string) => {
           {value.length > 200 ? `${value.substring(0, 200)}...` : value}
         </div>
       );
+    case 'location': {
+      try {
+        const loc = JSON.parse(value);
+        const parts = [loc.city, loc.state, loc.country].filter(Boolean);
+        return parts.join(', ') || value;
+      } catch {
+        return value;
+      }
+    }
     default:
       return value;
   }
