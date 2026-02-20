@@ -1,33 +1,42 @@
 
-## Root Cause: Vite Module Graph Cache Stale After Types Regeneration
+## Root Cause: Service Role Client Strips `auth.uid()` Context
 
-The error "Failed to fetch dynamically imported module" for `Candidates.tsx` is **not a code bug** — all files and imports in the chain are syntactically correct and exist on disk. This is a classic Vite dev server issue.
+### What Is Happening
 
-### What Happened
+The edge function passes the authorization check at the HTTP layer (JWT metadata confirms `platform_admin`), but then calls the SQL RPC functions (`admin_delete_candidate`, `admin_delete_job`, etc.) using the **service role client**.
 
-During the previous fix session, the `src/integrations/supabase/types.ts` file was regenerated (it grew from its previous state to include the updated `get_candidate_activities` return type). When Vite's module graph has a large auto-generated file regenerated mid-session, it can leave the dynamic import manifest stale, causing any lazy-loaded route (like `const Candidates = lazy(() => import('./pages/Candidates'))`) to fail with this error — even though the file itself is perfectly valid.
+When Postgres runs under the service role, `auth.uid()` returns `NULL`. The `is_platform_admin()` function relies on `auth.uid()` to look up the caller in the `members` table. With no UID, it always returns `false`, causing every admin RPC to raise:
+
+```
+Unauthorized: Only platform admins can delete candidates via this function
+```
+
+This is why the edge function log shows the authorization check passing (the "Admin operation requested by user" log line appears), but the database call then fails.
 
 ### The Fix
 
-Touch `src/pages/Candidates.tsx` with a trivial no-op change (add/remove a comment or blank line) to force Vite to re-hash the module and rebuild the dynamic import chunk. This is the standard solution for this class of Vite HMR cache staleness.
+Switch all four RPC calls in the edge function from the **service role client** to the **user JWT client** (`supabaseAuth`). Since `supabaseAuth` was created with the user's `Authorization` header, Postgres will see the correct `auth.uid()` when executing the SQL functions, and `is_platform_admin()` will correctly return `true`.
 
-No logic changes are needed. The file will remain functionally identical.
+The `SECURITY DEFINER` attribute on the SQL functions means they already run with elevated database privileges (owner permissions) — using the user JWT to call them does not reduce their power. It only restores the `auth.uid()` session context that the functions need for their internal authorization check.
 
 ### Technical Details
 
-| Item | Status |
-|------|--------|
-| `src/pages/Candidates.tsx` | Valid — no syntax errors |
-| `UniversalCandidateProfileSheet.tsx` | Valid — all imports resolve |
-| `IndependentCandidateProfileSheet.tsx` | Valid — all imports resolve |
-| `emailFormatUtils.ts` | Exists at `src/utils/emailFormatUtils.ts` |
-| `src/integrations/supabase/types.ts` | Valid — recently regenerated, triggers cache stale |
-| All referenced assets | Exist in `src/assets/` |
-
-### Why This Is Not the 403 Error
-
-The 403 error in `admin-operations` was a separate and already-fixed issue. The module fetch error is a frontend Vite cache problem unrelated to the edge function fix.
+| Client | `auth.uid()` in DB session | Outcome |
+|---|---|---|
+| Service role (`supabaseClient`) | `NULL` | `is_platform_admin()` → `false` → RAISE EXCEPTION |
+| User JWT (`supabaseAuth`) | Caller's UUID | `is_platform_admin()` → `true` → Success |
 
 ### Files Changed
 
-- `src/pages/Candidates.tsx` — trivial touch to invalidate Vite module graph cache (no functional change)
+**`supabase/functions/admin-operations/index.ts`**
+
+Replace the four `supabaseClient.rpc(...)` calls with `supabaseAuth.rpc(...)`:
+
+- `admin_delete_job` → called via `supabaseAuth`
+- `admin_delete_candidate` → called via `supabaseAuth`
+- `admin_manage_member` → called via `supabaseAuth`
+- `admin_manage_organization` → called via `supabaseAuth`
+
+The service role client (`supabaseClient`) is removed entirely since it is no longer needed in this function.
+
+No database migrations are required. No other files need to change.
