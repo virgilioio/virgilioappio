@@ -684,6 +684,7 @@ export type Database = {
           posting_id: string | null
           status: string
           status_updated_at: string | null
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -696,6 +697,7 @@ export type Database = {
           posting_id?: string | null
           status?: string
           status_updated_at?: string | null
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -708,9 +710,18 @@ export type Database = {
           posting_id?: string | null
           status?: string
           status_updated_at?: string | null
+          tenant_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "candidate_application_limits_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       candidate_application_responses: {
         Row: {
@@ -4914,14 +4925,24 @@ export type Database = {
         Args: { generated_skills: Json; manual_skills: string[] }
         Returns: Json
       }
-      check_application_limits: {
-        Args: {
-          candidate_email_param: string
-          job_id_param: string
-          organization_id_param: string
-        }
-        Returns: Json
-      }
+      check_application_limits:
+        | {
+            Args: {
+              candidate_email_param: string
+              job_id_param: string
+              organization_id_param: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              candidate_email_param: string
+              job_id_param: string
+              organization_id_param: string
+              tenant_id_param?: string
+            }
+            Returns: Json
+          }
       check_email_rate_limit: { Args: { p_tenant_id: string }; Returns: Json }
       check_onboarding_task_completion: {
         Args: { p_tenant_id: string; p_user_id: string }
