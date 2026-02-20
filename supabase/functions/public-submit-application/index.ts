@@ -313,21 +313,36 @@ serve(async (req) => {
     // All candidate data is now stored in the global candidates table only
 
     // Create association in Application Review (NULL stage) using the GLOBAL candidate id
-    const { error: assocErr } = await supabase
+    // Check for existing association first to avoid unique constraint crash
+    const { data: existingAssoc } = await supabase
       .from("job_candidate_associations")
-      .insert({
-        job_id: posting.job_id,
-        candidate_id: globalCandidateId,
-        status: "active",
-        current_stage_id: null,
-      });
+      .select("id")
+      .eq("job_id", posting.job_id)
+      .eq("candidate_id", globalCandidateId)
+      .maybeSingle();
 
-    if (assocErr) {
-      console.error("Error creating association:", assocErr);
-      return new Response(JSON.stringify({ error: "Failed to place candidate in Application Review" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (!existingAssoc) {
+      const { error: assocErr } = await supabase
+        .from("job_candidate_associations")
+        .insert({
+          job_id: posting.job_id,
+          candidate_id: globalCandidateId,
+          status: "active",
+          current_stage_id: null,
+        });
+
+      if (assocErr) {
+        console.error("Error creating association:", assocErr);
+        // Only hard-fail if it's NOT a unique violation (23505) — duplicate is acceptable
+        if (!assocErr.code?.includes('23505')) {
+          return new Response(JSON.stringify({ error: "Failed to place candidate in Application Review" }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+    } else {
+      console.log("ℹ️ Candidate already associated with this job, skipping duplicate association insert.");
     }
 
     // Track application in limits system
@@ -552,7 +567,7 @@ serve(async (req) => {
               file_type: fileData.type,
               is_resume: /resume|cv|curriculum/i.test(fileData.name) || 
                          ['pdf', 'doc', 'docx'].includes(fileExt) || 
-                         Object.keys(body.uploadedFiles || {}).length === 1,
+                         (Array.isArray(body.uploadedFiles) ? body.uploadedFiles.length : Object.keys(body.uploadedFiles || {}).length) === 1,
               uploaded_by: null,
             });
 
