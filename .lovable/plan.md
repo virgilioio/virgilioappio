@@ -1,51 +1,43 @@
 
-## The Problem: Missing NULL Guard on Activity-Logging Triggers
+## Root Cause: Two Conflicting `accept_invitation` Functions Exist in the Database
 
 ### What Is Happening
 
-When a public applicant submits through a job posting, the `public-submit-application` edge function runs as the **service role** (no authenticated user). This means `auth.uid()` is `NULL` throughout the entire database session.
+The database currently has **two overloaded versions** of `accept_invitation`:
 
-The flow that triggers the error:
+| Signature | Source |
+|---|---|
+| `accept_invitation(token_input UUID, new_user_id UUID)` | Original — the correct, long-standing version |
+| `accept_invitation(token_input TEXT, new_user_id UUID)` | Created by migration `20260119234801` — the rogue duplicate |
 
-```text
-public-submit-application (service role, auth.uid() = NULL)
-  → INSERT into candidates          → trg_log_candidate_created → GUARDED ✅ (skips when uid=NULL)
-  → INSERT into job_candidate_associations → trg_log_candidate_assigned → NO GUARD ❌
-                                                        → log_activity(p_user_id = NULL)
-                                                        → INSERT into activities(user_id = NULL)
-                                                        → ERROR: NOT NULL violated
+When the edge function `accept-invitation-with-metadata` calls `supabase.rpc('accept_invitation', { token_input: token, ... })`, PostgREST receives a string value for `token_input`. Because both function signatures exist, it cannot determine which overload to call and returns error code **PGRST203**:
+
+```
+Could not choose the best candidate function between:
+  public.accept_invitation(token_input => text, new_user_id => uuid)
+  public.accept_invitation(token_input => uuid, new_user_id => uuid)
 ```
 
-This error is surface-level reported as a file upload failure because when the `job_candidate_associations` INSERT fails (transaction rolls back), the file attachment insert also fails with a confusing cascading error message.
+This means **every single invitation acceptance is broken** — including `malena@virgilio.tech`, who has been attempting it 5+ times in the last 10 minutes (all visible in the logs).
 
-### The Fix: Add NULL Guards to All Unprotected Activity Triggers
+### The Fix
 
-The `log_candidate_created` trigger was correctly patched with a NULL guard in migration `20260220154610`. The same pattern needs to be applied to every other activity-logging trigger function that can fire during unauthenticated operations.
-
-**Triggers that need NULL guards:**
-
-| Trigger Function | Fires On | Missing Guard |
-|---|---|---|
-| `log_candidate_job_assignment` | `job_candidate_associations` INSERT | Yes — uses `COALESCE(NEW.created_by, auth.uid())` but no `IF IS NULL THEN RETURN` |
-| `log_candidate_stage_activity` | `job_candidate_associations` UPDATE | Yes — uses `auth.uid()` directly |
-| `log_candidate_status_change` | `job_candidate_associations` UPDATE | Yes — uses `auth.uid()` directly |
-| `log_candidate_updated` | `candidates` UPDATE | Yes — uses `auth.uid()` directly |
-
-### Technical Details
-
-The fix for each trigger is the same pattern already used in `log_candidate_created`:
+A single SQL migration to drop the rogue `TEXT` version of the function. The `UUID` version (the original, correct one) handles everything correctly — it already casts `token_input` to UUID internally and does row-level locking, retry logic, and proper validation.
 
 ```sql
--- Resolve user_id: prefer explicit column, fall back to JWT sub
-v_user_id := COALESCE(NEW.created_by, auth.uid());  -- or just auth.uid() where no created_by
-
--- Guard: skip activity logging when there is no authenticated user
--- (e.g. service-role inserts from public job applications)
-IF v_user_id IS NULL THEN
-  RETURN NEW;
-END IF;
+DROP FUNCTION IF EXISTS public.accept_invitation(token_input text, new_user_id uuid);
 ```
+
+That is the entire fix. No code changes needed in the edge function — it already passes the token as a string which PostgREST will correctly cast to UUID once the ambiguity is gone.
+
+### Why This Happened
+
+Migration `20260119234801` was originally intended to switch from `UUID` to `TEXT` input (so the token could be passed as a plain string). It included a `DROP` of the text version at the top — but then recreated a `TEXT` version below, and the original `UUID` version was never dropped. The result: both live in the database simultaneously.
 
 ### Files Changed
 
-**One database migration** — `CREATE OR REPLACE` for the four trigger functions above, each adding the NULL guard before calling `log_activity`. No edge function changes. No frontend changes.
+- **One database migration** — `DROP FUNCTION IF EXISTS public.accept_invitation(token_input text, new_user_id uuid)` only. No edge function changes. No frontend changes.
+
+### Verification
+
+After the migration runs, `malena@virgilio.tech` (and all future invitees) will be able to accept their invitations without errors. The edge function needs no changes — it already works correctly once the ambiguity is resolved.
