@@ -211,11 +211,12 @@ serve(async (req) => {
     let globalCandidateId: string | null = null;
     const postingTenantId = posting.tenant_id;
 
-    console.log('📧 Looking for existing candidate by email within tenant:', candidateEmail, 'tenant:', postingTenantId);
+    console.log('📧 Looking for existing candidate by email+name within tenant:', candidateEmail, 'tenant:', postingTenantId);
     const { data: existingCandidate, error: lookupErr } = await supabase
       .from("candidates")
       .select("id, candidate_name, email")
       .eq("email", candidateEmail)
+      .eq("candidate_name", candidateName)  // Match exact unique constraint (email, candidate_name)
       .eq("tenant_id", postingTenantId)  // CRITICAL: Filter by tenant_id
       .maybeSingle();
 
@@ -265,14 +266,49 @@ serve(async (req) => {
         .single();
 
       if (globalInsertErr || !newGlobalCandidate) {
-        console.error("Error inserting global candidate:", globalInsertErr);
-        return new Response(JSON.stringify({ error: "Failed to create global candidate" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        if (globalInsertErr?.code === '23505') {
+          // Duplicate key — fetch the existing record and continue gracefully
+          console.warn('⚠️ Duplicate candidate on insert (23505), fetching existing record...');
+          const { data: dupeCandidate } = await supabase
+            .from("candidates")
+            .select("id")
+            .eq("email", candidateEmail)
+            .eq("candidate_name", candidateName)
+            .maybeSingle();
+          if (dupeCandidate) {
+            globalCandidateId = dupeCandidate.id;
+            console.log('✅ Recovered duplicate candidate:', globalCandidateId);
+          } else {
+            // Fallback: lookup by email + tenant only
+            const { data: fallback } = await supabase
+              .from("candidates")
+              .select("id")
+              .eq("email", candidateEmail)
+              .eq("tenant_id", postingTenantId)
+              .maybeSingle();
+            if (fallback) {
+              globalCandidateId = fallback.id;
+              console.log('✅ Recovered via fallback lookup:', globalCandidateId);
+            }
+          }
+          if (!globalCandidateId) {
+            console.error("Could not recover existing candidate after 23505");
+            return new Response(JSON.stringify({ error: "Failed to create global candidate" }), {
+              status: 500,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          // else: fall through with recovered candidate ID ✅
+        } else {
+          console.error("Error inserting global candidate:", globalInsertErr);
+          return new Response(JSON.stringify({ error: "Failed to create global candidate" }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      } else {
+        globalCandidateId = newGlobalCandidate.id;
       }
-
-      globalCandidateId = newGlobalCandidate.id;
     }
 
     // Sync salary data to candidate profile if salary field was submitted
