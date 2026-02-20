@@ -275,6 +275,7 @@ serve(async (req) => {
             .select("id")
             .eq("email", candidateEmail)
             .eq("candidate_name", candidateName)
+            .eq("tenant_id", postingTenantId)
             .maybeSingle();
           if (dupeCandidate) {
             globalCandidateId = dupeCandidate.id;
