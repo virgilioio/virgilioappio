@@ -182,7 +182,8 @@ serve(async (req) => {
     const { data: limits, error: limitErr } = await supabase.rpc('check_application_limits', {
       candidate_email_param: candidateEmail,
       job_id_param: posting.job_id,
-      organization_id_param: (posting as any).job.organization_id
+      organization_id_param: (posting as any).job.organization_id,
+      tenant_id_param: posting.tenant_id
     });
 
     if (limitErr) {
@@ -391,6 +392,7 @@ serve(async (req) => {
         job_id: posting.job_id,
         posting_id: postingId,
         organization_id: (posting as any).job.organization_id,
+        tenant_id: posting.tenant_id,
         status: 'active'
       });
 
