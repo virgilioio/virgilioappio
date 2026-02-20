@@ -65,21 +65,10 @@ Deno.serve(async (req) => {
 
     console.log('Admin operation requested by user:', user.id)
 
-    // Verify user is platform admin
-    const { data: memberData, error: memberError } = await supabaseClient
-      .rpc('get_user_member_data')
-      .single()
-
-    if (memberError) {
-      console.error('Failed to get user member data:', memberError)
-      return new Response(
-        JSON.stringify({ error: 'Failed to verify admin status' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    if (memberData?.user_type !== 'platform_admin') {
-      console.error('User is not platform admin:', user.id, 'user_type:', memberData?.user_type)
+    // Verify user is platform admin — read user_type from JWT user_metadata (set by auth trigger)
+    const userType = user.user_metadata?.user_type
+    if (userType !== 'platform_admin') {
+      console.error('User is not platform admin:', user.id, 'user_type:', userType)
       return new Response(
         JSON.stringify({ error: 'Forbidden - Platform admin access required' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
