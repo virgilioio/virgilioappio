@@ -137,8 +137,14 @@ serve(async (req) => {
       });
     }
 
-    // Validate resume upload is provided
-    if (!body.uploadedFiles || Object.keys(body.uploadedFiles).length === 0) {
+    // Validate resume upload is provided — handle both array and object formats
+    const uploadedFilesCount = !body.uploadedFiles
+      ? 0
+      : Array.isArray(body.uploadedFiles)
+        ? body.uploadedFiles.length
+        : Object.keys(body.uploadedFiles).length;
+
+    if (uploadedFilesCount === 0) {
       return new Response(JSON.stringify({ error: "Resume/CV is required for application" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -180,18 +186,12 @@ serve(async (req) => {
     });
 
     if (limitErr) {
-      console.error('❌ Error checking application limits:', limitErr);
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Failed to check application limits',
-          details: limitErr.message
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-      );
+      // ⚠️ Non-blocking: log the error but don't stop the applicant
+      // Spam protection is a nice-to-have; blocking legitimate applicants is not acceptable
+      console.error('⚠️ Warning: Application limits check failed (non-blocking):', limitErr);
     }
 
-    if (!limits.can_apply) {
+    if (limits && !limits.can_apply) {
       console.log('🚫 Application blocked by limits:', limits.violations);
       return new Response(
         JSON.stringify({
