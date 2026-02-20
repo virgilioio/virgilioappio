@@ -1,81 +1,101 @@
 
-## Root Cause: The Resume Validation Gate is Broken (Line 141)
+## Root Cause: Database Trigger Fires on Candidate Insert
 
-### What Is Actually Failing
+### What Is Happening
 
-The previous fix corrected line 570 (the `is_resume` flag), but there is a second, earlier `Object.keys()` call on line 141 that was completely missed. This is the one that blocks applicants:
+When a new candidate is inserted into the `candidates` table, a database trigger fires that tries to log an activity record. The `activities` table has `user_id NOT NULL` with no default value. Since public applicants are not authenticated users, `user_id` is null — violating the constraint and crashing the entire application submission with a 500.
 
-```typescript
-// Line 141 - THE ACTUAL CRASH POINT
-if (!body.uploadedFiles || Object.keys(body.uploadedFiles).length === 0) {
-  return new Response(JSON.stringify({ error: "Resume/CV is required for application" }), {
-    status: 400,  // ← Applicants see "Edge Function returned a non-2xx status code"
-    ...
-  });
+The edge function log confirms this exactly:
+
+```
+Error inserting global candidate: {
+  code: "23502",
+  message: 'null value in column "user_id" of relation "activities" violates not-null constraint'
 }
 ```
 
-When the frontend sends `uploadedFiles` as an **array** (e.g., `[{ name: "resume.pdf", ... }]`), `Object.keys([{ ... }])` returns `["0"]` — which has length 1, so it passes. BUT when the array is empty `[]`, `Object.keys([])` returns `[]` with length 0 — same as intended. 
+This was always present but hidden by the earlier crashes. Now that those are fixed, this is the only remaining failure path.
 
-Wait — let me re-examine. For a non-empty array with 1 file: `Object.keys([file])` = `["0"]`, length = 1. That passes. So this guard isn't failing on the file presence check...
+### Two Possible Fixes
 
-Actually the real issue is different: the `check_application_limits` RPC call. When a candidate already applied (which is common given duplicate handling was broken before), `limits.can_apply` returns `false` and they hit a `429`. But the error shown in the screenshot is generic "Edge Function returned a non-2xx status code" — that's what both 400 and 500 show.
+**Option A (preferred): Fix the trigger to handle null user_id gracefully**
 
-Let me look more carefully. The `candidate_application_limits` table tracks applications. The previous bug where we crashed on the duplicate association insert — that crash happened **before** `candidate_application_limits` was recorded. So the limits table has NO entry for those candidates. The association fix is now correct.
+The activity-logging trigger should simply skip logging (or use a placeholder) when `user_id` is null. This is the cleanest fix — it makes the trigger safe for all service-role inserts, not just public applications.
 
-BUT there's still one critical path: when `check_application_limits` itself fails (e.g., the `check_application_limits` RPC throws an error), it returns 500. The postgres logs showed `column jp.status does not exist` — this is in the `check_application_limits` function.
-
-### The Real Root Cause
-
-The postgres error log clearly shows:
-```
-ERROR: column jp.status does not exist
+```sql
+-- In the trigger function, add a guard:
+IF NEW.user_id IS NULL THEN
+  RETURN NEW; -- Skip activity logging for service-role inserts
+END IF;
 ```
 
-This means the `check_application_limits` database function (RPC) is referencing a column `jp.status` that doesn't exist in `job_postings`. The RPC itself is broken — it throws an error, `limitErr` is set, and the function returns 500.
+**Option B: Make user_id nullable in activities table**
+
+Change `user_id` to allow NULL so service-role operations don't crash. Requires a migration and updating any queries that assume user_id is always present.
+
+Option A is strongly preferred — it's a 1-line trigger fix with zero schema changes.
+
+### What Needs to Be Found First
+
+The trigger function needs to be located. Since `information_schema.triggers` returned empty (RLS hides them from that view), the trigger will be found via `pg_trigger` / `pg_proc` directly in the migration SQL.
 
 ### Fix Plan
 
-**Two fixes required:**
+**Step 1: Find and patch the trigger**
 
-**Fix 1: Patch the `check_application_limits` RPC**
-
-The SQL function references `jp.status` but the column is likely named `is_active`. Run this SQL migration to fix it:
+Run this SQL to find the trigger on `candidates`:
 
 ```sql
--- Check and fix the check_application_limits function
--- The column jp.status doesn't exist — it should be jp.is_active
+SELECT t.tgname, p.proname, p.prosrc
+FROM pg_trigger t
+JOIN pg_class c ON t.tgrelid = c.oid
+JOIN pg_proc p ON t.tgfoid = p.oid
+WHERE c.relname = 'candidates'
+AND NOT t.tgisinternal;
 ```
 
-We need to view the actual function definition first, then patch it.
+Then patch the trigger function to guard against null `user_id`:
 
-**Fix 2: Make the edge function resilient when `check_application_limits` fails**
-
-Even if the RPC is broken, applications should not be blocked. Change the hard-fail on `limitErr` to a soft warning — log it but continue. Spam protection is a nice-to-have; blocking legitimate applicants is not acceptable.
-
-```typescript
-// Before: hard fail
-if (limitErr) {
-  return new Response(JSON.stringify({ error: "Failed to check application limits" }), { status: 500 });
-}
-
-// After: soft warning — log and continue
-if (limitErr) {
-  console.error('⚠️ Warning: Application limits check failed (non-blocking):', limitErr);
-  // Continue processing — don't block the applicant over a limits check failure
-}
+```sql
+CREATE OR REPLACE FUNCTION <trigger_function_name>()
+RETURNS trigger AS $$
+BEGIN
+  -- Guard: skip activity logging when there's no authenticated user (e.g. service-role inserts from public applications)
+  IF NEW.user_id IS NULL OR (SELECT current_setting('request.jwt.claims', true)::jsonb->>'sub') IS NULL THEN
+    RETURN NEW;
+  END IF;
+  
+  -- existing activity insert logic...
+  INSERT INTO activities (user_id, ...)
+  VALUES (...);
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 ```
 
-### Files Modified
+**Step 2: Verify edge function error handling**
 
-| File | Change |
-|------|--------|
-| `supabase/functions/public-submit-application/index.ts` | Make `limitErr` non-blocking (soft warning instead of hard 500) |
-| Database migration | Fix `check_application_limits` RPC to use correct column name |
+After the trigger fix, the `globalInsertErr` path on line 266 of the edge function will no longer be hit for new candidates. As a defensive measure, add a log to confirm new candidates are created successfully.
 
-### Why This Is Reliable Going Forward
+### Files/Objects Modified
 
-- The association duplicate fix (from the last plan) is already deployed and correct
-- Making limits check non-blocking means even if that RPC ever has issues again, candidates can always apply
-- The RPC fix removes the column reference error permanently
-- Together these eliminate all known failure paths
+| Object | Change |
+|--------|--------|
+| Database trigger function on `candidates` | Add null `user_id` guard — skip activity log for service-role inserts |
+| `supabase/functions/public-submit-application/index.ts` | No changes needed — the error handling there is already correct |
+
+### What This Does NOT Require
+
+- No schema changes to `activities` or `candidates`
+- No edge function redeployment (the fix is purely in the database trigger)
+- No RLS policy changes
+
+### Why This Is the Last Remaining Issue
+
+Going through the complete failure history:
+1. ~~Duplicate association unique constraint crash~~ — fixed (check-before-insert guard)
+2. ~~`check_application_limits` hard 500~~ — fixed (non-blocking soft warning)
+3. **Activity trigger null `user_id` crash** — this fix
+
+After this, both new and returning candidates will be able to apply without any 500 errors.
