@@ -21,16 +21,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Initialize Supabase client with service role for admin operations
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    
-    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    })
 
     // Get the JWT from the request to verify platform admin status
     const authHeader = req.headers.get('Authorization')
@@ -91,7 +82,7 @@ Deno.serve(async (req) => {
           )
         }
         console.log('Calling admin_delete_job for:', body.job_id)
-        const { data: jobResult, error: jobError } = await supabaseClient
+        const { data: jobResult, error: jobError } = await supabaseAuth
           .rpc('admin_delete_job', { p_job_id: body.job_id })
         
         if (jobError) {
@@ -109,7 +100,7 @@ Deno.serve(async (req) => {
           )
         }
         console.log('Calling admin_delete_candidate for:', body.candidate_id)
-        const { data: candidateResult, error: candidateError } = await supabaseClient
+        const { data: candidateResult, error: candidateError } = await supabaseAuth
           .rpc('admin_delete_candidate', { p_candidate_id: body.candidate_id })
         
         if (candidateError) {
@@ -127,7 +118,7 @@ Deno.serve(async (req) => {
           )
         }
         console.log('Calling admin_manage_member for:', body.member_id)
-        const { data: memberResult, error: memberManageError } = await supabaseClient
+        const { data: memberResult, error: memberManageError } = await supabaseAuth
           .rpc('admin_manage_member', { 
             p_member_id: body.member_id,
             p_changes: body.changes 
@@ -148,7 +139,7 @@ Deno.serve(async (req) => {
           )
         }
         console.log('Calling admin_manage_organization for:', body.organization_id)
-        const { data: orgResult, error: orgError } = await supabaseClient
+        const { data: orgResult, error: orgError } = await supabaseAuth
           .rpc('admin_manage_organization', { 
             p_organization_id: body.organization_id,
             p_changes: body.changes 
