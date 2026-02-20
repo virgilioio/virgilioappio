@@ -1,0 +1,1 @@
+DROP TRIGGER IF EXISTS trg_log_stage_activity ON public.job_candidate_stage_history;
