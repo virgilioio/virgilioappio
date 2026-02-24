@@ -1,72 +1,105 @@
 
-Goal: fix inbound email body capture first (highest priority), then stop “self-sent” emails from appearing as received replies.
+Goal
+- Make inbound candidate replies reliably store body content and snippet, while preventing duplicates and preserving idempotency.
+- Prioritize webhook path (`process-candidate-reply-webhook`) so rows shown on job-specific candidate pages have usable body content.
 
-What I found:
-1) The webhook is successfully firing and inserting rows.
-2) Edge logs show this exact error during body fetch:
-   - `[Candidate Reply] Resend API error: 404 {"message":"Email not found"}`
-3) Current code calls:
-   - `GET https://api.resend.com/emails/{emailData.email_id}`
-4) For inbound/received messages, Resend uses the receiving endpoint, not the regular send-email retrieve endpoint.
-   - Correct endpoint should be: `GET /emails/receiving/{email_id}`
-5) The “sent email appears as received” behavior is caused by intentionally BCC’ing the ingest address. That copy is technically inbound to the ingest mailbox, so webhook logic currently treats it like a candidate reply.
+What I found in your current system
+1) The webhook function is already receiving and inserting rows for `email.received`.
+2) In the UI route you’re on, query is filtered by both `candidate_id` and `job_id`, so it only shows webhook rows tied to that job.
+3) Those webhook rows currently have `body_text/body_html = null`, while separate Gmail-sync rows for the same RFC822 message often do contain body — but usually with `job_id = null`, so they are not shown in this view.
+4) This is why email history appears empty even though body exists elsewhere in `email_logs`.
+5) Existing schema already has `body_text`, `body_html`, and `snippet`; no schema migration is required.
 
-What you need to do on Resend:
-- No dashboard change should be required for this fix.
-- Your webhook setup is already working.
-- This is an endpoint/logic issue in our function code.
+Implementation scope
+- Main fix: `supabase/functions/process-candidate-reply-webhook/index.ts`
+- Optional resilience/readability fix: `src/hooks/useEmailLogs.ts` (or card rendering fallback) to avoid blank previews if body is absent but snippet exists.
 
-Implementation plan:
+Detailed implementation plan
 
-1) Fix body retrieval endpoint in `process-candidate-reply-webhook`
-- File: `supabase/functions/process-candidate-reply-webhook/index.ts`
-- Replace current fetch URL:
-  - from `https://api.resend.com/emails/${emailData.email_id}`
-  - to `https://api.resend.com/emails/receiving/${emailData.email_id}`
-- Keep auth as `Authorization: Bearer ${RESEND_API_KEY}`.
-- Parse returned `html` and `text` from the receiving payload.
-- Continue storing:
-  - `body_html`
-  - `body_text`
-  - `snippet` from text fallback.
+1) Add robust body extraction helpers in webhook function
+- Create utility helpers in `process-candidate-reply-webhook/index.ts`:
+  - `extractBodyFromAnySource(source)` to check common fields in priority order:
+    - text candidates: `text`, `body_text`, `body`, `content`, `raw`, nested variants
+    - html candidates: `html`, `body_html`, nested variants
+  - `stripHtmlToText(html)` for snippet fallback
+  - `limitSize(value, maxChars)` to cap `body_text` and `body_html` at ~200KB equivalent char count (safe approximation with char length)
+  - `buildSnippet(text, html)` to produce first ~120 chars from text first, then stripped html
+- This directly satisfies your “common fields + fallback + snippet” requirements.
 
-2) Add resilient fetch behavior for inbound body retrieval
-- If receiving API returns transient 404/processing states, add a short retry strategy:
-  - e.g., 3 attempts with small delay (250ms/500ms/1000ms).
-- Improve logging to include:
-  - `email_id`
-  - attempt number
-  - response status.
-- This prevents race-condition empties if payload arrives before content becomes available.
+2) Keep payload-first strategy, then Resend fetch fallback
+- First parse body from webhook payload (`payload.data`) using helper.
+- If still missing body and `email_id` exists, call Resend:
+  - `GET https://api.resend.com/emails/receiving/{email_id}`
+  - `Authorization: Bearer ${RESEND_API_KEY}`
+- Parse both possible response shapes:
+  - root object (`{ html, text, ... }`)
+  - wrapped object (`{ data: { html, text, ... } }`)
+- Keep retries (already present), but improve observability:
+  - log when `email_id` is absent
+  - log attempt status and whether parsed text/html lengths were found
+- Always continue and return 200 even on fetch failure; do not fail ingestion.
 
-3) Prevent self-sent BCC copies from being logged as received candidate replies
-- In `process-candidate-reply-webhook`, after association/tenant resolution and after parsing sender:
-  - Query `user_mail_identities` scoped to same tenant for `email_address == parsedFrom` (case-insensitive).
-  - If sender is one of our own connected mailbox identities, return:
-    - `{ status: 'ignored', reason: 'internal_sender_copy' }`
-- This will stop the annoying “I sent it, then it appears as received” duplicate behavior without weakening reply ingestion.
+3) Replace duplicate “early return” with idempotent upsert-style behavior
+Current issue:
+- Existing code checks duplicate by `rfc822_message_id` and returns `duplicate` immediately, which prevents filling missing body and encourages stale empty rows.
 
-4) Keep reply ingestion intact for real candidate replies
-- Do not remove ingest routing.
-- Keep token matching logic (`jc_...@ingest.gogio.io`) as-is.
-- Keep duplicate guard by `rfc822_message_id`.
-- Only suppress inbound events identified as internal mailbox echoes.
+Change behavior:
+- For the same incoming message (`rfc822_message_id`, `direction='received'`, candidate/job scope), load existing row(s).
+- If existing row found:
+  - If existing body is missing and new body is now available → update existing row with body_text/body_html/snippet.
+  - Also patch missing metadata fields (`thread_id`, `in_reply_to`, `references_header`, `job_id`, `candidate_id`, `organization_id`) when absent.
+  - If body still unavailable, keep metadata update only and return success with reason `updated_metadata_only`.
+- If no row found:
+  - Insert new row as usual.
+- This gives true webhook retry idempotency and avoids duplicate records.
 
-5) Validation checklist after implementation
-- Test A (body capture):
-  1. Send a candidate reply to ingest address.
-  2. Confirm edge logs show successful call to `/emails/receiving/{id}`.
-  3. Confirm email history shows real content (not “No content”).
-- Test B (self-copy suppression):
-  1. Send a brand-new outbound email from app.
-  2. Confirm no extra “received” item gets created from your own sender address.
-- Test C (no regression):
-  1. Reply normally from candidate mailbox.
-  2. Confirm thread continues and inbound message appears once with body.
+4) Ensure snippet is always stored and useful
+- Build snippet as:
+  - text-first (`body_text`)
+  - else stripped html
+  - else null
+- Normalize whitespace and trim.
+- Use ~120 chars per your requirement.
+- Do this both on insert and update paths.
 
-Technical notes:
-- Primary files:
-  - `supabase/functions/process-candidate-reply-webhook/index.ts` (main fix)
-- No DB migration required.
-- No new secrets required (uses existing `RESEND_API_KEY`).
-- This approach addresses both issues while prioritizing body ingestion exactly as requested.
+5) Preserve “ignore internal sender copy” logic
+- Keep current internal sender filter (good fix).
+- Ensure this check remains before insert/update so outbound-to-ingest echoes don’t appear as received.
+
+6) Optional UI safety net (small)
+- In `useEmailLogs`/render path, if body is empty but snippet exists, use snippet instead of “No content”.
+- This is optional but improves UX during transient cases.
+
+7) No DB migration needed
+- Columns already exist: `body_text`, `body_html`, `snippet`.
+- No schema changes required.
+- If we later want stricter dedupe at DB level, we can add a partial unique index strategy, but it’s not required for this fix.
+
+Validation plan (end-to-end)
+1) External inbound reply test
+- Send a real reply from non-internal mailbox to ingest address.
+- Confirm webhook row (with job_id) has non-null `body_text` or `body_html`, and snippet populated.
+- Confirm candidate email history on `/jobs/...?...candidate=...` shows message content.
+
+2) Retry/idempotency test
+- Replay the same webhook payload (or send duplicate event) for same `message_id`.
+- Confirm no duplicate row created for same inbound message in job context.
+- Confirm missing body is updated if first attempt had only metadata.
+
+3) Internal echo suppression test
+- Send brand-new outbound email that includes ingest address.
+- Confirm no extra received webhook row is created for internal sender.
+
+4) Failure-tolerant behavior test
+- Temporarily force Resend fetch failure (or simulate missing `email_id`).
+- Confirm function still returns 200 and metadata row still saved.
+- Confirm logs clearly state why body was unavailable.
+
+Files to change
+- `supabase/functions/process-candidate-reply-webhook/index.ts` (primary)
+- `src/hooks/useEmailLogs.ts` (optional small UX fallback) OR `src/components/candidates/EmailHistoryCard.tsx` fallback handling
+
+Expected result
+- Inbound messages for candidate/job history will consistently show body content when available.
+- If body is delayed/unavailable, row remains usable with snippet when possible.
+- Webhook retries become safe and can enrich existing records instead of creating or preserving empty duplicates.
