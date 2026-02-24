@@ -712,6 +712,34 @@ async function handleResume(params: ResumeUploadParams, user: any, member: any, 
 
   console.log(`✅ Chrome API /resume - Success: ${JSON.stringify(response)}`);
 
+  // Fire-and-forget: extract text from PDF and trigger AI enrichment
+  try {
+    const rawText = new TextDecoder('utf-8', { fatal: false }).decode(fileBytes);
+    // Extract text between PDF stream markers and clean up
+    const streamMatches = rawText.match(/stream\r?\n([\s\S]*?)\r?\nendstream/g) || [];
+    const extractedText = streamMatches
+      .map(m => m.replace(/^stream\r?\n/, '').replace(/\r?\nendstream$/, ''))
+      .join(' ')
+      .replace(/[^\x20-\x7E\xA0-\xFF\n]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (extractedText.length > 50) {
+      console.log(`📝 Extracted ${extractedText.length} chars from PDF, triggering enrichment`);
+      supabase.functions.invoke('enrich-candidate-profile', {
+        body: {
+          candidateId: candidate_id,
+          resumeText: extractedText,
+          candidateName: null,
+        }
+      }).catch(err => console.error('Background enrichment failed:', err));
+    } else {
+      console.log(`📝 PDF text too short (${extractedText.length} chars), skipping enrichment`);
+    }
+  } catch (extractErr) {
+    console.error('PDF text extraction failed (non-blocking):', extractErr);
+  }
+
   return new Response(JSON.stringify(response), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
