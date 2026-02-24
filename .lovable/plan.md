@@ -1,48 +1,65 @@
 
 
-# Fix: Gmail Sync Failing Due to NULL organization_id
+# Fix: Candidate Reply Webhook - "No org member found"
 
-## The Real Problem
+## Root Cause (confirmed with live data)
 
-You're right -- `organization_id` in this context means "job folder," NOT tenant. The `user_mail_identities` table correctly only has `tenant_id` (no `organization_id`), because email accounts belong to the tenant/workspace, not to a specific job folder.
+The webhook fails at Step 3 (line 304-308) because it queries the `members` table with:
 
-The edge function sets `organization_id: identity.organization_id`, but that field doesn't exist on `user_mail_identities`, so it's always `undefined`. The `email_logs` table has `organization_id` as NOT NULL, causing every upsert to fail with a constraint violation.
+```
+.eq('organization_id', orgId)   -- orgId = job's organization_id (job folder)
+```
 
-## The Fix
+But `members.organization_id` stores the **tenant** ID, not the job folder ID. The job folder `4b8e739f-...` has zero members. The actual members live under tenant `5ba7b145-...`.
 
-### Step 1: Database Migration -- Make organization_id nullable on email_logs
+This is a **field mismatch bug**, not a missing-member problem. But per your requirements, we should also stop requiring a member at all.
 
-Synced emails don't necessarily belong to a specific job folder at sync time. The `organization_id` can be populated later when the email is matched to a candidate (who belongs to a job folder). Making it nullable is the correct approach.
+## The Problem with `user_id`
+
+`email_logs.user_id` is `NOT NULL`. The webhook currently needs a member lookup solely to populate this required field. For inbound emails from external candidates, there is no meaningful "user" -- it's a system-ingested record.
+
+## Plan
+
+### Step 1: Database Migration
+
+Make `email_logs.user_id` nullable so inbound webhook emails don't need a fake user attribution:
 
 ```sql
-ALTER TABLE email_logs
-  ALTER COLUMN organization_id DROP NOT NULL;
+ALTER TABLE email_logs ALTER COLUMN user_id DROP NOT NULL;
 ```
 
-### Step 2: Edge Function Update -- Remove the broken reference
+### Step 2: Rewrite the webhook (process-candidate-reply-webhook/index.ts)
 
-In `supabase/functions/sync-gmail-messages/index.ts`, remove the reference to `identity.organization_id` (which doesn't exist) and stop setting `organization_id` in the email upsert. The `tenant_id` from the identity is sufficient for isolation. If a candidate match is found, the candidate's `organization_id` can optionally be applied.
+Remove the entire "Step 3: Find an active org member" block (lines 301-328). Replace the `user_id` in the insert payload with `null`.
 
-Changes:
-- Remove `organization_id: identity.organization_id` from the emailData object (line 376)
-- In the candidate matching section, when a candidate is found, also copy their `organization_id` to the email log
-- Remove `identity.organization_id` from `findCandidateByEmails` calls (it was always undefined anyway)
+Keep everything else the same -- the association lookup already works correctly and provides `tenant_id`, `organization_id`, `candidate_id`, `job_id`.
 
-### Step 3: Data fix -- Reset historyId to force re-sync
+Also fix error handling per requirements:
+- Association not found: return **200** with `{ status: "ignored", reason: "unmatched_token" }` (not 404)
+- Remove the `tenantId || orgId` guard that returns 400
+- Activity logging: skip `log_activity` RPC when no `user_id` is available (it likely requires one)
 
-Use the data tool to set `history_id = NULL` on the `allan@virgilio.tech` identity so the next sync does a full 7-day pull and catches the missed reply.
+### Step 3: Deploy
 
-## Summary
+The edge function auto-deploys on save.
+
+## Changes Summary
 
 ```text
-Root Cause                          Fix
-----------------------------------  ----------------------------------
-identity.organization_id is         Make email_logs.organization_id
-undefined (field doesn't exist      nullable, remove broken reference
-on user_mail_identities)            from edge function
-
-historyId already past the          Reset history_id to NULL to
-reply timestamp                     force full re-sync
+File                                              Change
+------------------------------------------------  ----------------------------------------
+migration (new)                                   user_id DROP NOT NULL on email_logs
+process-candidate-reply-webhook/index.ts          Remove member lookup (lines 301-328)
+                                                  Set user_id: null in insert payload
+                                                  Return 200 for unmatched tokens
+                                                  Skip activity log when no user_id
 ```
 
-Two changes: one DB migration (make column nullable), one edge function update (remove nonexistent field reference), one data update (reset historyId).
+## What This Does NOT Change
+
+- The ingest code extraction logic (already working -- logs confirm `yd03np7c` found)
+- The association lookup (already working -- logs confirm candidate/job found)
+- The signature verification, dedup, threading logic
+- The Gmail sync edge function (separate concern)
+- Frontend `useEmailLogs` hook (already queries by `candidate_id` + `job_id`, no `user_id` filter)
+
