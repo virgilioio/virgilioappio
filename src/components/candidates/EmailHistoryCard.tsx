@@ -96,17 +96,17 @@ export function EmailHistoryCard({ email, onReply, onForward }: EmailHistoryCard
   const emailDate = email.received_at || email.sent_at || email.created_at;
 
   return (
-    <Card className="relative transition-all overflow-hidden min-w-0">
+    <div className={cn(isSent ? "ml-6" : isReceived ? "mr-6" : "")}>
+    <Card className={cn(
+      "relative transition-all overflow-hidden min-w-0",
+      isSent && "bg-purple-50/50 dark:bg-purple-950/20 border-purple-100 dark:border-purple-900/30",
+      isReceived && "bg-blue-50/50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/30"
+    )}>
       <CardContent className="p-4">
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              {isReceived && (
-                <Badge variant="outline" className="text-xs">
-                  Received
-                </Badge>
-              )}
               <Mail className="h-4 w-4 text-text-secondary flex-shrink-0" />
               <span className="text-sm font-medium text-text-primary truncate">
                 {isReceived ? `From: ${email.from_address}` : `To: ${email.to_addresses.join(', ')}`}
@@ -245,5 +245,6 @@ export function EmailHistoryCard({ email, onReply, onForward }: EmailHistoryCard
         </div>
       </CardContent>
     </Card>
+    </div>
   );
 }
