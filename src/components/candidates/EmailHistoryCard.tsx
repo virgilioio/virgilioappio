@@ -17,6 +17,7 @@ export interface EmailHistoryCardEmail {
   subject: string;
   body_html?: string | null;
   body_text?: string | null;
+  snippet?: string | null;
   status: string;
   created_at: string;
   sent_at?: string | null;
@@ -179,12 +180,12 @@ export function EmailHistoryCard({ email, onReply, onForward }: EmailHistoryCard
                   style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
                 />
               ) : (
-                <div className="whitespace-pre-wrap break-words overflow-hidden">{email.body_text || 'No content'}</div>
+                <div className="whitespace-pre-wrap break-words overflow-hidden">{email.body_text || email.snippet || 'No content'}</div>
               )}
             </div>
           ) : (
             <div className="text-sm text-text-secondary line-clamp-2">
-              {email.body_text?.slice(0, 150) || email.body_html?.replace(/<[^>]*>/g, '').slice(0, 150) || 'No content'}
+              {email.body_text?.slice(0, 150) || email.body_html?.replace(/<[^>]*>/g, '').slice(0, 150) || email.snippet || 'No content'}
             </div>
           )}
           

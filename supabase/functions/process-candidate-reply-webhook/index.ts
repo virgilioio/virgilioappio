@@ -2,16 +2,19 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { crypto } from "https://deno.land/std@0.190.0/crypto/mod.ts";
 
+const WEBHOOK_VERSION = "candidate-reply-v4-2026-02-24";
+const MAX_BODY_CHARS = 200_000; // ~200KB cap
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, svix-id, svix-timestamp, svix-signature',
 };
 
-// Safely extract a string email address from various Resend formats
+// ── Utility helpers ──────────────────────────────────────────────────
+
 function parseEmailAddress(input: any): string {
   if (!input) return 'unknown@unknown.com';
   if (typeof input === 'string') {
-    // Handle RFC 5322 format: "Name <email@example.com>"
     const match = input.match(/<([^>]+)>/);
     if (match) return match[1];
     return input.trim();
@@ -22,76 +25,112 @@ function parseEmailAddress(input: any): string {
   return String(input);
 }
 
-// Parse an array of addresses safely
 function parseEmailAddresses(input: any): string[] {
   if (!input) return [];
   const list = Array.isArray(input) ? input : [input];
   return list.map((addr: any) => parseEmailAddress(addr)).filter(Boolean);
 }
 
-// Verify Svix webhook signature manually
+function limitSize(value: string | null | undefined, max: number): string | null {
+  if (!value) return null;
+  return value.length > max ? value.slice(0, max) : value;
+}
+
+function stripHtmlToText(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/?(p|div|li|tr|h[1-6])[^>]*>/gi, '\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function buildSnippet(text: string | null, html: string | null, maxLen = 120): string | null {
+  const source = text || (html ? stripHtmlToText(html) : null);
+  if (!source) return null;
+  const cleaned = source.replace(/\s+/g, ' ').trim();
+  return cleaned.length > maxLen ? cleaned.slice(0, maxLen) + '…' : cleaned;
+}
+
+/** Extract body from any shape of payload (webhook data or Resend API response) */
+function extractBody(source: any): { text: string | null; html: string | null } {
+  if (!source || typeof source !== 'object') return { text: null, html: null };
+
+  // Check nested data wrapper
+  const obj = source.data && typeof source.data === 'object' ? source.data : source;
+
+  const textCandidates = ['text', 'body_text', 'body', 'content', 'raw'];
+  const htmlCandidates = ['html', 'body_html'];
+
+  let text: string | null = null;
+  let html: string | null = null;
+
+  for (const key of textCandidates) {
+    if (obj[key] && typeof obj[key] === 'string' && obj[key].trim()) {
+      text = obj[key];
+      break;
+    }
+  }
+  for (const key of htmlCandidates) {
+    if (obj[key] && typeof obj[key] === 'string' && obj[key].trim()) {
+      html = obj[key];
+      break;
+    }
+  }
+
+  return {
+    text: limitSize(text, MAX_BODY_CHARS),
+    html: limitSize(html, MAX_BODY_CHARS),
+  };
+}
+
+// ── Signature verification ───────────────────────────────────────────
+
 async function verifyWebhookSignature(
   payload: string,
   headers: { id: string; timestamp: string; signature: string },
   secret: string
 ): Promise<boolean> {
   const encoder = new TextEncoder();
-  
-  const secretBytes = secret.startsWith('whsec_') 
+  const secretBytes = secret.startsWith('whsec_')
     ? Uint8Array.from(atob(secret.slice(6)), c => c.charCodeAt(0))
     : encoder.encode(secret);
-  
+
   const signedContent = `${headers.id}.${headers.timestamp}.${payload}`;
-  
-  const key = await crypto.subtle.importKey(
-    "raw",
-    secretBytes,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  
+  const key = await crypto.subtle.importKey("raw", secretBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const signatureBytes = await crypto.subtle.sign("HMAC", key, encoder.encode(signedContent));
   const expectedSignature = btoa(String.fromCharCode(...new Uint8Array(signatureBytes)));
-  
-  const signatures = headers.signature.split(' ');
-  
-  for (const sig of signatures) {
+
+  for (const sig of headers.signature.split(' ')) {
     const [version, sigValue] = sig.split(',');
-    if (version === 'v1' && sigValue === expectedSignature) {
-      return true;
-    }
+    if (version === 'v1' && sigValue === expectedSignature) return true;
   }
-  
   return false;
 }
 
-// Extract candidate ingest code from email address
+// ── Ingest code helpers ──────────────────────────────────────────────
+
 function extractCandidateIngestCode(email: string): string | null {
   const match = email.match(/^jc_([a-zA-Z0-9]{8})@ingest\.gogio\.io$/i);
   return match ? match[1] : null;
 }
 
-// Check if email is a calendar invite
 function isCalendarInvite(emailData: any): boolean {
   const subject = emailData.subject?.toLowerCase() || '';
-  
-  const calendarPatterns = [
-    'invitation:', 'updated invitation:', 'canceled:', 'cancelled:',
-    'accepted:', 'declined:', 'tentative:', 'reminder:',
-  ];
-  
+  const calendarPatterns = ['invitation:', 'updated invitation:', 'canceled:', 'cancelled:', 'accepted:', 'declined:', 'tentative:', 'reminder:'];
   if (calendarPatterns.some(p => subject.startsWith(p))) return true;
-  
   const attachments = emailData.attachments || [];
-  return attachments.length > 0 && attachments.every((a: any) => 
-    a.content_type === 'text/calendar' || 
-    a.content_type === 'application/ics' ||
-    a.filename?.endsWith('.ics')
+  return attachments.length > 0 && attachments.every((a: any) =>
+    a.content_type === 'text/calendar' || a.content_type === 'application/ics' || a.filename?.endsWith('.ics')
   );
 }
 
-// Find ingest code in ALL recipient fields (to, cc, bcc, envelope)
 function findCandidateIngestCode(emailData: any): { code: string | null; foundIn: string } {
   const check = (addrs: any, label: string) => {
     const list = Array.isArray(addrs) ? addrs : [addrs].filter(Boolean);
@@ -102,7 +141,6 @@ function findCandidateIngestCode(emailData: any): { code: string | null; foundIn
     }
     return null;
   };
-  
   return (
     check(emailData.to, 'to') ||
     check(emailData.cc, 'cc') ||
@@ -113,7 +151,8 @@ function findCandidateIngestCode(emailData: any): { code: string | null; foundIn
   );
 }
 
-// Look up the original sent email to establish threading
+// ── Threading ────────────────────────────────────────────────────────
+
 async function findOriginalThread(
   supabase: any,
   inReplyToHeader: string | null,
@@ -122,10 +161,8 @@ async function findOriginalThread(
   jobId: string
 ): Promise<{ threadId: string | null; inReplyTo: string | null; references: string | null }> {
   try {
-    // Strategy 1: Match by In-Reply-To header
     if (inReplyToHeader) {
       const cleanId = inReplyToHeader.replace(/[<>]/g, '').trim();
-      
       const { data: byProvider } = await supabase
         .from('email_logs')
         .select('thread_id, provider_message_id, rfc822_message_id')
@@ -135,17 +172,10 @@ async function findOriginalThread(
         .order('sent_at', { ascending: false, nullsFirst: false })
         .limit(1)
         .maybeSingle();
-      
       if (byProvider?.thread_id) {
-        return {
-          threadId: byProvider.thread_id,
-          inReplyTo: cleanId,
-          references: referencesHeader || cleanId,
-        };
+        return { threadId: byProvider.thread_id, inReplyTo: cleanId, references: referencesHeader || cleanId };
       }
     }
-
-    // Strategy 2: Find the most recent sent email
     const { data: latestSent } = await supabase
       .from('email_logs')
       .select('thread_id, provider_message_id, rfc822_message_id')
@@ -155,20 +185,43 @@ async function findOriginalThread(
       .order('sent_at', { ascending: false, nullsFirst: false })
       .limit(1)
       .maybeSingle();
-
     if (latestSent?.thread_id) {
-      return {
-        threadId: latestSent.thread_id,
-        inReplyTo: latestSent.rfc822_message_id || latestSent.provider_message_id || null,
-        references: referencesHeader || latestSent.rfc822_message_id || null,
-      };
+      return { threadId: latestSent.thread_id, inReplyTo: latestSent.rfc822_message_id || latestSent.provider_message_id || null, references: referencesHeader || latestSent.rfc822_message_id || null };
     }
   } catch (err) {
-    console.error('[Candidate Reply] Threading lookup error:', err);
+    console.error(`[${WEBHOOK_VERSION}] Threading lookup error:`, err);
   }
-
   return { threadId: null, inReplyTo: null, references: null };
 }
+
+// ── Fetch body from Resend receiving API ─────────────────────────────
+
+async function fetchBodyFromResend(emailId: string, apiKey: string): Promise<{ text: string | null; html: string | null }> {
+  const delays = [0, 500, 1500];
+  for (let attempt = 0; attempt < delays.length; attempt++) {
+    if (delays[attempt] > 0) await new Promise(r => setTimeout(r, delays[attempt]));
+    try {
+      const res = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const body = extractBody(data);
+        console.log(`[${WEBHOOK_VERSION}] Resend receiving fetch OK (attempt ${attempt + 1}): text=${body.text?.length || 0} html=${body.html?.length || 0}`);
+        return body;
+      }
+      const errText = await res.text();
+      console.error(`[${WEBHOOK_VERSION}] Resend receiving API ${res.status} (attempt ${attempt + 1}/${delays.length}): ${errText} email_id=${emailId}`);
+      // Only retry on 404 (not yet indexed)
+      if (res.status !== 404) break;
+    } catch (err) {
+      console.error(`[${WEBHOOK_VERSION}] Resend fetch error (attempt ${attempt + 1}):`, err);
+    }
+  }
+  return { text: null, html: null };
+}
+
+// ── Main handler ─────────────────────────────────────────────────────
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -181,166 +234,86 @@ serve(async (req) => {
 
   try {
     const rawPayload = await req.text();
-    
+    console.log(`[${WEBHOOK_VERSION}] Received webhook`);
+
+    // Verify signature
     const svixId = req.headers.get('svix-id');
     const svixTimestamp = req.headers.get('svix-timestamp');
     const svixSignature = req.headers.get('svix-signature');
 
     if (!svixId || !svixTimestamp || !svixSignature) {
-      console.error('[Candidate Reply] Missing signature headers');
+      console.error(`[${WEBHOOK_VERSION}] Missing signature headers`);
       return new Response(JSON.stringify({ error: 'Missing signature headers' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const isValid = await verifyWebhookSignature(
-      rawPayload,
-      { id: svixId, timestamp: svixTimestamp, signature: svixSignature },
-      webhookSecret
-    );
-
+    const isValid = await verifyWebhookSignature(rawPayload, { id: svixId, timestamp: svixTimestamp, signature: svixSignature }, webhookSecret);
     if (!isValid) {
-      console.error('[Candidate Reply] Invalid signature');
+      console.error(`[${WEBHOOK_VERSION}] Invalid signature`);
       return new Response(JSON.stringify({ error: 'Invalid signature' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const payload = JSON.parse(rawPayload);
-    console.log('[Candidate Reply] Event:', payload.type);
+    console.log(`[${WEBHOOK_VERSION}] Event: ${payload.type}`);
 
     if (payload.type !== 'email.received') {
       return new Response(JSON.stringify({ status: 'ignored', reason: 'not email event' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const emailData = payload.data;
-    console.log('[Candidate Reply] From:', JSON.stringify(emailData.from), 'Subject:', emailData.subject);
+    console.log(`[${WEBHOOK_VERSION}] From: ${JSON.stringify(emailData.from)} Subject: ${emailData.subject}`);
 
     if (isCalendarInvite(emailData)) {
       return new Response(JSON.stringify({ status: 'ignored', reason: 'calendar' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const { code: ingestCode, foundIn } = findCandidateIngestCode(emailData);
-
     if (!ingestCode) {
-      console.log('[Candidate Reply] No jc_ code found in any address field');
+      console.log(`[${WEBHOOK_VERSION}] No jc_ code found`);
       return new Response(JSON.stringify({ status: 'ignored', reason: 'no_jc_code' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    console.log(`[${WEBHOOK_VERSION}] Ingest code: ${ingestCode} found in: ${foundIn}`);
 
-    console.log('[Candidate Reply] Ingest code:', ingestCode, 'found in:', foundIn);
-
-    // Step 1: Create Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    console.log('[Candidate Reply] Supabase client created');
 
-    // Step 2: Look up association
-    let association: any;
-    try {
-      const { data, error } = await supabase
-        .from('job_candidate_associations')
-        .select(`
-          id, candidate_id, job_id,
-          candidate:candidates(id, candidate_name, email),
-          job:jobs(id, title, tenant_id, organization_id)
-        `)
-        .eq('email_ingest_code', ingestCode)
-        .single();
+    // Look up association
+    const { data: association, error: assocErr } = await supabase
+      .from('job_candidate_associations')
+      .select(`id, candidate_id, job_id, candidate:candidates(id, candidate_name, email), job:jobs(id, title, tenant_id, organization_id)`)
+      .eq('email_ingest_code', ingestCode)
+      .single();
 
-      if (error || !data) {
-        console.log('[Candidate Reply] Association not found for code:', ingestCode, error ? JSON.stringify(error) : '');
-        return new Response(JSON.stringify({ status: 'ignored', reason: 'unmatched_token', code: ingestCode }), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      association = data;
-      console.log('[Candidate Reply] Association found:', association.id, 'candidate:', association.candidate_id, 'job:', association.job_id);
-    } catch (err: any) {
-      console.error('[Candidate Reply] Association lookup crashed:', err?.message || err);
-      return new Response(JSON.stringify({ error: 'Association lookup crashed', detail: String(err) }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    if (assocErr || !association) {
+      console.log(`[${WEBHOOK_VERSION}] Association not found for code: ${ingestCode}`);
+      return new Response(JSON.stringify({ status: 'ignored', reason: 'unmatched_token', code: ingestCode }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const job = association.job as any;
-    const candidate = association.candidate as any;
     const tenantId = job?.tenant_id;
     const orgId = job?.organization_id;
 
-    console.log('[Candidate Reply] tenant_id:', tenantId, 'org_id:', orgId);
-
     if (!tenantId) {
-      console.error('[Candidate Reply] Missing tenant_id. Job data:', JSON.stringify(job));
+      console.error(`[${WEBHOOK_VERSION}] Missing tenant_id`);
       return new Response(JSON.stringify({ status: 'ignored', reason: 'missing_tenant_id' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Step 4: Duplicate check
-    const messageId = emailData.message_id || emailData.headers?.['message-id'];
-    if (messageId) {
-      try {
-        const { data: existing } = await supabase
-          .from('email_logs')
-          .select('id')
-          .eq('rfc822_message_id', messageId)
-          .maybeSingle();
-        
-        if (existing) {
-          console.log('[Candidate Reply] Duplicate message:', messageId);
-          return new Response(JSON.stringify({ status: 'duplicate' }), {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-      } catch (err: any) {
-        console.error('[Candidate Reply] Duplicate check error (continuing):', err?.message || err);
-      }
-    }
-    console.log('[Candidate Reply] No duplicate found, messageId:', messageId);
-
-    // Step 5: Threading
-    const incomingHeaders = emailData.headers || {};
-    const inReplyToHeader = incomingHeaders['in-reply-to'] || incomingHeaders['In-Reply-To'] || null;
-    const referencesHeader = incomingHeaders['references'] || incomingHeaders['References'] || null;
-
-    const threading = await findOriginalThread(
-      supabase,
-      inReplyToHeader,
-      referencesHeader,
-      association.candidate_id,
-      association.job_id
-    );
-
-    console.log('[Candidate Reply] Threading:', JSON.stringify({
-      threadId: threading.threadId,
-      inReplyTo: threading.inReplyTo,
-      hasReferences: !!threading.references,
-    }));
-
-    // Step 6: Parse addresses safely
+    // Parse sender & filter internal copies
     const parsedFrom = parseEmailAddress(emailData.from);
-    const toAddrs = parseEmailAddresses(emailData.to);
-    const ccAddrs = parseEmailAddresses(emailData.cc);
-
-    console.log('[Candidate Reply] Parsed from:', parsedFrom, 'to:', toAddrs.length, 'cc:', ccAddrs.length);
-
-    // Step 6b: Filter out internal sender copies (self-sent BCC echoes)
     const parsedFromLower = parsedFrom.toLowerCase();
+
     try {
       const { data: internalSender } = await supabase
         .from('user_mail_identities')
@@ -348,123 +321,126 @@ serve(async (req) => {
         .eq('tenant_id', tenantId)
         .ilike('email_address', parsedFromLower)
         .maybeSingle();
-
       if (internalSender) {
-        console.log('[Candidate Reply] Ignoring internal sender copy from:', parsedFrom);
+        console.log(`[${WEBHOOK_VERSION}] Ignoring internal sender copy from: ${parsedFrom}`);
         return new Response(JSON.stringify({ status: 'ignored', reason: 'internal_sender_copy' }), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
     } catch (err: any) {
-      console.error('[Candidate Reply] Internal sender check error (continuing):', err?.message || err);
+      console.error(`[${WEBHOOK_VERSION}] Internal sender check error (continuing):`, err?.message);
     }
 
-    // Step 6c: Fetch full email content from Resend receiving API with retry
-    let bodyHtml: string | null = null;
-    let bodyText: string | null = null;
+    // ── Extract body: payload first, then Resend API ──
+    let { text: bodyText, html: bodyHtml } = extractBody(emailData);
+    console.log(`[${WEBHOOK_VERSION}] Payload body: text=${bodyText?.length || 0} html=${bodyHtml?.length || 0}`);
 
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
-    if (resendApiKey && emailData.email_id) {
-      const delays = [0, 500, 1500]; // retry delays in ms
-      for (let attempt = 0; attempt < delays.length; attempt++) {
-        if (delays[attempt] > 0) {
-          await new Promise(r => setTimeout(r, delays[attempt]));
+    if ((!bodyText && !bodyHtml) && resendApiKey && emailData.email_id) {
+      console.log(`[${WEBHOOK_VERSION}] Body missing from payload, fetching from Resend receiving API: ${emailData.email_id}`);
+      const fetched = await fetchBodyFromResend(emailData.email_id, resendApiKey);
+      bodyText = fetched.text;
+      bodyHtml = fetched.html;
+    } else if (!bodyText && !bodyHtml && !emailData.email_id) {
+      console.log(`[${WEBHOOK_VERSION}] No body in payload and no email_id to fetch from Resend`);
+    }
+
+    const snippet = buildSnippet(bodyText, bodyHtml);
+    console.log(`[${WEBHOOK_VERSION}] Final body: text=${bodyText?.length || 0} html=${bodyHtml?.length || 0} snippet=${snippet?.length || 0}`);
+
+    // ── Idempotent upsert: check existing by rfc822_message_id ──
+    const messageId = emailData.message_id || emailData.headers?.['message-id'];
+    const toAddrs = parseEmailAddresses(emailData.to);
+    const ccAddrs = parseEmailAddresses(emailData.cc);
+
+    const incomingHeaders = emailData.headers || {};
+    const inReplyToHeader = incomingHeaders['in-reply-to'] || incomingHeaders['In-Reply-To'] || null;
+    const referencesHeader = incomingHeaders['references'] || incomingHeaders['References'] || null;
+
+    const threading = await findOriginalThread(supabase, inReplyToHeader, referencesHeader, association.candidate_id, association.job_id);
+
+    if (messageId) {
+      const { data: existing } = await supabase
+        .from('email_logs')
+        .select('id, body_text, body_html, snippet, job_id, candidate_id, thread_id')
+        .eq('rfc822_message_id', messageId)
+        .eq('candidate_id', association.candidate_id)
+        .maybeSingle();
+
+      if (existing) {
+        // Patch missing fields on existing row
+        const patches: Record<string, any> = {};
+        if (!existing.body_text && bodyText) patches.body_text = bodyText;
+        if (!existing.body_html && bodyHtml) patches.body_html = bodyHtml;
+        if (!existing.snippet && snippet) patches.snippet = snippet;
+        if (!existing.job_id) patches.job_id = association.job_id;
+        if (!existing.thread_id && threading.threadId) patches.thread_id = threading.threadId;
+
+        if (Object.keys(patches).length > 0) {
+          const { error: updateErr } = await supabase
+            .from('email_logs')
+            .update(patches)
+            .eq('id', existing.id);
+          console.log(`[${WEBHOOK_VERSION}] Updated existing row ${existing.id} with: ${Object.keys(patches).join(', ')}${updateErr ? ' ERROR: ' + updateErr.message : ''}`);
+          return new Response(JSON.stringify({ status: 'updated', email_log_id: existing.id, patched: Object.keys(patches) }), {
+            status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
         }
-        try {
-          const emailRes = await fetch(
-            `https://api.resend.com/emails/receiving/${emailData.email_id}`,
-            { headers: { Authorization: `Bearer ${resendApiKey}` } }
-          );
-          if (emailRes.ok) {
-            const fullEmail = await emailRes.json();
-            bodyHtml = fullEmail.html || null;
-            bodyText = fullEmail.text || null;
-            console.log(`[Candidate Reply] Fetched email body (attempt ${attempt + 1}):`,
-              bodyHtml ? `html=${bodyHtml.length}chars` : 'no html',
-              bodyText ? `text=${bodyText.length}chars` : 'no text');
-            break; // success
-          } else {
-            const errText = await emailRes.text();
-            console.error(`[Candidate Reply] Resend receiving API error (attempt ${attempt + 1}/${delays.length}):`,
-              emailRes.status, errText, 'email_id:', emailData.email_id);
-            if (emailRes.status !== 404 || attempt === delays.length - 1) {
-              break; // only retry on 404 (not yet indexed)
-            }
-          }
-        } catch (err) {
-          console.error(`[Candidate Reply] Failed to fetch email body (attempt ${attempt + 1}):`, err);
-          if (attempt === delays.length - 1) break;
-        }
+
+        console.log(`[${WEBHOOK_VERSION}] Duplicate, nothing to patch: ${messageId}`);
+        return new Response(JSON.stringify({ status: 'duplicate' }), {
+          status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
     }
 
-    // Step 7: Insert email log
-    let emailLog: any;
-    try {
-      const insertPayload = {
-        user_id: null,
-        tenant_id: tenantId,
-        organization_id: orgId,
-        direction: 'received',
-        from_address: parsedFrom,
-        to_addresses: toAddrs,
-        cc_addresses: ccAddrs,
-        subject: emailData.subject || '(No Subject)',
-        body_text: bodyText || emailData.text || null,
-        body_html: bodyHtml || emailData.html || null,
-        status: 'delivered',
-        received_at: new Date().toISOString(),
-        candidate_id: association.candidate_id,
-        job_id: association.job_id,
-        rfc822_message_id: messageId || null,
-        snippet: (bodyText || emailData.text)?.substring(0, 200) || null,
-        thread_id: threading.threadId || null,
-        in_reply_to: threading.inReplyTo || null,
-        references_header: threading.references || null,
-      };
+    // ── Insert new row ──
+    const insertPayload = {
+      user_id: null,
+      tenant_id: tenantId,
+      organization_id: orgId,
+      direction: 'received',
+      from_address: parsedFrom,
+      to_addresses: toAddrs,
+      cc_addresses: ccAddrs,
+      subject: emailData.subject || '(No Subject)',
+      body_text: bodyText,
+      body_html: bodyHtml,
+      status: 'delivered',
+      received_at: new Date().toISOString(),
+      candidate_id: association.candidate_id,
+      job_id: association.job_id,
+      rfc822_message_id: messageId || null,
+      snippet: snippet,
+      thread_id: threading.threadId || null,
+      in_reply_to: threading.inReplyTo || null,
+      references_header: threading.references || null,
+    };
 
-      console.log('[Candidate Reply] Insert payload keys:', Object.keys(insertPayload).join(', '));
+    const { data: emailLog, error: insertErr } = await supabase
+      .from('email_logs')
+      .insert(insertPayload)
+      .select()
+      .single();
 
-      const { data, error: insertErr } = await supabase
-        .from('email_logs')
-        .insert(insertPayload)
-        .select()
-        .single();
-
-      if (insertErr) {
-        console.error('[Candidate Reply] INSERT ERROR:', JSON.stringify(insertErr));
-        console.error('[Candidate Reply] Insert payload:', JSON.stringify(insertPayload));
-        return new Response(JSON.stringify({ error: 'Insert failed', detail: insertErr.message }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      emailLog = data;
-      console.log('[Candidate Reply] Successfully logged email:', emailLog.id, 'thread:', threading.threadId);
-    } catch (err: any) {
-      console.error('[Candidate Reply] Insert crashed:', err?.message || err);
-      return new Response(JSON.stringify({ error: 'Insert crashed', detail: String(err) }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    if (insertErr) {
+      console.error(`[${WEBHOOK_VERSION}] INSERT ERROR:`, JSON.stringify(insertErr));
+      return new Response(JSON.stringify({ error: 'Insert failed', detail: insertErr.message }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Step 8: Activity logging skipped - no user_id for inbound webhook emails
-    console.log('[Candidate Reply] Skipping activity log (no user_id for inbound)');
+    console.log(`[${WEBHOOK_VERSION}] Inserted email: ${emailLog.id} thread: ${threading.threadId} body: text=${bodyText?.length || 0} html=${bodyHtml?.length || 0}`);
 
     return new Response(JSON.stringify({ status: 'success', email_log_id: emailLog.id, thread_id: threading.threadId }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error: any) {
-    console.error('[Candidate Reply] Top-level error:', error?.message || error);
-    console.error('[Candidate Reply] Stack:', error?.stack || 'no stack');
+    console.error(`[${WEBHOOK_VERSION}] Top-level error:`, error?.message || error);
+    console.error(`[${WEBHOOK_VERSION}] Stack:`, error?.stack || 'no stack');
     return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
