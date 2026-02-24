@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
 import { createShortBookingToken, generateShortBookingLink, generateContextualBookingLink, BookingContext } from '@/lib/bookingLinkUtils';
 import { useCallback, useState } from 'react';
-import { copyToClipboardSilent } from '@/utils/clipboard';
+import { primeClipboard, copyToClipboardSilent } from '@/utils/clipboard';
 
 export interface InterviewerBookingInfo {
   memberId: string;
@@ -171,6 +171,9 @@ export function useStageBookingInterviewers(params: UseStageBookingInterviewersP
 
     setCopyingInterviewerId(interviewer.memberId);
 
+    // Prime clipboard immediately while user gesture is still valid
+    await primeClipboard();
+
     try {
       const context: BookingContext = {
         jobId: params.jobId,
@@ -194,20 +197,28 @@ export function useStageBookingInterviewers(params: UseStageBookingInterviewersP
         ? generateShortBookingLink({ shortCode: interviewer.bookingConfig.short_code, token })
         : generateContextualBookingLink({ shortCode: interviewer.bookingConfig.short_code, context });
 
-      // Copy to clipboard
+      // Attempt to overwrite clipboard with real link
       const success = await copyToClipboardSilent(link);
-      if (!success) throw new Error('Clipboard copy failed');
-
       const name = interviewer.fullName;
-      toast({
-        title: 'Link Copied',
-        description: `Booking link for ${name} copied to clipboard.`,
-      });
+
+      if (success) {
+        toast({
+          title: 'Link Copied',
+          description: `Booking link for ${name} copied to clipboard.`,
+        });
+      } else {
+        // Clipboard write failed after gesture expired — show link for manual copy
+        toast({
+          title: 'Copy the link manually',
+          description: link,
+          duration: 15000,
+        });
+      }
     } catch (error) {
       console.error('Error copying booking link:', error);
       toast({
         title: 'Error',
-        description: 'Failed to copy booking link. Please try again.',
+        description: 'Failed to generate booking link. Please try again.',
         variant: 'destructive',
       });
     } finally {
