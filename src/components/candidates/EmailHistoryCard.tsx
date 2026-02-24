@@ -96,7 +96,7 @@ export function EmailHistoryCard({ email, onReply, onForward }: EmailHistoryCard
   const emailDate = email.received_at || email.sent_at || email.created_at;
 
   return (
-    <Card className="relative transition-all overflow-hidden">
+    <Card className="relative transition-all overflow-hidden min-w-0">
       <CardContent className="p-4">
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
