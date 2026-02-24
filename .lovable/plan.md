@@ -1,28 +1,54 @@
 
 
-# Fix: "Invalid input value for enum activity_type: status_changed"
+# Audit: Feb 20 Migration Fallout + Fix for New Bug
 
-## What Happened
+## Issues Found
 
-A recent database migration (from Feb 20) created a trigger on the `job_candidate_associations` table that fires whenever a candidate's status or stage changes. The trigger calls `log_activity()` to record the event, but it uses **incorrect enum values**:
+### Issue 1 (CRITICAL - Active Bug): Wrong column name in our fix migration
+The migration we **just applied** (`20260224214030`) references `js.name` on the `job_stages` table, but the actual column is `js.stage_name`. This means every time a candidate is moved between stages, the trigger will fail with:
+```
+ERROR: column js.name does not exist
+```
+This was introduced by our fix, not the Feb 20 migration itself.
 
-| Used in trigger | Correct enum value |
-|---|---|
-| `'status_changed'` | `'candidate_status_changed'` |
-| `'stage_changed'` | `'candidate_stage_changed'` |
+### Issue 2 (Low Priority): Orphan function `log_candidate_stage_activity()`
+The Feb 20 migration created a function called `log_candidate_stage_activity()` that:
+- Uses the wrong enum value `'stage_changed'` (same bug we just fixed in the other functions)
+- Is **not attached to any trigger** -- the actual trigger (`trg_log_candidate_stage_change`) calls `log_candidate_stage_change()`, not this function
 
-Because `'status_changed'` is not a valid value in the `activity_type` enum, Postgres rejects the insert with error code `22P02`, which crashes the entire unreject/status-change operation.
+This is dead code. It doesn't cause errors, but it's confusing to have around.
 
-## Why It Was Caused
+### Summary of Active Triggers on `job_candidate_associations`
 
-The migration that created this trigger was written with shortened enum names (`status_changed`, `stage_changed`) instead of the full prefixed names (`candidate_status_changed`, `candidate_stage_changed`) that were established in the original enum definition. This is a simple naming mismatch -- the trigger was never tested against the actual enum values.
+```text
+Trigger Name                        Event              Calls Function
+-------------------------------     ----------------   ---------------------------
+trg_log_candidate_job_assignment    AFTER INSERT       log_candidate_job_assignment()     -- OK
+trg_log_candidate_stage_change      AFTER UPDATE       log_candidate_stage_change()       -- BROKEN (js.name)
+trg_log_candidate_status_change     AFTER UPDATE       log_candidate_status_change()      -- FIXED (just now)
+```
 
 ## The Fix
 
-A single database migration to replace the trigger function with corrected enum values:
+**Single database migration** that:
 
-- Change `'status_changed'::activity_type` to `'candidate_status_changed'::activity_type`
-- Change `'stage_changed'::activity_type` to `'candidate_stage_changed'::activity_type`
+1. Replaces `log_candidate_stage_change()` to use the correct column `js.stage_name` instead of `js.name`
+2. Drops the orphan function `log_candidate_stage_activity()` to clean up dead code
 
-No frontend code changes needed -- the error originates entirely in the database trigger.
+No frontend code changes needed.
 
+## Technical Detail
+
+The fix changes two lines in the stage change function:
+```sql
+-- Before (broken):
+COALESCE(jhs.custom_stage_name, js.name)
+
+-- After (correct):
+COALESCE(jhs.custom_stage_name, js.stage_name)
+```
+
+And drops the unused function:
+```sql
+DROP FUNCTION IF EXISTS public.log_candidate_stage_activity() CASCADE;
+```
