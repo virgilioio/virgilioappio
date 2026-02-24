@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { FileText, Link, Calendar, Hash, Type, List, Upload } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import { CURRENCY_SYMBOLS } from "@/constants/currencies";
+import { SalaryFieldConfig } from "@/hooks/useJobPostingFields";
 
 interface ApplicationResponse {
   id: string;
@@ -11,6 +13,7 @@ interface ApplicationResponse {
   field_label: string;
   field_value: string | null;
   field_type: string;
+  posting_id: string;
   created_at: string;
 }
 
@@ -39,9 +42,26 @@ const getFieldIcon = (fieldType: string) => {
   }
 };
 
-const formatFieldValue = (value: string | null, fieldType: string) => {
+const formatSalaryValue = (value: string | null, config: SalaryFieldConfig | null) => {
+  if (!value) return "Not provided";
+  const num = Number(value);
+  const formatted = isNaN(num) ? value : num.toLocaleString();
+  const symbol = config?.currency ? (CURRENCY_SYMBOLS[config.currency] || config.currency) : '';
+  const period = config?.period ? config.period.charAt(0).toUpperCase() + config.period.slice(1) : '';
+
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span>{symbol}{formatted}</span>
+      {period && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{period}</Badge>}
+    </span>
+  );
+};
+
+const formatFieldValue = (value: string | null, fieldType: string, fieldConfig?: SalaryFieldConfig | null) => {
   if (!value) return "Not provided";
   
+  if (fieldType === 'salary') return formatSalaryValue(value, fieldConfig ?? null);
+
   switch (fieldType) {
     case 'date':
       return new Date(value).toLocaleDateString();
@@ -93,6 +113,7 @@ export const CandidateApplicationResponses: React.FC<CandidateApplicationRespons
   jobId,
 }) => {
   const [responses, setResponses] = useState<ApplicationResponse[]>([]);
+  const [fieldConfigs, setFieldConfigs] = useState<Record<string, SalaryFieldConfig>>({});
   const [loading, setLoading] = useState(true);
   const { coreFields } = useCoreFields();
 
@@ -108,9 +129,6 @@ export const CandidateApplicationResponses: React.FC<CandidateApplicationRespons
 
         if (error) throw error;
         
-        console.log('Raw application responses:', data);
-        console.log('Core fields:', coreFields);
-        
         // Create exclusion set from core fields + additional excluded fields
         const coreFieldNames = new Set(coreFields.map(f => f.field_name.toLowerCase()));
         const allExcludedFields = new Set([
@@ -118,16 +136,29 @@ export const CandidateApplicationResponses: React.FC<CandidateApplicationRespons
           ...coreFieldNames
         ]);
         
-        console.log('Excluded fields:', Array.from(allExcludedFields));
-        
         // Filter out core fields - only show custom fields
         const filteredResponses = (data || []).filter(response => {
-          const shouldExclude = allExcludedFields.has(response.field_name.toLowerCase());
-          console.log(`Field "${response.field_name}": ${shouldExclude ? 'EXCLUDED' : 'INCLUDED'}`);
-          return !shouldExclude;
+          return !allExcludedFields.has(response.field_name.toLowerCase());
         });
+
+        // Fetch field_config for salary/location fields from posting fields
+        const postingIds = [...new Set(filteredResponses.map(r => r.posting_id).filter(Boolean))];
+        const salaryFieldNames = filteredResponses.filter(r => r.field_type === 'salary').map(r => r.field_name);
         
-        console.log('Filtered responses to display:', filteredResponses);
+        if (postingIds.length > 0 && salaryFieldNames.length > 0) {
+          const { data: fieldRows } = await supabase
+            .from('job_posting_application_fields')
+            .select('field_name, field_config')
+            .in('posting_id', postingIds)
+            .in('field_name', salaryFieldNames);
+          
+          const configMap: Record<string, SalaryFieldConfig> = {};
+          (fieldRows || []).forEach((row: any) => {
+            if (row.field_config) configMap[row.field_name] = row.field_config as SalaryFieldConfig;
+          });
+          setFieldConfigs(configMap);
+        }
+
         setResponses(filteredResponses);
       } catch (error) {
         console.error('Error fetching application responses:', error);
@@ -172,7 +203,7 @@ export const CandidateApplicationResponses: React.FC<CandidateApplicationRespons
                 <span className="font-medium text-sm">{response.field_label}</span>
               </div>
               <div className="text-sm text-muted-foreground break-words">
-                {formatFieldValue(response.field_value, response.field_type)}
+                {formatFieldValue(response.field_value, response.field_type, fieldConfigs[response.field_name])}
               </div>
             </div>
           </div>
