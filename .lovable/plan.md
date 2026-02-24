@@ -1,44 +1,55 @@
 
 
-# Fix: Cross-Tenant Data Leakage in Global Search
+# Fix: Candidate Reply Emails Not Being Stored
 
 ## The Problem
 
-The global search bar (`useGlobalSearch.ts`) queries the `jobs`, `candidates`, and `sourcing_projects` tables **without any tenant_id filtering**. It relies entirely on RLS policies for isolation. However, your account (platform admin) bypasses RLS tenant restrictions by design -- meaning the search returns data from **all tenants across the entire platform**. Even for non-admin users, explicit tenant filtering is a critical defense-in-depth requirement.
+The `process-candidate-reply-webhook` edge function IS receiving webhook calls from Resend when candidates reply (confirmed in logs -- mae.montejo@gmail.com replied multiple times). The function successfully:
+- Verifies the webhook signature
+- Parses the email event
+- Extracts the `jc_` ingest code from recipients
 
-This affects all three search functions:
-- `searchJobs` -- no tenant filter
-- `searchCandidates` -- no tenant filter
-- `searchSourcingProjects` -- no tenant filter
+But then it **crashes silently** -- zero logs appear after the ingest code extraction. No "Association not found", no "Threading:", no "Logged:", and critically, no error message either. The result: **422 sent emails in the database, 0 received emails.**
+
+## Root Cause Analysis
+
+The function dies between finding the ingest code (line 215) and the association query result (line 229+). There are two likely causes:
+
+1. **The deployed function is stale** -- Lovable auto-deploys edge functions, but if a past deployment failed silently, the running version may be an older build that lacks the `tenant_id` field in the insert (which is `NOT NULL` with no default). This would cause a silent crash on insert.
+
+2. **The `emailData.from` field is an object, not a string** -- Resend's `email.received` webhook can return `from` as either a string or an object like `"Mae Montejo <mae.montejo@gmail.com>"` or `{name: "...", address: "..."}`. The `from_address` column is `text NOT NULL`. If this fails, the entire function crashes. The same issue could apply to `to` and `cc` addresses.
+
+3. **Unhandled crash that bypasses the try/catch** -- The single try/catch block can miss certain Deno runtime errors that terminate the process.
 
 ## The Fix
 
-**File:** `src/hooks/useGlobalSearch.ts`
+### File: `supabase/functions/process-candidate-reply-webhook/index.ts`
 
-Add explicit tenant_id filtering to all three search functions, following the same pattern used throughout the codebase (e.g., `useAnalyticsMetrics`, `useJobAnalyticsMetrics`):
+**1. Add granular logging at every step** -- After each database query and before each operation, log the result so we can always see exactly where things fail.
 
-1. **Fetch tenant_id first** -- Before running any searches, query the `members` table to get the current user's `tenant_id` (same pattern as `useTenant.ts`)
+**2. Add a `parseEmailAddress` helper** -- Safely extract a string email from whatever format Resend sends (string, object with `.address`, or RFC 5322 format like `"Name <email>"`).
 
-2. **Filter jobs by tenant_id** -- Add `.eq('tenant_id', tenantId)` to both the count and results queries in `searchJobs`
+**3. Wrap each database operation in individual try/catch** -- Instead of one big try/catch, protect each query independently so one failure doesn't mask the location of the crash.
 
-3. **Filter candidates by tenant_id** -- Add `.eq('tenant_id', tenantId)` to both the count and results queries in `searchCandidates`
+**4. Add defensive `tenant_id` handling** -- If tenant_id is missing, log it clearly and bail early with a meaningful message.
 
-4. **Filter sourcing_projects by tenant_id** -- Add `.eq('tenant_id', tenantId)` to both the count and results queries in `searchSourcingProjects`
+**5. Force redeployment** -- The code changes will trigger Lovable's auto-deploy, ensuring the latest version (with `tenant_id` support) is running.
 
-5. **Skip search if no tenant context** -- If tenant_id cannot be resolved (edge case), return empty results rather than leaking data
+### Technical Changes
 
-### Technical Detail
+```
+process-candidate-reply-webhook/index.ts
+|-- Add parseEmailAddress() helper to safely extract email strings
+|-- Add logging after createClient (line ~217)
+|-- Add logging after association query (line ~228)
+|-- Add logging after member query (line ~256)
+|-- Add logging after duplicate check (line ~279)
+|-- Wrap insert in its own try/catch with detailed error logging
+|-- Parse emailData.from through parseEmailAddress() before insert
+|-- Parse to/cc arrays through parseEmailAddress() before insert
+```
 
-The hook will:
-- Accept the Supabase `user` object (from `useAuth`) as context
-- Run a one-time query to resolve `tenant_id` from the `members` table
-- Pass `tenantId` into each search function
-- All 6 database queries (3 counts + 3 result sets) will include `.eq('tenant_id', tenantId)`
-- Platform admins will see only their own tenant's data in search (consistent with the platform's tenant isolation enforcement principle documented in the architecture)
+### No Other Files Change
 
-### Components that consume this hook (no changes needed)
-- `GlobalSearchBar.tsx` -- dropdown search
-- `SearchResultsDialog.tsx` -- full results dialog
-
-Both consume `useGlobalSearch` and will automatically benefit from the fix without any changes.
+The `useEmailLogs.ts` hook correctly queries for all emails including `direction = 'received'`. Once the webhook actually inserts the rows, they will appear automatically in the email feed. The Realtime subscription in the hook will also pick up new inserts.
 
