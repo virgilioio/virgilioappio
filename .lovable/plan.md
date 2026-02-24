@@ -1,82 +1,48 @@
 
 
-# Fix: Inbound Email Sync is Silently Failing
+# Fix: Gmail Sync Failing Due to NULL organization_id
 
-## What I Found
+## The Real Problem
 
-There are **two critical bugs** preventing inbound emails from appearing, plus an architectural gap.
+You're right -- `organization_id` in this context means "job folder," NOT tenant. The `user_mail_identities` table correctly only has `tenant_id` (no `organization_id`), because email accounts belong to the tenant/workspace, not to a specific job folder.
 
-### Bug 1 (CRITICAL): Gmail Sync Upsert is Silently Failing
-
-The Postgres logs show this error repeating every sync cycle:
-```
-ERROR: there is no unique or exclusion constraint matching the ON CONFLICT specification
-```
-
-The `sync-gmail-messages` function tries to upsert with:
-```js
-onConflict: 'mail_identity_id,provider_message_id'
-```
-
-But the unique index on `email_logs` is a **partial index**:
-```sql
-CREATE UNIQUE INDEX idx_email_logs_identity_provider_unique
-  ON email_logs (mail_identity_id, provider_message_id)
-  WHERE mail_identity_id IS NOT NULL AND provider_message_id IS NOT NULL;
-```
-
-Postgres's `ON CONFLICT` clause does **not work with partial unique indexes** unless the WHERE clause is specified -- and Supabase's JS client has no way to pass that. This means **every single upsert fails**, so no synced emails (sent or received) are being stored anymore. This is a silent data loss bug.
-
-### Bug 2: Resend Webhook Not Receiving Replies
-
-The `process-candidate-reply-webhook` edge function logs show only "shutdown" events -- no incoming webhook calls at all. The `jc_*@ingest.gogio.io` address relies on Resend's inbound email processing, which may not be configured or the MX records for `ingest.gogio.io` may not point to Resend. This is an infrastructure/DNS issue outside the codebase.
-
-### How Other Platforms Handle This
-
-Platforms like Greenhouse, Lever, and Ashby primarily rely on **Gmail/OAuth API sync** (exactly what you have), not inbound webhooks. The Gmail sync approach is the correct one -- it just needs to work. The Resend webhook path is a nice backup for non-Gmail providers but shouldn't be the primary mechanism.
+The edge function sets `organization_id: identity.organization_id`, but that field doesn't exist on `user_mail_identities`, so it's always `undefined`. The `email_logs` table has `organization_id` as NOT NULL, causing every upsert to fail with a constraint violation.
 
 ## The Fix
 
-### Step 1: Database Migration -- Replace Partial Index with Proper Unique Constraint
+### Step 1: Database Migration -- Make organization_id nullable on email_logs
 
-Drop the partial unique index and the redundant non-unique index, then create a proper unique constraint that Postgres's ON CONFLICT can use:
+Synced emails don't necessarily belong to a specific job folder at sync time. The `organization_id` can be populated later when the email is matched to a candidate (who belongs to a job folder). Making it nullable is the correct approach.
 
 ```sql
--- Drop the broken partial unique index
-DROP INDEX IF EXISTS idx_email_logs_identity_provider_unique;
-
--- Drop the redundant non-unique index (same columns)
-DROP INDEX IF EXISTS idx_email_logs_identity_provider_id;
-
--- Create a proper unique constraint (not partial)
--- Both columns are nullable, so NULLs won't conflict (SQL standard)
 ALTER TABLE email_logs
-  ADD CONSTRAINT uq_email_logs_identity_provider
-  UNIQUE (mail_identity_id, provider_message_id);
+  ALTER COLUMN organization_id DROP NOT NULL;
 ```
 
-This works because SQL treats NULL as distinct from other NULLs in unique constraints, so rows without `mail_identity_id` (e.g., from the Resend webhook path) won't conflict.
+### Step 2: Edge Function Update -- Remove the broken reference
 
-### Step 2: Edge Function Update -- `sync-gmail-messages`
+In `supabase/functions/sync-gmail-messages/index.ts`, remove the reference to `identity.organization_id` (which doesn't exist) and stop setting `organization_id` in the email upsert. The `tenant_id` from the identity is sufficient for isolation. If a candidate match is found, the candidate's `organization_id` can optionally be applied.
 
-No code changes needed in the edge function itself. The `onConflict: 'mail_identity_id,provider_message_id'` will start working once the proper constraint exists. The function should be redeployed to pick up any cached state.
+Changes:
+- Remove `organization_id: identity.organization_id` from the emailData object (line 376)
+- In the candidate matching section, when a candidate is found, also copy their `organization_id` to the email log
+- Remove `identity.organization_id` from `findCandidateByEmails` calls (it was always undefined anyway)
 
-### Step 3 (Optional): Trigger a Manual Re-sync
+### Step 3: Data fix -- Reset historyId to force re-sync
 
-After the constraint fix, clicking "Refresh" in the email history should successfully sync and store the reply from `allan.rodriguez.90@gmail.com` (since it will appear in `allan@virgilio.tech`'s Gmail inbox via the History API or a fresh full sync).
+Use the data tool to set `history_id = NULL` on the `allan@virgilio.tech` identity so the next sync does a full 7-day pull and catches the missed reply.
 
 ## Summary
 
 ```text
-Root Cause          Impact                           Fix
------------------   -------------------------------- -------------------------
-Partial unique      All Gmail sync upserts fail       Replace with proper
-index on            silently -- no emails stored      UNIQUE constraint
-email_logs
+Root Cause                          Fix
+----------------------------------  ----------------------------------
+identity.organization_id is         Make email_logs.organization_id
+undefined (field doesn't exist      nullable, remove broken reference
+on user_mail_identities)            from edge function
 
-Resend webhook      jc_* ingest emails never arrive   Infrastructure/DNS issue
-not receiving       at the webhook                    (separate from this fix)
+historyId already past the          Reset history_id to NULL to
+reply timestamp                     force full re-sync
 ```
 
-One database migration, zero code changes. After this, Gmail sync will correctly store both sent and received emails.
-
+Two changes: one DB migration (make column nullable), one edge function update (remove nonexistent field reference), one data update (reset historyId).
