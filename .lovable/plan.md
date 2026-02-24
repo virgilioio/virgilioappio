@@ -1,54 +1,33 @@
 
 
-# Audit: Feb 20 Migration Fallout + Fix for New Bug
+# Fix: AI Draft Popover Closing Immediately on Interaction
 
-## Issues Found
+## Root Cause
 
-### Issue 1 (CRITICAL - Active Bug): Wrong column name in our fix migration
-The migration we **just applied** (`20260224214030`) references `js.name` on the `job_stages` table, but the actual column is `js.stage_name`. This means every time a candidate is moved between stages, the trigger will fail with:
-```
-ERROR: column js.name does not exist
-```
-This was introduced by our fix, not the Feb 20 migration itself.
+The `AIDraftPopover` uses a Radix `Popover` component, which portals its content to the document body. When the EmailComposer is rendered inside a Radix `Sheet` (as it is in `CandidateProfileSheet` and `IndependentCandidateProfileSheet`), the Sheet's modal behavior detects clicks on the portaled Popover content as "outside" clicks, causing the Popover to dismiss immediately.
 
-### Issue 2 (Low Priority): Orphan function `log_candidate_stage_activity()`
-The Feb 20 migration created a function called `log_candidate_stage_activity()` that:
-- Uses the wrong enum value `'stage_changed'` (same bug we just fixed in the other functions)
-- Is **not attached to any trigger** -- the actual trigger (`trg_log_candidate_stage_change`) calls `log_candidate_stage_change()`, not this function
-
-This is dead code. It doesn't cause errors, but it's confusing to have around.
-
-### Summary of Active Triggers on `job_candidate_associations`
-
-```text
-Trigger Name                        Event              Calls Function
--------------------------------     ----------------   ---------------------------
-trg_log_candidate_job_assignment    AFTER INSERT       log_candidate_job_assignment()     -- OK
-trg_log_candidate_stage_change      AFTER UPDATE       log_candidate_stage_change()       -- BROKEN (js.name)
-trg_log_candidate_status_change     AFTER UPDATE       log_candidate_status_change()      -- FIXED (just now)
-```
+This is a known interaction issue between nested Radix primitives (Popover inside Sheet/Dialog) when the inner component uses a portal.
 
 ## The Fix
 
-**Single database migration** that:
+**File:** `src/components/candidates/AIDraftPopover.tsx`
 
-1. Replaces `log_candidate_stage_change()` to use the correct column `js.stage_name` instead of `js.name`
-2. Drops the orphan function `log_candidate_stage_activity()` to clean up dead code
+Add `modal={true}` to the `Popover` component. This tells Radix to properly trap interactions within the popover, preventing the parent Sheet from intercepting clicks on the popover content.
 
-No frontend code changes needed.
+```tsx
+// Before
+<Popover open={open} onOpenChange={...}>
 
-## Technical Detail
-
-The fix changes two lines in the stage change function:
-```sql
--- Before (broken):
-COALESCE(jhs.custom_stage_name, js.name)
-
--- After (correct):
-COALESCE(jhs.custom_stage_name, js.stage_name)
+// After
+<Popover open={open} onOpenChange={...} modal={true}>
 ```
 
-And drops the unused function:
-```sql
-DROP FUNCTION IF EXISTS public.log_candidate_stage_activity() CASCADE;
-```
+This is a one-line change. No other files need modification.
+
+## Why This Works
+
+When `modal={true}`:
+- Radix adds a dismiss layer that properly captures pointer events
+- Clicks inside the popover content are no longer propagated to the parent Sheet's outside-click handler
+- The popover behaves as expected: clicks on badges, textarea, and buttons all work without dismissing
+
