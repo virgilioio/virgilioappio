@@ -339,6 +339,33 @@ serve(async (req) => {
 
     console.log('[Candidate Reply] Parsed from:', parsedFrom, 'to:', toAddrs.length, 'cc:', ccAddrs.length);
 
+    // Step 6b: Fetch full email content from Resend API
+    let bodyHtml: string | null = null;
+    let bodyText: string | null = null;
+
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
+    if (resendApiKey && emailData.email_id) {
+      try {
+        const emailRes = await fetch(
+          `https://api.resend.com/emails/${emailData.email_id}`,
+          { headers: { Authorization: `Bearer ${resendApiKey}` } }
+        );
+        if (emailRes.ok) {
+          const fullEmail = await emailRes.json();
+          bodyHtml = fullEmail.html || null;
+          bodyText = fullEmail.text || null;
+          console.log('[Candidate Reply] Fetched email body:',
+            bodyHtml ? `html=${bodyHtml.length}chars` : 'no html',
+            bodyText ? `text=${bodyText.length}chars` : 'no text');
+        } else {
+          console.error('[Candidate Reply] Resend API error:',
+            emailRes.status, await emailRes.text());
+        }
+      } catch (err) {
+        console.error('[Candidate Reply] Failed to fetch email body:', err);
+      }
+    }
+
     // Step 7: Insert email log
     let emailLog: any;
     try {
@@ -351,14 +378,14 @@ serve(async (req) => {
         to_addresses: toAddrs,
         cc_addresses: ccAddrs,
         subject: emailData.subject || '(No Subject)',
-        body_text: emailData.text || null,
-        body_html: emailData.html || null,
+        body_text: bodyText || emailData.text || null,
+        body_html: bodyHtml || emailData.html || null,
         status: 'delivered',
         received_at: new Date().toISOString(),
         candidate_id: association.candidate_id,
         job_id: association.job_id,
         rfc822_message_id: messageId || null,
-        snippet: emailData.text?.substring(0, 200) || null,
+        snippet: (bodyText || emailData.text)?.substring(0, 200) || null,
         thread_id: threading.threadId || null,
         in_reply_to: threading.inReplyTo || null,
         references_header: threading.references || null,
