@@ -1,35 +1,44 @@
 
 
-# Trigger AI Enrichment After Chrome Extension Resume Upload
+# Fix: Cross-Tenant Data Leakage in Global Search
 
-## What This Does
-After a resume is successfully uploaded via the Chrome extension, automatically trigger background AI enrichment to generate a profile summary and extract skills -- the same enrichment that already runs when candidates apply through the public form.
+## The Problem
 
-## Why
-Currently, resumes uploaded via the Chrome extension are stored but never analyzed by AI. This means candidates added from LinkedIn with attached resumes don't get the AI-generated profile summary or skills that candidates from other channels receive.
+The global search bar (`useGlobalSearch.ts`) queries the `jobs`, `candidates`, and `sourcing_projects` tables **without any tenant_id filtering**. It relies entirely on RLS policies for isolation. However, your account (platform admin) bypasses RLS tenant restrictions by design -- meaning the search returns data from **all tenants across the entire platform**. Even for non-admin users, explicit tenant filtering is a critical defense-in-depth requirement.
 
-## Implementation
+This affects all three search functions:
+- `searchJobs` -- no tenant filter
+- `searchCandidates` -- no tenant filter
+- `searchSourcingProjects` -- no tenant filter
 
-### Single file change: `supabase/functions/chrome-api-gateway/index.ts`
+## The Fix
 
-After the success log on line 713, before the return statement, add:
+**File:** `src/hooks/useGlobalSearch.ts`
 
-1. **PDF text extraction** -- Use a lightweight `TextDecoder` + regex approach to pull readable text from the raw PDF bytes (already available as `fileBytes`). This works for most text-based PDFs (including LinkedIn-generated ones).
+Add explicit tenant_id filtering to all three search functions, following the same pattern used throughout the codebase (e.g., `useAnalyticsMetrics`, `useJobAnalyticsMetrics`):
 
-2. **Fire-and-forget enrichment call** -- If meaningful text is extracted (more than 50 characters), invoke `enrich-candidate-profile` via `supabase.functions.invoke()` with the candidate ID and extracted text. This call is non-blocking -- the extension gets its response immediately.
+1. **Fetch tenant_id first** -- Before running any searches, query the `members` table to get the current user's `tenant_id` (same pattern as `useTenant.ts`)
 
-3. **Silent failure handling** -- If text extraction fails or yields too little text, we skip enrichment silently. No impact on the upload flow.
+2. **Filter jobs by tenant_id** -- Add `.eq('tenant_id', tenantId)` to both the count and results queries in `searchJobs`
+
+3. **Filter candidates by tenant_id** -- Add `.eq('tenant_id', tenantId)` to both the count and results queries in `searchCandidates`
+
+4. **Filter sourcing_projects by tenant_id** -- Add `.eq('tenant_id', tenantId)` to both the count and results queries in `searchSourcingProjects`
+
+5. **Skip search if no tenant context** -- If tenant_id cannot be resolved (edge case), return empty results rather than leaking data
 
 ### Technical Detail
 
-The PDF text extraction uses a simple approach:
-- Decode PDF bytes to string via `TextDecoder`
-- Extract text between PDF stream markers using regex
-- Clean up whitespace and non-printable characters
-- This avoids needing a full PDF parsing library in the edge function
+The hook will:
+- Accept the Supabase `user` object (from `useAuth`) as context
+- Run a one-time query to resolve `tenant_id` from the `members` table
+- Pass `tenantId` into each search function
+- All 6 database queries (3 counts + 3 result sets) will include `.eq('tenant_id', tenantId)`
+- Platform admins will see only their own tenant's data in search (consistent with the platform's tenant isolation enforcement principle documented in the architecture)
 
-The enrichment function (`enrich-candidate-profile`) returns 202 immediately and processes in the background using `EdgeRuntime.waitUntil()`, generating the AI profile summary and skills asynchronously.
+### Components that consume this hook (no changes needed)
+- `GlobalSearchBar.tsx` -- dropdown search
+- `SearchResultsDialog.tsx` -- full results dialog
 
-### No other files change
-The `enrich-candidate-profile` function already exists and handles everything from there.
+Both consume `useGlobalSearch` and will automatically benefit from the fix without any changes.
 
