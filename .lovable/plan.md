@@ -1,55 +1,36 @@
 
 
-# Fix: Candidate Reply Emails Not Being Stored
+# Fix: Global Search Returning 0 Results
 
 ## The Problem
 
-The `process-candidate-reply-webhook` edge function IS receiving webhook calls from Resend when candidates reply (confirmed in logs -- mae.montejo@gmail.com replied multiple times). The function successfully:
-- Verifies the webhook signature
-- Parses the email event
-- Extracts the `jc_` ingest code from recipients
+The `sourcing_projects` table does not have a `tenant_id` column. The recent tenant isolation fix added `.eq('tenant_id', tenantId)` to all three search functions, including sourcing projects. This causes a database error every time a search runs.
 
-But then it **crashes silently** -- zero logs appear after the ingest code extraction. No "Association not found", no "Threading:", no "Logged:", and critically, no error message either. The result: **422 sent emails in the database, 0 received emails.**
+Because all three searches execute inside a single `Promise.all` (line 108), the sourcing projects error rejects the entire promise -- **killing the jobs and candidates results too**. That's why you see 0 results for everything.
 
-## Root Cause Analysis
-
-The function dies between finding the ingest code (line 215) and the association query result (line 229+). There are two likely causes:
-
-1. **The deployed function is stale** -- Lovable auto-deploys edge functions, but if a past deployment failed silently, the running version may be an older build that lacks the `tenant_id` field in the insert (which is `NOT NULL` with no default). This would cause a silent crash on insert.
-
-2. **The `emailData.from` field is an object, not a string** -- Resend's `email.received` webhook can return `from` as either a string or an object like `"Mae Montejo <mae.montejo@gmail.com>"` or `{name: "...", address: "..."}`. The `from_address` column is `text NOT NULL`. If this fails, the entire function crashes. The same issue could apply to `to` and `cc` addresses.
-
-3. **Unhandled crash that bypasses the try/catch** -- The single try/catch block can miss certain Deno runtime errors that terminate the process.
+The Postgres logs confirm this with dozens of repeated errors:
+```
+ERROR: column sourcing_projects.tenant_id does not exist
+```
 
 ## The Fix
 
-### File: `supabase/functions/process-candidate-reply-webhook/index.ts`
+**File:** `src/hooks/useGlobalSearch.ts`
 
-**1. Add granular logging at every step** -- After each database query and before each operation, log the result so we can always see exactly where things fail.
+1. **Make `searchSourcingProjects` resilient** -- Remove the `.eq('tenant_id', tenantId)` filter from sourcing projects queries since the column doesn't exist. Instead, filter by the `created_by` user ID (the owner of the project) to maintain isolation without requiring a column that doesn't exist on the table.
 
-**2. Add a `parseEmailAddress` helper** -- Safely extract a string email from whatever format Resend sends (string, object with `.address`, or RFC 5322 format like `"Name <email>"`).
+2. **Wrap each search in its own try/catch** -- So that if one search type fails, the other two still return results. Change `Promise.all` to `Promise.allSettled` pattern or individual catches, ensuring a single failure never kills the entire search.
 
-**3. Wrap each database operation in individual try/catch** -- Instead of one big try/catch, protect each query independently so one failure doesn't mask the location of the crash.
+### Technical Detail
 
-**4. Add defensive `tenant_id` handling** -- If tenant_id is missing, log it clearly and bail early with a meaningful message.
+For sourcing projects tenant isolation, we'll use the `created_by` column (which links to the user who created the project) combined with a subquery approach: query the `members` table to get all user IDs belonging to the same tenant, then filter sourcing projects by `created_by` being in that set. Alternatively, if the table has no reliable tenant link, we simply wrap it in a try/catch and let RLS handle isolation for non-admin users, while logging clearly when it fails.
 
-**5. Force redeployment** -- The code changes will trigger Lovable's auto-deploy, ensuring the latest version (with `tenant_id` support) is running.
-
-### Technical Changes
+The safer and simpler approach: wrap each search in its own catch so failures are isolated, and remove the non-existent `tenant_id` filter from sourcing projects. For sourcing projects specifically, filter by `created_by` equal to the current user's ID as a pragmatic isolation measure until a `tenant_id` column is added to that table.
 
 ```
-process-candidate-reply-webhook/index.ts
-|-- Add parseEmailAddress() helper to safely extract email strings
-|-- Add logging after createClient (line ~217)
-|-- Add logging after association query (line ~228)
-|-- Add logging after member query (line ~256)
-|-- Add logging after duplicate check (line ~279)
-|-- Wrap insert in its own try/catch with detailed error logging
-|-- Parse emailData.from through parseEmailAddress() before insert
-|-- Parse to/cc arrays through parseEmailAddress() before insert
+searchJobs(...)        --> own try/catch, tenant_id filter (works)
+searchCandidates(...)  --> own try/catch, tenant_id filter (works)  
+searchSourcingProjects(...) --> own try/catch, filter by created_by instead
 ```
 
-### No Other Files Change
-
-The `useEmailLogs.ts` hook correctly queries for all emails including `direction = 'received'`. Once the webhook actually inserts the rows, they will appear automatically in the email feed. The Realtime subscription in the hook will also pick up new inserts.
-
+No other files need changes.
