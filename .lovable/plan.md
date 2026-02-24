@@ -1,40 +1,28 @@
 
 
-# Fix: Email History Feed Horizontal Scroll Issue
+# Fix: "Invalid input value for enum activity_type: status_changed"
 
-## The Problem
+## What Happened
 
-The email history feed inside the candidate profile sheet generates a horizontal scrollbar when the panel gets narrow. The `ScrollArea` component (from Radix) applies `min-width: fit-content` to its viewport, which prevents the email cards from shrinking to fit the available width. Instead, they maintain their natural width and force horizontal scrolling.
+A recent database migration (from Feb 20) created a trigger on the `job_candidate_associations` table that fires whenever a candidate's status or stage changes. The trigger calls `log_activity()` to record the event, but it uses **incorrect enum values**:
+
+| Used in trigger | Correct enum value |
+|---|---|
+| `'status_changed'` | `'candidate_status_changed'` |
+| `'stage_changed'` | `'candidate_stage_changed'` |
+
+Because `'status_changed'` is not a valid value in the `activity_type` enum, Postgres rejects the insert with error code `22P02`, which crashes the entire unreject/status-change operation.
+
+## Why It Was Caused
+
+The migration that created this trigger was written with shortened enum names (`status_changed`, `stage_changed`) instead of the full prefixed names (`candidate_status_changed`, `candidate_stage_changed`) that were established in the original enum definition. This is a simple naming mismatch -- the trigger was never tested against the actual enum values.
 
 ## The Fix
 
-**Files to change:**
+A single database migration to replace the trigger function with corrected enum values:
 
-### 1. `src/components/candidates/CandidateProfileSheet.tsx` (line ~1588)
+- Change `'status_changed'::activity_type` to `'candidate_status_changed'::activity_type`
+- Change `'stage_changed'::activity_type` to `'candidate_stage_changed'::activity_type`
 
-Replace the `ScrollArea` wrapper with a simple `div` that has `overflow-y: auto` and constrained width. The email history only needs vertical scrolling -- horizontal scrolling is never desired here.
-
-```
-Before:  <ScrollArea className="h-[500px]">
-           <div className="p-6">
-             <EmailHistoryList ... />
-           </div>
-         </ScrollArea>
-
-After:   <div className="h-[500px] overflow-y-auto">
-           <div className="p-6">
-             <EmailHistoryList ... />
-           </div>
-         </div>
-```
-
-### 2. `src/components/candidates/IndependentCandidateProfileSheet.tsx` (line ~810)
-
-Same change -- replace `ScrollArea` with a plain scrollable div for the email history section.
-
-### 3. `src/components/candidates/EmailHistoryCard.tsx`
-
-Add `overflow-hidden` and `min-w-0` to the root `Card` element to ensure email content (long addresses, URLs, HTML bodies) never forces the card wider than its container. The `SafeHtml` prose container already has overflow constraints, but the card itself needs the same.
-
-These are small, surgical CSS changes -- no logic changes needed.
+No frontend code changes needed -- the error originates entirely in the database trigger.
 
