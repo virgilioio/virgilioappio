@@ -339,30 +339,63 @@ serve(async (req) => {
 
     console.log('[Candidate Reply] Parsed from:', parsedFrom, 'to:', toAddrs.length, 'cc:', ccAddrs.length);
 
-    // Step 6b: Fetch full email content from Resend API
+    // Step 6b: Filter out internal sender copies (self-sent BCC echoes)
+    const parsedFromLower = parsedFrom.toLowerCase();
+    try {
+      const { data: internalSender } = await supabase
+        .from('user_mail_identities')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .ilike('email_address', parsedFromLower)
+        .maybeSingle();
+
+      if (internalSender) {
+        console.log('[Candidate Reply] Ignoring internal sender copy from:', parsedFrom);
+        return new Response(JSON.stringify({ status: 'ignored', reason: 'internal_sender_copy' }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } catch (err: any) {
+      console.error('[Candidate Reply] Internal sender check error (continuing):', err?.message || err);
+    }
+
+    // Step 6c: Fetch full email content from Resend receiving API with retry
     let bodyHtml: string | null = null;
     let bodyText: string | null = null;
 
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
     if (resendApiKey && emailData.email_id) {
-      try {
-        const emailRes = await fetch(
-          `https://api.resend.com/emails/${emailData.email_id}`,
-          { headers: { Authorization: `Bearer ${resendApiKey}` } }
-        );
-        if (emailRes.ok) {
-          const fullEmail = await emailRes.json();
-          bodyHtml = fullEmail.html || null;
-          bodyText = fullEmail.text || null;
-          console.log('[Candidate Reply] Fetched email body:',
-            bodyHtml ? `html=${bodyHtml.length}chars` : 'no html',
-            bodyText ? `text=${bodyText.length}chars` : 'no text');
-        } else {
-          console.error('[Candidate Reply] Resend API error:',
-            emailRes.status, await emailRes.text());
+      const delays = [0, 500, 1500]; // retry delays in ms
+      for (let attempt = 0; attempt < delays.length; attempt++) {
+        if (delays[attempt] > 0) {
+          await new Promise(r => setTimeout(r, delays[attempt]));
         }
-      } catch (err) {
-        console.error('[Candidate Reply] Failed to fetch email body:', err);
+        try {
+          const emailRes = await fetch(
+            `https://api.resend.com/emails/receiving/${emailData.email_id}`,
+            { headers: { Authorization: `Bearer ${resendApiKey}` } }
+          );
+          if (emailRes.ok) {
+            const fullEmail = await emailRes.json();
+            bodyHtml = fullEmail.html || null;
+            bodyText = fullEmail.text || null;
+            console.log(`[Candidate Reply] Fetched email body (attempt ${attempt + 1}):`,
+              bodyHtml ? `html=${bodyHtml.length}chars` : 'no html',
+              bodyText ? `text=${bodyText.length}chars` : 'no text');
+            break; // success
+          } else {
+            const errText = await emailRes.text();
+            console.error(`[Candidate Reply] Resend receiving API error (attempt ${attempt + 1}/${delays.length}):`,
+              emailRes.status, errText, 'email_id:', emailData.email_id);
+            if (emailRes.status !== 404 || attempt === delays.length - 1) {
+              break; // only retry on 404 (not yet indexed)
+            }
+          }
+        } catch (err) {
+          console.error(`[Candidate Reply] Failed to fetch email body (attempt ${attempt + 1}):`, err);
+          if (attempt === delays.length - 1) break;
+        }
       }
     }
 
