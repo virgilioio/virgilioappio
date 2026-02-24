@@ -832,7 +832,6 @@ async function handleEnrich(body: any, user: any, member: any, corsHeaders: Reco
     },
     body: JSON.stringify({
       details: [{ linkedin_url }],
-      reveal_phone_number: true,
     })
   });
 
