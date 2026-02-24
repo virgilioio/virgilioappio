@@ -143,28 +143,21 @@ function extractEmailBody(message: GoogleMessage): { text: string; html: string 
 }
 
 // Find candidate by email - checks multiple emails, returns first match
-// Uses tenant_id for scoping, with organization_id as optional additional filter
+// Uses tenant_id for scoping
 async function findCandidateByEmails(
   supabase: any, 
   emails: string[], 
-  tenantId: string,
-  organizationId?: string
-): Promise<string | null> {
+  tenantId: string
+): Promise<{ candidateId: string; organizationId: string | null } | null> {
   for (const email of emails) {
     if (!email) continue;
     
-    let query = supabase
+    const { data, error } = await supabase
       .from('candidates')
-      .select('id')
+      .select('id, organization_id')
       .eq('tenant_id', tenantId)
-      .ilike('email', email);
-    
-    // Add organization filter if provided
-    if (organizationId) {
-      query = query.eq('organization_id', organizationId);
-    }
-    
-    const { data, error } = await query.maybeSingle();
+      .ilike('email', email)
+      .maybeSingle();
     
     if (error) {
       console.log(`[Gmail Sync] Error finding candidate by email ${email}:`, error.message);
@@ -172,7 +165,7 @@ async function findCandidateByEmails(
     }
     
     if (data?.id) {
-      return data.id;
+      return { candidateId: data.id, organizationId: data.organization_id || null };
     }
   }
   return null;
@@ -373,7 +366,6 @@ const handler = async (req: Request): Promise<Response> => {
         // CRITICAL: provider_message_id = Gmail msg.id (NOT RFC822 Message-ID)
         const emailData: Record<string, any> = {
           user_id: userId,
-          organization_id: identity.organization_id,
           tenant_id: identity.tenant_id,
           mail_identity_id: identity.id,
           direction: direction,
@@ -429,31 +421,33 @@ const handler = async (req: Request): Promise<Response> => {
         // Candidate matching (after successful insert/update)
         // Do NOT block ingestion on candidate matching failure
         try {
-          let candidateId: string | null = null;
+          let match: { candidateId: string; organizationId: string | null } | null = null;
           
           if (direction === 'received') {
             // Inbound: candidate is the sender
-            candidateId = await findCandidateByEmails(
+            match = await findCandidateByEmails(
               supabase, 
               [fromEmail], 
-              identity.tenant_id,
-              identity.organization_id
+              identity.tenant_id
             );
           } else {
             // Outbound: candidate is in To (primary), then Cc
-            candidateId = await findCandidateByEmails(
+            match = await findCandidateByEmails(
               supabase, 
               [...toEmails, ...ccEmails], 
-              identity.tenant_id,
-              identity.organization_id
+              identity.tenant_id
             );
           }
 
-          if (candidateId) {
-            // Update the email_log with candidate_id
+          if (match) {
+            // Update the email_log with candidate_id and organization_id (job folder)
+            const updateData: Record<string, any> = { candidate_id: match.candidateId };
+            if (match.organizationId) {
+              updateData.organization_id = match.organizationId;
+            }
             await supabase
               .from('email_logs')
-              .update({ candidate_id: candidateId })
+              .update(updateData)
               .eq('mail_identity_id', identity.id)
               .eq('provider_message_id', msg.id);
             

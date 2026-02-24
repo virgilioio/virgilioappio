@@ -1459,7 +1459,7 @@ export type Database = {
           job_id: string | null
           mail_identity_id: string | null
           opened_at: string | null
-          organization_id: string
+          organization_id: string | null
           provider_message_id: string | null
           raw_message_data: Json | null
           received_at: string | null
@@ -1496,7 +1496,7 @@ export type Database = {
           job_id?: string | null
           mail_identity_id?: string | null
           opened_at?: string | null
-          organization_id: string
+          organization_id?: string | null
           provider_message_id?: string | null
           raw_message_data?: Json | null
           received_at?: string | null
@@ -1533,7 +1533,7 @@ export type Database = {
           job_id?: string | null
           mail_identity_id?: string | null
           opened_at?: string | null
-          organization_id?: string
+          organization_id?: string | null
           provider_message_id?: string | null
           raw_message_data?: Json | null
           received_at?: string | null
