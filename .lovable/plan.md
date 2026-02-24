@@ -1,28 +1,57 @@
 
 
-# Show Currency and Period for Salary Fields in Application Responses
+# Enable Contact Enrichment via "Fetch Contact" Button in Chrome Extension
 
-## Problem
-When a candidate submits a salary value through a job application form, the application response only stores the raw numeric value. The currency (e.g., USD, EUR) and period (e.g., annually, monthly) are configured on the job posting's field definition (`job_posting_fields.field_config`), but the candidate response viewer doesn't fetch or display them.
+## Overview
+When the user clicks "Fetch Contact" in the Chrome extension, it currently only scrapes the LinkedIn DOM for contact info (which rarely works). We'll add a server-side fallback that queries our enrichment provider through the GoGio API to retrieve email and phone numbers using the candidate's LinkedIn URL. This consumes 1 collect credit per successful lookup.
 
-## Solution
-Enhance `CandidateApplicationResponses.tsx` to fetch the field configuration from `job_posting_fields` for salary (and location) type responses, then display the currency symbol and period alongside the salary value.
+## User Experience
+1. User clicks "Fetch Contact" on a LinkedIn profile
+2. Step 1 (free): DOM scrape attempts to find contact info from LinkedIn's contact modal
+3. Step 2 (1 credit): If DOM scrape finds nothing and a LinkedIn URL is available, the extension calls the GoGio API to fetch contact info
+4. Toast messages:
+   - Success: "Found 2 contact fields" (same as today)
+   - No match: "No contact info found for this profile"
+   - No credits: "Contact lookup limit reached for this month"
+   - No LinkedIn URL: "LinkedIn URL required to fetch contact info"
 
-## Technical Changes
+## Changes
 
-### File: `src/components/candidates/CandidateApplicationResponses.tsx`
+### 1. GoGio Backend -- Add `enrich` action to Chrome API Gateway
+**File:** `supabase/functions/chrome-api-gateway/index.ts`
 
-1. **Fetch field configs from `job_posting_fields`**: After fetching responses, collect distinct `posting_id` values, then query `job_posting_fields` for fields matching those posting IDs and field names that are of type `salary` or `location`. Store a lookup map of `field_name -> field_config`.
+- Add `APOLLO_API_KEY` and `APOLLO_BULK_MATCH_URL` constants at the top (internal only, no user-facing references)
+- Add `checkCollectCredit` and `incrementCollectCredits` helper functions (ported from `enrich-by-linkedin`)
+- Add `handleEnrich` handler that:
+  - Accepts `{ linkedin_url }` from the extension
+  - Validates the LinkedIn URL is present
+  - Checks credit availability for the user's tenant
+  - Calls the enrichment provider's bulk_match API with the LinkedIn URL
+  - On success: increments credits, returns `{ success, email, phone, contact_phones, contact_emails, title, company, credits_used, credits_remaining }`
+  - Does NOT save to DB -- the extension just populates form fields (candidate isn't created yet)
+- Add `'enrich'` case to the main router switch and `valid_actions` list
 
-2. **Update `formatFieldValue` for salary type**: When `field_type === 'salary'`, look up the field config to get the currency and period, then render the value with the currency symbol (using the existing `CURRENCY_SYMBOLS` map) and the period badge -- e.g., "$75,000 annually" instead of just "75000".
+### 2. Chrome Extension API Client -- Add `enrichContact` method
+**File (Chrome Helper Hub):** `src/lib/api.ts`
 
-3. **Pass field configs into the render logic**: Thread the config lookup map through to the display, so each salary response row can access its associated currency and period.
+- Add `EnrichContactResponse` interface with `success`, `email`, `phone`, `credits_used`, `credits_remaining`, `error`, `error_code` fields
+- Add `enrichContact(linkedinUrl: string)` method to `ApiClient` class that POSTs to `action=enrich`
 
-### Display Format
-A salary response will render as:
-- Currency symbol badge (e.g., `$`) + formatted number + period badge (e.g., `Annually`)
-- Matching the same visual pattern used in the public application form's salary field renderer
+### 3. Chrome Extension UI -- Update "Fetch Contact" button logic
+**File (Chrome Helper Hub):** `src/components/extension/CandidateForm.tsx`
 
-### No Database Changes Required
-All data already exists -- `candidate_application_responses` has `posting_id`, and `job_posting_fields` has `field_config` with `currency` and `period`. We just need to join them at query time.
+Update the `onClick` handler (lines 593-619) to:
+1. First try DOM scrape (existing logic, free)
+2. If DOM scrape returns no email and no phone, and `linkedinUrl` is available:
+   - Call `apiClient.enrichContact(linkedinUrl)`
+   - Populate email and phone fields from the response
+   - Show appropriate toast based on result
+3. Handle error cases:
+   - `CREDITS_EXHAUSTED` -> toast.warning("Contact lookup limit reached for this month")
+   - Other errors -> toast.error("Failed to fetch contact info")
+
+## Credit Impact
+- Each successful contact lookup consumes 1 collect credit from the tenant's monthly pool
+- The free DOM scrape is always attempted first to avoid unnecessary credit usage
+- Credit exhaustion is handled gracefully with a clear user message
 
