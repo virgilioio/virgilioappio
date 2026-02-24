@@ -1,37 +1,35 @@
 
 
-# Fix: Chrome Extension "Fetch Contact" 502 Error
+# Trigger AI Enrichment After Chrome Extension Resume Upload
 
-## Root Cause
-The edge function logs show the exact error from the enrichment provider:
+## What This Does
+After a resume is successfully uploaded via the Chrome extension, automatically trigger background AI enrichment to generate a profile summary and extract skills -- the same enrichment that already runs when candidates apply through the public form.
 
-```
-400 {"error":"Please add a valid 'webhook_url' parameter when using 'reveal_phone_number'"}
-```
+## Why
+Currently, resumes uploaded via the Chrome extension are stored but never analyzed by AI. This means candidates added from LinkedIn with attached resumes don't get the AI-generated profile summary or skills that candidates from other channels receive.
 
-The `handleEnrich` function in `chrome-api-gateway` sends `reveal_phone_number: true` in the API request, but does not include the required `webhook_url` parameter. The provider rejects the request with a 400, which the gateway forwards as a 502 to the extension.
+## Implementation
 
-## Fix
-**File:** `supabase/functions/chrome-api-gateway/index.ts` (line 835)
+### Single file change: `supabase/functions/chrome-api-gateway/index.ts`
 
-Remove `reveal_phone_number: true` from the request body. The Chrome extension enrichment flow only needs email and basic phone data (which are returned by default without the phone reveal flag). The `reveal_phone_number` option is an async flow that requires a webhook callback -- overkill for this use case.
+After the success log on line 713, before the return statement, add:
 
-**Before:**
-```typescript
-body: JSON.stringify({
-  details: [{ linkedin_url }],
-  reveal_phone_number: true,
-})
-```
+1. **PDF text extraction** -- Use a lightweight `TextDecoder` + regex approach to pull readable text from the raw PDF bytes (already available as `fileBytes`). This works for most text-based PDFs (including LinkedIn-generated ones).
 
-**After:**
-```typescript
-body: JSON.stringify({
-  details: [{ linkedin_url }],
-})
-```
+2. **Fire-and-forget enrichment call** -- If meaningful text is extracted (more than 50 characters), invoke `enrich-candidate-profile` via `supabase.functions.invoke()` with the candidate ID and extracted text. This call is non-blocking -- the extension gets its response immediately.
 
-This is a one-line removal. The enrichment provider already returns any available phone numbers in its standard response -- the `reveal_phone_number` flag is only needed for requesting additional phone number discovery via webhook, which isn't relevant for the extension's "populate form fields" use case.
+3. **Silent failure handling** -- If text extraction fails or yields too little text, we skip enrichment silently. No impact on the upload flow.
 
-## No Other Changes Needed
-The rest of the handler (credit checks, response parsing, error handling) is correct. This single line was causing the 400 rejection.
+### Technical Detail
+
+The PDF text extraction uses a simple approach:
+- Decode PDF bytes to string via `TextDecoder`
+- Extract text between PDF stream markers using regex
+- Clean up whitespace and non-printable characters
+- This avoids needing a full PDF parsing library in the edge function
+
+The enrichment function (`enrich-candidate-profile`) returns 202 immediately and processes in the background using `EdgeRuntime.waitUntil()`, generating the AI profile summary and skills asynchronously.
+
+### No other files change
+The `enrich-candidate-profile` function already exists and handles everything from there.
+
