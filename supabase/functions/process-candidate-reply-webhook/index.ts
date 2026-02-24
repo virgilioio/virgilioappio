@@ -7,6 +7,28 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, svix-id, svix-timestamp, svix-signature',
 };
 
+// Safely extract a string email address from various Resend formats
+function parseEmailAddress(input: any): string {
+  if (!input) return 'unknown@unknown.com';
+  if (typeof input === 'string') {
+    // Handle RFC 5322 format: "Name <email@example.com>"
+    const match = input.match(/<([^>]+)>/);
+    if (match) return match[1];
+    return input.trim();
+  }
+  if (typeof input === 'object') {
+    return input.address || input.email || input.value || JSON.stringify(input);
+  }
+  return String(input);
+}
+
+// Parse an array of addresses safely
+function parseEmailAddresses(input: any): string[] {
+  if (!input) return [];
+  const list = Array.isArray(input) ? input : [input];
+  return list.map((addr: any) => parseEmailAddress(addr)).filter(Boolean);
+}
+
 // Verify Svix webhook signature manually
 async function verifyWebhookSignature(
   payload: string,
@@ -99,46 +121,50 @@ async function findOriginalThread(
   candidateId: string,
   jobId: string
 ): Promise<{ threadId: string | null; inReplyTo: string | null; references: string | null }> {
-  // Strategy 1: Match by In-Reply-To header against provider_message_id or rfc822_message_id
-  if (inReplyToHeader) {
-    const cleanId = inReplyToHeader.replace(/[<>]/g, '').trim();
-    
-    const { data: byProvider } = await supabase
+  try {
+    // Strategy 1: Match by In-Reply-To header
+    if (inReplyToHeader) {
+      const cleanId = inReplyToHeader.replace(/[<>]/g, '').trim();
+      
+      const { data: byProvider } = await supabase
+        .from('email_logs')
+        .select('thread_id, provider_message_id, rfc822_message_id')
+        .eq('candidate_id', candidateId)
+        .eq('job_id', jobId)
+        .or(`rfc822_message_id.eq.${cleanId},rfc822_message_id.eq.<${cleanId}>`)
+        .order('sent_at', { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (byProvider?.thread_id) {
+        return {
+          threadId: byProvider.thread_id,
+          inReplyTo: cleanId,
+          references: referencesHeader || cleanId,
+        };
+      }
+    }
+
+    // Strategy 2: Find the most recent sent email
+    const { data: latestSent } = await supabase
       .from('email_logs')
       .select('thread_id, provider_message_id, rfc822_message_id')
       .eq('candidate_id', candidateId)
       .eq('job_id', jobId)
-      .or(`rfc822_message_id.eq.${cleanId},rfc822_message_id.eq.<${cleanId}>`)
+      .eq('direction', 'sent')
       .order('sent_at', { ascending: false, nullsFirst: false })
       .limit(1)
       .maybeSingle();
-    
-    if (byProvider?.thread_id) {
+
+    if (latestSent?.thread_id) {
       return {
-        threadId: byProvider.thread_id,
-        inReplyTo: cleanId,
-        references: referencesHeader || cleanId,
+        threadId: latestSent.thread_id,
+        inReplyTo: latestSent.rfc822_message_id || latestSent.provider_message_id || null,
+        references: referencesHeader || latestSent.rfc822_message_id || null,
       };
     }
-  }
-
-  // Strategy 2: Find the most recent sent email in this candidate+job pair
-  const { data: latestSent } = await supabase
-    .from('email_logs')
-    .select('thread_id, provider_message_id, rfc822_message_id')
-    .eq('candidate_id', candidateId)
-    .eq('job_id', jobId)
-    .eq('direction', 'sent')
-    .order('sent_at', { ascending: false, nullsFirst: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (latestSent?.thread_id) {
-    return {
-      threadId: latestSent.thread_id,
-      inReplyTo: latestSent.rfc822_message_id || latestSent.provider_message_id || null,
-      references: referencesHeader || latestSent.rfc822_message_id || null,
-    };
+  } catch (err) {
+    console.error('[Candidate Reply] Threading lookup error:', err);
   }
 
   return { threadId: null, inReplyTo: null, references: null };
@@ -193,7 +219,7 @@ serve(async (req) => {
     }
 
     const emailData = payload.data;
-    console.log('[Candidate Reply] From:', emailData.from, 'Subject:', emailData.subject);
+    console.log('[Candidate Reply] From:', JSON.stringify(emailData.from), 'Subject:', emailData.subject);
 
     if (isCalendarInvite(emailData)) {
       return new Response(JSON.stringify({ status: 'ignored', reason: 'calendar' }), {
@@ -214,22 +240,45 @@ serve(async (req) => {
 
     console.log('[Candidate Reply] Ingest code:', ingestCode, 'found in:', foundIn);
 
+    // Step 1: Create Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    console.log('[Candidate Reply] Supabase client created');
 
-    const { data: association, error: assocErr } = await supabase
-      .from('job_candidate_associations')
-      .select(`
-        id, candidate_id, job_id,
-        candidate:candidates(id, candidate_name, email),
-        job:jobs(id, title, tenant_id, organization_id)
-      `)
-      .eq('email_ingest_code', ingestCode)
-      .single();
+    // Step 2: Look up association
+    let association: any;
+    try {
+      const { data, error } = await supabase
+        .from('job_candidate_associations')
+        .select(`
+          id, candidate_id, job_id,
+          candidate:candidates(id, candidate_name, email),
+          job:jobs(id, title, tenant_id, organization_id)
+        `)
+        .eq('email_ingest_code', ingestCode)
+        .single();
 
-    if (assocErr || !association) {
-      console.error('[Candidate Reply] Association not found:', ingestCode);
-      return new Response(JSON.stringify({ error: 'Not found' }), {
-        status: 404,
+      if (error) {
+        console.error('[Candidate Reply] Association query error:', JSON.stringify(error));
+        return new Response(JSON.stringify({ error: 'Association query failed', detail: error.message }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (!data) {
+        console.error('[Candidate Reply] Association not found for code:', ingestCode);
+        return new Response(JSON.stringify({ error: 'Not found' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      association = data;
+      console.log('[Candidate Reply] Association found:', association.id, 'candidate:', association.candidate_id, 'job:', association.job_id);
+    } catch (err: any) {
+      console.error('[Candidate Reply] Association lookup crashed:', err?.message || err);
+      return new Response(JSON.stringify({ error: 'Association lookup crashed', detail: String(err) }), {
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -239,51 +288,73 @@ serve(async (req) => {
     const tenantId = job?.tenant_id;
     const orgId = job?.organization_id;
 
+    console.log('[Candidate Reply] tenant_id:', tenantId, 'org_id:', orgId);
+
     if (!tenantId || !orgId) {
-      return new Response(JSON.stringify({ error: 'Invalid context' }), {
+      console.error('[Candidate Reply] Missing tenant_id or org_id. Job data:', JSON.stringify(job));
+      return new Response(JSON.stringify({ error: 'Invalid context - missing tenant_id or org_id' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const { data: member } = await supabase
-      .from('members')
-      .select('user_id')
-      .eq('organization_id', orgId)
-      .eq('user_status', 'active')
-      .limit(1)
-      .single();
-
-    if (!member?.user_id) {
-      return new Response(JSON.stringify({ error: 'No org member' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Check duplicate
-    const messageId = emailData.message_id || emailData.headers?.['message-id'];
-    if (messageId) {
-      const { data: existing } = await supabase
-        .from('email_logs')
-        .select('id')
-        .eq('rfc822_message_id', messageId)
+    // Step 3: Find an active org member
+    let memberUserId: string;
+    try {
+      const { data: member, error: memberErr } = await supabase
+        .from('members')
+        .select('user_id')
+        .eq('organization_id', orgId)
+        .eq('user_status', 'active')
+        .limit(1)
         .single();
-      
-      if (existing) {
-        return new Response(JSON.stringify({ status: 'duplicate' }), {
-          status: 200,
+
+      if (memberErr || !member?.user_id) {
+        console.error('[Candidate Reply] Member query failed:', memberErr ? JSON.stringify(memberErr) : 'no member found');
+        return new Response(JSON.stringify({ error: 'No org member found' }), {
+          status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
+
+      memberUserId = member.user_id;
+      console.log('[Candidate Reply] Using member user_id:', memberUserId);
+    } catch (err: any) {
+      console.error('[Candidate Reply] Member lookup crashed:', err?.message || err);
+      return new Response(JSON.stringify({ error: 'Member lookup crashed' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    // Extract threading headers from the incoming email
+    // Step 4: Duplicate check
+    const messageId = emailData.message_id || emailData.headers?.['message-id'];
+    if (messageId) {
+      try {
+        const { data: existing } = await supabase
+          .from('email_logs')
+          .select('id')
+          .eq('rfc822_message_id', messageId)
+          .maybeSingle();
+        
+        if (existing) {
+          console.log('[Candidate Reply] Duplicate message:', messageId);
+          return new Response(JSON.stringify({ status: 'duplicate' }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      } catch (err: any) {
+        console.error('[Candidate Reply] Duplicate check error (continuing):', err?.message || err);
+      }
+    }
+    console.log('[Candidate Reply] No duplicate found, messageId:', messageId);
+
+    // Step 5: Threading
     const incomingHeaders = emailData.headers || {};
     const inReplyToHeader = incomingHeaders['in-reply-to'] || incomingHeaders['In-Reply-To'] || null;
     const referencesHeader = incomingHeaders['references'] || incomingHeaders['References'] || null;
 
-    // Find the original thread
     const threading = await findOriginalThread(
       supabase,
       inReplyToHeader,
@@ -292,23 +363,28 @@ serve(async (req) => {
       association.job_id
     );
 
-    console.log('[Candidate Reply] Threading:', {
+    console.log('[Candidate Reply] Threading:', JSON.stringify({
       threadId: threading.threadId,
       inReplyTo: threading.inReplyTo,
       hasReferences: !!threading.references,
-    });
+    }));
 
-    const toAddrs = Array.isArray(emailData.to) ? emailData.to : [emailData.to].filter(Boolean);
-    const ccAddrs = Array.isArray(emailData.cc) ? emailData.cc : [emailData.cc].filter(Boolean);
+    // Step 6: Parse addresses safely
+    const parsedFrom = parseEmailAddress(emailData.from);
+    const toAddrs = parseEmailAddresses(emailData.to);
+    const ccAddrs = parseEmailAddresses(emailData.cc);
 
-    const { data: emailLog, error: insertErr } = await supabase
-      .from('email_logs')
-      .insert({
-        user_id: member.user_id,
+    console.log('[Candidate Reply] Parsed from:', parsedFrom, 'to:', toAddrs.length, 'cc:', ccAddrs.length);
+
+    // Step 7: Insert email log
+    let emailLog: any;
+    try {
+      const insertPayload = {
+        user_id: memberUserId,
         tenant_id: tenantId,
         organization_id: orgId,
         direction: 'received',
-        from_address: emailData.from,
+        from_address: parsedFrom,
         to_addresses: toAddrs,
         cc_addresses: ccAddrs,
         subject: emailData.subject || '(No Subject)',
@@ -320,29 +396,54 @@ serve(async (req) => {
         job_id: association.job_id,
         rfc822_message_id: messageId || null,
         snippet: emailData.text?.substring(0, 200) || null,
-        // Threading fields
         thread_id: threading.threadId || null,
         in_reply_to: threading.inReplyTo || null,
         references_header: threading.references || null,
-      })
-      .select()
-      .single();
+      };
 
-    if (insertErr) throw insertErr;
+      console.log('[Candidate Reply] Insert payload keys:', Object.keys(insertPayload).join(', '));
 
-    console.log('[Candidate Reply] Logged:', emailLog.id, 'thread:', threading.threadId);
+      const { data, error: insertErr } = await supabase
+        .from('email_logs')
+        .insert(insertPayload)
+        .select()
+        .single();
 
-    // Log activity
-    await supabase.rpc('log_activity', {
-      p_user_id: member.user_id,
-      p_organization_id: orgId,
-      p_activity_type: 'candidate_email_received',
-      p_title: `Reply received: ${emailData.subject || '(No Subject)'}`,
-      p_description: `${candidate?.candidate_name || 'Candidate'} replied`,
-      p_metadata: { email_log_id: emailLog.id, from: emailData.from, thread_id: threading.threadId },
-      p_entity_type: 'candidate',
-      p_entity_id: association.candidate_id,
-    });
+      if (insertErr) {
+        console.error('[Candidate Reply] INSERT ERROR:', JSON.stringify(insertErr));
+        console.error('[Candidate Reply] Insert payload:', JSON.stringify(insertPayload));
+        return new Response(JSON.stringify({ error: 'Insert failed', detail: insertErr.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      emailLog = data;
+      console.log('[Candidate Reply] Successfully logged email:', emailLog.id, 'thread:', threading.threadId);
+    } catch (err: any) {
+      console.error('[Candidate Reply] Insert crashed:', err?.message || err);
+      return new Response(JSON.stringify({ error: 'Insert crashed', detail: String(err) }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Step 8: Log activity (best-effort, don't fail the whole request)
+    try {
+      await supabase.rpc('log_activity', {
+        p_user_id: memberUserId,
+        p_organization_id: orgId,
+        p_activity_type: 'candidate_email_received',
+        p_title: `Reply received: ${emailData.subject || '(No Subject)'}`,
+        p_description: `${candidate?.candidate_name || 'Candidate'} replied`,
+        p_metadata: { email_log_id: emailLog.id, from: parsedFrom, thread_id: threading.threadId },
+        p_entity_type: 'candidate',
+        p_entity_id: association.candidate_id,
+      });
+      console.log('[Candidate Reply] Activity logged');
+    } catch (err: any) {
+      console.error('[Candidate Reply] Activity logging failed (non-fatal):', err?.message || err);
+    }
 
     return new Response(JSON.stringify({ status: 'success', email_log_id: emailLog.id, thread_id: threading.threadId }), {
       status: 200,
@@ -350,7 +451,8 @@ serve(async (req) => {
     });
 
   } catch (error: any) {
-    console.error('[Candidate Reply] Error:', error);
+    console.error('[Candidate Reply] Top-level error:', error?.message || error);
+    console.error('[Candidate Reply] Stack:', error?.stack || 'no stack');
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
