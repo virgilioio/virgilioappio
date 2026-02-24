@@ -1,0 +1,1 @@
+UPDATE user_mail_identities SET history_id = NULL WHERE email_address = 'allan@virgilio.tech';
