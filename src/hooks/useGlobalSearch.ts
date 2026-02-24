@@ -105,11 +105,19 @@ export function useGlobalSearch(
           return
         }
 
-        const [jobsResult, candidatesResult, sourcingResult] = await Promise.all([
+        const [jobsSettled, candidatesSettled, sourcingSettled] = await Promise.allSettled([
           searchJobs(searchQuery, limit, tenantId),
           searchCandidates(searchQuery, limit, tenantId),
-          searchSourcingProjects(searchQuery, limit, tenantId)
+          searchSourcingProjects(searchQuery, limit, user?.id || '')
         ])
+
+        const jobsResult = jobsSettled.status === 'fulfilled' ? jobsSettled.value : { results: [], count: 0 }
+        const candidatesResult = candidatesSettled.status === 'fulfilled' ? candidatesSettled.value : { results: [], count: 0 }
+        const sourcingResult = sourcingSettled.status === 'fulfilled' ? sourcingSettled.value : { results: [], count: 0 }
+
+        if (jobsSettled.status === 'rejected') console.error('Search jobs failed:', jobsSettled.reason)
+        if (candidatesSettled.status === 'rejected') console.error('Search candidates failed:', candidatesSettled.reason)
+        if (sourcingSettled.status === 'rejected') console.error('Search sourcing projects failed:', sourcingSettled.reason)
 
         const combinedResults: SearchResult[] = [
           ...jobsResult.results,
@@ -259,19 +267,19 @@ async function searchCandidates(query: string, limit: number, tenantId: string) 
   return { results, count: count || 0 }
 }
 
-async function searchSourcingProjects(query: string, limit: number, tenantId: string) {
+async function searchSourcingProjects(query: string, limit: number, userId: string) {
   const searchPattern = `%${query}%`
   
   const { count } = await (supabase
     .from('sourcing_projects')
     .select('id', { count: 'exact', head: true }) as any)
-    .eq('tenant_id', tenantId)
+    .eq('created_by', userId)
     .or(`name.ilike.${searchPattern},description.ilike.${searchPattern}`)
 
   const { data, error } = await (supabase
     .from('sourcing_projects')
     .select('id, name, description, updated_at') as any)
-    .eq('tenant_id', tenantId)
+    .eq('created_by', userId)
     .or(`name.ilike.${searchPattern},description.ilike.${searchPattern}`)
     .order('updated_at', { ascending: false })
     .limit(limit)
