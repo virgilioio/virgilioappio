@@ -1474,7 +1474,7 @@ export type Database = {
           thread_id: string | null
           to_addresses: string[]
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           attachments?: Json | null
@@ -1511,7 +1511,7 @@ export type Database = {
           thread_id?: string | null
           to_addresses: string[]
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           attachments?: Json | null
@@ -1548,7 +1548,7 @@ export type Database = {
           thread_id?: string | null
           to_addresses?: string[]
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {

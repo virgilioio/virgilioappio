@@ -257,18 +257,10 @@ serve(async (req) => {
         .eq('email_ingest_code', ingestCode)
         .single();
 
-      if (error) {
-        console.error('[Candidate Reply] Association query error:', JSON.stringify(error));
-        return new Response(JSON.stringify({ error: 'Association query failed', detail: error.message }), {
-          status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      if (!data) {
-        console.error('[Candidate Reply] Association not found for code:', ingestCode);
-        return new Response(JSON.stringify({ error: 'Not found' }), {
-          status: 404,
+      if (error || !data) {
+        console.log('[Candidate Reply] Association not found for code:', ingestCode, error ? JSON.stringify(error) : '');
+        return new Response(JSON.stringify({ status: 'ignored', reason: 'unmatched_token', code: ingestCode }), {
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
@@ -290,39 +282,10 @@ serve(async (req) => {
 
     console.log('[Candidate Reply] tenant_id:', tenantId, 'org_id:', orgId);
 
-    if (!tenantId || !orgId) {
-      console.error('[Candidate Reply] Missing tenant_id or org_id. Job data:', JSON.stringify(job));
-      return new Response(JSON.stringify({ error: 'Invalid context - missing tenant_id or org_id' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Step 3: Find an active org member
-    let memberUserId: string;
-    try {
-      const { data: member, error: memberErr } = await supabase
-        .from('members')
-        .select('user_id')
-        .eq('organization_id', orgId)
-        .eq('user_status', 'active')
-        .limit(1)
-        .single();
-
-      if (memberErr || !member?.user_id) {
-        console.error('[Candidate Reply] Member query failed:', memberErr ? JSON.stringify(memberErr) : 'no member found');
-        return new Response(JSON.stringify({ error: 'No org member found' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      memberUserId = member.user_id;
-      console.log('[Candidate Reply] Using member user_id:', memberUserId);
-    } catch (err: any) {
-      console.error('[Candidate Reply] Member lookup crashed:', err?.message || err);
-      return new Response(JSON.stringify({ error: 'Member lookup crashed' }), {
-        status: 500,
+    if (!tenantId) {
+      console.error('[Candidate Reply] Missing tenant_id. Job data:', JSON.stringify(job));
+      return new Response(JSON.stringify({ status: 'ignored', reason: 'missing_tenant_id' }), {
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -380,7 +343,7 @@ serve(async (req) => {
     let emailLog: any;
     try {
       const insertPayload = {
-        user_id: memberUserId,
+        user_id: null,
         tenant_id: tenantId,
         organization_id: orgId,
         direction: 'received',
@@ -428,22 +391,8 @@ serve(async (req) => {
       });
     }
 
-    // Step 8: Log activity (best-effort, don't fail the whole request)
-    try {
-      await supabase.rpc('log_activity', {
-        p_user_id: memberUserId,
-        p_organization_id: orgId,
-        p_activity_type: 'candidate_email_received',
-        p_title: `Reply received: ${emailData.subject || '(No Subject)'}`,
-        p_description: `${candidate?.candidate_name || 'Candidate'} replied`,
-        p_metadata: { email_log_id: emailLog.id, from: parsedFrom, thread_id: threading.threadId },
-        p_entity_type: 'candidate',
-        p_entity_id: association.candidate_id,
-      });
-      console.log('[Candidate Reply] Activity logged');
-    } catch (err: any) {
-      console.error('[Candidate Reply] Activity logging failed (non-fatal):', err?.message || err);
-    }
+    // Step 8: Activity logging skipped - no user_id for inbound webhook emails
+    console.log('[Candidate Reply] Skipping activity log (no user_id for inbound)');
 
     return new Response(JSON.stringify({ status: 'success', email_log_id: emailLog.id, thread_id: threading.threadId }), {
       status: 200,
