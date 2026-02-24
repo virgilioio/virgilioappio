@@ -9,7 +9,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { useQuery } from '@tanstack/react-query';
-import { copyToClipboardSilent } from '@/utils/clipboard';
+import { primeClipboard, copyToClipboardSilent } from '@/utils/clipboard';
 
 interface UseContextualBookingLinkParams {
   jobId: string;
@@ -213,21 +213,33 @@ export function useContextualBookingLink(params: UseContextualBookingLinkParams 
       return false;
     }
 
+    // Prime clipboard immediately while user gesture is still valid
+    await primeClipboard();
+
     try {
       const success = await copyToClipboardSilent(contextualLink);
-      if (!success) throw new Error('Clipboard copy failed');
-      toast({
-        title: 'Link Copied',
-        description: assignedInterviewer?.displayName || assignedInterviewer?.fullName
-          ? `Booking link for ${assignedInterviewer.displayName || assignedInterviewer.fullName} copied to clipboard.`
-          : 'Booking link copied to clipboard. Share it with the candidate.',
-      });
-      return true;
+      if (success) {
+        toast({
+          title: 'Link Copied',
+          description: assignedInterviewer?.displayName || assignedInterviewer?.fullName
+            ? `Booking link for ${assignedInterviewer.displayName || assignedInterviewer.fullName} copied to clipboard.`
+            : 'Booking link copied to clipboard. Share it with the candidate.',
+        });
+        return true;
+      } else {
+        // Clipboard write failed — show link for manual copy
+        toast({
+          title: 'Copy the link manually',
+          description: contextualLink,
+          duration: 15000,
+        });
+        return false;
+      }
     } catch (e) {
       toast({
-        title: 'Error',
-        description: 'Failed to copy link to clipboard',
-        variant: 'destructive',
+        title: 'Copy the link manually',
+        description: contextualLink,
+        duration: 15000,
       });
       return false;
     }
