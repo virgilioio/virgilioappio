@@ -807,7 +807,7 @@ export function IndependentCandidateProfileSheet({
                             <CardTitle>Email History</CardTitle>
                           </CardHeader>
                           <CardContent className="p-0">
-                            <ScrollArea className="h-[500px]">
+                            <div className="h-[500px] overflow-y-auto">
                               <div className="p-6">
                                 <EmailHistoryList 
                                   candidateId={candidate.id}
@@ -815,7 +815,7 @@ export function IndependentCandidateProfileSheet({
                                   onForward={handleEmailForward}
                                 />
                               </div>
-                            </ScrollArea>
+                            </div>
                           </CardContent>
                         </Card>
                       )}
