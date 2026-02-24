@@ -113,7 +113,7 @@ export function AIDraftPopover({ candidateId, jobId, onInsert, senderName, child
   const isGenerating = draftMutation.isPending;
 
   return (
-    <Popover open={open} onOpenChange={(value) => {
+    <Popover open={open} modal={true} onOpenChange={(value) => {
       if (!value) handleReset();
       else setOpen(value);
     }}>
