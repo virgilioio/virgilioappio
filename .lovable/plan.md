@@ -1,89 +1,46 @@
 
 
-# Fix: Fetch email body content for received candidate replies
+# Subtle Conversation-Style Email History
 
-## Problem
-
-Resend's `email.received` webhook only delivers metadata (from, to, subject, email_id, attachments). It does **not** include the email body (`html` or `text`). That's why every received email shows "No content."
-
-The current webhook code reads `emailData.text` and `emailData.html`, but those fields simply don't exist in the webhook payload.
-
-## Solution
-
-After processing the webhook event, make a follow-up API call to Resend to retrieve the full email content:
-
-```
-GET https://api.resend.com/emails/{email_id}
-Authorization: Bearer RESEND_API_KEY
-```
-
-This returns the full email object including `html` and `text` fields.
+Very light touch -- just enough to visually distinguish sent vs received at a glance, while keeping it clearly an email thread (not a chat app).
 
 ## Changes
 
-**File: `supabase/functions/process-candidate-reply-webhook/index.ts`**
+### File: `src/components/candidates/EmailHistoryCard.tsx`
 
-After the association lookup and before the email_logs insert, add a step to fetch the full email content:
+Three subtle tweaks:
 
-1. Use the `email_id` from `emailData.email_id` (already present in the webhook payload)
-2. Call `GET https://api.resend.com/emails/{email_id}` with `RESEND_API_KEY` (already configured as a secret and used by other edge functions)
-3. Extract `html` and `text` from the API response
-4. Use those values in the `email_logs` insert for `body_html`, `body_text`, and `snippet`
+1. **Slight offset**: Wrap the Card in a container div. Sent emails get a small left margin (`ml-6`), received emails get a small right margin (`mr-6`). This creates a gentle ~24px nudge without going full chat-bubble.
 
-The new step (inserted between the threading lookup and the email_logs insert):
+2. **Subtle background tint on the Card itself**:
+   - **Sent**: Very faint lilac -- `bg-purple-50/50 dark:bg-purple-950/20 border-purple-100 dark:border-purple-900/30`
+   - **Received**: Very faint blue -- `bg-blue-50/50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/30`
+   - **Fallback** (no direction): Keep current neutral styling
 
-```typescript
-// Fetch full email content from Resend API
-let bodyHtml: string | null = null;
-let bodyText: string | null = null;
+3. **Remove the "Received" badge** (line 105-109) since the color/alignment already communicates direction. Replace with a tiny colored dot or just rely on the tint.
 
-const resendApiKey = Deno.env.get('RESEND_API_KEY');
-if (resendApiKey && emailData.email_id) {
-  try {
-    const emailRes = await fetch(
-      `https://api.resend.com/emails/${emailData.email_id}`,
-      { headers: { Authorization: `Bearer ${resendApiKey}` } }
-    );
-    if (emailRes.ok) {
-      const fullEmail = await emailRes.json();
-      bodyHtml = fullEmail.html || null;
-      bodyText = fullEmail.text || null;
-      console.log('[Candidate Reply] Fetched email body:',
-        bodyHtml ? `html=${bodyHtml.length}chars` : 'no html',
-        bodyText ? `text=${bodyText.length}chars` : 'no text');
-    } else {
-      console.error('[Candidate Reply] Resend API error:',
-        emailRes.status, await emailRes.text());
-    }
-  } catch (err) {
-    console.error('[Candidate Reply] Failed to fetch email body:', err);
-  }
-}
+### File: `src/components/candidates/EmailHistoryList.tsx`
+
+No changes needed -- the thread grouping and spacing already works well.
+
+## Technical Detail
+
+The only real code change is on line 98-99 of `EmailHistoryCard.tsx`:
+
+```tsx
+// Before
+<Card className="relative transition-all overflow-hidden min-w-0">
+
+// After
+<div className={cn(isSent ? "ml-6" : isReceived ? "mr-6" : "")}>
+  <Card className={cn(
+    "relative transition-all overflow-hidden min-w-0",
+    isSent && "bg-purple-50/50 dark:bg-purple-950/20 border-purple-100 dark:border-purple-900/30",
+    isReceived && "bg-blue-50/50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/30"
+  )}>
+    {/* ...existing content unchanged... */}
+  </Card>
+</div>
 ```
 
-Then update the insert payload to use `bodyHtml`/`bodyText` instead of `emailData.html`/`emailData.text`:
-
-```typescript
-body_text: bodyText || emailData.text || null,
-body_html: bodyHtml || emailData.html || null,
-snippet: (bodyText || emailData.text)?.substring(0, 200) || null,
-```
-
-## No new secrets needed
-
-`RESEND_API_KEY` is already configured and used by multiple other edge functions (send-invitation, send-confirmation-email, etc.).
-
-## Files Changed
-
-```text
-supabase/functions/process-candidate-reply-webhook/index.ts
-  - Add Resend API fetch step after threading, before insert
-  - Update insert payload to use fetched body content
-```
-
-## Test Plan
-
-1. Send a reply to `jc_yd03np7c@ingest.gogio.io`
-2. Verify webhook logs show "Fetched email body: html=Xchars"
-3. Open candidate profile and confirm the reply content is visible (not "No content")
-
+That's it -- two lines of wrapper + conditional classes. Everything else stays exactly the same.
