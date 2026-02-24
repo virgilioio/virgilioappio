@@ -1,49 +1,28 @@
 
 
-# Fix: Booking Link Copy Fails Silently
+# Show Currency and Period for Salary Fields in Application Responses
 
-## Root Cause
+## Problem
+When a candidate submits a salary value through a job application form, the application response only stores the raw numeric value. The currency (e.g., USD, EUR) and period (e.g., annually, monthly) are configured on the job posting's field definition (`job_posting_fields.field_config`), but the candidate response viewer doesn't fetch or display them.
 
-When a user clicks "Copy [Name]'s Link", the system makes an async network call to create a booking token **before** attempting to write to the clipboard. Browsers require clipboard writes to happen within a short window after a user gesture (click). By the time the token API responds, that window has expired.
+## Solution
+Enhance `CandidateApplicationResponses.tsx` to fetch the field configuration from `job_posting_fields` for salary (and location) type responses, then display the currency symbol and period alongside the salary value.
 
-The code then falls back to `document.execCommand('copy')`, but never checks its return value -- it always returns `true`, so the success toast shows even though nothing was copied.
+## Technical Changes
 
-## The Fix
+### File: `src/components/candidates/CandidateApplicationResponses.tsx`
 
-**Strategy**: Copy a temporary placeholder to the clipboard immediately on click (while the user gesture is still valid), then replace it with the real link once the token is generated. If the second write fails, fall back to showing the link in a dialog the user can manually copy.
+1. **Fetch field configs from `job_posting_fields`**: After fetching responses, collect distinct `posting_id` values, then query `job_posting_fields` for fields matching those posting IDs and field names that are of type `salary` or `location`. Store a lookup map of `field_name -> field_config`.
 
-### Changes
+2. **Update `formatFieldValue` for salary type**: When `field_type === 'salary'`, look up the field config to get the currency and period, then render the value with the currency symbol (using the existing `CURRENCY_SYMBOLS` map) and the period badge -- e.g., "$75,000 annually" instead of just "75000".
 
-**1. `src/utils/clipboard.ts`** -- Fix the fallback to check `execCommand` return value, and add a new `copyToClipboardWithRetry` utility:
+3. **Pass field configs into the render logic**: Thread the config lookup map through to the display, so each salary response row can access its associated currency and period.
 
-- Fix `copyToClipboardSilent`: check `document.execCommand('copy')` return value -- if it returns `false`, return `false` instead of `true`
-- Add new function `primeClipboard()` that immediately writes a placeholder string to the clipboard (to "prime" the user gesture)
-- Add new function `writeToClipboardAfterDelay(text)` that attempts a second write, and if it fails, returns `false`
+### Display Format
+A salary response will render as:
+- Currency symbol badge (e.g., `$`) + formatted number + period badge (e.g., `Annually`)
+- Matching the same visual pattern used in the public application form's salary field renderer
 
-**2. `src/hooks/useStageBookingInterviewers.ts`** -- Restructure `copyLinkForInterviewer`:
-
-- On click: immediately call `navigator.clipboard.writeText('Generating link...')` (synchronously, before any `await`)
-- Then `await createShortBookingToken(...)` 
-- Then attempt `navigator.clipboard.writeText(link)` -- if this second write fails (gesture expired), show a toast/dialog with the link text so the user can copy manually
-- If the second write succeeds, show the normal success toast
-
-**3. `src/hooks/useContextualBookingLink.ts`** -- Apply the same pattern to the user's own booking link copy flow (same issue exists there, though it may not always hit the async path).
-
-### Technical Details
-
-```text
-BEFORE (broken):
-  click -> await createToken (500ms+) -> clipboard.write (FAILS - gesture expired) -> fallback execCommand (FAILS silently) -> toast "Copied!" (LIE)
-
-AFTER (fixed):
-  click -> clipboard.write("Loading...") (SUCCEEDS - gesture active) -> await createToken -> clipboard.write(link) (may fail) -> if fail: toast with copyable link text
-```
-
-### Files Changed
-
-| File | Change |
-|------|--------|
-| `src/utils/clipboard.ts` | Fix `execCommand` return value check; add clipboard priming utility |
-| `src/hooks/useStageBookingInterviewers.ts` | Prime clipboard immediately on click, then overwrite after token creation; show fallback toast with link if second write fails |
-| `src/hooks/useContextualBookingLink.ts` | Same pattern for user's own link copy |
+### No Database Changes Required
+All data already exists -- `candidate_application_responses` has `posting_id`, and `job_posting_fields` has `field_config` with `currency` and `period`. We just need to join them at query time.
 
