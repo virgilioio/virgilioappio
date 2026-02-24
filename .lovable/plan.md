@@ -1,5 +1,6 @@
 
 
+
 # Enable Contact Enrichment via "Fetch Contact" Button in Chrome Extension
 
 ## Overview
@@ -54,4 +55,3 @@ Update the `onClick` handler (lines 593-619) to:
 - Each successful contact lookup consumes 1 collect credit from the tenant's monthly pool
 - The free DOM scrape is always attempted first to avoid unnecessary credit usage
 - Credit exhaustion is handled gracefully with a clear user message
-

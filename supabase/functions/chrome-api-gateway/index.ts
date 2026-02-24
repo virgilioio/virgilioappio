@@ -2,6 +2,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { handlePreflight, corsHeadersFor } from "../_shared/cors.ts";
 
+const APOLLO_API_KEY = Deno.env.get('APOLLO_API_KEY');
+const APOLLO_BULK_MATCH_URL = 'https://api.apollo.io/api/v1/people/bulk_match';
+
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -715,6 +718,190 @@ async function handleResume(params: ResumeUploadParams, user: any, member: any, 
 }
 
 // ============================================
+// CREDIT HELPERS (for enrich action)
+// ============================================
+async function checkCollectCredit(
+  tenantId: string
+): Promise<{ available: boolean; remaining: number; usage: any }> {
+  const currentMonth = new Date().toISOString().slice(0, 7) + '-01';
+  
+  let { data: usage, error } = await supabase
+    .from('sourcing_credits_usage')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .eq('billing_cycle_start', currentMonth)
+    .single();
+  
+  if (error && error.code === 'PGRST116') {
+    const { data: limits, error: limitsError } = await supabase
+      .rpc('get_tenant_credit_limits', { p_tenant_id: tenantId })
+      .single();
+    
+    if (limitsError) {
+      console.error('Error getting tenant credit limits:', limitsError);
+      throw limitsError;
+    }
+    
+    const { data: newUsage, error: insertError } = await supabase
+      .from('sourcing_credits_usage')
+      .insert({
+        tenant_id: tenantId,
+        billing_cycle_start: currentMonth,
+        search_credits_limit: limits.search_limit,
+        collect_credits_limit: limits.collect_limit
+      })
+      .select()
+      .single();
+    
+    if (insertError) throw insertError;
+    usage = newUsage;
+  } else if (error) {
+    throw error;
+  }
+  
+  const limit = usage.collect_credits_limit;
+  const used = usage.collect_credits_used || 0;
+  
+  return {
+    available: used < limit,
+    remaining: limit - used,
+    usage
+  };
+}
+
+async function incrementCollectCredits(tenantId: string, count: number): Promise<void> {
+  const now = new Date();
+  const billingCycleStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  
+  for (let i = 0; i < count; i++) {
+    const { error } = await supabase.rpc('increment_sourcing_usage', {
+      p_tenant_id: tenantId,
+      p_billing_cycle_start: billingCycleStart,
+      p_credit_type: 'collect'
+    });
+    
+    if (error) {
+      console.error('Failed to increment collect credit usage:', error);
+      throw error;
+    }
+  }
+}
+
+// ============================================
+// ACTION: enrich - Enrich contact by LinkedIn URL
+// ============================================
+async function handleEnrich(body: any, user: any, member: any, corsHeaders: Record<string, string>) {
+  const tenantId = member.tenant_id;
+  const { linkedin_url } = body;
+
+  if (!linkedin_url) {
+    return new Response(
+      JSON.stringify({ error: 'LinkedIn URL required to fetch contact info', error_code: 'MISSING_LINKEDIN_URL' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  if (!APOLLO_API_KEY) {
+    console.error('❌ APOLLO_API_KEY not configured');
+    return new Response(
+      JSON.stringify({ error: 'Contact enrichment service not configured' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Check credit availability
+  const creditCheck = await checkCollectCredit(tenantId);
+  
+  if (!creditCheck.available) {
+    console.warn('❌ Monthly contact reveal credit limit reached for tenant:', tenantId);
+    return new Response(
+      JSON.stringify({ error: 'Monthly credit limit reached', error_code: 'CREDITS_EXHAUSTED', credits_remaining: 0 }),
+      { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  console.log(`🔍 Enrich contact for LinkedIn URL: ${linkedin_url}, tenant: ${tenantId}`);
+
+  // Call enrichment provider bulk_match API
+  const enrichResponse = await fetch(APOLLO_BULK_MATCH_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache',
+      'X-Api-Key': APOLLO_API_KEY
+    },
+    body: JSON.stringify({
+      details: [{ linkedin_url }],
+      reveal_phone_number: true,
+    })
+  });
+
+  if (!enrichResponse.ok) {
+    const errorText = await enrichResponse.text();
+    console.error('❌ Enrichment API error:', enrichResponse.status, errorText);
+    return new Response(
+      JSON.stringify({ error: 'Contact enrichment service error' }),
+      { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const enrichData = await enrichResponse.json();
+  const matches = enrichData.matches || [];
+  const person = matches[0];
+
+  if (!person) {
+    console.log('ℹ️ No enrichment match found for:', linkedin_url);
+    return new Response(
+      JSON.stringify({ success: false, message: 'No contact info found for this profile' }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Extract contact data
+  const phone = person.phone_numbers?.[0]?.sanitized_number || 
+                person.phone_numbers?.[0]?.raw_number || null;
+
+  const contactPhones = (person.phone_numbers || []).map((p: any) => ({
+    type: p.type || 'other',
+    number: p.sanitized_number || p.raw_number || '',
+    raw_number: p.raw_number || null
+  })).filter((p: any) => p.number);
+
+  const contactEmails: any[] = [];
+  if (person.email) {
+    contactEmails.push({ type: 'work', email: person.email, status: person.email_status || null });
+  }
+  if (person.personal_emails && Array.isArray(person.personal_emails)) {
+    person.personal_emails.forEach((e: string) => {
+      if (e && e !== person.email) {
+        contactEmails.push({ type: 'personal', email: e, status: null });
+      }
+    });
+  }
+
+  // Increment credit usage
+  await incrementCollectCredits(tenantId, 1);
+
+  const remaining = creditCheck.remaining - 1;
+  console.log(`✅ Contact enriched for ${linkedin_url}, credits remaining: ${remaining}`);
+
+  return new Response(JSON.stringify({
+    success: true,
+    email: person.email || null,
+    phone: phone,
+    contact_phones: contactPhones,
+    contact_emails: contactEmails,
+    title: person.title || null,
+    company: person.organization_name || null,
+    credits_used: 1,
+    credits_remaining: remaining
+  }), {
+    status: 200,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+// ============================================
 // MAIN ROUTER
 // ============================================
 serve(async (req) => {
@@ -805,11 +992,20 @@ serve(async (req) => {
         }
         return handleResume(body, user, member, corsHeaders);
 
+      case 'enrich':
+        if (req.method !== 'POST') {
+          return new Response(
+            JSON.stringify({ error: 'Method not allowed. Use POST for enrich.' }),
+            { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        return handleEnrich(body, user, member, corsHeaders);
+
       default:
         return new Response(
           JSON.stringify({ 
             error: 'Invalid action', 
-            valid_actions: ['me', 'organizations', 'jobs', 'stages', 'candidates', 'resume'],
+            valid_actions: ['me', 'organizations', 'jobs', 'stages', 'candidates', 'resume', 'enrich'],
             usage: 'Pass action as query param (?action=me) or in POST body ({ action: "me" })'
           }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
