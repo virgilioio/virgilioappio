@@ -1,57 +1,37 @@
 
 
+# Fix: Chrome Extension "Fetch Contact" 502 Error
 
-# Enable Contact Enrichment via "Fetch Contact" Button in Chrome Extension
+## Root Cause
+The edge function logs show the exact error from the enrichment provider:
 
-## Overview
-When the user clicks "Fetch Contact" in the Chrome extension, it currently only scrapes the LinkedIn DOM for contact info (which rarely works). We'll add a server-side fallback that queries our enrichment provider through the GoGio API to retrieve email and phone numbers using the candidate's LinkedIn URL. This consumes 1 collect credit per successful lookup.
+```
+400 {"error":"Please add a valid 'webhook_url' parameter when using 'reveal_phone_number'"}
+```
 
-## User Experience
-1. User clicks "Fetch Contact" on a LinkedIn profile
-2. Step 1 (free): DOM scrape attempts to find contact info from LinkedIn's contact modal
-3. Step 2 (1 credit): If DOM scrape finds nothing and a LinkedIn URL is available, the extension calls the GoGio API to fetch contact info
-4. Toast messages:
-   - Success: "Found 2 contact fields" (same as today)
-   - No match: "No contact info found for this profile"
-   - No credits: "Contact lookup limit reached for this month"
-   - No LinkedIn URL: "LinkedIn URL required to fetch contact info"
+The `handleEnrich` function in `chrome-api-gateway` sends `reveal_phone_number: true` in the API request, but does not include the required `webhook_url` parameter. The provider rejects the request with a 400, which the gateway forwards as a 502 to the extension.
 
-## Changes
+## Fix
+**File:** `supabase/functions/chrome-api-gateway/index.ts` (line 835)
 
-### 1. GoGio Backend -- Add `enrich` action to Chrome API Gateway
-**File:** `supabase/functions/chrome-api-gateway/index.ts`
+Remove `reveal_phone_number: true` from the request body. The Chrome extension enrichment flow only needs email and basic phone data (which are returned by default without the phone reveal flag). The `reveal_phone_number` option is an async flow that requires a webhook callback -- overkill for this use case.
 
-- Add `APOLLO_API_KEY` and `APOLLO_BULK_MATCH_URL` constants at the top (internal only, no user-facing references)
-- Add `checkCollectCredit` and `incrementCollectCredits` helper functions (ported from `enrich-by-linkedin`)
-- Add `handleEnrich` handler that:
-  - Accepts `{ linkedin_url }` from the extension
-  - Validates the LinkedIn URL is present
-  - Checks credit availability for the user's tenant
-  - Calls the enrichment provider's bulk_match API with the LinkedIn URL
-  - On success: increments credits, returns `{ success, email, phone, contact_phones, contact_emails, title, company, credits_used, credits_remaining }`
-  - Does NOT save to DB -- the extension just populates form fields (candidate isn't created yet)
-- Add `'enrich'` case to the main router switch and `valid_actions` list
+**Before:**
+```typescript
+body: JSON.stringify({
+  details: [{ linkedin_url }],
+  reveal_phone_number: true,
+})
+```
 
-### 2. Chrome Extension API Client -- Add `enrichContact` method
-**File (Chrome Helper Hub):** `src/lib/api.ts`
+**After:**
+```typescript
+body: JSON.stringify({
+  details: [{ linkedin_url }],
+})
+```
 
-- Add `EnrichContactResponse` interface with `success`, `email`, `phone`, `credits_used`, `credits_remaining`, `error`, `error_code` fields
-- Add `enrichContact(linkedinUrl: string)` method to `ApiClient` class that POSTs to `action=enrich`
+This is a one-line removal. The enrichment provider already returns any available phone numbers in its standard response -- the `reveal_phone_number` flag is only needed for requesting additional phone number discovery via webhook, which isn't relevant for the extension's "populate form fields" use case.
 
-### 3. Chrome Extension UI -- Update "Fetch Contact" button logic
-**File (Chrome Helper Hub):** `src/components/extension/CandidateForm.tsx`
-
-Update the `onClick` handler (lines 593-619) to:
-1. First try DOM scrape (existing logic, free)
-2. If DOM scrape returns no email and no phone, and `linkedinUrl` is available:
-   - Call `apiClient.enrichContact(linkedinUrl)`
-   - Populate email and phone fields from the response
-   - Show appropriate toast based on result
-3. Handle error cases:
-   - `CREDITS_EXHAUSTED` -> toast.warning("Contact lookup limit reached for this month")
-   - Other errors -> toast.error("Failed to fetch contact info")
-
-## Credit Impact
-- Each successful contact lookup consumes 1 collect credit from the tenant's monthly pool
-- The free DOM scrape is always attempted first to avoid unnecessary credit usage
-- Credit exhaustion is handled gracefully with a clear user message
+## No Other Changes Needed
+The rest of the handler (credit checks, response parsing, error handling) is correct. This single line was causing the 400 rejection.
