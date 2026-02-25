@@ -1,105 +1,95 @@
 
-Goal
-- Make inbound candidate replies reliably store body content and snippet, while preventing duplicates and preserving idempotency.
-- Prioritize webhook path (`process-candidate-reply-webhook`) so rows shown on job-specific candidate pages have usable body content.
 
-What I found in your current system
-1) The webhook function is already receiving and inserting rows for `email.received`.
-2) In the UI route you’re on, query is filtered by both `candidate_id` and `job_id`, so it only shows webhook rows tied to that job.
-3) Those webhook rows currently have `body_text/body_html = null`, while separate Gmail-sync rows for the same RFC822 message often do contain body — but usually with `job_id = null`, so they are not shown in this view.
-4) This is why email history appears empty even though body exists elsewhere in `email_logs`.
-5) Existing schema already has `body_text`, `body_html`, and `snippet`; no schema migration is required.
+# Log Applications and Emails in Activity Feed
 
-Implementation scope
-- Main fix: `supabase/functions/process-candidate-reply-webhook/index.ts`
-- Optional resilience/readability fix: `src/hooks/useEmailLogs.ts` (or card rendering fallback) to avoid blank previews if body is absent but snippet exists.
+## Overview
 
-Detailed implementation plan
+Add activity logging for three events that are currently missing from the candidate activity feed:
 
-1) Add robust body extraction helpers in webhook function
-- Create utility helpers in `process-candidate-reply-webhook/index.ts`:
-  - `extractBodyFromAnySource(source)` to check common fields in priority order:
-    - text candidates: `text`, `body_text`, `body`, `content`, `raw`, nested variants
-    - html candidates: `html`, `body_html`, nested variants
-  - `stripHtmlToText(html)` for snippet fallback
-  - `limitSize(value, maxChars)` to cap `body_text` and `body_html` at ~200KB equivalent char count (safe approximation with char length)
-  - `buildSnippet(text, html)` to produce first ~120 chars from text first, then stripped html
-- This directly satisfies your “common fields + fallback + snippet” requirements.
+1. **Candidate applies** via public job posting
+2. **Email received** from candidate (inbound reply)
+3. Email sent is already logged -- no change needed there
 
-2) Keep payload-first strategy, then Resend fetch fallback
-- First parse body from webhook payload (`payload.data`) using helper.
-- If still missing body and `email_id` exists, call Resend:
-  - `GET https://api.resend.com/emails/receiving/{email_id}`
-  - `Authorization: Bearer ${RESEND_API_KEY}`
-- Parse both possible response shapes:
-  - root object (`{ html, text, ... }`)
-  - wrapped object (`{ data: { html, text, ... } }`)
-- Keep retries (already present), but improve observability:
-  - log when `email_id` is absent
-  - log attempt status and whether parsed text/html lengths were found
-- Always continue and return 200 even on fetch failure; do not fail ingestion.
+## What needs to change
 
-3) Replace duplicate “early return” with idempotent upsert-style behavior
-Current issue:
-- Existing code checks duplicate by `rfc822_message_id` and returns `duplicate` immediately, which prevents filling missing body and encourages stale empty rows.
+### 1. Add new enum value: `candidate_email_received`
 
-Change behavior:
-- For the same incoming message (`rfc822_message_id`, `direction='received'`, candidate/job scope), load existing row(s).
-- If existing row found:
-  - If existing body is missing and new body is now available → update existing row with body_text/body_html/snippet.
-  - Also patch missing metadata fields (`thread_id`, `in_reply_to`, `references_header`, `job_id`, `candidate_id`, `organization_id`) when absent.
-  - If body still unavailable, keep metadata update only and return success with reason `updated_metadata_only`.
-- If no row found:
-  - Insert new row as usual.
-- This gives true webhook retry idempotency and avoids duplicate records.
+The `activity_type` enum currently has `candidate_email_sent` but no `candidate_email_received`. We also need a value for applications -- `candidate_added` already exists in the enum and fits perfectly for "applied via job posting."
 
-4) Ensure snippet is always stored and useful
-- Build snippet as:
-  - text-first (`body_text`)
-  - else stripped html
-  - else null
-- Normalize whitespace and trim.
-- Use ~120 chars per your requirement.
-- Do this both on insert and update paths.
+- **Migration**: `ALTER TYPE activity_type ADD VALUE 'candidate_email_received';`
 
-5) Preserve “ignore internal sender copy” logic
-- Keep current internal sender filter (good fix).
-- Ensure this check remains before insert/update so outbound-to-ingest echoes don’t appear as received.
+### 2. Log activity when a candidate applies
 
-6) Optional UI safety net (small)
-- In `useEmailLogs`/render path, if body is empty but snippet exists, use snippet instead of “No content”.
-- This is optional but improves UX during transient cases.
+**File**: `supabase/functions/public-submit-application/index.ts`
 
-7) No DB migration needed
-- Columns already exist: `body_text`, `body_html`, `snippet`.
-- No schema changes required.
-- If we later want stricter dedupe at DB level, we can add a partial unique index strategy, but it’s not required for this fix.
+After the association is created (around line 385), call `log_activity` RPC:
+- `p_activity_type`: `'candidate_added'`
+- `p_title`: `'Applied via job posting'`
+- `p_description`: `'Candidate applied for {job_title}'`
+- `p_entity_type`: `'candidate'`
+- `p_entity_id`: candidate ID
+- `p_user_id`: use a system/service role approach (the function already uses service role client)
+- `p_organization_id`: from the posting's job
+- `p_tenant_id`: from the posting
 
-Validation plan (end-to-end)
-1) External inbound reply test
-- Send a real reply from non-internal mailbox to ingest address.
-- Confirm webhook row (with job_id) has non-null `body_text` or `body_html`, and snippet populated.
-- Confirm candidate email history on `/jobs/...?...candidate=...` shows message content.
+Since public applications are unauthenticated, `p_user_id` will use the candidate's own ID as a reference (or a system constant). The `log_activity` RPC requires a user_id -- we'll pass a null-safe value and handle it.
 
-2) Retry/idempotency test
-- Replay the same webhook payload (or send duplicate event) for same `message_id`.
-- Confirm no duplicate row created for same inbound message in job context.
-- Confirm missing body is updated if first attempt had only metadata.
+### 3. Log activity when an inbound email is received
 
-3) Internal echo suppression test
-- Send brand-new outbound email that includes ingest address.
-- Confirm no extra received webhook row is created for internal sender.
+**File**: `supabase/functions/process-candidate-reply-webhook/index.ts`
 
-4) Failure-tolerant behavior test
-- Temporarily force Resend fetch failure (or simulate missing `email_id`).
-- Confirm function still returns 200 and metadata row still saved.
-- Confirm logs clearly state why body was unavailable.
+After successfully inserting or updating an email_log row for a received message, call `log_activity`:
+- `p_activity_type`: `'candidate_email_received'`
+- `p_title`: `'Email received: {subject}'`
+- `p_description`: `'Reply from {sender}'`
+- `p_entity_type`: `'candidate'`
+- `p_entity_id`: candidate ID
+- `p_organization_id`: from the job association
+- `p_tenant_id`: from the resolved tenant
 
-Files to change
-- `supabase/functions/process-candidate-reply-webhook/index.ts` (primary)
-- `src/hooks/useEmailLogs.ts` (optional small UX fallback) OR `src/components/candidates/EmailHistoryCard.tsx` fallback handling
+This will NOT fire for internal sender copies (already filtered).
 
-Expected result
-- Inbound messages for candidate/job history will consistently show body content when available.
-- If body is delayed/unavailable, row remains usable with snippet when possible.
-- Webhook retries become safe and can enrich existing records instead of creating or preserving empty duplicates.
+### 4. Update UI helpers to render new activity types
+
+**File**: `src/utils/activityHelpers.tsx`
+
+- Add `'candidate_added'` to icon map (use `UserPlus` icon, success color) -- it's actually already mapped under `candidate_created` but we should add `candidate_added` explicitly
+- Add `'candidate_email_received'` to icon map (use `Mail` icon with a distinct color like `hsl(var(--info))`)
+
+### 5. Update ActivityTimeline component (SaaS dashboard)
+
+**File**: `src/components/saas/ActivityTimeline.tsx`
+
+- Add `'candidate_email_received'` to the icon and color switch cases (Mail icon, cyan color -- similar to `candidate_email_sent`)
+
+## Technical Details
+
+### Database migration
+
+```sql
+ALTER TYPE activity_type ADD VALUE IF NOT EXISTS 'candidate_email_received';
+```
+
+`candidate_added` already exists in the enum.
+
+### Edge function changes
+
+**public-submit-application** -- add ~15 lines after association creation to fire-and-forget `log_activity` RPC call.
+
+**process-candidate-reply-webhook** -- add ~15 lines after successful email_log insert/update to fire-and-forget `log_activity` RPC call. Since webhook handler has no authenticated user, use the candidate_id as entity reference and a system user placeholder for p_user_id.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `supabase/functions/public-submit-application/index.ts` | Add `log_activity` call after association creation |
+| `supabase/functions/process-candidate-reply-webhook/index.ts` | Add `log_activity` call after email ingestion |
+| `src/utils/activityHelpers.tsx` | Add icon/color for `candidate_added` and `candidate_email_received` |
+| `src/components/saas/ActivityTimeline.tsx` | Add icon/color cases for new types |
+| SQL migration | Add `candidate_email_received` to enum |
+
+### No changes needed
+
+- `send-user-email` already logs `candidate_email_sent` activity
+- `useActivityFeed.ts` -- already generic, will pick up new types automatically
+- `ActivityFeedItem.tsx` -- already generic, renders any activity type
