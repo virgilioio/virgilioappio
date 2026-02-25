@@ -101,7 +101,7 @@ serve(async (req) => {
     // Get job from posting (include tenant_id for proper isolation)
     const { data: posting, error: postingErr } = await supabase
       .from("job_postings")
-      .select("id, job_id, is_active, tenant_id, job:jobs(organization_id)")
+      .select("id, job_id, is_active, tenant_id, job:jobs(organization_id, title)")
       .eq("id", postingId)
       .maybeSingle();
 
@@ -400,6 +400,25 @@ serve(async (req) => {
     if (limitsTrackErr) {
       console.error('⚠️ Warning: Failed to track application limits:', limitsTrackErr);
       // Don't fail the application for this, just log the warning
+    }
+
+    // Fire-and-forget: log activity for candidate application
+    try {
+      const jobTitle = (posting as any).job?.title || 'Unknown position';
+      await supabase.rpc('log_activity', {
+        p_user_id: globalCandidateId,
+        p_organization_id: (posting as any).job?.organization_id || null,
+        p_tenant_id: posting.tenant_id || null,
+        p_activity_type: 'candidate_added',
+        p_title: 'Applied via job posting',
+        p_description: `Candidate applied for ${jobTitle}`,
+        p_metadata: {},
+        p_entity_type: 'candidate',
+        p_entity_id: globalCandidateId,
+      });
+      console.log('📝 Logged application activity for candidate:', globalCandidateId);
+    } catch (actErr: any) {
+      console.error('⚠️ Failed to log application activity:', actErr?.message);
     }
 
     // Store core application field responses
