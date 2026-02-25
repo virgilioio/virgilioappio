@@ -432,6 +432,24 @@ serve(async (req) => {
 
     console.log(`[${WEBHOOK_VERSION}] Inserted email: ${emailLog.id} thread: ${threading.threadId} body: text=${bodyText?.length || 0} html=${bodyHtml?.length || 0}`);
 
+    // Fire-and-forget: log activity for inbound email
+    try {
+      await supabase.rpc('log_activity', {
+        p_user_id: association.candidate_id,
+        p_organization_id: orgId || null,
+        p_tenant_id: tenantId || null,
+        p_activity_type: 'candidate_email_received',
+        p_title: `Email received: ${(emailData.subject || '(No Subject)').slice(0, 100)}`,
+        p_description: `Reply from ${parsedFrom}`,
+        p_metadata: {},
+        p_entity_type: 'candidate',
+        p_entity_id: association.candidate_id,
+      });
+      console.log(`[${WEBHOOK_VERSION}] Logged email_received activity for candidate: ${association.candidate_id}`);
+    } catch (actErr: any) {
+      console.error(`[${WEBHOOK_VERSION}] Failed to log email_received activity:`, actErr?.message);
+    }
+
     return new Response(JSON.stringify({ status: 'success', email_log_id: emailLog.id, thread_id: threading.threadId }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

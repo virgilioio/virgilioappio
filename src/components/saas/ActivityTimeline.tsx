@@ -27,6 +27,7 @@ type ActivityType =
   | 'job_deleted'
   | 'candidate_added' 
   | 'candidate_created'
+  | 'candidate_email_received'
   | 'candidate_updated'
   | 'candidate_assigned_to_job'
   | 'candidate_stage_changed'
@@ -84,6 +85,7 @@ export function ActivityTimeline({ activities }: ActivityTimelineProps) {
       case 'candidate_note_added':
         return MessageSquare
       case 'candidate_email_sent':
+      case 'candidate_email_received':
         return Mail
       case 'candidate_attachment_uploaded':
         return Upload
@@ -134,6 +136,7 @@ export function ActivityTimeline({ activities }: ActivityTimelineProps) {
       case 'candidate_note_added':
         return 'text-slate-500 bg-slate-500/10'
       case 'candidate_email_sent':
+      case 'candidate_email_received':
         return 'text-cyan-500 bg-cyan-500/10'
       case 'candidate_attachment_uploaded':
         return 'text-indigo-500 bg-indigo-500/10'
