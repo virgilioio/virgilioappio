@@ -1,95 +1,61 @@
 
 
-# Log Applications and Emails in Activity Feed
+# Specific Error Messages for Application Limit Violations
 
-## Overview
+## Problem
 
-Add activity logging for three events that are currently missing from the candidate activity feed:
+When a candidate can't apply (e.g., duplicate job, too many applications, or rejection cooldown), they see a generic "Submission Failed" toast. This happens because:
 
-1. **Candidate applies** via public job posting
-2. **Email received** from candidate (inbound reply)
-3. Email sent is already logged -- no change needed there
+1. The server returns a **429 status code** for limit violations, but `supabase.functions.invoke` treats non-2xx responses differently -- the response body may end up in `error` instead of `data`, causing the violation-handling code to be skipped entirely.
+2. The code then falls into the generic catch block, showing "Submission failed / Something went wrong."
+3. Even when violations ARE detected, only the "same job cooldown" type has a user-friendly message -- the other two types just show a raw database message.
 
-## What needs to change
+## Solution
 
-### 1. Add new enum value: `candidate_email_received`
+### File: `src/pages/PublicJobPosting.tsx`
 
-The `activity_type` enum currently has `candidate_email_sent` but no `candidate_email_received`. We also need a value for applications -- `candidate_added` already exists in the enum and fits perfectly for "applied via job posting."
+**Fix 1: Handle violations from both `data` and `error` paths**
 
-- **Migration**: `ALTER TYPE activity_type ADD VALUE 'candidate_email_received';`
+After the `supabase.functions.invoke` call, check both the `data` object AND parse the error response for violation info. The `supabase.functions.invoke` returns `{ data, error }` where for non-2xx, the JSON body is typically still available in `data` (Supabase JS v2 behavior). We'll add a safety net to also parse the error context.
 
-### 2. Log activity when a candidate applies
+**Fix 2: Add friendly messages for ALL violation types**
 
-**File**: `supabase/functions/public-submit-application/index.ts`
+Map each violation type to a clear, human-readable title and description:
 
-After the association is created (around line 385), call `log_activity` RPC:
-- `p_activity_type`: `'candidate_added'`
-- `p_title`: `'Applied via job posting'`
-- `p_description`: `'Candidate applied for {job_title}'`
-- `p_entity_type`: `'candidate'`
-- `p_entity_id`: candidate ID
-- `p_user_id`: use a system/service role approach (the function already uses service role client)
-- `p_organization_id`: from the posting's job
-- `p_tenant_id`: from the posting
+| Violation Type | Toast Title | Toast Description |
+|---|---|---|
+| `same_job_cooldown` | "Already Applied" | "You've already applied to this position. You can reapply after [date] (in X days)." |
+| `max_applications_exceeded` | "Application Limit Reached" | "You've reached the maximum of 3 applications in the last 60 days. Please try again later." |
+| `rejection_cooldown` | "Please Wait to Reapply" | "You can submit a new application after [date] (in X days)." |
+| (unknown/fallback) | "Application Not Submitted" | The raw violation message from the server |
 
-Since public applications are unauthenticated, `p_user_id` will use the candidate's own ID as a reference (or a system constant). The `log_activity` RPC requires a user_id -- we'll pass a null-safe value and handle it.
+**Fix 3: Improve the generic catch-block error**
 
-### 3. Log activity when an inbound email is received
+Update the fallback error in the catch block to say "Unable to submit application" with a more helpful description: "Please check your connection and try again. If the problem persists, contact the employer directly."
 
-**File**: `supabase/functions/process-candidate-reply-webhook/index.ts`
+### File: `supabase/functions/public-submit-application/index.ts`
 
-After successfully inserting or updating an email_log row for a received message, call `log_activity`:
-- `p_activity_type`: `'candidate_email_received'`
-- `p_title`: `'Email received: {subject}'`
-- `p_description`: `'Reply from {sender}'`
-- `p_entity_type`: `'candidate'`
-- `p_entity_id`: candidate ID
-- `p_organization_id`: from the job association
-- `p_tenant_id`: from the resolved tenant
+**Fix 4: Return 200 (not 429) for application limit responses**
 
-This will NOT fire for internal sender copies (already filtered).
-
-### 4. Update UI helpers to render new activity types
-
-**File**: `src/utils/activityHelpers.tsx`
-
-- Add `'candidate_added'` to icon map (use `UserPlus` icon, success color) -- it's actually already mapped under `candidate_created` but we should add `candidate_added` explicitly
-- Add `'candidate_email_received'` to icon map (use `Mail` icon with a distinct color like `hsl(var(--info))`)
-
-### 5. Update ActivityTimeline component (SaaS dashboard)
-
-**File**: `src/components/saas/ActivityTimeline.tsx`
-
-- Add `'candidate_email_received'` to the icon and color switch cases (Mail icon, cyan color -- similar to `candidate_email_sent`)
+Change the status code from 429 to 200 for limit violation responses. The response body already has `success: false` and `violations` array, which is sufficient for the client to distinguish success from failure. This ensures `supabase.functions.invoke` reliably puts the response in `data` rather than `error`.
 
 ## Technical Details
 
-### Database migration
+### Changes in `src/pages/PublicJobPosting.tsx` (~lines 452-510)
 
-```sql
-ALTER TYPE activity_type ADD VALUE IF NOT EXISTS 'candidate_email_received';
-```
+- Add a helper function `getViolationToast(violation)` that returns `{ title, description }` based on violation type
+- Handle all three violation types with specific, empathetic copy
+- Calculate "days until" for cooldown types and include the date
+- Update the catch block's generic toast to be more helpful
 
-`candidate_added` already exists in the enum.
+### Changes in `supabase/functions/public-submit-application/index.ts` (~line 204)
 
-### Edge function changes
-
-**public-submit-application** -- add ~15 lines after association creation to fire-and-forget `log_activity` RPC call.
-
-**process-candidate-reply-webhook** -- add ~15 lines after successful email_log insert/update to fire-and-forget `log_activity` RPC call. Since webhook handler has no authenticated user, use the candidate_id as entity reference and a system user placeholder for p_user_id.
+- Change `status: 429` to `status: 200` so the client reliably receives the violations in `data`
 
 ### Files changed
 
 | File | Change |
-|------|--------|
-| `supabase/functions/public-submit-application/index.ts` | Add `log_activity` call after association creation |
-| `supabase/functions/process-candidate-reply-webhook/index.ts` | Add `log_activity` call after email ingestion |
-| `src/utils/activityHelpers.tsx` | Add icon/color for `candidate_added` and `candidate_email_received` |
-| `src/components/saas/ActivityTimeline.tsx` | Add icon/color cases for new types |
-| SQL migration | Add `candidate_email_received` to enum |
+|---|---|
+| `src/pages/PublicJobPosting.tsx` | Add violation-specific toast messages with friendly titles and descriptions; improve generic error fallback |
+| `supabase/functions/public-submit-application/index.ts` | Return 200 instead of 429 for limit violations (body already indicates `success: false`) |
 
-### No changes needed
-
-- `send-user-email` already logs `candidate_email_sent` activity
-- `useActivityFeed.ts` -- already generic, will pick up new types automatically
-- `ActivityFeedItem.tsx` -- already generic, renders any activity type
