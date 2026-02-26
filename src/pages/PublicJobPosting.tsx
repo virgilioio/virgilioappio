@@ -26,6 +26,40 @@ import { useCoreFields } from '@/hooks/useCoreFields'
 import { CoreFieldsRenderer } from '@/components/forms/CoreFieldsRenderer'
 import { ApplicationFieldsRenderer } from '@/components/forms/ApplicationFieldsRenderer'
 
+function getViolationToast(violation: { type?: string; message?: string; cooldown_until?: string }) {
+  const cooldownDate = violation.cooldown_until ? new Date(violation.cooldown_until) : null
+  const daysUntil = cooldownDate
+    ? Math.max(1, Math.ceil((cooldownDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null
+
+  switch (violation.type) {
+    case 'same_job_cooldown':
+      return {
+        title: 'Already Applied',
+        description: cooldownDate
+          ? `You've already applied to this position. You can reapply after ${cooldownDate.toLocaleDateString()} (in ${daysUntil} day${daysUntil === 1 ? '' : 's'}).`
+          : "You've already applied to this position recently."
+      }
+    case 'max_applications_exceeded':
+      return {
+        title: 'Application Limit Reached',
+        description: "You've reached the maximum number of applications allowed. Please try again later."
+      }
+    case 'rejection_cooldown':
+      return {
+        title: 'Please Wait to Reapply',
+        description: cooldownDate
+          ? `You can submit a new application after ${cooldownDate.toLocaleDateString()} (in ${daysUntil} day${daysUntil === 1 ? '' : 's'}).`
+          : 'Please wait before submitting a new application.'
+      }
+    default:
+      return {
+        title: 'Application Not Submitted',
+        description: violation.message || 'Your application could not be submitted at this time.'
+      }
+  }
+}
+
 type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'checkbox_group' | 'date' | 'file' | 'url' | 'salary' | 'location'
 
 interface Posting {
@@ -449,26 +483,15 @@ export default function PublicJobPosting() {
         body: applicationData
       })
 
-      // Check for application limit violations first
-      const response = data as any
+      // Check for application limit violations from both data and error paths
+      const response = (data as any) || (error ? (() => { try { return JSON.parse(error.message); } catch { return null; } })() : null)
       if (!response?.success && response?.violations?.length > 0) {
-        const violation = response.violations[0] // Show the first violation
-        let errorMessage = violation.message
-        
-        // Add cooldown date information if available
-        if (violation.cooldown_until) {
-          const cooldownDate = new Date(violation.cooldown_until)
-          const now = new Date()
-          const daysUntil = Math.ceil((cooldownDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-          
-          if (violation.type === 'same_job_cooldown') {
-            errorMessage = `You've already applied to this job recently. You can apply again after ${cooldownDate.toLocaleDateString()} (in ${daysUntil} days).`
-          }
-        }
+        const violation = response.violations[0]
+        const { title: violationTitle, description: violationDesc } = getViolationToast(violation)
         
         toast({
-          title: 'Application Not Submitted',
-          description: errorMessage,
+          title: violationTitle,
+          description: violationDesc,
           variant: 'destructive'
         })
         return
@@ -503,8 +526,8 @@ export default function PublicJobPosting() {
     } catch (err) {
       console.error('Submit application error:', err)
       toast({
-        title: 'Submission failed',
-        description: err instanceof Error ? err.message : 'Something went wrong',
+        title: 'Unable to submit application',
+        description: 'Please check your connection and try again. If the problem persists, contact the employer directly.',
         variant: 'destructive'
       })
     } finally {
