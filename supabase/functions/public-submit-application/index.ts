@@ -201,7 +201,7 @@ serve(async (req) => {
           violations: limits.violations,
           message: limits.violations[0]?.message || 'You have exceeded application limits for this organization'
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
