@@ -18,6 +18,7 @@ import { markdownToHtml } from "@/utils/markdown";
 import gioIcon from "@/assets/gio-icon.png";
 import { RecommendedNextStepsDialog } from "./RecommendedNextStepsDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CandidateApplicationResponses } from "@/components/candidates/CandidateApplicationResponses";
 import { ScorecardValidationPoints } from "./ScorecardValidationPoints";
 import { PDFResumeViewer } from "@/components/candidates/PDFResumeViewer";
 import {
@@ -896,6 +897,7 @@ export function ScorecardSheet({
                   <div className="p-4 border-b border-virgilio-border shrink-0">
                     <TabsList>
                       <TabsTrigger value="resume">Resume</TabsTrigger>
+                      <TabsTrigger value="application">Application</TabsTrigger>
                       <TabsTrigger value="interview-details" disabled className="gap-2">
                         Interview Details
                         <Badge variant="outline" className="text-xs">Soon</Badge>
@@ -914,6 +916,17 @@ export function ScorecardSheet({
                       <div className="flex flex-col items-center justify-center h-full text-center p-6">
                         <FileText className="h-12 w-12 text-muted-foreground mb-4" />
                         <p className="text-sm text-muted-foreground">No resume available</p>
+                      </div>
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="application" className="flex-1 overflow-y-auto m-0 p-6">
+                    {candidateId && jobId ? (
+                      <CandidateApplicationResponses candidateId={candidateId} jobId={jobId} />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full text-center p-6">
+                        <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+                        <p className="text-sm text-muted-foreground">No application details available</p>
                       </div>
                     )}
                   </TabsContent>
