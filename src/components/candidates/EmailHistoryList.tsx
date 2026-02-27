@@ -76,34 +76,11 @@ export function EmailHistoryList({ candidateId, jobId, onReply, onForward }: Ema
     );
   }
 
-  // Group emails by thread_id for conversation view
-  const threads = emails.reduce((acc, email) => {
-    const threadId = email.thread_id || email.id;
-    if (!acc[threadId]) {
-      acc[threadId] = [];
-    }
-    acc[threadId].push(email);
-    return acc;
-  }, {} as Record<string, typeof emails>);
-
-  // Sort threads by most recent activity
-  const sortedThreads = Object.entries(threads).sort(([, a], [, b]) => {
-    const aLatest = a.reduce((latest, email) => {
-      const date = new Date(email.received_at || email.sent_at || email.created_at);
-      return date > latest ? date : latest;
-    }, new Date(0));
-    const bLatest = b.reduce((latest, email) => {
-      const date = new Date(email.received_at || email.sent_at || email.created_at);
-      return date > latest ? date : latest;
-    }, new Date(0));
-    return bLatest.getTime() - aLatest.getTime();
-  });
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
         <div className="text-xs text-text-secondary">
-          {emails.length} {emails.length === 1 ? 'email' : 'emails'} • {sortedThreads.length} {sortedThreads.length === 1 ? 'conversation' : 'conversations'}
+          {emails.length} {emails.length === 1 ? 'email' : 'emails'}
         </div>
         {mailIdentityId && (
           <Button
@@ -118,17 +95,13 @@ export function EmailHistoryList({ candidateId, jobId, onReply, onForward }: Ema
           </Button>
         )}
       </div>
-      {sortedThreads.map(([threadId, threadEmails]) => (
-        <div key={threadId} className="space-y-2">
-          {threadEmails.map((email) => (
-            <EmailHistoryCard 
-              key={email.id} 
-              email={email}
-              onReply={onReply}
-              onForward={onForward}
-            />
-          ))}
-        </div>
+      {emails.map((email) => (
+        <EmailHistoryCard 
+          key={email.id} 
+          email={email}
+          onReply={onReply}
+          onForward={onForward}
+        />
       ))}
     </div>
   );
