@@ -44,8 +44,7 @@ export function useEmailLogs(candidateId?: string, jobId?: string) {
         .from('email_logs')
         .select('*')
         .eq('candidate_id', candidateId)
-        .order('received_at', { ascending: false, nullsFirst: false })
-        .order('sent_at', { ascending: false, nullsFirst: false });
+        .order('created_at', { ascending: false });
       
       if (jobId) {
         query = query.eq('job_id', jobId);
