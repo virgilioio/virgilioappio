@@ -1,40 +1,37 @@
 
 
-# Fix Email History to Show Chronological Order
+# Add Application Details Tab to Scorecard Sheet
 
-## Problem
+## Overview
 
-Emails in the history are not displayed in chronological order. The current query sorts by `received_at DESC` first, then `sent_at DESC` as a secondary sort. This means all received emails (which have `received_at` populated) cluster together, and all sent emails (which have `sent_at` populated but `received_at = null`) cluster separately -- rather than interleaving in true conversation order.
+Add a new "Application Details" tab alongside "Resume" and "Interview Details" in the scorecard sheet's left panel, so interviewers can review the candidate's application responses while filling out the scorecard.
 
-## Solution
+## Changes
 
-### 1. Fix the query ordering (`src/hooks/useEmailLogs.ts`)
+### File: `src/components/candidates/ScorecardSheet.tsx`
 
-Replace the two `.order()` calls with a single sort by `created_at DESC`. The `created_at` column is populated for every row regardless of direction, making it the reliable unified timestamp.
+1. **Import** `CandidateApplicationResponses` component
+2. **Add a new tab trigger** "Application" between "Resume" and "Interview Details" in the TabsList (line ~898)
+3. **Add a new TabsContent** for the application tab that renders `CandidateApplicationResponses` with `candidateId` and `jobId` props (both already available as props on the scorecard sheet)
+4. **Wrap in a scrollable container** since application responses can be long
 
-**Before:**
-```
-.order('received_at', { ascending: false, nullsFirst: false })
-.order('sent_at', { ascending: false, nullsFirst: false })
-```
+The left panel already has `candidateId` and `jobId` available as props, and `CandidateApplicationResponses` handles its own data fetching, loading states, and empty states -- so this is a straightforward tab addition.
 
-**After:**
-```
-.order('created_at', { ascending: false })
-```
+### Tab layout after change
 
-### 2. Simplify the rendering (`src/components/candidates/EmailHistoryList.tsx`)
+| Tab | Status |
+|-----|--------|
+| Resume | Existing |
+| Application | **New** |
+| Interview Details | Existing (disabled, "Soon" badge) |
 
-Remove the thread-grouping logic entirely. Instead, render all emails as a flat chronological list (newest first). The thread grouping was causing visual clustering that broke the natural conversation flow.
+## Technical Details
 
-- Remove the `threads` reduce and `sortedThreads` sort logic (lines 79-100)
-- Render `emails` directly in a flat list
-- Update the summary line to just show email count (remove "conversations" count)
+### In `ScorecardSheet.tsx`
 
-### Files changed
+- Add import: `import { CandidateApplicationResponses } from '@/components/candidates/CandidateApplicationResponses'`
+- Add `<TabsTrigger value="application">Application</TabsTrigger>` after the Resume trigger (line ~898)
+- Add a `<TabsContent value="application">` block after the resume TabsContent (line ~919) that renders `CandidateApplicationResponses` inside a scrollable div, or shows a fallback if `candidateId` or `jobId` is missing
 
-| File | Change |
-|------|--------|
-| `src/hooks/useEmailLogs.ts` | Replace dual `.order()` with single `.order('created_at', { ascending: false })` |
-| `src/components/candidates/EmailHistoryList.tsx` | Remove thread grouping; render flat chronological list |
+No other files need changes -- the `CandidateApplicationResponses` component is fully self-contained.
 
