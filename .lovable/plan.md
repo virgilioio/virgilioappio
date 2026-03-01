@@ -1,50 +1,21 @@
 
-# Notification Center (Bell Icon in Header)
+# Fix Notification Center Scrolling
 
-## Overview
+## Problem
 
-Add a notification bell icon to the header that shows unread candidate emails. It uses the existing `usePendingActivities` hook which already handles job-scoping (restricted roles only see emails from their assigned jobs) and provides `markEmailAsRead`.
+Two issues with the notification popover:
+1. **Horizontal scroll** — The Radix `ScrollArea` component applies `min-width: fit-content` on its viewport, preventing content from shrinking to fit the popover width
+2. **Vertical scroll not working** — The `ScrollArea` needs an explicit height to enable scrolling, and the current `max-h-80` on the wrapper isn't propagating correctly
 
-## What You'll See
+## Solution
 
-- A bell icon in the header (next to the Sourcing Credits button), matching the same ghost button style
-- A small red dot/badge when there are unread email notifications
-- Clicking the bell opens a popover with a scrollable list of unread emails
-- Each item shows: candidate name, email subject, job title, and relative timestamp
-- Clicking a notification navigates to the candidate's profile and marks the email as read
-- An empty state when no notifications are pending
+### File: `src/components/layout/NotificationCenter.tsx`
 
-## Visual Consistency
+Replace the `ScrollArea` component with a plain `div` using `overflow-y-auto max-h-80`. This follows the established project pattern (per style guide) where narrow panels use native scrolling instead of Radix ScrollArea to avoid the `min-width: fit-content` issue.
 
-- Uses the same `Button variant="ghost"` pattern as the SourcingCreditIndicator
-- `font-poppins` typography throughout
-- `shadow-calendly` and `border-virgilio-border` on the popover (matching existing dropdowns)
-- `text-virgilio-text` / `text-virgilio-muted` color tokens
-- `bg-virgilio-purple/10` hover states on list items
-- `ScrollArea` for the notification list
-- `Badge variant="destructive"` for the unread count indicator
-- Consistent icon sizing (`h-4 w-4` for trigger, `h-3.5 w-3.5` for list items)
+**Changes:**
+- Remove the `ScrollArea` import
+- Replace `<ScrollArea className="max-h-80">` with `<div className="overflow-y-auto max-h-80">`
+- Close with `</div>` instead of `</ScrollArea>`
 
-## Technical Details
-
-### New File: `src/components/layout/NotificationCenter.tsx`
-
-- Import `usePendingActivities` hook -- filter results to `type === 'email'` only
-- Render a `Popover` (with `modal={true}` per project memory for nested usage safety) with a `Bell` icon trigger
-- Show a destructive badge with unread count when > 0
-- Popover content: header label, `ScrollArea` with notification items, empty state
-- Each item: `Mail` icon, candidate name (bold), subject snippet, job title badge, relative time
-- On click: call `markEmailAsRead`, then `navigate(`/candidates/${candidateId}`)`
-- "Mark all as read" button at the bottom when there are notifications
-
-### Modified File: `src/components/layout/Header.tsx`
-
-- Import `NotificationCenter`
-- Add `<NotificationCenter />` between the `SourcingCreditIndicator` and the Workspace Switcher (line ~256)
-
-### Files Changed
-
-| File | Change |
-|------|--------|
-| `src/components/layout/NotificationCenter.tsx` | New component |
-| `src/components/layout/Header.tsx` | Add NotificationCenter to header actions |
+This is a 3-line change that fixes both the horizontal overflow and vertical scrolling.
