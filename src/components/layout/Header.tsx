@@ -35,6 +35,7 @@ import { AdminModeIndicator } from '@/components/admin/AdminModeIndicator'
 import { GlobalCreateButton } from '@/components/layout/GlobalCreateButton'
 import { SourcingCreditIndicator } from '@/components/layout/SourcingCreditIndicator'
 import { GlobalSearchBar } from '@/components/search/GlobalSearchBar'
+import { NotificationCenter } from '@/components/layout/NotificationCenter'
 
 import { cn } from '@/lib/utils'
 import { useMembers } from '@/hooks/useMembers'
@@ -253,6 +254,9 @@ export function Header() {
           
           {/* Sourcing Credit Indicator */}
           <SourcingCreditIndicator />
+          
+          {/* Notification Center */}
+          <NotificationCenter />
           
           {/* Workspace Switcher */}
           {isPlatformAdmin && uniqueOrgs.length > 1 && (
