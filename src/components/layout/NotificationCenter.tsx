@@ -5,7 +5,7 @@ import { usePendingActivities, PendingActivity } from '@/hooks/usePendingActivit
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ScrollArea } from '@/components/ui/scroll-area'
+
 import { Separator } from '@/components/ui/separator'
 
 export function NotificationCenter() {
@@ -77,7 +77,7 @@ export function NotificationCenter() {
           </div>
         ) : (
           <>
-            <ScrollArea className="max-h-80">
+            <div className="overflow-y-auto max-h-80">
               <div className="divide-y divide-virgilio-border">
                 {emailNotifications.map((notification) => (
                   <button
@@ -116,7 +116,7 @@ export function NotificationCenter() {
                   </button>
                 ))}
               </div>
-            </ScrollArea>
+            </div>
             <Separator />
             <div className="p-2">
               <Button
