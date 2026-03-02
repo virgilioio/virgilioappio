@@ -587,6 +587,8 @@ export default function JobDetail() {
       }
     },
     enabled: !!id && !!user,
+    staleTime: 5 * 60 * 1000,
+    placeholderData: (previousData: any) => previousData,
   })
 
   // AI matching candidates hook - only load when suggested tab is active
@@ -823,7 +825,18 @@ export default function JobDetail() {
     )
   }
 
-  if (!job) return null
+  if (!job) return (
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
+        <Skeleton className="h-12 w-64 mb-4" />
+        <div className="grid grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full" />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
