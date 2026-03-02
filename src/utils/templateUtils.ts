@@ -90,6 +90,10 @@ export interface PlaceholderData {
   'sender.linkedin'?: string;
   'sender.booking_link'?: string;
   
+  // Organization / tenant fields
+  'organization.name'?: string;
+  'department.name'?: string;
+  
   // Allow additional custom keys
   [key: string]: string | undefined;
 }
@@ -150,6 +154,8 @@ export const PLACEHOLDER_OPTIONS = [
   { key: 'sender.linkedin', label: 'Your LinkedIn URL', category: 'Sender' },
   { key: 'sender.booking_link', label: 'Your Booking Link', category: 'Sender' },
   { key: 'stage.booking_link', label: 'Stage Interviewer Booking Link', category: 'Stage' },
+  { key: 'organization.name', label: 'Company / Workspace Name', category: 'Organization' },
+  { key: 'department.name', label: 'Department / Job Folder Name', category: 'Organization' },
 ];
 
 /**

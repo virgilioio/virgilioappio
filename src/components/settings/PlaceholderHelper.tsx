@@ -29,7 +29,8 @@ export function PlaceholderHelper({ templateId, onInsert }: PlaceholderHelperPro
   ]
 
   const organizationPlaceholders = [
-    { key: '{{organization.name}}', description: 'Organization name' },
+    { key: '{{organization.name}}', description: 'Company / Workspace name' },
+    { key: '{{department.name}}', description: 'Department / Job folder name' },
     { key: '{{organization.default_currency}}', description: 'Default currency' }
   ]
 
