@@ -995,7 +995,7 @@ export function ApolloPreviewSheet({
                           if (collectedJobId && enrichedData?.candidate_id) {
                             navigate(`/jobs/${collectedJobId}?candidate=${enrichedData.candidate_id}`)
                           } else if (enrichedData?.candidate_id) {
-                            navigate(`/candidates/${enrichedData.candidate_id}`)
+                            navigate(`/candidates?openCandidate=${enrichedData.candidate_id}`)
                           }
                         }}
                       >

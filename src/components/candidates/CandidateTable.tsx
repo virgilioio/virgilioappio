@@ -131,8 +131,8 @@ export function CandidateTable({
       // Global candidate with job info
       return `/jobs/${candidate.job.id}/candidates/${candidate.id}`
     } else {
-      // Independent candidate (no job context) -> open independent profile
-      return `/candidates/${candidate.id}`
+      // Independent candidate (no job context) -> open candidate sheet
+      return `/candidates?openCandidate=${candidate.id}`
     }
   }
 
