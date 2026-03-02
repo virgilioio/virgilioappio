@@ -1,6 +1,7 @@
 import { PlatformJobStagesManager } from './PlatformJobStagesManager'
 import { PlatformApplicationFieldsManager } from './PlatformApplicationFieldsManager'
 import { PlatformOfferTemplatesManager } from './PlatformOfferTemplatesManager'
+import { AutomationsTab } from './AutomationsTab'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PageHeader } from '@/components/layout/PageHeader'
 
@@ -17,6 +18,7 @@ export function PlatformJobSettingsManager() {
           <TabsTrigger value="stages">Default Stages</TabsTrigger>
           <TabsTrigger value="application-fields">Default Application Fields</TabsTrigger>
           <TabsTrigger value="templates">Default Templates</TabsTrigger>
+          <TabsTrigger value="automations">Default Automations</TabsTrigger>
         </TabsList>
         <TabsContent value="stages" className="mt-4">
           <PlatformJobStagesManager />
@@ -26,6 +28,9 @@ export function PlatformJobSettingsManager() {
         </TabsContent>
         <TabsContent value="templates" className="mt-4">
           <PlatformOfferTemplatesManager />
+        </TabsContent>
+        <TabsContent value="automations" className="mt-4">
+          <AutomationsTab />
         </TabsContent>
       </Tabs>
     </div>
