@@ -1,25 +1,46 @@
 
 
-# Add PlaceholderHelper to Confirmation Email Automation
+# Upgrade Confirmation Email to use Lexical Template Editors
 
 ## Problem
-The Confirmation Email Automation component (`ConfirmationEmailAutomation.tsx`) uses a simple inline list of placeholder badges at the bottom of the form. Every other template editor in the app (Email Templates, Offer Letters, Contracts, Rejection Templates, Stage Email Sequences) uses the shared `PlaceholderHelper` component in a side panel layout. This is visually inconsistent.
+The workspace Confirmation Email Automation uses plain `<Input>` and `<Textarea>` elements, so placeholders appear as raw `{{text}}`. The stage email automation uses Lexical-based `SubjectTemplateEditor` and `BodyTemplateEditor`, which render placeholders as interactive purple pill badges and support direct insertion from the PlaceholderHelper sidebar.
+
+This creates two completely different experiences for the same type of task (composing email templates with placeholders).
 
 ## Solution
-Refactor `ConfirmationEmailAutomation` to match the established template editor pattern:
-- Use a 2-column grid layout (editor on left, `PlaceholderHelper` on right)
-- Replace the inline placeholder badges with the shared `PlaceholderHelper` component
-- Remove the inline `PLACEHOLDERS` constant since `PlaceholderHelper` already defines all available placeholders
+Replace the plain input/textarea in `ConfirmationEmailAutomation` with the same Lexical editors used in `EmailSequenceBuilder`, including:
+- `SubjectTemplateEditor` for the subject line (single-line, purple badges)
+- `BodyTemplateEditor` for the email body (rich text, purple badges)
+- Wire `PlaceholderHelper` with an `onInsert` callback that inserts directly into the last focused editor
+- Track last focused field (subject vs body) to route placeholder insertions correctly
 
-## What Changes
+## Changes
 
 **File: `src/components/settings/automations/ConfirmationEmailAutomation.tsx`**
 
-1. Import `PlaceholderHelper` from `@/components/settings/PlaceholderHelper`
-2. Wrap the form content in a `grid grid-cols-1 lg:grid-cols-3 gap-6` layout (same as all template sheets)
-3. Place the Card with subject/body fields in `lg:col-span-2`
-4. Place `PlaceholderHelper` in `lg:col-span-1`
-5. Remove the inline "Available placeholder variables" section (the Badge list and Info icon)
-6. Remove the `PLACEHOLDERS` constant and unused `Badge`/`Info` imports
+1. Replace `Input` import with `SubjectTemplateEditor` + `SubjectTemplateEditorHandle`
+2. Replace `Textarea` import with `BodyTemplateEditor` + `BodyTemplateEditorHandle`
+3. Add `useRef` for both editor handles (to call `insertPlaceholder()`)
+4. Add `lastFocusedField` state to track which editor was last focused (`'subject' | 'body'`)
+5. Add `handleInsertPlaceholder` function that routes to the correct editor ref
+6. Pass `onInsert={handleInsertPlaceholder}` to `PlaceholderHelper`
+7. Replace `<Input>` with `<SubjectTemplateEditor>` passing `ref`, `value`, `onChange`, `onFocus`, and `placeholder`
+8. Replace `<Textarea>` with `<BodyTemplateEditor>` passing `ref`, `value`, `onChange`, and `onFocus`
+9. Remove unused `Input`, `Textarea` imports
 
-The result will look identical to how template editors display placeholders -- a scrollable side panel with categorized placeholders (Job, Organization, Sender, Candidate, Stage) with copy/insert buttons.
+### Structure after change
+
+```text
+ConfirmationEmailAutomation
++-- grid (3-col)
+|   +-- col-span-2
+|   |   +-- Card
+|   |   |   +-- Subject: SubjectTemplateEditor (Lexical, purple badges)
+|   |   |   +-- Body: BodyTemplateEditor (Lexical, purple badges)
+|   |   +-- Info Card (workspace default note)
+|   +-- col-span-1
+|       +-- PlaceholderHelper (onInsert -> insert into last focused editor)
+```
+
+This exactly matches the pattern in `EmailSequenceBuilder.tsx`, ensuring full visual and behavioral consistency across the app.
+
