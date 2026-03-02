@@ -259,7 +259,7 @@ async function searchCandidates(query: string, limit: number, tenantId: string) 
       title: candidate.candidate_name,
       subtitle,
       metadata: [candidate.location_city, candidate.location_country].filter(Boolean).join(', ') || 'No location',
-      route: `/candidates/${candidate.id}`,
+      route: `/candidates?openCandidate=${candidate.id}`,
       icon: Users
     }
   })

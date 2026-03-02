@@ -353,7 +353,7 @@ export function BookingDetailsDialog({
                       </div>
                       <Link to={booking.job?.id 
                         ? `/jobs/${booking.job.id}?candidate=${booking.candidate_id}`
-                        : `/candidates/${booking.candidate_id}`
+                        : `/candidates?openCandidate=${booking.candidate_id}`
                       }>
                         <Button variant="outline" size="sm">
                           Open Profile

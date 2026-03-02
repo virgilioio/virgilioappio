@@ -3,6 +3,7 @@ import {
   Routes,
   Route,
   Navigate,
+  useParams,
 } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { OrgContextProvider } from './contexts/OrgContext'
@@ -37,6 +38,13 @@ const VerifyEmail = lazy(() => import('./pages/VerifyEmail'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 const CandidateProfile = lazy(() => import('@/pages/CandidateProfile'))
 const IndependentCandidateProfile = lazy(() => import('@/pages/IndependentCandidateProfile'))
+
+// Redirect component for legacy /candidates/:candidateId URLs
+function CandidateRedirect() {
+  const { candidateId } = useParams()
+  return <Navigate to={`/candidates?openCandidate=${candidateId}`} replace />
+}
+
 const PublicJobPosting = lazy(() => import('./pages/PublicJobPosting'))
 const PublicCareersPage = lazy(() => import('./pages/PublicCareersPage'))
 const PublicBookingPage = lazy(() => import('./pages/PublicBookingPage'))
@@ -116,7 +124,7 @@ function AppContent() {
             <Route path="/jobs/:jobId/pipeline" element={<JobDetail />} />
             <Route path="/jobs/:jobId/candidates/:candidateId" element={<CandidateProfile />} />
             <Route path="/candidates" element={<Candidates />} />
-            <Route path="/candidates/:candidateId" element={<IndependentCandidateProfile />} />
+            <Route path="/candidates/:candidateId" element={<CandidateRedirect />} />
             <Route path="/members" element={<Members />} />
             <Route path="/organizations" element={<Navigate to="/settings?tab=organizations" replace />} />
           </Route>

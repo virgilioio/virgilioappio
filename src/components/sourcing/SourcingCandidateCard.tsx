@@ -185,7 +185,7 @@ export function SourcingCandidateCard({ candidate, jobId }: SourcingCandidateCar
             size="sm" 
             variant="outline"
             className="flex-1"
-            onClick={() => navigate(`/candidates/${candidate.id}`)}
+            onClick={() => navigate(`/candidates?openCandidate=${candidate.id}`)}
           >
             <Eye className="h-3 w-3 mr-1" />
             View Profile
