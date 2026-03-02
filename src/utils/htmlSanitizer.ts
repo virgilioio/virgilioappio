@@ -1,6 +1,24 @@
 import DOMPurify from 'dompurify'
 
 /**
+ * Ensures all <a> tags have target="_blank" and rel="noopener noreferrer"
+ */
+function ensureLinksOpenNewTab(html: string): string {
+  if (!html) return ''
+  try {
+    const div = document.createElement('div')
+    div.innerHTML = html
+    div.querySelectorAll('a').forEach(a => {
+      if (!a.getAttribute('target')) a.setAttribute('target', '_blank')
+      if (!a.getAttribute('rel')) a.setAttribute('rel', 'noopener noreferrer')
+    })
+    return div.innerHTML
+  } catch {
+    return html
+  }
+}
+
+/**
  * Sanitizes HTML content for safe display, preventing XSS attacks
  * Uses DOMPurify for robust HTML sanitization
  */
@@ -26,7 +44,10 @@ export function sanitizeHtml(html: string): string {
   }
   
   const sanitized = DOMPurify.sanitize(html, config)
-  return normalizeTypography(sanitized)
+  
+  // Ensure all <a> tags open in new tab
+  const withTargets = ensureLinksOpenNewTab(sanitized)
+  return normalizeTypography(withTargets)
 }
 
 /**

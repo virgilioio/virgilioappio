@@ -41,6 +41,7 @@ import { lexicalTheme, LEXICAL_EDITOR_STYLES } from './lexicalTheme';
 import { PlaceholderNode, $createPlaceholderNode } from './nodes/PlaceholderNode';
 import { PlaceholderPlugin } from './plugins/PlaceholderPlugin';
 import { OnChangePlugin } from './plugins/OnChangePlugin';
+import { AutoLinkPlugin } from './plugins/AutoLinkPlugin';
 import { parseTemplateToNodes } from './utils/placeholderLexicalUtils';
 import { convertHtmlToPlaceholders } from '@/utils/placeholderUtils';
 
@@ -212,6 +213,7 @@ function BodyEditorInner({
         <HistoryPlugin />
         <ListPlugin />
         <LinkPlugin />
+        <AutoLinkPlugin />
       </div>
     </div>
   );
