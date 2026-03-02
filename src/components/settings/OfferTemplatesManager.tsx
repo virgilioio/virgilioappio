@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { Plus, Edit, Trash2, FileText, Settings as SettingsIcon, Mail, FileCheck, Ban, FileX } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Plus, Edit, Trash2, FileText, Settings as SettingsIcon, Mail, FileCheck } from 'lucide-react'
 import { useOfferTemplates, type OfferTemplate } from '@/hooks/useOfferTemplates'
 import { useEmailTemplates } from '@/hooks/useEmailTemplates'
 import { useContractTemplates } from '@/hooks/useContractTemplates'
@@ -24,8 +24,6 @@ interface OfferTemplatesManagerProps {
 }
 
 export function OfferTemplatesManager({ context = 'organization' }: OfferTemplatesManagerProps) {
-  const [templateType, setTemplateType] = useState<TemplateType>('offer-letters')
-  
   // Hooks for different template types
   const { templates: offerTemplates, isLoading: offerLoading, deleteTemplate: deleteOffer, copyPlatformTemplate: copyOffer } = useOfferTemplates(context)
   const { templates: emailTemplates, isLoading: emailLoading, deleteTemplate: deleteEmail } = useEmailTemplates(context)
@@ -46,12 +44,12 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
   const platformContractTemplates = contractTemplates?.filter(t => t.source === 'platform')
   const tenantContractTemplates = contractTemplates?.filter(t => t.source === 'tenant')
 
-  const openCreateSheet = () => {
-    if (templateType === 'offer-letters') {
+  const openCreateSheet = (type: TemplateType) => {
+    if (type === 'offer-letters') {
       setOfferLetterSheet({ open: true, templateId: undefined })
-    } else if (templateType === 'email-templates') {
+    } else if (type === 'email-templates') {
       setEmailTemplateSheet({ open: true, templateId: undefined })
-    } else if (templateType === 'contract-templates') {
+    } else if (type === 'contract-templates') {
       setContractTemplateSheet({ open: true, templateId: undefined })
     }
   }
@@ -81,62 +79,28 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between mb-4">
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              {context === 'platform-defaults' ? 'Platform Default Templates' : 'Templates'}
-            </CardTitle>
-            
-            {templateType !== 'rejection-reasons' && (
-              <Button onClick={openCreateSheet}>
-                <Plus className="h-4 w-4 mr-2" />
-                {templateType === 'offer-letters' && 'Create Template'}
-                {templateType === 'email-templates' && 'Create Email'}
-                {templateType === 'contract-templates' && 'Create Contract'}
-                {templateType === 'rejection-templates' && 'Create Rejection Email'}
-              </Button>
-            )}
-          </div>
-          
-          <ToggleGroup 
-            type="single" 
-            value={templateType} 
-            onValueChange={(value) => value && setTemplateType(value as TemplateType)}
-            variant="outline"
-            size="sm"
-          >
-            <ToggleGroupItem value="offer-letters" aria-label="Offer Letters">
-              <FileText className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Offer Letters</span>
-              <span className="sm:hidden">Offers</span>
-            </ToggleGroupItem>
-            <ToggleGroupItem value="email-templates" aria-label="Email Templates">
-              <Mail className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Email</span>
-              <span className="sm:hidden">Email</span>
-            </ToggleGroupItem>
-            <ToggleGroupItem value="contract-templates" aria-label="Contract Templates">
-              <FileCheck className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Contracts</span>
-              <span className="sm:hidden">Contracts</span>
-            </ToggleGroupItem>
-            <ToggleGroupItem value="rejection-reasons" aria-label="Rejection Reasons">
-              <Ban className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Rejection Reasons</span>
-              <span className="sm:hidden">Reasons</span>
-            </ToggleGroupItem>
-            <ToggleGroupItem value="rejection-templates" aria-label="Email Rejection Templates">
-              <FileX className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Email Rejection Templates</span>
-              <span className="sm:hidden">Reject</span>
-            </ToggleGroupItem>
-          </ToggleGroup>
-        </CardHeader>
-        <CardContent>
-          {templateType === 'offer-letters' && (
-            <>
+      <Tabs defaultValue="offer-letters" className="w-full">
+        <TabsList>
+          <TabsTrigger value="offer-letters">Offer Letters</TabsTrigger>
+          <TabsTrigger value="email-templates">Email Templates</TabsTrigger>
+          <TabsTrigger value="contract-templates">Contracts</TabsTrigger>
+          <TabsTrigger value="rejection-reasons">Rejection Reasons</TabsTrigger>
+          <TabsTrigger value="rejection-templates">Rejection Templates</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="offer-letters" className="mt-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">
+                  {context === 'platform-defaults' ? 'Platform Default Offer Templates' : 'Offer Letter Templates'}
+                </h3>
+                <Button onClick={() => openCreateSheet('offer-letters')}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Template
+                </Button>
+              </div>
+
               {context === 'organization' && platformOfferTemplates.length > 0 && (
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold mb-2">Platform Library</h3>
@@ -263,11 +227,23 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
                   </TableBody>
                 </Table>
               )}
-            </>
-          )}
-          
-          {templateType === 'email-templates' && (
-            <>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="email-templates" className="mt-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">
+                  {context === 'platform-defaults' ? 'Platform Default Email Templates' : 'Email Templates'}
+                </h3>
+                <Button onClick={() => openCreateSheet('email-templates')}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Email
+                </Button>
+              </div>
+
               {emailLoading ? (
                 <div className="text-center py-8">Loading templates...</div>
               ) : emailTemplates.length === 0 ? (
@@ -349,11 +325,23 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
                   </TableBody>
                 </Table>
               )}
-            </>
-          )}
-          
-          {templateType === 'contract-templates' && (
-            <>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="contract-templates" className="mt-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">
+                  {context === 'platform-defaults' ? 'Platform Default Contract Templates' : 'Contract Templates'}
+                </h3>
+                <Button onClick={() => openCreateSheet('contract-templates')}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Contract
+                </Button>
+              </div>
+
               {context === 'organization' && platformContractTemplates.length > 0 && (
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold mb-2">Platform Library</h3>
@@ -473,18 +461,18 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
                   </TableBody>
                 </Table>
               )}
-            </>
-          )}
-          
-          {templateType === 'rejection-reasons' && (
-            <RejectionReasonsManager context={context} />
-          )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          {templateType === 'rejection-templates' && (
-            <RejectionEmailTemplatesManager context={context} />
-          )}
-        </CardContent>
-      </Card>
+        <TabsContent value="rejection-reasons" className="mt-4">
+          <RejectionReasonsManager context={context} />
+        </TabsContent>
+
+        <TabsContent value="rejection-templates" className="mt-4">
+          <RejectionEmailTemplatesManager context={context} />
+        </TabsContent>
+      </Tabs>
 
       {/* Offer Letter Sheet */}
       <OfferLetterSheet
