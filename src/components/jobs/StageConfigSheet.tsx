@@ -31,7 +31,7 @@ export function StageConfigSheet({ open, onOpenChange, jhsId, jobId }: StageConf
   
   // Fetch job data for organization_id
   const { data: job } = useQuery({
-    queryKey: ['job', jobId],
+    queryKey: ['job-org-context', jobId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('jobs')
@@ -41,7 +41,7 @@ export function StageConfigSheet({ open, onOpenChange, jhsId, jobId }: StageConf
       if (error) throw error
       return data
     },
-    enabled: !!jobId
+    enabled: open && !!jobId
   })
   
   useEffect(() => {
