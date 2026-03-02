@@ -681,6 +681,90 @@ serve(async (req) => {
       console.log('🧠 Triggered background enrichment for candidate:', globalCandidateId);
     }
 
+    // Fire-and-forget: Send workspace confirmation email if automation is active
+    if (globalCandidateId && candidateEmail) {
+      try {
+        const { data: confirmationAutomation } = await supabase
+          .from('workspace_automations')
+          .select('*')
+          .eq('tenant_id', posting.tenant_id)
+          .eq('automation_type', 'application_confirmation_email')
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (confirmationAutomation && confirmationAutomation.from_email && confirmationAutomation.subject && confirmationAutomation.body) {
+          const jobTitle = (posting as any).job?.title || 'the open position';
+          
+          // Fetch organization name for placeholder resolution
+          let orgName = '';
+          if ((posting as any).job?.organization_id) {
+            const { data: org } = await supabase
+              .from('organizations')
+              .select('name')
+              .eq('id', (posting as any).job.organization_id)
+              .maybeSingle();
+            orgName = org?.name || '';
+          }
+
+          // Parse candidate first name from full name
+          const candidateFirstName = candidateName.split(' ')[0] || candidateName;
+
+          // Resolve placeholders inline
+          const resolvePlaceholders = (template: string): string => {
+            return template
+              .replace(/\{\{candidate\.first_name\}\}/g, candidateFirstName)
+              .replace(/\{\{candidate\.name\}\}/g, candidateName)
+              .replace(/\{\{candidate\.email\}\}/g, candidateEmail)
+              .replace(/\{\{job\.title\}\}/g, jobTitle)
+              .replace(/\{\{organization\.name\}\}/g, orgName);
+          };
+
+          const resolvedSubject = resolvePlaceholders(confirmationAutomation.subject);
+          const resolvedBody = resolvePlaceholders(confirmationAutomation.body);
+
+          // Convert plain text body to basic HTML (preserve line breaks)
+          const bodyHtml = resolvedBody
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\n/g, '<br>');
+
+          // Call send-user-email with service role auth (fire-and-forget)
+          const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+          const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
+          fetch(`${supabaseUrl}/functions/v1/send-user-email`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${serviceRoleKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              from_email: confirmationAutomation.from_email,
+              to: [candidateEmail],
+              subject: resolvedSubject,
+              body_html: bodyHtml,
+              candidate_id: globalCandidateId,
+              job_id: posting.job_id,
+            }),
+          }).then(async (res) => {
+            if (!res.ok) {
+              const err = await res.text();
+              console.error('❌ Confirmation email send failed:', err);
+            } else {
+              console.log('✅ Confirmation email sent to:', candidateEmail);
+            }
+          }).catch(err => console.error('❌ Confirmation email call failed:', err));
+
+          console.log('📧 Triggered confirmation email for candidate:', candidateEmail);
+        } else {
+          console.log('ℹ️ No active confirmation email automation found for tenant:', posting.tenant_id);
+        }
+      } catch (confirmErr: any) {
+        console.error('⚠️ Warning: Failed to check/send confirmation email (non-blocking):', confirmErr?.message);
+      }
+    }
+
     // Check if any required file uploads failed
     const failedUploads = fileUploadResults.filter(result => !result.success);
     const hasFailedUploads = failedUploads.length > 0;

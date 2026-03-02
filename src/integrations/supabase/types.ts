@@ -4817,6 +4817,56 @@ export type Database = {
           },
         ]
       }
+      workspace_automations: {
+        Row: {
+          automation_type: string
+          body: string | null
+          config: Json | null
+          created_at: string
+          created_by: string | null
+          from_email: string | null
+          id: string
+          is_active: boolean
+          subject: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          automation_type: string
+          body?: string | null
+          config?: Json | null
+          created_at?: string
+          created_by?: string | null
+          from_email?: string | null
+          id?: string
+          is_active?: boolean
+          subject?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          automation_type?: string
+          body?: string | null
+          config?: Json | null
+          created_at?: string
+          created_by?: string | null
+          from_email?: string | null
+          id?: string
+          is_active?: boolean
+          subject?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_automations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       coresignal_usage: {
