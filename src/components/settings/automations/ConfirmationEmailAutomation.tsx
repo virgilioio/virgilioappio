@@ -1,11 +1,15 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Mail, Info } from 'lucide-react'
 import { PlaceholderHelper } from '@/components/settings/PlaceholderHelper'
+import {
+  SubjectTemplateEditor,
+  BodyTemplateEditor,
+  type SubjectTemplateEditorHandle,
+  type BodyTemplateEditorHandle
+} from '@/components/editors'
 
 export function ConfirmationEmailAutomation() {
   const [enabled, setEnabled] = useState(false)
@@ -13,6 +17,17 @@ export function ConfirmationEmailAutomation() {
   const [body, setBody] = useState(
     `Hi {{candidate.first_name}},\n\nThank you for applying to the {{job.title}} position at {{organization.name}}. We've received your application and our team will review it shortly.\n\nWe'll be in touch if your qualifications match our requirements.\n\nBest regards,\nThe {{organization.name}} Team`
   )
+  const [lastFocusedField, setLastFocusedField] = useState<'subject' | 'body'>('body')
+  const subjectRef = useRef<SubjectTemplateEditorHandle>(null)
+  const bodyRef = useRef<BodyTemplateEditorHandle>(null)
+
+  const handleInsertPlaceholder = (placeholder: string) => {
+    if (lastFocusedField === 'subject') {
+      subjectRef.current?.insertPlaceholder(placeholder)
+    } else {
+      bodyRef.current?.insertPlaceholder(placeholder)
+    }
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -41,23 +56,22 @@ export function ConfirmationEmailAutomation() {
           <CardContent className={`space-y-6 ${!enabled ? 'opacity-50 pointer-events-none' : ''}`}>
             <div className="space-y-2">
               <Label htmlFor="subject">Subject Line</Label>
-              <Input
-                id="subject"
+              <SubjectTemplateEditor
+                ref={subjectRef}
                 value={subject}
-                onChange={(e) => setSubject(e.target.value)}
+                onChange={setSubject}
                 placeholder="Enter email subject..."
+                onFocus={() => setLastFocusedField('subject')}
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="body">Email Body</Label>
-              <Textarea
-                id="body"
+              <BodyTemplateEditor
+                ref={bodyRef}
                 value={body}
-                onChange={(e) => setBody(e.target.value)}
-                rows={10}
-                className="font-mono text-sm"
-                placeholder="Enter email body..."
+                onChange={setBody}
+                onFocus={() => setLastFocusedField('body')}
               />
             </div>
           </CardContent>
@@ -80,7 +94,7 @@ export function ConfirmationEmailAutomation() {
       </div>
 
       <div className="lg:col-span-1">
-        <PlaceholderHelper />
+        <PlaceholderHelper onInsert={handleInsertPlaceholder} />
       </div>
     </div>
   )
