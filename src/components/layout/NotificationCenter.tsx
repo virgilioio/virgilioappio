@@ -22,7 +22,7 @@ export function NotificationCenter() {
     if (notification.emailId) {
       markEmailAsRead.mutate(notification.emailId)
     }
-    navigate(`/candidates/${notification.candidateId}`)
+    navigate(`/candidates?openCandidate=${notification.candidateId}`)
   }
 
   const handleMarkAllAsRead = () => {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -38,7 +38,20 @@ export function IndependentCandidateTable({
 }: IndependentCandidateTableProps) {
   
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [searchTerm, setSearchTerm] = useState('')
+
+  // Auto-open candidate sheet from query param (e.g. notification click)
+  useEffect(() => {
+    const openCandidateId = searchParams.get('openCandidate')
+    if (openCandidateId) {
+      setSelectedCandidateId(openCandidateId)
+      setSheetOpen(true)
+      const newParams = new URLSearchParams(searchParams)
+      newParams.delete('openCandidate')
+      setSearchParams(newParams, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
   
   // Selection mode state
   const [selectionMode, setSelectionMode] = useState(false)
