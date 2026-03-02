@@ -1,6 +1,7 @@
 import React from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { SoonBadge } from '@/components/ui/soon-badge'
 
 export function TabsGuide() {
   return (
@@ -59,6 +60,34 @@ export function TabsGuide() {
                 <p className="text-sm text-muted-foreground">Settings panel content.</p>
               </TabsContent>
             </Tabs>
+          </div>
+        </div>
+
+        {/* Tabs with Soon Badge */}
+        <div className="space-y-3">
+          <h4 className="text-sm font-medium text-muted-foreground">Tabs with "Soon" Badge</h4>
+          <div className="p-4 rounded-lg border bg-card">
+            <Tabs defaultValue="active-tab">
+              <TabsList>
+                <TabsTrigger value="active-tab">Active Feature</TabsTrigger>
+                <TabsTrigger value="coming-soon-1" disabled className="gap-2">
+                  Coming Feature <SoonBadge />
+                </TabsTrigger>
+                <TabsTrigger value="coming-soon-2" disabled className="gap-2">
+                  Another Feature <SoonBadge />
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="active-tab" className="mt-4">
+                <p className="text-sm text-muted-foreground">
+                  Use the <code>SoonBadge</code> component with <code>disabled</code> TabsTrigger to indicate upcoming features.
+                </p>
+              </TabsContent>
+            </Tabs>
+          </div>
+          <div className="p-4 rounded-lg border bg-muted/30">
+            <p className="text-sm text-muted-foreground">
+              Import <code>{'<SoonBadge />'}</code> from <code>@/components/ui/soon-badge</code> and place it inside a disabled <code>TabsTrigger</code> with <code>className="gap-2"</code>.
+            </p>
           </div>
         </div>
 
