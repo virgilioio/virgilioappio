@@ -695,15 +695,26 @@ serve(async (req) => {
         if (confirmationAutomation && confirmationAutomation.from_email && confirmationAutomation.subject && confirmationAutomation.body) {
           const jobTitle = (posting as any).job?.title || 'the open position';
           
-          // Fetch organization name for placeholder resolution
-          let orgName = '';
+          // Fetch tenant (workspace/company) name for {{organization.name}}
+          let tenantName = '';
+          if (posting.tenant_id) {
+            const { data: tenant } = await supabase
+              .from('tenants')
+              .select('name')
+              .eq('id', posting.tenant_id)
+              .maybeSingle();
+            tenantName = tenant?.name || '';
+          }
+
+          // Fetch department (job folder) name for {{department.name}}
+          let deptName = '';
           if ((posting as any).job?.organization_id) {
-            const { data: org } = await supabase
+            const { data: dept } = await supabase
               .from('organizations')
               .select('name')
               .eq('id', (posting as any).job.organization_id)
               .maybeSingle();
-            orgName = org?.name || '';
+            deptName = dept?.name || '';
           }
 
           // Parse candidate first name from full name
@@ -716,7 +727,8 @@ serve(async (req) => {
               .replace(/\{\{candidate\.name\}\}/g, candidateName)
               .replace(/\{\{candidate\.email\}\}/g, candidateEmail)
               .replace(/\{\{job\.title\}\}/g, jobTitle)
-              .replace(/\{\{organization\.name\}\}/g, orgName);
+              .replace(/\{\{organization\.name\}\}/g, tenantName)
+              .replace(/\{\{department\.name\}\}/g, deptName);
           };
 
           const resolvedSubject = resolvePlaceholders(confirmationAutomation.subject);
