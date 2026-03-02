@@ -1,61 +1,69 @@
 
 
-# Fix Placeholder Mapping: Organization vs Tenant Name
+# Fix Job Title Disappearing on Hiring Plan Tab Switch
 
-## Problem
+## Root Cause
 
-`{{organization.name}}` currently resolves to the **department/job folder** name (from the `organizations` table), not the **workspace/company** name (from the `tenants` table). This is incorrect for candidate-facing emails like "Thank you for applying at {{organization.name}}" -- candidates expect to see the company name, not an internal department label.
+The `useQuery` for job data in `JobDetail.tsx` (line 532) has no `staleTime` or data preservation configuration. When the user navigates to the Hiring Plan sub-tab:
 
-## Solution
+1. The `HiringPlanTab` mounts, calling `useJobStages()` which internally calls `supabase.auth.getUser()` (a network request)
+2. If the JWT needs refreshing, this triggers a `TOKEN_REFRESHED` auth event
+3. The auth bootstrap re-runs, potentially briefly setting `orgContext` to `null`
+4. This causes the `useJobs()` hook (also instantiated in JobDetail) to re-run its effects due to dependency changes (`organizationId`, `userType`)
+5. The cascade of state updates and re-renders causes the job query to refetch
+6. During refetch, since there's no `placeholderData` or `keepPreviousData`, `job` can momentarily become `undefined`
+7. The guard `if (!job) return null` at line 826 blanks the entire page
+8. When data returns, it may re-render differently, and switching back to Overview shows fallback "Not specified" values because the query may have been disrupted
 
-1. **Keep `{{organization.name}}` but fix it to resolve to `tenants.name`** in candidate-facing contexts (confirmation emails). This is what users intuitively expect "organization" to mean.
-2. **Add a `{{department.name}}` placeholder** for when users actually want the job folder/department name.
-3. Update resolution logic in `public-submit-application` and the `PlaceholderHelper` UI.
+## Fix (3 changes in `JobDetail.tsx`)
 
-## Changes
+### 1. Add `staleTime` and `placeholderData` to the job query
 
-### 1. Fix `public-submit-application/index.ts` (confirmation email block)
+At the `useQuery` call (line 532), add configuration to keep data stable:
 
-Replace the `organizations` table lookup (lines 700-706) with a `tenants` table lookup:
-
+```typescript
+const { data: job, isLoading: jobLoading, error, refetch } = useQuery({
+  queryKey: ['job', id],
+  queryFn: async () => { ... },
+  enabled: !!id && !!user,
+  staleTime: 5 * 60 * 1000,           // 5 minutes - prevents refetches on tab switches
+  placeholderData: (previousData) => previousData,  // Keep previous data during refetch
+})
 ```
-// Before (wrong): fetches department name
-const { data: org } = await supabase
-  .from('organizations')
-  .select('name')
-  .eq('id', job.organization_id)
 
-// After (correct): fetches workspace/tenant name
-const { data: tenant } = await supabase
-  .from('tenants')
-  .select('name')
-  .eq('id', posting.tenant_id)
+- `staleTime: 5 * 60 * 1000` prevents the query from being considered stale for 5 minutes, avoiding unnecessary refetches when switching between sub-tabs
+- `placeholderData: (prev) => prev` ensures the previous job data is retained while a refetch is in progress, so `job` never becomes `undefined` mid-render
+
+### 2. Make the null guard less aggressive
+
+Change line 826 from:
+```typescript
+if (!job) return null
+```
+to:
+```typescript
+if (!job) return (
+  <div className="min-h-screen bg-background">
+    <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
+      <Skeleton className="h-12 w-64 mb-4" />
+      <div className="grid grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-24 w-full" />
+        ))}
+      </div>
+    </div>
+  </div>
+)
 ```
 
-Also add `{{department.name}}` resolution by keeping the existing organizations lookup as an optional secondary source.
-
-### 2. Update `PlaceholderHelper.tsx`
-
-- Rename `{{organization.name}}` description to "Company / Workspace name" (so it's clear this is the tenant)
-- Add `{{department.name}}` placeholder described as "Department / Job folder name"
-- Remove `{{organization.default_currency}}` or map it to the correct source
-
-### 3. Update `templateUtils.ts`
-
-- Add `department.name` to `PlaceholderData` interface and `PLACEHOLDER_OPTIONS`
-- Update `buildPlaceholderData` to accept tenant name
-
-### 4. Update default template in `ConfirmationEmailAutomation.tsx`
-
-No change needed -- `{{organization.name}}` is already used in the default subject/body, and it will now correctly resolve to the tenant (company) name.
+This prevents a full blank screen flash if `job` is ever briefly undefined. Instead, users see a quick skeleton placeholder.
 
 ## Files to modify
-- `supabase/functions/public-submit-application/index.ts` -- fix tenant lookup, add department resolution
-- `src/components/settings/PlaceholderHelper.tsx` -- fix descriptions, add department placeholder
-- `src/utils/templateUtils.ts` -- add department.name to interface and options
+
+- `src/pages/JobDetail.tsx` -- add staleTime, placeholderData to useQuery; improve null guard
 
 ## Impact
-- Confirmation emails will now correctly show "Thank you for applying at Acme Corp" instead of "Thank you for applying at Engineering"
-- Power users who need department names can use `{{department.name}}`
-- No breaking changes to existing templates (the placeholder key stays the same)
 
+- Job title and all job data will remain visible when switching between sub-tabs within Job Setup
+- No more "Not specified" fallbacks when returning to the Overview tab
+- The fix is purely defensive and doesn't change any data flow or business logic
