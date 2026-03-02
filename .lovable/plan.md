@@ -1,69 +1,97 @@
 
+## What’s actually happening (confirmed root cause)
 
-# Fix Job Title Disappearing on Hiring Plan Tab Switch
+I traced the exact query keys and found a cache collision that explains your symptoms perfectly.
 
-## Root Cause
+### Evidence from code
+- `src/pages/JobDetail.tsx` uses:
+  - `useQuery({ queryKey: ['job', id], ... })`
+  - This query fetches **full job details** (`select('*', organization:organizations(...))`) and is used for:
+    - page header title (`job.title`)
+    - Job Setup overview fields (description, location, salary, etc.)
 
-The `useQuery` for job data in `JobDetail.tsx` (line 532) has no `staleTime` or data preservation configuration. When the user navigates to the Hiring Plan sub-tab:
+- `src/components/jobs/StageConfigSheet.tsx` also uses:
+  - `useQuery({ queryKey: ['job', jobId], ... })`
+  - But this one fetches only:
+    - `select('organization_id')`
 
-1. The `HiringPlanTab` mounts, calling `useJobStages()` which internally calls `supabase.auth.getUser()` (a network request)
-2. If the JWT needs refreshing, this triggers a `TOKEN_REFRESHED` auth event
-3. The auth bootstrap re-runs, potentially briefly setting `orgContext` to `null`
-4. This causes the `useJobs()` hook (also instantiated in JobDetail) to re-run its effects due to dependency changes (`organizationId`, `userType`)
-5. The cascade of state updates and re-renders causes the job query to refetch
-6. During refetch, since there's no `placeholderData` or `keepPreviousData`, `job` can momentarily become `undefined`
-7. The guard `if (!job) return null` at line 826 blanks the entire page
-8. When data returns, it may re-render differently, and switching back to Overview shows fallback "Not specified" values because the query may have been disrupted
+- `HiringPlanTab` always renders `<StageConfigSheet ... jobId={jobId} />` even when the sheet is closed.
+- So when you enter **Job Setup > Hiring Plan**, `StageConfigSheet` mounts and runs its query, writing a **partial job object** into the same React Query cache key `['job', jobId]`.
 
-## Fix (3 changes in `JobDetail.tsx`)
+### Why UI breaks exactly the way you reported
+Once the partial payload `{ organization_id: ... }` overwrites the full cache entry:
+- `job.title` becomes `undefined` → top job title disappears
+- most fields used in Overview become `undefined` / nullish → fallback text like **“Not specified”**
+- this is deterministic and matches your exact repro path
 
-### 1. Add `staleTime` and `placeholderData` to the job query
+The previous `staleTime + placeholderData` change in `JobDetail.tsx` cannot fix this, because that was treating refetch flicker, not **same-key data shape overwrite** from another component.
 
-At the `useQuery` call (line 532), add configuration to keep data stable:
+---
 
-```typescript
-const { data: job, isLoading: jobLoading, error, refetch } = useQuery({
-  queryKey: ['job', id],
-  queryFn: async () => { ... },
-  enabled: !!id && !!user,
-  staleTime: 5 * 60 * 1000,           // 5 minutes - prevents refetches on tab switches
-  placeholderData: (previousData) => previousData,  // Keep previous data during refetch
-})
+## Implementation plan to fix it safely
+
+### 1) Stop the cache key collision in `StageConfigSheet`
+**File:** `src/components/jobs/StageConfigSheet.tsx`
+
+Change the query key from:
+- `['job', jobId]`
+
+To a distinct key, for example:
+- `['job-org-context', jobId]` (or `['job', jobId, 'organization_id']`)
+
+This ensures it never overwrites the detail page’s full job cache.
+
+### 2) Prevent unnecessary fetch when sheet is closed
+In the same query, change `enabled` from:
+- `enabled: !!jobId`
+
+To:
+- `enabled: open && !!jobId`
+
+Because organization_id is only needed inside the config sheet tabs, there’s no reason to fetch when the sheet isn’t open. This also reduces background noise and avoids side effects on tab navigation.
+
+### 3) Keep the `JobDetail` resilience guard
+**File:** `src/pages/JobDetail.tsx`
+
+Keep the already added defensive config (`staleTime`, `placeholderData`, skeleton for `!job`)—it’s still useful for UX.
+No rollback needed; it just wasn’t sufficient by itself.
+
+### 4) Validate no other shared `['job', ...]` partial queries exist
+I already searched and found only these two occurrences:
+- `JobDetail.tsx` (full shape)
+- `StageConfigSheet.tsx` (partial shape)
+
+So this single collision fix should eliminate the bug.
+
+---
+
+## Verification steps after patch
+
+1. Open `/jobs/:id`
+2. Go to **Job Setup > Hiring Plan**
+3. Confirm top header still shows the job title
+4. Switch back to **Overview**
+5. Confirm description, location, salary, department/team values remain populated
+6. Open **Configure Stage** sheet and check Team/Automations still receive `organization_id` correctly
+
+Optional dev check:
+- inspect React Query DevTools cache:
+  - `['job', id]` should always contain full job object
+  - `['job-org-context', id]` should contain only org context payload
+
+---
+
+## Technical summary
+
+```text
+Current bug source:
+  JobDetail query key      ['job', id] -> full job payload
+  StageConfigSheet key     ['job', jobId] -> { organization_id } only
+  => same key, incompatible payload shapes, cache overwrite
+
+Fix:
+  StageConfigSheet key     ['job-org-context', jobId]
+  + enabled: open && !!jobId
 ```
 
-- `staleTime: 5 * 60 * 1000` prevents the query from being considered stale for 5 minutes, avoiding unnecessary refetches when switching between sub-tabs
-- `placeholderData: (prev) => prev` ensures the previous job data is retained while a refetch is in progress, so `job` never becomes `undefined` mid-render
-
-### 2. Make the null guard less aggressive
-
-Change line 826 from:
-```typescript
-if (!job) return null
-```
-to:
-```typescript
-if (!job) return (
-  <div className="min-h-screen bg-background">
-    <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
-      <Skeleton className="h-12 w-64 mb-4" />
-      <div className="grid grid-cols-4 gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-24 w-full" />
-        ))}
-      </div>
-    </div>
-  </div>
-)
-```
-
-This prevents a full blank screen flash if `job` is ever briefly undefined. Instead, users see a quick skeleton placeholder.
-
-## Files to modify
-
-- `src/pages/JobDetail.tsx` -- add staleTime, placeholderData to useQuery; improve null guard
-
-## Impact
-
-- Job title and all job data will remain visible when switching between sub-tabs within Job Setup
-- No more "Not specified" fallbacks when returning to the Overview tab
-- The fix is purely defensive and doesn't change any data flow or business logic
+This is the direct reason the title disappears and Overview shows “Not specified.”
