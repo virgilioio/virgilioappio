@@ -1,21 +1,39 @@
 
-# Fix Notification Center Scrolling
+# Fix Notification Click — Open Candidate Sheet Instead of Old Profile Page
 
 ## Problem
 
-Two issues with the notification popover:
-1. **Horizontal scroll** — The Radix `ScrollArea` component applies `min-width: fit-content` on its viewport, preventing content from shrinking to fit the popover width
-2. **Vertical scroll not working** — The `ScrollArea` needs an explicit height to enable scrolling, and the current `max-h-80` on the wrapper isn't propagating correctly
+Clicking a notification navigates to `/candidates/:candidateId`, which renders the legacy `IndependentCandidateProfile` page (the old full-page layout shown in your screenshot). The correct behavior should open the candidate profile **sheet** (sidebar), matching what happens when you click a row in the Candidates table.
 
 ## Solution
 
-### File: `src/components/layout/NotificationCenter.tsx`
+Two changes:
 
-Replace the `ScrollArea` component with a plain `div` using `overflow-y-auto max-h-80`. This follows the established project pattern (per style guide) where narrow panels use native scrolling instead of Radix ScrollArea to avoid the `min-width: fit-content` issue.
+### 1. `NotificationCenter.tsx` — Change navigation target
 
-**Changes:**
-- Remove the `ScrollArea` import
-- Replace `<ScrollArea className="max-h-80">` with `<div className="overflow-y-auto max-h-80">`
-- Close with `</div>` instead of `</ScrollArea>`
+Instead of `navigate(`/candidates/${candidateId}`)`, navigate to `/candidates?openCandidate=${candidateId}`. This takes the user to the Candidates page with a query param indicating which candidate sheet to open.
 
-This is a 3-line change that fixes both the horizontal overflow and vertical scrolling.
+### 2. `IndependentCandidateTable.tsx` — Read query param and auto-open sheet
+
+On mount (and when the URL changes), read the `openCandidate` search param. If present, set `selectedCandidateId` and `sheetOpen` to true, then clear the param from the URL (so refreshing doesn't re-open it).
+
+This keeps the sheet logic where it already lives (inside the table component) and requires no prop drilling through the Candidates page.
+
+## Technical Details
+
+### `src/components/layout/NotificationCenter.tsx`
+
+- Change `navigate(`/candidates/${notification.candidateId}`)` to `navigate(`/candidates?openCandidate=${notification.candidateId}`)`
+
+### `src/components/candidates/IndependentCandidateTable.tsx`
+
+- Import `useSearchParams` from `react-router-dom`
+- Add a `useEffect` that checks for `openCandidate` param
+- If found, call `setSelectedCandidateId(id)` and `setSheetOpen(true)`, then remove the param from the URL
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `src/components/layout/NotificationCenter.tsx` | Update navigation URL |
+| `src/components/candidates/IndependentCandidateTable.tsx` | Read `openCandidate` query param and auto-open sheet |
