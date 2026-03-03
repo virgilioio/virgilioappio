@@ -1,6 +1,6 @@
 // cache-bust: 8F42B1C3
 import { useState } from 'react'
-import { RefreshCw, Upload } from 'lucide-react'
+import { Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Section } from '@/components/layout/Section'
@@ -13,7 +13,7 @@ import { MinimizableBulkUploadDialog } from '@/components/candidates/Minimizable
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 import { useIndependentCandidates, CreateIndependentCandidateData } from '@/hooks/useIndependentCandidates'
 import { usePermissions } from '@/hooks/usePermissions'
-import { useCandidateSync } from '@/hooks/useCandidateSync'
+
 import { toast } from '@/hooks/use-toast'
 
 export default function Candidates() {
@@ -42,8 +42,6 @@ export default function Candidates() {
     deleteCandidate,
     getCandidates
   } = useIndependentCandidates()
-
-  const { syncCandidates, isLoading: isSyncing } = useCandidateSync()
 
   const handleEdit = (candidate: any) => {
     setSelectedCandidate(candidate)
@@ -131,14 +129,6 @@ export default function Candidates() {
     }
   }
 
-  const handleSync = async () => {
-    const result = await syncCandidates()
-    if (result) {
-      // Refresh the candidates list after sync
-      getCandidates()
-    }
-  }
-
   if (error) {
     return (
       <AuthGate>
@@ -163,16 +153,6 @@ export default function Candidates() {
               subtitle="Manage all candidates in your talent database. Use sync to import existing job candidates."
             >
               <div className="flex gap-2">
-                <Button
-                  onClick={handleSync}
-                  disabled={isSyncing}
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                >
-                  <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                  {isSyncing ? 'Syncing...' : 'Sync Job Candidates'}
-                </Button>
                 <Button
                   onClick={() => setIsBulkUploadOpen(true)}
                   variant="outline"
