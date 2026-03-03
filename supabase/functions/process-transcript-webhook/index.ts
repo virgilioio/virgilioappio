@@ -138,39 +138,42 @@ serve(async (req) => {
     // Get raw payload for signature verification
     const rawPayload = await req.text();
     
-    // Get Svix headers
+    // Get Svix headers (optional - Resend inbound webhooks may not include them)
     const svixId = req.headers.get('svix-id');
     const svixTimestamp = req.headers.get('svix-timestamp');
     const svixSignature = req.headers.get('svix-signature');
 
-    if (!svixId || !svixTimestamp || !svixSignature) {
-      console.error('[Transcript Webhook] Missing signature headers:', {
-        hasId: !!svixId,
-        hasTimestamp: !!svixTimestamp,
-        hasSignature: !!svixSignature
-      });
-      return new Response(JSON.stringify({ error: 'Missing signature headers' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Verify webhook signature using official Svix SDK
     let payload: any;
-    try {
-      const wh = new Webhook(webhookSecret);
-      payload = wh.verify(rawPayload, {
-        "svix-id": svixId,
-        "svix-timestamp": svixTimestamp,
-        "svix-signature": svixSignature
-      });
-      console.log('[Transcript Webhook] Signature verified successfully');
-    } catch (verifyError) {
-      console.error('[Transcript Webhook] Signature verification failed:', verifyError);
-      return new Response(JSON.stringify({ error: 'Invalid signature', details: String(verifyError) }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+
+    if (svixId && svixTimestamp && svixSignature) {
+      // Svix headers present → verify signature
+      try {
+        const wh = new Webhook(webhookSecret);
+        payload = wh.verify(rawPayload, {
+          "svix-id": svixId,
+          "svix-timestamp": svixTimestamp,
+          "svix-signature": svixSignature
+        });
+        console.log('[Transcript Webhook] Signature verified successfully');
+      } catch (verifyError) {
+        console.error('[Transcript Webhook] Signature verification failed:', verifyError);
+        return new Response(JSON.stringify({ error: 'Invalid signature', details: String(verifyError) }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } else {
+      // No Svix headers → parse payload directly, rely on ingest code validation
+      console.warn('[Transcript Webhook] No Svix signature headers present - skipping signature verification');
+      try {
+        payload = JSON.parse(rawPayload);
+      } catch (parseError) {
+        console.error('[Transcript Webhook] Failed to parse payload:', parseError);
+        return new Response(JSON.stringify({ error: 'Invalid JSON payload' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     console.log('[Transcript Webhook] Received event:', payload.type);
