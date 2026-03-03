@@ -1,26 +1,29 @@
 
 
-# "Sync Job Candidates" Button — Analysis and Removal Plan
+# Transcript Webhook — Verification and Fixes
 
-## What It Is
+## Current Status
 
-The "Sync Job Candidates" button triggers an RPC function (`sync_job_candidates_to_independent`) that was part of a **data migration** from a legacy `job_candidates` table to the modern `candidates` + `job_candidate_associations` model. This was a one-time migration task documented in `docs/migrations/phase2-cycle1.md` and marked as completed in `docs/migrations/phase2-cycle1-COMPLETION.md`.
+The webhook is deployed and reachable, but has **never been invoked** by Resend. The most likely cause is a **signing secret mismatch** — the secret stored in Supabase (`RESEND_INBOUND_WEBHOOK_SECRET`) may not match what Resend shows (`whsec_xt/dxwhRpEHWVjDQcASPgJd4Asa7388q`).
 
-## Is It Still Relevant?
+## Action Items
 
-**No.** The migration is complete (documented as done). This button was a convenience for running the migration from the UI, but it has no ongoing purpose. Leaving it exposed to users is confusing and potentially risky (re-running a migration sync unnecessarily).
+### 1. Re-set the webhook signing secret
+Update `RESEND_INBOUND_WEBHOOK_SECRET` to match the exact value from Resend: `whsec_xt/dxwhRpEHWVjDQcASPgJd4Asa7388q`. Since we can't read the current value, we should overwrite it to be sure.
 
-## Removal Plan
+### 2. Update AI model in `generate-scorecard-from-transcript`
+- Change `gpt-4o-mini` → `gpt-4.1-mini` (current recommended model)
+- Change `max_tokens` → `max_completion_tokens` (deprecated parameter)
 
-**Files to modify:**
+### 3. Test the pipeline
+After updating the secret, send a test email to one of the existing ingest addresses (e.g., `int_spozjwih@ingest.gogio.io`) and monitor the edge function logs to confirm the full flow: webhook received → transcript stored → scorecard generated → notification emailed.
 
-1. **`src/pages/Candidates.tsx`** — Remove the sync button, the `handleSync` function, and the `useCandidateSync` import
-2. **`src/hooks/useCandidateSync.ts`** — Delete entirely
-3. **`scripts/run_sync_candidates.ts`** — Delete entirely (one-time migration script)
+## Files to Change
 
-**Files left untouched:**
-- Database migrations and RPC function — safe to leave in place (dropping RPCs from the DB is a separate concern and won't affect the app)
-- Migration docs — keep as historical record
+- **`supabase/functions/generate-scorecard-from-transcript/index.ts`** — Update model and parameter name (2 lines)
 
-**Impact:** UI cleanup only. No functional features depend on this sync button.
+## What Won't Change
+
+- `process-transcript-webhook/index.ts` — The webhook handler code is correct. The issue is the secret configuration, not the code.
+- Candidate reply webhook (`jc_` prefix) — untouched as requested.
 
