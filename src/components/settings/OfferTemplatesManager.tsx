@@ -16,6 +16,7 @@ import { ContractTemplateSheet } from './templates/ContractTemplateSheet'
 import { OfferTemplateFieldsManager } from './OfferTemplateFieldsManager'
 import { RejectionReasonsManager } from './RejectionReasonsManager'
 import { RejectionEmailTemplatesManager } from './RejectionEmailTemplatesManager'
+import { OfferFormsManager } from './OfferFormsManager'
 
 type TemplateType = 'offer-letters' | 'email-templates' | 'contract-templates' | 'rejection-reasons' | 'rejection-templates'
 
@@ -79,14 +80,19 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="offer-letters" className="w-full">
+      <Tabs defaultValue="offer-forms" className="w-full">
         <TabsList>
+          <TabsTrigger value="offer-forms">Offer Forms</TabsTrigger>
           <TabsTrigger value="offer-letters">Offer Letters</TabsTrigger>
           <TabsTrigger value="email-templates">Email Templates</TabsTrigger>
           <TabsTrigger value="contract-templates">Contracts</TabsTrigger>
           <TabsTrigger value="rejection-reasons">Rejection Reasons</TabsTrigger>
           <TabsTrigger value="rejection-templates">Rejection Templates</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="offer-forms" className="mt-4">
+          <OfferFormsManager context={context} />
+        </TabsContent>
 
         <TabsContent value="offer-letters" className="mt-4">
           <Card>

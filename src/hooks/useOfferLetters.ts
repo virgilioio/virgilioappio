@@ -6,10 +6,11 @@ export interface OfferLetter {
   id: string
   candidate_id: string
   job_id: string
-  template_id: string
+  template_id?: string | null
+  form_id?: string | null
   organization_id: string
   title: string
-  content: string
+  content?: string | null
   field_values: Record<string, any>
   status: 'draft' | 'finalized' | 'sent' | 'accepted' | 'declined'
   created_by?: string

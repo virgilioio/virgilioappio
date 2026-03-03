@@ -2558,46 +2558,172 @@ export type Database = {
           },
         ]
       }
+      offer_form_fields: {
+        Row: {
+          accepted_file_types: string | null
+          created_at: string
+          created_by: string | null
+          display_order: number
+          field_label: string
+          field_name: string
+          field_type: Database["public"]["Enums"]["field_type"]
+          form_id: string
+          help_text: string | null
+          id: string
+          is_required: boolean
+          max_file_size_mb: number | null
+          organization_id: string | null
+          placeholder_text: string | null
+          updated_at: string
+        }
+        Insert: {
+          accepted_file_types?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          field_label: string
+          field_name: string
+          field_type?: Database["public"]["Enums"]["field_type"]
+          form_id: string
+          help_text?: string | null
+          id?: string
+          is_required?: boolean
+          max_file_size_mb?: number | null
+          organization_id?: string | null
+          placeholder_text?: string | null
+          updated_at?: string
+        }
+        Update: {
+          accepted_file_types?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          field_label?: string
+          field_name?: string
+          field_type?: Database["public"]["Enums"]["field_type"]
+          form_id?: string
+          help_text?: string | null
+          id?: string
+          is_required?: boolean
+          max_file_size_mb?: number | null
+          organization_id?: string | null
+          placeholder_text?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_form_fields_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "offer_forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_form_fields_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offer_forms: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          organization_id: string | null
+          source: string
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          organization_id?: string | null
+          source?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          organization_id?: string | null
+          source?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_forms_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_forms_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       offer_letters: {
         Row: {
           candidate_id: string
-          content: string
+          content: string | null
           created_at: string
           created_by: string | null
           field_values: Json | null
+          form_id: string | null
           id: string
           job_id: string
           organization_id: string
           status: string
-          template_id: string
+          template_id: string | null
           title: string
           updated_at: string
         }
         Insert: {
           candidate_id: string
-          content: string
+          content?: string | null
           created_at?: string
           created_by?: string | null
           field_values?: Json | null
+          form_id?: string | null
           id?: string
           job_id: string
           organization_id: string
           status?: string
-          template_id: string
+          template_id?: string | null
           title: string
           updated_at?: string
         }
         Update: {
           candidate_id?: string
-          content?: string
+          content?: string | null
           created_at?: string
           created_by?: string | null
           field_values?: Json | null
+          form_id?: string | null
           id?: string
           job_id?: string
           organization_id?: string
           status?: string
-          template_id?: string
+          template_id?: string | null
           title?: string
           updated_at?: string
         }
@@ -2607,6 +2733,13 @@ export type Database = {
             columns: ["candidate_id"]
             isOneToOne: false
             referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_letters_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "offer_forms"
             referencedColumns: ["id"]
           },
           {
