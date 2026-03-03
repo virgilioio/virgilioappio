@@ -1,24 +1,31 @@
 
 
-# Fix: Close Notification Popover on Click
+# Fix: HTML Entities Displayed as Raw Text in Email History
 
 ## Problem
-Clicking a notification navigates but doesn't close the popover, leaving it overlaying the page.
+
+In `EmailHistoryCard.tsx`, the collapsed email preview strips HTML tags with a regex (`replace(/<[^>]*>/g, '')`) but does **not** decode HTML entities like `&#39;`, `&amp;`, `&quot;`, etc. This results in raw entity strings like `&#39;ve` showing instead of `'ve`.
+
+The same issue can affect `body_text` content if it contains encoded entities, and also the `snippet` field.
 
 ## Fix
-**File:** `src/components/layout/NotificationCenter.tsx`
 
-Add controlled `open` state to the `Popover` component. Set it to `false` inside `handleNotificationClick` before navigating.
+**File:** `src/components/candidates/EmailHistoryCard.tsx`
+
+Add a helper function that decodes HTML entities by using the browser's built-in HTML parser (textarea element), then use it when generating the plain-text preview.
 
 ```typescript
-const [open, setOpen] = useState(false)
-
-// In handleNotificationClick:
-setOpen(false)
-
-// On Popover:
-<Popover modal={true} open={open} onOpenChange={setOpen}>
+function decodeHtmlEntities(text: string): string {
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = text;
+  return textarea.value;
+}
 ```
 
-Single file change, ~5 lines added.
+Apply it in two places around line 181-183:
+
+1. The collapsed preview: wrap the result of `body_html?.replace(/<[^>]*>/g, '').slice(0, 150)` with `decodeHtmlEntities()`
+2. The `body_text` preview: wrap `body_text?.slice(0, 150)` with `decodeHtmlEntities()` as well
+
+The expanded view uses `SafeHtml` which already handles this correctly via `dangerouslySetInnerHTML`.
 
