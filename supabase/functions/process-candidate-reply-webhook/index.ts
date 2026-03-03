@@ -121,6 +121,31 @@ function extractCandidateIngestCode(email: string): string | null {
   return match ? match[1] : null;
 }
 
+function extractTranscriptIngestCode(email: string): string | null {
+  const match = email.match(/^int_([a-zA-Z0-9]+)@ingest\.gogio\.io$/i);
+  return match ? match[1] : null;
+}
+
+function findTranscriptIngestCode(emailData: any): { code: string | null; foundIn: string } {
+  const check = (addrs: any, label: string) => {
+    const list = Array.isArray(addrs) ? addrs : [addrs].filter(Boolean);
+    for (const addr of list) {
+      const email = typeof addr === 'string' ? addr : addr?.address || addr?.email || '';
+      const code = extractTranscriptIngestCode(email);
+      if (code) return { code, foundIn: `${label}:${email}` };
+    }
+    return null;
+  };
+  return (
+    check(emailData.to, 'to') ||
+    check(emailData.cc, 'cc') ||
+    check(emailData.bcc, 'bcc') ||
+    check(emailData.envelope_to, 'envelope_to') ||
+    check(emailData.recipients, 'recipients') ||
+    { code: null, foundIn: '' }
+  );
+}
+
 function isCalendarInvite(emailData: any): boolean {
   const subject = emailData.subject?.toLowerCase() || '';
   const calendarPatterns = ['invitation:', 'updated invitation:', 'canceled:', 'cancelled:', 'accepted:', 'declined:', 'tentative:', 'reminder:'];
@@ -276,8 +301,35 @@ serve(async (req) => {
 
     const { code: ingestCode, foundIn } = findCandidateIngestCode(emailData);
     if (!ingestCode) {
-      console.log(`[${WEBHOOK_VERSION}] No jc_ code found`);
-      return new Response(JSON.stringify({ status: 'ignored', reason: 'no_jc_code' }), {
+      // Check for transcript ingest code (int_ prefix) and forward to transcript webhook
+      const { code: transcriptCode, foundIn: transcriptFoundIn } = findTranscriptIngestCode(emailData);
+      if (transcriptCode) {
+        console.log(`[${WEBHOOK_VERSION}] Transcript ingest code found: ${transcriptCode} in: ${transcriptFoundIn} — forwarding to process-transcript-webhook`);
+        try {
+          const forwardRes = await fetch(`${supabaseUrl}/functions/v1/process-transcript-webhook`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+            },
+            body: rawPayload,
+          });
+          const forwardBody = await forwardRes.text();
+          console.log(`[${WEBHOOK_VERSION}] Transcript webhook response: ${forwardRes.status} ${forwardBody}`);
+          return new Response(forwardBody, {
+            status: forwardRes.status,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        } catch (fwdErr: any) {
+          console.error(`[${WEBHOOK_VERSION}] Failed to forward to transcript webhook:`, fwdErr?.message);
+          return new Response(JSON.stringify({ error: 'Forward failed', detail: fwdErr?.message }), {
+            status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+
+      console.log(`[${WEBHOOK_VERSION}] No jc_ or int_ code found`);
+      return new Response(JSON.stringify({ status: 'ignored', reason: 'no_ingest_code' }), {
         status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
