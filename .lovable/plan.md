@@ -1,30 +1,38 @@
 
 
-# Fix: Make Transcript Webhook Handle Missing Svix Headers
+# Single Webhook Router: Forward `int_` emails to transcript handler
 
 ## Problem
+Resend is only delivering inbound emails to the `process-candidate-reply-webhook` endpoint. The `process-transcript-webhook` never gets called directly. This is likely a Resend platform behavior where only one webhook fires per inbound email event.
 
-Resend IS calling the transcript webhook, but the request arrives without Svix signature headers (`svix-id`, `svix-timestamp`, `svix-signature` are all missing). The current code rejects these requests with 401.
+## Solution
+Add routing logic to `process-candidate-reply-webhook` so that when it detects an `int_` ingest code (instead of `jc_`), it forwards the raw payload to `process-transcript-webhook` via an internal HTTP call.
 
-The candidate reply webhook receives Svix headers because it may use a different Resend webhook type or configuration. This is a known limitation noted in the project memory: "Due to limitations in Resend's inbound email webhooks regarding Svix signature headers, the function implements optional signature verification."
+## Changes
 
-## Fix
+**File: `supabase/functions/process-candidate-reply-webhook/index.ts`**
 
-**File: `supabase/functions/process-transcript-webhook/index.ts`**
+1. Add a helper function `findTranscriptIngestCode()` that checks recipients for `int_` prefixed addresses (mirrors the existing `findCandidateIngestCode` but for `int_` prefix)
 
-Change the signature verification block to be **optional**:
-- If Svix headers are present → verify signature (reject if invalid)
-- If Svix headers are missing → skip verification, parse payload directly, log a warning
-- The rest of the processing remains unchanged — the ingest code validation (`int_` prefix + booking lookup) provides sufficient security
+2. In the main handler, right after the "No jc_ code found" check (line ~278-283), before returning the "ignored" response:
+   - Call `findTranscriptIngestCode(emailData)`
+   - If an `int_` code is found, forward the original raw payload to `${supabaseUrl}/functions/v1/process-transcript-webhook` using `fetch()` with the service role key
+   - Log the forwarding action and return the transcript webhook's response
+   - If no `int_` code either, return the existing "ignored" response
 
-This matches how the code was originally intended to work per the project memory.
+3. The forwarding call passes the raw JSON payload as-is (no Svix headers needed since the transcript webhook already handles missing signatures)
 
-## Security Note
+## Key code flow
+```text
+Resend → candidate-reply-webhook
+  ├─ has jc_ code? → process candidate reply (existing logic)
+  ├─ has int_ code? → forward to process-transcript-webhook → return its response
+  └─ neither? → return ignored (existing logic)
+```
 
-Even without signature verification, the webhook is protected by:
-1. The `int_{code}` ingest code must match a valid booking in the database
-2. The booking must have a candidate and job hiring stage
-3. The transcript content must be at least 100 characters
-
-No other files need to change.
+## Why this works
+- The transcript webhook already accepts payloads without Svix headers (we just fixed that)
+- The forwarding uses the service role key for auth
+- No changes needed to `process-transcript-webhook` itself
+- No Resend configuration changes needed
 
