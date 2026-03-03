@@ -1,125 +1,129 @@
 
 
-# Fix Links Not Working in Email Composer and Email History
+# Redesign Offer Creation: Separate Offer Forms from Document Templates
 
-## Root Cause
+## Concept
 
-There are **three interconnected issues** preventing links from working:
+Two independent entities:
+- **Offer Forms** — configurable forms with dynamic fields (what the recruiter fills out when creating an offer)
+- **Offer Letter Templates** — rich text document templates (used later to generate the actual offer document)
 
-### 1. Editor doesn't auto-detect URLs (Composer)
-The `BodyTemplateEditor` registers `LinkNode` and `AutoLinkNode` in its node list, and includes `LinkPlugin`, but there is **no `AutoLinkPlugin`** from `@lexical/react`. Without it, Lexical never auto-detects pasted/typed URLs and converts them to `LinkNode`. So URLs remain as plain `TextNode` — they look and behave like regular text.
+The creation flow becomes: Click "Create Offer" → Sheet opens → Select an Offer Form → Fill out the dynamic fields → Save. Document generation from a letter template happens separately afterward.
 
-### 2. OnChangePlugin discards link information (Composer output)
-The `OnChangePlugin` serializes the editor state by walking nodes and only handling `PlaceholderNode` and `TextNode`. It calls `node.getTextContent()` on everything else — including `LinkNode`. So even if a link were somehow created, it would be serialized as plain text (e.g., `https://example.com`) without any `<a>` tag wrapping. The `body_html` sent to the backend is effectively plain text with newlines, not real HTML.
+## Database Changes
 
-### 3. Email history shows raw HTML without linkifying plain URLs (History view)
-The `EmailHistoryCard` renders `body_html` via `SafeHtml`. While `SafeHtml` allows `<a>` tags, the stored `body_html` contains raw URL text (not wrapped in `<a>` tags) because the composer never created them. There's no URL auto-linkification at display time either.
+### New table: `offer_forms`
+Standalone form definitions, independent of document templates.
 
-## Fix Plan
+```sql
+create table public.offer_forms (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  description text,
+  organization_id uuid references public.organizations(id) on delete cascade,
+  tenant_id uuid references public.tenants(id) on delete cascade,
+  source text not null default 'tenant',
+  is_active boolean not null default true,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
 
-### Change 1: Add AutoLinkPlugin to BodyTemplateEditor
-**File:** `src/components/editors/plugins/AutoLinkPlugin.tsx` (new file)
-
-Create a Lexical `AutoLinkPlugin` that detects URL patterns (http/https) and automatically converts them to `LinkNode` as the user types or pastes. This uses `@lexical/react/LexicalAutoLinkPlugin` which is already available since `@lexical/react` is installed.
-
-```typescript
-import { AutoLinkPlugin as LexicalAutoLinkPlugin } from '@lexical/react/LexicalAutoLinkPlugin';
-
-const URL_MATCHER = /((https?:\/\/(www\.)?)|(www\.))[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/;
-
-const MATCHERS = [
-  (text: string) => {
-    const match = URL_MATCHER.exec(text);
-    if (match === null) return null;
-    const fullMatch = match[0];
-    return {
-      index: match.index,
-      length: fullMatch.length,
-      text: fullMatch,
-      url: fullMatch.startsWith('http') ? fullMatch : `https://${fullMatch}`,
-    };
-  },
-];
-
-export function AutoLinkPlugin() {
-  return <LexicalAutoLinkPlugin matchers={MATCHERS} />;
-}
+alter table public.offer_forms enable row level security;
+-- RLS policies matching existing offer_templates pattern
 ```
 
-Then add `<AutoLinkPlugin />` inside `BodyEditorInner` alongside the existing `<LinkPlugin />`.
+### New table: `offer_form_fields`
+Same structure as `offer_template_fields` but referencing `offer_forms` instead of `offer_templates`.
 
-### Change 2: Update OnChangePlugin to serialize LinkNodes as `<a>` tags
-**File:** `src/components/editors/plugins/OnChangePlugin.tsx`
+```sql
+create table public.offer_form_fields (
+  id uuid primary key default gen_random_uuid(),
+  form_id uuid not null references public.offer_forms(id) on delete cascade,
+  field_name text not null,
+  field_label text not null,
+  field_type public.field_type not null default 'text',
+  is_required boolean not null default false,
+  display_order integer not null default 0,
+  placeholder_text text,
+  help_text text,
+  accepted_file_types text,
+  max_file_size_mb integer,
+  organization_id uuid references public.organizations(id),
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
 
-Import `LinkNode` and `$isLinkNode` from `@lexical/link`. When walking child nodes, check for `LinkNode` and output `<a href="...">text</a>` instead of just the text content. This ensures the `body_html` sent to the backend contains proper clickable links.
-
-Updated serialization logic:
-```typescript
-import { LinkNode, $isLinkNode } from '@lexical/link';
-
-// Inside the node walker:
-if ($isPlaceholderNode(node)) {
-  paragraphContent += `{{${node.getPlaceholderKey()}}}`;
-} else if ($isLinkNode(node)) {
-  const url = node.getURL();
-  const linkText = node.getTextContent();
-  paragraphContent += `<a href="${url}" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
-} else if (node instanceof TextNode) {
-  // Handle bold/italic/underline formatting
-  let text = node.getTextContent();
-  if (node.hasFormat('bold')) text = `<strong>${text}</strong>`;
-  if (node.hasFormat('italic')) text = `<em>${text}</em>`;
-  if (node.hasFormat('underline')) text = `<u>${text}</u>`;
-  paragraphContent += text;
-} else {
-  paragraphContent += node.getTextContent();
-}
+alter table public.offer_form_fields enable row level security;
 ```
 
-Also wrap paragraph output in `<p>` tags so the body is proper HTML (not just plain text with newlines). This is needed for correct rendering in email clients anyway.
+### Update `offer_letters` table
+- Make `template_id` nullable (document template is selected later, not at form submission)
+- Add `form_id uuid references offer_forms(id)` — links to the form used
+- Add `content` can remain as-is (populated later during doc generation)
 
-### Change 3: Auto-linkify URLs in email history display
-**File:** `src/components/ui/safe-html.tsx`
-
-Add a `linkifyUrls` post-processing step after sanitization. This converts any plain-text URLs that aren't already inside `<a>` tags into clickable links. This fixes both:
-- Historical emails that were sent before this fix
-- Received emails from external senders that might have plain-text URLs
-
-```typescript
-function linkifyUrls(html: string): string {
-  // Don't linkify URLs that are already inside <a> tags
-  const urlRegex = /(?<!href=["']|>)(https?:\/\/[^\s<]+)/g;
-  // Use DOM parsing to only linkify text nodes, not attributes
-  const div = document.createElement('div');
-  div.innerHTML = html;
-  // Walk text nodes and replace URLs
-  // ... (implementation using TreeWalker for safety)
-  return div.innerHTML;
-}
+```sql
+alter table public.offer_letters
+  alter column template_id drop not null,
+  alter column content drop not null,
+  add column form_id uuid references public.offer_forms(id);
 ```
 
-### Change 4: Ensure links open in new tab in SafeHtml
-**File:** `src/utils/htmlSanitizer.ts`
+## New Hooks
 
-Add `target="_blank"` and `rel="noopener noreferrer"` to all `<a>` tags during sanitization so links always open in a new tab (important since the app runs in an iframe).
+### `useOfferForms(context)`
+CRUD for `offer_forms` table. Similar pattern to `useOfferTemplates`.
 
-The sanitizer already allows `target` and `rel` attributes (line 19), so we just need a post-processing step to add them to any `<a>` tags that don't have them.
+### `useOfferFormFields(formId)`
+CRUD for `offer_form_fields` table. Mirrors `useOfferTemplateFields` but targets the new table.
 
-## Files to modify
+## Settings UI Changes
+
+### `OfferTemplatesManager.tsx` — Add "Offer Forms" sub-tab
+Add a new tab alongside "Offer Letters", "Email Templates", etc.:
+
+```
+Offer Forms | Offer Letters | Email Templates | Contracts | ...
+```
+
+The **Offer Forms** tab contains:
+- Table listing all offer forms (name, description, field count, created date)
+- "Create Form" button → opens a sheet to name/describe the form
+- Each row has Edit (opens sheet), Fields (opens `OfferFormFieldsManager`), Delete actions
+
+### New: `OfferFormSheet.tsx`
+Sheet for creating/editing an offer form's name and description. Simple — just name + description fields.
+
+### New: `OfferFormFieldsManager.tsx`
+Reuses the same UI pattern as `OfferTemplateFieldsManager` but targets `offer_form_fields`. Can be mostly a copy with the reference changed from `template_id` to `form_id`.
+
+## Offer Creation Flow Changes
+
+### `CreateOfferLetterSheet` → `CreateOfferSheet`
+Complete rewrite of the creation experience:
+
+1. **Sheet opens** with a clean form layout (no wizard steps, no step indicator)
+2. **First field**: "Select Offer Form" dropdown — lists active `offer_forms`
+3. **On selection**: Dynamic fields from `offer_form_fields` render below
+4. **User fills fields** and clicks **Save**
+5. Saves to `offer_letters` with `form_id`, `field_values`, status `'draft'`, `template_id` as null, `content` as empty
+
+No document generation, no preview, no PDF at this stage. Those come later as separate actions on the saved offer.
+
+The existing `template_id`, `content`, PDF generation, and preview logic will be repurposed later when the user chooses to "Generate Offer Document" from a saved offer — but that's a future step as the user indicated.
+
+## Files Summary
 
 | File | Action |
 |------|--------|
-| `src/components/editors/plugins/AutoLinkPlugin.tsx` | **Create** - Lexical auto-link detection plugin |
-| `src/components/editors/BodyTemplateEditor.tsx` | **Edit** - Add AutoLinkPlugin import and usage |
-| `src/components/editors/plugins/OnChangePlugin.tsx` | **Edit** - Serialize LinkNodes as `<a>` tags, wrap paragraphs in `<p>` tags, handle text formatting |
-| `src/components/ui/safe-html.tsx` | **Edit** - Add URL auto-linkification for display |
-| `src/utils/htmlSanitizer.ts` | **Edit** - Ensure `<a>` tags get `target="_blank"` |
-
-## Impact
-
-- URLs pasted/typed in the email composer will auto-become clickable links in the editor
-- Sent emails will contain proper `<a href>` tags in the HTML body
-- Email history will show all URLs (old and new) as clickable links
-- Links open in a new tab to avoid navigating away from the app
-- No breaking changes to templates or placeholder handling
+| **Migration** | Create `offer_forms`, `offer_form_fields` tables; alter `offer_letters` |
+| `src/hooks/useOfferForms.ts` | **Create** — CRUD hook for offer forms |
+| `src/hooks/useOfferFormFields.ts` | **Create** — CRUD hook for offer form fields |
+| `src/components/settings/OfferFormsManager.tsx` | **Create** — Settings table for managing offer forms |
+| `src/components/settings/OfferFormFieldsManager.tsx` | **Create** — Field builder for offer forms |
+| `src/components/settings/templates/OfferFormSheet.tsx` | **Create** — Create/edit offer form sheet |
+| `src/components/settings/OfferTemplatesManager.tsx` | **Edit** — Add "Offer Forms" as first sub-tab |
+| `src/components/candidates/CreateOfferLetterDialog.tsx` | **Rewrite** — Form-first sheet: select form → fill fields → save |
+| `src/hooks/useOfferLetters.ts` | **Edit** — Update types for nullable template_id/content, add form_id |
 
