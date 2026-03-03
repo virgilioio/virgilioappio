@@ -7,6 +7,12 @@ import { Button } from '@/components/ui/button';
 import { SafeHtml } from '@/components/ui/safe-html';
 import { cn } from '@/lib/utils';
 
+function decodeHtmlEntities(text: string): string {
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = text;
+  return textarea.value;
+}
+
 export interface EmailHistoryCardEmail {
   id: string;
   direction?: string;
@@ -185,7 +191,7 @@ export function EmailHistoryCard({ email, onReply, onForward }: EmailHistoryCard
             </div>
           ) : (
             <div className="text-sm text-text-secondary line-clamp-2">
-              {email.body_text?.slice(0, 150) || email.body_html?.replace(/<[^>]*>/g, '').slice(0, 150) || email.snippet || 'No content'}
+              {decodeHtmlEntities(email.body_text?.slice(0, 150) || email.body_html?.replace(/<[^>]*>/g, '').slice(0, 150) || email.snippet || 'No content')}
             </div>
           )}
           
