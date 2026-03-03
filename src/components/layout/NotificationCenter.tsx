@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Bell, Mail, BellOff } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
@@ -9,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 
 export function NotificationCenter() {
+  const [open, setOpen] = useState(false)
   const navigate = useNavigate()
   const { data: activities, markEmailAsRead } = usePendingActivities()
 
@@ -19,6 +21,7 @@ export function NotificationCenter() {
   const unreadCount = emailNotifications.length
 
   const handleNotificationClick = (notification: PendingActivity) => {
+    setOpen(false)
     if (notification.emailId) {
       markEmailAsRead.mutate(notification.emailId)
     }
@@ -34,7 +37,7 @@ export function NotificationCenter() {
   }
 
   return (
-    <Popover modal={true}>
+    <Popover modal={true} open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="sm" className="relative h-8 w-8 p-0">
           <Bell className="h-4 w-4" />
