@@ -1,31 +1,26 @@
 
 
-# Fix: HTML Entities Displayed as Raw Text in Email History
+# "Sync Job Candidates" Button — Analysis and Removal Plan
 
-## Problem
+## What It Is
 
-In `EmailHistoryCard.tsx`, the collapsed email preview strips HTML tags with a regex (`replace(/<[^>]*>/g, '')`) but does **not** decode HTML entities like `&#39;`, `&amp;`, `&quot;`, etc. This results in raw entity strings like `&#39;ve` showing instead of `'ve`.
+The "Sync Job Candidates" button triggers an RPC function (`sync_job_candidates_to_independent`) that was part of a **data migration** from a legacy `job_candidates` table to the modern `candidates` + `job_candidate_associations` model. This was a one-time migration task documented in `docs/migrations/phase2-cycle1.md` and marked as completed in `docs/migrations/phase2-cycle1-COMPLETION.md`.
 
-The same issue can affect `body_text` content if it contains encoded entities, and also the `snippet` field.
+## Is It Still Relevant?
 
-## Fix
+**No.** The migration is complete (documented as done). This button was a convenience for running the migration from the UI, but it has no ongoing purpose. Leaving it exposed to users is confusing and potentially risky (re-running a migration sync unnecessarily).
 
-**File:** `src/components/candidates/EmailHistoryCard.tsx`
+## Removal Plan
 
-Add a helper function that decodes HTML entities by using the browser's built-in HTML parser (textarea element), then use it when generating the plain-text preview.
+**Files to modify:**
 
-```typescript
-function decodeHtmlEntities(text: string): string {
-  const textarea = document.createElement('textarea');
-  textarea.innerHTML = text;
-  return textarea.value;
-}
-```
+1. **`src/pages/Candidates.tsx`** — Remove the sync button, the `handleSync` function, and the `useCandidateSync` import
+2. **`src/hooks/useCandidateSync.ts`** — Delete entirely
+3. **`scripts/run_sync_candidates.ts`** — Delete entirely (one-time migration script)
 
-Apply it in two places around line 181-183:
+**Files left untouched:**
+- Database migrations and RPC function — safe to leave in place (dropping RPCs from the DB is a separate concern and won't affect the app)
+- Migration docs — keep as historical record
 
-1. The collapsed preview: wrap the result of `body_html?.replace(/<[^>]*>/g, '').slice(0, 150)` with `decodeHtmlEntities()`
-2. The `body_text` preview: wrap `body_text?.slice(0, 150)` with `decodeHtmlEntities()` as well
-
-The expanded view uses `SafeHtml` which already handles this correctly via `dangerouslySetInnerHTML`.
+**Impact:** UI cleanup only. No functional features depend on this sync button.
 
