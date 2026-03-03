@@ -15,7 +15,7 @@ interface OfferFormsManagerProps {
 }
 
 export function OfferFormsManager({ context = 'organization' }: OfferFormsManagerProps) {
-  const { forms, isLoading, deleteForm } = useOfferForms(context)
+  const { forms, isLoading, deleteForm, createForm, updateForm } = useOfferForms(context)
   const [formSheet, setFormSheet] = useState({ open: false, formId: undefined as string | undefined })
   const [fieldsDialog, setFieldsDialog] = useState({ open: false, formId: '' })
 
@@ -123,7 +123,9 @@ export function OfferFormsManager({ context = 'organization' }: OfferFormsManage
         open={formSheet.open}
         onOpenChange={(open) => setFormSheet({ open, formId: undefined })}
         formId={formSheet.formId}
-        context={context}
+        forms={forms}
+        createForm={createForm}
+        updateForm={updateForm}
       />
 
       <Dialog open={fieldsDialog.open} onOpenChange={(open) => setFieldsDialog({ open, formId: '' })}>

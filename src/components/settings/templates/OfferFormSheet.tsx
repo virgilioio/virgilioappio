@@ -4,18 +4,19 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { FormField } from '@/components/ui/form-field'
-import { useOfferForms, type OfferFormsContext } from '@/hooks/useOfferForms'
+import { type OfferForm } from '@/hooks/useOfferForms'
 import { Loader2 } from 'lucide-react'
 
 interface OfferFormSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   formId?: string
-  context?: OfferFormsContext
+  forms: OfferForm[]
+  createForm: (data: { name: string; description?: string }) => Promise<any>
+  updateForm: (id: string, data: Partial<OfferForm>) => Promise<void>
 }
 
-export function OfferFormSheet({ open, onOpenChange, formId, context = 'organization' }: OfferFormSheetProps) {
-  const { forms, createForm, updateForm } = useOfferForms(context)
+export function OfferFormSheet({ open, onOpenChange, formId, forms, createForm, updateForm }: OfferFormSheetProps) {
   const [formData, setFormData] = useState({ name: '', description: '' })
   const [isSaving, setIsSaving] = useState(false)
 
