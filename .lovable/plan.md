@@ -1,38 +1,26 @@
 
 
-# Single Webhook Router: Forward `int_` emails to transcript handler
+# Fix: Transcript Webhook Not Extracting Email Body
 
 ## Problem
-Resend is only delivering inbound emails to the `process-candidate-reply-webhook` endpoint. The `process-transcript-webhook` never gets called directly. This is likely a Resend platform behavior where only one webhook fires per inbound email event.
+The routing is working perfectly now — the transcript webhook receives the email and finds the booking. But it fails with "Transcript content too short (received_length: 0)" because **Resend's webhook payload doesn't include the email body** (`text`/`html` fields are empty).
 
-## Solution
-Add routing logic to `process-candidate-reply-webhook` so that when it detects an `int_` ingest code (instead of `jc_`), it forwards the raw payload to `process-transcript-webhook` via an internal HTTP call.
+The candidate-reply webhook already solves this by fetching the body from Resend's receiving API (`GET /emails/receiving/{email_id}`), but the transcript webhook doesn't have this fallback.
 
-## Changes
+## Fix
 
-**File: `supabase/functions/process-candidate-reply-webhook/index.ts`**
+**File: `supabase/functions/process-transcript-webhook/index.ts`**
 
-1. Add a helper function `findTranscriptIngestCode()` that checks recipients for `int_` prefixed addresses (mirrors the existing `findCandidateIngestCode` but for `int_` prefix)
+Add a Resend receiving API fetch fallback (same pattern as candidate-reply webhook):
 
-2. In the main handler, right after the "No jc_ code found" check (line ~278-283), before returning the "ignored" response:
-   - Call `findTranscriptIngestCode(emailData)`
-   - If an `int_` code is found, forward the original raw payload to `${supabaseUrl}/functions/v1/process-transcript-webhook` using `fetch()` with the service role key
-   - Log the forwarding action and return the transcript webhook's response
-   - If no `int_` code either, return the existing "ignored" response
+1. After `extractTranscriptContent()` finds no content, check for `emailData.email_id`
+2. If present, call `GET https://api.resend.com/emails/receiving/{email_id}` using the `RESEND_API_KEY` secret
+3. Use a retry strategy (3 attempts with delays: 0ms, 500ms, 1500ms) since Resend may not have indexed the email yet
+4. Extract `text`/`html` from the API response and re-run content extraction
+5. Log the fetch results for debugging
 
-3. The forwarding call passes the raw JSON payload as-is (no Svix headers needed since the transcript webhook already handles missing signatures)
+This mirrors the existing proven pattern in `process-candidate-reply-webhook` lines 193-218.
 
-## Key code flow
-```text
-Resend → candidate-reply-webhook
-  ├─ has jc_ code? → process candidate reply (existing logic)
-  ├─ has int_ code? → forward to process-transcript-webhook → return its response
-  └─ neither? → return ignored (existing logic)
-```
-
-## Why this works
-- The transcript webhook already accepts payloads without Svix headers (we just fixed that)
-- The forwarding uses the service role key for auth
-- No changes needed to `process-transcript-webhook` itself
-- No Resend configuration changes needed
+## No other changes needed
+The `RESEND_API_KEY` secret is already configured (used by the candidate-reply webhook).
 
