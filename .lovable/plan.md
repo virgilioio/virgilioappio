@@ -1,29 +1,30 @@
 
 
-# Transcript Webhook — Verification and Fixes
+# Fix: Make Transcript Webhook Handle Missing Svix Headers
 
-## Current Status
+## Problem
 
-The webhook is deployed and reachable, but has **never been invoked** by Resend. The most likely cause is a **signing secret mismatch** — the secret stored in Supabase (`RESEND_INBOUND_WEBHOOK_SECRET`) may not match what Resend shows (`whsec_xt/dxwhRpEHWVjDQcASPgJd4Asa7388q`).
+Resend IS calling the transcript webhook, but the request arrives without Svix signature headers (`svix-id`, `svix-timestamp`, `svix-signature` are all missing). The current code rejects these requests with 401.
 
-## Action Items
+The candidate reply webhook receives Svix headers because it may use a different Resend webhook type or configuration. This is a known limitation noted in the project memory: "Due to limitations in Resend's inbound email webhooks regarding Svix signature headers, the function implements optional signature verification."
 
-### 1. Re-set the webhook signing secret
-Update `RESEND_INBOUND_WEBHOOK_SECRET` to match the exact value from Resend: `whsec_xt/dxwhRpEHWVjDQcASPgJd4Asa7388q`. Since we can't read the current value, we should overwrite it to be sure.
+## Fix
 
-### 2. Update AI model in `generate-scorecard-from-transcript`
-- Change `gpt-4o-mini` → `gpt-4.1-mini` (current recommended model)
-- Change `max_tokens` → `max_completion_tokens` (deprecated parameter)
+**File: `supabase/functions/process-transcript-webhook/index.ts`**
 
-### 3. Test the pipeline
-After updating the secret, send a test email to one of the existing ingest addresses (e.g., `int_spozjwih@ingest.gogio.io`) and monitor the edge function logs to confirm the full flow: webhook received → transcript stored → scorecard generated → notification emailed.
+Change the signature verification block to be **optional**:
+- If Svix headers are present → verify signature (reject if invalid)
+- If Svix headers are missing → skip verification, parse payload directly, log a warning
+- The rest of the processing remains unchanged — the ingest code validation (`int_` prefix + booking lookup) provides sufficient security
 
-## Files to Change
+This matches how the code was originally intended to work per the project memory.
 
-- **`supabase/functions/generate-scorecard-from-transcript/index.ts`** — Update model and parameter name (2 lines)
+## Security Note
 
-## What Won't Change
+Even without signature verification, the webhook is protected by:
+1. The `int_{code}` ingest code must match a valid booking in the database
+2. The booking must have a candidate and job hiring stage
+3. The transcript content must be at least 100 characters
 
-- `process-transcript-webhook/index.ts` — The webhook handler code is correct. The issue is the secret configuration, not the code.
-- Candidate reply webhook (`jc_` prefix) — untouched as requested.
+No other files need to change.
 
