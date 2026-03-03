@@ -61,7 +61,7 @@ export function usePendingActivities() {
 
       // Sort all activities by timestamp (oldest/most urgent first)
       return activities.sort((a, b) => 
-        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       );
     },
     enabled: !!user?.id,
