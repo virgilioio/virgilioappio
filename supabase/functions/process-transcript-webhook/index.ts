@@ -133,6 +133,7 @@ serve(async (req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const webhookSecret = Deno.env.get('RESEND_INBOUND_WEBHOOK_SECRET')!;
+  const resendApiKey = Deno.env.get('RESEND_API_KEY')!;
 
   try {
     // Get raw payload for signature verification
@@ -280,7 +281,39 @@ serve(async (req) => {
     }
 
     // Extract transcript content
-    const { content, metadata } = extractTranscriptContent(emailData);
+    let { content, metadata } = extractTranscriptContent(emailData);
+
+    // If no content from webhook payload, fetch from Resend receiving API
+    if ((!content || content.trim().length < 100) && emailData.email_id && resendApiKey) {
+      console.log('[Transcript Webhook] No content in payload, fetching from Resend receiving API, email_id:', emailData.email_id);
+      const delays = [0, 500, 1500];
+      for (let attempt = 0; attempt < delays.length; attempt++) {
+        if (delays[attempt] > 0) await new Promise(r => setTimeout(r, delays[attempt]));
+        try {
+          const res = await fetch(`https://api.resend.com/emails/receiving/${emailData.email_id}`, {
+            headers: { Authorization: `Bearer ${resendApiKey}` },
+          });
+          if (res.ok) {
+            const fullEmail = await res.json();
+            console.log(`[Transcript Webhook] Resend fetch OK (attempt ${attempt + 1}): text=${fullEmail.text?.length || 0} html=${fullEmail.html?.length || 0}`);
+            const enriched = extractTranscriptContent({
+              ...emailData,
+              text: fullEmail.text || emailData.text,
+              html: fullEmail.html || emailData.html,
+              attachments: fullEmail.attachments || emailData.attachments,
+            });
+            content = enriched.content;
+            metadata = { ...enriched.metadata, resend_fetch: true, resend_attempt: attempt + 1 };
+            break;
+          }
+          const errText = await res.text();
+          console.error(`[Transcript Webhook] Resend API ${res.status} (attempt ${attempt + 1}/${delays.length}): ${errText}`);
+          if (res.status !== 404) break;
+        } catch (err) {
+          console.error(`[Transcript Webhook] Resend fetch error (attempt ${attempt + 1}):`, err);
+        }
+      }
+    }
 
     if (!content || content.trim().length < 100) {
       console.warn('[Transcript Webhook] Transcript content too short:', {
