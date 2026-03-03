@@ -177,12 +177,12 @@ ${questionsContext ? `\n7. SCORECARD QUESTION RESPONSES:\n(Address each question
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-mini',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        max_tokens: 2000,
+        max_completion_tokens: 2000,
       }),
     });
 
