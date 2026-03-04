@@ -90,7 +90,7 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
   const handleAddField = async () => {
     if (!label.trim()) return
     const maxOrder = fields.length > 0 ? Math.max(...fields.map(f => f.display_order)) : -1
-    const fieldConfig = type === 'salary' ? newSalaryConfig : type === 'location' ? newLocationConfig : undefined
+    const fieldConfig = type === 'salary' ? newSalaryConfig : type === 'location' ? newLocationConfig : type === 'phone' ? newPhoneConfig : undefined
     try {
       await createField({
         form_id: formId,
