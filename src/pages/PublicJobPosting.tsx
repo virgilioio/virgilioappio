@@ -891,7 +891,7 @@ export default function PublicJobPosting() {
                                           <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                                           <span className="text-xs text-green-600">Syncs to your candidate profile</span>
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        <div className={`grid grid-cols-1 ${({ 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' } as Record<number, string>)[locationSubFields.length] || 'md:grid-cols-3'} gap-3`}>
                                           {locationSubFields.includes('city') && (
                                             <Input
                                               placeholder="City"
