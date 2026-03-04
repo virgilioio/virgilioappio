@@ -8,7 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Plus, List, Link2, Trash2 } from 'lucide-react'
 import { FormField } from '@/components/ui/form-field'
 import { useOfferFormFields, type OfferFormField } from '@/hooks/useOfferFormFields'
-import type { SalaryFieldConfig, LocationFieldConfig } from '@/hooks/useJobPostingFields'
+import type { SalaryFieldConfig, LocationFieldConfig, PhoneFieldConfig } from '@/hooks/useJobPostingFields'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
