@@ -1,52 +1,44 @@
 
 
-# Fix: Add Missing Write RLS Policies for `offer_letters`
+# Separate Location Sub-Fields on One Line
 
-## Your Question: Organization ID vs Tenant ID
+## Current State
+- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
+- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
+- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
 
-You're architecturally correct — the system uses tenants. However, checking the data, for all active members `organization_id == tenant_id` (both point to the root org). The existing SELECT policies on `offer_letters` already use `m.organization_id = offer_letters.organization_id` and work fine. So the stored value is correct; it's just named `organization_id` instead of `tenant_id`.
+## What Needs to Change
 
-Renaming the column would be a larger refactor (migration, code changes, existing data). For now, the pragmatic fix is to add the missing write policies using the same pattern as the working SELECT policies, plus `check_org_hierarchy_role_access` for hierarchy support (so tenant admins can manage offers in child org contexts too).
+### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
 
-## The Actual Fix
+Add a `case 'location':` block that:
+- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
+- Parses the value as JSON `{ city, state, country }`
+- Renders separate inputs for each enabled sub-field in a single-row grid
+- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
+- Shows MapPin icon in the label
 
-The 403 error happens because `offer_letters` has **zero** INSERT/UPDATE/DELETE policies. We need a database migration to add them.
+### 2. Make grid columns dynamic everywhere
 
-### SQL Migration
+When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
 
-```sql
--- INSERT: org members with recruiter+ role can create offer letters
-CREATE POLICY offer_letters_insert_policy
-  ON public.offer_letters FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    created_by = auth.uid()
-    AND check_org_hierarchy_role_access(organization_id, 'recruiter')
-  );
+**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
 
--- UPDATE: org members with recruiter+ role can update offer letters
-CREATE POLICY offer_letters_update_policy
-  ON public.offer_letters FOR UPDATE
-  TO authenticated
-  USING (check_org_hierarchy_role_access(organization_id, 'recruiter'))
-  WITH CHECK (check_org_hierarchy_role_access(organization_id, 'recruiter'));
+**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
 
--- DELETE: org admins only
-CREATE POLICY offer_letters_delete_policy
-  ON public.offer_letters FOR DELETE
-  TO authenticated
-  USING (check_org_hierarchy_role_access(organization_id, 'admin'));
+**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
+
+Column class map:
+```ts
+const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
 ```
 
-This uses `check_org_hierarchy_role_access` which:
-- Validates the user is an active member
-- Supports parent-to-child org hierarchy access
-- Implements role inheritance (admin inherits recruiter permissions)
+### 3. Also add salary case to `OfferComposerBody.tsx`
 
-### No Code Changes Needed
+While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
 
-The `OfferComposerBody` already sets `created_by: user?.id` in the payload, which satisfies the INSERT policy's `created_by = auth.uid()` check.
-
-## Files Changed
-- 1 database migration (new RLS policies)
+## Summary of File Changes
+- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
+- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
+- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
 
