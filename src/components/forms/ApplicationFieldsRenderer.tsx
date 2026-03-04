@@ -7,7 +7,7 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescripti
 import { ApplicationFieldWithRelations } from '@/hooks/useApplicationFields'
 import { PostingField, SalaryFieldConfig, LocationFieldConfig } from '@/hooks/useJobPostingFields'
 import { Control } from 'react-hook-form'
-import { CURRENCY_SYMBOLS } from '@/constants/currencies'
+import { CurrencySelect } from '@/components/ui/currency-select'
 import { MapPin } from 'lucide-react'
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 
@@ -259,37 +259,50 @@ export function ApplicationFieldsRenderer({
 
       case 'salary':
         const salaryConfig = ('field_config' in field ? field.field_config : null) as SalaryFieldConfig | null
-        const currency = salaryConfig?.currency || 'USD'
         const period = salaryConfig?.period || 'annually'
-        const symbol = CURRENCY_SYMBOLS[currency] || currency
         return (
           <FormField
             key={field.field_name}
             control={control}
             name={field.field_name}
-            render={({ field: formField }) => (
-              <FormItem>
-                <FormLabel>
-                  {field.field_label}
-                  {field.is_required && <span className="text-destructive ml-1">*</span>}
-                </FormLabel>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="shrink-0">{symbol}</Badge>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder={`Enter amount`}
-                      {...formField}
-                    />
-                  </FormControl>
-                  <Badge variant="secondary" className="shrink-0 capitalize">{period}</Badge>
-                </div>
-                <FormDescription className="text-green-600">
-                  This will be added to your candidate profile.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
+            render={({ field: formField }) => {
+              const salaryValue = (() => {
+                try {
+                  if (typeof formField.value === 'object' && formField.value) return formField.value
+                  if (typeof formField.value === 'string' && formField.value) return JSON.parse(formField.value)
+                  return { amount: '', currency: salaryConfig?.currency || 'USD' }
+                } catch { return { amount: '', currency: salaryConfig?.currency || 'USD' } }
+              })()
+              return (
+                <FormItem>
+                  <FormLabel>
+                    {field.field_label}
+                    {field.is_required && <span className="text-destructive ml-1">*</span>}
+                  </FormLabel>
+                  <div className="flex items-center gap-2">
+                    <div className="w-[180px] shrink-0">
+                      <CurrencySelect
+                        value={salaryValue.currency}
+                        onChange={(c) => formField.onChange(JSON.stringify({ ...salaryValue, currency: c }))}
+                      />
+                    </div>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="Enter amount"
+                        value={salaryValue.amount}
+                        onChange={(e) => formField.onChange(JSON.stringify({ ...salaryValue, amount: e.target.value }))}
+                      />
+                    </FormControl>
+                    <Badge variant="secondary" className="shrink-0 capitalize">{period}</Badge>
+                  </div>
+                  <FormDescription className="text-green-600">
+                    This will be added to your candidate profile.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )
+            }}
           />
         )
 

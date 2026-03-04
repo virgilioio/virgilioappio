@@ -1,54 +1,44 @@
 
 
-# Allow Currency Selection on Salary Fields in Offer Forms
+# Separate Location Sub-Fields on One Line
 
-## Problem
-Currently, salary fields in offer forms display the currency as a static badge based on the `field_config` setting. The period should remain locked, but the **currency must be selectable** by the person filling out the offer.
+## Current State
+- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
+- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
+- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
 
-## Approach
-Store the salary value as a JSON object `{ amount, currency }` instead of a plain number. The `field_config.currency` becomes the **default** currency, and `field_config.period` stays fixed/display-only.
+## What Needs to Change
 
-## Changes
+### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
 
-### 1. `src/components/candidates/OfferComposerBody.tsx` — salary case (lines 157-174)
-Replace the static currency badge with a `CurrencySelect` dropdown. Store value as `{ amount: string, currency: string }`:
-```tsx
-case 'salary': {
-  const salaryConfig = field.field_config as SalaryFieldConfig | null
-  const period = salaryConfig?.period || 'annually'
-  const salaryValue = (() => {
-    try {
-      if (typeof value === 'object' && value) return value
-      if (typeof value === 'string' && value) return JSON.parse(value)
-      return { amount: '', currency: salaryConfig?.currency || 'USD' }
-    } catch { return { amount: '', currency: salaryConfig?.currency || 'USD' } }
-  })()
-  return (
-    <div className="flex items-center gap-2">
-      <CurrencySelect
-        value={salaryValue.currency}
-        onChange={(c) => handleFieldChange(field.field_name, JSON.stringify({ ...salaryValue, currency: c }))}
-      />
-      <Input type="number" value={salaryValue.amount}
-        onChange={(e) => handleFieldChange(field.field_name, JSON.stringify({ ...salaryValue, amount: e.target.value }))}
-        placeholder="Enter amount" />
-      <Badge variant="secondary" className="shrink-0 capitalize">{period}</Badge>
-    </div>
-  )
-}
+Add a `case 'location':` block that:
+- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
+- Parses the value as JSON `{ city, state, country }`
+- Renders separate inputs for each enabled sub-field in a single-row grid
+- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
+- Shows MapPin icon in the label
+
+### 2. Make grid columns dynamic everywhere
+
+When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
+
+**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
+
+**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
+
+**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
+
+Column class map:
+```ts
+const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
 ```
 
-### 2. `src/components/candidates/CreateOfferLetterDialog.tsx`
-Add the missing `salary` case with the same CurrencySelect pattern (currently falls to default text input). Add `CurrencySelect` and `SalaryFieldConfig` imports.
+### 3. Also add salary case to `OfferComposerBody.tsx`
 
-### 3. `src/components/forms/ApplicationFieldsRenderer.tsx` — salary case (lines 260-294)
-Same change: replace static badge with `CurrencySelect`, store as JSON `{ amount, currency }`. Adapt for react-hook-form by reading/writing the form value as a JSON string.
+While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
 
-### 4. Imports
-Add `import { CurrencySelect } from '@/components/ui/currency-select'` to all three files where missing.
-
-## What stays the same
-- **Period** remains a locked display-only badge from field_config
-- **field_config** in the form builder still sets the **default** currency and the period
-- No database changes needed — `field_values` is already a JSONB column
+## Summary of File Changes
+- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
+- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
+- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
 

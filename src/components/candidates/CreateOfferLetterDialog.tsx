@@ -14,7 +14,9 @@ import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
-import type { PhoneFieldConfig } from '@/hooks/useJobPostingFields'
+import type { PhoneFieldConfig, SalaryFieldConfig } from '@/hooks/useJobPostingFields'
+import { CurrencySelect } from '@/components/ui/currency-select'
+import { Badge } from '@/components/ui/badge'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useRecruiterOptions } from '@/hooks/useRecruiterOptions'
 
@@ -166,6 +168,35 @@ export function CreateOfferLetterSheet({
             onChange={(val) => handleFieldChange(field.field_name, val)}
             placeholder="Enter phone number"
           />
+        )
+      }
+      case 'salary': {
+        const salaryConfig = (field as any).field_config as SalaryFieldConfig | null
+        const period = salaryConfig?.period || 'annually'
+        const salaryValue = (() => {
+          try {
+            if (typeof value === 'object' && value) return value
+            if (typeof value === 'string' && value) return JSON.parse(value)
+            return { amount: '', currency: salaryConfig?.currency || 'USD' }
+          } catch { return { amount: '', currency: salaryConfig?.currency || 'USD' } }
+        })()
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-[180px] shrink-0">
+              <CurrencySelect
+                value={salaryValue.currency}
+                onChange={(c) => handleFieldChange(field.field_name, JSON.stringify({ ...salaryValue, currency: c }))}
+              />
+            </div>
+            <Input
+              id={field.field_name}
+              type="number"
+              value={salaryValue.amount}
+              onChange={(e) => handleFieldChange(field.field_name, JSON.stringify({ ...salaryValue, amount: e.target.value }))}
+              placeholder="Enter amount"
+            />
+            <Badge variant="secondary" className="shrink-0 capitalize">{period}</Badge>
+          </div>
         )
       }
       case 'recruiter':
