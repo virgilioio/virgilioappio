@@ -1,44 +1,54 @@
 
 
-# Separate Location Sub-Fields on One Line
+# Fix: Save Button Disabled After Draft Restore
 
-## Current State
-- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
-- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
-- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
+## Root Cause
 
-## What Needs to Change
+The `OfferComposerBody` has a `useEffect` that resets `fieldValues` to `{}` whenever `selectedFormId` changes, guarded by `draftRestored`:
 
-### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
-
-Add a `case 'location':` block that:
-- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
-- Parses the value as JSON `{ city, state, country }`
-- Renders separate inputs for each enabled sub-field in a single-row grid
-- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
-- Shows MapPin icon in the label
-
-### 2. Make grid columns dynamic everywhere
-
-When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
-
-**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
-
-**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
-
-**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
-
-Column class map:
-```ts
-const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
+```tsx
+useEffect(() => {
+  if (!draftRestored) {
+    onFieldValuesChange({})
+  }
+}, [selectedFormId])
 ```
 
-### 3. Also add salary case to `OfferComposerBody.tsx`
+This is fragile. There is a timing/batching edge case where the effect fires before `draftRestored` is `true` in the child's closure, clearing the restored draft values. Once cleared, all required fields become empty and `canSave()` returns `false`.
 
-While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
+## Fix
 
-## Summary of File Changes
-- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
-- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
-- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
+Remove the `useEffect`-based field reset entirely. Instead, handle the reset in the **callback** when the user manually changes the form dropdown. This eliminates the race condition.
+
+### 1. `MinimizableOfferComposer.tsx`
+
+Create a `handleFormChange` callback that resets field values when the user picks a different form, and pass that instead of `setSelectedFormId`:
+
+```tsx
+const handleFormChange = (id: string) => {
+  setSelectedFormId(id)
+  setFieldValues({})
+  setDraftRestored(false)
+}
+
+// In JSX:
+<OfferComposerBody
+  onSelectedFormIdChange={handleFormChange}  // was: setSelectedFormId
+  ...
+/>
+```
+
+### 2. `OfferComposerBody.tsx`
+
+Remove the `useEffect` that conditionally resets field values (lines 58-63). The parent now handles the reset via the callback, so this effect is no longer needed.
+
+## Why this is better
+
+- **No race condition**: the reset happens synchronously in the user action handler, not in an async effect
+- **No dependency on `draftRestored` flag timing**: draft restore sets `fieldValues` directly and never triggers a reset
+- **Simpler code**: removes a fragile `useEffect` with an incomplete dependency array
+
+## Files changed
+- `src/components/candidates/MinimizableOfferComposer.tsx` — add `handleFormChange` callback
+- `src/components/candidates/OfferComposerBody.tsx` — remove the field-reset `useEffect`
 
