@@ -1513,6 +1513,11 @@ const stageHasAutomation = useMemo(() => {
                       </Accordion>
                     ) : (
                       <></>
+                     )}
+
+                    {/* Offer Details Tab */}
+                    {activeTab === 'offer' && candidateId && (
+                      <CandidateOfferDetails candidateId={candidateId} jobId={jobId} />
                     )}
                    </div>
 
