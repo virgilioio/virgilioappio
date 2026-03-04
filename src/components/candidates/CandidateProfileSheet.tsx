@@ -1226,14 +1226,19 @@ const stageHasAutomation = useMemo(() => {
                                 <CandidateResumeViewer candidateId={independentCandidateId || candidateId} />
                               </>
                             ) : (
-                              <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
-                                <FileText className="h-12 w-12 text-muted-foreground" />
-                                <div>
-                                  <p className="text-sm text-muted-foreground">No resume uploaded yet</p>
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    Upload a resume to auto-extract candidate information
-                                  </p>
-                                </div>
+                              <div className="text-center py-8">
+                                <img 
+                                  src={gioFaceEmpty}
+                                  alt="No resume"
+                                  className="h-16 w-16 mx-auto mb-4 rounded-full"
+                                />
+                                <p className="text-[1.38rem] font-semibold mb-2 tracking-[-0.06em]">
+                                  <span>No resume uploaded yet</span>
+                                  <span className="text-purple-period">.</span>
+                                </p>
+                                <p className="text-sm text-text-secondary mb-4">
+                                  Upload a resume to auto-extract candidate information
+                                </p>
                                 <Button 
                                   variant="outline" 
                                   onClick={() => setEditOpen(true)}
