@@ -73,8 +73,10 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
     setNewMaxFileSize('')
     setNewSalaryConfig({ currency: 'USD', period: 'annually' })
     setNewLocationConfig({ fields: ['city', 'state', 'country'] })
+    setNewPhoneConfig({ defaultCountryCode: '+1' })
     if (type === 'salary' && !label) setLabel('Salary')
     if (type === 'location' && !label) setLabel('Location')
+    if (type === 'phone' && !label) setLabel('Phone Number')
   }, [type])
 
   const sortedFields = useMemo(() => {
