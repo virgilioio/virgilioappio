@@ -980,15 +980,15 @@ const stageHasAutomation = useMemo(() => {
                      <CandidateNameCard
                        email={candidate.email}
                        phone={candidate.phone}
-                        tabs={[
-                         { value: 'job', label: 'Job Application', Icon: FileText },
-                         { value: 'application', label: 'Application Details', Icon: FileText },
-                         { value: 'resume', label: 'Resume', Icon: FileText },
-                         { value: 'overview', label: 'Overview', Icon: FileText },
-                         ...((associationStatus === 'offer' || associationStatus === 'hired')
-                           ? [{ value: 'offer', label: 'Offer Details', Icon: FileText }]
-                           : []),
-                       ]}
+                       tabs={[
+                          ...((associationStatus === 'offer' || associationStatus === 'hired')
+                            ? [{ value: 'offer', label: 'Offer Details', Icon: FileText }]
+                            : []),
+                          { value: 'job', label: 'Job Application', Icon: FileText },
+                          { value: 'application', label: 'Application Details', Icon: FileText },
+                          { value: 'resume', label: 'Resume', Icon: FileText },
+                          { value: 'overview', label: 'Overview', Icon: FileText },
+                        ]}
                        activeTab={activeTab}
                        onTabChange={(v) => setActiveTab(v as 'job' | 'application' | 'resume' | 'overview' | 'offer')}
                      />
