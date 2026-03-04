@@ -168,6 +168,15 @@ export function CreateOfferLetterSheet({
           />
         )
       }
+      case 'recruiter':
+        return (
+          <SearchableSelect
+            options={recruiterOptions}
+            value={value || ''}
+            onValueChange={(val) => handleFieldChange(field.field_name, val)}
+            placeholder="Search for a recruiter..."
+          />
+        )
       default:
         return (
           <Input
