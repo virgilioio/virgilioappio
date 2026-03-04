@@ -1,32 +1,21 @@
 
 
-# Audit: Empty States Missing Gio Face Avatar
+# Add Dismiss Action for Email Tasks in Pending Tasks Widget
 
-## Findings
+## Problem
+Email tasks in the Pending Tasks card can only be dismissed by clicking through to the candidate profile. Users need a quick way to dismiss (mark as read) directly from the dashboard.
 
-The Gio face avatar (`gio-face-empty.png`) is currently used in **2 places**:
-- `CandidateComments.tsx` (Notes tab) ✅
-- `CandidateReminders.tsx` (Reminders tab) ✅
+## Approach
+Add a small "more" menu (three-dot `MoreHorizontal` icon) on email-type task items in `PendingActivities.tsx`. The menu will have a "Dismiss" option that calls `markEmailAsRead` without navigating away.
 
-The following **candidate profile sheet** empty states use generic Lucide icons instead — these are the inconsistencies that matter most, since they sit right alongside the tabs that already use Gio:
+## Change — `src/components/dashboard/PendingActivities.tsx`
 
-| File | Current Icon | Context |
-|------|-------------|---------|
-| `CandidateAttachments.tsx` | `File` icon | Attachments tab in candidate profile |
-| `CandidateUrls.tsx` | `ExternalLink` icon | URLs section in candidate profile |
+1. Import `DropdownMenu`, `DropdownMenuTrigger`, `DropdownMenuContent`, `DropdownMenuItem` and `MoreHorizontal` icon
+2. For tasks where `activity.type === 'email'`, render a dropdown menu trigger (three-dot button) in place of or alongside the `ChevronRight` icon
+3. The dropdown will have:
+   - **"Mark as read"** — calls `markEmailAsRead.mutate(activity.emailId)` and stops propagation so the row click doesn't fire
+   - **"Open"** — triggers the existing `handleActivityClick` navigation
+4. Non-email task types (`scorecard`, `decision`) keep the current click-through behavior with no menu
 
-Other empty states (dashboard widgets, settings pages, admin panels, billing) use their own patterns (`EmptyState` component with `fallbackIcon` + platform assets, or contextual icons). Those are intentionally different — they're not candidate profile tabs and don't need the Gio branding.
-
-## Plan
-
-### 1. `src/components/candidates/CandidateAttachments.tsx`
-- Import `gioFaceEmpty` from `@/assets/gio-face-empty.png`
-- Replace `<File className="h-8 w-8 mx-auto mb-2 opacity-50" />` with `<img src={gioFaceEmpty} alt="No attachments" className="h-16 w-16 mx-auto mb-4 rounded-full" />`
-
-### 2. `src/components/candidates/CandidateUrls.tsx`
-- Import `gioFaceEmpty` from `@/assets/gio-face-empty.png`
-- Replace `<ExternalLink className="h-8 w-8 mx-auto mb-2 opacity-50" />` with `<img src={gioFaceEmpty} alt="No URLs" className="h-16 w-16 mx-auto mb-4 rounded-full" />`
-- Update the text styling to match the branded pattern used in Comments/Reminders (add the purple period, use `text-[1.38rem] font-semibold tracking-[-0.06em]`)
-
-Two file changes, no new dependencies.
+The menu button will use `e.stopPropagation()` to prevent the parent button's `onClick` from firing when interacting with the dropdown.
 
