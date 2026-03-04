@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -136,112 +135,107 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <List className="h-5 w-5" />
-              Form Fields
-            </CardTitle>
-            <Button onClick={openCreateDialog}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Field
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <TableSkeleton rows={3} />
-          ) : fields.length === 0 ? (
-            <div className="text-center py-8">
-              <List className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">No form fields yet</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Add fields that recruiters will fill out when creating an offer
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Order</TableHead>
-                  <TableHead>Field Name</TableHead>
-                  <TableHead>Label</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Required</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {fields
-                  .sort((a, b) => a.display_order - b.display_order)
-                  .map((field, index) => (
-                    <TableRow key={field.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <span className="text-sm text-muted-foreground">{index + 1}</span>
-                          <div className="flex flex-col">
-                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => moveField(field, 'up')} disabled={index === 0}>
-                              <MoveUp className="h-3 w-3" />
-                            </Button>
-                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => moveField(field, 'down')} disabled={index === fields.length - 1}>
-                              <MoveDown className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <code className="text-sm bg-muted px-1 rounded">{field.field_name}</code>
-                      </TableCell>
-                      <TableCell className="font-medium">{field.field_label}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">
-                          {fieldTypes.find(t => t.value === field.field_type)?.label || field.field_type}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {field.is_required ? (
-                          <Badge variant="destructive">Required</Badge>
-                        ) : (
-                          <Badge variant="outline">Optional</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => openEditDialog(field)}>
-                            <Edit className="h-4 w-4" />
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-base font-semibold flex items-center gap-2">
+          <List className="h-4 w-4" />
+          Form Fields
+        </h3>
+        <Button size="sm" onClick={openCreateDialog}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Field
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <TableSkeleton rows={3} />
+      ) : fields.length === 0 ? (
+        <div className="text-center py-8">
+          <List className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground">No form fields yet</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Add fields that recruiters will fill out when creating an offer
+          </p>
+        </div>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Order</TableHead>
+              <TableHead>Field Name</TableHead>
+              <TableHead>Label</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Required</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {fields
+              .sort((a, b) => a.display_order - b.display_order)
+              .map((field, index) => (
+                <TableRow key={field.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm text-muted-foreground">{index + 1}</span>
+                      <div className="flex flex-col">
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => moveField(field, 'up')} disabled={index === 0}>
+                          <MoveUp className="h-3 w-3" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => moveField(field, 'down')} disabled={index === fields.length - 1}>
+                          <MoveDown className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <code className="text-sm bg-muted px-1 rounded">{field.field_name}</code>
+                  </TableCell>
+                  <TableCell className="font-medium">{field.field_label}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">
+                      {fieldTypes.find(t => t.value === field.field_type)?.label || field.field_type}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {field.is_required ? (
+                      <Badge variant="destructive">Required</Badge>
+                    ) : (
+                      <Badge variant="outline">Optional</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => openEditDialog(field)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <Trash2 className="h-4 w-4" />
                           </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Field</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete "{field.field_label}"? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteField(field)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Field</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete "{field.field_label}"? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteField(field)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+          </TableBody>
+        </Table>
+      )}
 
       {/* Create/Edit Field Dialog */}
       <Dialog open={isCreateDialogOpen || !!editingField} onOpenChange={closeDialogs}>

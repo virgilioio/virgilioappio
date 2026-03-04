@@ -4,11 +4,9 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Plus, Edit, Trash2, List, ClipboardList } from 'lucide-react'
+import { Plus, Edit, Trash2, ClipboardList } from 'lucide-react'
 import { useOfferForms, type OfferFormsContext } from '@/hooks/useOfferForms'
 import { OfferFormSheet } from './templates/OfferFormSheet'
-import { OfferFormFieldsManager } from './OfferFormFieldsManager'
 
 interface OfferFormsManagerProps {
   context?: OfferFormsContext
@@ -17,7 +15,6 @@ interface OfferFormsManagerProps {
 export function OfferFormsManager({ context = 'organization' }: OfferFormsManagerProps) {
   const { forms, isLoading, deleteForm, createForm, updateForm } = useOfferForms(context)
   const [formSheet, setFormSheet] = useState({ open: false, formId: undefined as string | undefined })
-  const [fieldsDialog, setFieldsDialog] = useState({ open: false, formId: '' })
 
   const tenantForms = forms.filter(f => f.source === 'tenant')
   const displayForms = context === 'organization' ? tenantForms : forms
@@ -74,14 +71,6 @@ export function OfferFormsManager({ context = 'organization' }: OfferFormsManage
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setFieldsDialog({ open: true, formId: form.id })}
-                        title="Manage Fields"
-                      >
-                        <List className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
                         onClick={() => setFormSheet({ open: true, formId: form.id })}
                       >
                         <Edit className="h-4 w-4" />
@@ -127,17 +116,6 @@ export function OfferFormsManager({ context = 'organization' }: OfferFormsManage
         createForm={createForm}
         updateForm={updateForm}
       />
-
-      <Dialog open={fieldsDialog.open} onOpenChange={(open) => setFieldsDialog({ open, formId: '' })}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Manage Form Fields</DialogTitle>
-          </DialogHeader>
-          {fieldsDialog.formId && (
-            <OfferFormFieldsManager formId={fieldsDialog.formId} />
-          )}
-        </DialogContent>
-      </Dialog>
     </Card>
   )
 }

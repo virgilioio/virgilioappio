@@ -6,6 +6,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { FormField } from '@/components/ui/form-field'
 import { type OfferForm } from '@/hooks/useOfferForms'
 import { Loader2 } from 'lucide-react'
+import { OfferFormFieldsManager } from '../OfferFormFieldsManager'
+import { Separator } from '@/components/ui/separator'
 
 interface OfferFormSheetProps {
   open: boolean
@@ -19,9 +21,19 @@ interface OfferFormSheetProps {
 export function OfferFormSheet({ open, onOpenChange, formId, forms, createForm, updateForm }: OfferFormSheetProps) {
   const [formData, setFormData] = useState({ name: '', description: '' })
   const [isSaving, setIsSaving] = useState(false)
+  const [activeFormId, setActiveFormId] = useState<string | undefined>(formId)
 
-  const isEditing = !!formId
-  const existingForm = forms.find(f => f.id === formId)
+  const effectiveFormId = formId || activeFormId
+  const isEditing = !!effectiveFormId
+  const existingForm = forms.find(f => f.id === effectiveFormId)
+
+  useEffect(() => {
+    if (formId) {
+      setActiveFormId(formId)
+    } else if (!open) {
+      setActiveFormId(undefined)
+    }
+  }, [formId, open])
 
   useEffect(() => {
     if (isEditing && existingForm) {
@@ -32,19 +44,21 @@ export function OfferFormSheet({ open, onOpenChange, formId, forms, createForm, 
     } else if (!isEditing) {
       setFormData({ name: '', description: '' })
     }
-  }, [formId, existingForm, open])
+  }, [effectiveFormId, existingForm, open])
 
   const handleSave = async () => {
     if (!formData.name.trim()) return
 
     try {
       setIsSaving(true)
-      if (isEditing && formId) {
-        await updateForm(formId, formData)
+      if (isEditing && effectiveFormId) {
+        await updateForm(effectiveFormId, formData)
       } else {
-        await createForm(formData)
+        const newForm = await createForm(formData)
+        if (newForm?.id) {
+          setActiveFormId(newForm.id)
+        }
       }
-      onOpenChange(false)
     } catch {
       // handled by hook
     } finally {
@@ -54,11 +68,11 @@ export function OfferFormSheet({ open, onOpenChange, formId, forms, createForm, 
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="sm:max-w-lg">
+      <SheetContent side="right" className="sm:max-w-2xl overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{isEditing ? 'Edit Offer Form' : 'Create Offer Form'}</SheetTitle>
           <SheetDescription>
-            {isEditing ? 'Update the offer form details.' : 'Create a new offer form template that recruiters will fill out when making an offer.'}
+            {isEditing ? 'Update the offer form details and manage fields.' : 'Create a new offer form template that recruiters will fill out when making an offer.'}
           </SheetDescription>
         </SheetHeader>
 
@@ -82,7 +96,7 @@ export function OfferFormSheet({ open, onOpenChange, formId, forms, createForm, 
 
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {isEditing ? 'Close' : 'Cancel'}
             </Button>
             <Button onClick={handleSave} disabled={isSaving || !formData.name.trim()}>
               {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
@@ -90,6 +104,13 @@ export function OfferFormSheet({ open, onOpenChange, formId, forms, createForm, 
             </Button>
           </div>
         </div>
+
+        {effectiveFormId && (
+          <>
+            <Separator className="my-8" />
+            <OfferFormFieldsManager formId={effectiveFormId} />
+          </>
+        )}
       </SheetContent>
     </Sheet>
   )
