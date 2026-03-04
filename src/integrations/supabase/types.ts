@@ -2558,6 +2558,41 @@ export type Database = {
           },
         ]
       }
+      offer_field_select_options: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          offer_field_id: string
+          option_label: string
+          option_value: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          offer_field_id: string
+          option_label: string
+          option_value: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          offer_field_id?: string
+          option_label?: string
+          option_value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_field_select_options_offer_field_id_fkey"
+            columns: ["offer_field_id"]
+            isOneToOne: false
+            referencedRelation: "offer_form_fields"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       offer_form_fields: {
         Row: {
           accepted_file_types: string | null

@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/hooks/use-toast'
 
 export type { SalaryFieldConfig, LocationFieldConfig, PhoneFieldConfig } from '@/hooks/useJobPostingFields'
-import type { SalaryFieldConfig, LocationFieldConfig, PhoneFieldConfig } from '@/hooks/useJobPostingFields'
+import type { SalaryFieldConfig, LocationFieldConfig, PhoneFieldConfig, SelectOptionData } from '@/hooks/useJobPostingFields'
 
 export interface OfferFormField {
   id: string
@@ -52,8 +52,9 @@ export function useOfferFormFields(formId?: string) {
     }
   }
 
-  const createField = async (fieldData: Omit<OfferFormField, 'id' | 'created_at' | 'updated_at'>) => {
+  const createField = async (fieldData: Omit<OfferFormField, 'id' | 'created_at' | 'updated_at'> & { select_options?: SelectOptionData[] }) => {
     try {
+      const { select_options, ...rest } = fieldData as any
       const { data: { user } } = await supabase.auth.getUser()
       const { data: memberData } = await supabase
         .from('members')
@@ -63,7 +64,7 @@ export function useOfferFormFields(formId?: string) {
         .single()
 
       const enrichedFieldData = {
-        ...fieldData,
+        ...rest,
         organization_id: memberData?.user_type === 'workspace_owner' ? memberData.organization_id : null,
         created_by: user?.id
       }
@@ -76,6 +77,17 @@ export function useOfferFormFields(formId?: string) {
 
       if (error) throw error
 
+      // Persist select options if provided
+      if (select_options?.length && data) {
+        const rows = select_options.map((o: SelectOptionData, i: number) => ({
+          offer_field_id: data.id,
+          option_value: o.option_value,
+          option_label: o.option_label,
+          display_order: i
+        }))
+        await supabase.from('offer_field_select_options').insert(rows as any)
+      }
+
       toast({ title: 'Success', description: 'Form field created successfully' })
       await fetchFields()
       return data
@@ -86,14 +98,29 @@ export function useOfferFormFields(formId?: string) {
     }
   }
 
-  const updateField = async (id: string, fieldData: Partial<OfferFormField>) => {
+  const updateField = async (id: string, fieldData: Partial<OfferFormField> & { select_options?: SelectOptionData[] }) => {
     try {
+      const { select_options, ...dbUpdates } = fieldData as any
       const { error } = await supabase
         .from('offer_form_fields')
-        .update(fieldData as any)
+        .update(dbUpdates as any)
         .eq('id', id)
 
       if (error) throw error
+
+      // Persist select options if provided (delete + re-insert)
+      if (select_options !== undefined) {
+        await supabase.from('offer_field_select_options').delete().eq('offer_field_id', id)
+        if (select_options.length > 0) {
+          const rows = select_options.map((o: SelectOptionData, i: number) => ({
+            offer_field_id: id,
+            option_value: o.option_value,
+            option_label: o.option_label,
+            display_order: i
+          }))
+          await supabase.from('offer_field_select_options').insert(rows as any)
+        }
+      }
 
       toast({ title: 'Success', description: 'Form field updated successfully' })
       await fetchFields()

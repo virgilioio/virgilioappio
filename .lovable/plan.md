@@ -1,48 +1,44 @@
 
 
-# Fix Select Options + Simplify to Label-Only Input
+# Separate Location Sub-Fields on One Line
 
-## Problem
-When configuring select field options in `FormFieldEditor`, the user is asked for both a **Value** and a **Label** per option (two inputs). This is unnecessarily complex — only the label should be required, with the value auto-derived (snake_case of label), matching the pattern used for field names throughout the app.
+## Current State
+- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
+- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
+- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
 
-Additionally, the approved plan for `offer_field_select_options` table + persistence logic still needs to be implemented.
+## What Needs to Change
 
-## Changes
+### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
 
-### 1. Simplify select option inputs in `FormFieldEditor.tsx`
-- Remove the "Value" input from each option row — show only a single "Option label" input
-- Auto-generate `option_value` from the label using the existing `toSnakeCase` pattern (e.g., "Full Time" → "full_time")
-- Update `addOption` to only need a label
-- Update `updateOption` to auto-set `option_value` when label changes
+Add a `case 'location':` block that:
+- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
+- Parses the value as JSON `{ city, state, country }`
+- Renders separate inputs for each enabled sub-field in a single-row grid
+- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
+- Shows MapPin icon in the label
 
-**Before** (lines 202-207):
+### 2. Make grid columns dynamic everywhere
+
+When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
+
+**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
+
+**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
+
+**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
+
+Column class map:
+```ts
+const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
 ```
-<Input ... placeholder="Value" />
-<Input ... placeholder="Label" />
-```
 
-**After**:
-```
-<Input ... placeholder="Option label" />
-// option_value auto-derived on save
-```
+### 3. Also add salary case to `OfferComposerBody.tsx`
 
-### 2. Database migration: `offer_field_select_options` table
-Create the table mirroring `posting_field_select_options`:
-- `id` (uuid PK), `offer_field_id` (FK → offer_form_fields ON DELETE CASCADE), `option_value`, `option_label`, `display_order`, `created_at`
-- RLS enabled with appropriate policies
+While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
 
-### 3. Update `useOfferFormFields.ts`
-- In `updateField`: handle `select_options` — delete existing + re-insert (same pattern as job posting fields)
-- In `createField`: persist `select_options` if field type is `select`
-
-### 4. Update `OfferFieldEditor.tsx`
-- Add `loadSelectOptions` callback querying `offer_field_select_options`
-- Pass it to `FormFieldEditor`
-
-## Files Changed
-- **Modified**: `src/components/shared/FormFieldEditor.tsx` — single label input, auto-derive value
-- **Migration**: New `offer_field_select_options` table
-- **Modified**: `src/hooks/useOfferFormFields.ts` — select options persistence
-- **Modified**: `src/components/settings/OfferFieldEditor.tsx` — loadSelectOptions prop
+## Summary of File Changes
+- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
+- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
+- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
 
