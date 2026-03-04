@@ -1,4 +1,5 @@
 import DOMPurify from 'dompurify'
+import { fixMojibake } from './fixMojibake'
 
 /**
  * Ensures all <a> tags have target="_blank" and rel="noopener noreferrer"

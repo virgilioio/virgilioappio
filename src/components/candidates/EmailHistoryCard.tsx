@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SafeHtml } from '@/components/ui/safe-html';
 import { cn } from '@/lib/utils';
+import { fixMojibake } from '@/utils/fixMojibake';
 
 function decodeHtmlEntities(text: string): string {
   const textarea = document.createElement('textarea');
