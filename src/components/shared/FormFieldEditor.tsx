@@ -315,7 +315,7 @@ export function FormFieldEditor({
                 {field.field_type === 'phone' && (
                   <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                     <Badge variant="outline" className="text-xs bg-teal-500/10 text-teal-700 border-teal-300 gap-1"><Phone className="h-3 w-3" /> Phone</Badge>
-                    <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-300 gap-1"><Link2 className="h-3 w-3" /> Syncs to Profile</Badge>
+                    {showSyncMessaging && <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-300 gap-1"><Link2 className="h-3 w-3" /> Syncs to Profile</Badge>}
                     {(field.field_config as PhoneFieldConfig)?.defaultCountryCode && (
                       <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600">Default: {(field.field_config as PhoneFieldConfig).defaultCountryCode}</Badge>
                     )}
