@@ -317,6 +317,12 @@ export function FormFieldEditor({
                     )}
                   </div>
                 )}
+                {field.field_type === 'recruiter' && (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                    <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-700 border-purple-300 gap-1"><Users className="h-3 w-3" /> Recruiter</Badge>
+                    <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-300 gap-1">Team Member Selector</Badge>
+                  </div>
+                )}
               </div>
               {!isSmartField && (
                 <div><div className="text-sm text-muted-foreground capitalize">{fieldTypeLabel(field.field_type)}</div></div>
