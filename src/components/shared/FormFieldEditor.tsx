@@ -23,6 +23,7 @@ export function fieldTypeLabel(t: string) {
     case 'salary': return 'Salary'
     case 'location': return 'Location'
     case 'phone': return 'Phone'
+    case 'recruiter': return 'Recruiter'
     default: return t
   }
 }
