@@ -90,7 +90,7 @@ export function ScorecardValidationPoints({
             <div
               key={index}
               className={`rounded-lg border p-3 space-y-2 transition-colors ${
-                isResolved ? 'bg-muted/50 border-border' : isCurrentStage ? 'border-primary/30 bg-primary/5' : 'border-border'
+                isResolved ? 'bg-muted/50 border-border' : isCurrentStage ? 'border-pastel-blue/40 bg-pastel-blue/20' : 'border-pastel-blue/30 bg-pastel-blue/10'
               }`}
             >
               <div className="flex items-start gap-2">
