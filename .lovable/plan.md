@@ -1,44 +1,31 @@
 
 
-# Separate Location Sub-Fields on One Line
+# Align Offer Form Field Builder to Job Posting Field Builder Pattern
 
-## Current State
-- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
-- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
-- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
+## Problem
+The offer form field management (`OfferFormFieldsManager`) uses a **Dialog** modal for creating/editing fields and displays them in a **Table** layout. The job posting field builder (`PostingFieldsBuilder` + `FieldEditor`) uses an **inline card-based pattern** with drag handles, inline editing, and a compact "Add Custom Field" row at the bottom. These need to be consistent.
 
-## What Needs to Change
+## Solution
+Rewrite `OfferFormFieldsManager` to use the same inline `FieldEditor`-style pattern used by the job posting form builder:
 
-### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
+### 1. Create `src/components/settings/OfferFieldEditor.tsx`
+A new component modeled after `src/components/jobs/postings/FieldEditor.tsx` but adapted for offer form fields:
+- **View mode**: Inline card with drag handle, field label, type badge, required indicator, edit/delete buttons — identical visual pattern to `FieldEditor`
+- **Edit mode**: Inline expanded form (label, type, required, help text, salary/location config, file config) — same layout as `FieldEditor`
+- Adapts the data model to use `OfferFormField` instead of `PostingField` (minor differences: `form_id` instead of `posting_id`, no `column_span`/`source`/`application_field_id`)
 
-Add a `case 'location':` block that:
-- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
-- Parses the value as JSON `{ city, state, country }`
-- Renders separate inputs for each enabled sub-field in a single-row grid
-- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
-- Shows MapPin icon in the label
+### 2. Rewrite `src/components/settings/OfferFormFieldsManager.tsx`
+Replace the current Dialog+Table approach with:
+- A list of `OfferFieldEditor` cards (one per field), with drag-to-reorder using `@dnd-kit/sortable`
+- An "Add Custom Field" inline row at the bottom (label input + type select + required checkbox + Add button) — matching the PostingFieldsBuilder's add-field section
+- Remove the Dialog entirely
+- Keep the branded Gio empty state
+- Delete confirmation stays as AlertDialog (consistent with FieldEditor)
 
-### 2. Make grid columns dynamic everywhere
+### 3. No style guide changes needed
+The `FieldEditor` component pattern already exists in the job posting builder. This change brings offer forms into alignment with that existing pattern rather than introducing a new one.
 
-When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
-
-**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
-
-**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
-
-**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
-
-Column class map:
-```ts
-const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
-```
-
-### 3. Also add salary case to `OfferComposerBody.tsx`
-
-While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
-
-## Summary of File Changes
-- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
-- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
-- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
+## Files Changed
+- **New**: `src/components/settings/OfferFieldEditor.tsx`
+- **Rewritten**: `src/components/settings/OfferFormFieldsManager.tsx`
 
