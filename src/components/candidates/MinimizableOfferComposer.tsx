@@ -75,6 +75,12 @@ export function MinimizableOfferComposer({
     localStorage.removeItem(draftKey)
   }, [draftKey])
 
+  const handleFormChange = (id: string) => {
+    setSelectedFormId(id)
+    setFieldValues({})
+    setDraftRestored(false)
+  }
+
   const handleClose = () => {
     // Save draft synchronously on close
     if (selectedFormId || Object.keys(fieldValues).length > 0) {
@@ -156,7 +162,7 @@ export function MinimizableOfferComposer({
             jobTitle={jobTitle}
             organizationId={organizationId}
             selectedFormId={selectedFormId}
-            onSelectedFormIdChange={setSelectedFormId}
+            onSelectedFormIdChange={handleFormChange}
             fieldValues={fieldValues}
             onFieldValuesChange={setFieldValues}
             onSuccess={handleSuccess}
