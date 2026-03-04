@@ -7,7 +7,7 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescripti
 import { ApplicationFieldWithRelations } from '@/hooks/useApplicationFields'
 import { PostingField, SalaryFieldConfig, LocationFieldConfig } from '@/hooks/useJobPostingFields'
 import { Control } from 'react-hook-form'
-import { CURRENCY_SYMBOLS } from '@/constants/currencies'
+import { CurrencySelect } from '@/components/ui/currency-select'
 import { MapPin } from 'lucide-react'
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 
