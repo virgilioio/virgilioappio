@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
 import { Upload, File, Download, Trash2, AlertCircle } from 'lucide-react'
+import gioFaceEmpty from '@/assets/gio-face-empty.png'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { usePermissions } from '@/hooks/usePermissions'
 import { toast } from '@/hooks/use-toast'
@@ -177,8 +178,8 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
 
                 {/* Attachments List */}
                 {attachments.length === 0 ? (
-                  <div className="text-center py-8 text-text-secondary">
-                    <File className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <div className="text-center py-8 text-text-secondary">
+                    <img src={gioFaceEmpty} alt="No attachments" className="h-16 w-16 mx-auto mb-4 rounded-full" />
                     <p className="text-[1.38rem] font-semibold mb-2 tracking-[-0.06em]">
                       <span>No attachments yet</span><span className="text-[#d7c5fb]">.</span>
                     </p>
