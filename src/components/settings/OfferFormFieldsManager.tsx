@@ -162,6 +162,7 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
   const showFileConfig = type === 'file'
   const showSalaryConfig = type === 'salary'
   const showLocationConfig = type === 'location'
+  const showPhoneConfig = type === 'phone'
 
   return (
     <div className="space-y-6">
