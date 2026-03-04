@@ -58,7 +58,7 @@ import { GenerateBookingLinkButton } from '@/components/candidates/GenerateBooki
 import { RejectionDialog } from './RejectionDialog'
 import { RejectionStatusBanner } from './RejectionStatusBanner'
 import { OfferStatusBanner } from './OfferStatusBanner'
-import { CreateOfferLetterSheet } from './CreateOfferLetterDialog'
+import { MinimizableOfferComposer } from './MinimizableOfferComposer'
 import { CandidateReminders } from './CandidateReminders'
 import { CandidateInsightsTab } from './insights/CandidateInsightsTab'
 import { useQuery } from '@tanstack/react-query'
@@ -1751,14 +1751,16 @@ const stageHasAutomation = useMemo(() => {
         />
       )}
       
-      {/* Offer Form Sheet */}
+      {/* Offer Form Overlay */}
       {candidate && job && (
-        <CreateOfferLetterSheet
-          open={offerFormOpen}
+        <MinimizableOfferComposer
+          isOpen={offerFormOpen}
           onOpenChange={setOfferFormOpen}
-          candidate={candidate}
-          job={job}
-          organization={null}
+          candidateId={candidate.id}
+          candidateName={candidate.candidate_name}
+          jobId={candidate.job_id || ''}
+          jobTitle={job.title}
+          organizationId={organizationId || ''}
         />
       )}
 

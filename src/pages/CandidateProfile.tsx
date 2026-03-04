@@ -27,7 +27,7 @@ import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeVi
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { useCandidateResolver } from '@/hooks/useCandidateResolver'
 import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDropzone'
-import { CreateOfferLetterSheet } from '@/components/candidates/CreateOfferLetterDialog'
+import { MinimizableOfferComposer } from '@/components/candidates/MinimizableOfferComposer'
 import { getSkillColor } from '@/utils/skillColors'
 import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
@@ -609,14 +609,16 @@ export default function CandidateProfile() {
               />
             )}
 
-            {/* Create Offer Letter Sheet */}
+            {/* Create Offer Letter Overlay */}
             {candidate && job && jobOrganization && (
-              <CreateOfferLetterSheet
-                open={isOfferLetterDialogOpen}
+              <MinimizableOfferComposer
+                isOpen={isOfferLetterDialogOpen}
                 onOpenChange={setIsOfferLetterDialogOpen}
-                candidate={candidate}
-                job={job}
-                organization={jobOrganization}
+                candidateId={candidate.id}
+                candidateName={candidate.candidate_name}
+                jobId={candidate.job_id || ''}
+                jobTitle={job.title}
+                organizationId={jobOrganization.id || ''}
               />
             )}
 
