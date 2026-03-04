@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { JobStageForm } from './JobStageForm'
 import { JobStagesTable } from './JobStagesTable'
 import { useJobStages, JobStage } from '@/hooks/useJobStages'
@@ -12,7 +12,7 @@ interface JobStagesManagerProps {
 }
 
 export function JobStagesManager({ context = 'organization' }: JobStagesManagerProps) {
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isCreateSheetOpen, setIsCreateSheetOpen] = useState(false)
   const [editingStage, setEditingStage] = useState<JobStage | null>(null)
   const { stages, isLoading, copyPlatformTemplate } = useJobStages(context)
 
@@ -28,7 +28,7 @@ export function JobStagesManager({ context = 'organization' }: JobStagesManagerP
   }
 
   const handleCreateSuccess = () => {
-    setIsCreateDialogOpen(false)
+    setIsCreateSheetOpen(false)
   }
 
   const handleUpdateSuccess = () => {
@@ -50,14 +50,16 @@ export function JobStagesManager({ context = 'organization' }: JobStagesManagerP
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <JobStagesTable 
-              stages={platformStages} 
-              isLoading={isLoading} 
-              onEdit={() => {}}
-              onCopy={handleCopy}
-              context={context}
-              readOnly
-            />
+            <div className="rounded-md border overflow-hidden">
+              <JobStagesTable 
+                stages={platformStages} 
+                isLoading={isLoading} 
+                onEdit={() => {}}
+                onCopy={handleCopy}
+                context={context}
+                readOnly
+              />
+            </div>
           </CardContent>
         </Card>
       )}
@@ -75,55 +77,61 @@ export function JobStagesManager({ context = 'organization' }: JobStagesManagerP
               }
             </CardDescription>
           </div>
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Stage
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>Create New Stage</DialogTitle>
-                <DialogDescription>
-                  Add a new stage to the stages library
-                </DialogDescription>
-              </DialogHeader>
-              <JobStageForm
-                onSuccess={handleCreateSuccess}
-                onCancel={() => setIsCreateDialogOpen(false)}
-              />
-            </DialogContent>
-          </Dialog>
+          <Button onClick={() => setIsCreateSheetOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Stage
+          </Button>
         </CardHeader>
         <CardContent>
-          <JobStagesTable 
-            stages={context === 'organization' ? tenantStages : stages} 
-            isLoading={isLoading} 
-            onEdit={handleEdit}
-            context={context}
-          />
+          <div className="rounded-md border overflow-hidden">
+            <JobStagesTable 
+              stages={context === 'organization' ? tenantStages : stages} 
+              isLoading={isLoading} 
+              onEdit={handleEdit}
+              context={context}
+            />
+          </div>
         </CardContent>
       </Card>
 
-      {/* Edit Dialog */}
-      <Dialog open={!!editingStage} onOpenChange={(open) => !open && handleCloseEdit()}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Edit Stage</DialogTitle>
-            <DialogDescription>
-              Update the stage details
-            </DialogDescription>
-          </DialogHeader>
-          {editingStage && (
+      {/* Create Sheet */}
+      <Sheet open={isCreateSheetOpen} onOpenChange={setIsCreateSheetOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Create New Stage</SheetTitle>
+            <SheetDescription>
+              Add a new stage to the stages library
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-6">
             <JobStageForm
-              stage={editingStage}
-              onSuccess={handleUpdateSuccess}
-              onCancel={handleCloseEdit}
+              onSuccess={handleCreateSuccess}
+              onCancel={() => setIsCreateSheetOpen(false)}
             />
-          )}
-        </DialogContent>
-      </Dialog>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Edit Sheet */}
+      <Sheet open={!!editingStage} onOpenChange={(open) => !open && handleCloseEdit()}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Edit Stage</SheetTitle>
+            <SheetDescription>
+              Update the stage details
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-6">
+            {editingStage && (
+              <JobStageForm
+                stage={editingStage}
+                onSuccess={handleUpdateSuccess}
+                onCancel={handleCloseEdit}
+              />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

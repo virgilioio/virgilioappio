@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
@@ -21,17 +21,24 @@ export function OfferFormsManager({ context = 'organization' }: OfferFormsManage
 
   return (
     <Card>
-      <CardContent className="pt-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>
             {context === 'platform-defaults' ? 'Platform Default Offer Forms' : 'Offer Forms'}
-          </h3>
-          <Button onClick={() => setFormSheet({ open: true, formId: undefined })}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Form
-          </Button>
+          </CardTitle>
+          <CardDescription>
+            {context === 'platform-defaults'
+              ? 'Manage platform-wide default offer forms'
+              : 'Manage offer forms for your organization'
+            }
+          </CardDescription>
         </div>
-
+        <Button onClick={() => setFormSheet({ open: true, formId: undefined })}>
+          <Plus className="h-4 w-4 mr-2" />
+          Create Form
+        </Button>
+      </CardHeader>
+      <CardContent>
         {isLoading ? (
           <div className="text-center py-8">Loading forms...</div>
         ) : displayForms.length === 0 ? (
@@ -43,68 +50,70 @@ export function OfferFormsManager({ context = 'organization' }: OfferFormsManage
             </p>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {displayForms.map((form) => (
-                <TableRow key={form.id}>
-                  <TableCell className="font-medium">{form.name}</TableCell>
-                  <TableCell>
-                    {form.description || <span className="text-muted-foreground italic">No description</span>}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={form.is_active ? 'default' : 'secondary'}>
-                      {form.is_active ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{new Date(form.created_at).toLocaleDateString()}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setFormSheet({ open: true, formId: form.id })}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Form</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete "{form.name}"? This will also delete all associated fields. This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => deleteForm(form.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
+          <div className="rounded-md border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {displayForms.map((form) => (
+                  <TableRow key={form.id}>
+                    <TableCell className="font-medium">{form.name}</TableCell>
+                    <TableCell>
+                      {form.description || <span className="text-muted-foreground italic">No description</span>}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={form.is_active ? 'default' : 'secondary'}>
+                        {form.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{new Date(form.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setFormSheet({ open: true, formId: form.id })}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Form</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete "{form.name}"? This will also delete all associated fields. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteForm(form.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </CardContent>
 

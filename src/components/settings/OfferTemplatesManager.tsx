@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
@@ -25,21 +25,17 @@ interface OfferTemplatesManagerProps {
 }
 
 export function OfferTemplatesManager({ context = 'organization' }: OfferTemplatesManagerProps) {
-  // Hooks for different template types
   const { templates: offerTemplates, isLoading: offerLoading, deleteTemplate: deleteOffer, copyPlatformTemplate: copyOffer } = useOfferTemplates(context)
   const { templates: emailTemplates, isLoading: emailLoading, deleteTemplate: deleteEmail } = useEmailTemplates(context)
   const { templates: contractTemplates, isLoading: contractLoading, deleteTemplate: deleteContract, copyPlatformTemplate: copyContract } = useContractTemplates(context)
   
-  // Sheet states
   const [offerLetterSheet, setOfferLetterSheet] = useState({ open: false, templateId: undefined as string | undefined })
   const [emailTemplateSheet, setEmailTemplateSheet] = useState({ open: false, templateId: undefined as string | undefined })
   const [contractTemplateSheet, setContractTemplateSheet] = useState({ open: false, templateId: undefined as string | undefined })
   
-  // Fields dialog state
   const [isFieldsDialogOpen, setIsFieldsDialogOpen] = useState(false)
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
 
-  // Separate platform and tenant templates
   const platformOfferTemplates = offerTemplates?.filter(t => t.source === 'platform')
   const tenantOfferTemplates = offerTemplates?.filter(t => t.source === 'tenant')
   const platformContractTemplates = contractTemplates?.filter(t => t.source === 'platform')
@@ -96,63 +92,72 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
 
         <TabsContent value="offer-letters" className="mt-4">
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>
                   {context === 'platform-defaults' ? 'Platform Default Offer Templates' : 'Offer Letter Templates'}
-                </h3>
-                <Button onClick={() => openCreateSheet('offer-letters')}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Template
-                </Button>
+                </CardTitle>
+                <CardDescription>
+                  {context === 'platform-defaults'
+                    ? 'Manage platform-wide default offer letter templates'
+                    : 'Manage offer letter templates for your organization'
+                  }
+                </CardDescription>
               </div>
-
+              <Button onClick={() => openCreateSheet('offer-letters')}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Template
+              </Button>
+            </CardHeader>
+            <CardContent>
               {context === 'organization' && platformOfferTemplates.length > 0 && (
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold mb-2">Platform Library</h3>
+                  <h4 className="text-sm font-semibold mb-2">Platform Library</h4>
                   <p className="text-sm text-muted-foreground mb-4">
                     Default templates provided by the platform. Copy to your library to customize.
                   </p>
                   {offerLoading ? (
                     <div className="text-center py-8">Loading templates...</div>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Description</TableHead>
-                          <TableHead>Created</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {platformOfferTemplates.map((template) => (
-                          <TableRow key={template.id}>
-                            <TableCell className="font-medium">{template.name}</TableCell>
-                            <TableCell>
-                              {template.description || <span className="text-muted-foreground italic">No description</span>}
-                            </TableCell>
-                            <TableCell>
-                              {new Date(template.created_at).toLocaleDateString()}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleCopyOffer(template.id)}
-                              >
-                                <Plus className="h-4 w-4 mr-1" /> Copy to My Library
-                              </Button>
-                            </TableCell>
+                    <div className="rounded-md border overflow-hidden mb-6">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Description</TableHead>
+                            <TableHead>Created</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {platformOfferTemplates.map((template) => (
+                            <TableRow key={template.id}>
+                              <TableCell className="font-medium">{template.name}</TableCell>
+                              <TableCell>
+                                {template.description || <span className="text-muted-foreground italic">No description</span>}
+                              </TableCell>
+                              <TableCell>
+                                {new Date(template.created_at).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleCopyOffer(template.id)}
+                                >
+                                  <Plus className="h-4 w-4 mr-1" /> Copy to My Library
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   )}
                 </div>
               )}
 
-              {context === 'organization' && <h3 className="text-lg font-semibold mb-2">My Library</h3>}
+              {context === 'organization' && <h4 className="text-sm font-semibold mb-2">My Library</h4>}
               {offerLoading ? (
                 <div className="text-center py-8">Loading templates...</div>
               ) : (context === 'organization' ? tenantOfferTemplates : offerTemplates).length === 0 ? (
@@ -164,34 +169,35 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
                   </p>
                 </div>
               ) : (
-                <Table>
-                   <TableHeader>
-                     <TableRow>
-                       <TableHead>Name</TableHead>
-                       <TableHead>Description</TableHead>
-                       <TableHead>Created</TableHead>
-                       <TableHead className="text-right">Actions</TableHead>
-                     </TableRow>
-                   </TableHeader>
-                   <TableBody>
-                    {(context === 'organization' ? tenantOfferTemplates : offerTemplates).map((template) => (
-                      <TableRow key={template.id}>
-                        <TableCell className="font-medium">{template.name}</TableCell>
-                        <TableCell>
-                          {template.description || <span className="text-muted-foreground italic">No description</span>}
-                        </TableCell>
-                         <TableCell>
-                           {new Date(template.created_at).toLocaleDateString()}
-                         </TableCell>
-                         <TableCell className="text-right">
-                           <div className="flex items-center justify-end gap-2">
-                             <Button
-                               variant="ghost"
-                               size="sm"
-                               onClick={() => openFieldsDialog(template.id)}
-                             >
-                               <SettingsIcon className="h-4 w-4" />
-                             </Button>
+                <div className="rounded-md border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(context === 'organization' ? tenantOfferTemplates : offerTemplates).map((template) => (
+                        <TableRow key={template.id}>
+                          <TableCell className="font-medium">{template.name}</TableCell>
+                          <TableCell>
+                            {template.description || <span className="text-muted-foreground italic">No description</span>}
+                          </TableCell>
+                          <TableCell>
+                            {new Date(template.created_at).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openFieldsDialog(template.id)}
+                              >
+                                <SettingsIcon className="h-4 w-4" />
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -201,37 +207,35 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
                               </Button>
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm"
-                                  >
+                                  <Button variant="ghost" size="sm">
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </AlertDialogTrigger>
-                               <AlertDialogContent>
-                                 <AlertDialogHeader>
-                                   <AlertDialogTitle>Delete Template</AlertDialogTitle>
-                                   <AlertDialogDescription>
-                                     Are you sure you want to delete "{template.name}"? This action cannot be undone.
-                                   </AlertDialogDescription>
-                                 </AlertDialogHeader>
-                                 <AlertDialogFooter>
-                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                   <AlertDialogAction
-                                     onClick={() => deleteOffer(template.id)}
-                                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                   >
-                                     Delete
-                                   </AlertDialogAction>
-                                 </AlertDialogFooter>
-                               </AlertDialogContent>
-                             </AlertDialog>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Template</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete "{template.name}"? This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteOffer(template.id)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -239,17 +243,24 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
 
         <TabsContent value="email-templates" className="mt-4">
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>
                   {context === 'platform-defaults' ? 'Platform Default Email Templates' : 'Email Templates'}
-                </h3>
-                <Button onClick={() => openCreateSheet('email-templates')}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Email
-                </Button>
+                </CardTitle>
+                <CardDescription>
+                  {context === 'platform-defaults'
+                    ? 'Manage platform-wide default email templates'
+                    : 'Manage email templates for your organization'
+                  }
+                </CardDescription>
               </div>
-
+              <Button onClick={() => openCreateSheet('email-templates')}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Email
+              </Button>
+            </CardHeader>
+            <CardContent>
               {emailLoading ? (
                 <div className="text-center py-8">Loading templates...</div>
               ) : emailTemplates.length === 0 ? (
@@ -261,75 +272,77 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
                   </p>
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Subject</TableHead>
-                      <TableHead>Created</TableHead>
-                      {context === 'organization' && <TableHead>Source</TableHead>}
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {emailTemplates.map((template) => (
-                      <TableRow key={template.id}>
-                        <TableCell className="font-medium">{template.name}</TableCell>
-                        <TableCell>{template.subject}</TableCell>
-                        <TableCell>
-                          {new Date(template.created_at).toLocaleDateString()}
-                        </TableCell>
-                        {context === 'organization' && (
-                          <TableCell>
-                            <Badge variant={template.source === 'platform' ? 'secondary' : 'default'}>
-                              {template.source === 'platform' ? 'Inherited' : 'Custom'}
-                            </Badge>
-                          </TableCell>
-                        )}
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openEditSheet(template.id, 'email-templates')}
-                              disabled={context === 'organization' && template.source === 'platform'}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  disabled={context === 'organization' && template.source === 'platform'}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Template</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete "{template.name}"? This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => deleteEmail(template.id)}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  >
-                                    Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </TableCell>
+                <div className="rounded-md border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Subject</TableHead>
+                        <TableHead>Created</TableHead>
+                        {context === 'organization' && <TableHead>Source</TableHead>}
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {emailTemplates.map((template) => (
+                        <TableRow key={template.id}>
+                          <TableCell className="font-medium">{template.name}</TableCell>
+                          <TableCell>{template.subject}</TableCell>
+                          <TableCell>
+                            {new Date(template.created_at).toLocaleDateString()}
+                          </TableCell>
+                          {context === 'organization' && (
+                            <TableCell>
+                              <Badge variant={template.source === 'platform' ? 'secondary' : 'default'}>
+                                {template.source === 'platform' ? 'Inherited' : 'Custom'}
+                              </Badge>
+                            </TableCell>
+                          )}
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openEditSheet(template.id, 'email-templates')}
+                                disabled={context === 'organization' && template.source === 'platform'}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    disabled={context === 'organization' && template.source === 'platform'}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Template</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete "{template.name}"? This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteEmail(template.id)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -337,63 +350,72 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
 
         <TabsContent value="contract-templates" className="mt-4">
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>
                   {context === 'platform-defaults' ? 'Platform Default Contract Templates' : 'Contract Templates'}
-                </h3>
-                <Button onClick={() => openCreateSheet('contract-templates')}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Contract
-                </Button>
+                </CardTitle>
+                <CardDescription>
+                  {context === 'platform-defaults'
+                    ? 'Manage platform-wide default contract templates'
+                    : 'Manage contract templates for your organization'
+                  }
+                </CardDescription>
               </div>
-
+              <Button onClick={() => openCreateSheet('contract-templates')}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Contract
+              </Button>
+            </CardHeader>
+            <CardContent>
               {context === 'organization' && platformContractTemplates.length > 0 && (
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold mb-2">Platform Library</h3>
+                  <h4 className="text-sm font-semibold mb-2">Platform Library</h4>
                   <p className="text-sm text-muted-foreground mb-4">
                     Default templates provided by the platform. Copy to your library to customize.
                   </p>
                   {contractLoading ? (
                     <div className="text-center py-8">Loading templates...</div>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Description</TableHead>
-                          <TableHead>Created</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {platformContractTemplates.map((template) => (
-                          <TableRow key={template.id}>
-                            <TableCell className="font-medium">{template.name}</TableCell>
-                            <TableCell>
-                              {template.description || <span className="text-muted-foreground italic">No description</span>}
-                            </TableCell>
-                            <TableCell>
-                              {new Date(template.created_at).toLocaleDateString()}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleCopyContract(template.id)}
-                              >
-                                <Plus className="h-4 w-4 mr-1" /> Copy to My Library
-                              </Button>
-                            </TableCell>
+                    <div className="rounded-md border overflow-hidden mb-6">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Description</TableHead>
+                            <TableHead>Created</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {platformContractTemplates.map((template) => (
+                            <TableRow key={template.id}>
+                              <TableCell className="font-medium">{template.name}</TableCell>
+                              <TableCell>
+                                {template.description || <span className="text-muted-foreground italic">No description</span>}
+                              </TableCell>
+                              <TableCell>
+                                {new Date(template.created_at).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleCopyContract(template.id)}
+                                >
+                                  <Plus className="h-4 w-4 mr-1" /> Copy to My Library
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   )}
                 </div>
               )}
 
-              {context === 'organization' && <h3 className="text-lg font-semibold mb-2">My Library</h3>}
+              {context === 'organization' && <h4 className="text-sm font-semibold mb-2">My Library</h4>}
               {contractLoading ? (
                 <div className="text-center py-8">Loading templates...</div>
               ) : (context === 'organization' ? tenantContractTemplates : contractTemplates).length === 0 ? (
@@ -405,67 +427,66 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
                   </p>
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(context === 'organization' ? tenantContractTemplates : contractTemplates).map((template) => (
-                      <TableRow key={template.id}>
-                        <TableCell className="font-medium">{template.name}</TableCell>
-                        <TableCell>
-                          {template.description || <span className="text-muted-foreground italic">No description</span>}
-                        </TableCell>
-                        <TableCell>
-                          {new Date(template.created_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openEditSheet(template.id, 'contract-templates')}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Template</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete "{template.name}"? This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => deleteContract(template.id)}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  >
-                                    Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </TableCell>
+                <div className="rounded-md border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {(context === 'organization' ? tenantContractTemplates : contractTemplates).map((template) => (
+                        <TableRow key={template.id}>
+                          <TableCell className="font-medium">{template.name}</TableCell>
+                          <TableCell>
+                            {template.description || <span className="text-muted-foreground italic">No description</span>}
+                          </TableCell>
+                          <TableCell>
+                            {new Date(template.created_at).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openEditSheet(template.id, 'contract-templates')}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="sm">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Template</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete "{template.name}"? This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteContract(template.id)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
