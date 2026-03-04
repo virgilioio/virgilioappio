@@ -15,6 +15,8 @@ import { toast } from '@/hooks/use-toast'
 import { Badge } from '@/components/ui/badge'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
+import { SearchableSelect } from '@/components/ui/searchable-select'
+import { useRecruiterOptions } from '@/hooks/useRecruiterOptions'
 
 interface OfferComposerBodyProps {
   candidateId: string
@@ -49,6 +51,7 @@ export function OfferComposerBody({
   const { forms, isLoading: formsLoading } = useOfferForms()
   const { fields, isLoading: fieldsLoading } = useOfferFormFields(selectedFormId)
   const { createOfferLetter, isLoading: creatingLetter } = useOfferLetters(candidateId)
+  const { data: recruiterOptions = [] } = useRecruiterOptions(organizationId)
 
   const activeForms = forms.filter(f => f.is_active)
 
@@ -222,6 +225,15 @@ export function OfferComposerBody({
           />
         )
       }
+      case 'recruiter':
+        return (
+          <SearchableSelect
+            options={recruiterOptions}
+            value={value || ''}
+            onValueChange={(val) => handleFieldChange(field.field_name, val)}
+            placeholder="Search for a recruiter..."
+          />
+        )
       default:
         return (
           <Input

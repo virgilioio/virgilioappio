@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { GripVertical, Trash2, Edit, Save, X, Plus, DollarSign, Link2, MapPin, Phone } from 'lucide-react'
+import { GripVertical, Trash2, Edit, Save, X, Plus, DollarSign, Link2, MapPin, Phone, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { SalaryFieldConfig, LocationFieldConfig, PhoneFieldConfig, FieldType, SelectOptionData } from '@/hooks/useJobPostingFields'
 
@@ -12,7 +12,7 @@ import type { SalaryFieldConfig, LocationFieldConfig, PhoneFieldConfig, FieldTyp
 
 export const ALL_FIELD_TYPES: FieldType[] = [
   'text', 'number', 'email', 'url', 'textarea', 'select',
-  'checkbox', 'checkbox_group', 'date', 'file', 'salary', 'location', 'phone'
+  'checkbox', 'checkbox_group', 'date', 'file', 'salary', 'location', 'phone', 'recruiter'
 ]
 
 export const CURRENCIES = ['USD','EUR','GBP','CAD','AUD','CHF','JPY','INR','BRL','MXN','SGD','HKD','NZD','ZAR','AED','SAR']
@@ -23,6 +23,7 @@ export function fieldTypeLabel(t: string) {
     case 'salary': return 'Salary'
     case 'location': return 'Location'
     case 'phone': return 'Phone'
+    case 'recruiter': return 'Recruiter'
     default: return t
   }
 }
@@ -150,7 +151,7 @@ export function FormFieldEditor({
   const isDisabled = disabled || readOnly || isLocked
 
   // Smart field type badge (used in both view & edit rows)
-  const isSmartField = field.field_type === 'salary' || field.field_type === 'location' || field.field_type === 'phone'
+  const isSmartField = field.field_type === 'salary' || field.field_type === 'location' || field.field_type === 'phone' || field.field_type === 'recruiter'
 
   return (
     <div className={cn('p-3 border border-border/40 rounded-brand flex-1', isLocked && 'bg-muted/20')}>
@@ -314,6 +315,12 @@ export function FormFieldEditor({
                     {(field.field_config as PhoneFieldConfig)?.defaultCountryCode && (
                       <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600">Default: {(field.field_config as PhoneFieldConfig).defaultCountryCode}</Badge>
                     )}
+                  </div>
+                )}
+                {field.field_type === 'recruiter' && (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                    <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-700 border-purple-300 gap-1"><Users className="h-3 w-3" /> Recruiter</Badge>
+                    <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-300 gap-1">Team Member Selector</Badge>
                   </div>
                 )}
               </div>

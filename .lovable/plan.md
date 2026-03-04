@@ -1,46 +1,44 @@
 
 
-# Add "Recruiter" Smart Field Type
+# Separate Location Sub-Fields on One Line
 
-## Overview
-Add a new `recruiter` field type that renders a searchable autocomplete selector populated with active recruiters/admins from the tenant. This follows the same "smart field" pattern as salary, location, and phone.
+## Current State
+- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
+- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
+- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
 
-## Changes
+## What Needs to Change
 
-### 1. Type definitions
-- **`src/hooks/useJobPostingFields.ts`**: Add `'recruiter'` to the `FieldType` union. No config interface needed (tenant scoping is automatic).
-- **`src/hooks/useOfferFormFields.ts`**: Add `'recruiter'` to the offer field type union.
+### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
 
-### 2. Database migration
-- Add `'recruiter'` to the `public.field_type` enum (`ALTER TYPE public.field_type ADD VALUE 'recruiter'`).
+Add a `case 'location':` block that:
+- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
+- Parses the value as JSON `{ city, state, country }`
+- Renders separate inputs for each enabled sub-field in a single-row grid
+- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
+- Shows MapPin icon in the label
 
-### 3. Shared FormFieldEditor (`src/components/shared/FormFieldEditor.tsx`)
-- Add `'recruiter'` to `ALL_FIELD_TYPES` and `fieldTypeLabel` (label: "Recruiter").
-- Mark it as a smart field (purple badge, "Team Member" indicator in view mode, Users icon).
-- No special config panel needed in edit mode (unlike salary/location — it auto-populates from the tenant).
+### 2. Make grid columns dynamic everywhere
 
-### 4. Render recruiter field in offer forms
-- **`src/components/candidates/OfferComposerBody.tsx`**: Add `case 'recruiter'` that renders a `SearchableSelect` populated with active members (recruiters + admins) from the tenant. Create a small hook or inline query to fetch members.
-- **`src/components/candidates/CreateOfferLetterDialog.tsx`**: Same rendering.
-- Store the selected member's `user_id` as the field value.
+When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
 
-### 5. New hook: `useRecruiterOptions`
-**New file**: `src/hooks/useRecruiterOptions.ts`
+**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
 
-Small hook that:
-- Queries `members` table filtered by `tenant_id`, `user_status = 'active'`, and `member_role in ('admin', 'recruiter')` (or optionally workspace owners)
-- Returns `SearchableSelectOption[]` with `value = user_id`, `label = "First Last"`, `badge = role`
+**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
 
-### 6. Render recruiter field in public job postings (if applicable)
-- In `PublicJobPosting.tsx`, the recruiter field type would be hidden/skipped for public-facing forms (candidates don't select recruiters). Add a skip condition.
+**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
 
-## Files Changed
-- **New**: `src/hooks/useRecruiterOptions.ts`
-- **Migration**: Add `'recruiter'` to `field_type` enum
-- **Modified**: `src/hooks/useJobPostingFields.ts` — add to FieldType union
-- **Modified**: `src/hooks/useOfferFormFields.ts` — add to field type union
-- **Modified**: `src/components/shared/FormFieldEditor.tsx` — smart field UI
-- **Modified**: `src/components/candidates/OfferComposerBody.tsx` — render SearchableSelect
-- **Modified**: `src/components/candidates/CreateOfferLetterDialog.tsx` — render SearchableSelect
-- **Modified**: `src/pages/PublicJobPosting.tsx` — skip recruiter fields on public forms
+Column class map:
+```ts
+const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
+```
+
+### 3. Also add salary case to `OfferComposerBody.tsx`
+
+While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
+
+## Summary of File Changes
+- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
+- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
+- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
 

@@ -62,7 +62,7 @@ function getViolationToast(violation: { type?: string; message?: string; cooldow
   }
 }
 
-type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'checkbox_group' | 'date' | 'file' | 'url' | 'salary' | 'location'
+type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'checkbox_group' | 'date' | 'file' | 'url' | 'salary' | 'location' | 'phone' | 'recruiter'
 
 interface Posting {
   id: string
@@ -751,7 +751,7 @@ export default function PublicJobPosting() {
                         <div>
                           <h3 className="text-lg font-semibold mb-4">Additional Questions</h3>
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            {customFields.map((field) => (
+                            {customFields.filter(field => field.field_type !== 'recruiter').map((field) => (
                               <div
                                 key={field.id}
                                 style={{ gridColumn: `span ${field.column_span || 4} / span ${field.column_span || 4}` }}
