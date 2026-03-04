@@ -8,7 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Plus, List, Link2, Trash2 } from 'lucide-react'
 import { FormField } from '@/components/ui/form-field'
 import { useOfferFormFields, type OfferFormField } from '@/hooks/useOfferFormFields'
-import type { SalaryFieldConfig, LocationFieldConfig } from '@/hooks/useJobPostingFields'
+import type { SalaryFieldConfig, LocationFieldConfig, PhoneFieldConfig } from '@/hooks/useJobPostingFields'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -19,7 +19,7 @@ const toSnakeCase = (str: string) =>
 
 type OfferFieldType = OfferFormField['field_type']
 
-const ALL_FIELD_TYPES: OfferFieldType[] = ['text', 'number', 'email', 'url', 'textarea', 'select', 'checkbox', 'date', 'file', 'salary', 'location']
+const ALL_FIELD_TYPES: OfferFieldType[] = ['text', 'number', 'email', 'url', 'textarea', 'select', 'checkbox', 'date', 'file', 'salary', 'location', 'phone']
 
 interface OfferFormFieldsManagerProps {
   formId: string
@@ -51,6 +51,7 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
   const [newMaxFileSize, setNewMaxFileSize] = useState<number | ''>('')
   const [newSalaryConfig, setNewSalaryConfig] = useState<SalaryFieldConfig>({ currency: 'USD', period: 'annually' })
   const [newLocationConfig, setNewLocationConfig] = useState<LocationFieldConfig>({ fields: ['city', 'state', 'country'] })
+  const [newPhoneConfig, setNewPhoneConfig] = useState<PhoneFieldConfig>({ defaultCountryCode: '+1' })
 
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<OfferFormField | null>(null)
@@ -72,8 +73,10 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
     setNewMaxFileSize('')
     setNewSalaryConfig({ currency: 'USD', period: 'annually' })
     setNewLocationConfig({ fields: ['city', 'state', 'country'] })
+    setNewPhoneConfig({ defaultCountryCode: '+1' })
     if (type === 'salary' && !label) setLabel('Salary')
     if (type === 'location' && !label) setLabel('Location')
+    if (type === 'phone' && !label) setLabel('Phone Number')
   }, [type])
 
   const sortedFields = useMemo(() => {
@@ -87,7 +90,7 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
   const handleAddField = async () => {
     if (!label.trim()) return
     const maxOrder = fields.length > 0 ? Math.max(...fields.map(f => f.display_order)) : -1
-    const fieldConfig = type === 'salary' ? newSalaryConfig : type === 'location' ? newLocationConfig : undefined
+    const fieldConfig = type === 'salary' ? newSalaryConfig : type === 'location' ? newLocationConfig : type === 'phone' ? newPhoneConfig : undefined
     try {
       await createField({
         form_id: formId,
@@ -109,6 +112,7 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
       setNewMaxFileSize('')
       setNewSalaryConfig({ currency: 'USD', period: 'annually' })
       setNewLocationConfig({ fields: ['city', 'state', 'country'] })
+      setNewPhoneConfig({ defaultCountryCode: '+1' })
     } catch {
       // handled by hook
     }
@@ -158,6 +162,7 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
   const showFileConfig = type === 'file'
   const showSalaryConfig = type === 'salary'
   const showLocationConfig = type === 'location'
+  const showPhoneConfig = type === 'phone'
 
   return (
     <div className="space-y-6">
@@ -234,7 +239,7 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
                 <SelectContent>
                   {ALL_FIELD_TYPES.map((t) => (
                     <SelectItem key={t} value={t} className="capitalize">
-                      {t === 'salary' ? 'Salary' : t === 'location' ? 'Location' : t}
+                      {t === 'salary' ? 'Salary' : t === 'location' ? 'Location' : t === 'phone' ? 'Phone' : t}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -333,6 +338,35 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {showPhoneConfig && (
+            <div className="bg-virgilio-purple/5 border border-virgilio-purple/20 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-2 text-virgilio-purple">
+                <Link2 className="h-4 w-4" />
+                <span className="text-sm font-medium">Phone Configuration</span>
+              </div>
+              <FormField label="Default Country Code">
+                <Select value={newPhoneConfig.defaultCountryCode || '+1'} onValueChange={(v) => setNewPhoneConfig({ defaultCountryCode: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {[
+                      { code: '+1', flag: '🇺🇸', name: 'United States' },
+                      { code: '+44', flag: '🇬🇧', name: 'United Kingdom' },
+                      { code: '+33', flag: '🇫🇷', name: 'France' },
+                      { code: '+49', flag: '🇩🇪', name: 'Germany' },
+                      { code: '+91', flag: '🇮🇳', name: 'India' },
+                      { code: '+61', flag: '🇦🇺', name: 'Australia' },
+                      { code: '+55', flag: '🇧🇷', name: 'Brazil' },
+                      { code: '+81', flag: '🇯🇵', name: 'Japan' },
+                      { code: '+971', flag: '🇦🇪', name: 'UAE' },
+                    ].map(cc => (
+                      <SelectItem key={cc.code} value={cc.code}>{cc.flag} {cc.code} — {cc.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
             </div>
           )}
 

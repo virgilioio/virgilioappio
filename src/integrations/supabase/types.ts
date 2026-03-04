@@ -5578,6 +5578,7 @@ export type Database = {
         | "checkbox_group"
         | "salary"
         | "location"
+        | "phone"
       interview_answer_type:
         | "text"
         | "yes_no"
@@ -5821,6 +5822,7 @@ export const Constants = {
         "checkbox_group",
         "salary",
         "location",
+        "phone",
       ],
       interview_answer_type: [
         "text",

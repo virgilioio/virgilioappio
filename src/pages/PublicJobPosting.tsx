@@ -25,6 +25,7 @@ import { Clock, Shield } from 'lucide-react'
 import { useCoreFields } from '@/hooks/useCoreFields'
 import { CoreFieldsRenderer } from '@/components/forms/CoreFieldsRenderer'
 import { ApplicationFieldsRenderer } from '@/components/forms/ApplicationFieldsRenderer'
+import { PhoneInput } from '@/components/ui/phone-input'
 
 function getViolationToast(violation: { type?: string; message?: string; cooldown_until?: string }) {
   const cooldownDate = violation.cooldown_until ? new Date(violation.cooldown_until) : null
@@ -441,6 +442,7 @@ export default function PublicJobPosting() {
       const mappedCustomFields: Record<string, any> = {}
       let salarySync: { amount: number; currency: string; period: string } | null = null
       let locationSync: { city?: string; state?: string; country?: string } | null = null
+      let phoneSync: string | null = null
       Object.entries(customFieldResponses).forEach(([fieldId, value]) => {
         const field = customFields.find(f => f.id === fieldId)
         if (field?.field_name) {
@@ -466,6 +468,10 @@ export default function PublicJobPosting() {
             }
           } catch { /* ignore parse errors */ }
         }
+        // Detect phone field for candidate profile sync
+        if ((field?.field_type as string) === 'phone' && value) {
+          phoneSync = value as string
+        }
       })
 
       // Prepare application data in the format expected by the edge function
@@ -476,7 +482,8 @@ export default function PublicJobPosting() {
         uploadedFiles: resumeBase64 ? [{ name: resumeFile!.name, data: resumeBase64, type: resumeFile!.type, size: resumeFile!.size }] : [],
         posting_id: posting.id,
         salary_sync: salarySync,
-        location_sync: locationSync
+        location_sync: locationSync,
+        phone_sync: phoneSync
       }
 
       const { data, error } = await supabase.functions.invoke('public-submit-application', {
@@ -914,6 +921,20 @@ export default function PublicJobPosting() {
                                             />
                                           )}
                                         </div>
+                                        <p className="text-xs text-green-600">Syncs to your candidate profile</p>
+                                      </div>
+                                    )
+                                  })()}
+                                  {(field.field_type as string) === 'phone' && (() => {
+                                    const config = field.field_config || {}
+                                    const defaultCountry = (config as any).defaultCountryCode || '+1'
+                                    return (
+                                      <div className="space-y-2">
+                                        <PhoneInput
+                                          value={customFieldResponses[field.id] || defaultCountry}
+                                          onChange={(val) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: val }))}
+                                          placeholder="Enter phone number"
+                                        />
                                         <p className="text-xs text-green-600">Syncs to your candidate profile</p>
                                       </div>
                                     )

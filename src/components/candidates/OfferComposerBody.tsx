@@ -4,15 +4,16 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Loader2, ClipboardList, MapPin, DollarSign } from 'lucide-react'
+import { Loader2, ClipboardList, MapPin, DollarSign, Phone } from 'lucide-react'
 import { useOfferForms } from '@/hooks/useOfferForms'
 import { CURRENCY_SYMBOLS } from '@/constants/currencies'
-import type { SalaryFieldConfig, LocationFieldConfig } from '@/hooks/useJobPostingFields'
+import type { SalaryFieldConfig, LocationFieldConfig, PhoneFieldConfig } from '@/hooks/useJobPostingFields'
 import { useOfferFormFields, type OfferFormField } from '@/hooks/useOfferFormFields'
 import { useOfferLetters } from '@/hooks/useOfferLetters'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 import { Badge } from '@/components/ui/badge'
+import { PhoneInput } from '@/components/ui/phone-input'
 
 interface OfferComposerBodyProps {
   candidateId: string
@@ -208,6 +209,17 @@ export function OfferComposerBody({
               />
             )}
           </div>
+        )
+      }
+      case 'phone': {
+        const phoneConfig = (field as any).field_config as PhoneFieldConfig | null
+        const defaultCountry = phoneConfig?.defaultCountryCode || '+1'
+        return (
+          <PhoneInput
+            value={value || defaultCountry}
+            onChange={(val) => handleFieldChange(field.field_name, val)}
+            placeholder="Enter phone number"
+          />
         )
       }
       default:
