@@ -925,7 +925,7 @@ export default function PublicJobPosting() {
                                       </div>
                                     )
                                   })()}
-                                  {field.field_type === 'phone' && (() => {
+                                  {(field.field_type as string) === 'phone' && (() => {
                                     const config = field.field_config || {}
                                     const defaultCountry = (config as any).defaultCountryCode || '+1'
                                     return (
