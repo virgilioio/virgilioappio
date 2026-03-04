@@ -1530,7 +1530,7 @@ const stageHasAutomation = useMemo(() => {
 
                     {/* Offer Details Tab */}
                     {activeTab === 'offer' && candidateId && (
-                      <CandidateOfferDetails candidateId={candidateId} jobId={jobId} />
+                      <CandidateOfferDetails candidateId={candidateId} jobId={jobId} organizationId={organizationId} />
                     )}
                    </div>
 
