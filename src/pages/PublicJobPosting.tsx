@@ -924,6 +924,20 @@ export default function PublicJobPosting() {
                                       </div>
                                     )
                                   })()}
+                                  {field.field_type === 'phone' && (() => {
+                                    const config = field.field_config || {}
+                                    const defaultCountry = (config as any).defaultCountryCode || '+1'
+                                    return (
+                                      <div className="space-y-2">
+                                        <PhoneInput
+                                          value={customFieldResponses[field.id] || defaultCountry}
+                                          onChange={(val) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: val }))}
+                                          placeholder="Enter phone number"
+                                        />
+                                        <p className="text-xs text-green-600">Syncs to your candidate profile</p>
+                                      </div>
+                                    )
+                                  })()}
                                 </div>
                               </div>
                             ))}
