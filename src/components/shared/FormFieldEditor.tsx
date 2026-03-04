@@ -354,11 +354,11 @@ export function FormFieldEditor({
 
 // ---- Internal UI helper ----
 
-function SyncConfigPanel({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
+function SyncConfigPanel({ title, description, children, showSyncIcon = true }: { title: string; description: string; children: React.ReactNode; showSyncIcon?: boolean }) {
   return (
     <div className="bg-virgilio-purple/5 border border-virgilio-purple/20 rounded-lg p-4 space-y-3">
       <div className="flex items-center gap-2 text-virgilio-purple">
-        <Link2 className="h-4 w-4" />
+        {showSyncIcon ? <Link2 className="h-4 w-4" /> : <DollarSign className="h-4 w-4" />}
         <span className="text-sm font-medium">{title}</span>
       </div>
       <div className="bg-white border border-border/40 rounded-md p-3">

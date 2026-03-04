@@ -43,6 +43,7 @@ export function OfferFieldEditor({
       dragHandlers={dragHandlers}
       availableTypes={OFFER_FIELD_TYPES}
       loadSelectOptions={loadOfferSelectOptions}
+      context="offer"
     />
   )
 }
