@@ -114,6 +114,7 @@ export function ScorecardSheet({
   const draftTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [isAiDraft, setIsAiDraft] = useState(false);
 
   // Track current values in refs for reliable close-time saving
   const overviewRef = useRef(overview);
@@ -126,7 +127,6 @@ export function ScorecardSheet({
   useEffect(() => { responsesRef.current = responses; }, [responses]);
 
   const isReadOnly = useMemo(() => !editMode, [editMode]);
-  const isAiDraft = existing?.is_ai_draft === true;
   const aiSuggestedRating = existing?.ai_suggested_rating;
 
   // Draft storage key - unique per candidate+stage
@@ -212,18 +212,22 @@ export function ScorecardSheet({
 
   // Unified initialization effect when sheet opens
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      // Reset AI state when sheet closes
+      setAiAnalysis(null);
+      setIsAiDraft(false);
+      return;
+    }
     
     // Base values from existing scorecard (or defaults)
     const baseRating = existing?.rating || "yes";
     const baseOverview = existing?.general_overview || "";
     
-    // Store AI analysis separately for AI drafts
+    // Store AI analysis separately for AI drafts — only on initial open
     if (existing?.is_ai_draft && existing?.general_overview) {
-      setAiAnalysis(existing.general_overview);
+      setAiAnalysis(prev => prev ?? existing.general_overview);
+      setIsAiDraft(true);
       setShowAnalysis(false);
-    } else {
-      setAiAnalysis(null);
     }
     
     // Always set edit mode
@@ -279,7 +283,7 @@ export function ScorecardSheet({
     setOverview(effectiveBaseOverview);
     setHasDraft(false);
     
-  }, [open, existing?.id, existing?.updated_at, existing?.rating, existing?.general_overview, existing?.is_ai_draft, draftKey, isAuthor]);
+  }, [open, existing?.id, draftKey, isAuthor]);
 
   // Auto-save draft on changes (debounced) - works for both new and existing scorecards
   useEffect(() => {
