@@ -223,14 +223,7 @@ const stageHasAutomation = useMemo(() => {
   }
 
   useEffect(() => {
-    if (open) {
-      // Auto-select offer tab when candidate is in offer/hired status
-      if (associationStatus === 'offer' || associationStatus === 'hired') {
-        setActiveTab('offer')
-      } else {
-        setActiveTab('job')
-      }
-    }
+    if (open) setActiveTab('job')
     
     // CRITICAL: Clear stale data immediately when candidateId changes to prevent race conditions
     // This fixes a data integrity bug where booking links could contain wrong candidate info
