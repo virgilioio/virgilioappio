@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { format } from 'date-fns'
 import { Loader2, ClipboardList } from 'lucide-react'
 import { useOfferForms } from '@/hooks/useOfferForms'
 import { useOfferFormFields, type OfferFormField } from '@/hooks/useOfferFormFields'
@@ -121,8 +122,8 @@ export function CreateOfferLetterSheet({
       case 'date':
         return (
           <DatePickerVirgilio
-            value={value ? new Date(value) : undefined}
-            onChange={(date) => handleFieldChange(field.field_name, date.toISOString().split('T')[0])}
+            value={value ? new Date(value + 'T00:00:00') : undefined}
+            onChange={(date) => handleFieldChange(field.field_name, format(date, 'yyyy-MM-dd'))}
             placeholder="Pick a date"
           />
         )

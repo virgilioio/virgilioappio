@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Loader2, ClipboardList, MapPin, DollarSign, Phone } from 'lucide-react'
+import { format } from 'date-fns'
 import { useOfferForms } from '@/hooks/useOfferForms'
 import { CurrencySelect } from '@/components/ui/currency-select'
 import type { SalaryFieldConfig, LocationFieldConfig, PhoneFieldConfig } from '@/hooks/useJobPostingFields'
@@ -115,8 +116,8 @@ export function OfferComposerBody({
       case 'date':
         return (
           <DatePickerVirgilio
-            value={value ? new Date(value) : undefined}
-            onChange={(date) => handleFieldChange(field.field_name, date.toISOString().split('T')[0])}
+            value={value ? new Date(value + 'T00:00:00') : undefined}
+            onChange={(date) => handleFieldChange(field.field_name, format(date, 'yyyy-MM-dd'))}
             placeholder="Pick a date"
           />
         )

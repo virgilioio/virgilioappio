@@ -18,6 +18,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 import { markdownToHtml } from '@/utils/markdown'
+import { format } from 'date-fns'
 import { EnhancedResumeDropzone, type ParsedResumeData } from '@/components/candidates/EnhancedResumeDropzone'
 import { ApplicationConfirmationDialog } from '@/components/candidates/ApplicationConfirmationDialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -848,8 +849,8 @@ export default function PublicJobPosting() {
                                   )}
                                   {field.field_type === 'date' && (
                                     <DatePickerVirgilio
-                                      value={customFieldResponses[field.id] ? new Date(customFieldResponses[field.id]) : undefined}
-                                      onChange={(date) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: date.toISOString().split('T')[0] }))}
+                                      value={customFieldResponses[field.id] ? new Date(customFieldResponses[field.id] + 'T00:00:00') : undefined}
+                                      onChange={(date) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: format(date, 'yyyy-MM-dd') }))}
                                       placeholder="Pick a date"
                                     />
                                   )}

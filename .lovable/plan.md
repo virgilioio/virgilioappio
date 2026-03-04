@@ -1,38 +1,44 @@
 
 
-# Fix: Date Picker Selecting Wrong Day (Timezone Bug)
+# Separate Location Sub-Fields on One Line
 
-## Problem
+## Current State
+- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
+- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
+- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
 
-When a user selects a date (e.g., March 4), the stored value can shift by one day due to UTC/local timezone mismatch. This happens in two places:
+## What Needs to Change
 
-1. **Saving**: `date.toISOString().split('T')[0]` converts local midnight to UTC before extracting the date string. In timezones east of UTC, local midnight on March 4 = March 3 in UTC.
-2. **Reading**: `new Date("2026-03-04")` parses as UTC midnight, which in timezones west of UTC displays as March 3.
+### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
 
-## Fix
+Add a `case 'location':` block that:
+- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
+- Parses the value as JSON `{ city, state, country }`
+- Renders separate inputs for each enabled sub-field in a single-row grid
+- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
+- Shows MapPin icon in the label
 
-Replace timezone-unsafe patterns in all affected files:
+### 2. Make grid columns dynamic everywhere
 
-- **Saving** — use `format(date, 'yyyy-MM-dd')` from date-fns (already imported in most files), which uses local time
-- **Reading** — parse `"YYYY-MM-DD"` as local time using `new Date(value + 'T00:00:00')` to avoid UTC interpretation
+When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
 
-## Files to change
+**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
 
-### 1. `src/components/candidates/OfferComposerBody.tsx`
-- Line 118: `new Date(value)` → `new Date(value + 'T00:00:00')`
-- Line 119: `date.toISOString().split('T')[0]` → `format(date, 'yyyy-MM-dd')`
+**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
 
-### 2. `src/components/candidates/CreateOfferLetterDialog.tsx`
-- Line 124: `new Date(value)` → `new Date(value + 'T00:00:00')`
-- Line 125: `date.toISOString().split('T')[0]` → `format(date, 'yyyy-MM-dd')`
+**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
 
-### 3. `src/pages/PublicJobPosting.tsx`
-- Line 851: `new Date(customFieldResponses[field.id])` → `new Date(customFieldResponses[field.id] + 'T00:00:00')`
-- Line 852: `date.toISOString().split('T')[0]` → `format(date, 'yyyy-MM-dd')`
+Column class map:
+```ts
+const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
+```
 
-### 4. `src/components/forms/ApplicationFieldsRenderer.tsx`
-- Line 247: `new Date(formField.value)` → `new Date(formField.value + 'T00:00:00')`
-- Line 248: `date.toISOString().split('T')[0]` → `format(date, 'yyyy-MM-dd')`
+### 3. Also add salary case to `OfferComposerBody.tsx`
 
-Each file already imports `format` from `date-fns` or will need a small import addition.
+While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
+
+## Summary of File Changes
+- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
+- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
+- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
 
