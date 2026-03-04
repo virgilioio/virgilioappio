@@ -108,7 +108,10 @@ export function MinimizableOfferComposer({
     >
       {/* Header Bar */}
       <div
-        className="flex items-center justify-between p-4 border-b bg-muted/30 rounded-t-lg cursor-pointer hover:bg-muted/50 transition-colors"
+        className={cn(
+          "flex items-center justify-between bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors",
+          isMinimized ? "h-full px-4 rounded-lg" : "p-4 border-b rounded-t-lg"
+        )}
         onClick={() => setIsMinimized(!isMinimized)}
       >
         <h3 className="font-semibold text-sm truncate">
