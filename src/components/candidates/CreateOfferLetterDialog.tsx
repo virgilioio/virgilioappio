@@ -15,6 +15,8 @@ import { toast } from '@/hooks/use-toast'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 import type { PhoneFieldConfig } from '@/hooks/useJobPostingFields'
+import { SearchableSelect } from '@/components/ui/searchable-select'
+import { useRecruiterOptions } from '@/hooks/useRecruiterOptions'
 
 interface CreateOfferLetterSheetProps {
   open: boolean
