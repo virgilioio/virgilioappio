@@ -2564,6 +2564,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           display_order: number
+          field_config: Json | null
           field_label: string
           field_name: string
           field_type: Database["public"]["Enums"]["field_type"]
@@ -2581,6 +2582,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           display_order?: number
+          field_config?: Json | null
           field_label: string
           field_name: string
           field_type?: Database["public"]["Enums"]["field_type"]
@@ -2598,6 +2600,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           display_order?: number
+          field_config?: Json | null
           field_label?: string
           field_name?: string
           field_type?: Database["public"]["Enums"]["field_type"]
