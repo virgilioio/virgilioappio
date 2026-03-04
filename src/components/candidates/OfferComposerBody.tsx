@@ -51,6 +51,7 @@ export function OfferComposerBody({
   const { forms, isLoading: formsLoading } = useOfferForms()
   const { fields, isLoading: fieldsLoading } = useOfferFormFields(selectedFormId)
   const { createOfferLetter, isLoading: creatingLetter } = useOfferLetters(candidateId)
+  const { data: recruiterOptions = [] } = useRecruiterOptions(organizationId)
 
   const activeForms = forms.filter(f => f.is_active)
 
