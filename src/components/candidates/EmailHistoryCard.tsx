@@ -142,7 +142,7 @@ export function EmailHistoryCard({ email, onReply, onForward }: EmailHistoryCard
 
         {/* Subject */}
         <div className="font-medium text-text-primary mb-2">
-          {email.subject}
+          {fixMojibake(email.subject)}
         </div>
 
         {/* Status indicators */}
