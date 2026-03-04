@@ -4,7 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { usePendingActivities, PendingActivity } from '@/hooks/usePendingActivities';
-import { ClipboardList, Clock, ChevronRight } from 'lucide-react';
+import { ClipboardList, Clock, ChevronRight, MoreHorizontal, CheckCheck, ExternalLink } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import gioFaceGreen from '@/assets/gio-face-green.png';
@@ -194,7 +200,29 @@ export function PendingActivities() {
                         <span>{content.timeLabel} {timeAgo}</span>
                       </div>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
+                    {activity.type === 'email' ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <div className="p-1 rounded hover:bg-muted flex-shrink-0 mt-0.5 cursor-pointer">
+                            <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenuItem onClick={() => {
+                            if (activity.emailId) markEmailAsRead.mutate(activity.emailId);
+                          }}>
+                            <CheckCheck className="h-4 w-4 mr-2" />
+                            Mark as read
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleActivityClick(activity)}>
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            Open
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
+                    )}
                   </div>
                 </button>
               );
