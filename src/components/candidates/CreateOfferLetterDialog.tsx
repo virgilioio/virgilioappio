@@ -154,6 +154,17 @@ export function CreateOfferLetterSheet({
             <Label htmlFor={field.field_name}>{field.field_label}</Label>
           </div>
         )
+      case 'phone': {
+        const phoneConfig = (field as any).field_config as PhoneFieldConfig | null
+        const defaultCountry = phoneConfig?.defaultCountryCode || '+1'
+        return (
+          <PhoneInput
+            value={value || defaultCountry}
+            onChange={(val) => handleFieldChange(field.field_name, val)}
+            placeholder="Enter phone number"
+          />
+        )
+      }
       default:
         return (
           <Input
