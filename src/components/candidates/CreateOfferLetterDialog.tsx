@@ -12,6 +12,8 @@ import { useOfferLetters } from '@/hooks/useOfferLetters'
 import { Candidate } from '@/hooks/useCandidates'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
+import { PhoneInput } from '@/components/ui/phone-input'
+import type { PhoneFieldConfig } from '@/hooks/useJobPostingFields'
 
 interface CreateOfferLetterSheetProps {
   open: boolean

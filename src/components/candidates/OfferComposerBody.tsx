@@ -13,6 +13,7 @@ import { useOfferLetters } from '@/hooks/useOfferLetters'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 import { Badge } from '@/components/ui/badge'
+import { PhoneInput } from '@/components/ui/phone-input'
 
 interface OfferComposerBodyProps {
   candidateId: string
