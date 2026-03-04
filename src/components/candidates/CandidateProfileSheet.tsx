@@ -990,8 +990,8 @@ const stageHasAutomation = useMemo(() => {
                 }}
               />
               
-              {/* Submit Scorecard Button - show for all stages if user hasn't submitted yet */}
-              {!myScorecardsByStage[opt.jhsId] && (
+              {/* Submit Scorecard Button - show for all stages if user hasn't submitted yet or AI draft exists */}
+              {(!myScorecardsByStage[opt.jhsId] || myScorecardsByStage[opt.jhsId]?.is_ai_draft) && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -1002,8 +1002,17 @@ const stageHasAutomation = useMemo(() => {
                   }}
                   className="gap-2"
                 >
-                  <Star className="h-4 w-4" />
-                  Submit Scorecard
+                  {myScorecardsByStage[opt.jhsId]?.is_ai_draft ? (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      AI Notes Analysis Available
+                    </>
+                  ) : (
+                    <>
+                      <Star className="h-4 w-4" />
+                      Submit Scorecard
+                    </>
+                  )}
                 </Button>
               )}
             </div>
