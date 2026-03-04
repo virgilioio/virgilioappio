@@ -51,6 +51,7 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
   const [newMaxFileSize, setNewMaxFileSize] = useState<number | ''>('')
   const [newSalaryConfig, setNewSalaryConfig] = useState<SalaryFieldConfig>({ currency: 'USD', period: 'annually' })
   const [newLocationConfig, setNewLocationConfig] = useState<LocationFieldConfig>({ fields: ['city', 'state', 'country'] })
+  const [newPhoneConfig, setNewPhoneConfig] = useState<PhoneFieldConfig>({ defaultCountryCode: '+1' })
 
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<OfferFormField | null>(null)
