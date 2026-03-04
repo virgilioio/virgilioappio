@@ -104,7 +104,7 @@ serve(async (req) => {
         .select(`
           id,
           questions:scorecard_interview_questions(
-            id, question_text, answer_type, is_required, display_order, options
+            id, question_text, answer_type, is_required, display_order, select_options
           )
         `)
         .eq('job_hiring_stage_id', booking.job_hiring_stage.id)
@@ -135,10 +135,8 @@ JOB CONTEXT:
 INTERVIEW STAGE: ${booking.job_hiring_stage.stage.stage_name}
 ` : '';
 
-    const questionsContext = scorecardQuestions.length > 0 ? `
-SCORECARD QUESTIONS TO ADDRESS:
-${scorecardQuestions.map((q, i) => `${i + 1}. ${q.question_text} (${q.answer_type})`).join('\n')}
-` : '';
+    // Build enhanced questions context with IDs, types, and options for tool calling
+    const questionsContext = buildQuestionsContext(scorecardQuestions);
 
     // Truncate transcript if too long (keep first 15000 chars)
     const transcriptContent = booking.transcript_raw.length > 15000 
@@ -153,22 +151,36 @@ Guidelines:
 - Highlight both strengths and areas for development
 - Use professional language appropriate for HR documentation
 - Structure notes clearly with headers and bullet points
-- If specific scorecard questions are provided, address each one
-- Suggest an overall rating based on the evidence (Strong Yes, Yes, No, Definitely No)
+- Suggest an overall rating based on the evidence (strong_yes, yes, no, definitely_no)
 
-Output Format:
+Your general_overview should follow this format:
 1. OVERALL IMPRESSION (2-3 sentences)
 2. KEY STRENGTHS (3-5 bullet points with examples)
 3. AREAS FOR DEVELOPMENT (2-3 bullet points)
 4. NOTABLE QUOTES (2-3 direct quotes that stood out)
-5. RECOMMENDED RATING: [Strong Yes / Yes / No / Definitely No]
-6. RATING JUSTIFICATION (1-2 sentences)
+5. RECOMMENDED RATING with justification
 
-${questionsContext ? `\n7. SCORECARD QUESTION RESPONSES:\n(Address each question with evidence from the transcript)` : ''}`;
+${questionsContext}`;
 
-    const userPrompt = `${candidateContext}\n${jobContext}\n${stageContext}\n\nINTERVIEW TRANSCRIPT:\n${transcriptContent}\n\nPlease analyze this interview and generate comprehensive notes following the specified format.`;
+    const userPrompt = `${candidateContext}\n${jobContext}\n${stageContext}\n\nINTERVIEW TRANSCRIPT:\n${transcriptContent}\n\nPlease analyze this interview and submit your structured evaluation using the submit_scorecard tool.`;
 
-    console.log('[generate-scorecard] Calling OpenAI...');
+    console.log('[generate-scorecard] Calling OpenAI with tool calling...');
+
+    // Build request body — use tool calling when questions exist, plain text as fallback
+    const hasQuestions = scorecardQuestions.length > 0;
+    const requestBody: any = {
+      model: 'gpt-4.1-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      max_completion_tokens: 3000,
+    };
+
+    if (hasQuestions) {
+      requestBody.tools = [buildToolDefinition(scorecardQuestions)];
+      requestBody.tool_choice = { type: 'function', function: { name: 'submit_scorecard' } };
+    }
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -176,14 +188,7 @@ ${questionsContext ? `\n7. SCORECARD QUESTION RESPONSES:\n(Address each question
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: 'gpt-4.1-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        max_completion_tokens: 2000,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -193,26 +198,56 @@ ${questionsContext ? `\n7. SCORECARD QUESTION RESPONSES:\n(Address each question
     }
 
     const aiResponse = await response.json();
-    const generatedNotes = aiResponse.choices[0]?.message?.content;
+
+    // Parse response — tool call or plain text
+    let generatedNotes: string;
+    let suggestedRating = 'yes';
+    let questionResponses: Array<{ question_id: string; answer_text?: string; answer_options?: string[] }> = [];
+
+    const toolCall = aiResponse.choices[0]?.message?.tool_calls?.[0];
+
+    if (toolCall && toolCall.function?.name === 'submit_scorecard') {
+      // Tool calling path — structured output
+      try {
+        const parsed = JSON.parse(toolCall.function.arguments);
+        generatedNotes = parsed.general_overview || '';
+        suggestedRating = parsed.suggested_rating || 'yes';
+        questionResponses = parsed.question_responses || [];
+        console.log('[generate-scorecard] Tool call parsed successfully, questions:', questionResponses.length);
+      } catch (parseErr) {
+        console.error('[generate-scorecard] Failed to parse tool call, falling back:', parseErr);
+        // Fallback: try to use message content
+        generatedNotes = aiResponse.choices[0]?.message?.content || '';
+      }
+    } else {
+      // Plain text fallback (no questions or tool call failed)
+      generatedNotes = aiResponse.choices[0]?.message?.content || '';
+    }
 
     if (!generatedNotes) {
       throw new Error('No content generated from AI');
     }
 
+    // Extract suggested rating from prose if not set by tool call
+    if (!toolCall) {
+      const ratingMatch = generatedNotes.match(/RECOMMENDED RATING:\s*(Strong Yes|Yes|No|Definitely No)/i);
+      if (ratingMatch) {
+        const ratingMap: Record<string, string> = {
+          'strong yes': 'strong_yes',
+          'yes': 'yes',
+          'no': 'no',
+          'definitely no': 'definitely_no',
+        };
+        suggestedRating = ratingMap[ratingMatch[1].toLowerCase()] || 'yes';
+      }
+    }
+
     console.log('[generate-scorecard] AI notes generated, length:', generatedNotes.length);
 
-    // Extract suggested rating from the notes
-    let suggestedRating = 'yes'; // Default
-    const ratingMatch = generatedNotes.match(/RECOMMENDED RATING:\s*(Strong Yes|Yes|No|Definitely No)/i);
-    if (ratingMatch) {
-      const ratingMap: Record<string, string> = {
-        'strong yes': 'strong_yes',
-        'yes': 'yes',
-        'no': 'no',
-        'definitely no': 'definitely_no',
-      };
-      suggestedRating = ratingMap[ratingMatch[1].toLowerCase()] || 'yes';
-    }
+    // Validate question IDs — only keep responses whose question_id exists in actual questions
+    const validQuestionIds = new Set(scorecardQuestions.map((q: any) => q.id));
+    questionResponses = questionResponses.filter(r => validQuestionIds.has(r.question_id));
+    console.log('[generate-scorecard] Validated question responses:', questionResponses.length);
 
     // Store summary in booking
     await supabase
@@ -250,6 +285,15 @@ ${questionsContext ? `\n7. SCORECARD QUESTION RESPONSES:\n(Address each question
           if (!updateError) {
             scorecardId = existingScorecard.id;
             console.log('[generate-scorecard] Updated existing draft scorecard:', scorecardId);
+
+            // Idempotency: delete old AI-generated question responses before inserting new ones
+            if (questionResponses.length > 0) {
+              await supabase
+                .from('scorecard_question_responses')
+                .delete()
+                .eq('scorecard_id', scorecardId);
+              console.log('[generate-scorecard] Cleared old question responses for idempotency');
+            }
           }
         } else {
           console.log('[generate-scorecard] Existing scorecard is already submitted, not updating');
@@ -286,6 +330,26 @@ ${questionsContext ? `\n7. SCORECARD QUESTION RESPONSES:\n(Address each question
         } else {
           console.error('[generate-scorecard] Failed to create scorecard:', insertError);
         }
+      }
+    }
+
+    // Insert per-question AI responses
+    if (scorecardId && questionResponses.length > 0) {
+      const rows = questionResponses.map(r => ({
+        scorecard_id: scorecardId,
+        question_id: r.question_id,
+        answer_text: r.answer_text || null,
+        answer_options: r.answer_options || null,
+      }));
+
+      const { error: qrError } = await supabase
+        .from('scorecard_question_responses')
+        .insert(rows);
+
+      if (qrError) {
+        console.error('[generate-scorecard] Failed to insert question responses:', qrError);
+      } else {
+        console.log('[generate-scorecard] Inserted', rows.length, 'question responses');
       }
     }
 
@@ -341,7 +405,6 @@ ${questionsContext ? `\n7. SCORECARD QUESTION RESPONSES:\n(Address each question
         console.log('[generate-scorecard] Notification email sent to:', interviewer.email);
       } catch (emailError) {
         console.error('[generate-scorecard] Failed to send notification email:', emailError);
-        // Don't fail the whole operation if email fails
       }
     }
 
@@ -351,6 +414,7 @@ ${questionsContext ? `\n7. SCORECARD QUESTION RESPONSES:\n(Address each question
       scorecard_id: scorecardId,
       suggested_rating: suggestedRating,
       notes_length: generatedNotes.length,
+      questions_filled: questionResponses.length,
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -364,3 +428,102 @@ ${questionsContext ? `\n7. SCORECARD QUESTION RESPONSES:\n(Address each question
     });
   }
 });
+
+// --- Helper functions ---
+
+function buildQuestionsContext(questions: any[]): string {
+  if (questions.length === 0) return '';
+
+  const lines = questions
+    .filter((q: any) => q.answer_type !== 'salary_expectations') // Skip salary — too structured
+    .map((q: any, i: number) => {
+      let instruction = '';
+      switch (q.answer_type) {
+        case 'text':
+          instruction = 'provide a detailed text answer with evidence from the transcript';
+          break;
+        case 'yes_no':
+          instruction = 'answer "yes" or "no"';
+          break;
+        case 'single_select':
+          instruction = `pick exactly one option from: ${formatOptions(q.select_options)}`;
+          break;
+        case 'multi_select':
+          instruction = `pick one or more options from: ${formatOptions(q.select_options)}`;
+          break;
+        default:
+          instruction = 'provide a text answer';
+      }
+      return `${i + 1}. [id: ${q.id}] "${q.question_text}" (type: ${q.answer_type}) — ${instruction}`;
+    });
+
+  if (lines.length === 0) return '';
+
+  return `
+SCORECARD QUESTIONS (you MUST respond to each with evidence from the transcript):
+${lines.join('\n')}
+
+For each question, populate the question_responses array in your tool call:
+- For "text" questions: set answer_text with your response
+- For "yes_no" questions: set answer_options to ["yes"] or ["no"]
+- For "single_select" questions: set answer_options to an array with exactly one of the provided options
+- For "multi_select" questions: set answer_options to an array with one or more of the provided options
+- Always use the exact question id provided in brackets`;
+}
+
+function formatOptions(selectOptions: any): string {
+  if (!selectOptions) return 'N/A';
+  if (Array.isArray(selectOptions)) {
+    // Handle both string arrays and object arrays with label/value
+    return selectOptions.map((o: any) => typeof o === 'string' ? o : o.label || o.value || String(o)).join(' / ');
+  }
+  return String(selectOptions);
+}
+
+function buildToolDefinition(questions: any[]) {
+  return {
+    type: 'function' as const,
+    function: {
+      name: 'submit_scorecard',
+      description: 'Submit the complete interview analysis including general overview, suggested rating, and per-question responses',
+      parameters: {
+        type: 'object',
+        properties: {
+          general_overview: {
+            type: 'string',
+            description: 'Full analysis in markdown format covering overall impression, key strengths, areas for development, notable quotes, and rating justification',
+          },
+          suggested_rating: {
+            type: 'string',
+            enum: ['strong_yes', 'yes', 'no', 'definitely_no'],
+            description: 'Overall interview rating based on evidence',
+          },
+          question_responses: {
+            type: 'array',
+            description: 'Structured responses to each scorecard question',
+            items: {
+              type: 'object',
+              properties: {
+                question_id: {
+                  type: 'string',
+                  description: 'The exact UUID of the question from the scorecard',
+                },
+                answer_text: {
+                  type: 'string',
+                  description: 'Text answer for text-type questions',
+                },
+                answer_options: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Selected option(s) for yes_no, single_select, or multi_select questions',
+                },
+              },
+              required: ['question_id'],
+            },
+          },
+        },
+        required: ['general_overview', 'suggested_rating', 'question_responses'],
+      },
+    },
+  };
+}
