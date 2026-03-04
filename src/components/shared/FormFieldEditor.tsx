@@ -299,6 +299,15 @@ export function FormFieldEditor({
                 </SyncConfigPanel>
               )}
 
+              {(localType === 'employment_type' || localType === 'work_location') && (
+                <div className="flex items-start gap-2 p-3 bg-muted/50 border border-border/40 rounded-lg">
+                  <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <p className="text-xs text-muted-foreground">
+                    Options are standardized ({localType === 'employment_type' ? 'Full-time, Part-time, Temporary, Internship' : 'Remote, Hybrid, On-site'}) and cannot be customized.
+                  </p>
+                </div>
+              )}
+
               <div className="flex items-center gap-2">
                 <Button variant="default" size="sm" onClick={handleSave} className="h-8"><Save className="h-3 w-3 mr-1" /> Save</Button>
                 <Button variant="outline" size="sm" onClick={handleCancel} className="h-8"><X className="h-3 w-3 mr-1" /> Cancel</Button>
