@@ -156,17 +156,27 @@ export function OfferComposerBody({
         )
       case 'salary': {
         const salaryConfig = (field as any).field_config as SalaryFieldConfig | null
-        const currency = salaryConfig?.currency || 'USD'
         const period = salaryConfig?.period || 'annually'
-        const symbol = CURRENCY_SYMBOLS[currency] || currency
+        const salaryValue = (() => {
+          try {
+            if (typeof value === 'object' && value) return value
+            if (typeof value === 'string' && value) return JSON.parse(value)
+            return { amount: '', currency: salaryConfig?.currency || 'USD' }
+          } catch { return { amount: '', currency: salaryConfig?.currency || 'USD' } }
+        })()
         return (
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="shrink-0">{symbol}</Badge>
+            <div className="w-[180px] shrink-0">
+              <CurrencySelect
+                value={salaryValue.currency}
+                onChange={(c) => handleFieldChange(field.field_name, JSON.stringify({ ...salaryValue, currency: c }))}
+              />
+            </div>
             <Input
               id={field.field_name}
               type="number"
-              value={value}
-              onChange={(e) => handleFieldChange(field.field_name, e.target.value)}
+              value={salaryValue.amount}
+              onChange={(e) => handleFieldChange(field.field_name, JSON.stringify({ ...salaryValue, amount: e.target.value }))}
               placeholder="Enter amount"
             />
             <Badge variant="secondary" className="shrink-0 capitalize">{period}</Badge>
