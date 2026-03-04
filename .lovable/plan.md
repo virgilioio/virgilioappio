@@ -1,50 +1,44 @@
 
 
-# Fix Three Job Settings Issues
+# Separate Location Sub-Fields on One Line
 
-## Issue 1: Stages Library — Dialog to Sheet
+## Current State
+- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
+- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
+- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
 
-Currently `JobStagesManager.tsx` uses `Dialog` for create/edit stage forms. This needs to become a `Sheet` to match the pattern used everywhere else (offer letters, email templates, contracts, offer forms all use sheets).
+## What Needs to Change
 
-**Changes:**
-- `src/components/settings/JobStagesManager.tsx`: Replace both `Dialog` instances (create + edit) with `Sheet`/`SheetContent`/`SheetHeader`/`SheetTitle`/`SheetDescription`. Keep `JobStageForm` inside.
-- `src/components/settings/PlatformJobStagesManager.tsx`: Same — replace both `Dialog` instances with `Sheet`.
+### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
 
-## Issue 2: Rejection Templates — Missing Create Button
+Add a `case 'location':` block that:
+- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
+- Parses the value as JSON `{ city, state, country }`
+- Renders separate inputs for each enabled sub-field in a single-row grid
+- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
+- Shows MapPin icon in the label
 
-`RejectionEmailTemplatesManager.tsx` only shows a "Create" button in the empty state (line 40). When templates exist, there's NO create button anywhere — the table renders directly with no header/toolbar.
+### 2. Make grid columns dynamic everywhere
 
-**Fix:** Add a header row above the table (matching the pattern in other sub-tabs) with a title and "Create Rejection Email" button that calls `openCreateSheet()`.
+When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
 
-**Change in `RejectionEmailTemplatesManager.tsx`:**
-- Add a `div` with `flex items-center justify-between mb-4` above the `<Table>` containing a title `<h3>` and a `<Button>` with `<Plus>` icon calling `openCreateSheet`.
+**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
 
-## Issue 3: Visual Consistency Across All Tables
+**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
 
-Currently the sub-tabs under Job Settings have wildly inconsistent layouts:
+**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
 
-| Component | Wrapper | Header Style | Table Border |
-|---|---|---|---|
-| JobStagesManager | `Card` with `CardHeader` + `CardContent` | CardTitle + CardDescription + Button in header | `rounded-brand border` (via JobStagesTable) |
-| ApplicationFieldsManager | `Card` with `CardHeader` + `CardContent` | CardTitle + CardDescription + Button in header | None (bare `<Table>`) |
-| OfferFormsManager | `Card` with `CardContent pt-6` | Inline `<h3>` + Button | None |
-| Offer Letters/Email/Contract (in OfferTemplatesManager) | `Card` with `CardContent pt-6` | Inline `<h3>` + Button | None |
-| RejectionReasonsManager | No Card wrapper | Inline `<h3>` titles | None |
-| RejectionEmailTemplatesManager | No Card wrapper | None (just table) | None |
+Column class map:
+```ts
+const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
+```
 
-**Target pattern** — Use the `Card` + `CardHeader` (title + description + button) + `CardContent` pattern consistently, matching `JobStagesManager` and `ApplicationFieldsManager` which look cleanest. All tables wrapped in `rounded-brand border`.
+### 3. Also add salary case to `OfferComposerBody.tsx`
 
-**Files to standardize:**
+While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
 
-1. **`OfferFormsManager.tsx`**: Change from `CardContent pt-6` with inline `<h3>` to proper `CardHeader` with `CardTitle`/`CardDescription` + Button. Wrap `<Table>` in `div.rounded-brand.border`.
-
-2. **`OfferTemplatesManager.tsx`** (offer letters, email templates, contracts sub-tabs): Each sub-tab's `Card` should use `CardHeader` with `CardTitle`/`CardDescription` + create button, instead of inline `<h3>` inside `CardContent`. Wrap each `<Table>` in `div.rounded-brand.border`.
-
-3. **`RejectionReasonsManager.tsx`**: Wrap in a `Card` with `CardHeader` (title + description + add button) and `CardContent`. Wrap `<Table>` in `div.rounded-brand.border`.
-
-4. **`RejectionEmailTemplatesManager.tsx`**: Wrap in a `Card` with `CardHeader` (title + description + create button) and `CardContent`. Wrap `<Table>` in `div.rounded-brand.border`.
-
-5. **`ApplicationFieldsManager.tsx`**: Wrap `<Table>` instances in `div.rounded-brand.border`. Change edit/delete button styles from `variant="outline"` with text labels to `variant="ghost"` icon-only (matching other tables).
-
-This standardizes every sub-tab to: `Card` → `CardHeader` (title left, button right) → `CardContent` → `div.rounded-brand.border` → `Table`.
+## Summary of File Changes
+- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
+- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
+- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
 
