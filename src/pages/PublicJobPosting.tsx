@@ -469,7 +469,7 @@ export default function PublicJobPosting() {
           } catch { /* ignore parse errors */ }
         }
         // Detect phone field for candidate profile sync
-        if (field?.field_type === 'phone' && value) {
+        if ((field?.field_type as string) === 'phone' && value) {
           phoneSync = value as string
         }
       })
