@@ -87,6 +87,15 @@ export function MinimizableOfferComposer({
     setDraftRestored(false)
   }
 
+  const handleCancel = () => {
+    clearDraft()
+    setSelectedFormId('')
+    setFieldValues({})
+    setDraftRestored(false)
+    onOpenChange(false)
+    setIsMinimized(false)
+  }
+
   const handleSuccess = () => {
     clearDraft()
     setSelectedFormId('')
@@ -151,7 +160,7 @@ export function MinimizableOfferComposer({
             fieldValues={fieldValues}
             onFieldValuesChange={setFieldValues}
             onSuccess={handleSuccess}
-            onCancel={handleClose}
+            onCancel={handleCancel}
             draftRestored={draftRestored}
           />
         </div>
