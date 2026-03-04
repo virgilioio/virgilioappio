@@ -55,12 +55,8 @@ export function OfferComposerBody({
 
   const activeForms = forms.filter(f => f.is_active)
 
-  // Reset field values when form changes (but not on initial draft restore)
-  useEffect(() => {
-    if (!draftRestored) {
-      onFieldValuesChange({})
-    }
-  }, [selectedFormId])
+
+
 
   const handleFieldChange = (fieldName: string, value: any) => {
     onFieldValuesChange({ ...fieldValues, [fieldName]: value })
