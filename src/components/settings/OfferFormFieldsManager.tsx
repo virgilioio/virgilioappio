@@ -341,6 +341,35 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
             </div>
           )}
 
+          {showPhoneConfig && (
+            <div className="bg-virgilio-purple/5 border border-virgilio-purple/20 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-2 text-virgilio-purple">
+                <Link2 className="h-4 w-4" />
+                <span className="text-sm font-medium">Phone Configuration</span>
+              </div>
+              <FormField label="Default Country Code">
+                <Select value={newPhoneConfig.defaultCountryCode || '+1'} onValueChange={(v) => setNewPhoneConfig({ defaultCountryCode: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {[
+                      { code: '+1', flag: '🇺🇸', name: 'United States' },
+                      { code: '+44', flag: '🇬🇧', name: 'United Kingdom' },
+                      { code: '+33', flag: '🇫🇷', name: 'France' },
+                      { code: '+49', flag: '🇩🇪', name: 'Germany' },
+                      { code: '+91', flag: '🇮🇳', name: 'India' },
+                      { code: '+61', flag: '🇦🇺', name: 'Australia' },
+                      { code: '+55', flag: '🇧🇷', name: 'Brazil' },
+                      { code: '+81', flag: '🇯🇵', name: 'Japan' },
+                      { code: '+971', flag: '🇦🇪', name: 'UAE' },
+                    ].map(cc => (
+                      <SelectItem key={cc.code} value={cc.code}>{cc.flag} {cc.code} — {cc.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+            </div>
+          )}
+
           <div className="flex justify-end">
             <Button onClick={handleAddField} disabled={!label.trim()}>
               <Plus className="h-4 w-4 mr-2" /> Add Custom Field
