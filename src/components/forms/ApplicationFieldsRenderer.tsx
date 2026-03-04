@@ -294,6 +294,7 @@ export function ApplicationFieldsRenderer({
       case 'location':
         const locationConfig = ('field_config' in field ? field.field_config : null) as LocationFieldConfig | null
         const locationFields = locationConfig?.fields || ['city', 'state', 'country']
+        const colsClass = ({ 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' } as Record<number, string>)[locationFields.length] || 'md:grid-cols-3'
         return (
           <FormField
             key={field.field_name}
@@ -317,7 +318,7 @@ export function ApplicationFieldsRenderer({
                     {field.field_label}
                     {field.is_required && <span className="text-destructive ml-1">*</span>}
                   </FormLabel>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className={`grid grid-cols-1 ${colsClass} gap-3`}>
                     {locationFields.includes('city') && (
                       <FormControl>
                         <Input

@@ -4,8 +4,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Loader2, ClipboardList } from 'lucide-react'
+import { Loader2, ClipboardList, MapPin, DollarSign } from 'lucide-react'
 import { useOfferForms } from '@/hooks/useOfferForms'
+import { CURRENCY_SYMBOLS } from '@/constants/currencies'
+import type { SalaryFieldConfig, LocationFieldConfig } from '@/hooks/useJobPostingFields'
 import { useOfferFormFields, type OfferFormField } from '@/hooks/useOfferFormFields'
 import { useOfferLetters } from '@/hooks/useOfferLetters'
 import { useAuth } from '@/contexts/AuthContext'
@@ -148,6 +150,66 @@ export function OfferComposerBody({
             <Label htmlFor={field.field_name}>{field.field_label}</Label>
           </div>
         )
+      case 'salary': {
+        const salaryConfig = (field as any).field_config as SalaryFieldConfig | null
+        const currency = salaryConfig?.currency || 'USD'
+        const period = salaryConfig?.period || 'annually'
+        const symbol = CURRENCY_SYMBOLS[currency] || currency
+        return (
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="shrink-0">{symbol}</Badge>
+            <Input
+              id={field.field_name}
+              type="number"
+              value={value}
+              onChange={(e) => handleFieldChange(field.field_name, e.target.value)}
+              placeholder="Enter amount"
+            />
+            <Badge variant="secondary" className="shrink-0 capitalize">{period}</Badge>
+          </div>
+        )
+      }
+      case 'location': {
+        const locationConfig = (field as any).field_config as LocationFieldConfig | null
+        const locationFields = locationConfig?.fields || ['city', 'state', 'country']
+        const locationValue = (() => {
+          try {
+            if (typeof value === 'string' && value) return JSON.parse(value)
+            if (typeof value === 'object' && value) return value
+            return {}
+          } catch { return {} }
+        })()
+        const updateLocation = (key: string, val: string) => {
+          const next = { ...locationValue, [key]: val }
+          handleFieldChange(field.field_name, JSON.stringify(next))
+        }
+        const colsClass = ({ 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' } as Record<number, string>)[locationFields.length] || 'md:grid-cols-3'
+        return (
+          <div className={`grid grid-cols-1 ${colsClass} gap-3`}>
+            {locationFields.includes('city') && (
+              <Input
+                placeholder="City"
+                value={locationValue.city || ''}
+                onChange={(e) => updateLocation('city', e.target.value)}
+              />
+            )}
+            {locationFields.includes('state') && (
+              <Input
+                placeholder="State / Province"
+                value={locationValue.state || ''}
+                onChange={(e) => updateLocation('state', e.target.value)}
+              />
+            )}
+            {locationFields.includes('country') && (
+              <Input
+                placeholder="Country"
+                value={locationValue.country || ''}
+                onChange={(e) => updateLocation('country', e.target.value)}
+              />
+            )}
+          </div>
+        )
+      }
       default:
         return (
           <Input
