@@ -253,6 +253,13 @@ const stageHasAutomation = useMemo(() => {
     load()
   }, [open, candidateId])
 
+  // Auto-select offer tab when status changes to offer/hired
+  useEffect(() => {
+    if (associationStatus === 'offer' || associationStatus === 'hired') {
+      setActiveTab('offer')
+    }
+  }, [associationStatus])
+
   useEffect(() => {
     if (!open || !jobId) return
     ;(async () => {
@@ -980,15 +987,15 @@ const stageHasAutomation = useMemo(() => {
                      <CandidateNameCard
                        email={candidate.email}
                        phone={candidate.phone}
-                        tabs={[
-                         { value: 'job', label: 'Job Application', Icon: FileText },
-                         { value: 'application', label: 'Application Details', Icon: FileText },
-                         { value: 'resume', label: 'Resume', Icon: FileText },
-                         { value: 'overview', label: 'Overview', Icon: FileText },
-                         ...((associationStatus === 'offer' || associationStatus === 'hired')
-                           ? [{ value: 'offer', label: 'Offer Details', Icon: FileText }]
-                           : []),
-                       ]}
+                       tabs={[
+                          ...((associationStatus === 'offer' || associationStatus === 'hired')
+                            ? [{ value: 'offer', label: 'Offer Details', Icon: FileText }]
+                            : []),
+                          { value: 'job', label: 'Job Application', Icon: FileText },
+                          { value: 'application', label: 'Application Details', Icon: FileText },
+                          { value: 'resume', label: 'Resume', Icon: FileText },
+                          { value: 'overview', label: 'Overview', Icon: FileText },
+                        ]}
                        activeTab={activeTab}
                        onTabChange={(v) => setActiveTab(v as 'job' | 'application' | 'resume' | 'overview' | 'offer')}
                      />
