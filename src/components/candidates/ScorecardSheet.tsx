@@ -220,7 +220,8 @@ export function ScorecardSheet({
     }
     
     // Base values from existing scorecard (or defaults)
-    const baseRating = existing?.rating || "yes";
+    // For AI drafts, always start with neutral rating — user applies suggestion explicitly
+    const baseRating = existing?.is_ai_draft ? "yes" : (existing?.rating || "yes");
     const baseOverview = existing?.general_overview || "";
     
     // Store AI analysis separately for AI drafts — only on initial open

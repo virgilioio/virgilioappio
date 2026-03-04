@@ -309,7 +309,7 @@ ${questionsContext}`;
             job_id: booking.job_id,
             stage_instance_id: booking.job_hiring_stage.id,
             created_by: interviewer.user_id,
-            rating: suggestedRating,
+            rating: 'yes',
             general_overview: generatedNotes,
             is_ai_draft: true,
             source_booking_id: booking_id,
