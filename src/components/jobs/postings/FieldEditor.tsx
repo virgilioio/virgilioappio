@@ -46,6 +46,7 @@ export function FieldEditor({
       sourceBadge={field.source === 'library' ? 'Library' : 'Custom'}
       loadSelectOptions={loadSelectOptions}
       availableTypes={ALL_FIELD_TYPES}
+      context="job_posting"
     />
   )
 }

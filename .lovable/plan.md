@@ -1,46 +1,44 @@
 
 
-# Smart Offer Fields: Remove Profile Sync, Add Context Awareness
+# Separate Location Sub-Fields on One Line
 
-## The Idea
+## Current State
+- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
+- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
+- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
 
-You're absolutely right. In job application forms, smart fields (salary, location, phone) sync to the candidate profile — that makes sense because there's one salary expectation per candidate. But in offer forms, you might have Base Salary, Variable Comp, and OTE as three separate salary fields. Syncing all three to one profile field is nonsensical.
+## What Needs to Change
 
-The solution: make the shared `FormFieldEditor` context-aware. Job posting fields keep "Syncs to Profile" messaging. Offer form fields show the same structured UI (currency picker, location sub-fields, etc.) but without any sync language — they're "Smart Offer Fields" that standardize data capture only.
+### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
 
-## Changes
+Add a `case 'location':` block that:
+- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
+- Parses the value as JSON `{ city, state, country }`
+- Renders separate inputs for each enabled sub-field in a single-row grid
+- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
+- Shows MapPin icon in the label
 
-### 1. Add `context` prop to `FormFieldEditor`
-**File**: `src/components/shared/FormFieldEditor.tsx`
+### 2. Make grid columns dynamic everywhere
 
-Add a new optional prop `context?: 'job_posting' | 'offer'` (default: `'job_posting'`). Use it to conditionally:
-- **Hide** the "Syncs to Candidate Profile" title in `SyncConfigPanel` when context is `'offer'` — replace with "Structured Field" or "Smart Field Configuration"
-- **Hide** the blue "Syncs to Profile" badges in view mode when context is `'offer'`
-- Keep all the config UI (currency, period, location sub-fields, phone country code) intact — that's the "smart" part
+When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
 
-### 2. Pass `context="offer"` from `OfferFieldEditor`
-**File**: `src/components/settings/OfferFieldEditor.tsx`
+**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
 
-Pass `context="offer"` to the shared `FormFieldEditor`. This is the only call site for offer forms.
+**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
 
-### 3. Pass `context="job_posting"` from `FieldEditor` (explicit, no behavior change)
-**File**: `src/components/jobs/postings/FieldEditor.tsx`
+**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
 
-Explicitly pass `context="job_posting"` for clarity. No behavior change since it's the default.
+Column class map:
+```ts
+const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
+```
 
-### 4. Update `OfferFormFieldsManager` config panels
-**File**: `src/components/settings/OfferFormFieldsManager.tsx`
+### 3. Also add salary case to `OfferComposerBody.tsx`
 
-The "Add Field" section has its own inline config panels for salary/location/phone. Update the purple header text from "Salary Configuration" / "Location Configuration" / "Phone Configuration" to remove any sync language (these already don't mention sync, so just verify they stay clean).
+While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
 
-### 5. Update Style Guide
-**File**: `src/components/settings/styleguide/SmartFieldsGuide.tsx`
-
-Add a note distinguishing the two contexts: Job posting smart fields sync to profile; Offer smart fields provide structured data capture without sync.
-
-## Summary of file changes
-- **Modified**: `src/components/shared/FormFieldEditor.tsx` — add `context` prop, conditionally hide sync messaging
-- **Modified**: `src/components/settings/OfferFieldEditor.tsx` — pass `context="offer"`
-- **Modified**: `src/components/jobs/postings/FieldEditor.tsx` — pass `context="job_posting"` explicitly
-- **Modified**: `src/components/settings/styleguide/SmartFieldsGuide.tsx` — document both contexts
+## Summary of File Changes
+- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
+- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
+- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
 

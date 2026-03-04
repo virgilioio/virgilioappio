@@ -13,6 +13,17 @@ export function SmartFieldsGuide() {
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Context note */}
+        <div className="bg-muted/50 border border-border/40 rounded-lg p-4 space-y-1.5">
+          <p className="text-sm font-medium">Context-Aware Behavior</p>
+          <p className="text-xs text-muted-foreground">
+            <strong>Job Posting fields:</strong> Smart fields sync submitted data to the candidate's profile (salary, location, phone).
+          </p>
+          <p className="text-xs text-muted-foreground">
+            <strong>Offer Form fields:</strong> Smart fields provide the same structured UI (currency picker, location sub-fields, etc.) but do <em>not</em> sync to the candidate profile — enabling multiple salary fields (Base, Variable, OTE) per offer.
+          </p>
+        </div>
+
         {/* Builder View Mode Badges */}
         <div className="space-y-3">
           <h4 className="text-sm font-medium">Builder View Mode — Badge Patterns</h4>

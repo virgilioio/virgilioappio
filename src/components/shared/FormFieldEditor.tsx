@@ -56,6 +56,8 @@ export interface FormFieldEditorProps {
   loadSelectOptions?: (fieldId: string) => Promise<SelectOptionData[]>
   /** Subset of field types to show in the type selector (defaults to ALL_FIELD_TYPES) */
   availableTypes?: FieldType[]
+  /** Context determines sync messaging: job_posting shows "Syncs to Profile", offer hides it */
+  context?: 'job_posting' | 'offer'
 }
 
 export function FormFieldEditor({
@@ -69,6 +71,7 @@ export function FormFieldEditor({
   isLocked,
   loadSelectOptions,
   availableTypes = ALL_FIELD_TYPES,
+  context = 'job_posting',
 }: FormFieldEditorProps) {
   const [isEditing, setIsEditing] = useState(false)
 
@@ -152,6 +155,7 @@ export function FormFieldEditor({
 
   // Smart field type badge (used in both view & edit rows)
   const isSmartField = field.field_type === 'salary' || field.field_type === 'location' || field.field_type === 'phone' || field.field_type === 'recruiter'
+  const showSyncMessaging = context !== 'offer'
 
   return (
     <div className={cn('p-3 border border-border/40 rounded-brand flex-1', isLocked && 'bg-muted/20')}>
@@ -293,7 +297,7 @@ export function FormFieldEditor({
                 {field.field_type === 'salary' && (
                   <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                     <Badge variant="outline" className="text-xs bg-green-500/10 text-green-700 border-green-300 gap-1"><DollarSign className="h-3 w-3" /> Salary</Badge>
-                    <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-300 gap-1"><Link2 className="h-3 w-3" /> Syncs to Profile</Badge>
+                    {showSyncMessaging && <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-300 gap-1"><Link2 className="h-3 w-3" /> Syncs to Profile</Badge>}
                     {(field.field_config as SalaryFieldConfig) && (
                       <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600">{(field.field_config as SalaryFieldConfig).currency} / {(field.field_config as SalaryFieldConfig).period}</Badge>
                     )}
@@ -302,7 +306,7 @@ export function FormFieldEditor({
                 {field.field_type === 'location' && (
                   <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                     <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-700 border-orange-300 gap-1"><MapPin className="h-3 w-3" /> Location</Badge>
-                    <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-300 gap-1"><Link2 className="h-3 w-3" /> Syncs to Profile</Badge>
+                    {showSyncMessaging && <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-300 gap-1"><Link2 className="h-3 w-3" /> Syncs to Profile</Badge>}
                     {(field.field_config as LocationFieldConfig) && (
                       <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600">{(field.field_config as LocationFieldConfig).fields?.map(f => f === 'city' ? 'City' : f === 'state' ? 'State' : 'Country').join(', ')}</Badge>
                     )}
@@ -311,7 +315,7 @@ export function FormFieldEditor({
                 {field.field_type === 'phone' && (
                   <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                     <Badge variant="outline" className="text-xs bg-teal-500/10 text-teal-700 border-teal-300 gap-1"><Phone className="h-3 w-3" /> Phone</Badge>
-                    <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-300 gap-1"><Link2 className="h-3 w-3" /> Syncs to Profile</Badge>
+                    {showSyncMessaging && <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-300 gap-1"><Link2 className="h-3 w-3" /> Syncs to Profile</Badge>}
                     {(field.field_config as PhoneFieldConfig)?.defaultCountryCode && (
                       <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600">Default: {(field.field_config as PhoneFieldConfig).defaultCountryCode}</Badge>
                     )}
@@ -350,11 +354,11 @@ export function FormFieldEditor({
 
 // ---- Internal UI helper ----
 
-function SyncConfigPanel({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
+function SyncConfigPanel({ title, description, children, showSyncIcon = true }: { title: string; description: string; children: React.ReactNode; showSyncIcon?: boolean }) {
   return (
     <div className="bg-virgilio-purple/5 border border-virgilio-purple/20 rounded-lg p-4 space-y-3">
       <div className="flex items-center gap-2 text-virgilio-purple">
-        <Link2 className="h-4 w-4" />
+        {showSyncIcon ? <Link2 className="h-4 w-4" /> : <DollarSign className="h-4 w-4" />}
         <span className="text-sm font-medium">{title}</span>
       </div>
       <div className="bg-white border border-border/40 rounded-md p-3">
