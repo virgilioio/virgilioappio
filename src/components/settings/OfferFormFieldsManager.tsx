@@ -77,6 +77,8 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
     if (type === 'salary' && !label) setLabel('Salary')
     if (type === 'location' && !label) setLabel('Location')
     if (type === 'phone' && !label) setLabel('Phone Number')
+    if (type === 'employment_type' && !label) setLabel('Employment Type')
+    if (type === 'work_location' && !label) setLabel('Work Location')
   }, [type])
 
   const sortedFields = useMemo(() => {
