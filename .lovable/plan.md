@@ -1,21 +1,22 @@
 
 
-# Add Dismiss Action for Email Tasks in Pending Tasks Widget
+# Fix Past Activities: Sort Order and Date Range
 
-## Problem
-Email tasks in the Pending Tasks card can only be dismissed by clicking through to the candidate profile. Users need a quick way to dismiss (mark as read) directly from the dashboard.
+## Problems
+1. **Sort order**: In `UpcomingActivities.tsx` line 80, activities are always sorted ascending (`a - b`), showing oldest first. For the Past tab, newest should be first.
+2. **No date limit on past bookings**: The `useScheduledBookings` hook (line 173-176) fetches ALL past bookings with no date boundary, showing activities from months ago. The reminders hook already limits to the current month — bookings should match.
 
-## Approach
-Add a small "more" menu (three-dot `MoreHorizontal` icon) on email-type task items in `PendingActivities.tsx`. The menu will have a "Dismiss" option that calls `markEmailAsRead` without navigating away.
+## Changes
 
-## Change — `src/components/dashboard/PendingActivities.tsx`
+### 1. `src/components/dashboard/UpcomingActivities.tsx`
+- Pass `activeTab` into the `useMemo` deps and reverse the sort for the past tab:
+  - Upcoming: ascending (soonest first) — keep `a - b`
+  - Past: descending (most recent first) — use `b - a`
 
-1. Import `DropdownMenu`, `DropdownMenuTrigger`, `DropdownMenuContent`, `DropdownMenuItem` and `MoreHorizontal` icon
-2. For tasks where `activity.type === 'email'`, render a dropdown menu trigger (three-dot button) in place of or alongside the `ChevronRight` icon
-3. The dropdown will have:
-   - **"Mark as read"** — calls `markEmailAsRead.mutate(activity.emailId)` and stops propagation so the row click doesn't fire
-   - **"Open"** — triggers the existing `handleActivityClick` navigation
-4. Non-email task types (`scorecard`, `decision`) keep the current click-through behavior with no menu
+### 2. `src/hooks/useScheduledBookings.ts`
+- In the `past` branch (line 173-176), add a filter to only fetch bookings from the current month:
+  - Calculate `startOfMonth` as the 1st of the current month
+  - Add `.gte('scheduled_start', startOfMonthIso)` to the past query so only current-month bookings are returned
 
-The menu button will use `e.stopPropagation()` to prevent the parent button's `onClick` from firing when interacting with the dropdown.
+This aligns bookings with the reminders hook which already filters to the current month.
 
