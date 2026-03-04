@@ -305,6 +305,7 @@ async function fetchUnreadEmails(userId: string, isAdmin: boolean, assignedJobId
       subject,
       snippet,
       received_at,
+      rfc822_message_id,
       candidates(id, candidate_name),
       jobs(id, title)
     `)
@@ -323,7 +324,17 @@ async function fetchUnreadEmails(userId: string, isAdmin: boolean, assignedJobId
 
   if (error || !emails || emails.length === 0) return [];
 
-  return emails.map(email => ({
+  // Deduplicate by rfc822_message_id (Gmail sync + inbound webhook can create two records)
+  const seen = new Set<string>();
+  const dedupedEmails = emails.filter(email => {
+    const msgId = (email as any).rfc822_message_id;
+    if (!msgId) return true;
+    if (seen.has(msgId)) return false;
+    seen.add(msgId);
+    return true;
+  });
+
+  return dedupedEmails.map(email => ({
     type: 'email' as const,
     id: email.id,
     emailId: email.id,
