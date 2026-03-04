@@ -61,6 +61,8 @@ import { OfferStatusBanner } from './OfferStatusBanner'
 import { MinimizableOfferComposer } from './MinimizableOfferComposer'
 import { CandidateReminders } from './CandidateReminders'
 import { CandidateInsightsTab } from './insights/CandidateInsightsTab'
+import { CandidateOfferDetails } from './CandidateOfferDetails'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { useQuery } from '@tanstack/react-query'
 
 interface StageScorecardProps {
@@ -109,7 +111,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [jobCandidate, setJobCandidate] = useState<any | null>(null)
   const [jobCandidateId, setJobCandidateId] = useState<string | null>(null)
   const [job, setJob] = useState<any | null>(null)
-  const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'overview'>('job')
+  const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'overview' | 'offer'>('job')
   const [rightActiveTab, setRightActiveTab] = useState<'feed' | 'notes' | 'emails' | 'reminders' | 'insights'>('feed')
   const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
   const [education, setEducation] = useState<CandidateEducation[]>([])
@@ -172,6 +174,10 @@ const [offerFormOpen, setOfferFormOpen] = useState(false)
 
 // Simple schedule interview (not stage-specific)
 const [simpleScheduleOpen, setSimpleScheduleOpen] = useState(false)
+
+// Offer delete warning dialog
+const [showOfferDeleteWarning, setShowOfferDeleteWarning] = useState(false)
+const [pendingStatusAction, setPendingStatusAction] = useState<(() => Promise<void>) | null>(null)
 
 // Stage automations query for lightning icon
 
@@ -555,10 +561,48 @@ const stageHasAutomation = useMemo(() => {
     }
   }
   
-  const handleReturnToPipeline = async () => {
+  // Check for offer letters before status change and show warning if needed
+  const checkOfferAndProceed = async (action: () => Promise<void>) => {
+    if (!candidateId) { await action(); return; }
+    if (associationStatus !== 'offer' && associationStatus !== 'hired') { await action(); return; }
+    
+    const { data: offers } = await supabase
+      .from('offer_letters')
+      .select('id')
+      .eq('candidate_id', candidateId)
+      .eq('job_id', jobId)
+      .limit(1)
+    
+    if (offers && offers.length > 0) {
+      setPendingStatusAction(() => action)
+      setShowOfferDeleteWarning(true)
+    } else {
+      await action()
+    }
+  }
+
+  const confirmOfferDeleteAndProceed = async () => {
+    if (!candidateId) return
+    // Delete offer letters
+    await supabase
+      .from('offer_letters')
+      .delete()
+      .eq('candidate_id', candidateId)
+      .eq('job_id', jobId)
+    
+    // Execute the pending action
+    if (pendingStatusAction) {
+      await pendingStatusAction()
+    }
+    setShowOfferDeleteWarning(false)
+    setPendingStatusAction(null)
+    // Reset tab if on offer tab
+    if (activeTab === 'offer') setActiveTab('job')
+  }
+
+  const doReturnToPipeline = async () => {
     if (!associationId) return
     try {
-      // Clear offer tracking when returning to pipeline
       const { error } = await supabase
         .from('job_candidate_associations')
         .update({
@@ -571,6 +615,7 @@ const stageHasAutomation = useMemo(() => {
       
       setAssociationStatus('active')
       setOfferDetails(null)
+      if (activeTab === 'offer') setActiveTab('job')
       toast({
         title: 'Returned to Pipeline',
         description: 'Candidate has been moved back to active status.',
@@ -582,8 +627,18 @@ const stageHasAutomation = useMemo(() => {
     }
   }
 
+  const handleReturnToPipeline = () => {
+    checkOfferAndProceed(doReturnToPipeline)
+  }
+
   const handleReject = () => {
-    if (associationId) {
+    if (!associationId) return
+    if (associationStatus === 'offer') {
+      // Check for offer data first
+      checkOfferAndProceed(async () => {
+        setRejectionDialogOpen(true)
+      })
+    } else {
       setRejectionDialogOpen(true)
     }
   }
@@ -669,9 +724,12 @@ const stageHasAutomation = useMemo(() => {
   };
   
   const handleReactivate = () => {
-    handleSetStatus('active')
-    setRejectionDetails(null)
-    setOfferDetails(null)
+    checkOfferAndProceed(async () => {
+      handleSetStatus('active')
+      setRejectionDetails(null)
+      setOfferDetails(null)
+      if (activeTab === 'offer') setActiveTab('job')
+    })
   }
   const handleHire = () => handleSetStatus('hired')
 
@@ -922,15 +980,17 @@ const stageHasAutomation = useMemo(() => {
                      <CandidateNameCard
                        email={candidate.email}
                        phone={candidate.phone}
-                       tabs={[
+                        tabs={[
                          { value: 'job', label: 'Job Application', Icon: FileText },
                          { value: 'application', label: 'Application Details', Icon: FileText },
                          { value: 'resume', label: 'Resume', Icon: FileText },
                          { value: 'overview', label: 'Overview', Icon: FileText },
-                         
+                         ...((associationStatus === 'offer' || associationStatus === 'hired')
+                           ? [{ value: 'offer', label: 'Offer Details', Icon: FileText }]
+                           : []),
                        ]}
                        activeTab={activeTab}
-                       onTabChange={(v) => setActiveTab(v as 'job' | 'application' | 'resume' | 'overview')}
+                       onTabChange={(v) => setActiveTab(v as 'job' | 'application' | 'resume' | 'overview' | 'offer')}
                      />
 
                     {/* Job Application Tab */}
@@ -1453,6 +1513,11 @@ const stageHasAutomation = useMemo(() => {
                       </Accordion>
                     ) : (
                       <></>
+                     )}
+
+                    {/* Offer Details Tab */}
+                    {activeTab === 'offer' && candidateId && (
+                      <CandidateOfferDetails candidateId={candidateId} jobId={jobId} />
                     )}
                    </div>
 
@@ -1780,6 +1845,29 @@ const stageHasAutomation = useMemo(() => {
       )}
       </SheetContent>
     </Sheet>
+
+    {/* Offer Delete Warning Dialog */}
+    <AlertDialog open={showOfferDeleteWarning} onOpenChange={(open) => {
+      if (!open) {
+        setShowOfferDeleteWarning(false)
+        setPendingStatusAction(null)
+      }
+    }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Offer Details?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Moving this candidate away from the Offer status will permanently delete their offer details. This cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmOfferDeleteAndProceed} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            Continue & Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </>
   )
 }

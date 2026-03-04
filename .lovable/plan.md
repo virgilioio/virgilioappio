@@ -1,64 +1,44 @@
 
 
-# Add "Offer Details" Tab to Candidate Profile
+# Separate Location Sub-Fields on One Line
 
-## Overview
+## Current State
+- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
+- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
+- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
 
-Add a conditional "Offer Details" tab to the left-column tab bar in the candidate profile sheet. This tab appears only when the candidate's status is `offer` or `hired`, and displays the saved offer form data. When moving a candidate away from offer/hired status, if offer data exists, show a confirmation dialog warning that offer details will be deleted.
+## What Needs to Change
 
-## Changes
+### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
 
-### 1. New Component: `src/components/candidates/CandidateOfferDetails.tsx`
+Add a `case 'location':` block that:
+- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
+- Parses the value as JSON `{ city, state, country }`
+- Renders separate inputs for each enabled sub-field in a single-row grid
+- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
+- Shows MapPin icon in the label
 
-A read-only display component that:
-- Takes `candidateId` and `jobId` as props
-- Uses `useOfferLetters(candidateId)` to fetch offer letters for this candidate
-- Filters to the offer letter matching the `jobId`
-- Fetches the form fields via `useOfferFormFields(offerLetter.form_id)` to get labels and types
-- Renders each field as a label-value pair in a clean card layout
-- Handles location fields (parse JSON, show city/state/country) and salary fields (show with currency/period)
-- Shows empty state if no offer letter exists yet, with a "Create Offer" button
+### 2. Make grid columns dynamic everywhere
 
-### 2. Update `src/components/candidates/CandidateProfileSheet.tsx`
+When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
 
-**Tab state**: Extend `activeTab` type from `'job' | 'application' | 'resume' | 'overview'` to include `'offer'`.
+**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
 
-**Tab list** (line 925-931): Conditionally include the "Offer Details" tab only when `associationStatus === 'offer' || associationStatus === 'hired'`:
-```tsx
-tabs={[
-  { value: 'job', label: 'Job Application', Icon: FileText },
-  { value: 'application', label: 'Application Details', Icon: FileText },
-  { value: 'resume', label: 'Resume', Icon: FileText },
-  { value: 'overview', label: 'Overview', Icon: FileText },
-  // Conditionally added:
-  ...(associationStatus === 'offer' || associationStatus === 'hired'
-    ? [{ value: 'offer', label: 'Offer Details', Icon: FileText }]
-    : []),
-]}
+**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
+
+**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
+
+Column class map:
+```ts
+const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
 ```
 
-**Tab content**: Add an `{activeTab === 'offer' && ...}` block after the overview tab content, rendering the new `CandidateOfferDetails` component.
+### 3. Also add salary case to `OfferComposerBody.tsx`
 
-**Auto-switch tab**: When `activeTab` is `'offer'` and the status changes away from offer/hired, reset `activeTab` to `'job'`.
+While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
 
-**Offer deletion on status change**: Add state for a confirmation dialog (`showOfferDeleteWarning`). Modify `handleReturnToPipeline`, `handleReactivate`, and `handleReject` to:
-1. Check if offer letters exist for this candidate+job (query `offer_letters` table)
-2. If yes, show a confirmation AlertDialog warning: "Moving this candidate will permanently delete their offer details. This action cannot be undone."
-3. On confirm: delete the offer_letters records for this candidate+job, then proceed with the status change
-4. On cancel: do nothing
-
-The `handleHire` function does NOT trigger this warning (hired candidates keep their offer details).
-
-### 3. Confirmation Dialog
-
-Use the existing `AlertDialog` component inline in `CandidateProfileSheet.tsx`:
-- Title: "Delete Offer Details?"
-- Description: "Moving this candidate away from the Offer status will permanently delete their offer details. This cannot be undone."
-- Actions: "Cancel" and "Continue & Delete"
-
-On confirm, call `supabase.from('offer_letters').delete().eq('candidate_id', candidateId).eq('job_id', jobId)` then execute the pending status change action.
-
-### Files Changed
-- **New**: `src/components/candidates/CandidateOfferDetails.tsx`
-- **Modified**: `src/components/candidates/CandidateProfileSheet.tsx`
+## Summary of File Changes
+- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
+- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
+- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
 
