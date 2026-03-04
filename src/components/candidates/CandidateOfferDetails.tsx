@@ -1,12 +1,22 @@
 import { useOfferLetters } from '@/hooks/useOfferLetters'
 import { useOfferFormFields } from '@/hooks/useOfferFormFields'
+import { useRecruiterOptions } from '@/hooks/useRecruiterOptions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import gioFaceEmpty from '@/assets/gio-face-empty.png'
 
+const employmentTypeLabels: Record<string, string> = {
+  full_time: 'Full-time', part_time: 'Part-time',
+  temporary: 'Temporary', internship: 'Internship'
+}
+const workLocationLabels: Record<string, string> = {
+  remote: 'Remote', hybrid: 'Hybrid', onsite: 'On-site'
+}
+
 interface CandidateOfferDetailsProps {
   candidateId: string
   jobId: string
+  organizationId?: string | null
 }
 
 function formatLocationValue(value: any): string {
