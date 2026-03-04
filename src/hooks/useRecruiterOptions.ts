@@ -13,7 +13,7 @@ export function useRecruiterOptions(organizationId: string | null) {
         .select('user_id, member_role, user_status')
         .eq('organization_id', organizationId)
         .eq('user_status', 'active')
-        .in('member_role', ['admin', 'recruiter', 'workspace_owner'])
+        .in('member_role', ['admin', 'recruiter'])
 
       if (error) {
         console.error('Error fetching recruiter options:', error)
