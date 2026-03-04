@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { GripVertical, Trash2, Edit, Save, X, Plus, DollarSign, Link2, MapPin, Phone, Users } from 'lucide-react'
+import { GripVertical, Trash2, Edit, Save, X, Plus, DollarSign, Link2, MapPin, Phone, Users, Briefcase, Building2, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { SalaryFieldConfig, LocationFieldConfig, PhoneFieldConfig, FieldType, SelectOptionData } from '@/hooks/useJobPostingFields'
 
@@ -12,7 +12,7 @@ import type { SalaryFieldConfig, LocationFieldConfig, PhoneFieldConfig, FieldTyp
 
 export const ALL_FIELD_TYPES: FieldType[] = [
   'text', 'number', 'email', 'url', 'textarea', 'select',
-  'checkbox', 'checkbox_group', 'date', 'file', 'salary', 'location', 'phone', 'recruiter'
+  'checkbox', 'checkbox_group', 'date', 'file', 'salary', 'location', 'phone', 'recruiter', 'employment_type', 'work_location'
 ]
 
 export const CURRENCIES = ['USD','EUR','GBP','CAD','AUD','CHF','JPY','INR','BRL','MXN','SGD','HKD','NZD','ZAR','AED','SAR']
@@ -24,9 +24,24 @@ export function fieldTypeLabel(t: string) {
     case 'location': return 'Location'
     case 'phone': return 'Phone'
     case 'recruiter': return 'Recruiter'
+    case 'employment_type': return 'Employment Type'
+    case 'work_location': return 'Work Location'
     default: return t
   }
 }
+
+export const EMPLOYMENT_TYPE_OPTIONS = [
+  { value: 'full_time', label: 'Full-time' },
+  { value: 'part_time', label: 'Part-time' },
+  { value: 'temporary', label: 'Temporary' },
+  { value: 'internship', label: 'Internship' },
+]
+
+export const WORK_LOCATION_OPTIONS = [
+  { value: 'remote', label: 'Remote' },
+  { value: 'hybrid', label: 'Hybrid' },
+  { value: 'onsite', label: 'On-site' },
+]
 
 // ---- Generic field shape ----
 
@@ -154,7 +169,7 @@ export function FormFieldEditor({
   const isDisabled = disabled || readOnly || isLocked
 
   // Smart field type badge (used in both view & edit rows)
-  const isSmartField = field.field_type === 'salary' || field.field_type === 'location' || field.field_type === 'phone' || field.field_type === 'recruiter'
+  const isSmartField = field.field_type === 'salary' || field.field_type === 'location' || field.field_type === 'phone' || field.field_type === 'recruiter' || field.field_type === 'employment_type' || field.field_type === 'work_location'
   const showSyncMessaging = context !== 'offer'
 
   return (
@@ -284,6 +299,15 @@ export function FormFieldEditor({
                 </SyncConfigPanel>
               )}
 
+              {(localType === 'employment_type' || localType === 'work_location') && (
+                <div className="flex items-start gap-2 p-3 bg-muted/50 border border-border/40 rounded-lg">
+                  <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <p className="text-xs text-muted-foreground">
+                    Options are standardized ({localType === 'employment_type' ? 'Full-time, Part-time, Temporary, Internship' : 'Remote, Hybrid, On-site'}) and cannot be customized.
+                  </p>
+                </div>
+              )}
+
               <div className="flex items-center gap-2">
                 <Button variant="default" size="sm" onClick={handleSave} className="h-8"><Save className="h-3 w-3 mr-1" /> Save</Button>
                 <Button variant="outline" size="sm" onClick={handleCancel} className="h-8"><X className="h-3 w-3 mr-1" /> Cancel</Button>
@@ -325,6 +349,18 @@ export function FormFieldEditor({
                   <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                     <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-700 border-purple-300 gap-1"><Users className="h-3 w-3" /> Recruiter</Badge>
                     <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-300 gap-1">Team Member Selector</Badge>
+                  </div>
+                )}
+                {field.field_type === 'employment_type' && (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                    <Badge variant="outline" className="text-xs bg-indigo-500/10 text-indigo-700 border-indigo-300 gap-1"><Briefcase className="h-3 w-3" /> Employment Type</Badge>
+                    <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600">Full-time, Part-time, Temporary, Internship</Badge>
+                  </div>
+                )}
+                {field.field_type === 'work_location' && (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                    <Badge variant="outline" className="text-xs bg-cyan-500/10 text-cyan-700 border-cyan-300 gap-1"><Building2 className="h-3 w-3" /> Work Location</Badge>
+                    <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600">Remote, Hybrid, On-site</Badge>
                   </div>
                 )}
               </div>

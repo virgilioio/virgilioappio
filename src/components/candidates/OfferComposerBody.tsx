@@ -244,6 +244,29 @@ export function OfferComposerBody({
             placeholder="Search for a recruiter..."
           />
         )
+      case 'employment_type':
+        return (
+          <Select value={value || ''} onValueChange={(v) => handleFieldChange(field.field_name, v)}>
+            <SelectTrigger><SelectValue placeholder="Select employment type" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="full_time">Full-time</SelectItem>
+              <SelectItem value="part_time">Part-time</SelectItem>
+              <SelectItem value="temporary">Temporary</SelectItem>
+              <SelectItem value="internship">Internship</SelectItem>
+            </SelectContent>
+          </Select>
+        )
+      case 'work_location':
+        return (
+          <Select value={value || ''} onValueChange={(v) => handleFieldChange(field.field_name, v)}>
+            <SelectTrigger><SelectValue placeholder="Select work location" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="remote">Remote</SelectItem>
+              <SelectItem value="hybrid">Hybrid</SelectItem>
+              <SelectItem value="onsite">On-site</SelectItem>
+            </SelectContent>
+          </Select>
+        )
       default:
         return (
           <Input

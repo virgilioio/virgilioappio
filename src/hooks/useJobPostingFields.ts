@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/hooks/use-toast'
 import { ApplicationFieldWithRelations } from './useApplicationFields'
 
-export type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'checkbox_group' | 'date' | 'file' | 'url' | 'salary' | 'location' | 'phone' | 'recruiter'
+export type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'checkbox_group' | 'date' | 'file' | 'url' | 'salary' | 'location' | 'phone' | 'recruiter' | 'employment_type' | 'work_location'
 
 export interface SalaryFieldConfig {
   currency: string

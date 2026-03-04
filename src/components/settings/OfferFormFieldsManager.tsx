@@ -19,7 +19,7 @@ const toSnakeCase = (str: string) =>
 
 type OfferFieldType = OfferFormField['field_type']
 
-const ALL_FIELD_TYPES: OfferFieldType[] = ['text', 'number', 'email', 'url', 'textarea', 'select', 'checkbox', 'date', 'file', 'salary', 'location', 'phone', 'recruiter']
+const ALL_FIELD_TYPES: OfferFieldType[] = ['text', 'number', 'email', 'url', 'textarea', 'select', 'checkbox', 'date', 'file', 'salary', 'location', 'phone', 'recruiter', 'employment_type', 'work_location']
 
 interface OfferFormFieldsManagerProps {
   formId: string
@@ -77,6 +77,8 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
     if (type === 'salary' && !label) setLabel('Salary')
     if (type === 'location' && !label) setLabel('Location')
     if (type === 'phone' && !label) setLabel('Phone Number')
+    if (type === 'employment_type' && !label) setLabel('Employment Type')
+    if (type === 'work_location' && !label) setLabel('Work Location')
   }, [type])
 
   const sortedFields = useMemo(() => {
@@ -237,10 +239,10 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
               <Select value={type} onValueChange={(v: OfferFieldType) => setType(v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {ALL_FIELD_TYPES.map((t) => (
-                    <SelectItem key={t} value={t} className="capitalize">
-                      {t === 'salary' ? 'Salary' : t === 'location' ? 'Location' : t === 'phone' ? 'Phone' : t}
-                    </SelectItem>
+                    {ALL_FIELD_TYPES.map((t) => (
+                      <SelectItem key={t} value={t} className="capitalize">
+                        {t === 'salary' ? 'Salary' : t === 'location' ? 'Location' : t === 'phone' ? 'Phone' : t === 'employment_type' ? 'Employment Type' : t === 'work_location' ? 'Work Location' : t}
+                      </SelectItem>
                   ))}
                 </SelectContent>
               </Select>

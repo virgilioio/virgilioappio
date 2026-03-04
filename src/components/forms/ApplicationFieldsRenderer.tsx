@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from '@/components/ui/form'
 import { ApplicationFieldWithRelations } from '@/hooks/useApplicationFields'
 import { PostingField, SalaryFieldConfig, LocationFieldConfig } from '@/hooks/useJobPostingFields'
+import { EMPLOYMENT_TYPE_OPTIONS, WORK_LOCATION_OPTIONS } from '@/components/shared/FormFieldEditor'
 import { Control } from 'react-hook-form'
 import { CurrencySelect } from '@/components/ui/currency-select'
 import { MapPin } from 'lucide-react'
@@ -369,6 +370,64 @@ export function ApplicationFieldsRenderer({
                 </FormItem>
               )
             }}
+          />
+        )
+
+      case 'employment_type':
+        return (
+          <FormField
+            key={field.field_name}
+            control={control}
+            name={field.field_name}
+            render={({ field: formField }) => (
+              <FormItem>
+                <FormLabel>
+                  {field.field_label}
+                  {field.is_required && <span className="text-destructive ml-1">*</span>}
+                </FormLabel>
+                <Select onValueChange={formField.onChange} value={formField.value}>
+                  <FormControl>
+                    <SelectTrigger><SelectValue placeholder="Select employment type" /></SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {EMPLOYMENT_TYPE_OPTIONS.map(o => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {field.help_text && <FormDescription>{field.help_text}</FormDescription>}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )
+
+      case 'work_location':
+        return (
+          <FormField
+            key={field.field_name}
+            control={control}
+            name={field.field_name}
+            render={({ field: formField }) => (
+              <FormItem>
+                <FormLabel>
+                  {field.field_label}
+                  {field.is_required && <span className="text-destructive ml-1">*</span>}
+                </FormLabel>
+                <Select onValueChange={formField.onChange} value={formField.value}>
+                  <FormControl>
+                    <SelectTrigger><SelectValue placeholder="Select work location" /></SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {WORK_LOCATION_OPTIONS.map(o => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {field.help_text && <FormDescription>{field.help_text}</FormDescription>}
+                <FormMessage />
+              </FormItem>
+            )}
           />
         )
 
