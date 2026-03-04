@@ -481,7 +481,8 @@ export default function PublicJobPosting() {
         uploadedFiles: resumeBase64 ? [{ name: resumeFile!.name, data: resumeBase64, type: resumeFile!.type, size: resumeFile!.size }] : [],
         posting_id: posting.id,
         salary_sync: salarySync,
-        location_sync: locationSync
+        location_sync: locationSync,
+        phone_sync: phoneSync
       }
 
       const { data, error } = await supabase.functions.invoke('public-submit-application', {
