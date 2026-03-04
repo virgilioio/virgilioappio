@@ -297,7 +297,7 @@ export function FormFieldEditor({
                 {field.field_type === 'salary' && (
                   <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                     <Badge variant="outline" className="text-xs bg-green-500/10 text-green-700 border-green-300 gap-1"><DollarSign className="h-3 w-3" /> Salary</Badge>
-                    <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-300 gap-1"><Link2 className="h-3 w-3" /> Syncs to Profile</Badge>
+                    {showSyncMessaging && <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-300 gap-1"><Link2 className="h-3 w-3" /> Syncs to Profile</Badge>}
                     {(field.field_config as SalaryFieldConfig) && (
                       <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600">{(field.field_config as SalaryFieldConfig).currency} / {(field.field_config as SalaryFieldConfig).period}</Badge>
                     )}
