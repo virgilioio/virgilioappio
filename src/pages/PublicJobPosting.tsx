@@ -441,6 +441,7 @@ export default function PublicJobPosting() {
       const mappedCustomFields: Record<string, any> = {}
       let salarySync: { amount: number; currency: string; period: string } | null = null
       let locationSync: { city?: string; state?: string; country?: string } | null = null
+      let phoneSync: string | null = null
       Object.entries(customFieldResponses).forEach(([fieldId, value]) => {
         const field = customFields.find(f => f.id === fieldId)
         if (field?.field_name) {
@@ -465,6 +466,10 @@ export default function PublicJobPosting() {
               country: parsed.country || undefined
             }
           } catch { /* ignore parse errors */ }
+        }
+        // Detect phone field for candidate profile sync
+        if (field?.field_type === 'phone' && value) {
+          phoneSync = value as string
         }
       })
 
