@@ -1,38 +1,44 @@
 
 
-# Replace Native Date Inputs with DatePickerVirgilio Across All Forms
+# Separate Location Sub-Fields on One Line
 
-## Problem
-Every form that renders a `date` field type uses a plain browser-native `<Input type="date">`. This looks inconsistent with the Virgilio design system, which provides a custom `DatePickerVirgilio` component with hover animations, today indicators, and styled calendar UI.
+## Current State
+- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
+- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
+- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
 
-## Affected Locations (4 files)
-All four places use `<Input type="date">` and need to switch to `<DatePickerVirgilio>`:
+## What Needs to Change
 
-1. **`src/components/candidates/OfferComposerBody.tsx`** (line 112-120) — offer creation sheet
-2. **`src/components/candidates/CreateOfferLetterDialog.tsx`** (line 115-121) — legacy offer dialog
-3. **`src/pages/PublicJobPosting.tsx`** (line 848-852) — public job application form
-4. **`src/components/forms/ApplicationFieldsRenderer.tsx`** (line 231-256) — reusable application fields renderer
+### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
 
-## Changes per file
+Add a `case 'location':` block that:
+- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
+- Parses the value as JSON `{ city, state, country }`
+- Renders separate inputs for each enabled sub-field in a single-row grid
+- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
+- Shows MapPin icon in the label
 
-Each `case 'date'` branch will be updated to render `DatePickerVirgilio` instead of `<Input type="date">`. The value will be stored as a `Date` object (or converted from string on read). The pattern:
+### 2. Make grid columns dynamic everywhere
 
-```tsx
-case 'date':
-  return (
-    <DatePickerVirgilio
-      value={value ? new Date(value) : undefined}
-      onChange={(date) => handleFieldChange(field.field_name, date.toISOString().split('T')[0])}
-      placeholder="Pick a date"
-    />
-  )
+When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
+
+**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
+
+**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
+
+**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
+
+Column class map:
+```ts
+const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
 ```
 
-For `ApplicationFieldsRenderer` (which uses `react-hook-form`), the integration will convert between the form's string value and the `Date` object the picker expects.
+### 3. Also add salary case to `OfferComposerBody.tsx`
 
-## Files Changed
-- **Modified**: `src/components/candidates/OfferComposerBody.tsx`
-- **Modified**: `src/components/candidates/CreateOfferLetterDialog.tsx`
-- **Modified**: `src/pages/PublicJobPosting.tsx`
-- **Modified**: `src/components/forms/ApplicationFieldsRenderer.tsx`
+While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
+
+## Summary of File Changes
+- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
+- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
+- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
 

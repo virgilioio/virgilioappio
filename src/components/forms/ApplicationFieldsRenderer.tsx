@@ -9,6 +9,7 @@ import { PostingField, SalaryFieldConfig, LocationFieldConfig } from '@/hooks/us
 import { Control } from 'react-hook-form'
 import { CURRENCY_SYMBOLS } from '@/constants/currencies'
 import { MapPin } from 'lucide-react'
+import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 
 function getAutoPlaceholder(field: { field_label: string; field_type: string; placeholder_text?: string | null }): string {
   if (field.placeholder_text) return field.placeholder_text
@@ -241,9 +242,10 @@ export function ApplicationFieldsRenderer({
                   {field.is_required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
                 <FormControl>
-                  <Input
-                    type="date"
-                    {...formField}
+                  <DatePickerVirgilio
+                    value={formField.value ? new Date(formField.value) : undefined}
+                    onChange={(date) => formField.onChange(date.toISOString().split('T')[0])}
+                    placeholder="Pick a date"
                   />
                 </FormControl>
                 {field.help_text && (
