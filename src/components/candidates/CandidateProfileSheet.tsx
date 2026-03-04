@@ -253,6 +253,13 @@ const stageHasAutomation = useMemo(() => {
     load()
   }, [open, candidateId])
 
+  // Auto-select offer tab when status changes to offer/hired
+  useEffect(() => {
+    if (associationStatus === 'offer' || associationStatus === 'hired') {
+      setActiveTab('offer')
+    }
+  }, [associationStatus])
+
   useEffect(() => {
     if (!open || !jobId) return
     ;(async () => {
