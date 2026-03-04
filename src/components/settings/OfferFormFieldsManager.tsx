@@ -9,6 +9,7 @@ import { Plus, List, Link2, Trash2 } from 'lucide-react'
 import { FormField } from '@/components/ui/form-field'
 import { useOfferFormFields, type OfferFormField } from '@/hooks/useOfferFormFields'
 import type { SalaryFieldConfig, LocationFieldConfig, PhoneFieldConfig } from '@/hooks/useJobPostingFields'
+import { SMART_FIELD_TYPES } from '@/components/shared/FormFieldEditor'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -241,7 +242,14 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
                 <SelectContent>
                     {ALL_FIELD_TYPES.map((t) => (
                       <SelectItem key={t} value={t} className="capitalize">
-                        {t === 'salary' ? 'Salary' : t === 'location' ? 'Location' : t === 'phone' ? 'Phone' : t === 'employment_type' ? 'Employment Type' : t === 'work_location' ? 'Work Location' : t}
+                        <span className="flex items-center gap-2">
+                          {t === 'salary' ? 'Salary' : t === 'location' ? 'Location' : t === 'phone' ? 'Phone' : t === 'employment_type' ? 'Employment Type' : t === 'work_location' ? 'Work Location' : t}
+                          {SMART_FIELD_TYPES.includes(t as any) && (
+                            <span className="text-[10px] font-medium text-purple-600 bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 px-1.5 py-0.5 rounded-full leading-none">
+                              Smart
+                            </span>
+                          )}
+                        </span>
                       </SelectItem>
                   ))}
                 </SelectContent>

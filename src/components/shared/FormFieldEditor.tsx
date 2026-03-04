@@ -15,6 +15,8 @@ export const ALL_FIELD_TYPES: FieldType[] = [
   'checkbox', 'checkbox_group', 'date', 'file', 'salary', 'location', 'phone', 'recruiter', 'employment_type', 'work_location'
 ]
 
+export const SMART_FIELD_TYPES: FieldType[] = ['salary', 'location', 'phone', 'recruiter', 'employment_type', 'work_location']
+
 export const CURRENCIES = ['USD','EUR','GBP','CAD','AUD','CHF','JPY','INR','BRL','MXN','SGD','HKD','NZD','ZAR','AED','SAR']
 
 export function fieldTypeLabel(t: string) {
@@ -199,7 +201,16 @@ export function FormFieldEditor({
                     <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
                     <SelectContent>
                       {availableTypes.map(t => (
-                        <SelectItem key={t} value={t} className="capitalize">{fieldTypeLabel(t)}</SelectItem>
+                        <SelectItem key={t} value={t} className="capitalize">
+                          <span className="flex items-center gap-2">
+                            {fieldTypeLabel(t)}
+                            {SMART_FIELD_TYPES.includes(t) && (
+                              <span className="text-[10px] font-medium text-purple-600 bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 px-1.5 py-0.5 rounded-full leading-none">
+                                Smart
+                              </span>
+                            )}
+                          </span>
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
