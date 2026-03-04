@@ -1,27 +1,16 @@
 
 
-# Fix: AI Notes Analysis Scrollable Content
+# Make Validation Point Cards Pastel Blue
 
-## Problem
-The `ScrollArea` wrapping the AI analysis content has `max-h-80` on the Radix Root element, but the inner Viewport doesn't inherit the height constraint. This means long analysis text overflows without a scrollbar.
+The project has a well-established `pastel-blue` design token (`bg-pastel-blue`, `text-pastel-blue-foreground`) used throughout for AI-style elements (e.g., `BackgroundEnrichmentBanner`).
 
-## Fix — `ScorecardSheet.tsx` (line 1009)
+## Change — `ScorecardValidationPoints.tsx`
 
-Replace the `ScrollArea` with a simple `div` that has `overflow-y-auto` and `max-h-80`. This is more reliable than fighting with Radix ScrollArea's height propagation:
+Update the individual validation point card backgrounds:
 
-```tsx
-// Before
-<ScrollArea className="max-h-80">
-  <SafeHtml ... />
-</ScrollArea>
+- **Unresolved cards (current stage)**: Change from `border-primary/30 bg-primary/5` → `border-pastel-blue/40 bg-pastel-blue/20`
+- **Unresolved cards (other stages)**: Change from `border-border` → `border-pastel-blue/30 bg-pastel-blue/10`
+- **Resolved cards**: Keep muted (`bg-muted/50 border-border`) — these are "done" and should look quieter
 
-// After
-<div className="max-h-80 overflow-y-auto pt-3">
-  <SafeHtml ... />
-</div>
-```
-
-This gives a native scrollbar when the content exceeds 320px (20rem), which is sufficient for reading while keeping the banner compact. The `pt-3` adds a small top padding after the border separator.
-
-Single line change, no other files affected.
+This matches the existing AI styling pattern (see `BackgroundEnrichmentBanner` which uses `bg-pastel-blue/20 border-pastel-blue/40`).
 
