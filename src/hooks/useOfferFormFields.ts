@@ -98,7 +98,7 @@ export function useOfferFormFields(formId?: string) {
     }
   }
 
-  const updateField = async (id: string, fieldData: Partial<OfferFormField> & { select_options?: SelectOptionData[] }) => {
+  const updateField = async (id: string, fieldData: Partial<OfferFormField> & { select_options?: SelectOptionData[] }, options?: { silent?: boolean }) => {
     try {
       const { select_options, ...dbUpdates } = fieldData as any
       const { error } = await supabase
@@ -122,8 +122,10 @@ export function useOfferFormFields(formId?: string) {
         }
       }
 
-      toast({ title: 'Success', description: 'Form field updated successfully' })
-      await fetchFields()
+      if (!options?.silent) {
+        toast({ title: 'Success', description: 'Form field updated successfully' })
+        await fetchFields()
+      }
     } catch (error) {
       console.error('Error updating form field:', error)
       toast({ title: 'Error', description: 'Failed to update form field', variant: 'destructive' })

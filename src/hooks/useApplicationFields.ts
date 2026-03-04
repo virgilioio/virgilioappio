@@ -156,7 +156,8 @@ export function useApplicationFields(context: ApplicationFieldsContext = 'organi
     id: string,
     updates: Partial<ApplicationField>,
     selectOptions?: { value: string; label: string }[],
-    validationRules?: { type: string; value: string; message: string }[]
+    validationRules?: { type: string; value: string; message: string }[],
+    options?: { silent?: boolean }
   ) => {
     const { data, error } = await supabase
       .from('application_fields')
@@ -174,8 +175,10 @@ export function useApplicationFields(context: ApplicationFieldsContext = 'organi
       await saveValidationRules(id, validationRules)
     }
 
-    await fetchFields()
-    toast({ title: 'Success', description: 'Field updated successfully' })
+    if (!options?.silent) {
+      await fetchFields()
+      toast({ title: 'Success', description: 'Field updated successfully' })
+    }
     return data
   }
 
