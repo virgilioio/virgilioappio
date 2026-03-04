@@ -85,6 +85,7 @@ export function SmartFieldsGuide() {
               </div>
             </div>
           </div>
+        </div>
 
         {/* Purple Config Container */}
         <div className="space-y-3">
