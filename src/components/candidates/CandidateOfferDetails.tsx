@@ -94,8 +94,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId }: Ca
     )
   }
 
-  // Build a map of field_name -> field metadata from form fields
-  const fieldMap = new Map(fields.map(f => [f.field_name, f]))
+  const fieldValues = offerLetter.field_values || {}
   const fieldValues = offerLetter.field_values || {}
 
   return (
