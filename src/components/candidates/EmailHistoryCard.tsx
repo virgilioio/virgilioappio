@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SafeHtml } from '@/components/ui/safe-html';
 import { cn } from '@/lib/utils';
+import { fixMojibake } from '@/utils/fixMojibake';
 
 function decodeHtmlEntities(text: string): string {
   const textarea = document.createElement('textarea');
@@ -141,7 +142,7 @@ export function EmailHistoryCard({ email, onReply, onForward }: EmailHistoryCard
 
         {/* Subject */}
         <div className="font-medium text-text-primary mb-2">
-          {email.subject}
+          {fixMojibake(email.subject)}
         </div>
 
         {/* Status indicators */}
@@ -186,12 +187,12 @@ export function EmailHistoryCard({ email, onReply, onForward }: EmailHistoryCard
                   style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
                 />
               ) : (
-                <div className="whitespace-pre-wrap break-words overflow-hidden">{email.body_text || email.snippet || 'No content'}</div>
+                <div className="whitespace-pre-wrap break-words overflow-hidden">{fixMojibake(email.body_text || email.snippet || 'No content')}</div>
               )}
             </div>
           ) : (
             <div className="text-sm text-text-secondary line-clamp-2">
-              {decodeHtmlEntities(email.body_text?.slice(0, 150) || email.body_html?.replace(/<[^>]*>/g, '').slice(0, 150) || email.snippet || 'No content')}
+              {fixMojibake(decodeHtmlEntities(email.body_text?.slice(0, 150) || email.body_html?.replace(/<[^>]*>/g, '').slice(0, 150) || email.snippet || 'No content'))}
             </div>
           )}
           
