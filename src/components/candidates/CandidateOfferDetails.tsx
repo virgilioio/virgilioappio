@@ -116,37 +116,47 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId }: Ca
         </div>
 
         {/* Dynamic fields from the form */}
-        {Object.entries(fieldValues).length > 0 ? (
+        {fields.length > 0 && Object.keys(fieldValues).length > 0 ? (
           <div className="grid grid-cols-1 gap-4">
-            {Object.entries(fieldValues).map(([fieldName, value]) => {
-              const fieldMeta = fieldMap.get(fieldName)
-              const label = fieldMeta?.field_label || fieldName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-              const fieldType = fieldMeta?.field_type
+            {fields
+              .sort((a, b) => a.display_order - b.display_order)
+              .filter(f => fieldValues[f.field_name] !== undefined)
+              .map(field => {
+                const value = fieldValues[field.field_name]
+                const label = field.field_label
+                const fieldType = field.field_type
 
-              let displayValue: string
-              if (fieldType === 'location') {
-                displayValue = formatLocationValue(value)
-              } else if (fieldType === 'salary') {
-                displayValue = formatSalaryValue(value, fieldMeta?.field_config)
-              } else if (fieldType === 'checkbox') {
-                displayValue = value ? 'Yes' : 'No'
-              } else if (fieldType === 'date' && value) {
-                try {
-                  displayValue = new Date(String(value)).toLocaleDateString()
-                } catch {
-                  displayValue = String(value)
+                let displayValue: string
+                if (fieldType === 'location') {
+                  displayValue = formatLocationValue(value)
+                } else if (fieldType === 'salary') {
+                  displayValue = formatSalaryValue(value, field.field_config)
+                } else if (fieldType === 'checkbox') {
+                  displayValue = value ? 'Yes' : 'No'
+                } else if (fieldType === 'date' && value) {
+                  try {
+                    displayValue = new Date(String(value) + 'T00:00:00').toLocaleDateString()
+                  } catch {
+                    displayValue = String(value)
+                  }
+                } else if (fieldType === 'recruiter') {
+                  const match = recruiterOptions.find(r => r.value === value)
+                  displayValue = match?.label || String(value)
+                } else if (fieldType === 'employment_type') {
+                  displayValue = employmentTypeLabels[String(value)] || String(value)
+                } else if (fieldType === 'work_location') {
+                  displayValue = workLocationLabels[String(value)] || String(value)
+                } else {
+                  displayValue = value != null && value !== '' ? String(value) : '—'
                 }
-              } else {
-                displayValue = value != null && value !== '' ? String(value) : '—'
-              }
 
-              return (
-                <div key={fieldName}>
-                  <div className="text-xs font-medium text-text-tertiary uppercase tracking-wider mb-1">{label}</div>
-                  <div className="text-sm text-text-primary">{displayValue}</div>
-                </div>
-              )
-            })}
+                return (
+                  <div key={field.field_name}>
+                    <div className="text-xs font-medium text-text-tertiary uppercase tracking-wider mb-1">{label}</div>
+                    <div className="text-sm text-text-primary">{displayValue}</div>
+                  </div>
+                )
+              })}
           </div>
         ) : (
           <p className="text-sm text-text-secondary">No field values recorded.</p>
