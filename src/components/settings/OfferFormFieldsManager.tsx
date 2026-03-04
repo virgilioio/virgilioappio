@@ -41,7 +41,7 @@ function SortableFieldRow({ id, children }: { id: string; children: (handlers: {
 }
 
 export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) {
-  const { fields, isLoading, createField, updateField, deleteField } = useOfferFormFields(formId)
+  const { fields, isLoading, createField, updateField, deleteField, refetchFields } = useOfferFormFields(formId)
 
   // Add field form state
   const [label, setLabel] = useState('')
@@ -152,12 +152,14 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
     const newOrder = arrayMove(orderedIds, oldIndex, newIndex)
     setOrderedIds(newOrder)
 
-    // Persist new order
-    for (let i = 0; i < newOrder.length; i++) {
-      const field = fields.find(f => f.id === newOrder[i])
-      if (field && field.display_order !== i) {
-        await updateField(newOrder[i], { display_order: i })
-      }
+    // Persist new order silently, then refetch once
+    const updates = newOrder
+      .map((id, i) => ({ id, index: i, field: fields.find(f => f.id === id) }))
+      .filter(({ field, index }) => field && field.display_order !== index)
+
+    await Promise.all(updates.map(({ id, index }) => updateField(id, { display_order: index }, { silent: true })))
+    if (updates.length > 0) {
+      refetchFields()
     }
   }
 

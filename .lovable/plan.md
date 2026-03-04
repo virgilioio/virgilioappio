@@ -1,37 +1,44 @@
 
 
-# Suppress Toast Spam During Drag-and-Drop Reorder
+# Separate Location Sub-Fields on One Line
 
-## Problem
+## Current State
+- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
+- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
+- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
 
-When reordering fields via drag-and-drop, the `handleDragEnd` function calls `updateField` in a loop for every field whose `display_order` changed. Each call triggers a "Form field updated successfully" toast — so dragging one field in a list of 8 can fire 7 toasts simultaneously.
+## What Needs to Change
 
-This affects both:
-- **`OfferFormFieldsManager`** — calls `useOfferFormFields().updateField` in a loop
-- **`useApplicationFields().updateField`** — same pattern (used by job posting fields)
+### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
 
-## Solution
+Add a `case 'location':` block that:
+- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
+- Parses the value as JSON `{ city, state, country }`
+- Renders separate inputs for each enabled sub-field in a single-row grid
+- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
+- Shows MapPin icon in the label
 
-Add a `silent` option to the `updateField` functions in both hooks so callers can suppress the toast. The drag-and-drop handlers will pass `silent: true`, then show a single toast after all updates complete.
+### 2. Make grid columns dynamic everywhere
 
-### 1. `src/hooks/useOfferFormFields.ts` — Add silent option
+When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
 
-Add an optional `options?: { silent?: boolean }` parameter to `updateField`. When `silent` is true, skip the success toast and the `fetchFields()` call (the caller will handle it).
+**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
 
-### 2. `src/hooks/useApplicationFields.ts` — Add silent option
+**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
 
-Same change — add `silent` option to `updateField` to skip toast and refetch.
+**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
 
-### 3. `src/components/settings/OfferFormFieldsManager.tsx` — Batch reorder
+Column class map:
+```ts
+const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
+```
 
-Update `handleDragEnd` to pass `{ silent: true }` for each reorder update, then call `refetchFields()` once and show a single "Fields reordered" toast (or no toast at all — reordering is visually obvious).
+### 3. Also add salary case to `OfferComposerBody.tsx`
 
-### 4. `src/components/jobs/postings/PostingFieldsBuilder.tsx` — Verify
+While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
 
-This component only updates local state on drag (no DB calls in the loop), so no change needed. Just confirm.
-
-## Files changed
-- `src/hooks/useOfferFormFields.ts` — silent option on `updateField`
-- `src/hooks/useApplicationFields.ts` — silent option on `updateField`
-- `src/components/settings/OfferFormFieldsManager.tsx` — use silent + single toast
+## Summary of File Changes
+- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
+- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
+- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
 
