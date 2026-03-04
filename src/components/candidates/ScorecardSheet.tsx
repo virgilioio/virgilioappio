@@ -10,13 +10,16 @@ import { Badge } from "@/components/ui/badge";
 import { SoonBadge } from "@/components/ui/soon-badge";
 import { toast } from "@/hooks/use-toast";
 import type { ScoreRating, ScorecardRow } from "@/hooks/useScorecards";
-import { ThumbsDown, ThumbsUp, Star, Octagon, Loader2, Sparkles, Lightbulb, Trash2, FileText, DollarSign } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Star, Octagon, Loader2, Sparkles, Lightbulb, Trash2, FileText, DollarSign, ChevronDown, ChevronUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabaseClient";
 import { triggerFitAnalysis } from "@/utils/triggerFitAnalysis";
 import type { InterviewQuestion, SelectOption, SalaryConfig } from "@/hooks/useScorecardsConfiguration";
 import { markdownToHtml } from "@/utils/markdown";
 import gioIcon from "@/assets/gio-icon.png";
+import gioAvatar from "@/assets/gio-avatar.png";
+import { SafeHtml } from "@/components/ui/safe-html";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { RecommendedNextStepsDialog } from "./RecommendedNextStepsDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CandidateApplicationResponses } from "@/components/candidates/CandidateApplicationResponses";
@@ -109,6 +112,8 @@ export function ScorecardSheet({
   const [loadingResume, setLoadingResume] = useState(true);
   const [hasDraft, setHasDraft] = useState(false);
   const draftTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [showAnalysis, setShowAnalysis] = useState(false);
 
   // Track current values in refs for reliable close-time saving
   const overviewRef = useRef(overview);
@@ -213,8 +218,19 @@ export function ScorecardSheet({
     const baseRating = existing?.rating || "yes";
     const baseOverview = existing?.general_overview || "";
     
+    // Store AI analysis separately for AI drafts
+    if (existing?.is_ai_draft && existing?.general_overview) {
+      setAiAnalysis(existing.general_overview);
+      setShowAnalysis(false);
+    } else {
+      setAiAnalysis(null);
+    }
+    
     // Always set edit mode
     setEditMode(!existing || isAuthor);
+    
+    // For AI drafts, the overview starts empty so interviewer writes their own notes
+    const effectiveBaseOverview = existing?.is_ai_draft ? "" : baseOverview;
     
     // Check for local draft
     try {
@@ -229,7 +245,7 @@ export function ScorecardSheet({
             if (draft.lastUpdated > dbUpdateTime) {
               // Draft is newer - restore it
               setRating(draft.rating || baseRating);
-              setOverview(draft.overview || baseOverview);
+              setOverview(draft.overview || effectiveBaseOverview);
               setResponses(draft.responses || {});
               setHasDraft(true);
               toast({ 
@@ -241,7 +257,7 @@ export function ScorecardSheet({
           } else {
             // New scorecard - restore draft
             setRating(draft.rating || baseRating);
-            setOverview(draft.overview || baseOverview);
+            setOverview(draft.overview || effectiveBaseOverview);
             setResponses(draft.responses || {});
             setHasDraft(true);
             toast({ 
@@ -260,10 +276,10 @@ export function ScorecardSheet({
     
     // No valid draft - use base values
     setRating(baseRating);
-    setOverview(baseOverview);
+    setOverview(effectiveBaseOverview);
     setHasDraft(false);
     
-  }, [open, existing?.id, existing?.updated_at, existing?.rating, existing?.general_overview, draftKey, isAuthor]);
+  }, [open, existing?.id, existing?.updated_at, existing?.rating, existing?.general_overview, existing?.is_ai_draft, draftKey, isAuthor]);
 
   // Auto-save draft on changes (debounced) - works for both new and existing scorecards
   useEffect(() => {
@@ -953,18 +969,44 @@ export function ScorecardSheet({
                 )}
                 {/* AI Suggested Rating Banner */}
                 {isAiDraft && aiSuggestedRating && (
-                  <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Sparkles className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="text-sm font-medium">AI Suggested Rating: {aiSuggestedRating}</p>
-                        <p className="text-xs text-muted-foreground">Based on interview transcript analysis</p>
+                  <div className="rounded-lg overflow-hidden" style={{ backgroundColor: '#6F3FF5' }}>
+                    {/* Header row */}
+                    <div className="p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <img src={gioAvatar} alt="Gio" className="h-8 w-8 rounded-full" />
+                        <div>
+                          <p className="text-sm font-medium text-white">AI Suggested Rating: {aiSuggestedRating}</p>
+                          <p className="text-xs text-white/70">Based on interview transcript analysis</p>
+                        </div>
                       </div>
+                      {!isReadOnly && aiRatingToScoreRating[aiSuggestedRating] !== rating && (
+                        <Button size="sm" variant="outline" onClick={handleAcceptAiSuggestion} className="border-white/30 text-white hover:bg-white/10 hover:text-white">
+                          Apply Suggestion
+                        </Button>
+                      )}
                     </div>
-                    {!isReadOnly && aiRatingToScoreRating[aiSuggestedRating] !== rating && (
-                      <Button size="sm" variant="outline" onClick={handleAcceptAiSuggestion}>
-                        Apply Suggestion
-                      </Button>
+                    {/* Collapsible analysis section */}
+                    {aiAnalysis && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setShowAnalysis(!showAnalysis)}
+                          className="w-full px-4 py-2 flex items-center gap-2 text-xs font-medium text-white/80 hover:text-white hover:bg-white/5 transition-colors border-t border-white/10"
+                        >
+                          {showAnalysis ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                          {showAnalysis ? 'Hide analysis' : 'Show analysis'}
+                        </button>
+                        {showAnalysis && (
+                          <div className="px-4 pb-4 border-t border-white/10">
+                            <ScrollArea className="max-h-80">
+                              <SafeHtml
+                                content={markdownToHtml(aiAnalysis)}
+                                className="text-sm text-white/90 prose prose-invert prose-sm max-w-none [&_h1]:text-base [&_h2]:text-sm [&_h3]:text-sm [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-medium [&_p]:text-white/85 [&_li]:text-white/85 [&_strong]:text-white [&_blockquote]:border-white/30 [&_blockquote]:text-white/70 [&_hr]:border-white/20"
+                              />
+                            </ScrollArea>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 )}
