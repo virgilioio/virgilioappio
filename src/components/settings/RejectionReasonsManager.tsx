@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
-import { Badge } from '@/components/ui/badge'
 import { TableSkeleton } from '@/components/ui/skeleton'
 import { Plus, Edit, Trash2, UserX, UserMinus, Check, X } from 'lucide-react'
 import { useRejectionReasons, type RejectionCategory, type RejectionReason } from '@/hooks/useRejectionReasons'
@@ -70,7 +70,7 @@ export function RejectionReasonsManager({ context = 'organization' }: RejectionR
     <div className="mb-6">
       {title && (
         <>
-          <h3 className="text-lg font-semibold mb-2">{title}</h3>
+          <h4 className="text-sm font-semibold mb-2">{title}</h4>
           {!editable && (
             <p className="text-sm text-muted-foreground mb-4">
               Default reasons provided by the platform. These cannot be edited.
@@ -83,81 +83,83 @@ export function RejectionReasonsManager({ context = 'organization' }: RejectionR
           No {category === 'recruiter_rejected' ? '"We Rejected"' : '"They Declined"'} reasons yet
         </div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Reason</TableHead>
-              <TableHead>Description</TableHead>
-              {editable && <TableHead className="text-right w-24">Actions</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {reasonsList.map((reason) => (
-              <TableRow key={reason.id}>
-                <TableCell className="font-medium">
-                  {editingId === reason.id ? (
-                    <Input
-                      value={editingName}
-                      onChange={(e) => setEditingName(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
-                      autoFocus
-                      className="h-8"
-                    />
-                  ) : (
-                    reason.name
-                  )}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {reason.description || '—'}
-                </TableCell>
-                {editable && (
-                  <TableCell className="text-right">
+        <div className="rounded-md border overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Reason</TableHead>
+                <TableHead>Description</TableHead>
+                {editable && <TableHead className="text-right w-24">Actions</TableHead>}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {reasonsList.map((reason) => (
+                <TableRow key={reason.id}>
+                  <TableCell className="font-medium">
                     {editingId === reason.id ? (
-                      <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="sm" onClick={saveEdit}>
-                          <Check className="h-4 w-4 text-primary" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={cancelEdit}>
-                          <X className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </div>
+                      <Input
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
+                        autoFocus
+                        className="h-8"
+                      />
                     ) : (
-                      <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => startEdit(reason)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Reason</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete "{reason.name}"? This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => deleteReason(reason.id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
+                      reason.name
                     )}
                   </TableCell>
-                )}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                  <TableCell className="text-muted-foreground">
+                    {reason.description || '—'}
+                  </TableCell>
+                  {editable && (
+                    <TableCell className="text-right">
+                      {editingId === reason.id ? (
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="sm" onClick={saveEdit}>
+                            <Check className="h-4 w-4 text-primary" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={cancelEdit}>
+                            <X className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => startEdit(reason)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Reason</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{reason.name}"? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteReason(reason.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      )}
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   )
@@ -171,55 +173,60 @@ export function RejectionReasonsManager({ context = 'organization' }: RejectionR
   }
 
   return (
-    <div className="space-y-4">
-      {/* Category Toggle */}
-      <ToggleGroup
-        type="single"
-        value={category}
-        onValueChange={(value) => value && setCategory(value as RejectionCategory)}
-        variant="outline"
-        size="sm"
-        className="justify-start"
-      >
-        <ToggleGroupItem value="recruiter_rejected" aria-label="We Rejected">
-          <UserX className="h-4 w-4 mr-2" />
-          We Rejected Them
-        </ToggleGroupItem>
-        <ToggleGroupItem value="candidate_declined" aria-label="They Declined">
-          <UserMinus className="h-4 w-4 mr-2" />
-          They Declined
-        </ToggleGroupItem>
-      </ToggleGroup>
+    <Card>
+      <CardHeader>
+        <CardTitle>Rejection Reasons</CardTitle>
+        <CardDescription>
+          Manage reasons for rejecting candidates or tracking when candidates decline offers
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Category Toggle */}
+        <ToggleGroup
+          type="single"
+          value={category}
+          onValueChange={(value) => value && setCategory(value as RejectionCategory)}
+          variant="outline"
+          size="sm"
+          className="justify-start"
+        >
+          <ToggleGroupItem value="recruiter_rejected" aria-label="We Rejected">
+            <UserX className="h-4 w-4 mr-2" />
+            We Rejected Them
+          </ToggleGroupItem>
+          <ToggleGroupItem value="candidate_declined" aria-label="They Declined">
+            <UserMinus className="h-4 w-4 mr-2" />
+            They Declined
+          </ToggleGroupItem>
+        </ToggleGroup>
 
-      {/* Quick Add Row */}
-      <div className="flex items-center gap-2">
-        <Input
-          placeholder={`Add a ${category === 'recruiter_rejected' ? '"We Rejected"' : '"They Declined"'} reason...`}
-          value={newReasonName}
-          onChange={(e) => setNewReasonName(e.target.value)}
-          onKeyDown={handleKeyDown}
-          className="flex-1"
-        />
-        <Button onClick={handleCreate} disabled={!newReasonName.trim() || isCreating}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add
-        </Button>
-      </div>
+        {/* Quick Add Row */}
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder={`Add a ${category === 'recruiter_rejected' ? '"We Rejected"' : '"They Declined"'} reason...`}
+            value={newReasonName}
+            onChange={(e) => setNewReasonName(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="flex-1"
+          />
+          <Button onClick={handleCreate} disabled={!newReasonName.trim() || isCreating}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add
+          </Button>
+        </div>
 
-      {/* Platform reasons (read-only in org context) */}
-      {context === 'organization' && filteredPlatformReasons.length > 0 && (
-        renderReasonsTable(filteredPlatformReasons, false, 'Platform Defaults')
-      )}
+        {/* Platform reasons (read-only in org context) */}
+        {context === 'organization' && filteredPlatformReasons.length > 0 && (
+          renderReasonsTable(filteredPlatformReasons, false, 'Platform Defaults')
+        )}
 
-      {/* Tenant/editable reasons */}
-      {context === 'organization' ? (
-        <>
-          <h3 className="text-lg font-semibold mb-2">Custom Reasons</h3>
-          {renderReasonsTable(filteredTenantReasons, true)}
-        </>
-      ) : (
-        renderReasonsTable(filteredReasons, true)
-      )}
-    </div>
+        {/* Tenant/editable reasons */}
+        {context === 'organization' ? (
+          renderReasonsTable(filteredTenantReasons, true, 'Custom Reasons')
+        ) : (
+          renderReasonsTable(filteredReasons, true)
+        )}
+      </CardContent>
+    </Card>
   )
 }

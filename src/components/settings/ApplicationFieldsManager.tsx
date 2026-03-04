@@ -5,9 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { useApplicationFields, ApplicationField } from '@/hooks/useApplicationFields'
 import { ApplicationFieldForm } from './ApplicationFieldForm'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Edit, Trash2 } from 'lucide-react'
 
 interface ApplicationFieldsManagerProps {
   context?: 'platform-defaults' | 'organization'
@@ -42,7 +43,7 @@ export function ApplicationFieldsManager({ context = 'organization' }: Applicati
             {isLoading ? (
               <p className="text-sm text-muted-foreground">Loading...</p>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="rounded-md border overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -112,7 +113,7 @@ export function ApplicationFieldsManager({ context = 'organization' }: Applicati
               </Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="rounded-md border overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -134,26 +135,43 @@ export function ApplicationFieldsManager({ context = 'organization' }: Applicati
                       </TableCell>
                       <TableCell>{f.is_default ? 'Yes' : 'No'}</TableCell>
                       <TableCell>{f.display_order}</TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => handleEdit(f)}
-                        >
-                          <Pencil className="h-4 w-4 mr-1" /> Edit
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={async () => {
-                            if (confirm('Delete this field?')) {
-                              await deleteField(f.id)
-                              await refetch()
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" /> Delete
-                        </Button>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleEdit(f)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Field</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{f.field_label}"? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={async () => {
+                                    await deleteField(f.id)
+                                    await refetch()
+                                  }}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
