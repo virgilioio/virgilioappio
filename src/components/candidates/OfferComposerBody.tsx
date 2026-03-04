@@ -80,6 +80,10 @@ export function OfferComposerBody({
       toast({ title: 'Error', description: 'Organization is required.', variant: 'destructive' })
       return
     }
+    if (!jobId) {
+      toast({ title: 'Error', description: 'Job association is required to create an offer.', variant: 'destructive' })
+      return
+    }
     try {
       const title = `Offer - ${candidateName} - ${jobTitle || 'Position'}`
       await createOfferLetter({
