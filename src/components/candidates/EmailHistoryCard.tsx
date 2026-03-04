@@ -187,7 +187,7 @@ export function EmailHistoryCard({ email, onReply, onForward }: EmailHistoryCard
                   style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
                 />
               ) : (
-                <div className="whitespace-pre-wrap break-words overflow-hidden">{email.body_text || email.snippet || 'No content'}</div>
+                <div className="whitespace-pre-wrap break-words overflow-hidden">{fixMojibake(email.body_text || email.snippet || 'No content')}</div>
               )}
             </div>
           ) : (
