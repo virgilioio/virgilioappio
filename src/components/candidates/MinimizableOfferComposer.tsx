@@ -102,7 +102,7 @@ export function MinimizableOfferComposer({
     <div
       className={cn(
         "absolute bottom-4 right-4 z-[60] bg-background border rounded-lg shadow-2xl transition-all duration-300 pointer-events-auto",
-        isMinimized ? "w-[432px] h-[52px]" : "w-[720px] max-w-[min(95vw,720px)]"
+        isMinimized ? "w-[360px] h-[52px]" : "w-[580px] max-w-[min(95vw,580px)]"
       )}
       onClick={(e) => e.stopPropagation()}
     >
