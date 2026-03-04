@@ -1461,68 +1461,69 @@ const stageHasAutomation = useMemo(() => {
                      {/* Controls Card - Right Side */}
                      <Card className="bg-surface-primary border-border">
                        <CardContent className="p-4">
-                         <div className="flex items-center justify-between w-full">
-                           <div className="flex items-center gap-2">
-                              {canEditCandidates && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setEditOpen(true)}
-                                >
-                                  <Edit className="h-4 w-4 mr-2" />
-                                  Edit
-                                </Button>
-                              )}
+                          <div className="overflow-x-auto scrollbar-none w-full">
+                            <div className="flex items-center justify-between min-w-max">
+                            <div className="flex items-center gap-2">
+                               {canEditCandidates && (
+                                 <Button
+                                   variant="outline"
+                                   size="sm"
+                                   onClick={() => setEditOpen(true)}
+                                 >
+                                   <Edit className="h-4 w-4 mr-2" />
+                                   Edit
+                                 </Button>
+                               )}
+                               <Button
+                                 variant="outline"
+                                 size="sm"
+                                 disabled={!candidate}
+                                 onClick={async () => {
+                                   if (!candidate) return
+                                   try {
+                                     await generateCandidatePdf({
+                                       candidate,
+                                       job
+                                     })
+                                     toast({ 
+                                       title: 'PDF Generated', 
+                                       description: 'Candidate profile PDF has been downloaded.' 
+                                     })
+                                   } catch (error) {
+                                     console.error('Error generating PDF:', error)
+                                     toast({ 
+                                       title: 'Error', 
+                                       description: 'Failed to generate PDF. Please try again.', 
+                                       variant: 'destructive' 
+                                     })
+                                   }
+                                 }}
+                               >
+                                 <Download className="h-4 w-4 mr-2" />
+                                 Download
+                               </Button>
+                             </div>
+                            
+                            <Separator orientation="vertical" className="h-6" />
+                            
+                            <div className="flex items-center gap-2">
                               <Button
                                 variant="outline"
                                 size="sm"
-                                disabled={!candidate}
-                                onClick={async () => {
-                                  if (!candidate) return
-                                  try {
-                                    await generateCandidatePdf({
-                                      candidate,
-                                      job
-                                    })
-                                    toast({ 
-                                      title: 'PDF Generated', 
-                                      description: 'Candidate profile PDF has been downloaded.' 
-                                    })
-                                  } catch (error) {
-                                    console.error('Error generating PDF:', error)
-                                    toast({ 
-                                      title: 'Error', 
-                                      description: 'Failed to generate PDF. Please try again.', 
-                                      variant: 'destructive' 
-                                    })
-                                  }
-                                }}
+                                onClick={() => setRightActiveTab('notes')}
                               >
-                                <Download className="h-4 w-4 mr-2" />
-                                Download
+                                <StickyNote className="h-4 w-4 mr-2" />
+                                Add Note
                               </Button>
-                            </div>
-                           
-                           <Separator orientation="vertical" className="h-6" />
-                           
-                           <div className="flex items-center gap-2">
-                             <Button
-                               variant="outline"
-                               size="sm"
-                               onClick={() => setRightActiveTab('notes')}
-                             >
-                               <StickyNote className="h-4 w-4 mr-2" />
-                               Add Note
-                             </Button>
-                             <Button
-                               variant="outline"
-                               size="sm"
-                               onClick={() => setEmailComposerOpen(true)}
-                             >
-                               <Mail className="h-4 w-4 mr-2" />
-                               Send Email
-                             </Button>
-<Button
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setEmailComposerOpen(true)}
+                              >
+                                <Mail className="h-4 w-4 mr-2" />
+                                Send Email
+                              </Button>
+                              <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => setSimpleScheduleOpen(true)}
@@ -1530,9 +1531,10 @@ const stageHasAutomation = useMemo(() => {
                                 <Calendar className="h-4 w-4 mr-2" />
                                 Schedule Interview
                               </Button>
-                           </div>
-                         </div>
-                       </CardContent>
+                            </div>
+                          </div>
+                          </div>
+                        </CardContent>
                      </Card>
 
                      {/* Tab Navigation */}
