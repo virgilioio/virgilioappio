@@ -751,7 +751,7 @@ export default function PublicJobPosting() {
                         <div>
                           <h3 className="text-lg font-semibold mb-4">Additional Questions</h3>
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            {customFields.map((field) => (
+                            {customFields.filter(field => field.field_type !== 'recruiter').map((field) => (
                               <div
                                 key={field.id}
                                 style={{ gridColumn: `span ${field.column_span || 4} / span ${field.column_span || 4}` }}
