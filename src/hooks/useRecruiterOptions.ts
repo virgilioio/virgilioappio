@@ -36,7 +36,7 @@ export function useRecruiterOptions(organizationId: string | null) {
         return {
           value: member.user_id,
           label,
-          badge: member.member_role === 'workspace_owner' ? 'Owner' : member.member_role === 'admin' ? 'Admin' : 'Recruiter',
+          badge: member.member_role === 'admin' ? 'Admin' : 'Recruiter',
         }
       })
     },
