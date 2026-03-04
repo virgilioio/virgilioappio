@@ -724,9 +724,12 @@ const stageHasAutomation = useMemo(() => {
   };
   
   const handleReactivate = () => {
-    handleSetStatus('active')
-    setRejectionDetails(null)
-    setOfferDetails(null)
+    checkOfferAndProceed(async () => {
+      handleSetStatus('active')
+      setRejectionDetails(null)
+      setOfferDetails(null)
+      if (activeTab === 'offer') setActiveTab('job')
+    })
   }
   const handleHire = () => handleSetStatus('hired')
 
