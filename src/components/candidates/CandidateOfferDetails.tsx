@@ -2,7 +2,7 @@ import { useOfferLetters } from '@/hooks/useOfferLetters'
 import { useOfferFormFields } from '@/hooks/useOfferFormFields'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { FileText } from 'lucide-react'
+import gioFaceEmpty from '@/assets/gio-face-empty.png'
 
 interface CandidateOfferDetailsProps {
   candidateId: string
@@ -64,10 +64,19 @@ export function CandidateOfferDetails({ candidateId, jobId }: CandidateOfferDeta
     return (
       <Card className="bg-surface-primary border-border">
         <CardContent className="py-12">
-          <div className="flex flex-col items-center justify-center text-center space-y-3">
-            <FileText className="h-10 w-10 text-text-tertiary" />
-            <p className="text-sm text-text-secondary">No offer details have been saved yet.</p>
-            <p className="text-xs text-text-tertiary">Create an offer using the Offer Form to see details here.</p>
+          <div className="text-center">
+            <img 
+              src={gioFaceEmpty}
+              alt="No offer details"
+              className="h-16 w-16 mx-auto mb-4 rounded-full"
+            />
+            <p className="text-[1.38rem] font-semibold mb-2 tracking-[-0.06em]">
+              <span>No offer details yet</span>
+              <span className="text-purple-period">.</span>
+            </p>
+            <p className="text-sm text-text-secondary">
+              Create an offer using the Offer Form to see details here.
+            </p>
           </div>
         </CardContent>
       </Card>

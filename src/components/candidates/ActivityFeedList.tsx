@@ -2,6 +2,7 @@ import { Activity as ActivityIcon } from 'lucide-react';
 import { useActivityFeed } from '@/hooks/useActivityFeed';
 import { ActivityFeedItem } from './ActivityFeedItem';
 import { Skeleton } from '@/components/ui/skeleton';
+import gioFaceEmpty from '@/assets/gio-face-empty.png';
 
 interface ActivityFeedListProps {
   candidateId: string;
@@ -42,14 +43,17 @@ export function ActivityFeedList({ candidateId, jobId }: ActivityFeedListProps) 
   
   if (!activities || activities.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="rounded-full bg-surface-secondary p-3 mb-4">
-          <ActivityIcon className="h-6 w-6 text-text-secondary" />
-        </div>
-        <h3 className="text-sm font-medium text-text-primary mb-1">
-          No activity yet
-        </h3>
-        <p className="text-xs text-text-secondary max-w-sm">
+      <div className="text-center py-12">
+        <img 
+          src={gioFaceEmpty}
+          alt="No activity"
+          className="h-16 w-16 mx-auto mb-4 rounded-full"
+        />
+        <p className="text-[1.38rem] font-semibold mb-2 tracking-[-0.06em]">
+          <span>No activity yet</span>
+          <span className="text-purple-period">.</span>
+        </p>
+        <p className="text-sm text-text-secondary max-w-sm mx-auto">
           Activity for this candidate will appear here as you interact with them.
         </p>
       </div>
