@@ -1,16 +1,15 @@
 
 
-# Make Validation Point Cards Pastel Blue
+# Add Gio Face to Notes (Comments) Empty State
 
-The project has a well-established `pastel-blue` design token (`bg-pastel-blue`, `text-pastel-blue-foreground`) used throughout for AI-style elements (e.g., `BackgroundEnrichmentBanner`).
+The "Notes" tab in the candidate profile sheet uses `CandidateComments.tsx`, which shows a `MessageSquare` icon in its empty state. The "Reminders" tab already uses the `gio-face-empty.png` avatar. We need consistency.
 
-## Change — `ScorecardValidationPoints.tsx`
+## Change — `src/components/candidates/CandidateComments.tsx`
 
-Update the individual validation point card backgrounds:
-
-- **Unresolved cards (current stage)**: Change from `border-primary/30 bg-primary/5` → `border-pastel-blue/40 bg-pastel-blue/20`
-- **Unresolved cards (other stages)**: Change from `border-border` → `border-pastel-blue/30 bg-pastel-blue/10`
-- **Resolved cards**: Keep muted (`bg-muted/50 border-border`) — these are "done" and should look quieter
-
-This matches the existing AI styling pattern (see `BackgroundEnrichmentBanner` which uses `bg-pastel-blue/20 border-pastel-blue/40`).
+1. Import `gioFaceEmpty` from `@/assets/gio-face-empty.png`
+2. Replace the `<MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />` (line 118) with:
+   ```tsx
+   <img src={gioFaceEmpty} alt="No comments" className="h-16 w-16 mx-auto mb-4 rounded-full" />
+   ```
+   This matches the exact pattern used in `CandidateReminders.tsx`.
 
