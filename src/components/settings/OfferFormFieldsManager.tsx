@@ -19,7 +19,7 @@ const toSnakeCase = (str: string) =>
 
 type OfferFieldType = OfferFormField['field_type']
 
-const ALL_FIELD_TYPES: OfferFieldType[] = ['text', 'number', 'email', 'url', 'textarea', 'select', 'checkbox', 'date', 'file', 'salary', 'location']
+const ALL_FIELD_TYPES: OfferFieldType[] = ['text', 'number', 'email', 'url', 'textarea', 'select', 'checkbox', 'date', 'file', 'salary', 'location', 'phone']
 
 interface OfferFormFieldsManagerProps {
   formId: string
