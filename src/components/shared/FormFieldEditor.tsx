@@ -306,7 +306,7 @@ export function FormFieldEditor({
                 {field.field_type === 'location' && (
                   <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                     <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-700 border-orange-300 gap-1"><MapPin className="h-3 w-3" /> Location</Badge>
-                    <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-300 gap-1"><Link2 className="h-3 w-3" /> Syncs to Profile</Badge>
+                    {showSyncMessaging && <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-300 gap-1"><Link2 className="h-3 w-3" /> Syncs to Profile</Badge>}
                     {(field.field_config as LocationFieldConfig) && (
                       <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600">{(field.field_config as LocationFieldConfig).fields?.map(f => f === 'city' ? 'City' : f === 'state' ? 'State' : 'Country').join(', ')}</Badge>
                     )}
