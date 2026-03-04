@@ -160,7 +160,7 @@ export function MinimizableOfferComposer({
             fieldValues={fieldValues}
             onFieldValuesChange={setFieldValues}
             onSuccess={handleSuccess}
-            onCancel={handleClose}
+            onCancel={handleCancel}
             draftRestored={draftRestored}
           />
         </div>
