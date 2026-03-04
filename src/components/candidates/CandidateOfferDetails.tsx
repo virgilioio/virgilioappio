@@ -2,7 +2,7 @@ import { useOfferLetters } from '@/hooks/useOfferLetters'
 import { useOfferFormFields } from '@/hooks/useOfferFormFields'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { FileText } from 'lucide-react'
+import gioFaceEmpty from '@/assets/gio-face-empty.png'
 
 interface CandidateOfferDetailsProps {
   candidateId: string
