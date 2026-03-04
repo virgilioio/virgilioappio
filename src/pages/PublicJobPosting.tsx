@@ -847,10 +847,10 @@ export default function PublicJobPosting() {
                                     </div>
                                   )}
                                   {field.field_type === 'date' && (
-                                    <Input
-                                      type="date"
-                                      value={customFieldResponses[field.id] || ''}
-                                      onChange={(e) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
+                                    <DatePickerVirgilio
+                                      value={customFieldResponses[field.id] ? new Date(customFieldResponses[field.id]) : undefined}
+                                      onChange={(date) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: date.toISOString().split('T')[0] }))}
+                                      placeholder="Pick a date"
                                     />
                                   )}
                                   {field.field_type === 'file' && (

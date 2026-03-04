@@ -242,9 +242,10 @@ export function ApplicationFieldsRenderer({
                   {field.is_required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
                 <FormControl>
-                  <Input
-                    type="date"
-                    {...formField}
+                  <DatePickerVirgilio
+                    value={formField.value ? new Date(formField.value) : undefined}
+                    onChange={(date) => formField.onChange(date.toISOString().split('T')[0])}
+                    placeholder="Pick a date"
                   />
                 </FormControl>
                 {field.help_text && (
