@@ -171,7 +171,11 @@ export function useScheduledBookings(status?: BookingStatus, permissions?: Permi
           .in('status', ['confirmed', 'rescheduled'])
           .order('scheduled_start', { ascending: true })
       } else if (status === 'past') {
+        const startOfMonth = new Date()
+        startOfMonth.setDate(1)
+        startOfMonth.setHours(0, 0, 0, 0)
         query = query
+          .gte('scheduled_start', startOfMonth.toISOString())
           .or(`scheduled_end.lt.${new Date().toISOString()},status.in.(completed,cancelled,no_show)`)
           .order('scheduled_start', { ascending: false })
       } else {
