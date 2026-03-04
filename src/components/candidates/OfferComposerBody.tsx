@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, ClipboardList, MapPin, DollarSign } from 'lucide-react'
 import { useOfferForms } from '@/hooks/useOfferForms'
 import { CURRENCY_SYMBOLS } from '@/constants/currencies'
-import type { SalaryFieldConfig, LocationFieldConfig } from '@/hooks/useJobPostingFields'
+import type { SalaryFieldConfig, LocationFieldConfig, PhoneFieldConfig } from '@/hooks/useJobPostingFields'
 import { useOfferFormFields, type OfferFormField } from '@/hooks/useOfferFormFields'
 import { useOfferLetters } from '@/hooks/useOfferLetters'
 import { useAuth } from '@/contexts/AuthContext'
