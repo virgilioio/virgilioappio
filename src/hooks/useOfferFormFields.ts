@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/hooks/use-toast'
 
-export type { SalaryFieldConfig, LocationFieldConfig } from '@/hooks/useJobPostingFields'
-import type { SalaryFieldConfig, LocationFieldConfig } from '@/hooks/useJobPostingFields'
+export type { SalaryFieldConfig, LocationFieldConfig, PhoneFieldConfig } from '@/hooks/useJobPostingFields'
+import type { SalaryFieldConfig, LocationFieldConfig, PhoneFieldConfig } from '@/hooks/useJobPostingFields'
 
 export interface OfferFormField {
   id: string
