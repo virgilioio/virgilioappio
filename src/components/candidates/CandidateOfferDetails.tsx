@@ -95,7 +95,6 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId }: Ca
   }
 
   const fieldValues = offerLetter.field_values || {}
-  const fieldValues = offerLetter.field_values || {}
 
   return (
     <Card className="bg-surface-primary border-border">
