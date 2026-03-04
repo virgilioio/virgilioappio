@@ -116,8 +116,8 @@ export function OfferComposerBody({
       case 'date':
         return (
           <DatePickerVirgilio
-            value={value ? new Date(value) : undefined}
-            onChange={(date) => handleFieldChange(field.field_name, date.toISOString().split('T')[0])}
+            value={value ? new Date(value + 'T00:00:00') : undefined}
+            onChange={(date) => handleFieldChange(field.field_name, format(date, 'yyyy-MM-dd'))}
             placeholder="Pick a date"
           />
         )
