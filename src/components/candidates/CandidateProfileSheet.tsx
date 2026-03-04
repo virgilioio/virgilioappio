@@ -561,10 +561,48 @@ const stageHasAutomation = useMemo(() => {
     }
   }
   
-  const handleReturnToPipeline = async () => {
+  // Check for offer letters before status change and show warning if needed
+  const checkOfferAndProceed = async (action: () => Promise<void>) => {
+    if (!candidateId) { await action(); return; }
+    if (associationStatus !== 'offer' && associationStatus !== 'hired') { await action(); return; }
+    
+    const { data: offers } = await supabase
+      .from('offer_letters')
+      .select('id')
+      .eq('candidate_id', candidateId)
+      .eq('job_id', jobId)
+      .limit(1)
+    
+    if (offers && offers.length > 0) {
+      setPendingStatusAction(() => action)
+      setShowOfferDeleteWarning(true)
+    } else {
+      await action()
+    }
+  }
+
+  const confirmOfferDeleteAndProceed = async () => {
+    if (!candidateId) return
+    // Delete offer letters
+    await supabase
+      .from('offer_letters')
+      .delete()
+      .eq('candidate_id', candidateId)
+      .eq('job_id', jobId)
+    
+    // Execute the pending action
+    if (pendingStatusAction) {
+      await pendingStatusAction()
+    }
+    setShowOfferDeleteWarning(false)
+    setPendingStatusAction(null)
+    // Reset tab if on offer tab
+    if (activeTab === 'offer') setActiveTab('job')
+  }
+
+  const doReturnToPipeline = async () => {
     if (!associationId) return
     try {
-      // Clear offer tracking when returning to pipeline
       const { error } = await supabase
         .from('job_candidate_associations')
         .update({
@@ -577,6 +615,7 @@ const stageHasAutomation = useMemo(() => {
       
       setAssociationStatus('active')
       setOfferDetails(null)
+      if (activeTab === 'offer') setActiveTab('job')
       toast({
         title: 'Returned to Pipeline',
         description: 'Candidate has been moved back to active status.',
@@ -588,8 +627,18 @@ const stageHasAutomation = useMemo(() => {
     }
   }
 
+  const handleReturnToPipeline = () => {
+    checkOfferAndProceed(doReturnToPipeline)
+  }
+
   const handleReject = () => {
-    if (associationId) {
+    if (!associationId) return
+    if (associationStatus === 'offer') {
+      // Check for offer data first
+      checkOfferAndProceed(async () => {
+        setRejectionDialogOpen(true)
+      })
+    } else {
       setRejectionDialogOpen(true)
     }
   }
