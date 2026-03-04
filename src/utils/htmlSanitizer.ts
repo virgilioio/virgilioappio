@@ -27,6 +27,9 @@ export function sanitizeHtml(html: string): string {
   if (!html) {
     return ''
   }
+
+  // Fix mojibake before sanitizing
+  html = fixMojibake(html)
   
   // Configure DOMPurify to allow basic formatting tags while preventing XSS
   const config = {

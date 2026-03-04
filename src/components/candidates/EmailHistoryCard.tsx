@@ -192,7 +192,7 @@ export function EmailHistoryCard({ email, onReply, onForward }: EmailHistoryCard
             </div>
           ) : (
             <div className="text-sm text-text-secondary line-clamp-2">
-              {decodeHtmlEntities(email.body_text?.slice(0, 150) || email.body_html?.replace(/<[^>]*>/g, '').slice(0, 150) || email.snippet || 'No content')}
+              {fixMojibake(decodeHtmlEntities(email.body_text?.slice(0, 150) || email.body_html?.replace(/<[^>]*>/g, '').slice(0, 150) || email.snippet || 'No content'))}
             </div>
           )}
           
