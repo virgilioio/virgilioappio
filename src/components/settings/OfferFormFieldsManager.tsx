@@ -112,6 +112,7 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
       setNewMaxFileSize('')
       setNewSalaryConfig({ currency: 'USD', period: 'annually' })
       setNewLocationConfig({ fields: ['city', 'state', 'country'] })
+      setNewPhoneConfig({ defaultCountryCode: '+1' })
     } catch {
       // handled by hook
     }
