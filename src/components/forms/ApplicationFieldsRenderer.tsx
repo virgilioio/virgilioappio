@@ -9,6 +9,7 @@ import { PostingField, SalaryFieldConfig, LocationFieldConfig } from '@/hooks/us
 import { Control } from 'react-hook-form'
 import { CURRENCY_SYMBOLS } from '@/constants/currencies'
 import { MapPin } from 'lucide-react'
+import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 
 function getAutoPlaceholder(field: { field_label: string; field_type: string; placeholder_text?: string | null }): string {
   if (field.placeholder_text) return field.placeholder_text

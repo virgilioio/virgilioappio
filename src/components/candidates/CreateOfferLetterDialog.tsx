@@ -13,6 +13,7 @@ import { Candidate } from '@/hooks/useCandidates'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 import { PhoneInput } from '@/components/ui/phone-input'
+import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 import type { PhoneFieldConfig } from '@/hooks/useJobPostingFields'
 
 interface CreateOfferLetterSheetProps {

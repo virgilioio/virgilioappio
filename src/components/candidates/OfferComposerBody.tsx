@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 import { Badge } from '@/components/ui/badge'
 import { PhoneInput } from '@/components/ui/phone-input'
+import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 
 interface OfferComposerBodyProps {
   candidateId: string
