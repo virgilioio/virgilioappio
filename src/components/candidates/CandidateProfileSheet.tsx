@@ -1845,6 +1845,29 @@ const stageHasAutomation = useMemo(() => {
       )}
       </SheetContent>
     </Sheet>
+
+    {/* Offer Delete Warning Dialog */}
+    <AlertDialog open={showOfferDeleteWarning} onOpenChange={(open) => {
+      if (!open) {
+        setShowOfferDeleteWarning(false)
+        setPendingStatusAction(null)
+      }
+    }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Offer Details?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Moving this candidate away from the Offer status will permanently delete their offer details. This cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmOfferDeleteAndProceed} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            Continue & Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </>
   )
 }
