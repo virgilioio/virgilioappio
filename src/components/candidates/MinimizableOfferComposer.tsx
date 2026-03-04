@@ -162,7 +162,7 @@ export function MinimizableOfferComposer({
             jobTitle={jobTitle}
             organizationId={organizationId}
             selectedFormId={selectedFormId}
-            onSelectedFormIdChange={setSelectedFormId}
+            onSelectedFormIdChange={handleFormChange}
             fieldValues={fieldValues}
             onFieldValuesChange={setFieldValues}
             onSuccess={handleSuccess}
