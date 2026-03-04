@@ -71,6 +71,7 @@ export function FormFieldEditor({
   isLocked,
   loadSelectOptions,
   availableTypes = ALL_FIELD_TYPES,
+  context = 'job_posting',
 }: FormFieldEditorProps) {
   const [isEditing, setIsEditing] = useState(false)
 
