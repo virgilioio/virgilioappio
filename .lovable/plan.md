@@ -1,14 +1,25 @@
 
 
-# Fix Vertical Centering in Minimized Offer Composer
+# Add Horizontal Scroll to Right Controls Card
 
-The header bar uses `p-4` (16px padding all sides) which, combined with the text/icon heights, doesn't perfectly center within the fixed `h-[52px]`. When minimized, the `border-b` is also unnecessary.
+## Problem
+The right-side controls card (line 1464) uses a plain `flex` container without overflow handling, so buttons overflow outside the card on narrower screens. The left-side controls card already has this solved with `overflow-x-auto scrollbar-none` and `min-w-max`.
 
-## Change: `src/components/candidates/MinimizableOfferComposer.tsx`
+## Change: `src/components/candidates/CandidateProfileSheet.tsx`
 
-On the header `div` (line 111), conditionally adjust styling when minimized:
-- When minimized: use `h-full` to fill the 52px container, remove `border-b` and `rounded-t-lg` (it's the only visible element so round all corners), and use `px-4` with flex centering handling the vertical alignment
-- When expanded: keep current `p-4 border-b rounded-t-lg`
+Wrap the outer `div` at line 1464 with horizontal scroll, matching the left card pattern:
 
-This ensures `items-center` properly vertically centers content against the full 52px height.
+**Line 1464** — change:
+```tsx
+<div className="flex items-center justify-between w-full">
+```
+to:
+```tsx
+<div className="overflow-x-auto scrollbar-none w-full">
+  <div className="flex items-center justify-between min-w-max">
+```
+
+**Line 1534** — close the extra wrapper div (add `</div>` before the existing `</div>`).
+
+This applies the same `overflow-x-auto scrollbar-none` + `min-w-max` pattern already used on the left controls card.
 
