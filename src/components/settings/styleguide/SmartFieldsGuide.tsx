@@ -60,8 +60,31 @@ export function SmartFieldsGuide() {
                 </Badge>
               </div>
             </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1.5">Employment Type</p>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Badge variant="outline" className="text-xs bg-indigo-500/10 text-indigo-700 border-indigo-300 gap-1">
+                  <Briefcase className="h-3 w-3" />
+                  Employment Type
+                </Badge>
+                <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600">
+                  Full-time, Part-time, Temporary, Internship
+                </Badge>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1.5">Work Location</p>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Badge variant="outline" className="text-xs bg-cyan-500/10 text-cyan-700 border-cyan-300 gap-1">
+                  <Building2 className="h-3 w-3" />
+                  Work Location
+                </Badge>
+                <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600">
+                  Remote, Hybrid, On-site
+                </Badge>
+              </div>
+            </div>
           </div>
-        </div>
 
         {/* Purple Config Container */}
         <div className="space-y-3">
