@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { FormField } from '@/components/ui/form-field'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
 import { Plus, ExternalLink, Trash2, Github } from 'lucide-react'
+import gioFaceEmpty from '@/assets/gio-face-empty.png'
 import { useCandidateUrls } from '@/hooks/useCandidateUrls'
 import { usePermissions } from '@/hooks/usePermissions'
 
@@ -173,8 +174,10 @@ export function CandidateUrls({ candidateId }: CandidateUrlsProps) {
             <CardContent className="space-y-sm pt-0">
               {urls.length === 0 ? (
                 <div className="text-center py-8 text-text-secondary">
-                  <ExternalLink className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No URLs added yet</p>
+                  <img src={gioFaceEmpty} alt="No URLs" className="h-16 w-16 mx-auto mb-4 rounded-full" />
+                  <p className="text-[1.38rem] font-semibold mb-2 tracking-[-0.06em]">
+                    <span>No URLs added yet</span><span className="text-[#d7c5fb]">.</span>
+                  </p>
                   {!canManageCandidates && (
                     <p className="text-xs mt-1">You don't have permission to add URLs</p>
                   )}
