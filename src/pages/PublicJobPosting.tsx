@@ -25,6 +25,7 @@ import { Clock, Shield } from 'lucide-react'
 import { useCoreFields } from '@/hooks/useCoreFields'
 import { CoreFieldsRenderer } from '@/components/forms/CoreFieldsRenderer'
 import { ApplicationFieldsRenderer } from '@/components/forms/ApplicationFieldsRenderer'
+import { PhoneInput } from '@/components/ui/phone-input'
 
 function getViolationToast(violation: { type?: string; message?: string; cooldown_until?: string }) {
   const cooldownDate = violation.cooldown_until ? new Date(violation.cooldown_until) : null
