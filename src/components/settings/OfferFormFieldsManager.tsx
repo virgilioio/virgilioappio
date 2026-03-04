@@ -239,7 +239,7 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
                 <SelectContent>
                   {ALL_FIELD_TYPES.map((t) => (
                     <SelectItem key={t} value={t} className="capitalize">
-                      {t === 'salary' ? 'Salary' : t === 'location' ? 'Location' : t}
+                      {t === 'salary' ? 'Salary' : t === 'location' ? 'Location' : t === 'phone' ? 'Phone' : t}
                     </SelectItem>
                   ))}
                 </SelectContent>
