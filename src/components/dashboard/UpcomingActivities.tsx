@@ -76,9 +76,12 @@ export function UpcomingActivities() {
       reminder: r
     }))
     
-    return [...interviewActivities, ...reminderActivities]
-      .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime())
-  }, [bookings, reminders])
+    const merged = [...interviewActivities, ...reminderActivities]
+    if (activeTab === 'past') {
+      return merged.sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime())
+    }
+    return merged.sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime())
+  }, [bookings, reminders, activeTab])
 
   // Set up realtime listener for Google Calendar sync updates
   useEffect(() => {
