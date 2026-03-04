@@ -1,44 +1,61 @@
 
 
-# Separate Location Sub-Fields on One Line
+# Smart Employment Type and Work Location Fields
 
-## Current State
-- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
-- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
-- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
+## Overview
 
-## What Needs to Change
+Add two new smart field types — `employment_type` and `work_location` — that render standardized select dropdowns with fixed options. These follow the same pattern as existing smart fields (salary, location, phone) but with pre-defined options that cannot be customized, ensuring consistency across all job postings and offers.
 
-### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
+The values already exist as enums in the database (`employment_type_enum`) and as hardcoded options in `PostingSheet.tsx`, so this standardizes them into the smart field system.
 
-Add a `case 'location':` block that:
-- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
-- Parses the value as JSON `{ city, state, country }`
-- Renders separate inputs for each enabled sub-field in a single-row grid
-- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
-- Shows MapPin icon in the label
+## Fixed Options
 
-### 2. Make grid columns dynamic everywhere
+**Employment Type**: Full-time, Part-time, Temporary, Internship (matches existing `employment_type_enum`)
 
-When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
+**Work Location**: Remote, Hybrid, On-site (matches existing `location_type` values in `PostingSheet`)
 
-**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
+## Changes
 
-**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
+### 1. Database: Add enum values to `field_type`
+Run a migration to add `'employment_type'` and `'work_location'` to the `field_type` enum in Supabase.
 
-**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
+### 2. `src/hooks/useJobPostingFields.ts` — Add to FieldType union
+Add `'employment_type' | 'work_location'` to the `FieldType` type. No config interfaces needed — these fields have no configurable options (fixed dropdowns).
 
-Column class map:
-```ts
-const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
-```
+### 3. `src/components/shared/FormFieldEditor.tsx` — Builder support
 
-### 3. Also add salary case to `OfferComposerBody.tsx`
+- Add to `ALL_FIELD_TYPES` array
+- Add `fieldTypeLabel` cases: "Employment Type" and "Work Location"
+- Mark as smart fields in `isSmartField` check
+- **View mode**: Add badge rows — Employment Type gets a briefcase icon with an indigo badge; Work Location gets a building icon with a cyan badge. No "Syncs to Profile" badge (these don't sync to candidate profile — they describe the job, not the candidate).
+- **Edit mode**: No config panel needed — the options are fixed and standardized. Show a small info note: "Options are standardized and cannot be customized."
 
-While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
+### 4. `src/components/forms/ApplicationFieldsRenderer.tsx` — Public form rendering
+Add `case 'employment_type':` and `case 'work_location':` that render a `<Select>` with the fixed options. No free-text input.
 
-## Summary of File Changes
-- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
-- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
-- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
+### 5. `src/pages/PublicJobPosting.tsx` — Public form rendering
+Same select rendering for the public job posting form.
+
+### 6. `src/components/candidates/OfferComposerBody.tsx` — Offer form rendering
+Same select rendering for the offer composer.
+
+### 7. `src/components/candidates/CreateOfferLetterDialog.tsx` — Offer letter dialog
+Same select rendering.
+
+### 8. `src/components/settings/OfferFormFieldsManager.tsx` — Add to offer field types
+Already uses a local `ALL_FIELD_TYPES` — add the two new types.
+
+### 9. `src/components/settings/styleguide/SmartFieldsGuide.tsx` — Documentation
+Add examples for Employment Type and Work Location badges and rendering.
+
+## Summary of file changes
+- **Migration**: Add `employment_type` and `work_location` to `field_type` enum
+- **`useJobPostingFields.ts`**: Update `FieldType` union
+- **`FormFieldEditor.tsx`**: Builder view/edit support with badges
+- **`ApplicationFieldsRenderer.tsx`**: Public form select rendering
+- **`PublicJobPosting.tsx`**: Public form select rendering
+- **`OfferComposerBody.tsx`**: Offer form select rendering
+- **`CreateOfferLetterDialog.tsx`**: Offer letter select rendering
+- **`OfferFormFieldsManager.tsx`**: Add to type list
+- **`SmartFieldsGuide.tsx`**: Documentation update
 
