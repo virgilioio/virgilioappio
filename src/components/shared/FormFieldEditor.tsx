@@ -15,6 +15,8 @@ export const ALL_FIELD_TYPES: FieldType[] = [
   'checkbox', 'checkbox_group', 'date', 'file', 'salary', 'location', 'phone', 'recruiter', 'employment_type', 'work_location'
 ]
 
+export const SMART_FIELD_TYPES: FieldType[] = ['salary', 'location', 'phone', 'recruiter', 'employment_type', 'work_location']
+
 export const CURRENCIES = ['USD','EUR','GBP','CAD','AUD','CHF','JPY','INR','BRL','MXN','SGD','HKD','NZD','ZAR','AED','SAR']
 
 export function fieldTypeLabel(t: string) {
