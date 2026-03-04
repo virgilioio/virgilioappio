@@ -53,8 +53,9 @@ function getStatusVariant(status: string) {
   }
 }
 
-export function CandidateOfferDetails({ candidateId, jobId }: CandidateOfferDetailsProps) {
+export function CandidateOfferDetails({ candidateId, jobId, organizationId }: CandidateOfferDetailsProps) {
   const { offerLetters, isLoading } = useOfferLetters(candidateId)
+  const { data: recruiterOptions = [] } = useRecruiterOptions(organizationId || null)
   
   // Find the offer letter for this job
   const offerLetter = offerLetters.find(ol => ol.job_id === jobId)
