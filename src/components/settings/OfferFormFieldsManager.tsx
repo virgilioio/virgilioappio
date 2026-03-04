@@ -239,10 +239,10 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
               <Select value={type} onValueChange={(v: OfferFieldType) => setType(v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {ALL_FIELD_TYPES.map((t) => (
-                    <SelectItem key={t} value={t} className="capitalize">
-                      {t === 'salary' ? 'Salary' : t === 'location' ? 'Location' : t === 'phone' ? 'Phone' : t}
-                    </SelectItem>
+                    {ALL_FIELD_TYPES.map((t) => (
+                      <SelectItem key={t} value={t} className="capitalize">
+                        {t === 'salary' ? 'Salary' : t === 'location' ? 'Location' : t === 'phone' ? 'Phone' : t === 'employment_type' ? 'Employment Type' : t === 'work_location' ? 'Work Location' : t}
+                      </SelectItem>
                   ))}
                 </SelectContent>
               </Select>

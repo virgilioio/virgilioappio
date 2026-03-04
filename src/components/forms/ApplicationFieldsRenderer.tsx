@@ -373,6 +373,64 @@ export function ApplicationFieldsRenderer({
           />
         )
 
+      case 'employment_type':
+        return (
+          <FormField
+            key={field.field_name}
+            control={control}
+            name={field.field_name}
+            render={({ field: formField }) => (
+              <FormItem>
+                <FormLabel>
+                  {field.field_label}
+                  {field.is_required && <span className="text-destructive ml-1">*</span>}
+                </FormLabel>
+                <Select onValueChange={formField.onChange} value={formField.value}>
+                  <FormControl>
+                    <SelectTrigger><SelectValue placeholder="Select employment type" /></SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {EMPLOYMENT_TYPE_OPTIONS.map(o => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {field.help_text && <FormDescription>{field.help_text}</FormDescription>}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )
+
+      case 'work_location':
+        return (
+          <FormField
+            key={field.field_name}
+            control={control}
+            name={field.field_name}
+            render={({ field: formField }) => (
+              <FormItem>
+                <FormLabel>
+                  {field.field_label}
+                  {field.is_required && <span className="text-destructive ml-1">*</span>}
+                </FormLabel>
+                <Select onValueChange={formField.onChange} value={formField.value}>
+                  <FormControl>
+                    <SelectTrigger><SelectValue placeholder="Select work location" /></SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {WORK_LOCATION_OPTIONS.map(o => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {field.help_text && <FormDescription>{field.help_text}</FormDescription>}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )
+
       default:
         return null
     }

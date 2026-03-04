@@ -940,6 +940,33 @@ export default function PublicJobPosting() {
                                       </div>
                                     )
                                   })()}
+                                  {field.field_type === 'employment_type' && (
+                                    <Select
+                                      value={customFieldResponses[field.id] || ''}
+                                      onValueChange={(value) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: value }))}
+                                    >
+                                      <SelectTrigger><SelectValue placeholder="Select employment type" /></SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="full_time">Full-time</SelectItem>
+                                        <SelectItem value="part_time">Part-time</SelectItem>
+                                        <SelectItem value="temporary">Temporary</SelectItem>
+                                        <SelectItem value="internship">Internship</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  )}
+                                  {field.field_type === 'work_location' && (
+                                    <Select
+                                      value={customFieldResponses[field.id] || ''}
+                                      onValueChange={(value) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: value }))}
+                                    >
+                                      <SelectTrigger><SelectValue placeholder="Select work location" /></SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="remote">Remote</SelectItem>
+                                        <SelectItem value="hybrid">Hybrid</SelectItem>
+                                        <SelectItem value="onsite">On-site</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  )}
                                 </div>
                               </div>
                             ))}
