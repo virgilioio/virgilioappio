@@ -616,7 +616,7 @@ export default function CandidateProfile() {
                 onOpenChange={setIsOfferLetterDialogOpen}
                 candidateId={candidate.id}
                 candidateName={candidate.candidate_name}
-                jobId={candidate.job_id || ''}
+                jobId={jobId || ''}
                 jobTitle={job.title}
                 organizationId={jobOrganization.id || ''}
               />

@@ -1,24 +1,44 @@
 
 
-# Fix: Save Offer Button Never Enables
+# Separate Location Sub-Fields on One Line
 
-## Root Cause
+## Current State
+- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
+- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
+- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
 
-Both `CandidateProfileSheet.tsx` (line 1841) and `CandidateProfile.tsx` (line 619) pass `jobId={candidate.job_id || ''}` to the offer composer. However, `candidate` is fetched from the `candidates` table which does not have a `job_id` column — candidates are associated with jobs through the `job_candidates` junction table. So `candidate.job_id` is always `undefined`, the fallback produces `''`, and `canSave()` returns `false` because of the `!jobId` check.
+## What Needs to Change
 
-Both components already receive the correct `jobId` as a prop from the URL/parent — they just aren't passing it to the composer.
+### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
 
-## Fix
+Add a `case 'location':` block that:
+- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
+- Parses the value as JSON `{ city, state, country }`
+- Renders separate inputs for each enabled sub-field in a single-row grid
+- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
+- Shows MapPin icon in the label
 
-### 1. `CandidateProfileSheet.tsx` (line 1841)
-Change `jobId={candidate.job_id || ''}` → `jobId={jobId}`
-(uses the `jobId` prop already available on line 107)
+### 2. Make grid columns dynamic everywhere
 
-### 2. `CandidateProfile.tsx` (line 619)
-Change `jobId={candidate.job_id || ''}` → `jobId={jobId || ''}`
-(uses the `jobId` from URL params, already resolved earlier in the component)
+When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
 
-## Files changed
-- `src/components/candidates/CandidateProfileSheet.tsx`
-- `src/pages/CandidateProfile.tsx`
+**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
+
+**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
+
+**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
+
+Column class map:
+```ts
+const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
+```
+
+### 3. Also add salary case to `OfferComposerBody.tsx`
+
+While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
+
+## Summary of File Changes
+- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
+- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
+- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
 
