@@ -2,6 +2,7 @@ import { Activity as ActivityIcon } from 'lucide-react';
 import { useActivityFeed } from '@/hooks/useActivityFeed';
 import { ActivityFeedItem } from './ActivityFeedItem';
 import { Skeleton } from '@/components/ui/skeleton';
+import gioFaceEmpty from '@/assets/gio-face-empty.png';
 
 interface ActivityFeedListProps {
   candidateId: string;
