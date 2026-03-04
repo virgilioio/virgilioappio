@@ -67,7 +67,7 @@ export function OfferComposerBody({
   }
 
   const canSave = () => {
-    if (!selectedFormId || !organizationId) return false
+    if (!selectedFormId || !organizationId || !jobId) return false
     const requiredFields = fields.filter(f => f.is_required)
     return requiredFields.every(field => {
       const val = fieldValues[field.field_name]
