@@ -56,6 +56,8 @@ export interface FormFieldEditorProps {
   loadSelectOptions?: (fieldId: string) => Promise<SelectOptionData[]>
   /** Subset of field types to show in the type selector (defaults to ALL_FIELD_TYPES) */
   availableTypes?: FieldType[]
+  /** Context determines sync messaging: job_posting shows "Syncs to Profile", offer hides it */
+  context?: 'job_posting' | 'offer'
 }
 
 export function FormFieldEditor({
