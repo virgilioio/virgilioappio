@@ -1,0 +1,1 @@
+ALTER TABLE offer_form_fields ADD COLUMN field_config jsonb;

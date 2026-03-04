@@ -2,18 +2,22 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/hooks/use-toast'
 
+export type { SalaryFieldConfig, LocationFieldConfig } from '@/hooks/useJobPostingFields'
+import type { SalaryFieldConfig, LocationFieldConfig } from '@/hooks/useJobPostingFields'
+
 export interface OfferFormField {
   id: string
   form_id: string
   field_name: string
   field_label: string
-  field_type: 'text' | 'textarea' | 'select' | 'date' | 'number' | 'file' | 'email' | 'checkbox' | 'url'
+  field_type: 'text' | 'textarea' | 'select' | 'date' | 'number' | 'file' | 'email' | 'checkbox' | 'url' | 'salary' | 'location'
   is_required: boolean
   display_order: number
   placeholder_text?: string
   help_text?: string
   accepted_file_types?: string
   max_file_size_mb?: number
+  field_config?: SalaryFieldConfig | LocationFieldConfig | null
   created_by?: string
   created_at: string
   updated_at: string
@@ -66,7 +70,7 @@ export function useOfferFormFields(formId?: string) {
 
       const { data, error } = await supabase
         .from('offer_form_fields')
-        .insert(enrichedFieldData)
+        .insert(enrichedFieldData as any)
         .select()
         .single()
 
@@ -86,7 +90,7 @@ export function useOfferFormFields(formId?: string) {
     try {
       const { error } = await supabase
         .from('offer_form_fields')
-        .update(fieldData)
+        .update(fieldData as any)
         .eq('id', id)
 
       if (error) throw error
