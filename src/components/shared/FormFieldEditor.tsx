@@ -202,8 +202,7 @@ export function FormFieldEditor({
                   <p className="text-xs font-medium text-muted-foreground">Options</p>
                   {localOptions.map((opt, i) => (
                     <div key={i} className="flex items-center gap-2">
-                      <Input value={opt.option_value} onChange={(e) => updateOption(i, 'option_value', e.target.value)} placeholder="Value" className="flex-1" />
-                      <Input value={opt.option_label} onChange={(e) => updateOption(i, 'option_label', e.target.value)} placeholder="Label" className="flex-1" />
+                      <Input value={opt.option_label} onChange={(e) => updateOptionLabel(i, e.target.value)} placeholder="Option label" className="flex-1" />
                       <Button variant="ghost" size="sm" onClick={() => removeOption(i)} className="shrink-0 h-8"><Trash2 className="h-3 w-3" /></Button>
                     </div>
                   ))}
