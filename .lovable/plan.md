@@ -1,35 +1,45 @@
 
 
-# Merge Offer Form Fields into the Offer Form Sheet
+# Convert Offer Form to Minimizable Overlay with Draft Support
 
-## Problem
-Currently, managing form fields requires opening a separate Dialog from the forms table. The experience should be unified — creating/editing an offer form and managing its fields should all happen inside the same sliding sheet.
+## What changes
 
-## Approach
+Replace the current `Sheet`-based `CreateOfferLetterSheet` with a minimizable floating overlay (matching the `MinimizableEmailComposer` pattern), and add localStorage-based draft persistence.
 
-### Flow change
-- **Create mode**: User fills in name + description, clicks "Create". After creation, the sheet stays open, switches to edit mode, and reveals the fields section below the form details.
-- **Edit mode**: The sheet shows the form details at the top and the full fields manager below, all in one scrollable panel.
-- The separate "Manage Fields" Dialog in `OfferFormsManager.tsx` is removed entirely.
+## Changes
 
-### Changes
+### 1. New component: `src/components/candidates/MinimizableOfferComposer.tsx`
 
-#### 1. `src/components/settings/templates/OfferFormSheet.tsx`
-- Widen the sheet: `sm:max-w-2xl` (fields table needs horizontal space)
-- Make content scrollable with `overflow-y-auto`
-- After saving a new form, capture the returned `id` and stay open in edit mode (set local `activeFormId` state)
-- When `isEditing` (either via prop or after creation), render `<OfferFormFieldsManager formId={...} />` below the form details, separated by a divider
-- Import `useOfferFormFields` is not needed here — just render the existing `OfferFormFieldsManager` component which handles its own state
-- The field add/edit sub-dialogs from `OfferFormFieldsManager` will naturally layer on top of the sheet (they're portaled Dialogs)
+A wrapper component modeled on `MinimizableEmailComposer.tsx`:
+- Fixed position overlay at bottom-right (`absolute bottom-4 right-4 z-[60]`)
+- Header bar with title ("Create Offer — {candidateName}"), minimize/expand toggle, and close button
+- When minimized: compact bar showing just the title (same dimensions as email composer)
+- When expanded: scrollable content area rendering the offer form fields (form selector, dynamic fields, save button)
+- On close: if there are field values filled in, auto-save draft to localStorage before closing (key: `offer-draft-{candidateId}`)
 
-#### 2. `src/components/settings/OfferFormsManager.tsx`
-- Remove the `fieldsDialog` state and the `<Dialog>` wrapping `OfferFormFieldsManager`
-- Remove the "Manage Fields" button (`<List>` icon) from each table row's actions
-- Remove the `Dialog`/`DialogContent`/`DialogHeader`/`DialogTitle` imports (no longer needed)
+### 2. Refactor `CreateOfferLetterDialog.tsx` → extract form body
 
-#### 3. `src/components/settings/OfferFormFieldsManager.tsx`
-- Remove the outer `<Card>` + `<CardHeader>` wrapper so it sits cleanly inside the sheet (just render the content directly)
-- Keep all field CRUD logic, table, and inline dialogs as-is
+Extract the form body (form selector, dynamic fields, action buttons) into an inline section within the new `MinimizableOfferComposer`. The component keeps the same hooks (`useOfferForms`, `useOfferFormFields`, `useOfferLetters`) and logic, just rendered inside the overlay instead of a Sheet.
 
-Two components edited, one simplified. No new dependencies.
+### 3. Draft persistence (localStorage)
+
+- **Draft key**: `offer-draft-{candidateId}`
+- **Auto-save on close**: When closing with unsaved field values, save `{ selectedFormId, fieldValues, lastUpdated }` to localStorage
+- **Restore on open**: On mount, check for a draft. If found, restore `selectedFormId` and `fieldValues`, show a subtle toast or inline indicator ("Draft restored")
+- **Clear on successful save**: After `createOfferLetter` succeeds, remove the draft from localStorage
+- **Auto-save on field change**: Debounced save (e.g. 2s after last change) so progress is continuously preserved
+
+### 4. Update consumers
+
+- **`CandidateProfileSheet.tsx`**: Replace `<CreateOfferLetterSheet>` with `<MinimizableOfferComposer>` — same props, different rendering
+- **`CandidateProfile.tsx`**: Same replacement
+- Both already have the `open`/`onOpenChange` state that will drive the overlay visibility
+
+### 5. Visual spec
+
+- Expanded width: `w-[720px] max-w-[min(95vw,720px)]` (matches email composer)
+- Max content height: `max-h-[600px] overflow-y-auto`
+- Minimized: `w-[432px] h-[52px]`
+- Header: `bg-muted/30`, cursor pointer to toggle minimize
+- Same shadow, border, and animation classes as `MinimizableEmailComposer`
 
