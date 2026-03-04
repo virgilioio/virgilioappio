@@ -1,42 +1,32 @@
 
 
-# Fix: Deduplicate Email Notifications
+# Audit: Empty States Missing Gio Face Avatar
 
-## Problem
-When a candidate replies to an email that includes the inbound catch address, two `email_logs` records are created for the same message — one from Gmail sync and one from the inbound reply webhook. Both share the same `rfc822_message_id`. The `fetchUnreadEmails` function in `usePendingActivities.ts` fetches all unread received emails without deduplicating, causing duplicate notifications in the Notification Center.
+## Findings
 
-Confirmed by database query: there is at least one `rfc822_message_id` with 2 rows for the same candidate.
+The Gio face avatar (`gio-face-empty.png`) is currently used in **2 places**:
+- `CandidateComments.tsx` (Notes tab) ✅
+- `CandidateReminders.tsx` (Reminders tab) ✅
 
-## Fix — `src/hooks/usePendingActivities.ts`
+The following **candidate profile sheet** empty states use generic Lucide icons instead — these are the inconsistencies that matter most, since they sit right alongside the tabs that already use Gio:
 
-In `fetchUnreadEmails`, after fetching the emails, deduplicate by `rfc822_message_id` before returning. Keep only the first (most recent) record per message ID. For emails without an `rfc822_message_id` (null), treat each as unique.
+| File | Current Icon | Context |
+|------|-------------|---------|
+| `CandidateAttachments.tsx` | `File` icon | Attachments tab in candidate profile |
+| `CandidateUrls.tsx` | `ExternalLink` icon | URLs section in candidate profile |
 
-Add the `rfc822_message_id` field to the select query, then filter duplicates:
+Other empty states (dashboard widgets, settings pages, admin panels, billing) use their own patterns (`EmptyState` component with `fallbackIcon` + platform assets, or contextual icons). Those are intentionally different — they're not candidate profile tabs and don't need the Gio branding.
 
-```typescript
-// Add rfc822_message_id to the select
-.select(`
-  id,
-  candidate_id,
-  job_id,
-  subject,
-  snippet,
-  received_at,
-  rfc822_message_id,
-  candidates(id, candidate_name),
-  jobs(id, title)
-`)
+## Plan
 
-// After fetching, deduplicate by rfc822_message_id
-const seen = new Set<string>();
-const dedupedEmails = (emails || []).filter(email => {
-  const msgId = (email as any).rfc822_message_id;
-  if (!msgId) return true; // no message ID, keep it
-  if (seen.has(msgId)) return false;
-  seen.add(msgId);
-  return true;
-});
-```
+### 1. `src/components/candidates/CandidateAttachments.tsx`
+- Import `gioFaceEmpty` from `@/assets/gio-face-empty.png`
+- Replace `<File className="h-8 w-8 mx-auto mb-2 opacity-50" />` with `<img src={gioFaceEmpty} alt="No attachments" className="h-16 w-16 mx-auto mb-4 rounded-full" />`
 
-Then map `dedupedEmails` instead of `emails`. Single file change, no schema or migration needed.
+### 2. `src/components/candidates/CandidateUrls.tsx`
+- Import `gioFaceEmpty` from `@/assets/gio-face-empty.png`
+- Replace `<ExternalLink className="h-8 w-8 mx-auto mb-2 opacity-50" />` with `<img src={gioFaceEmpty} alt="No URLs" className="h-16 w-16 mx-auto mb-4 rounded-full" />`
+- Update the text styling to match the branded pattern used in Comments/Reminders (add the purple period, use `text-[1.38rem] font-semibold tracking-[-0.06em]`)
+
+Two file changes, no new dependencies.
 
