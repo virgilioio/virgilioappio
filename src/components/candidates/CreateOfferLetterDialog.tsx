@@ -39,6 +39,7 @@ export function CreateOfferLetterSheet({
   const { fields, isLoading: fieldsLoading } = useOfferFormFields(selectedFormId)
   const { createOfferLetter, isLoading: creatingLetter } = useOfferLetters(candidate.id)
   const [fieldValues, setFieldValues] = useState<Record<string, any>>({})
+  const { data: recruiterOptions = [] } = useRecruiterOptions(organizationId)
 
   // Filter only active forms
   const activeForms = forms.filter(f => f.is_active)
