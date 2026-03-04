@@ -11,6 +11,7 @@ import { Control } from 'react-hook-form'
 import { CurrencySelect } from '@/components/ui/currency-select'
 import { MapPin } from 'lucide-react'
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
+import { format } from 'date-fns'
 
 function getAutoPlaceholder(field: { field_label: string; field_type: string; placeholder_text?: string | null }): string {
   if (field.placeholder_text) return field.placeholder_text
