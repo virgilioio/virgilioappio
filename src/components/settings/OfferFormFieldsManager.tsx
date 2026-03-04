@@ -1,472 +1,366 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
-import { Plus, Edit, Trash2, MoveUp, MoveDown, List, Link2, DollarSign, MapPin } from 'lucide-react'
-import { TableSkeleton } from '@/components/ui/skeleton'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { Plus, List, Link2, Trash2 } from 'lucide-react'
+import { FormField } from '@/components/ui/form-field'
 import { useOfferFormFields, type OfferFormField } from '@/hooks/useOfferFormFields'
 import type { SalaryFieldConfig, LocationFieldConfig } from '@/hooks/useJobPostingFields'
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { OfferFieldEditor } from './OfferFieldEditor'
 
 const toSnakeCase = (str: string) =>
   str.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
+
+type OfferFieldType = OfferFormField['field_type']
+
+const ALL_FIELD_TYPES: OfferFieldType[] = ['text', 'number', 'email', 'url', 'textarea', 'select', 'checkbox', 'date', 'file', 'salary', 'location']
 
 interface OfferFormFieldsManagerProps {
   formId: string
 }
 
+function SortableFieldRow({ id, children }: { id: string; children: (handlers: { attributes: any; listeners: any }) => React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : undefined,
+  }
+  return (
+    <div ref={setNodeRef} style={style} className="w-full">
+      {children({ attributes, listeners })}
+    </div>
+  )
+}
+
 export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) {
   const { fields, isLoading, createField, updateField, deleteField } = useOfferFormFields(formId)
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [editingField, setEditingField] = useState<OfferFormField | null>(null)
 
-  const [formData, setFormData] = useState({
-    field_label: '',
-    field_type: 'text' as OfferFormField['field_type'],
-    is_required: false,
-    display_order: 0,
-    placeholder_text: '',
-    help_text: '',
-    accepted_file_types: '',
-    max_file_size_mb: 5,
-    salaryConfig: { currency: 'USD', period: 'annually' } as SalaryFieldConfig,
-    locationConfig: { fields: ['city', 'state', 'country'] as ('city' | 'state' | 'country')[] } as LocationFieldConfig,
-  })
+  // Add field form state
+  const [label, setLabel] = useState('')
+  const [type, setType] = useState<OfferFieldType>('text')
+  const [required, setRequired] = useState(false)
+  const [newHelpText, setNewHelpText] = useState('')
+  const [newAcceptedFileTypes, setNewAcceptedFileTypes] = useState('')
+  const [newMaxFileSize, setNewMaxFileSize] = useState<number | ''>('')
+  const [newSalaryConfig, setNewSalaryConfig] = useState<SalaryFieldConfig>({ currency: 'USD', period: 'annually' })
+  const [newLocationConfig, setNewLocationConfig] = useState<LocationFieldConfig>({ fields: ['city', 'state', 'country'] })
 
-  const fieldTypes = [
-    { value: 'text', label: 'Text Input' },
-    { value: 'textarea', label: 'Text Area' },
-    { value: 'select', label: 'Select Dropdown' },
-    { value: 'date', label: 'Date Picker' },
-    { value: 'number', label: 'Number Input' },
-    { value: 'email', label: 'Email Input' },
-    { value: 'checkbox', label: 'Checkbox' },
-    { value: 'file', label: 'File Upload' },
-    { value: 'salary', label: 'Salary / Compensation' },
-    { value: 'location', label: 'Location' },
-  ]
+  // Delete confirmation
+  const [deleteTarget, setDeleteTarget] = useState<OfferFormField | null>(null)
 
-  const handleCreateField = async () => {
+  // Drag
+  const [orderedIds, setOrderedIds] = useState<string[]>([])
+  const [activeId, setActiveId] = useState<string | null>(null)
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+
+  useEffect(() => {
+    setOrderedIds(fields.map(f => f.id))
+  }, [fields])
+
+  // Reset type-specific state when type changes
+  useEffect(() => {
+    setNewHelpText('')
+    setNewAcceptedFileTypes('')
+    setNewMaxFileSize('')
+    setNewSalaryConfig({ currency: 'USD', period: 'annually' })
+    setNewLocationConfig({ fields: ['city', 'state', 'country'] })
+    if (type === 'salary' && !label) setLabel('Salary')
+    if (type === 'location' && !label) setLabel('Location')
+  }, [type])
+
+  const sortedFields = useMemo(() => {
+    return orderedIds
+      .map(id => fields.find(f => f.id === id))
+      .filter(Boolean) as OfferFormField[]
+  }, [orderedIds, fields])
+
+  const activeField = useMemo(() => fields.find(f => f.id === activeId) || null, [fields, activeId])
+
+  const handleAddField = async () => {
+    if (!label.trim()) return
+    const maxOrder = fields.length > 0 ? Math.max(...fields.map(f => f.display_order)) : -1
+    const fieldConfig = type === 'salary' ? newSalaryConfig : type === 'location' ? newLocationConfig : undefined
     try {
-      const maxOrder = fields.length > 0 ? Math.max(...fields.map(f => f.display_order)) : -1
-      const fieldName = toSnakeCase(formData.field_label)
-      const field_config = formData.field_type === 'salary' ? formData.salaryConfig
-        : formData.field_type === 'location' ? formData.locationConfig
-        : undefined
       await createField({
         form_id: formId,
-        field_name: fieldName,
-        field_label: formData.field_label,
-        field_type: formData.field_type,
-        is_required: formData.is_required,
+        field_name: toSnakeCase(label),
+        field_label: label.trim(),
+        field_type: type,
+        is_required: required,
         display_order: maxOrder + 1,
-        placeholder_text: formData.placeholder_text,
-        help_text: formData.help_text,
-        accepted_file_types: formData.accepted_file_types,
-        max_file_size_mb: formData.max_file_size_mb,
-        ...(field_config ? { field_config } : {}),
+        help_text: newHelpText || undefined,
+        accepted_file_types: newAcceptedFileTypes || undefined,
+        max_file_size_mb: newMaxFileSize === '' ? undefined : newMaxFileSize,
+        ...(fieldConfig ? { field_config: fieldConfig } : {}),
       })
-      setIsCreateDialogOpen(false)
-      resetForm()
+      setLabel('')
+      setType('text')
+      setRequired(false)
+      setNewHelpText('')
+      setNewAcceptedFileTypes('')
+      setNewMaxFileSize('')
+      setNewSalaryConfig({ currency: 'USD', period: 'annually' })
+      setNewLocationConfig({ fields: ['city', 'state', 'country'] })
     } catch {
       // handled by hook
     }
   }
 
-  const handleUpdateField = async () => {
-    if (!editingField) return
+  const handleUpdateField = async (id: string, updates: Partial<OfferFormField>) => {
     try {
-      const fieldName = toSnakeCase(formData.field_label)
-      const field_config = formData.field_type === 'salary' ? formData.salaryConfig
-        : formData.field_type === 'location' ? formData.locationConfig
-        : null
-      await updateField(editingField.id, {
-        field_name: fieldName,
-        field_label: formData.field_label,
-        field_type: formData.field_type,
-        is_required: formData.is_required,
-        placeholder_text: formData.placeholder_text,
-        help_text: formData.help_text,
-        accepted_file_types: formData.accepted_file_types,
-        max_file_size_mb: formData.max_file_size_mb,
-        field_config,
-      })
-      setEditingField(null)
-      resetForm()
+      const fieldName = updates.field_label ? toSnakeCase(updates.field_label) : undefined
+      await updateField(id, { ...updates, ...(fieldName ? { field_name: fieldName } : {}) })
     } catch {
       // handled by hook
     }
   }
 
-  const handleDeleteField = async (field: OfferFormField) => {
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return
     try {
-      await deleteField(field.id)
+      await deleteField(deleteTarget.id)
     } catch {
       // handled by hook
     }
+    setDeleteTarget(null)
   }
 
-  const moveField = async (field: OfferFormField, direction: 'up' | 'down') => {
-    const sortedFields = [...fields].sort((a, b) => a.display_order - b.display_order)
-    const currentIndex = sortedFields.findIndex(f => f.id === field.id)
+  const handleDragEnd = async (event: any) => {
+    setActiveId(null)
+    const { active, over } = event
+    if (!over || active.id === over.id) return
 
-    if (direction === 'up' && currentIndex > 0) {
-      const targetField = sortedFields[currentIndex - 1]
-      await updateField(field.id, { display_order: targetField.display_order })
-      await updateField(targetField.id, { display_order: field.display_order })
-    } else if (direction === 'down' && currentIndex < sortedFields.length - 1) {
-      const targetField = sortedFields[currentIndex + 1]
-      await updateField(field.id, { display_order: targetField.display_order })
-      await updateField(targetField.id, { display_order: field.display_order })
+    const oldIndex = orderedIds.indexOf(active.id)
+    const newIndex = orderedIds.indexOf(over.id)
+    if (oldIndex < 0 || newIndex < 0) return
+
+    const newOrder = arrayMove(orderedIds, oldIndex, newIndex)
+    setOrderedIds(newOrder)
+
+    // Persist new order
+    for (let i = 0; i < newOrder.length; i++) {
+      const field = fields.find(f => f.id === newOrder[i])
+      if (field && field.display_order !== i) {
+        await updateField(newOrder[i], { display_order: i })
+      }
     }
   }
 
-  const openCreateDialog = () => {
-    resetForm()
-    setIsCreateDialogOpen(true)
-  }
-
-  const openEditDialog = (field: OfferFormField) => {
-    setFormData({
-      field_label: field.field_label,
-      field_type: field.field_type,
-      is_required: field.is_required,
-      display_order: field.display_order,
-      placeholder_text: field.placeholder_text || '',
-      help_text: field.help_text || '',
-      accepted_file_types: field.accepted_file_types || '',
-      max_file_size_mb: field.max_file_size_mb || 5,
-      salaryConfig: (field.field_config as SalaryFieldConfig) || { currency: 'USD', period: 'annually' },
-      locationConfig: (field.field_config as LocationFieldConfig) || { fields: ['city', 'state', 'country'] },
-    })
-    setEditingField(field)
-  }
-
-  const resetForm = () => {
-    setFormData({
-      field_label: '',
-      field_type: 'text',
-      is_required: false,
-      display_order: 0,
-      placeholder_text: '',
-      help_text: '',
-      accepted_file_types: '',
-      max_file_size_mb: 5,
-      salaryConfig: { currency: 'USD', period: 'annually' },
-      locationConfig: { fields: ['city', 'state', 'country'] },
-    })
-  }
-
-  const closeDialogs = () => {
-    setIsCreateDialogOpen(false)
-    setEditingField(null)
-    resetForm()
-  }
-
-  const handleTypeChange = (value: OfferFormField['field_type']) => {
-    const updates: Partial<typeof formData> = { field_type: value }
-    if (value === 'salary' && !formData.field_label) updates.field_label = 'Salary'
-    if (value === 'location' && !formData.field_label) updates.field_label = 'Location'
-    setFormData(prev => ({ ...prev, ...updates }))
-  }
+  const showHelpText = ['text', 'number', 'email', 'url', 'textarea', 'checkbox', 'date'].includes(type)
+  const showFileConfig = type === 'file'
+  const showSalaryConfig = type === 'salary'
+  const showLocationConfig = type === 'location'
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold flex items-center gap-2">
-          <List className="h-4 w-4" />
-          Form Fields
-        </h3>
-        <Button size="sm" onClick={openCreateDialog}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Field
-        </Button>
-      </div>
-
-      {isLoading ? (
-        <TableSkeleton rows={3} />
-      ) : fields.length === 0 ? (
-        <div className="text-center py-8">
-          <List className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-          <p className="text-muted-foreground">No form fields yet</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Add fields that recruiters will fill out when creating an offer
-          </p>
-        </div>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Order</TableHead>
-              <TableHead>Field Name</TableHead>
-              <TableHead>Label</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Required</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {fields
-              .sort((a, b) => a.display_order - b.display_order)
-              .map((field, index) => (
-                <TableRow key={field.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm text-muted-foreground">{index + 1}</span>
-                      <div className="flex flex-col">
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => moveField(field, 'up')} disabled={index === 0}>
-                          <MoveUp className="h-3 w-3" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => moveField(field, 'down')} disabled={index === fields.length - 1}>
-                          <MoveDown className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <code className="text-sm bg-muted px-1 rounded">{field.field_name}</code>
-                  </TableCell>
-                  <TableCell className="font-medium">{field.field_label}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <Badge variant="secondary">
-                        {field.field_type === 'salary' && <DollarSign className="h-3 w-3 mr-1" />}
-                        {field.field_type === 'location' && <MapPin className="h-3 w-3 mr-1" />}
-                        {fieldTypes.find(t => t.value === field.field_type)?.label || field.field_type}
-                      </Badge>
-                      {field.field_type === 'salary' && field.field_config && (
-                        <Badge variant="outline" className="text-xs">
-                          {(field.field_config as SalaryFieldConfig).currency} / {(field.field_config as SalaryFieldConfig).period}
-                        </Badge>
-                      )}
-                      {field.field_type === 'location' && field.field_config && (
-                        <Badge variant="outline" className="text-xs">
-                          {(field.field_config as LocationFieldConfig).fields?.map(f => f === 'city' ? 'City' : f === 'state' ? 'State' : 'Country').join(', ')}
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {field.is_required ? (
-                      <Badge variant="destructive">Required</Badge>
-                    ) : (
-                      <Badge variant="outline">Optional</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => openEditDialog(field)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Field</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete "{field.field_label}"? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDeleteField(field)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-          </TableBody>
-        </Table>
-      )}
-
-      {/* Create/Edit Field Dialog */}
-      <Dialog open={isCreateDialogOpen || !!editingField} onOpenChange={closeDialogs}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{editingField ? 'Edit Field' : 'Add Form Field'}</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="field_label">Field Label</Label>
-                <Input
-                  id="field_label"
-                  value={formData.field_label}
-                  onChange={(e) => setFormData(prev => ({ ...prev, field_label: e.target.value }))}
-                  placeholder="e.g. Start Date"
-                />
-                {formData.field_label && (
-                  <p className="text-xs text-muted-foreground">
-                    Field name: <code className="bg-muted px-1 rounded">{toSnakeCase(formData.field_label)}</code>
-                  </p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="field_type">Field Type</Label>
-                <Select
-                  value={formData.field_type}
-                  onValueChange={handleTypeChange}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {fieldTypes.map(type => (
-                      <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+    <div className="space-y-6">
+      {/* Existing Fields */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <List className="h-4 w-4" />
+            Form Fields
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">Loading fields...</p>
+          ) : sortedFields.length === 0 ? (
+            <div className="text-center py-8">
+              <List className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground">No form fields yet</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Add fields that recruiters will fill out when creating an offer
+              </p>
             </div>
-
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="is_required"
-                checked={formData.is_required}
-                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_required: checked }))}
-              />
-              <Label htmlFor="is_required">This field is required</Label>
-            </div>
-
-            {/* Salary config */}
-            {formData.field_type === 'salary' && (
-              <div className="bg-virgilio-purple/5 border border-virgilio-purple/20 rounded-lg p-4 space-y-3">
-                <div className="flex items-center gap-2 text-virgilio-purple">
-                  <Link2 className="h-4 w-4" />
-                  <span className="text-sm font-medium">Salary Configuration</span>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Currency</p>
-                    <Select value={formData.salaryConfig.currency} onValueChange={(v) => setFormData(prev => ({ ...prev, salaryConfig: { ...prev.salaryConfig, currency: v } }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {['USD','EUR','GBP','CAD','AUD','CHF','JPY','INR','BRL','MXN','SGD','HKD','NZD','ZAR','AED','SAR'].map(c => (
-                          <SelectItem key={c} value={c}>{c}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Period</p>
-                    <Select value={formData.salaryConfig.period} onValueChange={(v: any) => setFormData(prev => ({ ...prev, salaryConfig: { ...prev.salaryConfig, period: v } }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="hourly">Hourly</SelectItem>
-                        <SelectItem value="monthly">Monthly</SelectItem>
-                        <SelectItem value="annually">Annually</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Location config */}
-            {formData.field_type === 'location' && (
-              <div className="bg-virgilio-purple/5 border border-virgilio-purple/20 rounded-lg p-4 space-y-3">
-                <div className="flex items-center gap-2 text-virgilio-purple">
-                  <Link2 className="h-4 w-4" />
-                  <span className="text-sm font-medium">Location Configuration</span>
-                </div>
+          ) : (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={(e) => setActiveId(e.active.id as string)} onDragEnd={handleDragEnd}>
+              <SortableContext items={orderedIds} strategy={verticalListSortingStrategy}>
                 <div className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground">Sub-fields to include</p>
-                  {([['city', 'City'], ['state', 'State / Province'], ['country', 'Country']] as const).map(([key, lbl]) => (
-                    <div key={key} className="flex items-center gap-2">
-                      <Checkbox
-                        checked={formData.locationConfig.fields.includes(key)}
-                        onCheckedChange={(checked) => {
-                          setFormData(prev => ({
-                            ...prev,
-                            locationConfig: {
-                              fields: checked
-                                ? [...prev.locationConfig.fields, key]
-                                : prev.locationConfig.fields.filter(f => f !== key)
-                            }
-                          }))
-                        }}
-                      />
-                      <span className="text-sm">{lbl}</span>
-                    </div>
+                  {sortedFields.map((field) => (
+                    <SortableFieldRow key={field.id} id={field.id}>
+                      {({ attributes, listeners }) => (
+                        <OfferFieldEditor
+                          field={field}
+                          onUpdate={handleUpdateField}
+                          onDelete={(id) => {
+                            const f = fields.find(ff => ff.id === id)
+                            if (f) setDeleteTarget(f)
+                          }}
+                          dragHandlers={{ attributes, listeners }}
+                        />
+                      )}
+                    </SortableFieldRow>
                   ))}
                 </div>
-              </div>
-            )}
+              </SortableContext>
+              <DragOverlay>
+                {activeId ? (
+                  <div className="p-3 border border-border/40 rounded-brand bg-background shadow-lg w-[280px]">
+                    <div className="text-sm font-medium">{activeField?.field_label || 'Field'}</div>
+                    <div className="text-xs text-muted-foreground capitalize">{activeField?.field_type}</div>
+                  </div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          )}
+        </CardContent>
+      </Card>
 
-            {formData.field_type !== 'salary' && formData.field_type !== 'location' && (
-              <div className="space-y-2">
-                <Label htmlFor="placeholder_text">Placeholder Text</Label>
-                <Input
-                  id="placeholder_text"
-                  value={formData.placeholder_text}
-                  onChange={(e) => setFormData(prev => ({ ...prev, placeholder_text: e.target.value }))}
-                  placeholder="Enter placeholder..."
-                />
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="help_text">Help Text</Label>
-              <Textarea
-                id="help_text"
-                value={formData.help_text}
-                onChange={(e) => setFormData(prev => ({ ...prev, help_text: e.target.value }))}
-                placeholder="Additional instructions for this field"
-                rows={2}
+      {/* Add Field */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Add Field</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <FormField label="Label">
+              <Input
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="e.g., Start Date"
               />
-            </div>
-
-            {formData.field_type === 'file' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="accepted_file_types">Accepted File Types</Label>
-                  <Input
-                    id="accepted_file_types"
-                    value={formData.accepted_file_types}
-                    onChange={(e) => setFormData(prev => ({ ...prev, accepted_file_types: e.target.value }))}
-                    placeholder=".pdf,.doc,.docx"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="max_file_size_mb">Max File Size (MB)</Label>
-                  <Input
-                    id="max_file_size_mb"
-                    type="number"
-                    value={formData.max_file_size_mb}
-                    onChange={(e) => setFormData(prev => ({ ...prev, max_file_size_mb: parseInt(e.target.value) || 5 }))}
-                  />
-                </div>
+            </FormField>
+            <FormField label="Type">
+              <Select value={type} onValueChange={(v: OfferFieldType) => setType(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {ALL_FIELD_TYPES.map((t) => (
+                    <SelectItem key={t} value={t} className="capitalize">
+                      {t === 'salary' ? 'Salary' : t === 'location' ? 'Location' : t}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+            <FormField label="Required">
+              <div className="flex items-center h-10">
+                <Checkbox checked={required} onCheckedChange={(c) => setRequired(!!c)} />
+                <span className="ml-2 text-sm text-muted-foreground">Must be filled</span>
               </div>
-            )}
-
-            <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={closeDialogs}>Cancel</Button>
-              <Button
-                onClick={editingField ? handleUpdateField : handleCreateField}
-                disabled={!formData.field_label.trim()}
-              >
-                {editingField ? 'Update Field' : 'Add Field'}
-              </Button>
-            </div>
+            </FormField>
           </div>
-        </DialogContent>
-      </Dialog>
+
+          {showHelpText && (
+            <FormField label="Help Text (optional)">
+              <Input
+                value={newHelpText}
+                onChange={(e) => setNewHelpText(e.target.value)}
+                placeholder="Help text shown below the field"
+              />
+            </FormField>
+          )}
+
+          {showFileConfig && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <FormField label="Accepted File Types">
+                <Input
+                  value={newAcceptedFileTypes}
+                  onChange={(e) => setNewAcceptedFileTypes(e.target.value)}
+                  placeholder="e.g. .pdf,.docx,.doc"
+                />
+              </FormField>
+              <FormField label="Max File Size (MB)">
+                <Input
+                  type="number"
+                  value={newMaxFileSize}
+                  onChange={(e) => setNewMaxFileSize(e.target.value ? Number(e.target.value) : '')}
+                  placeholder="e.g. 10"
+                />
+              </FormField>
+            </div>
+          )}
+
+          {showSalaryConfig && (
+            <div className="bg-virgilio-purple/5 border border-virgilio-purple/20 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-2 text-virgilio-purple">
+                <Link2 className="h-4 w-4" />
+                <span className="text-sm font-medium">Salary Configuration</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <FormField label="Currency">
+                  <Select value={newSalaryConfig.currency} onValueChange={(v) => setNewSalaryConfig(prev => ({ ...prev, currency: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {['USD','EUR','GBP','CAD','AUD','CHF','JPY','INR','BRL','MXN','SGD','HKD','NZD','ZAR','AED','SAR'].map(c => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormField>
+                <FormField label="Period">
+                  <Select value={newSalaryConfig.period} onValueChange={(v: any) => setNewSalaryConfig(prev => ({ ...prev, period: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hourly">Hourly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="annually">Annually</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormField>
+              </div>
+            </div>
+          )}
+
+          {showLocationConfig && (
+            <div className="bg-virgilio-purple/5 border border-virgilio-purple/20 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-2 text-virgilio-purple">
+                <Link2 className="h-4 w-4" />
+                <span className="text-sm font-medium">Location Configuration</span>
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Sub-fields to include</p>
+                {([['city', 'City'], ['state', 'State / Province'], ['country', 'Country']] as const).map(([key, lbl]) => (
+                  <div key={key} className="flex items-center gap-2">
+                    <Checkbox
+                      checked={newLocationConfig.fields.includes(key)}
+                      onCheckedChange={(checked) => {
+                        setNewLocationConfig(prev => ({
+                          fields: checked
+                            ? [...prev.fields, key]
+                            : prev.fields.filter(f => f !== key)
+                        }))
+                      }}
+                    />
+                    <span className="text-sm">{lbl}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end">
+            <Button onClick={handleAddField} disabled={!label.trim()}>
+              <Plus className="h-4 w-4 mr-2" /> Add Custom Field
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Field</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteTarget?.field_label}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
