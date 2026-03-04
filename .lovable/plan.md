@@ -1,45 +1,14 @@
 
 
-# Convert Offer Form to Minimizable Overlay with Draft Support
+# Fix Vertical Centering in Minimized Offer Composer
 
-## What changes
+The header bar uses `p-4` (16px padding all sides) which, combined with the text/icon heights, doesn't perfectly center within the fixed `h-[52px]`. When minimized, the `border-b` is also unnecessary.
 
-Replace the current `Sheet`-based `CreateOfferLetterSheet` with a minimizable floating overlay (matching the `MinimizableEmailComposer` pattern), and add localStorage-based draft persistence.
+## Change: `src/components/candidates/MinimizableOfferComposer.tsx`
 
-## Changes
+On the header `div` (line 111), conditionally adjust styling when minimized:
+- When minimized: use `h-full` to fill the 52px container, remove `border-b` and `rounded-t-lg` (it's the only visible element so round all corners), and use `px-4` with flex centering handling the vertical alignment
+- When expanded: keep current `p-4 border-b rounded-t-lg`
 
-### 1. New component: `src/components/candidates/MinimizableOfferComposer.tsx`
-
-A wrapper component modeled on `MinimizableEmailComposer.tsx`:
-- Fixed position overlay at bottom-right (`absolute bottom-4 right-4 z-[60]`)
-- Header bar with title ("Create Offer — {candidateName}"), minimize/expand toggle, and close button
-- When minimized: compact bar showing just the title (same dimensions as email composer)
-- When expanded: scrollable content area rendering the offer form fields (form selector, dynamic fields, save button)
-- On close: if there are field values filled in, auto-save draft to localStorage before closing (key: `offer-draft-{candidateId}`)
-
-### 2. Refactor `CreateOfferLetterDialog.tsx` → extract form body
-
-Extract the form body (form selector, dynamic fields, action buttons) into an inline section within the new `MinimizableOfferComposer`. The component keeps the same hooks (`useOfferForms`, `useOfferFormFields`, `useOfferLetters`) and logic, just rendered inside the overlay instead of a Sheet.
-
-### 3. Draft persistence (localStorage)
-
-- **Draft key**: `offer-draft-{candidateId}`
-- **Auto-save on close**: When closing with unsaved field values, save `{ selectedFormId, fieldValues, lastUpdated }` to localStorage
-- **Restore on open**: On mount, check for a draft. If found, restore `selectedFormId` and `fieldValues`, show a subtle toast or inline indicator ("Draft restored")
-- **Clear on successful save**: After `createOfferLetter` succeeds, remove the draft from localStorage
-- **Auto-save on field change**: Debounced save (e.g. 2s after last change) so progress is continuously preserved
-
-### 4. Update consumers
-
-- **`CandidateProfileSheet.tsx`**: Replace `<CreateOfferLetterSheet>` with `<MinimizableOfferComposer>` — same props, different rendering
-- **`CandidateProfile.tsx`**: Same replacement
-- Both already have the `open`/`onOpenChange` state that will drive the overlay visibility
-
-### 5. Visual spec
-
-- Expanded width: `w-[720px] max-w-[min(95vw,720px)]` (matches email composer)
-- Max content height: `max-h-[600px] overflow-y-auto`
-- Minimized: `w-[432px] h-[52px]`
-- Header: `bg-muted/30`, cursor pointer to toggle minimize
-- Same shadow, border, and animation classes as `MinimizableEmailComposer`
+This ensures `items-center` properly vertically centers content against the full 52px height.
 
