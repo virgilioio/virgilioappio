@@ -155,6 +155,7 @@ export function FormFieldEditor({
 
   // Smart field type badge (used in both view & edit rows)
   const isSmartField = field.field_type === 'salary' || field.field_type === 'location' || field.field_type === 'phone' || field.field_type === 'recruiter'
+  const showSyncMessaging = context !== 'offer'
 
   return (
     <div className={cn('p-3 border border-border/40 rounded-brand flex-1', isLocked && 'bg-muted/20')}>
