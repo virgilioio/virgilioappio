@@ -140,7 +140,10 @@ export function OfferLetterSheet({
           </div>
 
           <div className="lg:col-span-1">
-            <PlaceholderHelper templateId={isEditMode ? templateId : undefined} />
+            <PlaceholderHelper 
+              templateId={isEditMode ? templateId : undefined}
+              showFormSelector
+            />
           </div>
         </div>
       </SheetContent>

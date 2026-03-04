@@ -5,6 +5,27 @@ export interface OfferLetterData {
   job: any
   organization: any
   fieldValues: Record<string, any>
+  /** Optional: field type metadata keyed by field_name for smart formatting */
+  fieldTypes?: Record<string, string>
+  /** Optional: recruiter name lookup keyed by user_id */
+  recruiterLookup?: Record<string, string>
+}
+
+// Label maps for enum-style fields
+const employmentTypeLabels: Record<string, string> = {
+  full_time: 'Full-time',
+  part_time: 'Part-time',
+  contract: 'Contract',
+  temporary: 'Temporary',
+  internship: 'Internship',
+  freelance: 'Freelance',
+}
+
+const workLocationLabels: Record<string, string> = {
+  remote: 'Remote',
+  hybrid: 'Hybrid',
+  onsite: 'On-site',
+  on_site: 'On-site',
 }
 
 /**
@@ -46,9 +67,10 @@ export function processOfferLetterTemplate(
     '{{organization.default_currency}}': data.organization?.default_currency || ''
   }
 
-  // Replace field placeholders
+  // Replace field placeholders with smart formatting
   const fieldPlaceholders = Object.entries(data.fieldValues).reduce((acc, [key, value]) => {
-    acc[`{{field.${key}}}`] = formatFieldValue(value)
+    const fieldType = data.fieldTypes?.[key]
+    acc[`{{field.${key}}}`] = formatFieldValue(value, fieldType, data.recruiterLookup)
     return acc
   }, {} as Record<string, string>)
 
@@ -68,11 +90,63 @@ export function processOfferLetterTemplate(
 }
 
 /**
- * Format field values for display in the template
+ * Format field values for display in the template, with smart type handling
  */
-function formatFieldValue(value: any): string {
+function formatFieldValue(value: any, fieldType?: string, recruiterLookup?: Record<string, string>): string {
   if (value == null) return ''
-  
+
+  // Smart field type formatting
+  if (fieldType) {
+    switch (fieldType) {
+      case 'salary': {
+        if (typeof value === 'object' && value !== null) {
+          const { amount, currency, period } = value
+          const formattedAmount = amount ? Number(amount).toLocaleString() : ''
+          const parts = [currency, formattedAmount].filter(Boolean).join(' ')
+          return period ? `${parts} per ${period}` : parts
+        }
+        break
+      }
+      case 'location': {
+        if (typeof value === 'object' && value !== null) {
+          const { city, state, country } = value
+          return [city, state, country].filter(Boolean).join(', ')
+        }
+        break
+      }
+      case 'recruiter': {
+        if (typeof value === 'string' && recruiterLookup) {
+          return recruiterLookup[value] || value
+        }
+        break
+      }
+      case 'employment_type': {
+        if (typeof value === 'string') {
+          return employmentTypeLabels[value] || value
+        }
+        break
+      }
+      case 'work_location': {
+        if (typeof value === 'string') {
+          return workLocationLabels[value] || value
+        }
+        break
+      }
+      case 'date': {
+        if (typeof value === 'string') {
+          try {
+            const date = new Date(value + 'T00:00:00')
+            return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+          } catch {
+            return value
+          }
+        }
+        break
+      }
+    }
+  }
+
+  // Generic fallback formatting
   if (typeof value === 'boolean') {
     return value ? 'Yes' : 'No'
   }
@@ -83,6 +157,11 @@ function formatFieldValue(value: any): string {
   
   if (typeof value === 'number') {
     return value.toString()
+  }
+
+  if (typeof value === 'object') {
+    // Last resort for unrecognized objects
+    return JSON.stringify(value)
   }
   
   return String(value)

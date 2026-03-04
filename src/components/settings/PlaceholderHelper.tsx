@@ -1,20 +1,37 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
-import { CornerDownLeft, Code, User, Building, Briefcase, CalendarClock, type LucideIcon } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { CornerDownLeft, Code, User, Building, Briefcase, CalendarClock, FileText, type LucideIcon } from 'lucide-react'
 import { useOfferTemplateFields } from '@/hooks/useOfferTemplateFields'
+import { useOfferForms } from '@/hooks/useOfferForms'
+import { useOfferFormFields, type OfferFormField } from '@/hooks/useOfferFormFields'
 import { useToast } from '@/hooks/use-toast'
 
 interface PlaceholderHelperProps {
   templateId?: string
   onInsert?: (placeholder: string) => void
+  /** When provided, show offer form field placeholders instead of legacy template fields */
+  offerFormFields?: OfferFormField[]
+  /** Show an offer form selector to pick which form's fields to display */
+  showFormSelector?: boolean
 }
 
-export function PlaceholderHelper({ templateId, onInsert }: PlaceholderHelperProps) {
-  const { fields } = useOfferTemplateFields(templateId)
+export function PlaceholderHelper({ templateId, onInsert, offerFormFields, showFormSelector }: PlaceholderHelperProps) {
+  const { fields: legacyFields } = useOfferTemplateFields(templateId)
+  const { forms } = useOfferForms()
+  const [selectedFormId, setSelectedFormId] = useState<string>('')
+  const { fields: selectedFormFields } = useOfferFormFields(selectedFormId || undefined)
   const { toast } = useToast()
+
+  // Determine which dynamic fields to show:
+  // 1. Explicit offerFormFields prop (highest priority)
+  // 2. Fields from selected form via selector
+  // 3. Legacy template fields (fallback)
+  const dynamicFields = offerFormFields || (selectedFormId ? selectedFormFields : [])
+  const useLegacyFields = !offerFormFields && !selectedFormId
 
   // Static placeholders for job and organization data
   const jobPlaceholders = [
@@ -60,11 +77,23 @@ export function PlaceholderHelper({ templateId, onInsert }: PlaceholderHelperPro
     { key: '{{stage.booking_link}}', description: 'Assigned interviewer booking link (falls back to sender)' }
   ]
 
-  // Dynamic placeholders from template fields
-  const dynamicPlaceholders = fields.map(field => ({
-    key: `{{field.${field.field_name}}}`,
-    description: field.field_label
-  }))
+  // Build dynamic placeholders from offer form fields
+  const formFieldPlaceholders = dynamicFields
+    .sort((a, b) => a.display_order - b.display_order)
+    .map(field => ({
+      key: `{{field.${field.field_name}}}`,
+      description: `${field.field_label}${field.field_type === 'salary' ? ' (formatted salary)' : field.field_type === 'location' ? ' (formatted location)' : field.field_type === 'recruiter' ? ' (recruiter name)' : field.field_type === 'employment_type' ? ' (employment type label)' : field.field_type === 'work_location' ? ' (work location label)' : ''}`
+    }))
+
+  // Legacy template field placeholders (fallback)
+  const legacyPlaceholders = useLegacyFields
+    ? legacyFields.map(field => ({
+        key: `{{field.${field.field_name}}}`,
+        description: field.field_label
+      }))
+    : []
+
+  const dynamicPlaceholders = formFieldPlaceholders.length > 0 ? formFieldPlaceholders : legacyPlaceholders
 
   const handleAction = async (text: string) => {
     if (onInsert) {
@@ -74,7 +103,6 @@ export function PlaceholderHelper({ templateId, onInsert }: PlaceholderHelperPro
         description: 'Placeholder inserted into editor'
       })
     } else {
-      // Fallback to copy if no onInsert
       try {
         await navigator.clipboard.writeText(text)
         toast({
@@ -148,6 +176,28 @@ export function PlaceholderHelper({ templateId, onInsert }: PlaceholderHelperPro
       <CardContent className="p-0">
         <ScrollArea className="h-[500px] px-6 pb-6">
           <div className="space-y-6">
+            {/* Offer Form Selector */}
+            {showFormSelector && !offerFormFields && forms.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <FileText className="h-4 w-4" />
+                  Offer Form
+                </div>
+                <Select value={selectedFormId} onValueChange={setSelectedFormId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select an offer form to see its field placeholders" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {forms.map(form => (
+                      <SelectItem key={form.id} value={form.id}>
+                        {form.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <PlaceholderSection
               title="Job Information"
               icon={Briefcase}
@@ -180,20 +230,24 @@ export function PlaceholderHelper({ templateId, onInsert }: PlaceholderHelperPro
 
             {dynamicPlaceholders.length > 0 && (
               <PlaceholderSection
-                title="Dynamic Fields"
-                icon={Code}
+                title="Offer Form Fields"
+                icon={FileText}
                 placeholders={dynamicPlaceholders}
               />
             )}
 
-            {dynamicPlaceholders.length === 0 && templateId && (
+            {dynamicPlaceholders.length === 0 && (showFormSelector || templateId) && (
               <div className="text-center py-6">
-                <Code className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground">
-                  No dynamic fields created yet
+                  {showFormSelector && !selectedFormId
+                    ? 'Select an offer form above to see its field placeholders'
+                    : 'No dynamic fields created yet'}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Add custom fields to see their placeholders here
+                  {showFormSelector && !selectedFormId
+                    ? 'Field placeholders like {{field.start_date}} will appear here'
+                    : 'Add custom fields to see their placeholders here'}
                 </p>
               </div>
             )}
