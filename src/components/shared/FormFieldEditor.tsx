@@ -24,9 +24,24 @@ export function fieldTypeLabel(t: string) {
     case 'location': return 'Location'
     case 'phone': return 'Phone'
     case 'recruiter': return 'Recruiter'
+    case 'employment_type': return 'Employment Type'
+    case 'work_location': return 'Work Location'
     default: return t
   }
 }
+
+export const EMPLOYMENT_TYPE_OPTIONS = [
+  { value: 'full_time', label: 'Full-time' },
+  { value: 'part_time', label: 'Part-time' },
+  { value: 'temporary', label: 'Temporary' },
+  { value: 'internship', label: 'Internship' },
+]
+
+export const WORK_LOCATION_OPTIONS = [
+  { value: 'remote', label: 'Remote' },
+  { value: 'hybrid', label: 'Hybrid' },
+  { value: 'onsite', label: 'On-site' },
+]
 
 // ---- Generic field shape ----
 
