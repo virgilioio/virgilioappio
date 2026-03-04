@@ -134,10 +134,11 @@ export function FormFieldEditor({
     if (localType !== 'file') { setLocalAcceptedFileTypes(''); setLocalMaxFileSize('') }
   }, [localType])
 
+  const toSnakeCase = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
   const addOption = () => setLocalOptions(prev => [...prev, { option_value: '', option_label: '', display_order: prev.length }])
   const removeOption = (i: number) => setLocalOptions(prev => prev.filter((_, idx) => idx !== i))
-  const updateOption = (i: number, key: 'option_value' | 'option_label', value: string) =>
-    setLocalOptions(prev => prev.map((o, idx) => idx === i ? { ...o, [key]: value } : o))
+  const updateOptionLabel = (i: number, label: string) =>
+    setLocalOptions(prev => prev.map((o, idx) => idx === i ? { ...o, option_label: label, option_value: toSnakeCase(label) } : o))
 
   const showHelpText = ['text', 'number', 'email', 'url', 'textarea', 'checkbox', 'checkbox_group', 'date'].includes(localType)
   const showOptions = ['select', 'checkbox_group'].includes(localType)
