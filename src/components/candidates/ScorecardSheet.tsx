@@ -647,6 +647,9 @@ export function ScorecardSheet({
   const handleAcceptAiSuggestion = () => {
     if (aiSuggestedRating && aiRatingToScoreRating[aiSuggestedRating]) {
       setRating(aiRatingToScoreRating[aiSuggestedRating]);
+      if (aiAnalysis) {
+        setOverview(markdownToHtml(aiAnalysis));
+      }
       toast({
         title: "AI suggestion applied",
         description: `Rating set to "${aiSuggestedRating}"`,
@@ -969,18 +972,18 @@ export function ScorecardSheet({
                 )}
                 {/* AI Suggested Rating Banner */}
                 {isAiDraft && aiSuggestedRating && (
-                  <div className="rounded-lg overflow-hidden" style={{ backgroundColor: '#6F3FF5' }}>
+                  <div className="rounded-lg overflow-hidden bg-pastel-purple/30 border border-pastel-purple/50">
                     {/* Header row */}
                     <div className="p-4 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <img src={gioAvatar} alt="Gio" className="h-8 w-8 rounded-full" />
                         <div>
-                          <p className="text-sm font-medium text-white">AI Suggested Rating: {aiSuggestedRating}</p>
-                          <p className="text-xs text-white/70">Based on interview transcript analysis</p>
+                          <p className="text-sm font-medium text-foreground">AI Suggested Rating: {aiSuggestedRating}</p>
+                          <p className="text-xs text-muted-foreground">Based on interview transcript analysis</p>
                         </div>
                       </div>
                       {!isReadOnly && aiRatingToScoreRating[aiSuggestedRating] !== rating && (
-                        <Button size="sm" variant="outline" onClick={handleAcceptAiSuggestion} className="border-white/30 text-white hover:bg-white/10 hover:text-white">
+                        <Button size="sm" variant="virgilio" onClick={handleAcceptAiSuggestion}>
                           Apply Suggestion
                         </Button>
                       )}
@@ -991,17 +994,17 @@ export function ScorecardSheet({
                         <button
                           type="button"
                           onClick={() => setShowAnalysis(!showAnalysis)}
-                          className="w-full px-4 py-2 flex items-center gap-2 text-xs font-medium text-white/80 hover:text-white hover:bg-white/5 transition-colors border-t border-white/10"
+                          className="w-full px-4 py-2 flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-pastel-purple/20 transition-colors border-t border-pastel-purple/30"
                         >
                           {showAnalysis ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                           {showAnalysis ? 'Hide analysis' : 'Show analysis'}
                         </button>
                         {showAnalysis && (
-                          <div className="px-4 pb-4 border-t border-white/10">
+                          <div className="px-4 pb-4 border-t border-pastel-purple/30">
                             <ScrollArea className="max-h-80">
                               <SafeHtml
                                 content={markdownToHtml(aiAnalysis)}
-                                className="text-sm text-white/90 prose prose-invert prose-sm max-w-none [&_h1]:text-base [&_h2]:text-sm [&_h3]:text-sm [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-medium [&_p]:text-white/85 [&_li]:text-white/85 [&_strong]:text-white [&_blockquote]:border-white/30 [&_blockquote]:text-white/70 [&_hr]:border-white/20"
+                                className="text-sm text-foreground prose prose-sm max-w-none [&_h1]:text-base [&_h2]:text-sm [&_h3]:text-sm [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-medium [&_p]:text-muted-foreground [&_li]:text-muted-foreground [&_strong]:text-foreground [&_blockquote]:border-pastel-purple/40 [&_blockquote]:text-muted-foreground [&_hr]:border-pastel-purple/30"
                               />
                             </ScrollArea>
                           </div>
