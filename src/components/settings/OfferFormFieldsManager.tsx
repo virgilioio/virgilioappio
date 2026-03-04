@@ -41,7 +41,7 @@ function SortableFieldRow({ id, children }: { id: string; children: (handlers: {
 }
 
 export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) {
-  const { fields, isLoading, createField, updateField, deleteField } = useOfferFormFields(formId)
+  const { fields, isLoading, createField, updateField, deleteField, refetchFields } = useOfferFormFields(formId)
 
   // Add field form state
   const [label, setLabel] = useState('')
