@@ -113,7 +113,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, onEd
         <div className="flex items-center justify-between">
           <CardTitle>Offer Details</CardTitle>
           <div className="flex items-center gap-2">
-            {offerLetter.status === 'draft' && onEdit && (
+            {(offerLetter.status === 'draft' || offerLetter.status === 'pending_approval') && onEdit && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -136,6 +136,17 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, onEd
               >
                 {isRequesting ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
                 Request Approval
+              </Button>
+            )}
+            {offerLetter.status === 'pending_approval' && isCurrentUserRequester && approvalRequest && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => recallApproval(approvalRequest.id)}
+                disabled={isRecalling}
+              >
+                {isRecalling ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5 mr-1.5" />}
+                Recall
               </Button>
             )}
             <Badge variant={getStatusVariant(offerLetter.status) as any} className="capitalize">

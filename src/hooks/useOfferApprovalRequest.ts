@@ -268,12 +268,54 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
     },
   })
 
+  const recallApprovalMutation = useMutation({
+    mutationFn: async ({ requestId }: { requestId: string }) => {
+      if (!approvalRequest) throw new Error('No approval request')
+
+      // Set all pending steps to recalled
+      const { error: stepsError } = await supabase
+        .from('offer_approval_request_steps')
+        .update({ status: 'recalled' })
+        .eq('request_id', requestId)
+        .eq('status', 'pending')
+
+      if (stepsError) throw stepsError
+
+      // Set the request to recalled
+      const { error: reqError } = await supabase
+        .from('offer_approval_requests')
+        .update({ status: 'recalled' })
+        .eq('id', requestId)
+
+      if (reqError) throw reqError
+
+      // Revert offer to draft
+      const { error: offerError } = await supabase
+        .from('offer_letters')
+        .update({ status: 'draft' })
+        .eq('id', approvalRequest.offer_letter_id)
+
+      if (offerError) throw offerError
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey })
+      queryClient.invalidateQueries({ queryKey: ['offer-letters'] })
+      queryClient.invalidateQueries({ queryKey: ['pending-activities'] })
+      toast({ title: 'Recalled', description: 'The approval request has been recalled.' })
+    },
+    onError: (error) => {
+      console.error('Recall approval error:', error)
+      toast({ title: 'Error', description: 'Failed to recall approval', variant: 'destructive' })
+    },
+  })
+
   // Determine if the current user is the active approver
   const activeStep = approvalRequest?.status === 'pending'
     ? approvalRequest.steps.find(s => s.step_order === approvalRequest.current_step_order && s.status === 'pending')
     : null
 
   const isCurrentUserActiveApprover = activeStep?.approver_user_id === user?.id
+  const isCurrentUserRequester = approvalRequest?.requested_by === user?.id
 
   return {
     approvalRequest,
@@ -283,14 +325,18 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
     chainHasSteps: (chain?.steps?.length ?? 0) > 0,
     activeStep,
     isCurrentUserActiveApprover,
+    isCurrentUserRequester,
     requestApproval: (offerId: string, jId: string, candidateId: string) =>
       requestApprovalMutation.mutateAsync({ offerId, jId, candidateId }),
     approveStep: (stepId: string, notes?: string) =>
       approveStepMutation.mutateAsync({ stepId, notes }),
     declineStep: (stepId: string, notes: string) =>
       declineStepMutation.mutateAsync({ stepId, notes }),
+    recallApproval: (requestId: string) =>
+      recallApprovalMutation.mutateAsync({ requestId }),
     isRequesting: requestApprovalMutation.isPending,
     isApproving: approveStepMutation.isPending,
     isDeclining: declineStepMutation.isPending,
+    isRecalling: recallApprovalMutation.isPending,
   }
 }

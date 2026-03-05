@@ -18,6 +18,7 @@ export interface OfferFormField {
   accepted_file_types?: string
   max_file_size_mb?: number
   field_config?: SalaryFieldConfig | LocationFieldConfig | PhoneFieldConfig | null
+  triggers_approval_restart: boolean
   created_by?: string
   created_at: string
   updated_at: string

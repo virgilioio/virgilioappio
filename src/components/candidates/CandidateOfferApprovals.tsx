@@ -194,6 +194,7 @@ export function CandidateOfferApprovals({ candidateId, jobId, organizationId }: 
                       <> · {isApprovedStep ? 'Approved' : 'Declined'} {formatDistanceToNow(new Date(step.decided_at), { addSuffix: true })}</>
                     )}
                     {isActive && ' · Awaiting decision'}
+                    {isRecalledStep && ' · Recalled'}
                     {isPending && ' · Pending'}
                   </div>
 
