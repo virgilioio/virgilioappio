@@ -72,7 +72,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, onEd
   // Find the offer letter for this job
   const offerLetter = offerLetters.find(ol => ol.job_id === jobId)
   const { fields } = useOfferFormFields(offerLetter?.form_id || undefined)
-  const { approvalRequest, chainEnabled, chainHasSteps, requestApproval, isRequesting, recallApproval, isRecalling, isCurrentUserRequester, isCurrentUserActiveApprover, activeStep, approveStep, declineStep, isApproving, isDeclining } = useOfferApprovalRequest(offerLetter?.id, jobId)
+  const { approvalRequest, isActiveRequest, chainEnabled, chainHasSteps, requestApproval, isRequesting, recallApproval, isRecalling, isCurrentUserRequester, isCurrentUserActiveApprover, activeStep, approveStep, declineStep, isApproving, isDeclining } = useOfferApprovalRequest(offerLetter?.id, jobId)
 
   const [approveComment, setApproveComment] = useState('')
   const [declineComment, setDeclineComment] = useState('')
