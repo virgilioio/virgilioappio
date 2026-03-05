@@ -205,39 +205,17 @@ export function useOfferApprovalChain(jobId: string) {
     },
   })
 
-  const reorderApproverMutation = useMutation({
-    mutationFn: async ({ stepId, direction }: { stepId: string; direction: 'up' | 'down' }) => {
+  const reorderStepsMutation = useMutation({
+    mutationFn: async (orderedStepIds: string[]) => {
       if (!chain) throw new Error('Chain not found')
 
-      const sortedSteps = [...chain.steps].sort((a, b) => a.step_order - b.step_order)
-      const currentIndex = sortedSteps.findIndex(s => s.id === stepId)
-      if (currentIndex === -1) throw new Error('Step not found')
-
-      const swapIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
-      if (swapIndex < 0 || swapIndex >= sortedSteps.length) return
-
-      const currentStep = sortedSteps[currentIndex]
-      const swapStep = sortedSteps[swapIndex]
-
-      // Use a temp order to avoid unique constraint violation
-      const tempOrder = 99999
-      const { error: e1 } = await supabase
-        .from('offer_approval_chain_steps')
-        .update({ step_order: tempOrder })
-        .eq('id', currentStep.id)
-      if (e1) throw e1
-
-      const { error: e2 } = await supabase
-        .from('offer_approval_chain_steps')
-        .update({ step_order: currentStep.step_order })
-        .eq('id', swapStep.id)
-      if (e2) throw e2
-
-      const { error: e3 } = await supabase
-        .from('offer_approval_chain_steps')
-        .update({ step_order: swapStep.step_order })
-        .eq('id', currentStep.id)
-      if (e3) throw e3
+      for (let i = 0; i < orderedStepIds.length; i++) {
+        const { error } = await supabase
+          .from('offer_approval_chain_steps')
+          .update({ step_order: i + 1 })
+          .eq('id', orderedStepIds[i])
+        if (error) throw error
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey })
