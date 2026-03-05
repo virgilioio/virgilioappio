@@ -41,7 +41,7 @@ export function JobDetailFloatingSidebar({
   ]
 
   return (
-    <div className={cn("w-40 flex-shrink-0 p-4 flex justify-center", className)}>
+    <div className={cn("w-20 flex-shrink-0 p-2 flex justify-center", className)}>
       <div className="bg-card border border-border rounded-full shadow-lg h-fit py-6 px-3 flex flex-col items-center">
         <nav className="space-y-3">
           {tabs.map((tab) => {
