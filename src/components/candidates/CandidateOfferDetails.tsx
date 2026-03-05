@@ -111,9 +111,22 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId }: Ca
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Offer Details</CardTitle>
-          <Badge variant={getStatusVariant(offerLetter.status) as any} className="capitalize">
-            {getStatusLabel(offerLetter.status)}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {offerLetter.status === 'draft' && chainEnabled && chainHasSteps && !approvalRequest && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => requestApproval(offerLetter.id, jobId, candidateId)}
+                disabled={isRequesting}
+              >
+                {isRequesting ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
+                Request Approval
+              </Button>
+            )}
+            <Badge variant={getStatusVariant(offerLetter.status) as any} className="capitalize">
+              {getStatusLabel(offerLetter.status)}
+            </Badge>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -170,28 +183,6 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId }: Ca
           <p className="text-sm text-text-secondary">No field values recorded.</p>
         )}
 
-        {/* Request Approval Button */}
-        {offerLetter.status === 'draft' && chainEnabled && chainHasSteps && !approvalRequest && (
-          <div className="pt-2">
-            <Button
-              className="w-full"
-              onClick={() => requestApproval(offerLetter.id, jobId, candidateId)}
-              disabled={isRequesting}
-            >
-              {isRequesting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-              Request Approval
-            </Button>
-          </div>
-        )}
-
-        {offerLetter.status === 'pending_approval' && (
-          <div className="pt-2">
-            <Button className="w-full" variant="secondary" disabled>
-              <Clock className="h-4 w-4 mr-2" />
-              Pending Approval
-            </Button>
-          </div>
-        )}
       </CardContent>
     </Card>
   )
