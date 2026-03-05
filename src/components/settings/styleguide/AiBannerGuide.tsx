@@ -34,7 +34,7 @@ export function AiBannerGuide() {
         <div className="space-y-3">
           <h4 className="text-sm font-medium text-muted-foreground">Standard — Clickable</h4>
           <div className="rounded-lg bg-pastel-purple/30 border border-pastel-purple/50 cursor-pointer hover:bg-pastel-purple/40 transition-colors">
-            <div className="p-3 flex items-center gap-3">
+            <div className="p-3 flex items-start gap-3">
               <img src={gioAiBannerIcon} alt="Gio" className="h-10 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground">AI Notes Analysis Available</p>
