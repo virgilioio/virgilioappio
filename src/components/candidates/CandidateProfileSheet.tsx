@@ -173,6 +173,7 @@ const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false)
 
 // Offer Form Sheet
 const [offerFormOpen, setOfferFormOpen] = useState(false)
+const [editingOffer, setEditingOffer] = useState<{ id: string; form_id: string; field_values: Record<string, any> } | null>(null)
 
 // Simple schedule interview (not stage-specific)
 const [simpleScheduleOpen, setSimpleScheduleOpen] = useState(false)
@@ -1537,7 +1538,7 @@ const stageHasAutomation = useMemo(() => {
                           <TabsTrigger value="offer-approvals" className="flex-1">Offer Approvals</TabsTrigger>
                         </TabsList>
                         <TabsContent value="offer-details">
-                          <CandidateOfferDetails candidateId={candidateId} jobId={jobId} organizationId={organizationId} onEdit={() => setOfferFormOpen(true)} />
+                          <CandidateOfferDetails candidateId={candidateId} jobId={jobId} organizationId={organizationId} onEdit={(offer) => { setEditingOffer(offer); setOfferFormOpen(true) }} />
                         </TabsContent>
                         <TabsContent value="offer-approvals">
                           <CandidateOfferApprovals candidateId={candidateId} jobId={jobId} organizationId={organizationId} />
@@ -1847,12 +1848,16 @@ const stageHasAutomation = useMemo(() => {
       {candidate && job && (
         <MinimizableOfferComposer
           isOpen={offerFormOpen}
-          onOpenChange={setOfferFormOpen}
+          onOpenChange={(open) => {
+            setOfferFormOpen(open)
+            if (!open) setEditingOffer(null)
+          }}
           candidateId={candidate.id}
           candidateName={candidate.candidate_name}
           jobId={jobId}
           jobTitle={job.title}
           organizationId={organizationId || ''}
+          editingOffer={editingOffer}
         />
       )}
 

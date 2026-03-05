@@ -31,6 +31,7 @@ interface OfferComposerBodyProps {
   onSuccess: () => void
   onCancel: () => void
   draftRestored?: boolean
+  editingOfferId?: string
 }
 
 export function OfferComposerBody({
@@ -46,11 +47,12 @@ export function OfferComposerBody({
   onSuccess,
   onCancel,
   draftRestored,
+  editingOfferId,
 }: OfferComposerBodyProps) {
   const { user } = useAuth()
   const { forms, isLoading: formsLoading } = useOfferForms()
   const { fields, isLoading: fieldsLoading } = useOfferFormFields(selectedFormId)
-  const { createOfferLetter, isLoading: creatingLetter } = useOfferLetters(candidateId)
+  const { createOfferLetter, updateOfferLetter, isLoading: creatingLetter } = useOfferLetters(candidateId)
   const { data: recruiterOptions = [] } = useRecruiterOptions(organizationId)
 
   const activeForms = forms.filter(f => f.is_active)
@@ -81,20 +83,27 @@ export function OfferComposerBody({
       return
     }
     try {
-      const title = `Offer - ${candidateName} - ${jobTitle || 'Position'}`
-      await createOfferLetter({
-        candidate_id: candidateId,
-        job_id: jobId,
-        form_id: selectedFormId,
-        organization_id: organizationId,
-        title,
-        field_values: fieldValues,
-        status: 'draft',
-        created_by: user?.id,
-      })
+      if (editingOfferId) {
+        await updateOfferLetter(editingOfferId, {
+          form_id: selectedFormId,
+          field_values: fieldValues,
+        })
+      } else {
+        const title = `Offer - ${candidateName} - ${jobTitle || 'Position'}`
+        await createOfferLetter({
+          candidate_id: candidateId,
+          job_id: jobId,
+          form_id: selectedFormId,
+          organization_id: organizationId,
+          title,
+          field_values: fieldValues,
+          status: 'draft',
+          created_by: user?.id,
+        })
+      }
       onSuccess()
     } catch (error) {
-      console.error('Failed to create offer:', error)
+      console.error('Failed to save offer:', error)
     }
   }
 
@@ -364,7 +373,7 @@ export function OfferComposerBody({
         </Button>
         <Button onClick={handleSave} disabled={!canSave() || creatingLetter}>
           {creatingLetter && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Save Offer
+          {editingOfferId ? 'Update Offer' : 'Save Offer'}
         </Button>
       </div>
     </div>

@@ -13,6 +13,7 @@ interface MinimizableOfferComposerProps {
   jobId: string
   jobTitle?: string
   organizationId: string
+  editingOffer?: { id: string; form_id: string; field_values: Record<string, any> } | null
 }
 
 interface OfferDraft {
@@ -31,6 +32,7 @@ export function MinimizableOfferComposer({
   jobId,
   jobTitle,
   organizationId,
+  editingOffer,
 }: MinimizableOfferComposerProps) {
   const [isMinimized, setIsMinimized] = useState(false)
   const [selectedFormId, setSelectedFormId] = useState('')
@@ -40,9 +42,15 @@ export function MinimizableOfferComposer({
 
   const draftKey = getDraftKey(candidateId)
 
-  // Restore draft on open
+  // Pre-fill from editingOffer or restore draft on open
   useEffect(() => {
     if (!isOpen) return
+    if (editingOffer) {
+      setSelectedFormId(editingOffer.form_id || '')
+      setFieldValues(editingOffer.field_values || {})
+      setDraftRestored(false)
+      return
+    }
     try {
       const saved = localStorage.getItem(draftKey)
       if (saved) {
@@ -55,7 +63,7 @@ export function MinimizableOfferComposer({
     } catch {
       // ignore corrupt data
     }
-  }, [isOpen, draftKey])
+  }, [isOpen, draftKey, editingOffer])
 
   // Debounced auto-save
   const saveDraft = useCallback(() => {
@@ -130,7 +138,7 @@ export function MinimizableOfferComposer({
         onClick={() => setIsMinimized(!isMinimized)}
       >
         <h3 className="font-semibold text-sm truncate">
-          {isMinimized ? `Offer: ${candidateName}` : `Create Offer — ${candidateName}`}
+          {isMinimized ? `Offer: ${candidateName}` : `${editingOffer ? 'Edit' : 'Create'} Offer — ${candidateName}`}
         </h3>
         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
           <Button
@@ -168,6 +176,7 @@ export function MinimizableOfferComposer({
             onSuccess={handleSuccess}
             onCancel={handleCancel}
             draftRestored={draftRestored}
+            editingOfferId={editingOffer?.id}
           />
         </div>
       )}

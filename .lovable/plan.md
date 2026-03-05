@@ -1,49 +1,44 @@
 
 
-# Pre-fill Offer Composer When Editing an Existing Offer
+# Separate Location Sub-Fields on One Line
 
-## Problem
+## Current State
+- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
+- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
+- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
 
-Clicking "Edit" on an existing offer opens the `MinimizableOfferComposer` blank — it only restores from localStorage drafts, not from the saved `offer_letter` record in the database. The recruiter has to re-select the form and re-enter all fields.
+## What Needs to Change
 
-## Solution
+### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
 
-Pass the existing offer data into the composer so it pre-fills the form selector and all field values on open.
+Add a `case 'location':` block that:
+- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
+- Parses the value as JSON `{ city, state, country }`
+- Renders separate inputs for each enabled sub-field in a single-row grid
+- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
+- Shows MapPin icon in the label
 
-### Changes
+### 2. Make grid columns dynamic everywhere
 
-**1. `MinimizableOfferComposer.tsx`** — Add optional `editingOffer` prop
+When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
 
-- New prop: `editingOffer?: { id: string; form_id: string; field_values: Record<string, any> } | null`
-- On open, if `editingOffer` is provided, use its `form_id` and `field_values` instead of localStorage draft (editing takes priority over draft)
-- Change header title to "Edit Offer" when editing vs "Create Offer" when creating
-- On save success, clear the editingOffer state via a callback
+**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
 
-**2. `OfferComposerBody.tsx`** — Support update mode
+**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
 
-- New optional prop: `editingOfferId?: string`
-- When `editingOfferId` is set, the save button calls `updateOfferLetter(id, { field_values, form_id })` instead of `createOfferLetter(...)`
-- Button label changes: "Update Offer" vs "Save Offer"
-- The form selector can be locked or remain editable (recommend keeping it editable so the recruiter can switch forms if needed)
+**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
 
-**3. `CandidateProfileSheet.tsx`** — Pass offer data when editing
+Column class map:
+```ts
+const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
+```
 
-- Add state: `editingOffer` (stores the offer letter data from `CandidateOfferDetails`)
-- Change `onEdit` callback to pass the offer data: `onEdit={(offer) => { setEditingOffer(offer); setOfferFormOpen(true) }}`
-- Pass `editingOffer` to `MinimizableOfferComposer`
-- Clear `editingOffer` when composer closes
+### 3. Also add salary case to `OfferComposerBody.tsx`
 
-**4. `CandidateOfferDetails.tsx`** — Update `onEdit` signature
+While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
 
-- Change prop from `onEdit?: () => void` to `onEdit?: (offer: { id: string; form_id: string; field_values: Record<string, any> }) => void`
-- Pass the offer letter data when calling `onEdit`
-
-### Files
-
-| Action | File |
-|--------|------|
-| Modify | `src/components/candidates/MinimizableOfferComposer.tsx` — add `editingOffer` prop, pre-fill on open |
-| Modify | `src/components/candidates/OfferComposerBody.tsx` — add `editingOfferId` prop, support update vs create |
-| Modify | `src/components/candidates/CandidateProfileSheet.tsx` — track `editingOffer` state, pass to composer |
-| Modify | `src/components/candidates/CandidateOfferDetails.tsx` — pass offer data in `onEdit` callback |
+## Summary of File Changes
+- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
+- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
+- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
 
