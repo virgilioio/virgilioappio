@@ -5,7 +5,7 @@ import { useOfferApprovalRequest } from '@/hooks/useOfferApprovalRequest'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Loader2, Send, Clock } from 'lucide-react'
+import { Loader2, Send, Clock, Pencil } from 'lucide-react'
 import gioFaceEmpty from '@/assets/gio-face-empty.png'
 
 const employmentTypeLabels: Record<string, string> = {
@@ -20,6 +20,7 @@ interface CandidateOfferDetailsProps {
   candidateId: string
   jobId: string
   organizationId?: string | null
+  onEdit?: () => void
 }
 
 function formatLocationValue(value: any): string {
@@ -62,7 +63,7 @@ function getStatusLabel(status: string) {
   return status
 }
 
-export function CandidateOfferDetails({ candidateId, jobId, organizationId }: CandidateOfferDetailsProps) {
+export function CandidateOfferDetails({ candidateId, jobId, organizationId, onEdit }: CandidateOfferDetailsProps) {
   const { offerLetters, isLoading } = useOfferLetters(candidateId)
   const { data: recruiterOptions = [] } = useRecruiterOptions(organizationId || null)
   
@@ -112,6 +113,16 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId }: Ca
         <div className="flex items-center justify-between">
           <CardTitle>Offer Details</CardTitle>
           <div className="flex items-center gap-2">
+            {offerLetter.status === 'draft' && onEdit && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onEdit}
+              >
+                <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                Edit
+              </Button>
+            )}
             {offerLetter.status === 'draft' && chainEnabled && chainHasSteps && !approvalRequest && (
               <Button
                 variant="ghost"

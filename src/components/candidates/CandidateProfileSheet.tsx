@@ -1537,7 +1537,7 @@ const stageHasAutomation = useMemo(() => {
                           <TabsTrigger value="offer-approvals" className="flex-1">Offer Approvals</TabsTrigger>
                         </TabsList>
                         <TabsContent value="offer-details">
-                          <CandidateOfferDetails candidateId={candidateId} jobId={jobId} organizationId={organizationId} />
+                          <CandidateOfferDetails candidateId={candidateId} jobId={jobId} organizationId={organizationId} onEdit={() => setOfferFormOpen(true)} />
                         </TabsContent>
                         <TabsContent value="offer-approvals">
                           <CandidateOfferApprovals candidateId={candidateId} jobId={jobId} organizationId={organizationId} />
