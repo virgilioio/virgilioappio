@@ -32,6 +32,7 @@ export function MinimizableOfferComposer({
   jobId,
   jobTitle,
   organizationId,
+  editingOffer,
 }: MinimizableOfferComposerProps) {
   const [isMinimized, setIsMinimized] = useState(false)
   const [selectedFormId, setSelectedFormId] = useState('')
