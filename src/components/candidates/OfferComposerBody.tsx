@@ -53,8 +53,15 @@ export function OfferComposerBody({
   const { user } = useAuth()
   const { forms, isLoading: formsLoading } = useOfferForms()
   const { fields, isLoading: fieldsLoading } = useOfferFormFields(selectedFormId)
-  const { createOfferLetter, updateOfferLetter, isLoading: creatingLetter } = useOfferLetters(candidateId)
+  const { offerLetters, createOfferLetter, updateOfferLetter, isLoading: creatingLetter } = useOfferLetters(candidateId)
   const { data: recruiterOptions = [] } = useRecruiterOptions(organizationId)
+
+  // Find the current offer being edited to check its status
+  const currentOffer = editingOfferId ? offerLetters.find(ol => ol.id === editingOfferId) : null
+  const { approvalRequest, recallApproval } = useOfferApprovalRequest(
+    currentOffer?.status === 'pending_approval' ? editingOfferId : undefined,
+    jobId
+  )
 
   const activeForms = forms.filter(f => f.is_active)
 
