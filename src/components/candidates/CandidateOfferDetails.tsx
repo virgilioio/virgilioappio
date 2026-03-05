@@ -217,7 +217,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
         <div className="flex items-center justify-between">
           <CardTitle>Offer Details</CardTitle>
           <div className="flex items-center gap-2">
-            {(offerLetter.status === 'draft' || offerLetter.status === 'pending_approval') && onEdit && (
+            {associationStatus !== 'hired' && onEdit && (
               <Button
                 variant="ghost"
                 size="sm"

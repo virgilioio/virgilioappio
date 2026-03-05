@@ -110,6 +110,19 @@ export function OfferComposerBody({
           form_id: selectedFormId,
           field_values: fieldValues,
         })
+        // Log offer update activity
+        const originalValues = currentOffer?.field_values || {}
+        const changedFields = fields
+          .filter(f => JSON.stringify(originalValues[f.field_name] ?? '') !== JSON.stringify(fieldValues[f.field_name] ?? ''))
+          .map(f => f.field_label)
+        logActivity({
+          activityType: 'offer_updated',
+          title: `Offer updated for ${candidateName}`,
+          entityType: 'candidate',
+          entityId: candidateId,
+          organizationId,
+          metadata: { candidateId, jobId, changedFields },
+        })
       } else {
         const title = `Offer - ${candidateName} - ${jobTitle || 'Position'}`
         await createOfferLetter({
@@ -121,6 +134,15 @@ export function OfferComposerBody({
           field_values: fieldValues,
           status: 'draft',
           created_by: user?.id,
+        })
+        // Log offer creation activity
+        logActivity({
+          activityType: 'offer_created',
+          title: `Offer created for ${candidateName}`,
+          entityType: 'candidate',
+          entityId: candidateId,
+          organizationId,
+          metadata: { candidateId, jobId },
         })
       }
       onSuccess()
