@@ -86,7 +86,7 @@ export function NotificationCenter() {
           <>
             <div className="overflow-y-auto max-h-80">
               <div className="divide-y divide-virgilio-border">
-                {emailNotifications.map((notification) => (
+                {notifications.map((notification) => (
                   <button
                     key={notification.id}
                     onClick={() => handleNotificationClick(notification)}
@@ -94,21 +94,29 @@ export function NotificationCenter() {
                   >
                     <div className="flex gap-3 items-start">
                       <div className="mt-0.5 shrink-0">
-                        <Mail className="h-3.5 w-3.5 text-virgilio-muted" />
+                        {notification.type === 'offer_approval' ? (
+                          <ClipboardCheck className="h-3.5 w-3.5 text-virgilio-purple" />
+                        ) : (
+                          <Mail className="h-3.5 w-3.5 text-virgilio-muted" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0 space-y-1">
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-sm font-poppins font-semibold text-virgilio-text truncate">
-                            {notification.candidateName}
+                            {notification.type === 'offer_approval'
+                              ? `Offer approval needed`
+                              : notification.candidateName}
                           </span>
                           <span className="text-[11px] text-virgilio-muted whitespace-nowrap shrink-0">
                             {formatDistanceToNow(new Date(notification.timestamp), { addSuffix: true })}
                           </span>
                         </div>
                         <p className="text-xs text-virgilio-text truncate">
-                          {notification.emailSubject || 'No subject'}
+                          {notification.type === 'offer_approval'
+                            ? `Approve offer for ${notification.candidateName}`
+                            : notification.emailSubject || 'No subject'}
                         </p>
-                        {notification.emailSnippet && (
+                        {notification.type === 'email' && notification.emailSnippet && (
                           <p className="text-xs text-virgilio-muted truncate">
                             {notification.emailSnippet}
                           </p>
