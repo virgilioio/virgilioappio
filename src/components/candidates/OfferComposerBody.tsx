@@ -60,8 +60,9 @@ export function OfferComposerBody({
 
   // Find the current offer being edited to check its status
   const currentOffer = editingOfferId ? offerLetters.find(ol => ol.id === editingOfferId) : null
+  const shouldLoadApproval = currentOffer?.status === 'pending_approval' || currentOffer?.status === 'approved'
   const { approvalRequest, recallApproval } = useOfferApprovalRequest(
-    currentOffer?.status === 'pending_approval' ? editingOfferId : undefined,
+    shouldLoadApproval ? editingOfferId : undefined,
     jobId
   )
 
