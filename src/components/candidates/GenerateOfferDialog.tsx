@@ -128,7 +128,7 @@ export function GenerateOfferDialog({
           <Button
             size="sm"
             onClick={handleGenerate}
-            disabled={!selectedTemplate || isGenerating}
+            disabled={!selectedTemplateId || isGenerating}
           >
             {isGenerating ? (
               <>
