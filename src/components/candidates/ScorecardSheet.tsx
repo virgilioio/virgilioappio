@@ -1026,6 +1026,7 @@ export function ScorecardSheet({
                       </>
                     )}
                   </div>
+                  </div>
                 )}
 
                 <div className="space-y-2">
