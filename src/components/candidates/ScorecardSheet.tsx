@@ -21,6 +21,7 @@ import gioIcon from "@/assets/gio-icon.png";
 import gioAvatar from "@/assets/gio-avatar.png";
 import gioAiBannerIcon from "@/assets/gio-ai-banner-icon.png";
 import { SafeHtml } from "@/components/ui/safe-html";
+import { ProfileSummaryMarkdown } from "@/components/candidates/ProfileSummaryMarkdown";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { RecommendedNextStepsDialog } from "./RecommendedNextStepsDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
