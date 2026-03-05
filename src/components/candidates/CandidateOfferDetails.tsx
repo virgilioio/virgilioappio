@@ -215,7 +215,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
 
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
-          <CardTitle>Offer Details</CardTitle>
+          <CardTitle className="leading-none">Offer Details</CardTitle>
           <Badge variant={getStatusVariant(offerLetter.status) as any} className="capitalize">
             {getStatusLabel(offerLetter.status)}
           </Badge>
