@@ -32,7 +32,7 @@ export function GenerateOfferDialog({
   const { templates, isLoading: templatesLoading } = useOfferTemplates('organization')
   const { user } = useAuth()
   const { toast } = useToast()
-  const [selectedTemplate, setSelectedTemplate] = useState<OfferTemplate | null>(null)
+  const [selectedTemplateId, setSelectedTemplateId] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
 
   const handleGenerate = async () => {
