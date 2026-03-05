@@ -29,6 +29,7 @@ interface CandidateOfferDetailsProps {
   job?: any
   organization?: any
   onEdit?: (offer: { id: string; form_id: string; field_values: Record<string, any> }) => void
+  associationStatus?: string | null
 }
 
 function formatLocationValue(value: any): string {
@@ -73,7 +74,7 @@ function getStatusLabel(status: string) {
   return status
 }
 
-export function CandidateOfferDetails({ candidateId, jobId, organizationId, candidate, job, organization, onEdit }: CandidateOfferDetailsProps) {
+export function CandidateOfferDetails({ candidateId, jobId, organizationId, candidate, job, organization, onEdit, associationStatus }: CandidateOfferDetailsProps) {
   const { offerLetters, isLoading } = useOfferLetters(candidateId)
   const { data: recruiterOptions = [] } = useRecruiterOptions(organizationId || null)
   
@@ -216,7 +217,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
         <div className="flex items-center justify-between">
           <CardTitle>Offer Details</CardTitle>
           <div className="flex items-center gap-2">
-            {(offerLetter.status === 'draft' || offerLetter.status === 'pending_approval') && onEdit && (
+            {associationStatus !== 'hired' && onEdit && (
               <Button
                 variant="ghost"
                 size="sm"
