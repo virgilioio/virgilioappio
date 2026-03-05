@@ -183,28 +183,6 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId }: Ca
           <p className="text-sm text-text-secondary">No field values recorded.</p>
         )}
 
-        {/* Request Approval Button */}
-        {offerLetter.status === 'draft' && chainEnabled && chainHasSteps && !approvalRequest && (
-          <div className="pt-2">
-            <Button
-              className="w-full"
-              onClick={() => requestApproval(offerLetter.id, jobId, candidateId)}
-              disabled={isRequesting}
-            >
-              {isRequesting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-              Request Approval
-            </Button>
-          </div>
-        )}
-
-        {offerLetter.status === 'pending_approval' && (
-          <div className="pt-2">
-            <Button className="w-full" variant="secondary" disabled>
-              <Clock className="h-4 w-4 mr-2" />
-              Pending Approval
-            </Button>
-          </div>
-        )}
       </CardContent>
     </Card>
   )
