@@ -78,6 +78,8 @@ export function PendingActivities() {
         return 'Needs Decision';
       case 'email':
         return 'Email';
+      case 'offer_approval':
+        return 'Offer Approval';
     }
   };
 
