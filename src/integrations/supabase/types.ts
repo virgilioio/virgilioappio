@@ -2796,6 +2796,7 @@ export type Database = {
           max_file_size_mb: number | null
           organization_id: string | null
           placeholder_text: string | null
+          triggers_approval_restart: boolean
           updated_at: string
         }
         Insert: {
@@ -2814,6 +2815,7 @@ export type Database = {
           max_file_size_mb?: number | null
           organization_id?: string | null
           placeholder_text?: string | null
+          triggers_approval_restart?: boolean
           updated_at?: string
         }
         Update: {
@@ -2832,6 +2834,7 @@ export type Database = {
           max_file_size_mb?: number | null
           organization_id?: string | null
           placeholder_text?: string | null
+          triggers_approval_restart?: boolean
           updated_at?: string
         }
         Relationships: [
