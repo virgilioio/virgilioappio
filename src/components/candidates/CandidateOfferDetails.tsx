@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useOfferLetters } from '@/hooks/useOfferLetters'
 import { useOfferFormFields } from '@/hooks/useOfferFormFields'
 import { useRecruiterOptions } from '@/hooks/useRecruiterOptions'
@@ -5,7 +6,8 @@ import { useOfferApprovalRequest } from '@/hooks/useOfferApprovalRequest'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Loader2, Send, Clock, Pencil, Undo2 } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import { Loader2, Send, Clock, Pencil, Undo2, Check, X } from 'lucide-react'
 import gioFaceEmpty from '@/assets/gio-face-empty.png'
 
 const employmentTypeLabels: Record<string, string> = {
