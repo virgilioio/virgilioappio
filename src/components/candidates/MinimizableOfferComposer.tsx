@@ -176,6 +176,7 @@ export function MinimizableOfferComposer({
             onSuccess={handleSuccess}
             onCancel={handleCancel}
             draftRestored={draftRestored}
+            editingOfferId={editingOffer?.id}
           />
         </div>
       )}
