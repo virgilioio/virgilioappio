@@ -137,11 +137,23 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
     <Card className="bg-surface-primary border-border">
       {/* Approval status banner */}
       {approvalRequest?.status === 'approved' && (
-        <div className="mx-6 mt-6 p-3 rounded-lg bg-virgilio-purple/10 border border-virgilio-purple/20">
-          <div className="flex items-center gap-2">
-            <Check className="h-4 w-4 text-virgilio-purple" />
-            <span className="text-sm font-medium text-virgilio-purple">This offer has been approved</span>
+        <div className="mx-6 mt-6 space-y-3">
+          <div className="p-3 rounded-lg bg-virgilio-purple/10 border border-virgilio-purple/20">
+            <div className="flex items-center gap-2">
+              <Check className="h-4 w-4 text-virgilio-purple" />
+              <span className="text-sm font-medium text-virgilio-purple">This offer has been approved</span>
+            </div>
           </div>
+          {offerLetter.status !== 'finalized' && offerLetter.status !== 'sent' && (
+            <Button
+              size="sm"
+              className="w-full"
+              onClick={() => setShowGenerateDialog(true)}
+            >
+              <FileText className="h-3.5 w-3.5 mr-1.5" />
+              Generate Offer Letter
+            </Button>
+          )}
         </div>
       )}
       {approvalRequest?.status === 'declined' && (
