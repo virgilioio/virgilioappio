@@ -1,15 +1,14 @@
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Loader2, FileText, Check } from 'lucide-react'
-import { useOfferTemplates, OfferTemplate } from '@/hooks/useOfferTemplates'
+import { Loader2, FileText } from 'lucide-react'
+import { useOfferTemplates } from '@/hooks/useOfferTemplates'
 import { processOfferLetterTemplate, OfferLetterData } from '@/utils/offerLetterUtils'
 import { generateOfferPdf } from '@/utils/generateOfferPdf'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
-import { cn } from '@/lib/utils'
+import { SearchableSelect, SearchableSelectOption } from '@/components/ui/searchable-select'
 
 interface GenerateOfferDialogProps {
   open: boolean
@@ -33,10 +32,18 @@ export function GenerateOfferDialog({
   const { templates, isLoading: templatesLoading } = useOfferTemplates('organization')
   const { user } = useAuth()
   const { toast } = useToast()
-  const [selectedTemplate, setSelectedTemplate] = useState<OfferTemplate | null>(null)
+  const [selectedTemplateId, setSelectedTemplateId] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
 
+  const templateOptions: SearchableSelectOption[] = templates.map(template => ({
+    value: template.id,
+    label: template.name,
+    badge: template.source === 'platform' ? 'Default' : undefined,
+    badgeVariant: 'secondary' as const,
+  }))
+
   const handleGenerate = async () => {
+    const selectedTemplate = templates.find(t => t.id === selectedTemplateId)
     if (!selectedTemplate || !user) return
 
     setIsGenerating(true)
@@ -93,7 +100,7 @@ export function GenerateOfferDialog({
           <DialogDescription>Select a template to generate the offer letter PDF.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-2 max-h-64 overflow-y-auto">
+        <div className="space-y-2">
           {templatesLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -103,35 +110,14 @@ export function GenerateOfferDialog({
               No offer letter templates available. Create one in Settings → Offers.
             </p>
           ) : (
-            templates.map((template) => (
-              <button
-                key={template.id}
-                type="button"
-                onClick={() => setSelectedTemplate(template)}
-                className={cn(
-                  'w-full flex items-start gap-3 p-3 rounded-lg border text-left transition-colors',
-                  selectedTemplate?.id === template.id
-                    ? 'border-virgilio-purple bg-virgilio-purple/5'
-                    : 'border-border hover:bg-accent/50'
-                )}
-              >
-                <FileText className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium truncate">{template.name}</span>
-                    {template.source === 'platform' && (
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Default</Badge>
-                    )}
-                  </div>
-                  {template.description && (
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{template.description}</p>
-                  )}
-                </div>
-                {selectedTemplate?.id === template.id && (
-                  <Check className="h-4 w-4 text-virgilio-purple shrink-0 mt-0.5" />
-                )}
-              </button>
-            ))
+            <SearchableSelect
+              options={templateOptions}
+              value={selectedTemplateId}
+              onValueChange={setSelectedTemplateId}
+              placeholder="Select a template..."
+              searchPlaceholder="Search templates..."
+              emptyMessage="No templates found."
+            />
           )}
         </div>
 
@@ -142,7 +128,7 @@ export function GenerateOfferDialog({
           <Button
             size="sm"
             onClick={handleGenerate}
-            disabled={!selectedTemplate || isGenerating}
+            disabled={!selectedTemplateId || isGenerating}
           >
             {isGenerating ? (
               <>
