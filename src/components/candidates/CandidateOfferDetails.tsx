@@ -112,7 +112,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId }: Ca
         <div className="flex items-center justify-between">
           <CardTitle>Offer Details</CardTitle>
           <Badge variant={getStatusVariant(offerLetter.status) as any} className="capitalize">
-            {offerLetter.status}
+            {getStatusLabel(offerLetter.status)}
           </Badge>
         </div>
       </CardHeader>
