@@ -43,10 +43,15 @@ export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSh
         <button
           type="button"
           onClick={() => firstAiDraft && onOpenFullSheet?.(firstAiDraft.id)}
-          className="flex items-center gap-2 w-full text-left px-3 py-2 rounded-lg border border-accent/30 bg-accent/5 hover:bg-accent/10 transition-colors"
+          className="relative flex items-center gap-2 w-full text-left px-3 py-2.5 rounded-lg bg-pastel-purple/20 hover:bg-pastel-purple/30 transition-all duration-200 group overflow-hidden"
+          style={{
+            border: '2px solid transparent',
+            backgroundClip: 'padding-box',
+          }}
         >
-          <Sparkles className="h-4 w-4 text-accent shrink-0" />
-          <span className="text-sm text-accent font-medium">AI Notes Analysis Available</span>
+          <span className="absolute inset-[-2px] rounded-lg bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 -z-10 opacity-60 group-hover:opacity-90 transition-opacity" />
+          <Sparkles className="h-4 w-4 text-virgilio-purple shrink-0" />
+          <span className="text-sm text-virgilio-purple font-semibold">AI Notes Analysis Available</span>
         </button>
       )}
 
