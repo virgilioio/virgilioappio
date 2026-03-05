@@ -204,6 +204,16 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
                 </Button>
               </>
             )}
+            {offerLetter.status === 'approved' && approvalRequest?.status === 'approved' && offerLetter.status !== 'sent' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowGenerateDialog(true)}
+              >
+                <FileText className="h-3.5 w-3.5 mr-1.5" />
+                Generate Offer Letter
+              </Button>
+            )}
             {offerLetter.status === 'draft' && chainEnabled && chainHasSteps && !isActiveRequest && (
               <Button
                 variant="ghost"
