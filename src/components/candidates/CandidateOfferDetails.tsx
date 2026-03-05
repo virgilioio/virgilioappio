@@ -117,7 +117,11 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, onEd
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={onEdit}
+                onClick={() => onEdit({
+                  id: offerLetter.id,
+                  form_id: offerLetter.form_id || '',
+                  field_values: offerLetter.field_values || {},
+                })}
               >
                 <Pencil className="h-3.5 w-3.5 mr-1.5" />
                 Edit

@@ -1848,12 +1848,16 @@ const stageHasAutomation = useMemo(() => {
       {candidate && job && (
         <MinimizableOfferComposer
           isOpen={offerFormOpen}
-          onOpenChange={setOfferFormOpen}
+          onOpenChange={(open) => {
+            setOfferFormOpen(open)
+            if (!open) setEditingOffer(null)
+          }}
           candidateId={candidate.id}
           candidateName={candidate.candidate_name}
           jobId={jobId}
           jobTitle={job.title}
           organizationId={organizationId || ''}
+          editingOffer={editingOffer}
         />
       )}
 
