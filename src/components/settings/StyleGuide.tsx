@@ -11,6 +11,7 @@ import { SkeletonGuide } from './styleguide/SkeletonGuide'
 import { DateTimePickerGuide } from './styleguide/DateTimePickerGuide'
 import { CurrencySelectGuide } from './styleguide/CurrencySelectGuide'
 import { SmartFieldsGuide } from './styleguide/SmartFieldsGuide'
+import { AiBannerGuide } from './styleguide/AiBannerGuide'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
 export function StyleGuide() {
