@@ -61,7 +61,7 @@ export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSh
           ref={gradientRef}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
-          className="rounded-lg p-[2px] transition-all duration-200"
+          className="rounded-lg p-[1px] transition-all duration-200"
           style={{ background: 'linear-gradient(to right, hsl(280 60% 70%), hsl(330 70% 65%), hsl(220 70% 65%))' }}
         >
           <button
