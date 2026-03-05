@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { X } from 'lucide-react'
+import { X, Copy, ChevronDown } from 'lucide-react'
 import gioAiBannerIcon from '@/assets/gio-ai-banner-icon.png'
 
 export function AiBannerGuide() {

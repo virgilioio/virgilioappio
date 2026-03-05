@@ -998,14 +998,28 @@ export function ScorecardSheet({
                     {/* Collapsible analysis section */}
                     {aiAnalysis && (
                       <>
-                        <button
-                          type="button"
-                          onClick={() => setShowAnalysis(!showAnalysis)}
-                          className="w-full px-4 py-2 flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-pastel-purple/20 transition-colors border-t border-pastel-purple/30"
-                        >
-                          {showAnalysis ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                          {showAnalysis ? 'Hide analysis' : 'Show analysis'}
-                        </button>
+                        <div className="w-full px-4 py-2 flex items-center justify-between border-t border-pastel-purple/30">
+                          <button
+                            type="button"
+                            onClick={() => setShowAnalysis(!showAnalysis)}
+                            className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            {showAnalysis ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                            {showAnalysis ? 'Hide analysis' : 'Show analysis'}
+                          </button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              copyToClipboard(aiAnalysis, 'Analysis copied to clipboard');
+                            }}
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                         {showAnalysis && (
                           <div className="px-4 pb-4 border-t border-pastel-purple/30">
                             <div className="max-h-80 overflow-y-auto pt-3">
