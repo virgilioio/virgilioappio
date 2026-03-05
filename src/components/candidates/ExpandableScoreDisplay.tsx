@@ -40,19 +40,16 @@ export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSh
     <div className="space-y-3">
       {/* AI Analysis Available indicator */}
       {hasAiDrafts && (
-        <button
-          type="button"
-          onClick={() => firstAiDraft && onOpenFullSheet?.(firstAiDraft.id)}
-          className="relative flex items-center gap-2 w-full text-left px-3 py-2.5 rounded-lg bg-pastel-purple/20 hover:bg-pastel-purple/30 transition-all duration-200 group overflow-hidden"
-          style={{
-            border: '2px solid transparent',
-            backgroundClip: 'padding-box',
-          }}
-        >
-          <span className="absolute inset-[-2px] rounded-lg bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 -z-10 opacity-60 group-hover:opacity-90 transition-opacity" />
-          <Sparkles className="h-4 w-4 text-virgilio-purple shrink-0" />
-          <span className="text-sm text-virgilio-purple font-semibold">AI Notes Analysis Available</span>
-        </button>
+        <div className="rounded-lg p-[2px] bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 opacity-80 hover:opacity-100 transition-opacity group">
+          <button
+            type="button"
+            onClick={() => firstAiDraft && onOpenFullSheet?.(firstAiDraft.id)}
+            className="flex items-center gap-2 w-full text-left px-3 py-2.5 rounded-[6px] bg-pastel-purple/30 group-hover:bg-pastel-purple/40 transition-all duration-200"
+          >
+            <Sparkles className="h-4 w-4 text-virgilio-purple shrink-0" />
+            <span className="text-sm text-virgilio-purple font-semibold">AI Notes Analysis Available</span>
+          </button>
+        </div>
       )}
 
       {/* Human-submitted scorecards */}
