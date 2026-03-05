@@ -87,6 +87,26 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
   const [showApproveForm, setShowApproveForm] = useState(false)
   const [showDeclineForm, setShowDeclineForm] = useState(false)
   const [showGenerateDialog, setShowGenerateDialog] = useState(false)
+  const [hasOfferDocument, setHasOfferDocument] = useState(false)
+  const [showEmailComposer, setShowEmailComposer] = useState(false)
+
+  const checkOfferDocument = useCallback(async () => {
+    if (!candidateId) return
+    const { data } = await supabase
+      .from('candidate_attachments')
+      .select('id')
+      .eq('candidate_id', candidateId)
+      .ilike('file_name', 'Offer Letter%')
+      .limit(1)
+    setHasOfferDocument(!!(data && data.length > 0))
+  }, [candidateId])
+
+  useEffect(() => {
+    checkOfferDocument()
+    const handler = () => checkOfferDocument()
+    window.addEventListener('refetch-attachments', handler)
+    return () => window.removeEventListener('refetch-attachments', handler)
+  }, [checkOfferDocument])
 
   if (isLoading) {
     return (
