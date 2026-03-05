@@ -125,6 +125,7 @@ export function CandidateOfferApprovals({ candidateId, jobId, organizationId }: 
             variant={
               approvalRequest.status === 'approved' ? 'default' :
               approvalRequest.status === 'declined' ? 'destructive' :
+              approvalRequest.status === 'recalled' ? 'outline' :
               'secondary'
             }
             className="capitalize"
