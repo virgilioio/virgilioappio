@@ -81,8 +81,8 @@ export function CandidateOfferApprovals({ candidateId, jobId, organizationId }: 
                   return (
                     <div key={step.id} className="relative flex gap-2.5">
                       <div className="relative z-10 flex-shrink-0">
-                        <div className="h-[30px] w-[30px] rounded-full border-2 border-border bg-surface-primary flex items-center justify-center">
-                          <span className="text-xs font-semibold text-muted-foreground">{index + 1}</span>
+                        <div className={`h-[30px] w-[30px] rounded-full ${stepColors[index % stepColors.length].bg} flex items-center justify-center`}>
+                          <span className={`text-xs font-semibold ${stepColors[index % stepColors.length].text}`}>{index + 1}</span>
                         </div>
                       </div>
                       <div className={cn("flex-1 pt-0.5", isLast ? "pb-0" : "pb-7")}>
