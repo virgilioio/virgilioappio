@@ -320,12 +320,15 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
   const isCurrentUserActiveApprover = activeStep?.approver_user_id === user?.id
   const isCurrentUserRequester = approvalRequest?.requested_by === user?.id
 
+  const isActiveRequest = approvalRequest?.status === 'pending' || approvalRequest?.status === 'approved'
+
   return {
     approvalRequest,
     isLoading: requestLoading || chainLoading,
     chain,
     chainEnabled: chain?.is_enabled ?? false,
     chainHasSteps: (chain?.steps?.length ?? 0) > 0,
+    isActiveRequest,
     activeStep,
     isCurrentUserActiveApprover,
     isCurrentUserRequester,
