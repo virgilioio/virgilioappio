@@ -390,8 +390,13 @@ export function FormFieldEditor({
                 <div><div className="text-sm text-muted-foreground capitalize">{fieldTypeLabel(field.field_type)}</div></div>
               )}
               {isSmartField && <div />}
-              <div className="flex items-center">
+              <div className="flex items-center gap-2">
                 <div className="text-sm text-muted-foreground">{field.is_required ? 'Required' : 'Optional'}</div>
+                {context === 'offer' && field.triggers_approval_restart && (
+                  <span title="Editing this field restarts the approval process">
+                    <RefreshCcw className="h-3.5 w-3.5 text-amber-500" />
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 {sourceBadge && <span className="text-xs text-muted-foreground">{sourceBadge}</span>}
