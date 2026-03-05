@@ -35,7 +35,15 @@ export function GenerateOfferDialog({
   const [selectedTemplateId, setSelectedTemplateId] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
 
+  const templateOptions: SearchableSelectOption[] = templates.map(template => ({
+    value: template.id,
+    label: template.name,
+    badge: template.source === 'platform' ? 'Default' : undefined,
+    badgeVariant: 'secondary' as const,
+  }))
+
   const handleGenerate = async () => {
+    const selectedTemplate = templates.find(t => t.id === selectedTemplateId)
     if (!selectedTemplate || !user) return
 
     setIsGenerating(true)
