@@ -28,26 +28,29 @@ export function PendingActivities() {
   const handleActivityClick = (activity: PendingActivity) => {
     switch (activity.type) {
       case 'scorecard':
-        // Open job with candidate sheet and scorecard tab
         window.open(
           `/jobs/${activity.jobId}?candidate=${activity.candidateId}&open=scorecard&stage=${activity.stageInstanceId}`,
           '_blank'
         );
         break;
       case 'decision':
-        // Open job with candidate sheet
         window.open(
           `/jobs/${activity.jobId}?candidate=${activity.candidateId}`,
           '_blank'
         );
         break;
       case 'email':
-        // Mark email as read and open candidate sheet with communications tab
         if (activity.emailId) {
           markEmailAsRead.mutate(activity.emailId);
         }
         window.open(
           `/jobs/${activity.jobId}?candidate=${activity.candidateId}&tab=communications`,
+          '_blank'
+        );
+        break;
+      case 'offer_approval':
+        window.open(
+          `/jobs/${activity.jobId}?candidate=${activity.candidateId}&tab=offer`,
           '_blank'
         );
         break;
