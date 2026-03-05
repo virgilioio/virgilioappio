@@ -63,7 +63,7 @@ function getStatusLabel(status: string) {
   return status
 }
 
-export function CandidateOfferDetails({ candidateId, jobId, organizationId }: CandidateOfferDetailsProps) {
+export function CandidateOfferDetails({ candidateId, jobId, organizationId, onEdit }: CandidateOfferDetailsProps) {
   const { offerLetters, isLoading } = useOfferLetters(candidateId)
   const { data: recruiterOptions = [] } = useRecruiterOptions(organizationId || null)
   
