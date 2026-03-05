@@ -6,6 +6,7 @@ import { SafeHtml } from "@/components/ui/safe-html";
 import { ChevronDown, ChevronRight, User } from "lucide-react";
 import gioAvatar from "@/assets/gio-avatar.png";
 import { formatDistanceToNow } from "date-fns";
+import { useGradientBorder } from "@/hooks/useGradientBorder";
 import type { ScorecardWithAuthor } from "@/hooks/useAllStageScorecards";
 import type { ScoreRating } from "@/hooks/useScorecards";
 
