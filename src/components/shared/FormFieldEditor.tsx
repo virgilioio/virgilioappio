@@ -223,6 +223,13 @@ export function FormFieldEditor({
                   <Checkbox checked={localRequired} onCheckedChange={(c) => setLocalRequired(c as boolean)} />
                   <span className="ml-2 text-xs text-muted-foreground">Required</span>
                 </div>
+                {context === 'offer' && (
+                  <div className="flex items-center h-10">
+                    <Checkbox checked={localTriggersRestart} onCheckedChange={(c) => setLocalTriggersRestart(c as boolean)} />
+                    <RefreshCcw className="ml-2 h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="ml-1 text-xs text-muted-foreground">Restarts approval</span>
+                  </div>
+                )}
                 {sourceBadge && (
                   <div className="flex items-center"><span className="text-xs text-muted-foreground">{sourceBadge}</span></div>
                 )}
