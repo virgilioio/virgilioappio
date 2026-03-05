@@ -1,25 +1,44 @@
 
 
-# Rename "Offer Details" Tab → "Offer" with Internal Subtabs
+# Separate Location Sub-Fields on One Line
 
-## Changes
+## Current State
+- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
+- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
+- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
 
-### 1. Rename the main tab label
-In `CandidateProfileSheet.tsx` (line 993), change `'Offer Details'` to `'Offer'`.
+## What Needs to Change
 
-### 2. Add subtabs inside the Offer tab content
-In `CandidateProfileSheet.tsx` (around line 1531-1533), wrap the current `CandidateOfferDetails` render in a subtab layout:
+### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
 
-- Use the existing `Tabs`/`TabsList`/`TabsTrigger`/`TabsContent` components from `@/components/ui/tabs`
-- Default subtab: **Offer Details** — renders the existing `CandidateOfferDetails` component
-- Second subtab: **Offer Approvals** — renders a new placeholder `CandidateOfferApprovals` component (empty state for now, will be built out when the approval workflow is implemented)
+Add a `case 'location':` block that:
+- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
+- Parses the value as JSON `{ city, state, country }`
+- Renders separate inputs for each enabled sub-field in a single-row grid
+- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
+- Shows MapPin icon in the label
 
-### 3. New file: `src/components/candidates/CandidateOfferApprovals.tsx`
-A simple placeholder component showing an empty state ("No approval chain configured" or similar) that accepts `candidateId`, `jobId`, and `organizationId` props — ready for future wiring to the approval chain data.
+### 2. Make grid columns dynamic everywhere
 
-### Files
-| Action | File |
-|--------|------|
-| Modify | `src/components/candidates/CandidateProfileSheet.tsx` — rename tab label + add subtabs |
-| New | `src/components/candidates/CandidateOfferApprovals.tsx` — placeholder |
+When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
+
+**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
+
+**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
+
+**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
+
+Column class map:
+```ts
+const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
+```
+
+### 3. Also add salary case to `OfferComposerBody.tsx`
+
+While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
+
+## Summary of File Changes
+- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
+- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
+- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
 

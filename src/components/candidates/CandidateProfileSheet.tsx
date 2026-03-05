@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { Tabs } from '@/components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
@@ -63,6 +63,7 @@ import { MinimizableOfferComposer } from './MinimizableOfferComposer'
 import { CandidateReminders } from './CandidateReminders'
 import { CandidateInsightsTab } from './insights/CandidateInsightsTab'
 import { CandidateOfferDetails } from './CandidateOfferDetails'
+import { CandidateOfferApprovals } from './CandidateOfferApprovals'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { useQuery } from '@tanstack/react-query'
 
@@ -990,7 +991,7 @@ const stageHasAutomation = useMemo(() => {
                        phone={candidate.phone}
                        tabs={[
                           ...((associationStatus === 'offer' || associationStatus === 'hired')
-                            ? [{ value: 'offer', label: 'Offer Details', Icon: FileText }]
+                            ? [{ value: 'offer', label: 'Offer', Icon: FileText }]
                             : []),
                           { value: 'job', label: 'Job Application', Icon: FileText },
                           { value: 'application', label: 'Application Details', Icon: FileText },
@@ -1528,9 +1529,20 @@ const stageHasAutomation = useMemo(() => {
                       <></>
                      )}
 
-                    {/* Offer Details Tab */}
+                    {/* Offer Tab with Subtabs */}
                     {activeTab === 'offer' && candidateId && (
-                      <CandidateOfferDetails candidateId={candidateId} jobId={jobId} organizationId={organizationId} />
+                      <Tabs defaultValue="offer-details" className="w-full">
+                        <TabsList className="w-full">
+                          <TabsTrigger value="offer-details" className="flex-1">Offer Details</TabsTrigger>
+                          <TabsTrigger value="offer-approvals" className="flex-1">Offer Approvals</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="offer-details">
+                          <CandidateOfferDetails candidateId={candidateId} jobId={jobId} organizationId={organizationId} />
+                        </TabsContent>
+                        <TabsContent value="offer-approvals">
+                          <CandidateOfferApprovals candidateId={candidateId} jobId={jobId} organizationId={organizationId} />
+                        </TabsContent>
+                      </Tabs>
                     )}
                    </div>
 
