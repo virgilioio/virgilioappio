@@ -14,11 +14,11 @@ export function NotificationCenter() {
   const navigate = useNavigate()
   const { data: activities, markEmailAsRead } = usePendingActivities()
 
-  const emailNotifications = (activities || []).filter(
-    (a): a is PendingActivity & { type: 'email' } => a.type === 'email'
+  const notifications = (activities || []).filter(
+    (a): a is PendingActivity => a.type === 'email' || a.type === 'offer_approval'
   )
 
-  const unreadCount = emailNotifications.length
+  const unreadCount = notifications.length
 
   const handleNotificationClick = (notification: PendingActivity) => {
     setOpen(false)
