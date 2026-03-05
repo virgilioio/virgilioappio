@@ -13,6 +13,7 @@ interface MinimizableOfferComposerProps {
   jobId: string
   jobTitle?: string
   organizationId: string
+  editingOffer?: { id: string; form_id: string; field_values: Record<string, any> } | null
 }
 
 interface OfferDraft {
