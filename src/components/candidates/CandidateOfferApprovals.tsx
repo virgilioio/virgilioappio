@@ -28,6 +28,7 @@ export function CandidateOfferApprovals({ candidateId, jobId, organizationId }: 
   const { offerLetters } = useOfferLetters(candidateId)
   const offerLetter = offerLetters.find(ol => ol.job_id === jobId)
   const { approvalRequest, isLoading, isCurrentUserActiveApprover, activeStep, approveStep, declineStep, isApproving, isDeclining } = useOfferApprovalRequest(offerLetter?.id, jobId)
+  const { steps: configuredSteps, isEnabled: chainEnabled, isLoading: chainLoading } = useOfferApprovalChain(jobId)
   
   const [declineNotes, setDeclineNotes] = useState('')
   const [showDeclineForm, setShowDeclineForm] = useState(false)
