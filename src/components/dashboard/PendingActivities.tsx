@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { usePendingActivities, PendingActivity } from '@/hooks/usePendingActivities';
-import { ClipboardList, Clock, ChevronRight, MoreHorizontal, CheckCheck, ExternalLink } from 'lucide-react';
+import { ClipboardList, Clock, ChevronRight, MoreHorizontal, CheckCheck, ExternalLink, ClipboardCheck } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
