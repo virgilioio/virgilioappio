@@ -104,6 +104,7 @@ export function FormFieldEditor({
   const [localSalaryConfig, setLocalSalaryConfig] = useState<SalaryFieldConfig>({ currency: 'USD', period: 'annually' })
   const [localLocationConfig, setLocalLocationConfig] = useState<LocationFieldConfig>({ fields: ['city', 'state', 'country'] })
   const [localPhoneConfig, setLocalPhoneConfig] = useState<PhoneFieldConfig>({ defaultCountryCode: '+1' })
+  const [localTriggersRestart, setLocalTriggersRestart] = useState(field.triggers_approval_restart || false)
 
   const handleEdit = async () => {
     setLocalLabel(field.field_label || '')
