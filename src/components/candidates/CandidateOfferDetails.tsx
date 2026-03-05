@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useOfferLetters } from '@/hooks/useOfferLetters'
 import { useOfferFormFields } from '@/hooks/useOfferFormFields'
 import { useRecruiterOptions } from '@/hooks/useRecruiterOptions'
@@ -5,7 +6,8 @@ import { useOfferApprovalRequest } from '@/hooks/useOfferApprovalRequest'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Loader2, Send, Clock, Pencil, Undo2 } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import { Loader2, Send, Clock, Pencil, Undo2, Check, X } from 'lucide-react'
 import gioFaceEmpty from '@/assets/gio-face-empty.png'
 
 const employmentTypeLabels: Record<string, string> = {
@@ -70,7 +72,12 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, onEd
   // Find the offer letter for this job
   const offerLetter = offerLetters.find(ol => ol.job_id === jobId)
   const { fields } = useOfferFormFields(offerLetter?.form_id || undefined)
-  const { approvalRequest, chainEnabled, chainHasSteps, requestApproval, isRequesting, recallApproval, isRecalling, isCurrentUserRequester } = useOfferApprovalRequest(offerLetter?.id, jobId)
+  const { approvalRequest, isActiveRequest, chainEnabled, chainHasSteps, requestApproval, isRequesting, recallApproval, isRecalling, isCurrentUserRequester, isCurrentUserActiveApprover, activeStep, approveStep, declineStep, isApproving, isDeclining } = useOfferApprovalRequest(offerLetter?.id, jobId)
+
+  const [approveComment, setApproveComment] = useState('')
+  const [declineComment, setDeclineComment] = useState('')
+  const [showApproveForm, setShowApproveForm] = useState(false)
+  const [showDeclineForm, setShowDeclineForm] = useState(false)
 
   if (isLoading) {
     return (
@@ -107,8 +114,47 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, onEd
 
   const fieldValues = offerLetter.field_values || {}
 
+  const handleApprove = async () => {
+    if (!activeStep) return
+    await approveStep(activeStep.id, approveComment.trim() || undefined)
+    setShowApproveForm(false)
+    setApproveComment('')
+  }
+
+  const handleDecline = async () => {
+    if (!activeStep) return
+    await declineStep(activeStep.id, declineComment.trim() || undefined)
+    setShowDeclineForm(false)
+    setDeclineComment('')
+  }
+
   return (
     <Card className="bg-surface-primary border-border">
+      {/* Approval status banner */}
+      {approvalRequest?.status === 'approved' && (
+        <div className="mx-6 mt-6 p-3 rounded-lg bg-virgilio-purple/10 border border-virgilio-purple/20">
+          <div className="flex items-center gap-2">
+            <Check className="h-4 w-4 text-virgilio-purple" />
+            <span className="text-sm font-medium text-virgilio-purple">This offer has been approved</span>
+          </div>
+        </div>
+      )}
+      {approvalRequest?.status === 'declined' && (
+        <div className="mx-6 mt-6 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+          <div className="flex items-center gap-2">
+            <X className="h-4 w-4 text-destructive" />
+            <div>
+              <span className="text-sm font-medium text-destructive">This offer has been declined</span>
+              {approvalRequest.steps.find(s => s.status === 'declined')?.notes && (
+                <p className="text-xs text-destructive/80 mt-1">
+                  {approvalRequest.steps.find(s => s.status === 'declined')?.notes}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Offer Details</CardTitle>
@@ -127,7 +173,29 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, onEd
                 Edit
               </Button>
             )}
-            {offerLetter.status === 'draft' && chainEnabled && chainHasSteps && !approvalRequest && (
+            {/* Approve/Decline for active approver */}
+            {offerLetter.status === 'pending_approval' && isCurrentUserActiveApprover && !showApproveForm && !showDeclineForm && (
+              <>
+                <Button
+                  size="sm"
+                  onClick={() => setShowApproveForm(true)}
+                  disabled={isApproving || isDeclining}
+                >
+                  <Check className="h-3.5 w-3.5 mr-1.5" />
+                  Approve
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowDeclineForm(true)}
+                  disabled={isApproving || isDeclining}
+                >
+                  <X className="h-3.5 w-3.5 mr-1.5" />
+                  Decline
+                </Button>
+              </>
+            )}
+            {offerLetter.status === 'draft' && chainEnabled && chainHasSteps && !isActiveRequest && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -155,6 +223,52 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, onEd
           </div>
         </div>
       </CardHeader>
+
+      {/* Inline approve form */}
+      {showApproveForm && (
+        <div className="mx-6 mb-4 p-4 rounded-lg border border-border bg-surface-secondary space-y-3">
+          <p className="text-sm font-medium text-text-primary">Approve this offer</p>
+          <Textarea
+            placeholder="Add a comment (optional)..."
+            value={approveComment}
+            onChange={(e) => setApproveComment(e.target.value)}
+            rows={2}
+            className="text-sm"
+          />
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handleApprove} disabled={isApproving}>
+              {isApproving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
+              Confirm Approve
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => { setShowApproveForm(false); setApproveComment('') }}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Inline decline form */}
+      {showDeclineForm && (
+        <div className="mx-6 mb-4 p-4 rounded-lg border border-destructive/20 bg-destructive/5 space-y-3">
+          <p className="text-sm font-medium text-destructive">Decline this offer</p>
+          <Textarea
+            placeholder="Add a reason (optional)..."
+            value={declineComment}
+            onChange={(e) => setDeclineComment(e.target.value)}
+            rows={2}
+            className="text-sm"
+          />
+          <div className="flex gap-2">
+            <Button size="sm" variant="destructive" onClick={handleDecline} disabled={isDeclining}>
+              {isDeclining ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <X className="h-3.5 w-3.5 mr-1.5" />}
+              Confirm Decline
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => { setShowDeclineForm(false); setDeclineComment('') }}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
       <CardContent className="space-y-4">
         {/* Title */}
         <div>

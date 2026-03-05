@@ -49,7 +49,9 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
         .from('offer_approval_requests')
         .select('*')
         .eq('offer_letter_id', offerLetterId)
-        .in('status', ['pending', 'approved'])
+        .in('status', ['pending', 'approved', 'declined'])
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle()
 
       if (error) {
@@ -318,12 +320,15 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
   const isCurrentUserActiveApprover = activeStep?.approver_user_id === user?.id
   const isCurrentUserRequester = approvalRequest?.requested_by === user?.id
 
+  const isActiveRequest = approvalRequest?.status === 'pending' || approvalRequest?.status === 'approved'
+
   return {
     approvalRequest,
     isLoading: requestLoading || chainLoading,
     chain,
     chainEnabled: chain?.is_enabled ?? false,
     chainHasSteps: (chain?.steps?.length ?? 0) > 0,
+    isActiveRequest,
     activeStep,
     isCurrentUserActiveApprover,
     isCurrentUserRequester,
@@ -331,8 +336,8 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
       requestApprovalMutation.mutateAsync({ offerId, jId, candidateId }),
     approveStep: (stepId: string, notes?: string) =>
       approveStepMutation.mutateAsync({ stepId, notes }),
-    declineStep: (stepId: string, notes: string) =>
-      declineStepMutation.mutateAsync({ stepId, notes }),
+    declineStep: (stepId: string, notes?: string) =>
+      declineStepMutation.mutateAsync({ stepId, notes: notes || '' }),
     recallApproval: (requestId: string) =>
       recallApprovalMutation.mutateAsync({ requestId }),
     isRequesting: requestApprovalMutation.isPending,

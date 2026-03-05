@@ -109,8 +109,8 @@ export function CandidateOfferApprovals({ candidateId, jobId, organizationId }: 
   }
 
   const handleDecline = async () => {
-    if (!activeStep || !declineNotes.trim()) return
-    await declineStep(activeStep.id, declineNotes.trim())
+    if (!activeStep) return
+    await declineStep(activeStep.id, declineNotes.trim() || undefined)
     setShowDeclineForm(false)
     setDeclineNotes('')
   }
@@ -251,7 +251,7 @@ export function CandidateOfferApprovals({ candidateId, jobId, organizationId }: 
                               size="sm"
                               variant="destructive"
                               onClick={handleDecline}
-                              disabled={!declineNotes.trim() || isDeclining}
+                              disabled={isDeclining}
                             >
                               {isDeclining ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <X className="h-3.5 w-3.5 mr-1.5" />}
                               Confirm Decline
