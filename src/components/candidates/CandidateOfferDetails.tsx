@@ -213,11 +213,15 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
         </div>
       )}
 
-      <CardHeader>
-        <div className="flex items-center justify-between">
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-2">
           <CardTitle>Offer Details</CardTitle>
-          <div className="flex items-center gap-2">
-            {associationStatus !== 'hired' && onEdit && (
+          <Badge variant={getStatusVariant(offerLetter.status) as any} className="capitalize">
+            {getStatusLabel(offerLetter.status)}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-2 mt-2">
+          {associationStatus !== 'hired' && onEdit && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -295,10 +299,6 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
                 Recall
               </Button>
             )}
-            <Badge variant={getStatusVariant(offerLetter.status) as any} className="capitalize">
-              {getStatusLabel(offerLetter.status)}
-            </Badge>
-          </div>
         </div>
       </CardHeader>
 
