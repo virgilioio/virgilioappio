@@ -109,8 +109,8 @@ export function CandidateOfferApprovals({ candidateId, jobId, organizationId }: 
   }
 
   const handleDecline = async () => {
-    if (!activeStep || !declineNotes.trim()) return
-    await declineStep(activeStep.id, declineNotes.trim())
+    if (!activeStep) return
+    await declineStep(activeStep.id, declineNotes.trim() || undefined)
     setShowDeclineForm(false)
     setDeclineNotes('')
   }

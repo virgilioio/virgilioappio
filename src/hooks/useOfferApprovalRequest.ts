@@ -336,8 +336,8 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
       requestApprovalMutation.mutateAsync({ offerId, jId, candidateId }),
     approveStep: (stepId: string, notes?: string) =>
       approveStepMutation.mutateAsync({ stepId, notes }),
-    declineStep: (stepId: string, notes: string) =>
-      declineStepMutation.mutateAsync({ stepId, notes }),
+    declineStep: (stepId: string, notes?: string) =>
+      declineStepMutation.mutateAsync({ stepId, notes: notes || '' }),
     recallApproval: (requestId: string) =>
       recallApprovalMutation.mutateAsync({ requestId }),
     isRequesting: requestApprovalMutation.isPending,
