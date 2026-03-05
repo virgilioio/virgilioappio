@@ -20,7 +20,7 @@ interface CandidateOfferDetailsProps {
   candidateId: string
   jobId: string
   organizationId?: string | null
-  onEdit?: () => void
+  onEdit?: (offer: { id: string; form_id: string; field_values: Record<string, any> }) => void
 }
 
 function formatLocationValue(value: any): string {
