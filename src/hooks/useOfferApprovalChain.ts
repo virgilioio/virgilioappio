@@ -234,11 +234,10 @@ export function useOfferApprovalChain(jobId: string) {
     toggleChain: (enabled: boolean) => toggleChainMutation.mutate(enabled),
     addApprover: (userId: string) => addApproverMutation.mutate(userId),
     removeApprover: (stepId: string) => removeApproverMutation.mutate(stepId),
-    reorderApprover: (stepId: string, direction: 'up' | 'down') =>
-      reorderApproverMutation.mutate({ stepId, direction }),
+    reorderSteps: (orderedIds: string[]) => reorderStepsMutation.mutate(orderedIds),
     isToggling: toggleChainMutation.isPending,
     isAdding: addApproverMutation.isPending,
     isRemoving: removeApproverMutation.isPending,
-    isReordering: reorderApproverMutation.isPending,
+    isReordering: reorderStepsMutation.isPending,
   }
 }
