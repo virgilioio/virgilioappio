@@ -990,7 +990,7 @@ const stageHasAutomation = useMemo(() => {
                        phone={candidate.phone}
                        tabs={[
                           ...((associationStatus === 'offer' || associationStatus === 'hired')
-                            ? [{ value: 'offer', label: 'Offer Details', Icon: FileText }]
+                            ? [{ value: 'offer', label: 'Offer', Icon: FileText }]
                             : []),
                           { value: 'job', label: 'Job Application', Icon: FileText },
                           { value: 'application', label: 'Application Details', Icon: FileText },
