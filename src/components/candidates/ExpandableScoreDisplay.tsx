@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -24,22 +24,6 @@ const ratingOptions = [
 
 export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSheet }: ExpandableScoreDisplayProps) {
   const [expandedScorecard, setExpandedScorecard] = useState<string | null>(null);
-  const gradientRef = useRef<HTMLDivElement>(null);
-
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const el = gradientRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    el.style.background = `radial-gradient(circle at ${x}% ${y}%, hsl(var(--virgilio-purple)), hsl(280 60% 70%), hsl(330 70% 65%), hsl(220 70% 65%))`;
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    const el = gradientRef.current;
-    if (!el) return;
-    el.style.background = 'linear-gradient(to right, hsl(280 60% 70%), hsl(330 70% 65%), hsl(220 70% 65%))';
-  }, []);
 
   const humanScorecards = scorecards.filter(s => !s.is_ai_draft);
   const hasAiDrafts = scorecards.some(s => s.is_ai_draft);
@@ -58,20 +42,13 @@ export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSh
       {/* AI Analysis Available indicator */}
       {hasAiDrafts && (
         <div
-          ref={gradientRef}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-          className="rounded-lg p-[1px] transition-all duration-200"
-          style={{ background: 'linear-gradient(to right, hsl(280 60% 70%), hsl(330 70% 65%), hsl(220 70% 65%))' }}
+          className="rounded-lg bg-pastel-purple/30 border border-pastel-purple/50 cursor-pointer hover:bg-pastel-purple/40 transition-colors"
+          onClick={() => firstAiDraft && onOpenFullSheet?.(firstAiDraft.id)}
         >
-          <button
-            type="button"
-            onClick={() => firstAiDraft && onOpenFullSheet?.(firstAiDraft.id)}
-            className="flex items-center gap-3 w-full text-left px-4 py-4 rounded-[6px] bg-pastel-purple transition-all duration-200"
-          >
+          <div className="p-4 flex items-center gap-3">
             <img src={gioAvatar} alt="Gio" className="h-6 w-6 rounded-full shrink-0" />
             <span className="text-sm text-virgilio-purple font-semibold">AI Notes Analysis Available</span>
-          </button>
+          </div>
         </div>
       )}
 
