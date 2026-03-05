@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2, Send, Clock, Pencil, Undo2, Check, X, FileText } from 'lucide-react'
+import { Loader2, Send, Clock, Pencil, Undo2, Check, X, FileText, MoreHorizontal } from 'lucide-react'
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import gioFaceEmpty from '@/assets/gio-face-empty.png'
 import { GenerateOfferDialog } from './GenerateOfferDialog'
 import { MinimizableEmailComposer } from './MinimizableEmailComposer'
@@ -231,70 +232,51 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
                 Edit
               </Button>
             )}
-            {/* Approve/Decline for active approver */}
-            {offerLetter.status === 'pending_approval' && isCurrentUserActiveApprover && !showApproveForm && !showDeclineForm && (
-              <>
-                <Button
-                  size="sm"
-                  onClick={() => setShowApproveForm(true)}
-                  disabled={isApproving || isDeclining}
-                >
-                  <Check className="h-3.5 w-3.5 mr-1.5" />
-                  Approve
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setShowDeclineForm(true)}
-                  disabled={isApproving || isDeclining}
-                >
-                  <X className="h-3.5 w-3.5 mr-1.5" />
-                  Decline
-                </Button>
-              </>
-            )}
-            {offerLetter.status === 'approved' && approvalRequest?.status === 'approved' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowGenerateDialog(true)}
-              >
-                <FileText className="h-3.5 w-3.5 mr-1.5" />
-                Generate Offer Letter
-              </Button>
-            )}
-            {offerLetter.status === 'approved' && !!offerDocument && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowEmailComposer(true)}
-              >
-                <Send className="h-3.5 w-3.5 mr-1.5" />
-                Send Offer
-              </Button>
-            )}
-            {offerLetter.status === 'draft' && chainEnabled && chainHasSteps && !isActiveRequest && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => requestApproval(offerLetter.id, jobId, candidateId)}
-                disabled={isRequesting}
-              >
-                {isRequesting ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
-                Request Approval
-              </Button>
-            )}
-            {offerLetter.status === 'pending_approval' && isCurrentUserRequester && approvalRequest && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => recallApproval(approvalRequest.id)}
-                disabled={isRecalling}
-              >
-                {isRecalling ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5 mr-1.5" />}
-                Recall
-              </Button>
-            )}
+            {(() => {
+              const overflowActions: { label: string; icon: React.ElementType; onClick: () => void; disabled?: boolean }[] = []
+
+              if (offerLetter.status === 'pending_approval' && isCurrentUserActiveApprover && !showApproveForm && !showDeclineForm) {
+                overflowActions.push(
+                  { label: 'Approve', icon: Check, onClick: () => setShowApproveForm(true), disabled: isApproving || isDeclining },
+                  { label: 'Decline', icon: X, onClick: () => setShowDeclineForm(true), disabled: isApproving || isDeclining },
+                )
+              }
+              if (offerLetter.status === 'approved' && approvalRequest?.status === 'approved') {
+                overflowActions.push({ label: 'Generate Offer Letter', icon: FileText, onClick: () => setShowGenerateDialog(true) })
+              }
+              if (offerLetter.status === 'approved' && !!offerDocument) {
+                overflowActions.push({ label: 'Send Offer', icon: Send, onClick: () => setShowEmailComposer(true) })
+              }
+              if (offerLetter.status === 'draft' && chainEnabled && chainHasSteps && !isActiveRequest) {
+                overflowActions.push({ label: 'Request Approval', icon: Send, onClick: () => requestApproval(offerLetter.id, jobId, candidateId), disabled: isRequesting })
+              }
+              if (offerLetter.status === 'pending_approval' && isCurrentUserRequester && approvalRequest) {
+                overflowActions.push({ label: 'Recall', icon: Undo2, onClick: () => recallApproval(approvalRequest.id), disabled: isRecalling })
+              }
+
+              if (overflowActions.length === 0) return null
+
+              return (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {overflowActions.map((action) => {
+                      const Icon = action.icon
+                      return (
+                        <DropdownMenuItem key={action.label} onClick={action.onClick} disabled={action.disabled}>
+                          <Icon className="h-3.5 w-3.5 mr-2" />
+                          {action.label}
+                        </DropdownMenuItem>
+                      )
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )
+            })()}
             <Badge variant={getStatusVariant(offerLetter.status) as any} className="capitalize">
               {getStatusLabel(offerLetter.status)}
             </Badge>
