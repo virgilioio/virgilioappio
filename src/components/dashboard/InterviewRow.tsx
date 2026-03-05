@@ -86,7 +86,7 @@ export function InterviewRow({
     : null
   const isOwnInterview = booking.interviewer_id === currentUserId
   const candidateName = booking.candidate?.candidate_name || booking.candidate_name
-  const jobTitle = booking.job?.title || 'Unknown Job'
+  const jobTitle = booking.job?.title || (booking.job_id ? 'Unknown Job' : 'Personal Link')
 
   const handleRowClick = () => {
     if (onNavigate && booking.job?.id && booking.candidate_id) {
