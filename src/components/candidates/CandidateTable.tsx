@@ -88,7 +88,8 @@ export function CandidateTable({
   selectedIds: controlledSelectedIds,
   onSelectedIdsChange,
   hideActions = false,
-  showMatchScore = false
+  showMatchScore = false,
+  hideSkills = false
 }: CandidateTableProps) {
   const { id: jobId } = useParams<{ id: string }>()
   const permissions = usePermissions()
