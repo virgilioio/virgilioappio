@@ -23,6 +23,9 @@ interface CandidateOfferDetailsProps {
   candidateId: string
   jobId: string
   organizationId?: string | null
+  candidate?: any
+  job?: any
+  organization?: any
   onEdit?: (offer: { id: string; form_id: string; field_values: Record<string, any> }) => void
 }
 
