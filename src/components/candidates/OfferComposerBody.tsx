@@ -95,8 +95,10 @@ export function OfferComposerBody({
     }
     try {
       if (editingOfferId) {
-        // Check if any restart-triggering fields were changed while pending approval
-        if (currentOffer?.status === 'pending_approval' && approvalRequest) {
+        const offerStatus = currentOffer?.status
+        const isApprovalActive = offerStatus === 'pending_approval' || offerStatus === 'approved'
+        
+        if (isApprovalActive) {
           const originalValues = currentOffer.field_values || {}
           const restartFields = fields.filter(f => f.triggers_approval_restart)
           const hasRestartTrigger = restartFields.some(f => {
@@ -104,10 +106,39 @@ export function OfferComposerBody({
             const newVal = JSON.stringify(fieldValues[f.field_name] ?? '')
             return oldVal !== newVal
           })
+          
           if (hasRestartTrigger) {
-            await recallApproval(approvalRequest.id)
+            // Recall the approval request if one exists
+            if (approvalRequest && (approvalRequest.status === 'pending' || approvalRequest.status === 'approved')) {
+              await recallApproval(approvalRequest.id)
+            } else {
+              // No active approval request to recall (e.g. approved offer), revert status directly
+              await supabase
+                .from('offer_letters')
+                .update({ status: 'draft' })
+                .eq('id', editingOfferId)
+            }
+            
+            // Delete stale offer document
+            const { data: attachments } = await supabase
+              .from('candidate_attachments')
+              .select('id, file_url')
+              .eq('candidate_id', candidateId)
+              .like('file_name', 'Offer Letter%')
+            
+            if (attachments && attachments.length > 0) {
+              // Delete from storage
+              const filePaths = attachments.map(a => a.file_url)
+              await supabase.storage.from('candidate-attachments').remove(filePaths)
+              // Delete DB rows
+              const ids = attachments.map(a => a.id)
+              await supabase.from('candidate_attachments').delete().in('id', ids)
+              // Trigger UI refresh for attachments
+              window.dispatchEvent(new CustomEvent('refetch-attachments'))
+            }
           }
         }
+        
         await updateOfferLetter(editingOfferId, {
           form_id: selectedFormId,
           field_values: fieldValues,

@@ -142,6 +142,13 @@ export function useOfferLetters(candidateId?: string) {
     fetchOfferLetters()
   }, [candidateId])
 
+  // Listen for cross-component refetch events
+  useEffect(() => {
+    const handler = () => fetchOfferLetters()
+    window.addEventListener('refetch-offer-letters', handler)
+    return () => window.removeEventListener('refetch-offer-letters', handler)
+  }, [candidateId])
+
   return {
     offerLetters,
     isLoading,
