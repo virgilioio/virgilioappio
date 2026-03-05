@@ -204,7 +204,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
                 </Button>
               </>
             )}
-            {offerLetter.status === 'approved' && approvalRequest?.status === 'approved' && offerLetter.status !== 'sent' && (
+            {offerLetter.status === 'approved' && approvalRequest?.status === 'approved' && (
               <Button
                 variant="ghost"
                 size="sm"
