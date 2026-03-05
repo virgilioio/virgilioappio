@@ -373,7 +373,7 @@ export function OfferComposerBody({
         </Button>
         <Button onClick={handleSave} disabled={!canSave() || creatingLetter}>
           {creatingLetter && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Save Offer
+          {editingOfferId ? 'Update Offer' : 'Save Offer'}
         </Button>
       </div>
     </div>
