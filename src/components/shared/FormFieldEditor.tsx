@@ -56,6 +56,7 @@ export interface FormFieldData {
   accepted_file_types?: string | null
   max_file_size_mb?: number | null
   field_config?: SalaryFieldConfig | LocationFieldConfig | PhoneFieldConfig | null
+  triggers_approval_restart?: boolean
 }
 
 export interface FormFieldEditorProps {
