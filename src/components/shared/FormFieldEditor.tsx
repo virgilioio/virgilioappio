@@ -143,6 +143,7 @@ export function FormFieldEditor({
       accepted_file_types: localAcceptedFileTypes || null,
       max_file_size_mb: localMaxFileSize === '' ? null : localMaxFileSize,
       field_config: getConfig(),
+      ...(context === 'offer' ? { triggers_approval_restart: localTriggersRestart } : {}),
     }
     if (localType === 'select' || localType === 'checkbox_group') {
       updates.select_options = localOptions
