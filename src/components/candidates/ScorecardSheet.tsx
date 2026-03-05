@@ -99,6 +99,7 @@ export function ScorecardSheet({
 }: ScorecardSheetProps) {
   const [rating, setRating] = useState<ScoreRating>(existing?.rating || "yes");
   const [overview, setOverview] = useState<string>(existing?.general_overview || "");
+  const aiGradient = useGradientBorder();
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(!existing || isAuthor);
   const [questions, setQuestions] = useState<InterviewQuestion[]>([]);
