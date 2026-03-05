@@ -83,20 +83,27 @@ export function OfferComposerBody({
       return
     }
     try {
-      const title = `Offer - ${candidateName} - ${jobTitle || 'Position'}`
-      await createOfferLetter({
-        candidate_id: candidateId,
-        job_id: jobId,
-        form_id: selectedFormId,
-        organization_id: organizationId,
-        title,
-        field_values: fieldValues,
-        status: 'draft',
-        created_by: user?.id,
-      })
+      if (editingOfferId) {
+        await updateOfferLetter(editingOfferId, {
+          form_id: selectedFormId,
+          field_values: fieldValues,
+        })
+      } else {
+        const title = `Offer - ${candidateName} - ${jobTitle || 'Position'}`
+        await createOfferLetter({
+          candidate_id: candidateId,
+          job_id: jobId,
+          form_id: selectedFormId,
+          organization_id: organizationId,
+          title,
+          field_values: fieldValues,
+          status: 'draft',
+          created_by: user?.id,
+        })
+      }
       onSuccess()
     } catch (error) {
-      console.error('Failed to create offer:', error)
+      console.error('Failed to save offer:', error)
     }
   }
 
