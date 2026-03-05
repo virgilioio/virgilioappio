@@ -1,15 +1,14 @@
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Loader2, FileText, Check } from 'lucide-react'
-import { useOfferTemplates, OfferTemplate } from '@/hooks/useOfferTemplates'
+import { Loader2, FileText } from 'lucide-react'
+import { useOfferTemplates } from '@/hooks/useOfferTemplates'
 import { processOfferLetterTemplate, OfferLetterData } from '@/utils/offerLetterUtils'
 import { generateOfferPdf } from '@/utils/generateOfferPdf'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
-import { cn } from '@/lib/utils'
+import { SearchableSelect, SearchableSelectOption } from '@/components/ui/searchable-select'
 
 interface GenerateOfferDialogProps {
   open: boolean
