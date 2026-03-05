@@ -236,6 +236,16 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
                 Generate Offer Letter
               </Button>
             )}
+            {offerLetter.status === 'approved' && hasOfferDocument && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowEmailComposer(true)}
+              >
+                <Send className="h-3.5 w-3.5 mr-1.5" />
+                Send Offer
+              </Button>
+            )}
             {offerLetter.status === 'draft' && chainEnabled && chainHasSteps && !isActiveRequest && (
               <Button
                 variant="ghost"
