@@ -20,7 +20,7 @@ export function AiBannerGuide() {
         <div className="space-y-3">
           <h4 className="text-sm font-medium text-muted-foreground">AI Banner Icon</h4>
           <div className="flex items-center gap-6 p-4 rounded-lg border bg-card">
-            <img src={gioAiBannerIcon} alt="AI Banner Icon" className="h-12" />
+            <img src={gioAiBannerIcon} alt="AI Banner Icon" className="h-14" />
             <div>
               <p className="text-sm font-medium">Gio AI Banner Icon</p>
               <p className="text-xs text-muted-foreground mt-1">
