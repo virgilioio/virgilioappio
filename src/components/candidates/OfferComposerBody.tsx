@@ -47,6 +47,7 @@ export function OfferComposerBody({
   onSuccess,
   onCancel,
   draftRestored,
+  editingOfferId,
 }: OfferComposerBodyProps) {
   const { user } = useAuth()
   const { forms, isLoading: formsLoading } = useOfferForms()
