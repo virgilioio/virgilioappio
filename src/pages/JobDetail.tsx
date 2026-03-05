@@ -1566,8 +1566,9 @@ export default function JobDetail() {
                                 selectionMode={selectionMode}
                                 onSelectionModeChange={setSelectionMode}
                                 selectedIds={selectedCandidateIds}
-                                onSelectedIdsChange={setSelectedCandidateIds}
-                              />
+                                 onSelectedIdsChange={setSelectedCandidateIds}
+                                 hideSkills={true}
+                               />
                             </div>
                           ) : pipelineSectionTab === 'offers' ? (
                             <div className="w-full p-layout-md">
