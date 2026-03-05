@@ -18,6 +18,7 @@ import type { InterviewQuestion, SelectOption, SalaryConfig } from "@/hooks/useS
 import { markdownToHtml } from "@/utils/markdown";
 import gioIcon from "@/assets/gio-icon.png";
 import gioAvatar from "@/assets/gio-avatar.png";
+import gioAiBannerIcon from "@/assets/gio-ai-banner-icon.png";
 import { SafeHtml } from "@/components/ui/safe-html";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { RecommendedNextStepsDialog } from "./RecommendedNextStepsDialog";
@@ -979,11 +980,11 @@ export function ScorecardSheet({
                 {isAiDraft && aiSuggestedRating && (
                   <div className="rounded-lg overflow-hidden bg-pastel-purple/30 border border-pastel-purple/50">
                     {/* Header row */}
-                    <div className="p-4 flex items-center justify-between">
+                    <div className="p-3 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <img src={gioAvatar} alt="Gio" className="h-8 w-8 rounded-full" />
+                        <img src={gioAiBannerIcon} alt="Gio" className="h-8 shrink-0" />
                         <div>
-                          <p className="text-sm font-medium text-foreground">AI Suggested Rating: {aiSuggestedRating}</p>
+                          <p className="text-sm font-semibold text-foreground">AI Suggested Rating: {aiSuggestedRating}</p>
                           <p className="text-xs text-muted-foreground">Based on interview transcript analysis</p>
                         </div>
                       </div>

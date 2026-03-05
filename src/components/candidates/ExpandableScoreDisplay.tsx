@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { SafeHtml } from "@/components/ui/safe-html";
 import { ChevronDown, ChevronRight, User } from "lucide-react";
-import gioAvatar from "@/assets/gio-avatar.png";
+import gioAiBannerIcon from "@/assets/gio-ai-banner-icon.png";
 import { formatDistanceToNow } from "date-fns";
 import type { ScorecardWithAuthor } from "@/hooks/useAllStageScorecards";
 import type { ScoreRating } from "@/hooks/useScorecards";
@@ -45,9 +45,12 @@ export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSh
           className="rounded-lg bg-pastel-purple/30 border border-pastel-purple/50 cursor-pointer hover:bg-pastel-purple/40 transition-colors"
           onClick={() => firstAiDraft && onOpenFullSheet?.(firstAiDraft.id)}
         >
-          <div className="p-4 flex items-center gap-3">
-            <img src={gioAvatar} alt="Gio" className="h-6 w-6 rounded-full shrink-0" />
-            <span className="text-sm text-virgilio-purple font-semibold">AI Notes Analysis Available</span>
+          <div className="p-3 flex items-center gap-3">
+            <img src={gioAiBannerIcon} alt="Gio" className="h-8 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground">AI Notes Analysis Available</p>
+              <p className="text-xs text-muted-foreground">Click to review AI-generated insights</p>
+            </div>
           </div>
         </div>
       )}
