@@ -1,44 +1,50 @@
 
 
-# Separate Location Sub-Fields on One Line
+# Fix Offer Edit When Already Approved — Restart Approval, Delete Document, Live UI Update
 
-## Current State
-- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
-- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
-- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
+## Problems Identified
 
-## What Needs to Change
+1. **Approval restart only triggers for `pending_approval`** (line 98 in `OfferComposerBody.tsx`), but not for `approved` status. Editing an approved offer should also restart the approval process.
+2. **The generated offer document is not deleted** when approval is restarted. The old document becomes stale/invalid.
+3. **No live UI update**: `useOfferLetters` uses `useState`/`useEffect` (not React Query), so `queryClient.invalidateQueries({ queryKey: ['offer-letters'] })` in the recall mutation does nothing. The `CandidateOfferDetails` component won't reflect the status change until a manual refresh.
 
-### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
+## Changes
 
-Add a `case 'location':` block that:
-- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
-- Parses the value as JSON `{ city, state, country }`
-- Renders separate inputs for each enabled sub-field in a single-row grid
-- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
-- Shows MapPin icon in the label
+### 1. `src/components/candidates/OfferComposerBody.tsx` — Handle approved offers
 
-### 2. Make grid columns dynamic everywhere
+Expand the restart logic (lines 96-109) to also handle `approved` status:
+- Change condition from `currentOffer?.status === 'pending_approval'` to include `approved`
+- For `approved` offers (no active approval request to recall), directly update the offer status back to `draft`
+- Delete the generated offer document (from `candidate_attachments` table and storage) when restarting
+- Also pass `approvalRequest` for approved offers (fix line 63-64 where the hook only loads for `pending_approval`)
 
-When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
+### 2. `src/components/candidates/OfferComposerBody.tsx` — Fix `useOfferApprovalRequest` hook usage
 
-**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
+Currently line 63-64 only passes `editingOfferId` to the hook when status is `pending_approval`. Change to also pass it when status is `approved`, so the approval request data is available for recall.
 
-**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
+### 3. `src/hooks/useOfferLetters.ts` — Enable live UI updates
 
-**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
+The hook uses `useState`/`useEffect` pattern. After `updateOfferLetter` completes, it already calls `fetchOfferLetters()`. The issue is that the `CandidateOfferDetails` component creates its own instance of `useOfferLetters`, so it doesn't share state. Fix by dispatching a custom event (like the existing `refetch-attachments` pattern) after offer updates, and listening for it in `useOfferLetters`.
 
-Column class map:
-```ts
-const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
-```
+Alternatively, add a window event `refetch-offer-letters` that the hook listens for, and dispatch it from the save handler.
 
-### 3. Also add salary case to `OfferComposerBody.tsx`
+### 4. `src/components/candidates/OfferComposerBody.tsx` — Delete offer document on restart
 
-While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
+When restarting approval from an approved state:
+- Query `candidate_attachments` for the offer document (matching `Offer Letter%` by file_name)
+- Delete from storage bucket `candidate-attachments`
+- Delete the row from `candidate_attachments` table
+- Dispatch `refetch-attachments` event so the UI updates
 
-## Summary of File Changes
-- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
-- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
-- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
+### 5. Console error fix
+
+The console shows `invalid input value for enum activity_type: "offer_updated"`. This means the `activity_type` enum in the database doesn't include `offer_updated`. Either add it via migration, or change the log call to use an existing enum value.
+
+## Summary of file changes
+
+| File | Change |
+|------|--------|
+| `OfferComposerBody.tsx` | Expand restart logic to handle `approved` status; delete offer document; fix hook usage; dispatch refetch events |
+| `useOfferLetters.ts` | Add window event listener for `refetch-offer-letters` to enable cross-component refetching |
+| DB migration | Add `offer_updated` to the `activity_type` enum |
 
