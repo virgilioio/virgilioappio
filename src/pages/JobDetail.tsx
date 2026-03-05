@@ -1185,7 +1185,8 @@ export default function JobDetail() {
                                        isCandidateNewForUser={() => false}
                                        onRowClick={openSuggestedProfile}
                                        hideActions={true}
-                                       showMatchScore={true}
+                                        showMatchScore={true}
+                                        hideSkills={true}
                                      />
                                   ) : (
                                     <div className="text-center py-8">
@@ -1238,8 +1239,9 @@ export default function JobDetail() {
                                 selectionMode={selectionMode}
                                 onSelectionModeChange={setSelectionMode}
                                 selectedIds={selectedCandidateIds}
-                                onSelectedIdsChange={setSelectedCandidateIds}
-                              />
+                                 onSelectedIdsChange={setSelectedCandidateIds}
+                                 hideSkills={true}
+                               />
                             </div>
                           ) : pipelineSectionTab === 'hired' ? (
                             <div className="w-full p-layout-md">
@@ -1254,8 +1256,9 @@ export default function JobDetail() {
                                 selectionMode={selectionMode}
                                 onSelectionModeChange={setSelectionMode}
                                 selectedIds={selectedCandidateIds}
-                                onSelectedIdsChange={setSelectedCandidateIds}
-                              />
+                                 onSelectedIdsChange={setSelectedCandidateIds}
+                                 hideSkills={true}
+                               />
                             </div>
                           ) : (
                             <div className="w-full p-layout-md">
@@ -1270,8 +1273,9 @@ export default function JobDetail() {
                                 selectionMode={selectionMode}
                                 onSelectionModeChange={setSelectionMode}
                                 selectedIds={selectedCandidateIds}
-                                onSelectedIdsChange={setSelectedCandidateIds}
-                              />
+                                 onSelectedIdsChange={setSelectedCandidateIds}
+                                 hideSkills={true}
+                               />
                             </div>
                           )}
                         </ScrollArea>
@@ -1320,8 +1324,9 @@ export default function JobDetail() {
                         markCandidateAsViewed={markCandidateAsViewed}
                         isCandidateNewForUser={isCandidateNewForUser}
                         showJobInfo={false}
-                        hideActions={true}
-                      />
+                         hideActions={true}
+                         hideSkills={true}
+                       />
                     </CardContent>
                   </Card>
                 </TabsContent>
@@ -1536,7 +1541,8 @@ export default function JobDetail() {
                                     isCandidateNewForUser={() => false}
                                     onRowClick={openSuggestedProfile}
                                     hideActions={true}
-                                    showMatchScore={true}
+                                     showMatchScore={true}
+                                     hideSkills={true}
                                   />
                                 ) : (
                                   <div className="text-center py-8">
@@ -1560,8 +1566,9 @@ export default function JobDetail() {
                                 selectionMode={selectionMode}
                                 onSelectionModeChange={setSelectionMode}
                                 selectedIds={selectedCandidateIds}
-                                onSelectedIdsChange={setSelectedCandidateIds}
-                              />
+                                 onSelectedIdsChange={setSelectedCandidateIds}
+                                 hideSkills={true}
+                               />
                             </div>
                           ) : pipelineSectionTab === 'offers' ? (
                             <div className="w-full p-layout-md">
@@ -1576,8 +1583,9 @@ export default function JobDetail() {
                                 selectionMode={selectionMode}
                                 onSelectionModeChange={setSelectionMode}
                                 selectedIds={selectedCandidateIds}
-                                onSelectedIdsChange={setSelectedCandidateIds}
-                              />
+                                 onSelectedIdsChange={setSelectedCandidateIds}
+                                 hideSkills={true}
+                               />
                             </div>
                           ) : pipelineSectionTab === 'hired' ? (
                             <div className="w-full p-layout-md">
@@ -1592,8 +1600,9 @@ export default function JobDetail() {
                                 selectionMode={selectionMode}
                                 onSelectionModeChange={setSelectionMode}
                                 selectedIds={selectedCandidateIds}
-                                onSelectedIdsChange={setSelectedCandidateIds}
-                              />
+                                 onSelectedIdsChange={setSelectedCandidateIds}
+                                 hideSkills={true}
+                               />
                             </div>
                           ) : (
                             <div className="w-full p-layout-md">
@@ -1608,8 +1617,9 @@ export default function JobDetail() {
                                 selectionMode={selectionMode}
                                 onSelectionModeChange={setSelectionMode}
                                 selectedIds={selectedCandidateIds}
-                                onSelectedIdsChange={setSelectedCandidateIds}
-                              />
+                                 onSelectedIdsChange={setSelectedCandidateIds}
+                                 hideSkills={true}
+                               />
                             </div>
                           )}
                         </ScrollArea>
