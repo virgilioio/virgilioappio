@@ -18,6 +18,7 @@ import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useRecruiterOptions } from '@/hooks/useRecruiterOptions'
 import { useOfferApprovalRequest } from '@/hooks/useOfferApprovalRequest'
+import { logActivity } from '@/lib/activityLogger'
 
 interface OfferComposerBodyProps {
   candidateId: string
