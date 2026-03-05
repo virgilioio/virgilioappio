@@ -38,8 +38,8 @@ export function StyleGuide() {
         <DateTimePickerGuide />
         <CurrencySelectGuide />
         <SmartFieldsGuide />
+        <AiBannerGuide />
         <SkeletonGuide />
-        <ShadowGuide />
         <ShadowGuide />
       </div>
     </ScrollArea>
