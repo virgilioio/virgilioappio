@@ -196,7 +196,9 @@ export function ActivityRow({
                     <span>•</span>
                   </>
                 )}
-                <span className="truncate">{activity.jobTitle || 'Unknown Job'}</span>
+                <span className={cn("truncate", !activity.jobTitle && !activity.interview?.job_id && "italic text-muted-foreground")}>
+                  {activity.jobTitle || (activity.interview?.job_id ? 'Unknown Job' : 'Personal Link')}
+                </span>
               </>
             )}
             {isReminder && reminder && (

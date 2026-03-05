@@ -60,7 +60,7 @@ export function UpcomingActivities() {
       candidateId: b.candidate_id,
       candidateName: b.candidate?.candidate_name || b.candidate_name || 'Unknown',
       jobId: b.job?.id || null,
-      jobTitle: b.job?.title || null,
+      jobTitle: b.job?.title || (b.job_id ? 'Unknown Job' : null),
       dateTime: b.scheduled_start,
       interview: b
     }))
