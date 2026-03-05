@@ -1,44 +1,52 @@
 
 
-# Separate Location Sub-Fields on One Line
+# Fix AI Analysis Text Formatting
 
-## Current State
-- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
-- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
-- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
+The AI transcript analysis uses a numbered section format like `1.\nOVERALL IMPRESSION` which `react-markdown` incorrectly parses as a broken ordered list — the number renders alone, and the heading text falls into a separate unstyled paragraph. This produces the poor formatting visible in the screenshot.
 
-## What Needs to Change
+## Root Cause
 
-### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
+The AI model outputs text like:
+```
+1.
+OVERALL IMPRESSION
+...paragraph text...
 
-Add a `case 'location':` block that:
-- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
-- Parses the value as JSON `{ city, state, country }`
-- Renders separate inputs for each enabled sub-field in a single-row grid
-- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
-- Shows MapPin icon in the label
-
-### 2. Make grid columns dynamic everywhere
-
-When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
-
-**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
-
-**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
-
-**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
-
-Column class map:
-```ts
-const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
+2.
+KEY STRENGTHS
+- bullet
+- bullet
 ```
 
-### 3. Also add salary case to `OfferComposerBody.tsx`
+Markdown interprets `1.` followed by a newline as a list item, breaking the intended section structure.
 
-While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
+## Solution
 
-## Summary of File Changes
-- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
-- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
-- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
+Add a preprocessing function that normalizes the AI analysis text before passing it to `ProfileSummaryMarkdown`. This function will:
+
+1. Convert `\n1.\nOVERALL IMPRESSION` patterns into proper markdown headings: `## 1. OVERALL IMPRESSION`
+2. Convert standalone ALL-CAPS lines (like `KEY STRENGTHS`) following a number into headings
+3. Ensure section spacing with `---` horizontal rules between sections
+
+### `src/components/candidates/ScorecardSheet.tsx`
+
+- Add a `normalizeAiAnalysis(text: string): string` helper function (or inline utility) that:
+  - Matches patterns like `\d+\.\s*\n\s*([A-Z\s]+)` and converts them to `## \d. \1`
+  - Also handles the case where the number and title are on the same line but all-caps (e.g., `1. OVERALL IMPRESSION` → `## 1. Overall Impression`)
+  - Adds a horizontal rule (`---`) before each section heading for visual separation
+- Wrap `aiAnalysis` with this normalizer before passing to `ProfileSummaryMarkdown`:
+  ```tsx
+  <ProfileSummaryMarkdown
+    content={normalizeAiAnalysis(aiAnalysis)}
+    className="..."
+  />
+  ```
+
+### `src/components/candidates/ProfileSummaryMarkdown.tsx`
+
+- Increase spacing on headings: `mb-3 mt-4` for h2 to give breathing room between sections
+- Add `space-y-1.5` or `mb-1.5` to list items for better bullet spacing
+- Add `mb-4` to paragraphs for more separation
+
+This keeps the fix localized — a preprocessing step to normalize the AI's output format into clean markdown, plus slightly improved spacing in the renderer.
 
