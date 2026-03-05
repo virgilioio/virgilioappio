@@ -138,7 +138,7 @@ export function MinimizableOfferComposer({
         onClick={() => setIsMinimized(!isMinimized)}
       >
         <h3 className="font-semibold text-sm truncate">
-          {isMinimized ? `Offer: ${candidateName}` : `Create Offer — ${candidateName}`}
+          {isMinimized ? `Offer: ${candidateName}` : `${editingOffer ? 'Edit' : 'Create'} Offer — ${candidateName}`}
         </h3>
         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
           <Button
