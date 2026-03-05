@@ -146,16 +146,6 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
               <span className="text-sm font-medium text-virgilio-purple">This offer has been approved</span>
             </div>
           </div>
-          {offerLetter.status !== 'finalized' && offerLetter.status !== 'sent' && (
-            <Button
-              size="sm"
-              className="w-full"
-              onClick={() => setShowGenerateDialog(true)}
-            >
-              <FileText className="h-3.5 w-3.5 mr-1.5" />
-              Generate Offer Letter
-            </Button>
-          )}
         </div>
       )}
       {approvalRequest?.status === 'declined' && (
