@@ -16,6 +16,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { triggerFitAnalysis } from "@/utils/triggerFitAnalysis";
 import type { InterviewQuestion, SelectOption, SalaryConfig } from "@/hooks/useScorecardsConfiguration";
 import { markdownToHtml } from "@/utils/markdown";
+import { useGradientBorder } from "@/hooks/useGradientBorder";
 import gioIcon from "@/assets/gio-icon.png";
 import gioAvatar from "@/assets/gio-avatar.png";
 import { SafeHtml } from "@/components/ui/safe-html";
