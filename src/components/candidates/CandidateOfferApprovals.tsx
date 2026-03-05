@@ -9,7 +9,7 @@ import { useOfferLetters } from '@/hooks/useOfferLetters'
 import { useOfferApprovalChain } from '@/hooks/useOfferApprovalChain'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
-import gioFaceEmpty from '@/assets/gio-face-empty.png'
+
 
 interface CandidateOfferApprovalsProps {
   candidateId: string
