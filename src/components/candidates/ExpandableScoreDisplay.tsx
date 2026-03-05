@@ -25,6 +25,7 @@ const ratingOptions = [
 
 export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSheet }: ExpandableScoreDisplayProps) {
   const [expandedScorecard, setExpandedScorecard] = useState<string | null>(null);
+  const gradient = useGradientBorder();
 
   const humanScorecards = scorecards.filter(s => !s.is_ai_draft);
   const hasAiDrafts = scorecards.some(s => s.is_ai_draft);
