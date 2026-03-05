@@ -33,8 +33,8 @@ export function NotificationCenter() {
   }
 
   const handleMarkAllAsRead = () => {
-    emailNotifications.forEach((n) => {
-      if (n.emailId) {
+    notifications.forEach((n) => {
+      if (n.type === 'email' && n.emailId) {
         markEmailAsRead.mutate(n.emailId)
       }
     })
