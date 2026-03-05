@@ -44,6 +44,8 @@ export function CandidateOfferApprovals({ candidateId, jobId, organizationId }: 
   }
 
   if (!approvalRequest) {
+    const hasConfiguredChain = chainEnabled && configuredSteps.length > 0
+
     return (
       <Card className="bg-surface-primary border-border">
         <CardContent className="py-12">
@@ -61,6 +63,50 @@ export function CandidateOfferApprovals({ candidateId, jobId, organizationId }: 
               Request approval from the Offer Details tab to start the approval chain.
             </p>
           </div>
+
+          {hasConfiguredChain && (
+            <div className="mt-8 mx-auto max-w-xs">
+              <p className="text-xs font-medium text-muted-foreground mb-4 text-center uppercase tracking-wide">
+                Configured approval order
+              </p>
+              <div className="relative space-y-0">
+                {configuredSteps
+                  .sort((a, b) => a.step_order - b.step_order)
+                  .map((step, index) => {
+                    const isLast = index === configuredSteps.length - 1
+                    return (
+                      <div key={step.id} className="relative flex gap-3">
+                        {!isLast && (
+                          <div className="absolute left-[13px] top-7 bottom-0 w-px bg-border" />
+                        )}
+                        <div className="relative z-10 flex-shrink-0 mt-0.5">
+                          <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center">
+                            <span className="text-[10px] font-semibold text-muted-foreground">
+                              {step.step_order}
+                            </span>
+                          </div>
+                        </div>
+                        <div className={cn("flex-1 pb-5", isLast && "pb-0")}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-muted-foreground">
+                              {step.approver_name}
+                            </span>
+                            {step.approver_role && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 opacity-60">
+                                {roleLabelMap[step.approver_role] || step.approver_role}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground/60 mt-0.5">
+                            Step {step.step_order}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     )
