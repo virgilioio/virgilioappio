@@ -17,6 +17,12 @@ import { PhoneInput } from '@/components/ui/phone-input'
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useRecruiterOptions } from '@/hooks/useRecruiterOptions'
+import { useOfferApprovalRequest } from '@/hooks/useOfferApprovalRequest'
+import { Badge } from '@/components/ui/badge'
+import { PhoneInput } from '@/components/ui/phone-input'
+import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
+import { SearchableSelect } from '@/components/ui/searchable-select'
+import { useRecruiterOptions } from '@/hooks/useRecruiterOptions'
 
 interface OfferComposerBodyProps {
   candidateId: string
