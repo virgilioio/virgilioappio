@@ -301,7 +301,7 @@ export function CandidateTable({
                          {showMatchScore && <TableHead>Match</TableHead>}
                          {showJobInfo && <TableHead>Job</TableHead>}
                          {showJobInfo && <TableHead>Organization</TableHead>}
-                         <TableHead>Skills</TableHead>
+                         {!hideSkills && <TableHead>Skills</TableHead>}
                          <TableHead>Added</TableHead>
                         {!hideActions && <TableHead className="text-right">Actions</TableHead>}
                     </TableRow>
