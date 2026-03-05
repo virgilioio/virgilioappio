@@ -977,7 +977,14 @@ export function ScorecardSheet({
                 )}
                 {/* AI Suggested Rating Banner */}
                 {isAiDraft && aiSuggestedRating && (
-                  <div className="rounded-lg overflow-hidden bg-pastel-purple/30 border border-pastel-purple/50">
+                  <div
+                    ref={aiGradient.ref}
+                    onMouseMove={aiGradient.onMouseMove}
+                    onMouseLeave={aiGradient.onMouseLeave}
+                    style={aiGradient.style}
+                    className="rounded-lg p-[1px]"
+                  >
+                  <div className="rounded-[7px] overflow-hidden bg-pastel-purple/30">
                     {/* Header row */}
                     <div className="p-4 flex items-center justify-between">
                       <div className="flex items-center gap-3">

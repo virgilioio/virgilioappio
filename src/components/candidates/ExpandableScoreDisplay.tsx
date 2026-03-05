@@ -44,12 +44,16 @@ export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSh
       {/* AI Analysis Available indicator */}
       {hasAiDrafts && (
         <div
-          className="rounded-lg bg-pastel-purple/30 border border-pastel-purple/50 cursor-pointer hover:bg-pastel-purple/40 transition-colors"
+          ref={gradient.ref}
+          onMouseMove={gradient.onMouseMove}
+          onMouseLeave={gradient.onMouseLeave}
+          style={gradient.style}
+          className="rounded-lg p-[1px] cursor-pointer"
           onClick={() => firstAiDraft && onOpenFullSheet?.(firstAiDraft.id)}
         >
-          <div className="p-4 flex items-center gap-3">
+          <div className="rounded-[7px] bg-pastel-purple/30 hover:bg-pastel-purple/40 transition-colors p-4 flex items-center gap-3">
             <img src={gioAvatar} alt="Gio" className="h-6 w-6 rounded-full shrink-0" />
-            <span className="text-sm text-virgilio-purple font-semibold">AI Notes Analysis Available</span>
+            <span className="text-sm text-foreground font-semibold">AI Notes Analysis Available</span>
           </div>
         </div>
       )}
