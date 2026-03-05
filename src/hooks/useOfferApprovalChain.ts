@@ -209,6 +209,16 @@ export function useOfferApprovalChain(jobId: string) {
     mutationFn: async (orderedStepIds: string[]) => {
       if (!chain) throw new Error('Chain not found')
 
+      // Pass 1: set temporary values to avoid unique constraint on (chain_id, step_order)
+      for (let i = 0; i < orderedStepIds.length; i++) {
+        const { error } = await supabase
+          .from('offer_approval_chain_steps')
+          .update({ step_order: 1000 + i })
+          .eq('id', orderedStepIds[i])
+        if (error) throw error
+      }
+
+      // Pass 2: set final values
       for (let i = 0; i < orderedStepIds.length; i++) {
         const { error } = await supabase
           .from('offer_approval_chain_steps')
