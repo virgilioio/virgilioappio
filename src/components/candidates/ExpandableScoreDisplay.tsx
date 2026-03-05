@@ -24,22 +24,6 @@ const ratingOptions = [
 
 export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSheet }: ExpandableScoreDisplayProps) {
   const [expandedScorecard, setExpandedScorecard] = useState<string | null>(null);
-  const gradientRef = useRef<HTMLDivElement>(null);
-
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const el = gradientRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    el.style.background = `radial-gradient(circle at ${x}% ${y}%, hsl(var(--virgilio-purple)), hsl(280 60% 70%), hsl(330 70% 65%), hsl(220 70% 65%))`;
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    const el = gradientRef.current;
-    if (!el) return;
-    el.style.background = 'linear-gradient(to right, hsl(280 60% 70%), hsl(330 70% 65%), hsl(220 70% 65%))';
-  }, []);
 
   const humanScorecards = scorecards.filter(s => !s.is_ai_draft);
   const hasAiDrafts = scorecards.some(s => s.is_ai_draft);
