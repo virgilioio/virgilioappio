@@ -94,6 +94,32 @@ export function AiBannerGuide() {
           </p>
         </div>
 
+        {/* Collapsible with Copy */}
+        <div className="space-y-3">
+          <h4 className="text-sm font-medium text-muted-foreground">Collapsible Analysis with Copy</h4>
+          <div className="rounded-lg bg-pastel-purple/30 border border-pastel-purple/50">
+            <div className="p-3 flex items-start gap-3">
+              <img src={gioAiBannerIcon} alt="Gio" className="h-10 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground">AI Suggested Rating</p>
+                <p className="text-xs text-muted-foreground">Rating: Strong Yes · Based on transcript analysis</p>
+              </div>
+            </div>
+            <div className="px-4 py-2 flex items-center justify-between border-t border-pastel-purple/30">
+              <button className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+                <ChevronDown className="h-3.5 w-3.5" />
+                Show analysis
+              </button>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground">
+                <Copy className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Includes a copy-to-clipboard button so recruiters can copy the AI analysis independently without applying the rating.
+          </p>
+        </div>
+
         {/* Structure Reference */}
         <div className="space-y-3">
           <h4 className="text-sm font-medium text-muted-foreground">Banner Structure</h4>
