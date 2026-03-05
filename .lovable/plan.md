@@ -1,49 +1,44 @@
 
 
-# Generate Offer Document from Approved Offer
+# Separate Location Sub-Fields on One Line
 
-## Overview
+## Current State
+- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
+- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
+- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
 
-After an offer is fully approved, a "Generate Offer" button appears below the approval banner. The user selects an Offer Letter Template, the system processes the template by replacing placeholders with the offer's field values, generates a PDF, and saves it as a candidate attachment.
+## What Needs to Change
 
-## Changes
+### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
 
-### 1. "Generate Offer" button in `CandidateOfferDetails.tsx`
-Below the approved banner, add a **"Generate Offer"** button (Virgilio purple style). Clicking it opens a dialog/inline selector showing available Offer Letter Templates (from `useOfferTemplates('organization')`). Once a template is selected, the system:
-1. Fetches the template content (HTML with `{{field.*}}` placeholders)
-2. Calls `processOfferLetterTemplate()` from `offerLetterUtils.ts` to replace all placeholders with actual offer field values
-3. Renders the processed HTML to PDF using `jspdf` + `html2canvas` (both already installed)
-4. Uploads the PDF to `candidate-attachments` storage bucket
-5. Creates a `candidate_attachments` record linking to the candidate
-6. Updates the offer letter status to `finalized`
-7. Shows success toast
+Add a `case 'location':` block that:
+- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
+- Parses the value as JSON `{ city, state, country }`
+- Renders separate inputs for each enabled sub-field in a single-row grid
+- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
+- Shows MapPin icon in the label
 
-### 2. New component: `GenerateOfferDialog.tsx`
-A dialog/sheet that:
-- Lists available offer letter templates from `useOfferTemplates`
-- Shows template name and description
-- Has a "Generate" button after selection
-- Shows a loading state during PDF generation
-- Closes on success
+### 2. Make grid columns dynamic everywhere
 
-### 3. PDF generation utility: `src/utils/generateOfferPdf.ts`
-A function that:
-- Takes processed HTML content string
-- Creates a hidden div, renders the HTML
-- Uses `html2canvas` to capture it
-- Converts to PDF via `jspdf`
-- Returns a `Blob`
+When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
 
-### 4. Wiring in `CandidateOfferDetails.tsx`
-- Import `useOfferTemplates`, `useCandidateAttachments`, the generate dialog, and PDF utility
-- Show the "Generate Offer" button only when `approvalRequest?.status === 'approved'`
-- After successful generation, call `refetch()` on attachments so the file appears in the Attachments tab
+**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
 
-### Files
-- **New**: `src/components/candidates/GenerateOfferDialog.tsx` -- template selector dialog
-- **New**: `src/utils/generateOfferPdf.ts` -- HTML-to-PDF generation
-- **Modified**: `src/components/candidates/CandidateOfferDetails.tsx` -- add Generate Offer button below approved banner
-- **Modified**: `src/hooks/useOfferLetters.ts` -- add `updateOfferLetterStatus` method (if not already present)
+**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
 
-No database changes needed -- uses existing `candidate_attachments` table and `candidate-attachments` storage bucket.
+**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
+
+Column class map:
+```ts
+const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
+```
+
+### 3. Also add salary case to `OfferComposerBody.tsx`
+
+While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
+
+## Summary of File Changes
+- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
+- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
+- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
 

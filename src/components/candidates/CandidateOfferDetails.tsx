@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2, Send, Clock, Pencil, Undo2, Check, X } from 'lucide-react'
+import { Loader2, Send, Clock, Pencil, Undo2, Check, X, FileText } from 'lucide-react'
 import gioFaceEmpty from '@/assets/gio-face-empty.png'
+import { GenerateOfferDialog } from './GenerateOfferDialog'
 
 const employmentTypeLabels: Record<string, string> = {
   full_time: 'Full-time', part_time: 'Part-time',
@@ -22,6 +23,9 @@ interface CandidateOfferDetailsProps {
   candidateId: string
   jobId: string
   organizationId?: string | null
+  candidate?: any
+  job?: any
+  organization?: any
   onEdit?: (offer: { id: string; form_id: string; field_values: Record<string, any> }) => void
 }
 
@@ -65,7 +69,7 @@ function getStatusLabel(status: string) {
   return status
 }
 
-export function CandidateOfferDetails({ candidateId, jobId, organizationId, onEdit }: CandidateOfferDetailsProps) {
+export function CandidateOfferDetails({ candidateId, jobId, organizationId, candidate, job, organization, onEdit }: CandidateOfferDetailsProps) {
   const { offerLetters, isLoading } = useOfferLetters(candidateId)
   const { data: recruiterOptions = [] } = useRecruiterOptions(organizationId || null)
   
@@ -78,6 +82,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, onEd
   const [declineComment, setDeclineComment] = useState('')
   const [showApproveForm, setShowApproveForm] = useState(false)
   const [showDeclineForm, setShowDeclineForm] = useState(false)
+  const [showGenerateDialog, setShowGenerateDialog] = useState(false)
 
   if (isLoading) {
     return (
@@ -132,11 +137,23 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, onEd
     <Card className="bg-surface-primary border-border">
       {/* Approval status banner */}
       {approvalRequest?.status === 'approved' && (
-        <div className="mx-6 mt-6 p-3 rounded-lg bg-virgilio-purple/10 border border-virgilio-purple/20">
-          <div className="flex items-center gap-2">
-            <Check className="h-4 w-4 text-virgilio-purple" />
-            <span className="text-sm font-medium text-virgilio-purple">This offer has been approved</span>
+        <div className="mx-6 mt-6 space-y-3">
+          <div className="p-3 rounded-lg bg-virgilio-purple/10 border border-virgilio-purple/20">
+            <div className="flex items-center gap-2">
+              <Check className="h-4 w-4 text-virgilio-purple" />
+              <span className="text-sm font-medium text-virgilio-purple">This offer has been approved</span>
+            </div>
           </div>
+          {offerLetter.status !== 'finalized' && offerLetter.status !== 'sent' && (
+            <Button
+              size="sm"
+              className="w-full"
+              onClick={() => setShowGenerateDialog(true)}
+            >
+              <FileText className="h-3.5 w-3.5 mr-1.5" />
+              Generate Offer Letter
+            </Button>
+          )}
         </div>
       )}
       {approvalRequest?.status === 'declined' && (
@@ -324,6 +341,28 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, onEd
         )}
 
       </CardContent>
+
+      {offerLetter && candidate && (
+        <GenerateOfferDialog
+          open={showGenerateDialog}
+          onOpenChange={setShowGenerateDialog}
+          offerLetterData={{
+            candidate,
+            job: job || {},
+            organization: organization || {},
+            fieldValues: fieldValues,
+            fieldTypes: Object.fromEntries(fields.map(f => [f.field_name, f.field_type])),
+            recruiterLookup: Object.fromEntries(recruiterOptions.map(r => [r.value, r.label])),
+          }}
+          offerLetterId={offerLetter.id}
+          candidateId={candidateId}
+          candidateName={candidate.candidate_name || 'Candidate'}
+          onSuccess={() => {
+            // Refetch offer letters to reflect finalized status
+            window.dispatchEvent(new CustomEvent('refetch-attachments'))
+          }}
+        />
+      )}
     </Card>
   )
 }
