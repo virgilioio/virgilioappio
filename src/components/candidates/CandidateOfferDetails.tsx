@@ -87,18 +87,22 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
   const [showApproveForm, setShowApproveForm] = useState(false)
   const [showDeclineForm, setShowDeclineForm] = useState(false)
   const [showGenerateDialog, setShowGenerateDialog] = useState(false)
-  const [hasOfferDocument, setHasOfferDocument] = useState(false)
+  const [offerDocument, setOfferDocument] = useState<{ id: string; file_name: string; file_path: string } | null>(null)
   const [showEmailComposer, setShowEmailComposer] = useState(false)
 
   const checkOfferDocument = useCallback(async () => {
     if (!candidateId) return
     const { data } = await supabase
       .from('candidate_attachments')
-      .select('id')
+      .select('id, file_name, file_url')
       .eq('candidate_id', candidateId)
       .ilike('file_name', 'Offer Letter%')
       .limit(1)
-    setHasOfferDocument(!!(data && data.length > 0))
+    if (data && data.length > 0) {
+      setOfferDocument({ id: data[0].id, file_name: data[0].file_name, file_path: data[0].file_url })
+    } else {
+      setOfferDocument(null)
+    }
   }, [candidateId])
 
   useEffect(() => {
@@ -161,14 +165,35 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
     <>
     <Card className="bg-surface-primary border-border">
       {/* Approval status banner */}
-      {approvalRequest?.status === 'approved' && (
+      {(approvalRequest?.status === 'approved' || offerDocument) && (
         <div className="mx-6 mt-6 space-y-3">
-          <div className="p-3 rounded-lg bg-virgilio-purple/10 border border-virgilio-purple/20">
-            <div className="flex items-center gap-2">
-              <Check className="h-4 w-4 text-virgilio-purple" />
-              <span className="text-sm font-medium text-virgilio-purple">This offer has been approved</span>
+          {approvalRequest?.status === 'approved' && (
+            <div className="p-3 rounded-lg bg-virgilio-purple/10 border border-virgilio-purple/20">
+              <div className="flex items-center gap-2">
+                <Check className="h-4 w-4 text-virgilio-purple" />
+                <span className="text-sm font-medium text-virgilio-purple">This offer has been approved</span>
+              </div>
             </div>
-          </div>
+          )}
+          {offerDocument && (
+            <div
+              onClick={async () => {
+                const { data } = await supabase.storage
+                  .from('candidate-attachments')
+                  .createSignedUrl(offerDocument.file_path, 300)
+                if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+              }}
+              className="p-3 rounded-lg bg-pastel-yellow/30 border border-pastel-yellow cursor-pointer hover:bg-pastel-yellow/40 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-pastel-yellow-foreground" />
+                <div>
+                  <span className="text-sm font-medium text-pastel-yellow-foreground">Offer document generated</span>
+                  <p className="text-xs text-pastel-yellow-foreground/80">{offerDocument.file_name}</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
       {approvalRequest?.status === 'declined' && (
@@ -237,7 +262,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
                 Generate Offer Letter
               </Button>
             )}
-            {offerLetter.status === 'approved' && hasOfferDocument && (
+            {offerLetter.status === 'approved' && !!offerDocument && (
               <Button
                 variant="ghost"
                 size="sm"
