@@ -46,54 +46,49 @@ export function CandidateOfferApprovals({ candidateId, jobId, organizationId }: 
   if (!approvalRequest) {
     const hasConfiguredChain = chainEnabled && configuredSteps.length > 0
 
+    if (!hasConfiguredChain) {
+      return (
+        <Card className="bg-surface-primary border-border">
+          <CardContent className="py-12">
+            <p className="text-sm text-muted-foreground text-center">
+              No approval chain configured for this job.
+            </p>
+          </CardContent>
+        </Card>
+      )
+    }
+
     return (
       <Card className="bg-surface-primary border-border">
-        <CardContent className="py-12">
-          <div className="text-center">
-            <img 
-              src={gioFaceEmpty}
-              alt="No approval request"
-              className="h-16 w-16 mx-auto mb-4 rounded-full"
-            />
-            <p className="text-[1.38rem] font-semibold mb-2 tracking-[-0.06em]">
-              <span>No approval request yet</span>
-              <span className="text-purple-period">.</span>
-            </p>
-            <p className="text-sm text-text-secondary">
-              Request approval from the Offer Details tab to start the approval chain.
-            </p>
-          </div>
-
-          {hasConfiguredChain && (
-            <div className="mt-8 mx-auto max-w-sm">
-              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-4">Steps</div>
-              <div className="relative">
-                <div className="absolute left-[14px] top-0 bottom-0 w-0.5 bg-border" />
-                {configuredSteps
-                  .sort((a, b) => a.step_order - b.step_order)
-                  .map((step, index) => {
-                    const isLast = index === configuredSteps.length - 1
-                    return (
-                      <div key={step.id} className="relative flex gap-2.5">
-                        <div className="relative z-10 flex-shrink-0">
-                          <div className="h-[30px] w-[30px] rounded-full border-2 border-border bg-surface-primary flex items-center justify-center">
-                            <span className="text-xs font-semibold text-muted-foreground">{index + 1}</span>
-                          </div>
-                        </div>
-                        <div className={cn("flex-1 pt-0.5", isLast ? "pb-0" : "pb-7")}>
-                          <span className="text-sm font-semibold text-text-primary">
-                            {step.approver_name}
-                          </span>
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            {roleLabelMap[step.approver_role] || 'Approval'}
-                          </div>
+        <CardContent className="py-6">
+          <div className="opacity-50">
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-4">Steps</div>
+            <div className="relative">
+              <div className="absolute left-[14px] top-0 bottom-0 w-0.5 bg-border" />
+              {configuredSteps
+                .sort((a, b) => a.step_order - b.step_order)
+                .map((step, index) => {
+                  const isLast = index === configuredSteps.length - 1
+                  return (
+                    <div key={step.id} className="relative flex gap-2.5">
+                      <div className="relative z-10 flex-shrink-0">
+                        <div className="h-[30px] w-[30px] rounded-full border-2 border-border bg-surface-primary flex items-center justify-center">
+                          <span className="text-xs font-semibold text-muted-foreground">{index + 1}</span>
                         </div>
                       </div>
-                    )
-                  })}
-              </div>
+                      <div className={cn("flex-1 pt-0.5", isLast ? "pb-0" : "pb-7")}>
+                        <span className="text-sm font-semibold text-text-primary">
+                          {step.approver_name}
+                        </span>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {roleLabelMap[step.approver_role] || 'Approval'}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
             </div>
-          )}
+          </div>
         </CardContent>
       </Card>
     )
