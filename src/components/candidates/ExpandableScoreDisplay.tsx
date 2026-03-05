@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { SafeHtml } from "@/components/ui/safe-html";
 import { ChevronDown, ChevronRight, User } from "lucide-react";
-import gioAvatar from "@/assets/gio-avatar.png";
+import gioAiBannerIcon from "@/assets/gio-ai-banner-icon.png";
 import { formatDistanceToNow } from "date-fns";
 import type { ScorecardWithAuthor } from "@/hooks/useAllStageScorecards";
 import type { ScoreRating } from "@/hooks/useScorecards";
