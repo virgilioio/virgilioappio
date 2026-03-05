@@ -20,7 +20,7 @@ export function AiBannerGuide() {
         <div className="space-y-3">
           <h4 className="text-sm font-medium text-muted-foreground">AI Banner Icon</h4>
           <div className="flex items-center gap-6 p-4 rounded-lg border bg-card">
-            <img src={gioAiBannerIcon} alt="AI Banner Icon" className="h-12" />
+            <img src={gioAiBannerIcon} alt="AI Banner Icon" className="h-14" />
             <div>
               <p className="text-sm font-medium">Gio AI Banner Icon</p>
               <p className="text-xs text-muted-foreground mt-1">
@@ -35,7 +35,7 @@ export function AiBannerGuide() {
           <h4 className="text-sm font-medium text-muted-foreground">Standard — Clickable</h4>
           <div className="rounded-lg bg-pastel-purple/30 border border-pastel-purple/50 cursor-pointer hover:bg-pastel-purple/40 transition-colors">
             <div className="p-3 flex items-center gap-3">
-              <img src={gioAiBannerIcon} alt="Gio" className="h-8 shrink-0" />
+              <img src={gioAiBannerIcon} alt="Gio" className="h-10 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground">AI Notes Analysis Available</p>
                 <p className="text-xs text-muted-foreground">Click to review AI-generated insights</p>
@@ -53,7 +53,7 @@ export function AiBannerGuide() {
           {!dismissedDismissable ? (
             <div className="rounded-lg bg-pastel-purple/30 border border-pastel-purple/50 transition-colors animate-fade-in">
               <div className="p-3 flex items-center gap-3">
-                <img src={gioAiBannerIcon} alt="Gio" className="h-8 shrink-0" />
+                <img src={gioAiBannerIcon} alt="Gio" className="h-10 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground">AI enrichment ready</p>
                   <p className="text-xs text-muted-foreground">
@@ -85,7 +85,7 @@ export function AiBannerGuide() {
           <h4 className="text-sm font-medium text-muted-foreground">Compact — Inline</h4>
           <div className="rounded-lg bg-pastel-purple/30 border border-pastel-purple/50 cursor-pointer hover:bg-pastel-purple/40 transition-colors">
             <div className="px-3 py-2 flex items-center gap-2">
-              <img src={gioAiBannerIcon} alt="Gio" className="h-6 shrink-0" />
+              <img src={gioAiBannerIcon} alt="Gio" className="h-8 shrink-0" />
               <p className="text-sm font-semibold text-foreground">AI Suggested Rating</p>
             </div>
           </div>
@@ -104,7 +104,7 @@ export function AiBannerGuide() {
   cursor-pointer hover:bg-pastel-purple/40 
   transition-colors">
   <div className="p-3 flex items-center gap-3">
-    <img src={gioAiBannerIcon} className="h-8 shrink-0" />
+    <img src={gioAiBannerIcon} className="h-10 shrink-0" />
     <div className="flex-1 min-w-0">
       <p className="text-sm font-semibold text-foreground">
         Title
