@@ -1,0 +1,1 @@
+UPDATE offer_letters SET status = 'approved' WHERE id = '1eaffa33-c4a0-4f76-89a6-16e1898cb6b7';
