@@ -74,14 +74,6 @@ export function GenerateOfferDialog({
         throw dbError
       }
 
-      // 5. Update offer letter status to finalized
-      const { error: offerError } = await supabase
-        .from('offer_letters')
-        .update({ status: 'finalized' })
-        .eq('id', offerLetterId)
-
-      if (offerError) throw offerError
-
       toast({ title: 'Offer generated', description: 'The offer letter PDF has been created and saved to attachments.' })
       onSuccess()
       onOpenChange(false)

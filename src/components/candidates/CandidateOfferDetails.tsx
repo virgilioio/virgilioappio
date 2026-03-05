@@ -56,6 +56,7 @@ function getStatusVariant(status: string) {
   switch (status) {
     case 'draft': return 'secondary'
     case 'pending_approval': return 'purple'
+    case 'approved': return 'purple'
     case 'finalized': return 'default'
     case 'sent': return 'default'
     case 'accepted': return 'default'
@@ -66,6 +67,7 @@ function getStatusVariant(status: string) {
 
 function getStatusLabel(status: string) {
   if (status === 'pending_approval') return 'Pending Approval'
+  if (status === 'approved') return 'Approved'
   return status
 }
 
