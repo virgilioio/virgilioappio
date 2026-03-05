@@ -5,7 +5,7 @@ import { useOfferApprovalRequest } from '@/hooks/useOfferApprovalRequest'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Loader2, Send, Clock, Pencil } from 'lucide-react'
+import { Loader2, Send, Clock, Pencil, Undo2 } from 'lucide-react'
 import gioFaceEmpty from '@/assets/gio-face-empty.png'
 
 const employmentTypeLabels: Record<string, string> = {
@@ -70,7 +70,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, onEd
   // Find the offer letter for this job
   const offerLetter = offerLetters.find(ol => ol.job_id === jobId)
   const { fields } = useOfferFormFields(offerLetter?.form_id || undefined)
-  const { approvalRequest, chainEnabled, chainHasSteps, requestApproval, isRequesting } = useOfferApprovalRequest(offerLetter?.id, jobId)
+  const { approvalRequest, chainEnabled, chainHasSteps, requestApproval, isRequesting, recallApproval, isRecalling, isCurrentUserRequester } = useOfferApprovalRequest(offerLetter?.id, jobId)
 
   if (isLoading) {
     return (
@@ -113,7 +113,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, onEd
         <div className="flex items-center justify-between">
           <CardTitle>Offer Details</CardTitle>
           <div className="flex items-center gap-2">
-            {offerLetter.status === 'draft' && onEdit && (
+            {(offerLetter.status === 'draft' || offerLetter.status === 'pending_approval') && onEdit && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -136,6 +136,17 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, onEd
               >
                 {isRequesting ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
                 Request Approval
+              </Button>
+            )}
+            {offerLetter.status === 'pending_approval' && isCurrentUserRequester && approvalRequest && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => recallApproval(approvalRequest.id)}
+                disabled={isRecalling}
+              >
+                {isRecalling ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5 mr-1.5" />}
+                Recall
               </Button>
             )}
             <Badge variant={getStatusVariant(offerLetter.status) as any} className="capitalize">

@@ -1,0 +1,1 @@
+ALTER TABLE offer_form_fields ADD COLUMN triggers_approval_restart boolean NOT NULL DEFAULT false;

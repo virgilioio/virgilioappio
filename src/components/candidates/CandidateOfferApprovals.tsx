@@ -125,6 +125,7 @@ export function CandidateOfferApprovals({ candidateId, jobId, organizationId }: 
             variant={
               approvalRequest.status === 'approved' ? 'default' :
               approvalRequest.status === 'declined' ? 'destructive' :
+              approvalRequest.status === 'recalled' ? 'outline' :
               'secondary'
             }
             className="capitalize"
@@ -139,6 +140,7 @@ export function CandidateOfferApprovals({ candidateId, jobId, organizationId }: 
             const isActive = approvalRequest.status === 'pending' && step.step_order === approvalRequest.current_step_order && step.status === 'pending'
             const isApprovedStep = step.status === 'approved'
             const isDeclinedStep = step.status === 'declined'
+            const isRecalledStep = step.status === 'recalled'
             const isPending = step.status === 'pending' && !isActive
             const isLast = index === approvalRequest.steps.length - 1
 
@@ -192,6 +194,7 @@ export function CandidateOfferApprovals({ candidateId, jobId, organizationId }: 
                       <> · {isApprovedStep ? 'Approved' : 'Declined'} {formatDistanceToNow(new Date(step.decided_at), { addSuffix: true })}</>
                     )}
                     {isActive && ' · Awaiting decision'}
+                    {isRecalledStep && ' · Recalled'}
                     {isPending && ' · Pending'}
                   </div>
 

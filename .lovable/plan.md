@@ -1,61 +1,44 @@
 
 
-# Offer Approval: Recall, Edit During Approval, and Field-Level Restart Trigger
+# Separate Location Sub-Fields on One Line
 
-## Three Features
+## Current State
+- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
+- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
+- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
 
-### 1. Recall (Pull Back) an Approval Request
+## What Needs to Change
 
-Allow the user who requested approval to recall/withdraw it while it's still pending.
+### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
 
-**Database**: Add a `recalled` status to the approval request. No schema migration needed since `status` is stored as `text`, not an enum.
+Add a `case 'location':` block that:
+- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
+- Parses the value as JSON `{ city, state, country }`
+- Renders separate inputs for each enabled sub-field in a single-row grid
+- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
+- Shows MapPin icon in the label
 
-**Hook (`useOfferApprovalRequest.ts`)**: Add a `recallApprovalMutation` that:
-- Sets the approval request status to `recalled`
-- Resets all pending steps to `recalled`
-- Reverts the offer letter status back to `draft`
-- Expose `recallApproval(requestId)` and `isRecalling` from the hook
-- Add `isCurrentUserRequester` flag (compare `approvalRequest.requested_by` with `user.id`)
+### 2. Make grid columns dynamic everywhere
 
-**UI (`CandidateOfferDetails.tsx`)**: When status is `pending_approval` and the current user is the requester, show a "Recall" button (with an `Undo2` icon) next to the status badge.
+When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
 
-**UI (`CandidateOfferApprovals.tsx`)**: Show a "Recalled" badge when the request status is `recalled`. Display recalled steps appropriately in the timeline.
+**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
 
-### 2. Allow Editing Offer Details During Pending Approval
+**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
 
-Currently the Edit button only shows when `status === 'draft'`. 
+**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
 
-**Change (`CandidateOfferDetails.tsx`)**: Also show the Edit button when status is `pending_approval`. The edit action saves field values without changing the approval status (the existing save logic in the offer composer already works this way).
-
-This connects to Feature 3 -- if any field marked as `triggers_approval_restart` is edited, the system will automatically recall the current approval and revert to draft.
-
-### 3. "Triggers Approval Restart" Flag on Offer Form Fields
-
-Add a per-field toggle that marks whether editing that field should restart the approval process.
-
-**Database migration**: Add a `triggers_approval_restart` boolean column to `offer_form_fields`, defaulting to `false`.
-
-**Hook (`useOfferFormFields.ts`)**: Include the new column in field data type / CRUD operations.
-
-**UI (`OfferFieldEditor.tsx` / `FormFieldEditor.tsx`)**: Add a toggle/icon in the field editor card (offer context only). Show a `RefreshCcw` icon from lucide-react when the flag is on. In view mode, display the icon as a small indicator badge. In edit mode, show a checkbox/switch labeled "Restarts approval if edited".
-
-**Offer save logic**: When saving an edited offer that has `pending_approval` status, check if any changed fields have `triggers_approval_restart = true`. If so, automatically recall the current approval request (delete steps + set request to `recalled`, revert offer to `draft`). The user can then re-request approval.
-
-## Technical Details
-
-### Migration SQL
-```sql
-ALTER TABLE offer_form_fields
-ADD COLUMN triggers_approval_restart boolean NOT NULL DEFAULT false;
+Column class map:
+```ts
+const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
 ```
 
-### Files to modify
-- **`src/integrations/supabase/types.ts`** -- auto-regenerated after migration
-- **`src/hooks/useOfferApprovalRequest.ts`** -- add `recallApproval` mutation, `isCurrentUserRequester` flag
-- **`src/hooks/useOfferFormFields.ts`** -- include `triggers_approval_restart` in field type
-- **`src/components/candidates/CandidateOfferDetails.tsx`** -- show Edit when `pending_approval`, show Recall button
-- **`src/components/candidates/CandidateOfferApprovals.tsx`** -- handle `recalled` status display
-- **`src/components/settings/OfferFieldEditor.tsx`** -- pass new prop to `FormFieldEditor`
-- **`src/components/shared/FormFieldEditor.tsx`** -- add `triggers_approval_restart` toggle (offer context only) with `RefreshCcw` icon
-- **Offer save handler** (in the minimizable offer composer) -- check for restart-triggering field changes and auto-recall if needed
+### 3. Also add salary case to `OfferComposerBody.tsx`
+
+While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
+
+## Summary of File Changes
+- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
+- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
+- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
 

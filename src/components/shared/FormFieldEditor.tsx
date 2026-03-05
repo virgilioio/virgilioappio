@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { GripVertical, Trash2, Edit, Save, X, Plus, DollarSign, Link2, MapPin, Phone, Users, Briefcase, Building2, Info } from 'lucide-react'
+import { GripVertical, Trash2, Edit, Save, X, Plus, DollarSign, Link2, MapPin, Phone, Users, Briefcase, Building2, Info, RefreshCcw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { SalaryFieldConfig, LocationFieldConfig, PhoneFieldConfig, FieldType, SelectOptionData } from '@/hooks/useJobPostingFields'
 
@@ -56,6 +56,7 @@ export interface FormFieldData {
   accepted_file_types?: string | null
   max_file_size_mb?: number | null
   field_config?: SalaryFieldConfig | LocationFieldConfig | PhoneFieldConfig | null
+  triggers_approval_restart?: boolean
 }
 
 export interface FormFieldEditorProps {
@@ -103,6 +104,7 @@ export function FormFieldEditor({
   const [localSalaryConfig, setLocalSalaryConfig] = useState<SalaryFieldConfig>({ currency: 'USD', period: 'annually' })
   const [localLocationConfig, setLocalLocationConfig] = useState<LocationFieldConfig>({ fields: ['city', 'state', 'country'] })
   const [localPhoneConfig, setLocalPhoneConfig] = useState<PhoneFieldConfig>({ defaultCountryCode: '+1' })
+  const [localTriggersRestart, setLocalTriggersRestart] = useState(field.triggers_approval_restart || false)
 
   const handleEdit = async () => {
     setLocalLabel(field.field_label || '')
@@ -114,6 +116,7 @@ export function FormFieldEditor({
     setLocalSalaryConfig((field.field_config as SalaryFieldConfig) || { currency: 'USD', period: 'annually' })
     setLocalLocationConfig((field.field_config as LocationFieldConfig) || { fields: ['city', 'state', 'country'] })
     setLocalPhoneConfig((field.field_config as PhoneFieldConfig) || { defaultCountryCode: '+1' })
+    setLocalTriggersRestart(field.triggers_approval_restart || false)
 
     if ((field.field_type === 'select' || field.field_type === 'checkbox_group') && loadSelectOptions) {
       const opts = await loadSelectOptions(field.id)
@@ -140,6 +143,7 @@ export function FormFieldEditor({
       accepted_file_types: localAcceptedFileTypes || null,
       max_file_size_mb: localMaxFileSize === '' ? null : localMaxFileSize,
       field_config: getConfig(),
+      ...(context === 'offer' ? { triggers_approval_restart: localTriggersRestart } : {}),
     }
     if (localType === 'select' || localType === 'checkbox_group') {
       updates.select_options = localOptions
@@ -219,6 +223,13 @@ export function FormFieldEditor({
                   <Checkbox checked={localRequired} onCheckedChange={(c) => setLocalRequired(c as boolean)} />
                   <span className="ml-2 text-xs text-muted-foreground">Required</span>
                 </div>
+                {context === 'offer' && (
+                  <div className="flex items-center h-10">
+                    <Checkbox checked={localTriggersRestart} onCheckedChange={(c) => setLocalTriggersRestart(c as boolean)} />
+                    <RefreshCcw className="ml-2 h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="ml-1 text-xs text-muted-foreground">Restarts approval</span>
+                  </div>
+                )}
                 {sourceBadge && (
                   <div className="flex items-center"><span className="text-xs text-muted-foreground">{sourceBadge}</span></div>
                 )}
@@ -379,8 +390,13 @@ export function FormFieldEditor({
                 <div><div className="text-sm text-muted-foreground capitalize">{fieldTypeLabel(field.field_type)}</div></div>
               )}
               {isSmartField && <div />}
-              <div className="flex items-center">
+              <div className="flex items-center gap-2">
                 <div className="text-sm text-muted-foreground">{field.is_required ? 'Required' : 'Optional'}</div>
+                {context === 'offer' && field.triggers_approval_restart && (
+                  <span title="Editing this field restarts the approval process">
+                    <RefreshCcw className="h-3.5 w-3.5 text-amber-500" />
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 {sourceBadge && <span className="text-xs text-muted-foreground">{sourceBadge}</span>}

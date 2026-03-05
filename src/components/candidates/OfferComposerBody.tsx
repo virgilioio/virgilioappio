@@ -17,6 +17,7 @@ import { PhoneInput } from '@/components/ui/phone-input'
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useRecruiterOptions } from '@/hooks/useRecruiterOptions'
+import { useOfferApprovalRequest } from '@/hooks/useOfferApprovalRequest'
 
 interface OfferComposerBodyProps {
   candidateId: string
@@ -52,8 +53,15 @@ export function OfferComposerBody({
   const { user } = useAuth()
   const { forms, isLoading: formsLoading } = useOfferForms()
   const { fields, isLoading: fieldsLoading } = useOfferFormFields(selectedFormId)
-  const { createOfferLetter, updateOfferLetter, isLoading: creatingLetter } = useOfferLetters(candidateId)
+  const { offerLetters, createOfferLetter, updateOfferLetter, isLoading: creatingLetter } = useOfferLetters(candidateId)
   const { data: recruiterOptions = [] } = useRecruiterOptions(organizationId)
+
+  // Find the current offer being edited to check its status
+  const currentOffer = editingOfferId ? offerLetters.find(ol => ol.id === editingOfferId) : null
+  const { approvalRequest, recallApproval } = useOfferApprovalRequest(
+    currentOffer?.status === 'pending_approval' ? editingOfferId : undefined,
+    jobId
+  )
 
   const activeForms = forms.filter(f => f.is_active)
 
@@ -84,6 +92,19 @@ export function OfferComposerBody({
     }
     try {
       if (editingOfferId) {
+        // Check if any restart-triggering fields were changed while pending approval
+        if (currentOffer?.status === 'pending_approval' && approvalRequest) {
+          const originalValues = currentOffer.field_values || {}
+          const restartFields = fields.filter(f => f.triggers_approval_restart)
+          const hasRestartTrigger = restartFields.some(f => {
+            const oldVal = JSON.stringify(originalValues[f.field_name] ?? '')
+            const newVal = JSON.stringify(fieldValues[f.field_name] ?? '')
+            return oldVal !== newVal
+          })
+          if (hasRestartTrigger) {
+            await recallApproval(approvalRequest.id)
+          }
+        }
         await updateOfferLetter(editingOfferId, {
           form_id: selectedFormId,
           field_values: fieldValues,
