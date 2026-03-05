@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Loader2, ClipboardList, MapPin, DollarSign, Phone } from 'lucide-react'
+import { Loader2, ClipboardList, MapPin, DollarSign, Phone, RefreshCcw } from 'lucide-react'
 import { format } from 'date-fns'
 import { useOfferForms } from '@/hooks/useOfferForms'
 import { CurrencySelect } from '@/components/ui/currency-select'
@@ -372,9 +372,15 @@ export function OfferComposerBody({
               .map((field) => (
                 <div key={field.id} className="space-y-2">
                   {field.field_type !== 'checkbox' && (
-                    <Label htmlFor={field.field_name}>
+                    <Label htmlFor={field.field_name} className="flex items-center gap-1.5">
                       {field.field_label}
                       {field.is_required && <span className="text-destructive ml-1">*</span>}
+                      {field.triggers_approval_restart && currentOffer?.status === 'pending_approval' && (
+                        <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                          <RefreshCcw className="h-3 w-3" />
+                          <span className="text-[11px] font-normal">Editing restarts approval</span>
+                        </span>
+                      )}
                     </Label>
                   )}
                   {renderFieldInput(field)}
