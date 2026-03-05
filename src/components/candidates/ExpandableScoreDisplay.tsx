@@ -6,7 +6,6 @@ import { SafeHtml } from "@/components/ui/safe-html";
 import { ChevronDown, ChevronRight, User } from "lucide-react";
 import gioAvatar from "@/assets/gio-avatar.png";
 import { formatDistanceToNow } from "date-fns";
-import { useGradientBorder } from "@/hooks/useGradientBorder";
 import type { ScorecardWithAuthor } from "@/hooks/useAllStageScorecards";
 import type { ScoreRating } from "@/hooks/useScorecards";
 
@@ -25,7 +24,6 @@ const ratingOptions = [
 
 export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSheet }: ExpandableScoreDisplayProps) {
   const [expandedScorecard, setExpandedScorecard] = useState<string | null>(null);
-  const gradient = useGradientBorder();
 
   const humanScorecards = scorecards.filter(s => !s.is_ai_draft);
   const hasAiDrafts = scorecards.some(s => s.is_ai_draft);
@@ -44,16 +42,12 @@ export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSh
       {/* AI Analysis Available indicator */}
       {hasAiDrafts && (
         <div
-          ref={gradient.ref}
-          onMouseMove={gradient.onMouseMove}
-          onMouseLeave={gradient.onMouseLeave}
-          style={gradient.style}
-          className="rounded-lg p-[1px] cursor-pointer"
+          className="rounded-lg bg-pastel-purple/30 border border-pastel-purple/50 cursor-pointer hover:bg-pastel-purple/40 transition-colors"
           onClick={() => firstAiDraft && onOpenFullSheet?.(firstAiDraft.id)}
         >
-          <div className="rounded-[7px] bg-pastel-purple/30 hover:bg-pastel-purple/40 transition-colors p-4 flex items-center gap-3">
+          <div className="p-4 flex items-center gap-3">
             <img src={gioAvatar} alt="Gio" className="h-6 w-6 rounded-full shrink-0" />
-            <span className="text-sm text-foreground font-semibold">AI Notes Analysis Available</span>
+            <span className="text-sm text-virgilio-purple font-semibold">AI Notes Analysis Available</span>
           </div>
         </div>
       )}

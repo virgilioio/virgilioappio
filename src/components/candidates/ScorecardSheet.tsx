@@ -16,7 +16,6 @@ import { supabase } from "@/lib/supabaseClient";
 import { triggerFitAnalysis } from "@/utils/triggerFitAnalysis";
 import type { InterviewQuestion, SelectOption, SalaryConfig } from "@/hooks/useScorecardsConfiguration";
 import { markdownToHtml } from "@/utils/markdown";
-import { useGradientBorder } from "@/hooks/useGradientBorder";
 import gioIcon from "@/assets/gio-icon.png";
 import gioAvatar from "@/assets/gio-avatar.png";
 import { SafeHtml } from "@/components/ui/safe-html";
@@ -99,7 +98,6 @@ export function ScorecardSheet({
 }: ScorecardSheetProps) {
   const [rating, setRating] = useState<ScoreRating>(existing?.rating || "yes");
   const [overview, setOverview] = useState<string>(existing?.general_overview || "");
-  const aiGradient = useGradientBorder();
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(!existing || isAuthor);
   const [questions, setQuestions] = useState<InterviewQuestion[]>([]);
@@ -979,14 +977,7 @@ export function ScorecardSheet({
                 )}
                 {/* AI Suggested Rating Banner */}
                 {isAiDraft && aiSuggestedRating && (
-                  <div
-                    ref={aiGradient.ref}
-                    onMouseMove={aiGradient.onMouseMove}
-                    onMouseLeave={aiGradient.onMouseLeave}
-                    style={aiGradient.style}
-                    className="rounded-lg p-[1px]"
-                  >
-                  <div className="rounded-[7px] overflow-hidden bg-pastel-purple/30">
+                  <div className="rounded-lg overflow-hidden bg-pastel-purple/30 border border-pastel-purple/50">
                     {/* Header row */}
                     <div className="p-4 flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -1025,7 +1016,6 @@ export function ScorecardSheet({
                         )}
                       </>
                     )}
-                  </div>
                   </div>
                 )}
 
