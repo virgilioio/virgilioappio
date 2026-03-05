@@ -53,7 +53,7 @@ export function AiBannerGuide() {
           {!dismissedDismissable ? (
             <div className="rounded-lg bg-pastel-purple/30 border border-pastel-purple/50 transition-colors animate-fade-in">
               <div className="p-3 flex items-center gap-3">
-                <img src={gioAiBannerIcon} alt="Gio" className="h-8 shrink-0" />
+                <img src={gioAiBannerIcon} alt="Gio" className="h-10 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground">AI enrichment ready</p>
                   <p className="text-xs text-muted-foreground">
