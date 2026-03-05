@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2, Send, Clock, Pencil, Undo2, Check, X } from 'lucide-react'
+import { Loader2, Send, Clock, Pencil, Undo2, Check, X, FileText } from 'lucide-react'
 import gioFaceEmpty from '@/assets/gio-face-empty.png'
+import { GenerateOfferDialog } from './GenerateOfferDialog'
 
 const employmentTypeLabels: Record<string, string> = {
   full_time: 'Full-time', part_time: 'Part-time',
