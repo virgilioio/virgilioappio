@@ -1,44 +1,28 @@
 
 
-# Separate Location Sub-Fields on One Line
+# Fix Multicolor Gradient Border on AI Analysis Button
 
-## Current State
-- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
-- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
-- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
+## Problem
+The current approach uses `-z-10` on the gradient `span` combined with `overflow-hidden` on the button. The `overflow-hidden` clips the gradient pseudo-element that extends to `inset-[-2px]`, and the `-z-10` stacking can cause it to render behind the button's own background, making it barely visible or glitchy.
 
-## What Needs to Change
+## Solution
+Replace the single-element approach with a **wrapper pattern**: an outer `div` with the gradient background, and the button content inside with a slightly inset background that reveals the gradient as a border.
 
-### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
+### `src/components/candidates/ExpandableScoreDisplay.tsx` (lines 43-55)
 
-Add a `case 'location':` block that:
-- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
-- Parses the value as JSON `{ city, state, country }`
-- Renders separate inputs for each enabled sub-field in a single-row grid
-- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
-- Shows MapPin icon in the label
-
-### 2. Make grid columns dynamic everywhere
-
-When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
-
-**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
-
-**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
-
-**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
-
-Column class map:
-```ts
-const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
+Replace with:
+```tsx
+<div className="rounded-lg p-[2px] bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 opacity-80 hover:opacity-100 transition-opacity group">
+  <button
+    type="button"
+    onClick={() => firstAiDraft && onOpenFullSheet?.(firstAiDraft.id)}
+    className="flex items-center gap-2 w-full text-left px-3 py-2.5 rounded-[6px] bg-pastel-purple/30 group-hover:bg-pastel-purple/40 transition-all duration-200"
+  >
+    <Sparkles className="h-4 w-4 text-virgilio-purple shrink-0" />
+    <span className="text-sm text-virgilio-purple font-semibold">AI Notes Analysis Available</span>
+  </button>
+</div>
 ```
 
-### 3. Also add salary case to `OfferComposerBody.tsx`
-
-While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
-
-## Summary of File Changes
-- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
-- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
-- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
+This is a reliable CSS pattern: the outer wrapper has gradient background + `p-[2px]` padding, and the inner button has its own opaque background with a slightly smaller border-radius, creating a clean 2px gradient border that's always visible.
 
