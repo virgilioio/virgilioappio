@@ -840,7 +840,7 @@ export default function JobDetail() {
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
-      <div className="container mx-auto pt-2 pb-4 sm:pt-3 sm:pb-6 lg:pt-4 lg:pb-8 px-4 sm:px-6 lg:px-8">
+      <div className="container mx-auto pt-1 pb-4 sm:pt-2 sm:pb-6 lg:pt-3 lg:pb-8 px-4 sm:px-6 lg:px-8">
         {/* Mobile Header */}
         {isMobile && (
           <div className="mb-6">
@@ -854,13 +854,6 @@ export default function JobDetail() {
 
         {!isMobile && (
           <>
-            <div className="mb-4 animate-fade-in">
-              <Button variant="outline" onClick={handleBackToJobs} className="gap-2">
-                <ArrowLeft className="h-4 w-4" />
-                Back to Jobs
-              </Button>
-            </div>
-            
             <div className="mb-2 animate-fade-in">
               <PageHeader 
                 title={job.title} 
