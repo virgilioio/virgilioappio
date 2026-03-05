@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useOfferLetters } from '@/hooks/useOfferLetters'
 import { useOfferFormFields } from '@/hooks/useOfferFormFields'
 import { useRecruiterOptions } from '@/hooks/useRecruiterOptions'
@@ -10,6 +10,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Loader2, Send, Clock, Pencil, Undo2, Check, X, FileText } from 'lucide-react'
 import gioFaceEmpty from '@/assets/gio-face-empty.png'
 import { GenerateOfferDialog } from './GenerateOfferDialog'
+import { MinimizableEmailComposer } from './MinimizableEmailComposer'
+import { supabase } from '@/lib/supabaseClient'
 
 const employmentTypeLabels: Record<string, string> = {
   full_time: 'Full-time', part_time: 'Part-time',
@@ -85,6 +87,26 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
   const [showApproveForm, setShowApproveForm] = useState(false)
   const [showDeclineForm, setShowDeclineForm] = useState(false)
   const [showGenerateDialog, setShowGenerateDialog] = useState(false)
+  const [hasOfferDocument, setHasOfferDocument] = useState(false)
+  const [showEmailComposer, setShowEmailComposer] = useState(false)
+
+  const checkOfferDocument = useCallback(async () => {
+    if (!candidateId) return
+    const { data } = await supabase
+      .from('candidate_attachments')
+      .select('id')
+      .eq('candidate_id', candidateId)
+      .ilike('file_name', 'Offer Letter%')
+      .limit(1)
+    setHasOfferDocument(!!(data && data.length > 0))
+  }, [candidateId])
+
+  useEffect(() => {
+    checkOfferDocument()
+    const handler = () => checkOfferDocument()
+    window.addEventListener('refetch-attachments', handler)
+    return () => window.removeEventListener('refetch-attachments', handler)
+  }, [checkOfferDocument])
 
   if (isLoading) {
     return (
@@ -136,6 +158,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
   }
 
   return (
+    <>
     <Card className="bg-surface-primary border-border">
       {/* Approval status banner */}
       {approvalRequest?.status === 'approved' && (
@@ -212,6 +235,16 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
               >
                 <FileText className="h-3.5 w-3.5 mr-1.5" />
                 Generate Offer Letter
+              </Button>
+            )}
+            {offerLetter.status === 'approved' && hasOfferDocument && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowEmailComposer(true)}
+              >
+                <Send className="h-3.5 w-3.5 mr-1.5" />
+                Send Offer
               </Button>
             )}
             {offerLetter.status === 'draft' && chainEnabled && chainHasSteps && !isActiveRequest && (
@@ -366,5 +399,17 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
         />
       )}
     </Card>
+
+    <MinimizableEmailComposer
+      isOpen={showEmailComposer}
+      onOpenChange={setShowEmailComposer}
+      candidateId={candidateId}
+      jobId={jobId}
+      defaultTo={candidate?.email || candidate?.contact_email || ''}
+      candidateName={candidate?.candidate_name || 'Candidate'}
+      defaultSubject={`Offer Letter - ${job?.title || 'Position'}`}
+      onSuccess={() => setShowEmailComposer(false)}
+    />
+    </>
   )
 }
