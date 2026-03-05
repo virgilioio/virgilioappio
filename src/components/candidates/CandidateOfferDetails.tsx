@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useOfferLetters } from '@/hooks/useOfferLetters'
 import { useOfferFormFields } from '@/hooks/useOfferFormFields'
 import { useRecruiterOptions } from '@/hooks/useRecruiterOptions'
@@ -10,6 +10,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Loader2, Send, Clock, Pencil, Undo2, Check, X, FileText } from 'lucide-react'
 import gioFaceEmpty from '@/assets/gio-face-empty.png'
 import { GenerateOfferDialog } from './GenerateOfferDialog'
+import { MinimizableEmailComposer } from './MinimizableEmailComposer'
+import { supabase } from '@/lib/supabaseClient'
 
 const employmentTypeLabels: Record<string, string> = {
   full_time: 'Full-time', part_time: 'Part-time',
