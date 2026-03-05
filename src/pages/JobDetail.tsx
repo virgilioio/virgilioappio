@@ -1185,7 +1185,8 @@ export default function JobDetail() {
                                        isCandidateNewForUser={() => false}
                                        onRowClick={openSuggestedProfile}
                                        hideActions={true}
-                                       showMatchScore={true}
+                                        showMatchScore={true}
+                                        hideSkills={true}
                                      />
                                   ) : (
                                     <div className="text-center py-8">
