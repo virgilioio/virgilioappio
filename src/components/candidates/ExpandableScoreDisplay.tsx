@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { SafeHtml } from "@/components/ui/safe-html";
-import { ChevronDown, ChevronRight, User } from "lucide-react";
+import { ChevronDown, ChevronRight, Sparkles, User } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { ScorecardWithAuthor } from "@/hooks/useAllStageScorecards";
 import type { ScoreRating } from "@/hooks/useScorecards";
@@ -24,13 +24,9 @@ const ratingOptions = [
 export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSheet }: ExpandableScoreDisplayProps) {
   const [expandedScorecard, setExpandedScorecard] = useState<string | null>(null);
 
-  if (!scorecards.length) {
-    return (
-      <div className="text-sm text-text-tertiary">
-        No scorecards submitted for this stage
-      </div>
-    );
-  }
+  const humanScorecards = scorecards.filter(s => !s.is_ai_draft);
+  const hasAiDrafts = scorecards.some(s => s.is_ai_draft);
+  const firstAiDraft = scorecards.find(s => s.is_ai_draft);
 
   const toggleExpanded = (scorecardId: string) => {
     setExpandedScorecard(expandedScorecard === scorecardId ? null : scorecardId);
@@ -42,7 +38,26 @@ export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSh
 
   return (
     <div className="space-y-3">
-      {scorecards.map((scorecard) => {
+      {/* AI Analysis Available indicator */}
+      {hasAiDrafts && (
+        <button
+          type="button"
+          onClick={() => firstAiDraft && onOpenFullSheet?.(firstAiDraft.id)}
+          className="flex items-center gap-2 w-full text-left px-3 py-2 rounded-lg border border-accent/30 bg-accent/5 hover:bg-accent/10 transition-colors"
+        >
+          <Sparkles className="h-4 w-4 text-accent shrink-0" />
+          <span className="text-sm text-accent font-medium">AI Notes Analysis Available</span>
+        </button>
+      )}
+
+      {/* Human-submitted scorecards */}
+      {humanScorecards.length === 0 && (
+        <div className="text-sm text-text-tertiary">
+          No scorecards submitted for this stage
+        </div>
+      )}
+
+      {humanScorecards.map((scorecard) => {
         const isCurrentUser = scorecard.created_by === currentUserId;
         const isExpanded = expandedScorecard === scorecard.id;
         const ratingConfig = getRatingConfig(scorecard.rating);
