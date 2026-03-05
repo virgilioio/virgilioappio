@@ -398,5 +398,17 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
         />
       )}
     </Card>
+
+    <MinimizableEmailComposer
+      isOpen={showEmailComposer}
+      onOpenChange={setShowEmailComposer}
+      candidateId={candidateId}
+      jobId={jobId}
+      defaultTo={candidate?.email || candidate?.contact_email || ''}
+      candidateName={candidate?.candidate_name || 'Candidate'}
+      defaultSubject={`Offer Letter - ${job?.title || 'Position'}`}
+      onSuccess={() => setShowEmailComposer(false)}
+    />
+    </>
   )
 }
