@@ -827,7 +827,7 @@ export default function JobDetail() {
 
   if (!job) return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
+      <div className="layout-container py-6 sm:py-8 lg:py-12">
         <Skeleton className="h-12 w-64 mb-4" />
         <div className="grid grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -840,7 +840,7 @@ export default function JobDetail() {
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
-      <div className="container mx-auto pt-1 pb-4 sm:pt-2 sm:pb-6 lg:pt-3 lg:pb-8 px-4 sm:px-6 lg:px-8">
+      <div className="layout-container pt-1 pb-4 sm:pt-2 sm:pb-6 lg:pt-3 lg:pb-8">
         {/* Mobile Header */}
         {isMobile && (
           <div className="mb-6">
