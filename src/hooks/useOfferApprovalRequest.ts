@@ -26,7 +26,7 @@ export interface ApprovalRequest {
   organization_id: string
   candidate_id: string
   requested_by: string
-  status: 'pending' | 'approved' | 'declined'
+  status: 'pending' | 'approved' | 'declined' | 'recalled'
   current_step_order: number
   created_at: string
   updated_at: string
