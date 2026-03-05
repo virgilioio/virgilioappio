@@ -195,7 +195,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, onEd
                 </Button>
               </>
             )}
-            {offerLetter.status === 'draft' && chainEnabled && chainHasSteps && !approvalRequest && (
+            {offerLetter.status === 'draft' && chainEnabled && chainHasSteps && !isActiveRequest && (
               <Button
                 variant="ghost"
                 size="sm"
