@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
-import { Check, X, Clock, AlertCircle, Loader2 } from 'lucide-react'
+import { Check, X, Clock, AlertCircle, Loader2, User, ShieldCheck } from 'lucide-react'
 import { useOfferApprovalRequest } from '@/hooks/useOfferApprovalRequest'
 import { useOfferLetters } from '@/hooks/useOfferLetters'
 import { useOfferApprovalChain } from '@/hooks/useOfferApprovalChain'
@@ -65,40 +65,40 @@ export function CandidateOfferApprovals({ candidateId, jobId, organizationId }: 
           </div>
 
           {hasConfiguredChain && (
-            <div className="mt-8 mx-auto max-w-xs">
-              <p className="text-xs font-medium text-muted-foreground mb-4 text-center uppercase tracking-wide">
-                Configured approval order
-              </p>
-              <div className="relative space-y-0">
+            <div className="mt-8 mx-auto max-w-sm bg-surface-secondary/50 rounded-xl border border-border/60 p-5">
+              <div className="flex items-center gap-2 mb-5">
+                <ShieldCheck className="h-4 w-4 text-virgilio-purple" />
+                <span className="text-sm font-semibold text-text-primary">Approval chain</span>
+              </div>
+              <div className="relative">
                 {configuredSteps
                   .sort((a, b) => a.step_order - b.step_order)
                   .map((step, index) => {
                     const isLast = index === configuredSteps.length - 1
+                    const ordinal = index === 0 ? '1st' : index === 1 ? '2nd' : index === 2 ? '3rd' : `${index + 1}th`
                     return (
-                      <div key={step.id} className="relative flex gap-3">
+                      <div key={step.id} className="relative flex gap-3.5">
                         {!isLast && (
-                          <div className="absolute left-[13px] top-7 bottom-0 w-px bg-border" />
+                          <div className="absolute left-[15px] top-9 bottom-0 border-l border-dashed border-virgilio-purple/20" />
                         )}
                         <div className="relative z-10 flex-shrink-0 mt-0.5">
-                          <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center">
-                            <span className="text-[10px] font-semibold text-muted-foreground">
-                              {step.step_order}
-                            </span>
+                          <div className="h-8 w-8 rounded-full bg-virgilio-purple/12 flex items-center justify-center">
+                            <User className="h-3.5 w-3.5 text-virgilio-purple" />
                           </div>
                         </div>
                         <div className={cn("flex-1 pb-5", isLast && "pb-0")}>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-muted-foreground">
+                            <span className="text-sm font-medium text-text-primary">
                               {step.approver_name}
                             </span>
                             {step.approver_role && (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 opacity-60">
+                              <Badge className="text-[10px] px-1.5 py-0 bg-virgilio-purple/10 text-virgilio-purple border-0 hover:bg-virgilio-purple/10">
                                 {roleLabelMap[step.approver_role] || step.approver_role}
                               </Badge>
                             )}
                           </div>
-                          <div className="text-xs text-muted-foreground/60 mt-0.5">
-                            Step {step.step_order}
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            Will review {ordinal}
                           </div>
                         </div>
                       </div>
