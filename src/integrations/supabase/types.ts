@@ -2558,6 +2558,83 @@ export type Database = {
           },
         ]
       }
+      offer_approval_chain_steps: {
+        Row: {
+          approver_user_id: string
+          chain_id: string
+          created_at: string
+          id: string
+          step_order: number
+        }
+        Insert: {
+          approver_user_id: string
+          chain_id: string
+          created_at?: string
+          id?: string
+          step_order: number
+        }
+        Update: {
+          approver_user_id?: string
+          chain_id?: string
+          created_at?: string
+          id?: string
+          step_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_approval_chain_steps_chain_id_fkey"
+            columns: ["chain_id"]
+            isOneToOne: false
+            referencedRelation: "offer_approval_chains"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offer_approval_chains: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_enabled: boolean
+          job_id: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_enabled?: boolean
+          job_id: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_enabled?: boolean
+          job_id?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_approval_chains_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_approval_chains_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       offer_field_select_options: {
         Row: {
           created_at: string
