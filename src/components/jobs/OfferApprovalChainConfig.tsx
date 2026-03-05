@@ -4,14 +4,118 @@ import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { FormField } from '@/components/ui/form-field'
-import { useOfferApprovalChain } from '@/hooks/useOfferApprovalChain'
+import { useOfferApprovalChain, ApprovalChainStep } from '@/hooks/useOfferApprovalChain'
 import { useMembers } from '@/hooks/useMembers'
 import { usePermissions } from '@/hooks/usePermissions'
-import { ChevronUp, ChevronDown, Trash2, ShieldCheck, Plus } from 'lucide-react'
+import { GripVertical, Trash2, ShieldCheck, Plus } from 'lucide-react'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { cn } from '@/lib/utils'
 
 interface OfferApprovalChainConfigProps {
   jobId: string
   jobTitle: string
+}
+
+function SortableApproverItem({
+  step,
+  index,
+  canConfigure,
+  isBusy,
+  onRemove,
+}: {
+  step: ApprovalChainStep
+  index: number
+  canConfigure: boolean
+  isBusy: boolean
+  onRemove: (stepId: string) => void
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: step.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  const getRoleBadgeVariant = (role: string | null) => {
+    switch (role) {
+      case 'admin': return 'destructive' as const
+      case 'recruiter': return 'default' as const
+      case 'hiring_manager': return 'secondary' as const
+      case 'interviewer': return 'outline' as const
+      default: return 'secondary' as const
+    }
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'flex items-center justify-between p-4 border border-border rounded-md bg-background',
+        isDragging && 'opacity-50'
+      )}
+    >
+      <div className="flex items-center gap-4">
+        {canConfigure && (
+          <button
+            className="cursor-grab touch-none text-muted-foreground hover:text-foreground"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+        )}
+        <span className="flex items-center justify-center h-7 w-7 rounded-full bg-accent text-accent-foreground text-sm font-semibold">
+          {index + 1}
+        </span>
+        <div>
+          <div className="font-medium text-text-primary">{step.approver_name}</div>
+          {step.approver_email && (
+            <div className="text-sm text-text-secondary">{step.approver_email}</div>
+          )}
+        </div>
+        {step.approver_role && (
+          <Badge variant={getRoleBadgeVariant(step.approver_role)}>
+            {step.approver_role}
+          </Badge>
+        )}
+      </div>
+
+      {canConfigure && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => onRemove(step.id)}
+          disabled={isBusy}
+          title="Remove approver"
+          className="text-destructive hover:text-destructive"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
+  )
 }
 
 export function OfferApprovalChainConfig({ jobId, jobTitle }: OfferApprovalChainConfigProps) {
@@ -23,7 +127,7 @@ export function OfferApprovalChainConfig({ jobId, jobTitle }: OfferApprovalChain
     toggleChain,
     addApprover,
     removeApprover,
-    reorderApprover,
+    reorderSteps,
     isToggling,
     isAdding,
     isRemoving,
@@ -34,7 +138,10 @@ export function OfferApprovalChainConfig({ jobId, jobTitle }: OfferApprovalChain
 
   const canConfigure = permissions.isPlatformAdmin || permissions.isWorkspaceOwner || permissions.isAdmin
 
-  // Don't render anything if user can't even view
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  )
+
   if (!permissions.canViewJobAssignments) return null
 
   if (isLoading || membersLoading) {
@@ -53,7 +160,6 @@ export function OfferApprovalChainConfig({ jobId, jobTitle }: OfferApprovalChain
     )
   }
 
-  // Filter members to show only those not already in the chain
   const approverUserIds = new Set(steps.map(s => s.approver_user_id))
   const availableMembers = members.filter(m => {
     if (!m.user_id || approverUserIds.has(m.user_id)) return false
@@ -78,14 +184,16 @@ export function OfferApprovalChainConfig({ jobId, jobTitle }: OfferApprovalChain
     setSelectedUserId('')
   }
 
-  const getRoleBadgeVariant = (role: string | null) => {
-    switch (role) {
-      case 'admin': return 'destructive' as const
-      case 'recruiter': return 'default' as const
-      case 'hiring_manager': return 'secondary' as const
-      case 'interviewer': return 'outline' as const
-      default: return 'secondary' as const
-    }
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIndex = steps.findIndex(s => s.id === active.id)
+    const newIndex = steps.findIndex(s => s.id === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+
+    const reordered = arrayMove(steps, oldIndex, newIndex)
+    reorderSteps(reordered.map(s => s.id))
   }
 
   const isBusy = isAdding || isRemoving || isReordering
@@ -175,64 +283,29 @@ export function OfferApprovalChainConfig({ jobId, jobTitle }: OfferApprovalChain
                 )}
               </div>
             ) : (
-              <div className="space-y-2">
-                {steps.map((step, index) => (
-                  <div
-                    key={step.id}
-                    className="flex items-center justify-between p-4 border border-border rounded-md bg-background"
-                  >
-                    <div className="flex items-center gap-4">
-                      <span className="flex items-center justify-center h-7 w-7 rounded-full bg-accent text-accent-foreground text-sm font-semibold">
-                        {step.step_order}
-                      </span>
-                      <div>
-                        <div className="font-medium text-text-primary">{step.approver_name}</div>
-                        {step.approver_email && (
-                          <div className="text-sm text-text-secondary">{step.approver_email}</div>
-                        )}
-                      </div>
-                      {step.approver_role && (
-                        <Badge variant={getRoleBadgeVariant(step.approver_role)}>
-                          {step.approver_role}
-                        </Badge>
-                      )}
-                    </div>
-
-                    {canConfigure && (
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => reorderApprover(step.id, 'up')}
-                          disabled={index === 0 || isBusy}
-                          title="Move up"
-                        >
-                          <ChevronUp className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => reorderApprover(step.id, 'down')}
-                          disabled={index === steps.length - 1 || isBusy}
-                          title="Move down"
-                        >
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeApprover(step.id)}
-                          disabled={isBusy}
-                          title="Remove approver"
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={steps.map(s => s.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-2">
+                    {steps.map((step, index) => (
+                      <SortableApproverItem
+                        key={step.id}
+                        step={step}
+                        index={index}
+                        canConfigure={canConfigure}
+                        isBusy={isBusy}
+                        onRemove={removeApprover}
+                      />
+                    ))}
                   </div>
-                ))}
-              </div>
+                </SortableContext>
+              </DndContext>
             )}
           </div>
         </>
