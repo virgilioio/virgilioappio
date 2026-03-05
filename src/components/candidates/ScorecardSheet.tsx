@@ -982,7 +982,7 @@ export function ScorecardSheet({
                     {/* Header row */}
                     <div className="p-3 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <img src={gioAiBannerIcon} alt="Gio" className="h-8 shrink-0" />
+                        <img src={gioAiBannerIcon} alt="Gio" className="h-10 shrink-0" />
                         <div>
                           <p className="text-sm font-semibold text-foreground">AI Suggested Rating: {aiSuggestedRating}</p>
                           <p className="text-xs text-muted-foreground">Based on interview transcript analysis</p>
