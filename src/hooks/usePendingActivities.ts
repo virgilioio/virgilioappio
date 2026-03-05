@@ -59,6 +59,10 @@ export function usePendingActivities() {
       const emailActivities = await fetchUnreadEmails(user.id, isAdmin, assignedJobIds);
       activities.push(...emailActivities);
 
+      // 4. Fetch pending offer approvals for this user
+      const approvalActivities = await fetchPendingOfferApprovals(user.id);
+      activities.push(...approvalActivities);
+
       // Sort all activities by timestamp (oldest/most urgent first)
       return activities.sort((a, b) => 
         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
