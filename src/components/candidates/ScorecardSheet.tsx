@@ -1024,9 +1024,9 @@ export function ScorecardSheet({
                         {showAnalysis && (
                           <div className="px-4 pb-4 border-t border-pastel-purple/30">
                             <div className="max-h-80 overflow-y-auto pt-3">
-                              <SafeHtml
-                                content={markdownToHtml(aiAnalysis)}
-                                className="text-sm text-foreground prose prose-sm max-w-none [&_h1]:text-base [&_h2]:text-sm [&_h3]:text-sm [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-medium [&_p]:text-muted-foreground [&_li]:text-muted-foreground [&_strong]:text-foreground [&_blockquote]:border-pastel-purple/40 [&_blockquote]:text-muted-foreground [&_hr]:border-pastel-purple/30"
+                              <ProfileSummaryMarkdown
+                                content={aiAnalysis}
+                                className="[&_h1]:text-sm [&_h2]:text-sm [&_h3]:text-xs [&_p]:text-muted-foreground [&_li]:text-muted-foreground [&_strong]:text-foreground [&_hr]:border-pastel-purple/30"
                               />
                             </div>
                           </div>
