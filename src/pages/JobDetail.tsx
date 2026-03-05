@@ -1324,8 +1324,9 @@ export default function JobDetail() {
                         markCandidateAsViewed={markCandidateAsViewed}
                         isCandidateNewForUser={isCandidateNewForUser}
                         showJobInfo={false}
-                        hideActions={true}
-                      />
+                         hideActions={true}
+                         hideSkills={true}
+                       />
                     </CardContent>
                   </Card>
                 </TabsContent>
