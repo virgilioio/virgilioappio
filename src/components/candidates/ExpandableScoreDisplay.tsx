@@ -67,9 +67,9 @@ export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSh
           <button
             type="button"
             onClick={() => firstAiDraft && onOpenFullSheet?.(firstAiDraft.id)}
-            className="flex items-center gap-2 w-full text-left px-4 py-2.5 rounded-[6px] bg-card transition-all duration-200"
+            className="flex items-center gap-3 w-full text-left px-4 py-4 rounded-[6px] bg-pastel-purple/30 transition-all duration-200"
           >
-            <Sparkles className="h-4 w-4 text-virgilio-purple shrink-0" />
+            <img src={gioAvatar} alt="Gio" className="h-8 w-8 rounded-full shrink-0" />
             <span className="text-sm text-virgilio-purple font-semibold">AI Notes Analysis Available</span>
           </button>
         </div>
