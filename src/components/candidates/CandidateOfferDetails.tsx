@@ -158,6 +158,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
   }
 
   return (
+    <>
     <Card className="bg-surface-primary border-border">
       {/* Approval status banner */}
       {approvalRequest?.status === 'approved' && (
