@@ -29,6 +29,7 @@ interface CandidateOfferDetailsProps {
   job?: any
   organization?: any
   onEdit?: (offer: { id: string; form_id: string; field_values: Record<string, any> }) => void
+  associationStatus?: string | null
 }
 
 function formatLocationValue(value: any): string {
