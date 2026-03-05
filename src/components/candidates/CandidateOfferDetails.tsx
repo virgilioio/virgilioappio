@@ -48,12 +48,18 @@ function formatSalaryValue(value: any, config?: any): string {
 function getStatusVariant(status: string) {
   switch (status) {
     case 'draft': return 'secondary'
+    case 'pending_approval': return 'purple'
     case 'finalized': return 'default'
     case 'sent': return 'default'
     case 'accepted': return 'default'
     case 'declined': return 'destructive'
     default: return 'secondary'
   }
+}
+
+function getStatusLabel(status: string) {
+  if (status === 'pending_approval') return 'Pending Approval'
+  return status
 }
 
 export function CandidateOfferDetails({ candidateId, jobId, organizationId }: CandidateOfferDetailsProps) {
