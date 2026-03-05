@@ -116,6 +116,7 @@ export function FormFieldEditor({
     setLocalSalaryConfig((field.field_config as SalaryFieldConfig) || { currency: 'USD', period: 'annually' })
     setLocalLocationConfig((field.field_config as LocationFieldConfig) || { fields: ['city', 'state', 'country'] })
     setLocalPhoneConfig((field.field_config as PhoneFieldConfig) || { defaultCountryCode: '+1' })
+    setLocalTriggersRestart(field.triggers_approval_restart || false)
 
     if ((field.field_type === 'select' || field.field_type === 'checkbox_group') && loadSelectOptions) {
       const opts = await loadSelectOptions(field.id)
