@@ -92,6 +92,19 @@ export function OfferComposerBody({
     }
     try {
       if (editingOfferId) {
+        // Check if any restart-triggering fields were changed while pending approval
+        if (currentOffer?.status === 'pending_approval' && approvalRequest) {
+          const originalValues = currentOffer.field_values || {}
+          const restartFields = fields.filter(f => f.triggers_approval_restart)
+          const hasRestartTrigger = restartFields.some(f => {
+            const oldVal = JSON.stringify(originalValues[f.field_name] ?? '')
+            const newVal = JSON.stringify(fieldValues[f.field_name] ?? '')
+            return oldVal !== newVal
+          })
+          if (hasRestartTrigger) {
+            await recallApproval(approvalRequest.id)
+          }
+        }
         await updateOfferLetter(editingOfferId, {
           form_id: selectedFormId,
           field_values: fieldValues,
