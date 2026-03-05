@@ -69,7 +69,7 @@ export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSh
             onClick={() => firstAiDraft && onOpenFullSheet?.(firstAiDraft.id)}
             className="flex items-center gap-3 w-full text-left px-4 py-4 rounded-[6px] bg-pastel-purple transition-all duration-200"
           >
-            <img src={gioAvatar} alt="Gio" className="h-8 w-8 rounded-full shrink-0" />
+            <img src={gioAvatar} alt="Gio" className="h-6 w-6 rounded-full shrink-0" />
             <span className="text-sm text-virgilio-purple font-semibold">AI Notes Analysis Available</span>
           </button>
         </div>
