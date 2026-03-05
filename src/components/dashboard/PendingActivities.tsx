@@ -105,6 +105,12 @@ export function PendingActivities() {
           subtitle: activity.emailSubject || 'No subject',
           timeLabel: 'Received',
         };
+      case 'offer_approval':
+        return {
+          title: `Approve offer for ${activity.candidateName}`,
+          subtitle: activity.jobTitle,
+          timeLabel: 'Requested',
+        };
     }
   };
 
