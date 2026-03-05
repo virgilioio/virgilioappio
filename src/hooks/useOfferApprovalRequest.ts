@@ -205,7 +205,7 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
 
         const { error: offerError } = await supabase
           .from('offer_letters')
-          .update({ status: 'finalized' })
+          .update({ status: 'approved' })
           .eq('id', approvalRequest.offer_letter_id)
         if (offerError) throw offerError
       } else {

@@ -67,6 +67,7 @@ function getStatusVariant(status: string) {
 
 function getStatusLabel(status: string) {
   if (status === 'pending_approval') return 'Pending Approval'
+  if (status === 'approved') return 'Approved'
   return status
 }
 
