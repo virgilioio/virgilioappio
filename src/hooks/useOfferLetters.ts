@@ -12,7 +12,7 @@ export interface OfferLetter {
   title: string
   content?: string | null
   field_values: Record<string, any>
-  status: 'draft' | 'finalized' | 'sent' | 'accepted' | 'declined'
+  status: 'draft' | 'pending_approval' | 'finalized' | 'sent' | 'accepted' | 'declined'
   created_by?: string
   created_at: string
   updated_at: string
