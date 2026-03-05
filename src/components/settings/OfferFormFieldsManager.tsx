@@ -106,6 +106,7 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
         accepted_file_types: newAcceptedFileTypes || undefined,
         max_file_size_mb: newMaxFileSize === '' ? undefined : newMaxFileSize,
         ...(fieldConfig ? { field_config: fieldConfig } : {}),
+        triggers_approval_restart: false,
       })
       setLabel('')
       setType('text')
