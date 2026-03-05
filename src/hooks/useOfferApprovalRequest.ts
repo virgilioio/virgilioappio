@@ -49,7 +49,9 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
         .from('offer_approval_requests')
         .select('*')
         .eq('offer_letter_id', offerLetterId)
-        .in('status', ['pending', 'approved'])
+        .in('status', ['pending', 'approved', 'declined'])
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle()
 
       if (error) {
