@@ -17,6 +17,15 @@ interface CandidateOfferApprovalsProps {
   organizationId?: string | null
 }
 
+const stepColors = [
+  { bg: 'bg-pastel-blue', text: 'text-blue-600' },
+  { bg: 'bg-pastel-purple', text: 'text-purple-600' },
+  { bg: 'bg-pastel-green', text: 'text-green-600' },
+  { bg: 'bg-pastel-pink', text: 'text-pink-600' },
+  { bg: 'bg-pastel-yellow', text: 'text-yellow-600' },
+  { bg: 'bg-pastel-orange', text: 'text-orange-600' },
+]
+
 const roleLabelMap: Record<string, string> = {
   admin: 'Admin',
   recruiter: 'Recruiter',
@@ -72,8 +81,8 @@ export function CandidateOfferApprovals({ candidateId, jobId, organizationId }: 
                   return (
                     <div key={step.id} className="relative flex gap-2.5">
                       <div className="relative z-10 flex-shrink-0">
-                        <div className="h-[30px] w-[30px] rounded-full border-2 border-border bg-surface-primary flex items-center justify-center">
-                          <span className="text-xs font-semibold text-muted-foreground">{index + 1}</span>
+                        <div className={`h-[30px] w-[30px] rounded-full ${stepColors[index % stepColors.length].bg} flex items-center justify-center`}>
+                          <span className={`text-xs font-semibold ${stepColors[index % stepColors.length].text}`}>{index + 1}</span>
                         </div>
                       </div>
                       <div className={cn("flex-1 pt-0.5", isLast ? "pb-0" : "pb-7")}>

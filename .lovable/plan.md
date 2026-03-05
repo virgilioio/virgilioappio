@@ -1,26 +1,44 @@
 
 
-# Add Pastel Colors to Approval Step Numbers
+# Separate Location Sub-Fields on One Line
 
-## Changes — `CandidateOfferApprovals.tsx`
+## Current State
+- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
+- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
+- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
 
-Use the existing pastel color palette to color each step's numbered circle. Each step gets a different pastel background with matching text, cycling through the 6 pastel colors.
+## What Needs to Change
 
-**Color mapping array:**
+### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
+
+Add a `case 'location':` block that:
+- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
+- Parses the value as JSON `{ city, state, country }`
+- Renders separate inputs for each enabled sub-field in a single-row grid
+- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
+- Shows MapPin icon in the label
+
+### 2. Make grid columns dynamic everywhere
+
+When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
+
+**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
+
+**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
+
+**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
+
+Column class map:
 ```ts
-const stepColors = [
-  { bg: 'bg-pastel-blue', text: 'text-blue-600' },
-  { bg: 'bg-pastel-purple', text: 'text-purple-600' },
-  { bg: 'bg-pastel-green', text: 'text-green-600' },
-  { bg: 'bg-pastel-pink', text: 'text-pink-600' },
-  { bg: 'bg-pastel-yellow', text: 'text-yellow-600' },
-  { bg: 'bg-pastel-orange', text: 'text-orange-600' },
-]
+const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
 ```
 
-**Per step circle** (line 75): Replace `border-2 border-border bg-surface-primary` with `${stepColors[index % 6].bg}` (no border). Replace the number's `text-muted-foreground` with the matching text color.
+### 3. Also add salary case to `OfferComposerBody.tsx`
 
-Apply to **both** the inactive configured chain (lines 74–77) and the active approval request timeline. The `opacity-50` wrapper on the inactive chain already handles graying everything out automatically.
+While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
 
-Single file, ~10 lines changed.
+## Summary of File Changes
+- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
+- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
+- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
 
