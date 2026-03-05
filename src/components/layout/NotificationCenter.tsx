@@ -22,10 +22,14 @@ export function NotificationCenter() {
 
   const handleNotificationClick = (notification: PendingActivity) => {
     setOpen(false)
-    if (notification.emailId) {
+    if (notification.type === 'email' && notification.emailId) {
       markEmailAsRead.mutate(notification.emailId)
     }
-    navigate(`/candidates?openCandidate=${notification.candidateId}`)
+    if (notification.type === 'offer_approval') {
+      navigate(`/jobs/${notification.jobId}?candidate=${notification.candidateId}&tab=offer`)
+    } else {
+      navigate(`/candidates?openCandidate=${notification.candidateId}`)
+    }
   }
 
   const handleMarkAllAsRead = () => {
