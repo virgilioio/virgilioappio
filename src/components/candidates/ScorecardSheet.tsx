@@ -980,11 +980,11 @@ export function ScorecardSheet({
                 {isAiDraft && aiSuggestedRating && (
                   <div className="rounded-lg overflow-hidden bg-pastel-purple/30 border border-pastel-purple/50">
                     {/* Header row */}
-                    <div className="p-4 flex items-center justify-between">
+                    <div className="p-3 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <img src={gioAvatar} alt="Gio" className="h-8 w-8 rounded-full" />
+                        <img src={gioAiBannerIcon} alt="Gio" className="h-8 shrink-0" />
                         <div>
-                          <p className="text-sm font-medium text-foreground">AI Suggested Rating: {aiSuggestedRating}</p>
+                          <p className="text-sm font-semibold text-foreground">AI Suggested Rating: {aiSuggestedRating}</p>
                           <p className="text-xs text-muted-foreground">Based on interview transcript analysis</p>
                         </div>
                       </div>
