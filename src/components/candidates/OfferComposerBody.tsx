@@ -399,11 +399,19 @@ export function OfferComposerBody({
                     <Label htmlFor={field.field_name} className="flex items-center gap-1.5">
                       {field.field_label}
                       {field.is_required && <span className="text-destructive ml-1">*</span>}
-                      {field.triggers_approval_restart && currentOffer?.status === 'pending_approval' && (
-                        <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
-                          <RefreshCcw className="h-3 w-3" />
-                          <span className="text-[11px] font-normal">Editing restarts approval</span>
-                        </span>
+                      {field.triggers_approval_restart && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center text-amber-600 dark:text-amber-400 cursor-help">
+                                <RefreshCcw className="h-3 w-3" />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Editing this field will restart the approval process</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                     </Label>
                   )}
