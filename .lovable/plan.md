@@ -1,58 +1,44 @@
 
 
-# Offer Approval Chain Configuration
+# Separate Location Sub-Fields on One Line
 
-## What We're Building
+## Current State
+- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
+- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
+- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
 
-A new "Offer Approval Chain" section in **Job Setup > Hiring Team** where admin users (platform admins, workspace owners, admins) can configure an ordered list of offer approvers for a job. Configuration only — no approval workflow execution.
+## What Needs to Change
 
-## Database Migration
+### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
 
-**Table 1: `offer_approval_chains`** (one per job)
+Add a `case 'location':` block that:
+- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
+- Parses the value as JSON `{ city, state, country }`
+- Renders separate inputs for each enabled sub-field in a single-row grid
+- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
+- Shows MapPin icon in the label
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid PK | default gen_random_uuid() |
-| job_id | uuid FK → jobs | unique, cascade delete |
-| organization_id | uuid FK → organizations | tenant scoping |
-| is_enabled | boolean | default false |
-| created_by | uuid | who configured it |
-| created_at / updated_at | timestamptz | defaults now() |
+### 2. Make grid columns dynamic everywhere
 
-**Table 2: `offer_approval_chain_steps`** (ordered approvers)
+When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid PK | default gen_random_uuid() |
-| chain_id | uuid FK → offer_approval_chains | cascade delete |
-| approver_user_id | uuid | references profiles(user_id) |
-| step_order | integer | 1, 2, 3... |
-| created_at | timestamptz | |
+**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
 
-Unique constraints: `(chain_id, step_order)` and `(chain_id, approver_user_id)`.
+**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
 
-**RLS Policies:**
-- SELECT: `check_org_hierarchy_role_access(organization_id, 'recruiter')` — recruiters+ can view the chain config
-- INSERT/UPDATE/DELETE: `check_org_hierarchy_role_access(organization_id, 'admin')` — admins only can configure
-- For steps: join to chain table to get `organization_id` for the same access pattern
+**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
 
-## New Files
+Column class map:
+```ts
+const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
+```
 
-**`src/hooks/useOfferApprovalChain.ts`**
-- `useOfferApprovalChain(jobId)` — fetches chain + steps with approver profile info (name, email)
-- Mutations: `toggleChain`, `addApprover`, `removeApprover`, `reorderApprover` (swap step_order up/down)
-- Uses react-query with invalidation on mutations
+### 3. Also add salary case to `OfferComposerBody.tsx`
 
-**`src/components/jobs/OfferApprovalChainConfig.tsx`**
-- Permission-gated: only renders config controls for admins (platform admin, workspace owner, admin role). Others see read-only view or nothing.
-- Switch toggle: "Enable offer approval for this job"
-- When enabled: ordered list of approvers with step numbers
-- "Add Approver" dropdown using `SearchableSelect` filtered to org members (admin/recruiter roles — same `useMembers` pattern as `JobAssignmentsPanel`)
-- Each row: step number, approver name, role badge, up/down arrows, remove button
-- Auto-saves on each action
+While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
 
-## Modified Files
-
-**`src/components/jobs/HiringTeamTab.tsx`**
-- Import and render `OfferApprovalChainConfig` below the existing `JobAssignmentsPanel`, passing `jobId` and `jobTitle`
+## Summary of File Changes
+- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
+- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
+- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
 
