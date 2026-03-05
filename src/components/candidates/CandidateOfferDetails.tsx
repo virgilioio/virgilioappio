@@ -69,6 +69,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId }: Ca
   // Find the offer letter for this job
   const offerLetter = offerLetters.find(ol => ol.job_id === jobId)
   const { fields } = useOfferFormFields(offerLetter?.form_id || undefined)
+  const { approvalRequest, chainEnabled, chainHasSteps, requestApproval, isRequesting } = useOfferApprovalRequest(offerLetter?.id, jobId)
 
   if (isLoading) {
     return (
