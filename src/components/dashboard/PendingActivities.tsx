@@ -65,6 +65,8 @@ export function PendingActivities() {
         return 'purple';
       case 'email':
         return 'default';
+      case 'offer_approval':
+        return 'purple';
     }
   };
 
