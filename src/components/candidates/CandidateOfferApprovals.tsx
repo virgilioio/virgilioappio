@@ -17,6 +17,15 @@ interface CandidateOfferApprovalsProps {
   organizationId?: string | null
 }
 
+const stepColors = [
+  { bg: 'bg-pastel-blue', text: 'text-blue-600' },
+  { bg: 'bg-pastel-purple', text: 'text-purple-600' },
+  { bg: 'bg-pastel-green', text: 'text-green-600' },
+  { bg: 'bg-pastel-pink', text: 'text-pink-600' },
+  { bg: 'bg-pastel-yellow', text: 'text-yellow-600' },
+  { bg: 'bg-pastel-orange', text: 'text-orange-600' },
+]
+
 const roleLabelMap: Record<string, string> = {
   admin: 'Admin',
   recruiter: 'Recruiter',
