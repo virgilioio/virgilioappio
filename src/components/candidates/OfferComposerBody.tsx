@@ -179,6 +179,8 @@ export function OfferComposerBody({
           metadata: { candidateId, jobId },
         })
       }
+      // Trigger live UI update across components
+      window.dispatchEvent(new CustomEvent('refetch-offer-letters'))
       onSuccess()
     } catch (error) {
       console.error('Failed to save offer:', error)
