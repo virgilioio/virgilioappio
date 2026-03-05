@@ -60,13 +60,13 @@ export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSh
           ref={gradientRef}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
-          className="rounded-full p-[2px] transition-all duration-200"
+          className="rounded-lg p-[2px] transition-all duration-200"
           style={{ background: 'linear-gradient(to right, hsl(280 60% 70%), hsl(330 70% 65%), hsl(220 70% 65%))' }}
         >
           <button
             type="button"
             onClick={() => firstAiDraft && onOpenFullSheet?.(firstAiDraft.id)}
-            className="flex items-center gap-2 w-full text-left px-4 py-2.5 rounded-full bg-card transition-all duration-200"
+            className="flex items-center gap-2 w-full text-left px-4 py-2.5 rounded-[6px] bg-card transition-all duration-200"
           >
             <Sparkles className="h-4 w-4 text-virgilio-purple shrink-0" />
             <span className="text-sm text-virgilio-purple font-semibold">AI Notes Analysis Available</span>
