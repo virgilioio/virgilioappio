@@ -262,7 +262,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
                 Generate Offer Letter
               </Button>
             )}
-            {offerLetter.status === 'approved' && hasOfferDocument && (
+            {offerLetter.status === 'approved' && !!offerDocument && (
               <Button
                 variant="ghost"
                 size="sm"
