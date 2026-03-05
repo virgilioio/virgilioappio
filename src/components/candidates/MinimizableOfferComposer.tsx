@@ -42,9 +42,15 @@ export function MinimizableOfferComposer({
 
   const draftKey = getDraftKey(candidateId)
 
-  // Restore draft on open
+  // Pre-fill from editingOffer or restore draft on open
   useEffect(() => {
     if (!isOpen) return
+    if (editingOffer) {
+      setSelectedFormId(editingOffer.form_id || '')
+      setFieldValues(editingOffer.field_values || {})
+      setDraftRestored(false)
+      return
+    }
     try {
       const saved = localStorage.getItem(draftKey)
       if (saved) {
@@ -57,7 +63,7 @@ export function MinimizableOfferComposer({
     } catch {
       // ignore corrupt data
     }
-  }, [isOpen, draftKey])
+  }, [isOpen, draftKey, editingOffer])
 
   // Debounced auto-save
   const saveDraft = useCallback(() => {
