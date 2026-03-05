@@ -372,9 +372,15 @@ export function OfferComposerBody({
               .map((field) => (
                 <div key={field.id} className="space-y-2">
                   {field.field_type !== 'checkbox' && (
-                    <Label htmlFor={field.field_name}>
+                    <Label htmlFor={field.field_name} className="flex items-center gap-1.5">
                       {field.field_label}
                       {field.is_required && <span className="text-destructive ml-1">*</span>}
+                      {field.triggers_approval_restart && currentOffer?.status === 'pending_approval' && (
+                        <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                          <RefreshCcw className="h-3 w-3" />
+                          <span className="text-[11px] font-normal">Editing restarts approval</span>
+                        </span>
+                      )}
                     </Label>
                   )}
                   {renderFieldInput(field)}
