@@ -1528,9 +1528,20 @@ const stageHasAutomation = useMemo(() => {
                       <></>
                      )}
 
-                    {/* Offer Details Tab */}
+                    {/* Offer Tab with Subtabs */}
                     {activeTab === 'offer' && candidateId && (
-                      <CandidateOfferDetails candidateId={candidateId} jobId={jobId} organizationId={organizationId} />
+                      <Tabs defaultValue="offer-details" className="w-full">
+                        <TabsList className="w-full">
+                          <TabsTrigger value="offer-details" className="flex-1">Offer Details</TabsTrigger>
+                          <TabsTrigger value="offer-approvals" className="flex-1">Offer Approvals</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="offer-details">
+                          <CandidateOfferDetails candidateId={candidateId} jobId={jobId} organizationId={organizationId} />
+                        </TabsContent>
+                        <TabsContent value="offer-approvals">
+                          <CandidateOfferApprovals candidateId={candidateId} jobId={jobId} organizationId={organizationId} />
+                        </TabsContent>
+                      </Tabs>
                     )}
                    </div>
 
