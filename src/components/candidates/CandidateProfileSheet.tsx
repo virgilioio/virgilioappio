@@ -173,6 +173,7 @@ const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false)
 
 // Offer Form Sheet
 const [offerFormOpen, setOfferFormOpen] = useState(false)
+const [editingOffer, setEditingOffer] = useState<{ id: string; form_id: string; field_values: Record<string, any> } | null>(null)
 
 // Simple schedule interview (not stage-specific)
 const [simpleScheduleOpen, setSimpleScheduleOpen] = useState(false)
