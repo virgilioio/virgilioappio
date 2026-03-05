@@ -854,13 +854,6 @@ export default function JobDetail() {
 
         {!isMobile && (
           <>
-            <div className="mb-4 animate-fade-in">
-              <Button variant="outline" onClick={handleBackToJobs} className="gap-2">
-                <ArrowLeft className="h-4 w-4" />
-                Back to Jobs
-              </Button>
-            </div>
-            
             <div className="mb-2 animate-fade-in">
               <PageHeader 
                 title={job.title} 
