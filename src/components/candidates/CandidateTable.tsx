@@ -386,6 +386,7 @@ export function CandidateTable({
                             </Link>
                           </TableCell>
                           )}
+                          {!hideSkills && (
                           <TableCell>
                             {(() => {
                               // Get skills from various sources
@@ -419,6 +420,7 @@ export function CandidateTable({
                               )
                             })()}
                           </TableCell>
+                          )}
                         <TableCell>
                           <Link 
                              to={getCandidateLink(candidate)}
