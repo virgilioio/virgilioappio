@@ -1,44 +1,39 @@
 
 
-# Separate Location Sub-Fields on One Line
+# Fix Offer Status Lifecycle
 
-## Current State
-- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
-- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
-- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
+## Correct Lifecycle
 
-## What Needs to Change
-
-### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
-
-Add a `case 'location':` block that:
-- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
-- Parses the value as JSON `{ city, state, country }`
-- Renders separate inputs for each enabled sub-field in a single-row grid
-- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
-- Shows MapPin icon in the label
-
-### 2. Make grid columns dynamic everywhere
-
-When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
-
-**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
-
-**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
-
-**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
-
-Column class map:
-```ts
-const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
+```text
+draft → pending_approval → approved → sent → accepted/declined → finalized
+                              ↓
+                          (declined by approver → draft)
 ```
 
-### 3. Also add salary case to `OfferComposerBody.tsx`
+"Finalized" means the candidate has responded (accepted or declined). It is NOT set after approval or PDF generation.
 
-While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
+## Changes
 
-## Summary of File Changes
-- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
-- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
-- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
+### 1. `src/hooks/useOfferApprovalRequest.ts` (line 208)
+Change `status: 'finalized'` to `status: 'approved'` when the last approver approves.
+
+### 2. `src/hooks/useOfferLetters.ts` (line 15)
+Update status type to include `'approved'`:
+```
+'draft' | 'pending_approval' | 'approved' | 'finalized' | 'sent' | 'accepted' | 'declined'
+```
+
+### 3. `src/components/candidates/GenerateOfferDialog.tsx` (line 80)
+After PDF generation, do NOT change status to `'finalized'`. Remove the status update entirely -- the offer stays `'approved'` until it is sent. (Or optionally set to a new interim like `'generated'`, but keeping `'approved'` is simpler since generating a PDF is just creating an attachment.)
+
+### 4. `src/components/candidates/CandidateOfferDetails.tsx`
+- Add `case 'approved': return 'purple'` to `getStatusVariant`
+- Add `if (status === 'approved') return 'Approved'` to `getStatusLabel`
+- Update the "Generate Offer" button guard: show when `approvalRequest?.status === 'approved'` (remove the `finalized`/`sent` exclusion since those won't happen at this stage anymore)
+
+### Files
+- `src/hooks/useOfferApprovalRequest.ts` -- line 208: `'finalized'` → `'approved'`
+- `src/hooks/useOfferLetters.ts` -- add `'approved'` to status type
+- `src/components/candidates/GenerateOfferDialog.tsx` -- remove status update to `'finalized'` after PDF gen
+- `src/components/candidates/CandidateOfferDetails.tsx` -- handle `'approved'` in status badge helpers
 
