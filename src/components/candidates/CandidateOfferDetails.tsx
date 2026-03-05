@@ -113,6 +113,16 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, onEd
         <div className="flex items-center justify-between">
           <CardTitle>Offer Details</CardTitle>
           <div className="flex items-center gap-2">
+            {offerLetter.status === 'draft' && onEdit && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onEdit}
+              >
+                <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                Edit
+              </Button>
+            )}
             {offerLetter.status === 'draft' && chainEnabled && chainHasSteps && !approvalRequest && (
               <Button
                 variant="ghost"
