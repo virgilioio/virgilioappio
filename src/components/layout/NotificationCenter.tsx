@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bell, Mail, BellOff } from 'lucide-react'
+import { Bell, Mail, BellOff, ClipboardCheck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { usePendingActivities, PendingActivity } from '@/hooks/usePendingActivities'
@@ -14,23 +14,27 @@ export function NotificationCenter() {
   const navigate = useNavigate()
   const { data: activities, markEmailAsRead } = usePendingActivities()
 
-  const emailNotifications = (activities || []).filter(
-    (a): a is PendingActivity & { type: 'email' } => a.type === 'email'
+  const notifications = (activities || []).filter(
+    (a): a is PendingActivity => a.type === 'email' || a.type === 'offer_approval'
   )
 
-  const unreadCount = emailNotifications.length
+  const unreadCount = notifications.length
 
   const handleNotificationClick = (notification: PendingActivity) => {
     setOpen(false)
-    if (notification.emailId) {
+    if (notification.type === 'email' && notification.emailId) {
       markEmailAsRead.mutate(notification.emailId)
     }
-    navigate(`/candidates?openCandidate=${notification.candidateId}`)
+    if (notification.type === 'offer_approval') {
+      navigate(`/jobs/${notification.jobId}?candidate=${notification.candidateId}&tab=offer`)
+    } else {
+      navigate(`/candidates?openCandidate=${notification.candidateId}`)
+    }
   }
 
   const handleMarkAllAsRead = () => {
-    emailNotifications.forEach((n) => {
-      if (n.emailId) {
+    notifications.forEach((n) => {
+      if (n.type === 'email' && n.emailId) {
         markEmailAsRead.mutate(n.emailId)
       }
     })
@@ -82,7 +86,7 @@ export function NotificationCenter() {
           <>
             <div className="overflow-y-auto max-h-80">
               <div className="divide-y divide-virgilio-border">
-                {emailNotifications.map((notification) => (
+                {notifications.map((notification) => (
                   <button
                     key={notification.id}
                     onClick={() => handleNotificationClick(notification)}
@@ -90,21 +94,29 @@ export function NotificationCenter() {
                   >
                     <div className="flex gap-3 items-start">
                       <div className="mt-0.5 shrink-0">
-                        <Mail className="h-3.5 w-3.5 text-virgilio-muted" />
+                        {notification.type === 'offer_approval' ? (
+                          <ClipboardCheck className="h-3.5 w-3.5 text-virgilio-purple" />
+                        ) : (
+                          <Mail className="h-3.5 w-3.5 text-virgilio-muted" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0 space-y-1">
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-sm font-poppins font-semibold text-virgilio-text truncate">
-                            {notification.candidateName}
+                            {notification.type === 'offer_approval'
+                              ? `Offer approval needed`
+                              : notification.candidateName}
                           </span>
                           <span className="text-[11px] text-virgilio-muted whitespace-nowrap shrink-0">
                             {formatDistanceToNow(new Date(notification.timestamp), { addSuffix: true })}
                           </span>
                         </div>
                         <p className="text-xs text-virgilio-text truncate">
-                          {notification.emailSubject || 'No subject'}
+                          {notification.type === 'offer_approval'
+                            ? `Approve offer for ${notification.candidateName}`
+                            : notification.emailSubject || 'No subject'}
                         </p>
-                        {notification.emailSnippet && (
+                        {notification.type === 'email' && notification.emailSnippet && (
                           <p className="text-xs text-virgilio-muted truncate">
                             {notification.emailSnippet}
                           </p>

@@ -2635,6 +2635,115 @@ export type Database = {
           },
         ]
       }
+      offer_approval_request_steps: {
+        Row: {
+          approver_user_id: string
+          created_at: string
+          decided_at: string | null
+          id: string
+          notes: string | null
+          request_id: string
+          status: string
+          step_order: number
+        }
+        Insert: {
+          approver_user_id: string
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          notes?: string | null
+          request_id: string
+          status?: string
+          step_order: number
+        }
+        Update: {
+          approver_user_id?: string
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          notes?: string | null
+          request_id?: string
+          status?: string
+          step_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_approval_request_steps_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "offer_approval_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offer_approval_requests: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          current_step_order: number
+          id: string
+          job_id: string
+          offer_letter_id: string
+          organization_id: string
+          requested_by: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          current_step_order?: number
+          id?: string
+          job_id: string
+          offer_letter_id: string
+          organization_id: string
+          requested_by: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          current_step_order?: number
+          id?: string
+          job_id?: string
+          offer_letter_id?: string
+          organization_id?: string
+          requested_by?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_approval_requests_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_approval_requests_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_approval_requests_offer_letter_id_fkey"
+            columns: ["offer_letter_id"]
+            isOneToOne: true
+            referencedRelation: "offer_letters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_approval_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       offer_field_select_options: {
         Row: {
           created_at: string

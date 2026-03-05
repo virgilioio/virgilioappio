@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { isRestrictedRole, fetchAssignedJobIds } from '@/utils/jobScoping';
 
-export type ActivityType = 'scorecard' | 'decision' | 'email';
+export type ActivityType = 'scorecard' | 'decision' | 'email' | 'offer_approval';
 
 export interface PendingActivity {
   type: ActivityType;
@@ -58,6 +58,10 @@ export function usePendingActivities() {
       // 3. Fetch unread email replies
       const emailActivities = await fetchUnreadEmails(user.id, isAdmin, assignedJobIds);
       activities.push(...emailActivities);
+
+      // 4. Fetch pending offer approvals for this user
+      const approvalActivities = await fetchPendingOfferApprovals(user.id);
+      activities.push(...approvalActivities);
 
       // Sort all activities by timestamp (oldest/most urgent first)
       return activities.sort((a, b) => 
@@ -346,4 +350,61 @@ async function fetchUnreadEmails(userId: string, isAdmin: boolean, assignedJobId
     emailSnippet: email.snippet || '',
     timestamp: email.received_at || new Date().toISOString(),
   }));
+}
+
+async function fetchPendingOfferApprovals(userId: string): Promise<PendingActivity[]> {
+  // Fetch steps where this user is the approver and status is pending
+  const { data: steps, error } = await supabase
+    .from('offer_approval_request_steps')
+    .select('*')
+    .eq('approver_user_id', userId)
+    .eq('status', 'pending');
+
+  if (error || !steps || steps.length === 0) return [];
+
+  // Get the request IDs
+  const requestIds = [...new Set(steps.map(s => s.request_id))];
+
+  // Fetch the requests
+  const { data: requests } = await supabase
+    .from('offer_approval_requests')
+    .select('*')
+    .in('id', requestIds)
+    .eq('status', 'pending');
+
+  if (!requests || requests.length === 0) return [];
+
+  // Only include steps where it's actually their turn (current_step_order matches)
+  const requestMap = new Map(requests.map(r => [r.id, r]));
+  const activeSteps = steps.filter(s => {
+    const req = requestMap.get(s.request_id);
+    return req && s.step_order === req.current_step_order;
+  });
+
+  if (activeSteps.length === 0) return [];
+
+  // Fetch candidate and job info
+  const candidateIds = [...new Set(requests.map(r => r.candidate_id))];
+  const jobIds = [...new Set(requests.map(r => r.job_id))];
+
+  const [{ data: candidates }, { data: jobs }] = await Promise.all([
+    supabase.from('candidates').select('id, candidate_name').in('id', candidateIds),
+    supabase.from('jobs').select('id, title').in('id', jobIds),
+  ]);
+
+  const candidateMap = new Map((candidates || []).map(c => [c.id, c.candidate_name]));
+  const jobMap = new Map((jobs || []).map(j => [j.id, j.title]));
+
+  return activeSteps.map(step => {
+    const req = requestMap.get(step.request_id)!;
+    return {
+      type: 'offer_approval' as const,
+      id: `approval-${step.id}`,
+      candidateId: req.candidate_id,
+      candidateName: candidateMap.get(req.candidate_id) || 'Unknown',
+      jobId: req.job_id,
+      jobTitle: jobMap.get(req.job_id) || 'Unknown Job',
+      timestamp: req.created_at,
+    };
+  });
 }

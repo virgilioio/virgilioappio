@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { usePendingActivities, PendingActivity } from '@/hooks/usePendingActivities';
-import { ClipboardList, Clock, ChevronRight, MoreHorizontal, CheckCheck, ExternalLink } from 'lucide-react';
+import { ClipboardList, Clock, ChevronRight, MoreHorizontal, CheckCheck, ExternalLink, ClipboardCheck } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -28,26 +28,29 @@ export function PendingActivities() {
   const handleActivityClick = (activity: PendingActivity) => {
     switch (activity.type) {
       case 'scorecard':
-        // Open job with candidate sheet and scorecard tab
         window.open(
           `/jobs/${activity.jobId}?candidate=${activity.candidateId}&open=scorecard&stage=${activity.stageInstanceId}`,
           '_blank'
         );
         break;
       case 'decision':
-        // Open job with candidate sheet
         window.open(
           `/jobs/${activity.jobId}?candidate=${activity.candidateId}`,
           '_blank'
         );
         break;
       case 'email':
-        // Mark email as read and open candidate sheet with communications tab
         if (activity.emailId) {
           markEmailAsRead.mutate(activity.emailId);
         }
         window.open(
           `/jobs/${activity.jobId}?candidate=${activity.candidateId}&tab=communications`,
+          '_blank'
+        );
+        break;
+      case 'offer_approval':
+        window.open(
+          `/jobs/${activity.jobId}?candidate=${activity.candidateId}&tab=offer`,
           '_blank'
         );
         break;
@@ -62,6 +65,8 @@ export function PendingActivities() {
         return 'purple';
       case 'email':
         return 'default';
+      case 'offer_approval':
+        return 'purple';
     }
   };
 
@@ -73,6 +78,8 @@ export function PendingActivities() {
         return 'Needs Decision';
       case 'email':
         return 'Email';
+      case 'offer_approval':
+        return 'Offer Approval';
     }
   };
 
@@ -97,6 +104,12 @@ export function PendingActivities() {
           title: `Reply from ${activity.candidateName}`,
           subtitle: activity.emailSubject || 'No subject',
           timeLabel: 'Received',
+        };
+      case 'offer_approval':
+        return {
+          title: `Approve offer for ${activity.candidateName}`,
+          subtitle: activity.jobTitle,
+          timeLabel: 'Requested',
         };
     }
   };

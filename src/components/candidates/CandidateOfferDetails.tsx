@@ -1,8 +1,11 @@
 import { useOfferLetters } from '@/hooks/useOfferLetters'
 import { useOfferFormFields } from '@/hooks/useOfferFormFields'
 import { useRecruiterOptions } from '@/hooks/useRecruiterOptions'
+import { useOfferApprovalRequest } from '@/hooks/useOfferApprovalRequest'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Loader2, Send, Clock } from 'lucide-react'
 import gioFaceEmpty from '@/assets/gio-face-empty.png'
 
 const employmentTypeLabels: Record<string, string> = {
@@ -45,12 +48,18 @@ function formatSalaryValue(value: any, config?: any): string {
 function getStatusVariant(status: string) {
   switch (status) {
     case 'draft': return 'secondary'
+    case 'pending_approval': return 'purple'
     case 'finalized': return 'default'
     case 'sent': return 'default'
     case 'accepted': return 'default'
     case 'declined': return 'destructive'
     default: return 'secondary'
   }
+}
+
+function getStatusLabel(status: string) {
+  if (status === 'pending_approval') return 'Pending Approval'
+  return status
 }
 
 export function CandidateOfferDetails({ candidateId, jobId, organizationId }: CandidateOfferDetailsProps) {
@@ -60,6 +69,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId }: Ca
   // Find the offer letter for this job
   const offerLetter = offerLetters.find(ol => ol.job_id === jobId)
   const { fields } = useOfferFormFields(offerLetter?.form_id || undefined)
+  const { approvalRequest, chainEnabled, chainHasSteps, requestApproval, isRequesting } = useOfferApprovalRequest(offerLetter?.id, jobId)
 
   if (isLoading) {
     return (
@@ -102,7 +112,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId }: Ca
         <div className="flex items-center justify-between">
           <CardTitle>Offer Details</CardTitle>
           <Badge variant={getStatusVariant(offerLetter.status) as any} className="capitalize">
-            {offerLetter.status}
+            {getStatusLabel(offerLetter.status)}
           </Badge>
         </div>
       </CardHeader>
@@ -158,6 +168,29 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId }: Ca
           </div>
         ) : (
           <p className="text-sm text-text-secondary">No field values recorded.</p>
+        )}
+
+        {/* Request Approval Button */}
+        {offerLetter.status === 'draft' && chainEnabled && chainHasSteps && !approvalRequest && (
+          <div className="pt-2">
+            <Button
+              className="w-full"
+              onClick={() => requestApproval(offerLetter.id, jobId, candidateId)}
+              disabled={isRequesting}
+            >
+              {isRequesting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+              Request Approval
+            </Button>
+          </div>
+        )}
+
+        {offerLetter.status === 'pending_approval' && (
+          <div className="pt-2">
+            <Button className="w-full" variant="secondary" disabled>
+              <Clock className="h-4 w-4 mr-2" />
+              Pending Approval
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>

@@ -1,80 +1,44 @@
 
 
-# Offer Approval Workflow — Full Implementation
+# Separate Location Sub-Fields on One Line
 
-This is a large feature spanning database tables, hooks, UI components, notifications, and dashboard integration.
+## Current State
+- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
+- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
+- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
 
-## 1. Fix Empty State in CandidateOfferApprovals
+## What Needs to Change
 
-Replace the `ClipboardCheck` icon with `gio-face-empty.png` avatar to match the branded empty state pattern used everywhere else (Notes, Reminders, Attachments, Offer Details, etc.).
+### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
 
-## 2. Database Migration — Two New Tables
+Add a `case 'location':` block that:
+- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
+- Parses the value as JSON `{ city, state, country }`
+- Renders separate inputs for each enabled sub-field in a single-row grid
+- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
+- Shows MapPin icon in the label
 
-**`offer_approval_requests`** — one per offer when approval is requested
-- `id` uuid PK, `offer_letter_id` uuid FK → offer_letters (unique), `job_id` uuid, `organization_id` uuid, `candidate_id` uuid, `requested_by` uuid, `status` text default `'pending'` (pending/approved/declined), `current_step_order` integer default 1, `created_at`/`updated_at` timestamptz
+### 2. Make grid columns dynamic everywhere
 
-**`offer_approval_request_steps`** — one per approver in a request
-- `id` uuid PK, `request_id` uuid FK → offer_approval_requests (cascade), `approver_user_id` uuid, `step_order` integer, `status` text default `'pending'` (pending/approved/declined), `notes` text nullable, `decided_at` timestamptz nullable, `created_at` timestamptz
+When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
 
-RLS: SELECT for recruiters+ via `check_org_hierarchy_role_access`. INSERT for recruiters+ (request creation). UPDATE on steps only by the `approver_user_id` for their own row.
+**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
 
-Also add `'pending_approval'` to the offer_letters status flow by updating the status comment (the column is text, no enum constraint).
+**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
 
-## 3. New Hook: `useOfferApprovalRequest`
+**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
 
-- `requestApproval(offerLetterId, jobId, candidateId)` — creates request + copies chain steps, updates offer_letters.status to `'pending_approval'`, logs activity for first approver
-- `fetchApprovalRequest(offerLetterId)` — gets request + steps with approver names/roles
-- `approveStep(stepId, notes?)` — sets step to approved, advances `current_step_order`, if last step → sets request to `'approved'` and offer to `'finalized'`, notifies next approver
-- `declineStep(stepId, notes)` — sets step and request to `'declined'`, reverts offer to `'draft'`
+Column class map:
+```ts
+const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
+```
 
-## 4. "Request Approval" Button in CandidateOfferDetails
+### 3. Also add salary case to `OfferComposerBody.tsx`
 
-When an offer exists in `draft` status and an approval chain is enabled for the job:
-- Show a "Request Approval" button below the offer details
-- On click: triggers the approval request workflow
-- When status is `pending_approval`: show a badge and disable the button ("Pending Approval")
-- Uses `useOfferApprovalChain(jobId)` to check if chain is enabled
+While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
 
-## 5. CandidateOfferApprovals — Full Content
-
-Replace the placeholder with real approval data:
-- When no approval request exists: show branded empty state with Gio face
-- When request exists: show a vertical timeline of each approval step with:
-  - Step number, approver name, role badge
-  - Status icon: pending (gray), approved (green check), declined (red X), active (purple pulse)
-  - Notes displayed for declined steps
-  - Decided-at timestamp
-- If current user is the active approver: show Approve/Decline action buttons with a notes textarea
-
-## 6. Notifications — Offer Approval in NotificationCenter
-
-Add `'offer_approval'` to `ActivityType` in `usePendingActivities.ts`:
-- New `fetchPendingApprovals()` function: queries `offer_approval_request_steps` where `approver_user_id = userId`, `status = 'pending'`, and all previous steps in the same request are `'approved'` (it's their turn)
-- Joins to get candidate name, job title from the request
-- Returns as `PendingActivity` with type `'offer_approval'`
-
-Update `NotificationCenter.tsx`:
-- Include `offer_approval` type alongside email notifications
-- Icon: `ClipboardCheck`, text: "Offer approval needed for {candidateName}"
-- Click navigates to job with candidate sheet open on Offer tab
-
-## 7. Dashboard — Pending Tasks Integration
-
-Update `PendingActivities.tsx`:
-- Add badge/label for `'offer_approval'` type: "Offer Approval"
-- Add content rendering: "Approve offer for {candidateName}" / "{jobTitle}"
-- Click opens job with candidate profile and offer tab
-
-## Files Summary
-
-| Action | File |
-|--------|------|
-| Migration | `offer_approval_requests` + `offer_approval_request_steps` tables + RLS |
-| New | `src/hooks/useOfferApprovalRequest.ts` |
-| Modify | `src/components/candidates/CandidateOfferApprovals.tsx` — full approval timeline + actions |
-| Modify | `src/components/candidates/CandidateOfferDetails.tsx` — "Request Approval" button |
-| Modify | `src/hooks/usePendingActivities.ts` — add `offer_approval` activity type + fetch |
-| Modify | `src/components/layout/NotificationCenter.tsx` — render approval notifications |
-| Modify | `src/components/dashboard/PendingActivities.tsx` — render approval tasks |
-| Modify | `src/hooks/useOfferLetters.ts` — add `pending_approval` to status type |
+## Summary of File Changes
+- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
+- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
+- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
 
