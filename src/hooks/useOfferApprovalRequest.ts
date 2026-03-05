@@ -49,6 +49,7 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
         .from('offer_approval_requests')
         .select('*')
         .eq('offer_letter_id', offerLetterId)
+        .in('status', ['pending', 'approved'])
         .maybeSingle()
 
       if (error) {
