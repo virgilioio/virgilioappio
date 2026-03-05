@@ -31,6 +31,7 @@ interface OfferComposerBodyProps {
   onSuccess: () => void
   onCancel: () => void
   draftRestored?: boolean
+  editingOfferId?: string
 }
 
 export function OfferComposerBody({
