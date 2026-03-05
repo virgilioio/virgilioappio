@@ -980,8 +980,8 @@ export function ScorecardSheet({
                 {isAiDraft && aiSuggestedRating && (
                   <div className="rounded-lg overflow-hidden bg-pastel-purple/30 border border-pastel-purple/50">
                     {/* Header row */}
-                    <div className="p-3 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                    <div className="p-3 flex items-start justify-between">
+                      <div className="flex items-start gap-3">
                         <img src={gioAiBannerIcon} alt="Gio" className="h-10 shrink-0" />
                         <div>
                           <p className="text-sm font-semibold text-foreground">AI Suggested Rating: {aiSuggestedRating}</p>
