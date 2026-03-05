@@ -69,7 +69,7 @@ function getStatusLabel(status: string) {
   return status
 }
 
-export function CandidateOfferDetails({ candidateId, jobId, organizationId, onEdit }: CandidateOfferDetailsProps) {
+export function CandidateOfferDetails({ candidateId, jobId, organizationId, candidate, job, organization, onEdit }: CandidateOfferDetailsProps) {
   const { offerLetters, isLoading } = useOfferLetters(candidateId)
   const { data: recruiterOptions = [] } = useRecruiterOptions(organizationId || null)
   
@@ -82,6 +82,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, onEd
   const [declineComment, setDeclineComment] = useState('')
   const [showApproveForm, setShowApproveForm] = useState(false)
   const [showDeclineForm, setShowDeclineForm] = useState(false)
+  const [showGenerateDialog, setShowGenerateDialog] = useState(false)
 
   if (isLoading) {
     return (
