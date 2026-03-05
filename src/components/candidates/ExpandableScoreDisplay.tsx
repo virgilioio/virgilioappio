@@ -42,20 +42,13 @@ export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSh
       {/* AI Analysis Available indicator */}
       {hasAiDrafts && (
         <div
-          ref={gradientRef}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-          className="rounded-lg p-[1px] transition-all duration-200"
-          style={{ background: 'linear-gradient(to right, hsl(280 60% 70%), hsl(330 70% 65%), hsl(220 70% 65%))' }}
+          className="rounded-lg bg-pastel-purple/30 border border-pastel-purple/50 cursor-pointer hover:bg-pastel-purple/40 transition-colors"
+          onClick={() => firstAiDraft && onOpenFullSheet?.(firstAiDraft.id)}
         >
-          <button
-            type="button"
-            onClick={() => firstAiDraft && onOpenFullSheet?.(firstAiDraft.id)}
-            className="flex items-center gap-3 w-full text-left px-4 py-4 rounded-[6px] bg-pastel-purple transition-all duration-200"
-          >
+          <div className="p-4 flex items-center gap-3">
             <img src={gioAvatar} alt="Gio" className="h-6 w-6 rounded-full shrink-0" />
             <span className="text-sm text-virgilio-purple font-semibold">AI Notes Analysis Available</span>
-          </button>
+          </div>
         </div>
       )}
 
