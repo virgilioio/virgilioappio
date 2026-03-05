@@ -22,6 +22,17 @@ import gioAvatar from "@/assets/gio-avatar.png";
 import gioAiBannerIcon from "@/assets/gio-ai-banner-icon.png";
 import { SafeHtml } from "@/components/ui/safe-html";
 import { ProfileSummaryMarkdown } from "@/components/candidates/ProfileSummaryMarkdown";
+
+function normalizeAiAnalysis(text: string): string {
+  return text
+    // Pattern: "1.\nOVERALL IMPRESSION" or "1.\n OVERALL IMPRESSION" → "---\n\n## 1. OVERALL IMPRESSION"
+    .replace(/(\d+)\.\s*\n\s*([A-Z][A-Z\s&/,-]+)/g, '\n---\n\n## $1. $2')
+    // Pattern: "1. OVERALL IMPRESSION" already on same line → heading
+    .replace(/^(\d+)\.\s+([A-Z][A-Z\s&/,-]{3,})$/gm, '\n---\n\n## $1. $2')
+    // Remove leading --- if it's the very first thing
+    .replace(/^\s*---\s*\n/, '')
+    .trim();
+}
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { RecommendedNextStepsDialog } from "./RecommendedNextStepsDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
