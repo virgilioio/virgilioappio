@@ -70,6 +70,7 @@ interface CandidateTableProps {
   onSelectedIdsChange?: (ids: string[])=> void
   hideActions?: boolean // Hide action buttons for suggested candidates
   showMatchScore?: boolean // Show match score column for AI suggestions
+  hideSkills?: boolean // Hide skills column
 }
 
 export function CandidateTable({ 
