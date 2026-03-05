@@ -9,7 +9,7 @@ export interface ApprovalRequestStep {
   request_id: string
   approver_user_id: string
   step_order: number
-  status: 'pending' | 'approved' | 'declined'
+  status: 'pending' | 'approved' | 'declined' | 'recalled'
   notes: string | null
   decided_at: string | null
   created_at: string
