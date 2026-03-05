@@ -140,6 +140,7 @@ export function CandidateOfferApprovals({ candidateId, jobId, organizationId }: 
             const isActive = approvalRequest.status === 'pending' && step.step_order === approvalRequest.current_step_order && step.status === 'pending'
             const isApprovedStep = step.status === 'approved'
             const isDeclinedStep = step.status === 'declined'
+            const isRecalledStep = step.status === 'recalled'
             const isPending = step.status === 'pending' && !isActive
             const isLast = index === approvalRequest.steps.length - 1
 
