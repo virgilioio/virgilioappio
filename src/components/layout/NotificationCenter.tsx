@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bell, Mail, BellOff } from 'lucide-react'
+import { Bell, Mail, BellOff, ClipboardCheck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { usePendingActivities, PendingActivity } from '@/hooks/usePendingActivities'
