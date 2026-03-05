@@ -341,6 +341,28 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
         )}
 
       </CardContent>
+
+      {offerLetter && candidate && (
+        <GenerateOfferDialog
+          open={showGenerateDialog}
+          onOpenChange={setShowGenerateDialog}
+          offerLetterData={{
+            candidate,
+            job: job || {},
+            organization: organization || {},
+            fieldValues: fieldValues,
+            fieldTypes: Object.fromEntries(fields.map(f => [f.field_name, f.field_type])),
+            recruiterLookup: Object.fromEntries(recruiterOptions.map(r => [r.value, r.label])),
+          }}
+          offerLetterId={offerLetter.id}
+          candidateId={candidateId}
+          candidateName={candidate.candidate_name || 'Candidate'}
+          onSuccess={() => {
+            // Refetch offer letters to reflect finalized status
+            window.dispatchEvent(new CustomEvent('refetch-attachments'))
+          }}
+        />
+      )}
     </Card>
   )
 }
