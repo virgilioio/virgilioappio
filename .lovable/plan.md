@@ -1,59 +1,86 @@
 
 
-# System Roles Migration — Completed Phases 1-5
+# Enforce Job-Scoped Visibility for Members
 
-## Architecture Change
-- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
-- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
+## Problem
 
-## Completed
+Currently, all members (regardless of job assignments) see every job, every candidate, and every navigation item. The RLS and client-side logic don't restrict members to only their assigned jobs.
 
-### Phase 1 — Database
-- ✅ Created `system_role` enum (`admin`, `member`)
-- ✅ Added `system_role` column to `members` table
-- ✅ Migrated data: `admin` → `admin`, all others → `member`
-- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
-- ✅ Updated `check_tenant_member_role` to use `system_role`
-- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
-- ✅ Updated `audit_member_role_change` trigger
+## Role Model
 
-### Phase 2 — Frontend Permissions
-- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
-- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
-- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
-- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
+| Role | Sees | Navigation |
+|---|---|---|
+| **Admin / WO / PA** | Everything | All nav items |
+| **Member + Recruiter on job(s)** | Only assigned jobs & their candidates | Home, Jobs, Pipeline, Candidates, Find |
+| **Member + HM/Interviewer on job(s)** | Only assigned jobs (restricted view within each) | Home, Jobs, Pipeline |
+| **Member + no assignments** | Nothing useful | Home, Jobs (empty) |
 
-### Phase 3 — UI Updates
-- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
-- ✅ Updated `Dashboard` — sourcing panel for admin+ only
-- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
-- ✅ Updated `BillingGuard` — members (non-admin) never blocked
-- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
-- ✅ Updated `Find` page RoleGate
-- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
+## Implementation Plan
 
-### Phase 4 — Runtime Hotfixes
-- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
-- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
-- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
-- ✅ Updated `validate_invite_token` — returns `system_role`
-- ✅ Updated `accept_invitation` — uses `system_role`
+### 1. New hook: `useUserJobRoles` 
+**File:** `src/hooks/useUserJobRoles.ts`
 
-### Phase 5 — Complete Cleanup
-- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
-- ✅ Updated `admin_manage_member` — updates `system_role` column
-- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
-- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
-- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
-- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
-- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
-- ✅ Updated `diagnose_user_auth` — reports `system_role`
-- ✅ Updated `audit_platform_admin_access` — returns `system_role`
-- ✅ Updated `debug_user_permissions` — returns `system_role`
-- ✅ Renamed `invitations.member_role` → `invitations.system_role`
-- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
+Query `job_assignments` for the current user to get all their assignments with roles. Expose:
+- `assignedJobIds: string[]` — all jobs the user is assigned to
+- `hasRecruiterRole: boolean` — true if user is recruiter on at least one job
+- `hasOnlyRestrictedRoles: boolean` — true if all assignments are HM/interviewer (no recruiter)
+- `isLoading: boolean`
 
-## Phase 6 — Future (Optional)
-- Drop `member_role` column from `members` table (already dropped)
-- Drop old `member_role` enum type
-- Update `MemberInviteSheet` role picker to only offer Admin/Member
+This replaces scattered calls to `fetchAssignedJobIds` and `useUserAssignedJobIds` with a single source of truth.
+
+### 2. Filter jobs client-side in `useJobs.ts`
+**File:** `src/hooks/useJobs.ts`
+
+For non-admin members, after fetching jobs (RLS returns org-level), filter to only `assignedJobIds`. This ensures the Jobs page, Dashboard JobsOverview, and any other consumer only see assigned jobs.
+
+Import `useUserJobRoles` or accept assigned job IDs as a parameter. Filter `filteredJobs` to only include jobs in the user's assignment set when the user is a member (not admin/WO/PA).
+
+### 3. Update navigation visibility in `Header.tsx`
+**File:** `src/components/layout/Header.tsx`
+
+Use `useUserJobRoles` to conditionally show/hide nav items for members:
+- **Find**: Show only if admin/WO/PA OR member with `hasRecruiterRole`
+- **Candidates**: Show only if admin/WO/PA OR member with `hasRecruiterRole`
+- **Analytics**: Already admin-only (no change)
+- **Pipeline**: Show for all members with any assignment
+- **Jobs**: Show for all members with any assignment
+
+### 4. Update Dashboard widgets
+**File:** `src/pages/Dashboard.tsx`
+
+- **RecentSourcingProjects**: Only show if admin/WO/PA or `hasRecruiterRole`
+- **JobsOverview**: Already uses `useJobs` which will be filtered (no extra change needed after step 2)
+- **StaleCandidates**: Already uses `isRestrictedRole` + `fetchAssignedJobIds` — verify HM/interviewers only see their assigned jobs' stale candidates (already works)
+- **PendingActivities**: Same pattern, already scoped (already works)
+
+### 5. Guard page-level routes
+**File:** `src/pages/Candidates.tsx`, `src/pages/Pipeline.tsx`
+
+For the `/candidates` page: if user is member without recruiter role, redirect to `/dashboard`.
+For the `/find` page: same logic.
+For `/analytics`: already restricted to admin.
+
+### 6. Update `usePermissions.ts`
+**File:** `src/hooks/usePermissions.ts`
+
+This is the trickiest part because `usePermissions` is synchronous and doesn't fetch data. Two approaches:
+
+**Approach A (recommended):** Keep `usePermissions` as-is for static role checks. Use `useUserJobRoles` separately in components that need job-scoping. The navigation and page guards use both hooks together.
+
+**Approach B:** Add async job-role data into permissions context. This would be a larger refactor.
+
+Going with **Approach A** — minimal changes, each component that needs scoping imports `useUserJobRoles` alongside `usePermissions`.
+
+## Files to Change
+
+| File | Change |
+|---|---|
+| `src/hooks/useUserJobRoles.ts` | **New file.** Single query for all user assignments + derived booleans |
+| `src/hooks/useJobs.ts` | Filter returned jobs to assigned-only for non-admin members |
+| `src/components/layout/Header.tsx` | Conditionally hide Find, Candidates nav for non-recruiter members |
+| `src/pages/Dashboard.tsx` | Hide RecentSourcingProjects for non-recruiter members |
+| `src/pages/Candidates.tsx` | Redirect non-recruiter members away |
+| `src/pages/Pipeline.tsx` | No change (already scoped via useJobs filter) |
+
+No database changes needed — RLS already returns org-level data, and we filter client-side based on job_assignments.
+
