@@ -1,89 +1,110 @@
-# System Roles Migration — Completed Phases 1-5
 
-## Architecture Change
-- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
-- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-## Completed
+# Talent Insights Dashboard
 
-### Phase 1 — Database
-- ✅ Created `system_role` enum (`admin`, `member`)
-- ✅ Added `system_role` column to `members` table
-- ✅ Migrated data: `admin` → `admin`, all others → `member`
-- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
-- ✅ Updated `check_tenant_member_role` to use `system_role`
-- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
-- ✅ Updated `audit_member_role_change` trigger
+## Overview
 
-### Phase 2 — Frontend Permissions
-- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
-- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
-- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
-- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
+A new `/talent-insights` page added after Analytics in the nav bar. Visualizes real candidate data from the `candidates` table using recharts. No mocked data — empty states when data is missing.
 
-### Phase 3 — UI Updates
-- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
-- ✅ Updated `Dashboard` — sourcing panel for admin+ only
-- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
-- ✅ Updated `BillingGuard` — members (non-admin) never blocked
-- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
-- ✅ Updated `Find` page RoleGate
-- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
+## Available Data Fields (from `candidates` table)
 
-### Phase 4 — Runtime Hotfixes
-- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
-- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
-- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
-- ✅ Updated `validate_invite_token` — returns `system_role`
-- ✅ Updated `accept_invitation` — uses `system_role`
+- `location_city`, `location_state`, `location_country` — geography
+- `years_experience` — experience distribution
+- `standardized_skills`, `skills` — skills landscape
+- `salary_amount`, `salary_currency`, `salary_period` — compensation
+- `seniority_level` — seniority breakdown
+- `functional_area`, `specialization` — role composition
+- `role_current`, `current_job_title`, `standardized_title` — titles
+- `enriched_at`, `enrichment_status` — availability signals
+- `created_at` — growth trends
+- `tenant_id` — tenant isolation
 
-### Phase 5 — Complete Cleanup
-- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
-- ✅ Updated `admin_manage_member` — updates `system_role` column
-- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
-- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
-- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
-- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
-- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
-- ✅ Updated `diagnose_user_auth` — reports `system_role`
-- ✅ Updated `audit_platform_admin_access` — returns `system_role`
-- ✅ Updated `debug_user_permissions` — returns `system_role`
-- ✅ Renamed `invitations.member_role` → `invitations.system_role`
-- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
+## Architecture
 
-## Phase 6 — Future (Optional)
-- Drop `member_role` column from `members` table (already dropped)
-- Drop old `member_role` enum type
-- Update `MemberInviteSheet` role picker to only offer Admin/Member
+### New Files
 
-# Deep Resume Parsing + Data Standardization — Completed
+1. **`src/pages/TalentInsights.tsx`** — Main page with permission guard (same as Analytics), fetches all data via a single hook, renders section cards
+2. **`src/hooks/useTalentInsightsData.ts`** — Single hook that queries `candidates` table with tenant isolation, computes all aggregations client-side
+3. **`src/components/talent-insights/SummaryMetricsRow.tsx`** — Top metric cards (Total Candidates, Avg Experience, Median Salary, Most Common Role, Enriched %)
+4. **`src/components/talent-insights/GeographyInsights.tsx`** — Country/city bar chart + top locations list (no map library — use horizontal bar chart for countries, cleaner and no extra dependency)
+5. **`src/components/talent-insights/ExperienceDistribution.tsx`** — Histogram with 0-2, 3-5, 6-10, 10+ year bands + seniority breakdown pie
+6. **`src/components/talent-insights/SkillsLandscape.tsx`** — Horizontal bar chart of top 15 standardized skills
+7. **`src/components/talent-insights/CompensationInsights.tsx`** — Salary distribution using recharts bar chart with P25/Median/P75 markers
+8. **`src/components/talent-insights/TalentPoolComposition.tsx`** — Bar charts for functional area, seniority, specialization breakdown
+9. **`src/components/talent-insights/TalentInsightEmptyState.tsx`** — Reusable empty state with `gio-face-empty.png`
 
-## What was implemented
+### Modified Files
 
-### Phase 1: Schema Expansion
-- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
-- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
-- ✅ Added to `candidate_education`: `education_level`
-- ✅ Created `candidate_certifications` table with RLS policies
+1. **`src/App.tsx`** — Add lazy import + route `/talent-insights`
+2. **`src/components/layout/Header.tsx`** — Add nav item after Analytics with `Lightbulb` icon, same permission as Analytics
 
-### Phase 2: Enrichment Rewrite
-- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
-- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
-- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
-- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
-- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
+## Data Query Strategy
 
-### Phase 3: UI Updates
-- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
-- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
-- ✅ **Certifications section** with `CandidateCertificationsComponent`
-- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
-- ✅ Enhanced **Education** display: education level badge
-- ✅ Certifications loaded alongside work experience and education
+The hook `useTalentInsightsData` will:
+- Fetch tenant_id from `members` table (same pattern as analytics hooks)
+- Query `candidates` table filtered by `tenant_id`, selecting only needed columns
+- Compute all aggregations in JS (counts, distributions, percentiles)
+- Return structured data for each section + loading/empty states
 
-## Files changed
-- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
-- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
-- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
-- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
-- `src/components/candidates/CandidateCertifications.tsx` — new component
+Key query (single efficient fetch):
+```ts
+supabase.from('candidates')
+  .select('location_country, location_city, location_state, years_experience, seniority_level, standardized_skills, skills, salary_amount, salary_currency, salary_period, functional_area, specialization, role_current, standardized_title, enriched_at, created_at')
+  .eq('tenant_id', tenantId)
+  .is('deleted_at', null)
+```
+
+## Visual Design
+
+- Uses existing `MetricCard` component for summary row
+- All charts use `recharts` (already installed) with Virgilio Purple palette
+- Card-based layout matching the reference images
+- Each section is a `Card` with `CardHeader`/`CardContent`
+- Responsive grid: 4-col for metrics, 2-col for chart sections
+- Empty states use branded Gio face pattern
+
+## Section Details
+
+### Summary Metrics (4 cards)
+- Total Candidates (count)
+- Avg Years Experience (mean of `years_experience`)
+- Median Salary (median of `salary_amount` where available)
+- Most Common Role (mode of `standardized_title` or `functional_area`)
+
+Cards hidden if underlying data is entirely null.
+
+### Geography (horizontal bar chart)
+- Top 10 countries by candidate count
+- Side list showing top cities
+- Uses recharts `BarChart` horizontal
+
+### Experience (bar chart + optional pie)
+- Grouped into 0-2, 3-5, 6-10, 10+ bands
+- If `seniority_level` data exists, show pie chart breakdown
+
+### Skills (horizontal bar chart)
+- Top 15 from `standardized_skills` (fallback to `skills`)
+- Show frequency count and percentage
+
+### Compensation (bar chart distribution)
+- Salary bands with P25/Median/P75 reference lines
+- Normalize to annual amounts based on `salary_period`
+
+### Talent Pool Composition (stacked/grouped bars)
+- By `functional_area`
+- By `seniority_level`
+- By `specialization`
+
+## Files Changed
+- `src/App.tsx` — add route
+- `src/components/layout/Header.tsx` — add nav item
+- `src/pages/TalentInsights.tsx` — new page
+- `src/hooks/useTalentInsightsData.ts` — new data hook
+- `src/components/talent-insights/SummaryMetricsRow.tsx` — new
+- `src/components/talent-insights/GeographyInsights.tsx` — new
+- `src/components/talent-insights/ExperienceDistribution.tsx` — new
+- `src/components/talent-insights/SkillsLandscape.tsx` — new
+- `src/components/talent-insights/CompensationInsights.tsx` — new
+- `src/components/talent-insights/TalentPoolComposition.tsx` — new
+- `src/components/talent-insights/TalentInsightEmptyState.tsx` — new
+
