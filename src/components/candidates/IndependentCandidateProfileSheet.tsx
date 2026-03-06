@@ -266,6 +266,12 @@ export function IndependentCandidateProfileSheet({
                       {candidate?.candidate_name || 'Loading...'}
                       <span className="text-purple-period">.</span>
                     </h2>
+                    {candidate?.enrichment_status === 'processing' && (
+                      <Badge variant="secondary" className="gap-1 animate-pulse">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        AI Enriching...
+                      </Badge>
+                    )}
                     {candidate?.linkedin_url && (
                       <Button
                         variant="outline"
