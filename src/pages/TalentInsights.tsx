@@ -48,7 +48,8 @@ export default function TalentInsights() {
                 <GeographyInsights countryCounts={data.countryCounts} cityCounts={data.cityCounts} totalCandidates={data.totalCandidates} />
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                   <ExperienceDistribution experienceBands={data.experienceBands} seniorityCounts={data.seniorityCounts} />
-                <SkillsLandscape topSkills={data.topSkills} />
+                  <SkillsLandscape topSkills={data.topSkills} />
+                </div>
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                   <CompensationInsights salaryStats={data.salaryStats} salaryBands={data.salaryBands} />
                   <TalentPoolComposition
