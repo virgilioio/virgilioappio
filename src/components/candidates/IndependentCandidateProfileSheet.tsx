@@ -451,7 +451,7 @@ export function IndependentCandidateProfileSheet({
                       )}
 
                       {activeTab === 'overview' && (
-                        <Accordion type="multiple" defaultValue={['career', 'contact', 'summary', 'experience', 'education', 'certifications']} className="space-y-4">
+                        <Accordion type="multiple" defaultValue={['contact', 'career', 'summary', 'experience', 'education', 'certifications']} className="space-y-4">
                           
                           {/* Career Summary - NEW */}
                           {(candidate?.current_job_title || candidate?.seniority_level || candidate?.functional_area) && (
