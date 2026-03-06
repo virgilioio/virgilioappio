@@ -499,109 +499,223 @@ export function IndependentCandidateProfileSheet({
                       )}
                     </div>
 
-                    {/* Right column */}
-                    <div className="space-y-6 hidden lg:block">
-                      {/* Tab Navigation */}
-                      <CandidateNameCard
-                        email={candidate.email}
-                        phone={candidate.phone}
-                        tabs={[
-                          { value: 'feed', label: 'Feed', Icon: Activity },
-                          { value: 'notes', label: 'Notes', Icon: StickyNote },
-                          { value: 'emails', label: 'Emails', Icon: Mail },
-                          { value: 'reminders', label: 'Reminders', Icon: Bell },
-                        ]}
-                        activeTab={rightActiveTab}
-                        onTabChange={(v) => setRightActiveTab(v as 'feed' | 'notes' | 'emails' | 'reminders')}
-                      />
-
-                      {/* Feed Tab */}
-                      {rightActiveTab === 'feed' && (
-                        <Card className="bg-surface-primary border-border">
-                          <CardHeader>
-                            <CardTitle>Activity Feed</CardTitle>
-                          </CardHeader>
-                          <CardContent className="p-0">
-                            <ScrollArea className="h-[500px]">
-                              <div className="p-6">
-                                <ActivityFeedList 
-                                  candidateId={candidate.id}
-                                />
+                    {/* Right column - Candidate details cards */}
+                    <div className="space-y-6">
+                      {/* Candidate Details */}
+                      <Card className="bg-surface-primary border-border">
+                        <CardHeader>
+                          <CardTitle>Candidate Details</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4 pt-0">
+                          {/* Emails Section */}
+                          <div className="space-y-2">
+                            {(candidate as any)?.contact_emails && (candidate as any).contact_emails.length > 0 ? (
+                              (candidate as any).contact_emails.map((ce: any, idx: number) => {
+                                const { email: emailValue, type: emailType } = getEmailFromEntry(ce);
+                                if (!emailValue) return null;
+                                return (
+                                  <div key={`email-${idx}`} className="flex items-start justify-between gap-2">
+                                    <div className="flex items-start gap-2 flex-1 min-w-0">
+                                      <Mail className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                                      <div className="flex flex-col min-w-0">
+                                        <a href={`mailto:${emailValue}`} className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all">
+                                          {emailValue}
+                                        </a>
+                                        <span className="text-xs text-text-tertiary capitalize">{emailType}</span>
+                                      </div>
+                                    </div>
+                                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={() => copyToClipboard(emailValue, 'Email copied to clipboard')}>
+                                      <Copy className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                );
+                              })
+                            ) : candidate?.email ? (
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-start gap-2 flex-1 min-w-0">
+                                  <Mail className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                                  <a href={`mailto:${candidate.email}`} className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all">
+                                    {candidate.email}
+                                  </a>
+                                </div>
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={() => copyToClipboard(candidate.email, 'Email copied to clipboard')}>
+                                  <Copy className="h-3.5 w-3.5" />
+                                </Button>
                               </div>
-                            </ScrollArea>
-                          </CardContent>
-                        </Card>
-                      )}
+                            ) : null}
+                          </div>
 
-                      {/* Notes Tab */}
-                      {rightActiveTab === 'notes' && (
-                        <Card className="bg-surface-primary border-border">
-                          <CardHeader>
-                            <CardTitle>Notes</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="text-sm text-text-secondary">Notes are available in the job-associated profile view.</div>
-                          </CardContent>
-                        </Card>
-                      )}
+                          {/* Phones Section */}
+                          <div className="space-y-2">
+                            {(candidate as any)?.contact_phones && (candidate as any).contact_phones.length > 0 ? (
+                              (candidate as any).contact_phones.map((cp: any, idx: number) => {
+                                const { phone: phoneValue, type: phoneType } = getPhoneFromEntry(cp);
+                                if (!phoneValue) return null;
+                                return (
+                                  <div key={`phone-${idx}`} className="flex items-start justify-between gap-2">
+                                    <div className="flex items-start gap-2 flex-1 min-w-0">
+                                      <Phone className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                                      <div className="flex flex-col min-w-0">
+                                        <a href={`tel:${phoneValue}`} className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all">
+                                          {phoneValue}
+                                        </a>
+                                        <span className="text-xs text-text-tertiary capitalize">{phoneType}</span>
+                                      </div>
+                                    </div>
+                                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={() => copyToClipboard(phoneValue, 'Phone number copied to clipboard')}>
+                                      <Copy className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-start gap-2 flex-1 min-w-0">
+                                  <Phone className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                                  {candidate?.phone ? (
+                                    <a href={`tel:${candidate.phone}`} className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all">
+                                      {candidate.phone}
+                                    </a>
+                                  ) : (
+                                    <span className="text-sm text-text-tertiary italic">Phone not available</span>
+                                  )}
+                                </div>
+                                {candidate?.phone && (
+                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={() => copyToClipboard(candidate.phone, 'Phone number copied to clipboard')}>
+                                    <Copy className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+                          </div>
 
-                      {/* Emails Tab */}
-                      {rightActiveTab === 'emails' && (
-                        <Card className="bg-surface-primary border-border">
-                          <CardHeader>
-                            <CardTitle>Email History</CardTitle>
-                          </CardHeader>
-                          <CardContent className="p-0">
-                            <div className="h-[500px] overflow-y-auto">
-                              <div className="p-6">
-                                <EmailHistoryList 
-                                  candidateId={candidate.id}
-                                  onReply={handleEmailReply}
-                                  onForward={handleEmailForward}
-                                />
+                          {/* LinkedIn */}
+                          {candidate?.linkedin_url && (
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-start gap-2 flex-1 min-w-0">
+                                <LinkedInFilled className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                                <a href={candidate.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all">
+                                  LinkedIn Profile
+                                </a>
+                              </div>
+                              <ExternalLink className="h-3.5 w-3.5 text-text-tertiary flex-shrink-0 mt-0.5" />
+                            </div>
+                          )}
+
+                          {/* Location */}
+                          {(candidate?.location_city || candidate?.location_state || candidate?.location_country) && (
+                            <div className="space-y-1.5">
+                              <Separator />
+                              <div className="flex items-start gap-2 pt-1.5">
+                                <MapPin className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                                <div className="flex flex-col min-w-0">
+                                  {candidate.location_city && (
+                                    <span className="text-sm text-text-primary">{candidate.location_city}</span>
+                                  )}
+                                  {candidate.location_state && (
+                                    <span className="text-sm text-text-secondary">{candidate.location_state}</span>
+                                  )}
+                                  {candidate.location_country && (
+                                    <span className="text-sm text-text-secondary">{candidate.location_country}</span>
+                                  )}
+                                </div>
                               </div>
                             </div>
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      {/* Career Summary */}
+                      {(candidate?.current_job_title || candidate?.seniority_level || candidate?.functional_area) && (
+                        <Card className="bg-surface-primary border-border">
+                          <CardHeader>
+                            <div className="flex items-center gap-2">
+                              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                              <CardTitle>Career Summary</CardTitle>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pt-0">
+                            <dl className="divide-y divide-border">
+                              {candidate.current_job_title && (
+                                <div className="flex items-center justify-between py-2.5">
+                                  <dt className="text-sm text-muted-foreground">Current Title</dt>
+                                  <dd className="text-sm font-medium text-foreground text-right">{candidate.current_job_title}</dd>
+                                </div>
+                              )}
+                              {candidate.standardized_title && candidate.standardized_title !== candidate.current_job_title && (
+                                <div className="flex items-center justify-between py-2.5">
+                                  <dt className="text-sm text-muted-foreground">Standardized Title</dt>
+                                  <dd>
+                                    <Badge variant="outline" className="text-xs gap-1">
+                                      <Sparkles className="h-3 w-3" />
+                                      {candidate.standardized_title}
+                                    </Badge>
+                                  </dd>
+                                </div>
+                              )}
+                              {candidate.company_current && (
+                                <div className="flex items-center justify-between py-2.5">
+                                  <dt className="text-sm text-muted-foreground">Current Company</dt>
+                                  <dd className="text-sm font-medium text-foreground">{candidate.company_current}</dd>
+                                </div>
+                              )}
+                              {candidate.seniority_level && (
+                                <div className="flex items-center justify-between py-2.5">
+                                  <dt className="text-sm text-muted-foreground">Seniority</dt>
+                                  <dd className="text-sm font-medium text-foreground capitalize">{candidate.seniority_level.replace('_', ' ')}</dd>
+                                </div>
+                              )}
+                              {candidate.functional_area && (
+                                <div className="flex items-center justify-between py-2.5">
+                                  <dt className="text-sm text-muted-foreground">Functional Area</dt>
+                                  <dd className="text-sm font-medium text-foreground">{candidate.functional_area}</dd>
+                                </div>
+                              )}
+                              {candidate.specialization && (
+                                <div className="flex items-center justify-between py-2.5">
+                                  <dt className="text-sm text-muted-foreground">Specialization</dt>
+                                  <dd className="text-sm font-medium text-foreground">{candidate.specialization}</dd>
+                                </div>
+                              )}
+                              {candidate.years_experience != null && (
+                                <div className="flex items-center justify-between py-2.5">
+                                  <dt className="text-sm text-muted-foreground">Years Experience</dt>
+                                  <dd className="text-sm font-medium text-foreground">{candidate.years_experience}</dd>
+                                </div>
+                              )}
+                              {candidate.company_count != null && candidate.company_count > 0 && (
+                                <div className="flex items-center justify-between py-2.5">
+                                  <dt className="text-sm text-muted-foreground">Companies</dt>
+                                  <dd className="text-sm font-medium text-foreground">{candidate.company_count}</dd>
+                                </div>
+                              )}
+                              {candidate.avg_tenure_months != null && candidate.avg_tenure_months > 0 && (
+                                <div className="flex items-center justify-between py-2.5">
+                                  <dt className="text-sm text-muted-foreground">Avg. Tenure</dt>
+                                  <dd className="text-sm font-medium text-foreground">
+                                    {candidate.avg_tenure_months >= 12 
+                                      ? `${Math.round(candidate.avg_tenure_months / 12)}y`
+                                      : `${candidate.avg_tenure_months}m`}
+                                  </dd>
+                                </div>
+                              )}
+                              {candidate.years_in_leadership != null && candidate.years_in_leadership > 0 && (
+                                <div className="flex items-center justify-between py-2.5">
+                                  <dt className="text-sm text-muted-foreground">Years Leadership</dt>
+                                  <dd className="text-sm font-medium text-foreground">{candidate.years_in_leadership}</dd>
+                                </div>
+                              )}
+                            </dl>
                           </CardContent>
                         </Card>
                       )}
 
-                      {/* Reminders Tab */}
-                      {rightActiveTab === 'reminders' && candidateId && (
-                        <CandidateReminders candidateId={candidateId} />
-                      )}
-                    </div>
-                  </div>
-                </Tabs>
-                </div>
-              )}
-              <CandidateFormSheet
-                isOpen={editOpen}
-                onClose={() => setEditOpen(false)}
-                onSubmit={handleUpdateCandidate}
-                candidate={candidate}
-                isLoading={editLoading}
-              />
-            </div>
-          </div>
-        </div>
+                      {/* Attachments */}
+                      {candidateId && <CandidateAttachments candidateId={candidateId} />}
 
-          {/* Minimizable Email Composer (portal to body) */}
-          <MinimizableEmailComposer
-            isOpen={emailComposerOpen}
-            onOpenChange={(open) => {
-              if (!open) resetEmailComposer()
-              else setEmailComposerOpen(open)
-            }}
-            candidateId={candidateId || undefined}
-            defaultTo={emailComposerTo ?? candidate?.email}
-            candidateName={candidate?.candidate_name}
-            onSuccess={resetEmailComposer}
-            mode={emailComposerMode}
-            inReplyToMessageId={emailComposerReplyToId}
-            defaultSubject={emailComposerSubject}
-            defaultBody={emailComposerBody}
-            defaultCc={emailComposerCc}
-          />
+                      {/* URLs */}
+                      {candidateId && <CandidateUrls candidateId={candidateId} />}
+                    </div>
 
           {/* Simple Schedule Interview Sheet */}
           {candidateId && organizationId && candidate && (
