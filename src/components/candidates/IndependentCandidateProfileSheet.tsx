@@ -431,23 +431,6 @@ export function IndependentCandidateProfileSheet({
                         </Card>
                       )}
 
-                      {/* Comments Tab */}
-                      {activeTab === 'comments' && (
-                        <>
-                          {organizationId && candidateId ? (
-                            <CandidateComments candidateId={candidateId} jobId={undefined} organizationId={organizationId} />
-                          ) : (
-                            <Card className="bg-surface-primary border-border">
-                              <CardHeader>
-                                <CardTitle>Comments</CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-sm text-text-secondary">No candidate data available.</div>
-                              </CardContent>
-                            </Card>
-                          )}
-                        </>
-                      )}
 
                       {activeTab === 'overview' && (
                         <Accordion type="multiple" defaultValue={['contact', 'career', 'summary', 'experience', 'education', 'certifications']} className="space-y-4">
