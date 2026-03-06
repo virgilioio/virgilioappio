@@ -861,6 +861,20 @@ export function ScorecardSheet({
                         Draft saved
                       </Badge>
                     )}
+                    <Badge
+                      variant="outline"
+                      className={`text-xs gap-1 ${
+                        scorecardVisibility === 'public'
+                          ? 'bg-virgilio-purple/10 text-virgilio-purple border-virgilio-purple/20'
+                          : 'bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      {scorecardVisibility === 'public' ? (
+                        <><Globe className="h-3 w-3" /> Public</>
+                      ) : (
+                        <><Lock className="h-3 w-3" /> Private</>
+                      )}
+                    </Badge>
                   </div>
                   {/* Candidate context row */}
                   {(candidateName || jobTitle) && (
