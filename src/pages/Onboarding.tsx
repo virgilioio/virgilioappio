@@ -230,7 +230,7 @@ export default function Onboarding() {
         .from('members')
         .select(`
           id,
-          member_role,
+          system_role,
           invite_expires_at,
           organizations!inner (
             name
