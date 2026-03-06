@@ -165,7 +165,7 @@ export function BatchEnrichmentRunner() {
                 )}
                 {status === 'stopping' && 'Stopping after current batch...'}
                 {status === 'done' && (
-                  <span className="flex items-center gap-1 text-green-600">
+                  <span className="flex items-center gap-1 text-primary">
                     <CheckCircle2 className="h-3 w-3" />
                     Complete
                   </span>
@@ -176,9 +176,9 @@ export function BatchEnrichmentRunner() {
 
             {/* Stats */}
             <div className="flex gap-4 text-sm">
-              <span className="text-green-600">✓ Queued: {stats.queued}</span>
-              <span className="text-yellow-600">⊘ Skipped: {stats.skipped}</span>
-              <span className="text-red-600">✗ Failed: {stats.failed}</span>
+              <span className="text-primary">✓ Queued: {stats.queued}</span>
+              <span className="text-muted-foreground">⊘ Skipped: {stats.skipped}</span>
+              <span className="text-destructive">✗ Failed: {stats.failed}</span>
             </div>
           </div>
         )}
