@@ -1,0 +1,257 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+/**
+ * Batch Re-Enrich: One-time utility to re-enrich existing candidates
+ * that have resumes but are missing the new structured fields.
+ *
+ * Usage:
+ *   POST /batch-re-enrich { "dry_run": true }           — preview candidates
+ *   POST /batch-re-enrich { "limit": 50 }               — process up to 50
+ *   POST /batch-re-enrich { "candidate_ids": ["uuid"] } — process specific ones
+ */
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+// Simple PDF text extraction using pdf-parse (works in Deno via npm specifier)
+async function extractTextFromPdf(pdfBytes: Uint8Array): Promise<string> {
+  try {
+    // Use pdf-parse via esm.sh
+    const pdfParse = (await import("https://esm.sh/pdf-parse@1.1.1")).default;
+    const result = await pdfParse(Buffer.from(pdfBytes));
+    return result.text || '';
+  } catch (err) {
+    console.error('[batch-re-enrich] PDF parse error, trying fallback:', err);
+    // Fallback: decode as UTF-8 and extract readable text
+    const decoder = new TextDecoder('utf-8', { fatal: false });
+    const raw = decoder.decode(pdfBytes);
+    // Extract text between stream markers (very basic)
+    const textChunks: string[] = [];
+    const streamRegex = /stream\s*([\s\S]*?)\s*endstream/g;
+    let match;
+    while ((match = streamRegex.exec(raw)) !== null) {
+      const chunk = match[1].replace(/[^\x20-\x7E\n\r]/g, ' ').trim();
+      if (chunk.length > 20) textChunks.push(chunk);
+    }
+    return textChunks.join('\n').slice(0, 15000);
+  }
+}
+
+// Extract text from DOCX (basic: extract from word/document.xml)
+function extractTextFromDocx(bytes: Uint8Array): string {
+  const decoder = new TextDecoder('utf-8', { fatal: false });
+  const raw = decoder.decode(bytes);
+  // Strip XML tags to get plain text
+  const text = raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return text.slice(0, 15000);
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  // Auth: accept service role key OR valid JWT
+  const authHeader = req.headers.get('Authorization') || '';
+  const apiKey = req.headers.get('apikey') || '';
+  const isServiceRole = apiKey === SUPABASE_SERVICE_ROLE_KEY || authHeader === `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`;
+
+  if (!isServiceRole) {
+    if (!authHeader.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseAuth = createClient(SUPABASE_URL, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsErr } = await supabaseAuth.auth.getClaims(token);
+    if (claimsErr || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+  }
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+  try {
+    const body = await req.json();
+    const dryRun = body.dry_run === true;
+    const limit = body.limit || 50;
+    const candidateIds: string[] | undefined = body.candidate_ids;
+
+    console.log(`[batch-re-enrich] dry_run=${dryRun}, limit=${limit}, specific_ids=${candidateIds?.length || 'all'}`);
+
+    // Find candidates with resumes that are missing the new structured fields
+    let query = supabase
+      .from('candidates')
+      .select(`
+        id, candidate_name, current_job_title, enrichment_status,
+        candidate_attachments!inner (id, file_url, file_name, file_type, is_resume)
+      `)
+      .eq('candidate_attachments.is_resume', true)
+      .is('current_job_title', null)
+      .is('deleted_at', null)
+      .limit(limit);
+
+    if (candidateIds?.length) {
+      query = query.in('id', candidateIds);
+    }
+
+    const { data: candidates, error: queryError } = await query;
+    if (queryError) {
+      console.error('[batch-re-enrich] Query error:', queryError);
+      return new Response(JSON.stringify({ error: 'Failed to query candidates', details: queryError }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log(`[batch-re-enrich] Found ${candidates?.length || 0} candidates to process`);
+
+    if (dryRun) {
+      return new Response(JSON.stringify({
+        dry_run: true,
+        count: candidates?.length || 0,
+        candidates: (candidates || []).map(c => ({
+          id: c.id,
+          name: c.candidate_name,
+          enrichment_status: c.enrichment_status,
+          resume_file: (c.candidate_attachments as any[])?.[0]?.file_name,
+        })),
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Process each candidate
+    const results: Array<{ id: string; name: string; status: string; error?: string }> = [];
+
+    for (const candidate of (candidates || [])) {
+      const attachments = candidate.candidate_attachments as any[];
+      const resume = attachments?.[0];
+
+      if (!resume?.file_url) {
+        results.push({ id: candidate.id, name: candidate.candidate_name, status: 'skipped', error: 'No resume URL' });
+        continue;
+      }
+
+      try {
+        console.log(`[batch-re-enrich] Processing ${candidate.candidate_name} (${candidate.id})`);
+
+        // Download the resume file from storage
+        let resumeText = '';
+        const fileUrl = resume.file_url as string;
+
+        if (fileUrl.startsWith('http')) {
+          // External URL - fetch directly
+          const pdfResp = await fetch(fileUrl);
+          if (!pdfResp.ok) {
+            results.push({ id: candidate.id, name: candidate.candidate_name, status: 'failed', error: 'Failed to download resume' });
+            continue;
+          }
+          const bytes = new Uint8Array(await pdfResp.arrayBuffer());
+          resumeText = await extractTextFromPdf(bytes);
+        } else {
+          // Storage path - download from Supabase Storage
+          const { data: fileData, error: downloadError } = await supabase
+            .storage
+            .from('candidate-attachments')
+            .download(fileUrl);
+
+          if (downloadError || !fileData) {
+            console.error(`[batch-re-enrich] Download error for ${candidate.id}:`, downloadError);
+            results.push({ id: candidate.id, name: candidate.candidate_name, status: 'failed', error: 'Storage download failed' });
+            continue;
+          }
+
+          const bytes = new Uint8Array(await fileData.arrayBuffer());
+          const fileName = (resume.file_name || '').toLowerCase();
+
+          if (fileName.endsWith('.pdf') || resume.file_type === 'application/pdf') {
+            resumeText = await extractTextFromPdf(bytes);
+          } else if (fileName.endsWith('.docx')) {
+            resumeText = extractTextFromDocx(bytes);
+          } else {
+            // Try as text
+            resumeText = new TextDecoder().decode(bytes);
+          }
+        }
+
+        if (!resumeText || resumeText.trim().length < 50) {
+          results.push({ id: candidate.id, name: candidate.candidate_name, status: 'skipped', error: 'Resume text too short or empty' });
+          continue;
+        }
+
+        console.log(`[batch-re-enrich] Extracted ${resumeText.length} chars for ${candidate.candidate_name}`);
+
+        // Invoke the enrich-candidate-profile function
+        const enrichResp = await fetch(`${SUPABASE_URL}/functions/v1/enrich-candidate-profile`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            candidateId: candidate.id,
+            resumeText: resumeText.slice(0, 15000),
+            candidateName: candidate.candidate_name,
+          }),
+        });
+
+        if (enrichResp.ok) {
+          results.push({ id: candidate.id, name: candidate.candidate_name, status: 'queued' });
+        } else {
+          const errText = await enrichResp.text();
+          results.push({ id: candidate.id, name: candidate.candidate_name, status: 'failed', error: errText });
+        }
+
+        // Small delay between requests to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+      } catch (err) {
+        console.error(`[batch-re-enrich] Error for ${candidate.id}:`, err);
+        results.push({ id: candidate.id, name: candidate.candidate_name, status: 'failed', error: String(err) });
+      }
+    }
+
+    const summary = {
+      total: results.length,
+      queued: results.filter(r => r.status === 'queued').length,
+      skipped: results.filter(r => r.status === 'skipped').length,
+      failed: results.filter(r => r.status === 'failed').length,
+      results,
+    };
+
+    console.log(`[batch-re-enrich] Complete: ${summary.queued} queued, ${summary.skipped} skipped, ${summary.failed} failed`);
+
+    return new Response(JSON.stringify(summary), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (err) {
+    console.error('[batch-re-enrich] Error:', err);
+    return new Response(JSON.stringify({ error: 'Internal error', details: String(err) }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+});
