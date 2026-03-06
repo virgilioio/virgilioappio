@@ -64,7 +64,11 @@ export async function reconcilePendingInvitation(userId: string): Promise<Reconc
     }
 
     // Cast to our interface - RPC may or may not include system_role
-    return result as ReconciliationResult;
+    const typedResult: ReconciliationResult = {
+      ...result,
+      system_role: (result as any).system_role || result.member_role || 'member',
+    };
+    return typedResult;
   } catch (err) {
     log.error('Invitation reconciliation check failed:', err);
     return null;
