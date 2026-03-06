@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useBillingStatus } from './useBillingStatus'
 import { useStripePricing } from './useStripePricing'
 
-export function useSeatsPreview(roleToAdd?: 'admin' | 'recruiter' | 'hiring_manager' | 'interviewer') {
+export function useSeatsPreview(roleToAdd?: 'admin' | 'member') {
   const { data: billing } = useBillingStatus()
   const { data: pricing } = useStripePricing()
 
