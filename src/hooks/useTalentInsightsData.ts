@@ -38,6 +38,7 @@ export interface TalentInsightsData {
   topSkills: SkillEntry[]
   salaryStats: SalaryStats | null
   salaryBands: CountEntry[]
+  salaryValues: number[]
   functionalAreaCounts: CountEntry[]
   specializationCounts: CountEntry[]
   titleCounts: CountEntry[]
