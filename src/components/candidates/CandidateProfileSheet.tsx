@@ -1284,7 +1284,7 @@ const stageHasAutomation = useMemo(() => {
                         <AccordionItem value="contact" className="border-0">
                           <Card className="bg-surface-primary border-border">
                             <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                              <CardTitle>Contact Information</CardTitle>
+                              <CardTitle>Candidate Details</CardTitle>
                             </AccordionTrigger>
                             <AccordionContent>
                               <CardContent className="space-y-4 pt-0">
