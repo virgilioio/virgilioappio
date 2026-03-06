@@ -54,7 +54,7 @@ export async function reconcilePendingInvitation(userId: string): Promise<Reconc
     if (result.success && result.action_taken === 'invitation_accepted') {
       log.info('🎉 Auto-linked pending invitation', {
         orgName: result.organization_name,
-        role: (result as any).system_role || result.member_role,
+        role: result.system_role,
         orgId: result.organization_id
       });
     } else if (result.action_taken === 'no_pending_invitation') {
