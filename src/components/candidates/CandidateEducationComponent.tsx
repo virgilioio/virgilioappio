@@ -64,7 +64,14 @@ export const CandidateEducationComponent = ({ education }: CandidateEducationPro
               
               <div className="flex-1 min-w-0">
                 <div className="mb-2">
-                  <h3 className="font-semibold text-lg">{edu.institution_name}</h3>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-semibold text-lg">{edu.institution_name}</h3>
+                    {edu.education_level && (
+                      <Badge variant="secondary" className="text-xs capitalize">
+                        {edu.education_level.replace('_', ' ')}
+                      </Badge>
+                    )}
+                  </div>
                   {edu.degree_type && (
                     <p className="text-muted-foreground font-medium">
                       {edu.degree_type}
