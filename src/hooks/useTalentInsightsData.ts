@@ -58,10 +58,27 @@ function percentile(arr: number[], p: number): number {
   return sorted[lower] + (sorted[upper] - sorted[lower]) * (idx - lower)
 }
 
-function countBy<T>(items: T[], keyFn: (item: T) => string | null): CountEntry[] {
+// Client-side normalization map (defense in depth)
+const COUNTRY_NORMALIZE: Record<string, string> = {
+  'México': 'Mexico', 'MX': 'Mexico', 'EEUU': 'United States',
+  'Estados Unidos': 'United States', 'US': 'United States', 'USA': 'United States',
+  'Brasil': 'Brazil', 'Perú': 'Peru', 'UK': 'United Kingdom', 'GB': 'United Kingdom',
+  'España': 'Spain', 'DE': 'Germany', 'FR': 'France', 'ES': 'Spain',
+  'IN': 'India', 'AU': 'Australia', 'SG': 'Singapore', 'JP': 'Japan',
+}
+
+function normalizeValue(val: string | null, normalizeMap?: Record<string, string>): string | null {
+  if (!val) return null
+  const trimmed = val.trim()
+  if (!trimmed) return null
+  return normalizeMap?.[trimmed] ?? trimmed
+}
+
+function countBy<T>(items: T[], keyFn: (item: T) => string | null, normalizeMap?: Record<string, string>): CountEntry[] {
   const map = new Map<string, number>()
   for (const item of items) {
-    const key = keyFn(item)
+    const raw = keyFn(item)
+    const key = normalizeValue(raw, normalizeMap)
     if (key) map.set(key, (map.get(key) || 0) + 1)
   }
   return Array.from(map.entries())
@@ -211,7 +228,7 @@ export function useTalentInsightsData() {
         }))
 
       // Geography
-      const countryCounts = countBy(candidates, c => c.location_country).slice(0, 10)
+      const countryCounts = countBy(candidates, c => c.location_country, COUNTRY_NORMALIZE).slice(0, 10)
       const cityCounts = countBy(candidates, c => c.location_city).slice(0, 10)
 
       // Role / composition

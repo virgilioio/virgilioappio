@@ -1,80 +1,89 @@
+# System Roles Migration — Completed Phases 1-5
 
+## Architecture Change
+- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
+- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-# Location Data Normalization
+## Completed
 
-## Current Data Quality Issues
+### Phase 1 — Database
+- ✅ Created `system_role` enum (`admin`, `member`)
+- ✅ Added `system_role` column to `members` table
+- ✅ Migrated data: `admin` → `admin`, all others → `member`
+- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
+- ✅ Updated `check_tenant_member_role` to use `system_role`
+- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
+- ✅ Updated `audit_member_role_change` trigger
 
-Queried the database — the mess is significant:
+### Phase 2 — Frontend Permissions
+- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
+- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
+- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
+- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
 
-**Country field** (1,130 candidates):
-- `Mexico` (776), `México` (192), `México ` (18 trailing space), `MX` (1), `EEUU` (1)
-- Cities stored as country: `Monterrey` (3), `Guadalajara` (1), `Puebla` (1)
-- Regions stored as country: `Jalisco, Mexico` (6), `Mexico Metropolitan Area` (4)
-- Empty strings (60), `País` (1), `null` string (1)
+### Phase 3 — UI Updates
+- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
+- ✅ Updated `Dashboard` — sourcing panel for admin+ only
+- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
+- ✅ Updated `BillingGuard` — members (non-admin) never blocked
+- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
+- ✅ Updated `Find` page RoleGate
+- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
 
-**State field**:
-- `Jalisco` (391), `Jalisco ` (17), `Jal.` (11), `JAL` (7)
-- `Nuevo León` (23), `Nuevo Leon` (20), `NL` (2)
-- `Mexico City` (344), `CDMX` (18), `Federal District` (19), `Ciudad de México` (12)
-- Cities in state: `Monterrey, Nuevo León` (2), `Tonalá, Jalisco` (2)
+### Phase 4 — Runtime Hotfixes
+- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
+- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
+- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
+- ✅ Updated `validate_invite_token` — returns `system_role`
+- ✅ Updated `accept_invitation` — uses `system_role`
 
-**City field**:
-- `Mexico City` (358), `Ciudad de México` (33), `CDMX` (6), `Ciudad de Mexico` (6), `México City` (2)
-- `Área metropolitana de Ciudad de México` (6), `Mexico City Metropolitan Area` (3)
+### Phase 5 — Complete Cleanup
+- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
+- ✅ Updated `admin_manage_member` — updates `system_role` column
+- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
+- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
+- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
+- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
+- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
+- ✅ Updated `diagnose_user_auth` — reports `system_role`
+- ✅ Updated `audit_platform_admin_access` — returns `system_role`
+- ✅ Updated `debug_user_permissions` — returns `system_role`
+- ✅ Renamed `invitations.member_role` → `invitations.system_role`
+- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
 
-## Solution: Two-Part Approach
+## Phase 6 — Future (Optional)
+- Drop `member_role` column from `members` table (already dropped)
+- Drop old `member_role` enum type
+- Update `MemberInviteSheet` role picker to only offer Admin/Member
 
-### Part 1: One-Time SQL Cleanup (immediate)
+# Deep Resume Parsing + Data Standardization — Completed
 
-Run a SQL migration with UPDATE statements to normalize all existing location data. This handles:
+## What was implemented
 
-1. **Trim whitespace** on all three fields
-2. **Country normalization** — canonical English names:
-   - `México`, `México `, `MX` → `Mexico`
-   - `EEUU` → `United States`
-   - `Perú` → `Peru`
-   - `Brasil` → `Brazil`
-   - Move cities/states wrongly in country field to correct columns
-   - Clear garbage values (`País`, `null` string, empty strings → NULL)
+### Phase 1: Schema Expansion
+- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
+- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
+- ✅ Added to `candidate_education`: `education_level`
+- ✅ Created `candidate_certifications` table with RLS policies
 
-3. **State normalization** — canonical names:
-   - `Jal.`, `JAL`, `Jalisco ` → `Jalisco`
-   - `NL`, `Nuevo Leon` → `Nuevo León`
-   - `CDMX`, `Federal District`, `Ciudad de México`, `Ciudad de Mexico` → `Mexico City` (for state)
-   - Strip city names from composite values (`Monterrey, Nuevo León` → state=`Nuevo León`)
+### Phase 2: Enrichment Rewrite
+- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
+- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
+- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
+- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
+- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
 
-4. **City normalization** — canonical names:
-   - `Ciudad de México`, `CDMX`, `México City`, `Ciudad de Mexico` → `Mexico City`
-   - Strip metro area prefixes (`Área metropolitana de...` → base city)
-   - `Santiago de Queretaro` → `Querétaro`
-   - `Sao Paulo` → `São Paulo`
+### Phase 3: UI Updates
+- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
+- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
+- ✅ **Certifications section** with `CandidateCertificationsComponent`
+- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
+- ✅ Enhanced **Education** display: education level badge
+- ✅ Certifications loaded alongside work experience and education
 
-### Part 2: Database Trigger for Ongoing Normalization
-
-Create a PostgreSQL trigger function `normalize_candidate_location()` that fires BEFORE INSERT or UPDATE on the `candidates` table. This function will:
-
-1. Trim whitespace
-2. Apply the same country/state/city canonical mappings
-3. Handle common Spanish↔English variations
-4. Normalize accented characters where appropriate
-5. Fix known misplacements (city in country field, etc.)
-
-This means **no frontend changes needed** — data gets normalized at the database level regardless of source (Apollo, Chrome extension, public applications, manual entry, enrichment pipeline).
-
-### Part 3: Normalize in Talent Insights Hook (defense in depth)
-
-Add a lightweight client-side normalization in `useTalentInsightsData.ts` using a simple mapping for country names before the `countBy` aggregation. This ensures the dashboard shows clean data even before the migration runs.
-
-## Files
-
-- **SQL Migration**: Cleanup script + trigger function (`normalize_candidate_location`)
-- **Modified**: `src/hooks/useTalentInsightsData.ts` — add client-side country normalization map in `countBy` calls
-
-## Why a Trigger Instead of Dropdowns
-
-Dropdowns would require maintaining country→state→city cascading lists for every country. The trigger approach:
-- Works transparently for all ingestion points (7+ edge functions)
-- No UI changes needed
-- Handles Spanish/Portuguese variations automatically
-- Easy to extend the mapping table over time
-
+## Files changed
+- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
+- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
+- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
+- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
+- `src/components/candidates/CandidateCertifications.tsx` — new component
