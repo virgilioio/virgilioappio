@@ -12,6 +12,7 @@ import gioFaceEmpty from '@/assets/gio-face-empty.png'
 import { GenerateOfferDialog } from './GenerateOfferDialog'
 import { MinimizableEmailComposer } from './MinimizableEmailComposer'
 import { supabase } from '@/lib/supabaseClient'
+import { logActivity } from '@/lib/activityLogger'
 
 const employmentTypeLabels: Record<string, string> = {
   full_time: 'Full-time', part_time: 'Part-time',
