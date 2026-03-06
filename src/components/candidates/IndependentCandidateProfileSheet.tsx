@@ -66,7 +66,10 @@ export function IndependentCandidateProfileSheet({
   const [editOpen, setEditOpen] = useState(false)
   const [editLoading, setEditLoading] = useState(false)
   const [scheduleOpen, setScheduleOpen] = useState(false)
-    onOpenChange(false) // Close the sheet
+
+  // Handler for job sidebar navigation
+  const handleJobSelect = (jobId: string) => {
+    onOpenChange(false)
     navigate(`/jobs/${jobId}?candidate=${candidateId}`)
   }
 
