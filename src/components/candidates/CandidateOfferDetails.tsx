@@ -420,8 +420,16 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
           candidateId={candidateId}
           candidateName={candidate.candidate_name || 'Candidate'}
           onSuccess={() => {
-            // Refetch offer letters to reflect finalized status
             window.dispatchEvent(new CustomEvent('refetch-attachments'))
+            logActivity({
+              activityType: 'offer_document_generated',
+              title: 'Offer document generated',
+              description: `Offer letter document generated for ${candidate?.candidate_name || 'candidate'}`,
+              entityType: 'candidate',
+              entityId: candidateId,
+              organizationId: organizationId || undefined,
+              metadata: { jobId, offerLetterId: offerLetter.id },
+            })
           }}
         />
       )}
