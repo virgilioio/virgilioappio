@@ -405,6 +405,7 @@ export function MembersTable({
               </TableBody>
             </Table>
           </div>
+          </>
         )}
       </CardContent>
     </Card>
