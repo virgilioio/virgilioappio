@@ -15,7 +15,7 @@ import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeVi
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell } from 'lucide-react'
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -1284,7 +1284,7 @@ const stageHasAutomation = useMemo(() => {
                         <AccordionItem value="contact" className="border-0">
                           <Card className="bg-surface-primary border-border">
                             <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                              <CardTitle>Contact Information</CardTitle>
+                              <CardTitle>Candidate Details</CardTitle>
                             </AccordionTrigger>
                             <AccordionContent>
                               <CardContent className="space-y-4 pt-0">
@@ -1411,7 +1411,7 @@ const stageHasAutomation = useMemo(() => {
                                       )}
                                     </div>
 
-                                    {/* LinkedIn */}
+                                     {/* LinkedIn */}
                                     {candidate?.linkedin_url && (
                                       <div className="flex items-start justify-between gap-2">
                                         <div className="flex items-start gap-2 flex-1 min-w-0">
@@ -1426,6 +1426,27 @@ const stageHasAutomation = useMemo(() => {
                                           </a>
                                         </div>
                                         <ExternalLink className="h-3.5 w-3.5 text-text-tertiary flex-shrink-0 mt-0.5" />
+                                      </div>
+                                    )}
+
+                                    {/* Location */}
+                                    {(candidate?.location_city || candidate?.location_state || candidate?.location_country) && (
+                                      <div className="space-y-1.5">
+                                        <Separator />
+                                        <div className="flex items-start gap-2 pt-1.5">
+                                          <MapPin className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                                          <div className="flex flex-col min-w-0">
+                                            {candidate.location_city && (
+                                              <span className="text-sm text-text-primary">{candidate.location_city}</span>
+                                            )}
+                                            {candidate.location_state && (
+                                              <span className="text-sm text-text-secondary">{candidate.location_state}</span>
+                                            )}
+                                            {candidate.location_country && (
+                                              <span className="text-sm text-text-secondary">{candidate.location_country}</span>
+                                            )}
+                                          </div>
+                                        </div>
                                       </div>
                                     )}
                               </CardContent>
