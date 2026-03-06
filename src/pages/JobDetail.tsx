@@ -285,6 +285,13 @@ export default function JobDetail() {
   // Inner tabs for Pipeline section
   const [pipelineSectionTab, setPipelineSectionTab] = useState<'suggested' | 'application' | 'recruiting' | 'offers' | 'hired' | 'rejected'>('recruiting')
 
+  // Force restricted viewers (HM/Interviewer) to 'recruiting' tab only
+  useEffect(() => {
+    if (isRestrictedViewer && pipelineSectionTab !== 'recruiting') {
+      setPipelineSectionTab('recruiting')
+    }
+  }, [isRestrictedViewer, pipelineSectionTab])
+
   // Assocations and status-based lists
   const { fetchAssociationsForJob, updateAssociationStatus } = usePipelineActions()
   const [associations, setAssociations] = useState<PipelineAssociation[]>([])
@@ -914,80 +921,81 @@ export default function JobDetail() {
               )}
                <TabsContent value="pipeline">
                  <div className="h-[calc(100svh-16rem)] sm:h-[calc(100svh-14rem)] min-h-0">
+                   {!isRestrictedViewer && (
                    <Card className="mb-4">
-                     <CardHeader className="py-3">
-                        <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
-                          {/* Mobile: Dropdown selector */}
-                          <div className="md:hidden">
-                            <Select value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
-                              <SelectTrigger className="w-full h-12">
-                                <SelectValue>
-                                  <span className="flex items-center gap-2">
-                                    {pipelineSectionTab === 'suggested' && <Sparkles className="h-4 w-4 text-blue-600" />}
-                                    <span className="font-medium">
-                                      {pipelineSectionTab === 'suggested' && 'Suggested'}
-                                      {pipelineSectionTab === 'application' && 'Application Review'}
-                                      {pipelineSectionTab === 'recruiting' && 'Recruiting Process'}
-                                      {pipelineSectionTab === 'offers' && 'Job Offers'}
-                                      {pipelineSectionTab === 'hired' && 'Hired Candidates'}
-                                      {pipelineSectionTab === 'rejected' && 'Rejected Candidates'}
-                                    </span>
-                                    <Badge variant="secondary" className="text-xs">
-                                      {pipelineSectionTab === 'suggested' && suggestedCount}
-                                      {pipelineSectionTab === 'application' && applicationCount}
-                                      {pipelineSectionTab === 'recruiting' && recruitingCount}
-                                      {pipelineSectionTab === 'offers' && offerCount}
-                                      {pipelineSectionTab === 'hired' && hiredCount}
-                                      {pipelineSectionTab === 'rejected' && rejectedCount}
-                                    </Badge>
-                                  </span>
-                                </SelectValue>
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="suggested" className="py-3">
-                                  <span className="flex items-center gap-2">
-                                    <Sparkles className="h-4 w-4 text-blue-600" />
-                                    <span>Suggested</span>
-                                    <Badge variant="secondary" className="text-xs">{suggestedCount}</Badge>
-                                  </span>
-                                </SelectItem>
-                                <SelectItem value="application" className="py-3">
-                                  <span className="flex items-center gap-2">
-                                    <span>Application Review</span>
-                                    <Badge variant="pastel-purple" className="text-xs">{applicationCount}</Badge>
-                                  </span>
-                                </SelectItem>
-                                <SelectItem value="recruiting" className="py-3">
-                                  <span className="flex items-center gap-2">
-                                    <span>Recruiting Process</span>
-                                    <Badge variant="pastel-yellow" className="text-xs">{recruitingCount}</Badge>
-                                  </span>
-                                </SelectItem>
-                                <SelectItem value="offers" className="py-3">
-                                  <span className="flex items-center gap-2">
-                                    <span>Job Offers</span>
-                                    <Badge variant="pastel-blue" className="text-xs">{offerCount}</Badge>
-                                  </span>
-                                </SelectItem>
-                                <SelectItem value="hired" className="py-3">
-                                  <span className="flex items-center gap-2">
-                                    <span>Hired Candidates</span>
-                                    <Badge variant="success" className="text-xs">{hiredCount}</Badge>
-                                  </span>
-                                </SelectItem>
-                                <SelectItem value="rejected" className="py-3">
-                                  <span className="flex items-center gap-2">
-                                    <span>Rejected Candidates</span>
-                                    <Badge variant="destructive" className="text-xs">{rejectedCount}</Badge>
-                                  </span>
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          
-                          {/* Desktop: Grid tabs */}
-                          <TabsList className="hidden md:grid w-full h-14 p-2 gap-1 grid-cols-6">
-                            <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-text-primary data-[state=active]:from-blue-500 data-[state=active]:to-purple-500 data-[state=active]:text-white border border-blue-500/20 data-[state=active]:border-blue-500 data-[state=active]:shadow-[0_0_20px_rgba(59,130,246,0.5),0_0_40px_rgba(147,51,234,0.3)] data-[state=active]:animate-pulse" value="suggested">
+                      <CardHeader className="py-3">
+                         <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
+                           {/* Mobile: Dropdown selector */}
+                           <div className="md:hidden">
+                             <Select value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
+                               <SelectTrigger className="w-full h-12">
+                                 <SelectValue>
+                                   <span className="flex items-center gap-2">
+                                     {pipelineSectionTab === 'suggested' && <Sparkles className="h-4 w-4 text-blue-600" />}
+                                     <span className="font-medium">
+                                       {pipelineSectionTab === 'suggested' && 'Suggested'}
+                                       {pipelineSectionTab === 'application' && 'Application Review'}
+                                       {pipelineSectionTab === 'recruiting' && 'Recruiting Process'}
+                                       {pipelineSectionTab === 'offers' && 'Job Offers'}
+                                       {pipelineSectionTab === 'hired' && 'Hired Candidates'}
+                                       {pipelineSectionTab === 'rejected' && 'Rejected Candidates'}
+                                     </span>
+                                     <Badge variant="secondary" className="text-xs">
+                                       {pipelineSectionTab === 'suggested' && suggestedCount}
+                                       {pipelineSectionTab === 'application' && applicationCount}
+                                       {pipelineSectionTab === 'recruiting' && recruitingCount}
+                                       {pipelineSectionTab === 'offers' && offerCount}
+                                       {pipelineSectionTab === 'hired' && hiredCount}
+                                       {pipelineSectionTab === 'rejected' && rejectedCount}
+                                     </Badge>
+                                   </span>
+                                 </SelectValue>
+                               </SelectTrigger>
+                               <SelectContent>
+                                 <SelectItem value="suggested" className="py-3">
+                                   <span className="flex items-center gap-2">
+                                     <Sparkles className="h-4 w-4 text-blue-600" />
+                                     <span>Suggested</span>
+                                     <Badge variant="secondary" className="text-xs">{suggestedCount}</Badge>
+                                   </span>
+                                 </SelectItem>
+                                 <SelectItem value="application" className="py-3">
+                                   <span className="flex items-center gap-2">
+                                     <span>Application Review</span>
+                                     <Badge variant="pastel-purple" className="text-xs">{applicationCount}</Badge>
+                                   </span>
+                                 </SelectItem>
+                                 <SelectItem value="recruiting" className="py-3">
+                                   <span className="flex items-center gap-2">
+                                     <span>Recruiting Process</span>
+                                     <Badge variant="pastel-yellow" className="text-xs">{recruitingCount}</Badge>
+                                   </span>
+                                 </SelectItem>
+                                 <SelectItem value="offers" className="py-3">
+                                   <span className="flex items-center gap-2">
+                                     <span>Job Offers</span>
+                                     <Badge variant="pastel-blue" className="text-xs">{offerCount}</Badge>
+                                   </span>
+                                 </SelectItem>
+                                 <SelectItem value="hired" className="py-3">
+                                   <span className="flex items-center gap-2">
+                                     <span>Hired Candidates</span>
+                                     <Badge variant="success" className="text-xs">{hiredCount}</Badge>
+                                   </span>
+                                 </SelectItem>
+                                 <SelectItem value="rejected" className="py-3">
+                                   <span className="flex items-center gap-2">
+                                     <span>Rejected Candidates</span>
+                                     <Badge variant="destructive" className="text-xs">{rejectedCount}</Badge>
+                                   </span>
+                                 </SelectItem>
+                               </SelectContent>
+                             </Select>
+                           </div>
+                           
+                           {/* Desktop: Grid tabs */}
+                           <TabsList className="hidden md:grid w-full h-14 p-2 gap-1 grid-cols-6">
+                             <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-text-primary data-[state=active]:from-blue-500 data-[state=active]:to-purple-500 data-[state=active]:text-white border border-blue-500/20 data-[state=active]:border-blue-500 data-[state=active]:shadow-[0_0_20px_rgba(59,130,246,0.5),0_0_40px_rgba(147,51,234,0.3)] data-[state=active]:animate-pulse" value="suggested">
                                <span className="flex items-center gap-1 truncate">
                                  <Sparkles className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
                                  <span className="truncate">Suggested</span>
@@ -1023,11 +1031,12 @@ export default function JobDetail() {
                                  <span className="truncate">Rejected Candidates</span>
                                  <Badge variant="destructive" className="text-xs flex-shrink-0">{rejectedCount}</Badge>
                                </span>
-                            </TabsTrigger>
-                         </TabsList>
-                       </Tabs>
-                     </CardHeader>
-                   </Card>
+                             </TabsTrigger>
+                           </TabsList>
+                         </Tabs>
+                       </CardHeader>
+                     </Card>
+                   )}
                    <Card className="h-full w-full overflow-hidden flex flex-col">
                     <CardHeader className="sticky top-0 z-10 bg-surface-primary/80 backdrop-blur supports-[backdrop-filter]:bg-surface-primary/60 border-b border-border">
                       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
@@ -1342,51 +1351,53 @@ export default function JobDetail() {
                 {/* Pipeline Tab */}
                 <TabsContent value="pipeline">
                   <div className="h-[calc(100vh-12rem)] min-h-0">
+                    {!isRestrictedViewer && (
                     <Card className="mb-4">
-                      <CardHeader className="py-3">
-                        <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
-                          <TabsList className="w-full h-14 p-2 gap-1 grid grid-cols-6">
-                            <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-text-primary data-[state=active]:from-blue-500 data-[state=active]:to-purple-500 data-[state=active]:text-white border border-blue-500/20 data-[state=active]:border-blue-500 data-[state=active]:shadow-[0_0_20px_rgba(59,130,246,0.5),0_0_40px_rgba(147,51,234,0.3)] data-[state=active]:animate-pulse" value="suggested">
-                              <span className="flex items-center gap-1 truncate">
-                                <Sparkles className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
-                                <span className="truncate">Suggested</span>
-                                <Badge variant="secondary" className="text-xs flex-shrink-0">{suggestedCount}</Badge>
-                              </span>
-                            </TabsTrigger>
-                            <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-pastel-purple/20 text-text-primary data-[state=active]:bg-pastel-purple" value="application">
-                              <span className="flex items-center gap-1 truncate">
-                                <span className="truncate">Application Review</span>
-                                <Badge variant="pastel-purple" className="text-xs flex-shrink-0">{applicationCount}</Badge>
-                              </span>
-                            </TabsTrigger>
-                            <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-pastel-yellow/20 text-text-primary data-[state=active]:bg-pastel-yellow" value="recruiting">
-                              <span className="flex items-center gap-1 truncate">
-                                <span className="text-text-primary truncate">Recruiting Process</span>
-                                <Badge variant="pastel-yellow" className="text-xs flex-shrink-0">{recruitingCount}</Badge>
-                              </span>
-                            </TabsTrigger>
-                            <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-pastel-blue/20 text-text-primary data-[state=active]:bg-pastel-blue" value="offers">
-                              <span className="flex items-center gap-1 truncate">
-                                <span className="truncate">Job Offers</span>
-                                <Badge variant="pastel-blue" className="text-xs flex-shrink-0">{offerCount}</Badge>
-                              </span>
-                            </TabsTrigger>
-                            <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-success/20 text-text-primary data-[state=active]:bg-success" value="hired">
-                              <span className="flex items-center gap-1 truncate">
-                                <span className="truncate">Hired Candidates</span>
-                                <Badge variant="success" className="text-xs flex-shrink-0">{hiredCount}</Badge>
-                              </span>
-                            </TabsTrigger>
-                            <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-destructive/20 text-text-primary data-[state=active]:bg-destructive" value="rejected">
-                              <span className="flex items-center gap-1 truncate">
-                                <span className="truncate">Rejected Candidates</span>
-                                <Badge variant="destructive" className="text-xs flex-shrink-0">{rejectedCount}</Badge>
-                              </span>
-                            </TabsTrigger>
-                          </TabsList>
-                        </Tabs>
-                      </CardHeader>
-                    </Card>
+                       <CardHeader className="py-3">
+                         <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
+                           <TabsList className="w-full h-14 p-2 gap-1 grid grid-cols-6">
+                             <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-text-primary data-[state=active]:from-blue-500 data-[state=active]:to-purple-500 data-[state=active]:text-white border border-blue-500/20 data-[state=active]:border-blue-500 data-[state=active]:shadow-[0_0_20px_rgba(59,130,246,0.5),0_0_40px_rgba(147,51,234,0.3)] data-[state=active]:animate-pulse" value="suggested">
+                               <span className="flex items-center gap-1 truncate">
+                                 <Sparkles className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
+                                 <span className="truncate">Suggested</span>
+                                 <Badge variant="secondary" className="text-xs flex-shrink-0">{suggestedCount}</Badge>
+                               </span>
+                             </TabsTrigger>
+                             <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-pastel-purple/20 text-text-primary data-[state=active]:bg-pastel-purple" value="application">
+                               <span className="flex items-center gap-1 truncate">
+                                 <span className="truncate">Application Review</span>
+                                 <Badge variant="pastel-purple" className="text-xs flex-shrink-0">{applicationCount}</Badge>
+                               </span>
+                             </TabsTrigger>
+                             <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-pastel-yellow/20 text-text-primary data-[state=active]:bg-pastel-yellow" value="recruiting">
+                               <span className="flex items-center gap-1 truncate">
+                                 <span className="text-text-primary truncate">Recruiting Process</span>
+                                 <Badge variant="pastel-yellow" className="text-xs flex-shrink-0">{recruitingCount}</Badge>
+                               </span>
+                             </TabsTrigger>
+                             <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-pastel-blue/20 text-text-primary data-[state=active]:bg-pastel-blue" value="offers">
+                               <span className="flex items-center gap-1 truncate">
+                                 <span className="truncate">Job Offers</span>
+                                 <Badge variant="pastel-blue" className="text-xs flex-shrink-0">{offerCount}</Badge>
+                               </span>
+                             </TabsTrigger>
+                             <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-success/20 text-text-primary data-[state=active]:bg-success" value="hired">
+                               <span className="flex items-center gap-1 truncate">
+                                 <span className="truncate">Hired Candidates</span>
+                                 <Badge variant="success" className="text-xs flex-shrink-0">{hiredCount}</Badge>
+                               </span>
+                             </TabsTrigger>
+                             <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-destructive/20 text-text-primary data-[state=active]:bg-destructive" value="rejected">
+                               <span className="flex items-center gap-1 truncate">
+                                 <span className="truncate">Rejected Candidates</span>
+                                 <Badge variant="destructive" className="text-xs flex-shrink-0">{rejectedCount}</Badge>
+                               </span>
+                             </TabsTrigger>
+                           </TabsList>
+                         </Tabs>
+                       </CardHeader>
+                     </Card>
+                    )}
                     <Card className="h-full w-full overflow-hidden flex flex-col">
                       <CardHeader className="sticky top-0 z-10 bg-surface-primary/80 backdrop-blur supports-[backdrop-filter]:bg-surface-primary/60 border-b border-border">
                         <div className="flex items-start justify-between">
