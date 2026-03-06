@@ -921,7 +921,8 @@ const stageHasAutomation = useMemo(() => {
                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                    {/* Left column (50%) */}
                    <div className="space-y-6">
-                     {/* Controls Card */}
+                     {/* Controls Card - hidden for restricted viewers */}
+                     {!isRestrictedViewer && (
                       <Card className="bg-surface-primary border-border">
                         <CardContent className="p-4">
                            <div className="flex items-center justify-between w-full">
@@ -1002,7 +1003,8 @@ const stageHasAutomation = useMemo(() => {
                               </div>
                            </div>
                         </CardContent>
-                     </Card>
+                      </Card>
+                     )}
 
                      <CandidateNameCard
                        email={candidate.email}
