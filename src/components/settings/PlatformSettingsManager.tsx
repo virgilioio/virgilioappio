@@ -152,6 +152,10 @@ export function PlatformSettingsManager() {
           <TabsContent value="style-guide" className="mt-6">
             <StyleGuide />
           </TabsContent>
+          
+          <TabsContent value="enrichment" className="mt-6">
+            <BatchEnrichmentRunner />
+          </TabsContent>
         </Tabs>
       </CardContent>
     </Card>
