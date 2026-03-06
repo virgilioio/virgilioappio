@@ -10,10 +10,9 @@ export function useRecruiterOptions(organizationId: string | null) {
 
       const { data: members, error } = await supabase
         .from('members')
-        .select('user_id, member_role, user_status')
+        .select('user_id, system_role, user_status')
         .eq('organization_id', organizationId)
         .eq('user_status', 'active')
-        .in('member_role', ['admin', 'recruiter'])
 
       if (error) {
         console.error('Error fetching recruiter options:', error)
@@ -36,7 +35,7 @@ export function useRecruiterOptions(organizationId: string | null) {
         return {
           value: member.user_id,
           label,
-          badge: member.member_role === 'admin' ? 'Admin' : 'Recruiter',
+          badge: member.system_role === 'admin' ? 'Admin' : 'Member',
         }
       })
     },

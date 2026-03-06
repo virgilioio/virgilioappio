@@ -38,16 +38,8 @@ export function MembersTable({
     switch (role) {
       case 'admin':
         return 'bg-destructive/10 text-destructive'
-      case 'recruiter':
+      case 'member':
         return 'bg-primary/10 text-primary'
-      case 'customer_success':
-        return 'bg-accent/10 text-accent'
-      case 'billing':
-        return 'bg-secondary/10 text-secondary'
-      case 'sales':
-        return 'bg-success/10 text-success'
-      case 'client':
-        return 'bg-warning/10 text-warning'
       default:
         return 'bg-muted/10 text-muted-foreground'
     }
@@ -233,8 +225,8 @@ export function MembersTable({
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Badge className={getRoleColor(member.member_role)}>
-                        {member.member_role.replace('_', ' ')}
+                      <Badge className={getRoleColor(member.system_role)}>
+                        {member.system_role === 'admin' ? 'Admin' : 'Member'}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -262,10 +254,9 @@ export function MembersTable({
                             Edit Member
                           </DropdownMenuItem>
                           
-                          {/* Job Assignments - only for hiring managers and interviewers */}
+                          {/* Job Assignments - any active member can have job assignments */}
                           {onManageJobAssignments && 
-                           member.user_status === 'active' && 
-                           ['hiring_manager', 'interviewer'].includes(member.member_role) && (
+                           member.user_status === 'active' && (
                             <DropdownMenuItem 
                               onClick={() => onManageJobAssignments(member)}
                               className="gap-2"

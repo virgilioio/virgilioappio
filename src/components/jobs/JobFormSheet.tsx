@@ -348,7 +348,7 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
                   <div className="flex flex-wrap gap-2">
                     {getSelectedMembers().map(member => (
                       <Badge key={member.id} variant="secondary" className="flex items-center gap-1">
-                        {member.user_email || 'Unknown'} ({member.member_role})
+                        {member.user_email || 'Unknown'} ({member.system_role === 'admin' ? 'Admin' : 'Member'})
                         <X 
                           className="h-3 w-3 cursor-pointer" 
                           onClick={() => handleRemoveMember(member.id)}
@@ -387,7 +387,7 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
                               <div className="flex flex-col">
                                 <span>{member.user_email || 'Unknown'}</span>
                                 <span className="text-sm text-muted-foreground">
-                                  {member.member_role} • {member.organization_name || 'No org'}
+                                  {member.system_role === 'admin' ? 'Admin' : 'Member'} • {member.organization_name || 'No org'}
                                 </span>
                               </div>
                             </CommandItem>

@@ -14,7 +14,8 @@ import { GoGioLogo } from '@/components/GoGioLogo'
 interface InvitationData {
   member_id: string
   organization_id: string
-  member_role: string
+  member_role: string // legacy from RPC
+  system_role?: string
   organization_name: string
   invite_email: string
   is_valid: boolean
@@ -195,7 +196,7 @@ export default function AcceptInvite() {
           
           toast({
             title: 'Welcome back to Virgilio!',
-            description: `You've successfully joined ${invitationData.organization_name} as ${edgeFunctionResult.result.member_role.replace('_', ' ')}.`,
+            description: `You've successfully joined ${invitationData.organization_name} as ${edgeFunctionResult.result.system_role === 'admin' ? 'Admin' : 'Member'}.`,
             variant: 'default'
           });
 
@@ -268,7 +269,7 @@ export default function AcceptInvite() {
         title: hasWarning ? 'Welcome to Virgilio!' : 'Welcome to Virgilio!',
         description: hasWarning 
           ? `You've joined ${invitationData.organization_name}! Some metadata may not be immediately available.`
-          : `You've successfully joined ${invitationData.organization_name} as ${edgeFunctionResult.result.member_role.replace('_', ' ')}.`,
+          : `You've successfully joined ${invitationData.organization_name} as ${edgeFunctionResult.result.system_role === 'admin' ? 'Admin' : 'Member'}.`,
         variant: 'default'
       })
 
@@ -429,7 +430,7 @@ export default function AcceptInvite() {
           <CardTitle className="text-2xl font-poppins text-text-primary">You're Invited!</CardTitle>
           <CardDescription className="text-text-secondary">
             Join <strong className="text-text-primary">{invitationData.organization_name}</strong> as a{' '}
-            <strong className="text-text-primary">{invitationData.member_role.replace('_', ' ')}</strong>
+            <strong className="text-text-primary">{invitationData.system_role === 'admin' ? 'Admin' : invitationData.system_role === 'member' ? 'Member' : invitationData.member_role.replace('_', ' ')}</strong>
           </CardDescription>
         </CardHeader>
         

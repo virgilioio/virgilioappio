@@ -94,28 +94,15 @@ export function MemberInviteSheet({
   const getRoleOptions = () => {
     const roles = []
     
-    if (permissions.isPlatformAdmin) {
-      // Platform admins can assign any role
+    if (permissions.isPlatformAdmin || permissions.isWorkspaceOwner) {
       roles.push(
         { value: 'admin', label: 'Admin', description: 'Full organization management access' },
-        { value: 'recruiter', label: 'Recruiter', description: 'Can manage jobs, candidates, and team assignments' },
-        { value: 'hiring_manager', label: 'Hiring Manager', description: 'Can view and manage assigned jobs' },
-        { value: 'interviewer', label: 'Interviewer', description: 'Limited access for conducting interviews' }
-      )
-    } else if (permissions.isWorkspaceOwner) {
-      // Workspace owners can assign any role
-      roles.push(
-        { value: 'admin', label: 'Admin', description: 'Full organization management access' },
-        { value: 'recruiter', label: 'Recruiter', description: 'Can manage jobs, candidates, and team assignments' },
-        { value: 'hiring_manager', label: 'Hiring Manager', description: 'Can view and manage assigned jobs' },
-        { value: 'interviewer', label: 'Interviewer', description: 'Limited access for conducting interviews' }
+        { value: 'member', label: 'Member', description: 'Can be assigned to jobs as recruiter, hiring manager, or interviewer' }
       )
     } else if (permissions.isAdmin) {
       // Admin members cannot create other admins
       roles.push(
-        { value: 'recruiter', label: 'Recruiter', description: 'Can manage jobs, candidates, and team assignments' },
-        { value: 'hiring_manager', label: 'Hiring Manager', description: 'Can view and manage assigned jobs' },
-        { value: 'interviewer', label: 'Interviewer', description: 'Limited access for conducting interviews' }
+        { value: 'member', label: 'Member', description: 'Can be assigned to jobs as recruiter, hiring manager, or interviewer' }
       )
     }
     
@@ -126,7 +113,8 @@ export function MemberInviteSheet({
     try {
       const inviteData = {
         email: data.email.trim(),
-        member_role: data.role,
+        system_role: data.role as 'admin' | 'member',
+        member_role: data.role === 'admin' ? 'admin' : 'recruiter', // legacy compat
         user_type: 'member', // Always default to member
         organization_id: organizationId, // Use current user's organization
         user_status: 'invited'
@@ -331,7 +319,7 @@ export function MemberInviteSheet({
                   <Info className="h-4 w-4" />
                   <AlertDescription>
                     <div className="text-sm">
-                      <span className="font-medium">Free role:</span> Hiring Managers and Interviewers don't affect billing
+                      <span className="font-medium">Free role:</span> Members don't affect billing
                     </div>
                   </AlertDescription>
                 </Alert>

@@ -29,16 +29,15 @@ export function MembersTab() {
   const parentOrgId = currentOrg?.parent_organization_id || organizationId
   const tenantId = currentOrg?.tenant_id
 
-  const isPayingRole = (r: 'admin' | 'recruiter' | 'hiring_manager' | 'interviewer') =>
-    r === 'admin'
+  const isPayingRole = (r: string) => r === 'admin'
 
   const [tab, setTab] = useState<'members' | 'collaborators'>('members')
 
   // Admins are paid seats, Members are collaborators
   const paidMembers = members.filter(
-    (m) => (m.member_role === 'admin' || m.user_type === 'workspace_owner') && (!parentOrgId || m.organization_id === parentOrgId)
+    (m) => (m.system_role === 'admin' || m.user_type === 'workspace_owner') && (!parentOrgId || m.organization_id === parentOrgId)
   )
-  const collaboratorMembers = members.filter((m) => m.member_role !== 'admin' && m.user_type !== 'workspace_owner')
+  const collaboratorMembers = members.filter((m) => m.system_role !== 'admin' && m.user_type !== 'workspace_owner')
 
   // Tenant subscription functionality removed
   const subscriptionData = null

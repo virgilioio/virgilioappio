@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useBillingStatus } from './useBillingStatus'
 import { useStripePricing } from './useStripePricing'
 
-export function useSeatsPreview(roleToAdd?: 'admin' | 'recruiter' | 'hiring_manager' | 'interviewer') {
+export function useSeatsPreview(roleToAdd?: 'admin' | 'member') {
   const { data: billing } = useBillingStatus()
   const { data: pricing } = useStripePricing()
 
@@ -19,7 +19,7 @@ export function useSeatsPreview(roleToAdd?: 'admin' | 'recruiter' | 'hiring_mana
     }
 
     const currentSeats = billing.seat_quantity || 0
-    const isBillableRole = roleToAdd === 'admin' || roleToAdd === 'recruiter'
+    const isBillableRole = roleToAdd === 'admin'
     const newSeats = isBillableRole ? currentSeats + 1 : currentSeats
     const willIncreaseBilling = isBillableRole
 

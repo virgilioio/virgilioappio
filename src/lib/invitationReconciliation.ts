@@ -18,7 +18,8 @@ export interface ReconciliationResult {
   action_taken: string;
   organization_id: string | null;
   organization_name: string | null;
-  member_role: string | null;
+  system_role: string | null;
+  member_role: string | null; // legacy
 }
 
 /**
@@ -54,7 +55,7 @@ export async function reconcilePendingInvitation(userId: string): Promise<Reconc
     if (result.success && result.action_taken === 'invitation_accepted') {
       log.info('🎉 Auto-linked pending invitation', {
         orgName: result.organization_name,
-        role: result.member_role,
+        role: (result as any).system_role || result.member_role,
         orgId: result.organization_id
       });
     } else if (result.action_taken === 'no_pending_invitation') {
@@ -63,7 +64,12 @@ export async function reconcilePendingInvitation(userId: string): Promise<Reconc
       log.warn('User not found during reconciliation');
     }
 
-    return result as ReconciliationResult;
+    // Cast to our interface - RPC may or may not include system_role
+    const typedResult: ReconciliationResult = {
+      ...result,
+      system_role: (result as any).system_role || (result.member_role === 'admin' ? 'admin' : 'member'),
+    };
+    return typedResult;
   } catch (err) {
     log.error('Invitation reconciliation check failed:', err);
     return null;

@@ -40,7 +40,7 @@ export function TeamTab({ jhsId, jobId, organizationId }: TeamTabProps) {
         ? `${member.user_first_name || ''} ${member.user_last_name || ''}`.trim() || member.user_email || 'Unnamed'
         : 'Unknown User',
       member_email: member?.user_email || 'No email',
-      member_role: member?.member_role || 'Unknown',
+      member_role: member?.system_role === 'admin' ? 'Admin' : 'Member',
       user_id: member?.user_id || null
     }
   })

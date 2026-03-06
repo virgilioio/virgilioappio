@@ -3,7 +3,8 @@ import { supabase } from '@/lib/supabaseClient'
 
 export interface OrganizationMetadata {
   organization_id: string
-  member_role?: string
+  system_role?: string
+  member_role?: string // legacy
   user_type?: string
 }
 
