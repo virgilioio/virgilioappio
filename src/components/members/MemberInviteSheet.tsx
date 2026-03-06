@@ -82,6 +82,8 @@ export function MemberInviteSheet({
   const selectedRole = watch("role")
   const seatsPreview = useSeatsPreview(selectedRole as any)
 
+  const isEditing = !!member
+
   useEffect(() => {
     if (!isOpen) {
       reset()
@@ -90,6 +92,13 @@ export function MemberInviteSheet({
       setInvitedEmail("")
     }
   }, [isOpen, reset])
+
+  useEffect(() => {
+    if (member && isOpen) {
+      setValue('email', member.user_email || member.invited_email || '')
+      setValue('role', member.system_role || '')
+    }
+  }, [member, isOpen, setValue])
 
   const getRoleOptions = () => {
     const roles = []
