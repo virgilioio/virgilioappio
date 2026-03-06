@@ -221,6 +221,53 @@ export function MembersTable({
             } : undefined}
           />
         ) : (
+          <>
+            {/* Toolbar: Search + Filters */}
+            <div className="flex flex-col sm:flex-row gap-3 mb-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name or email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Select value={roleFilter} onValueChange={setRoleFilter}>
+                  <SelectTrigger className="w-[130px]">
+                    <SelectValue placeholder="Role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Roles</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="member">Member</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="invited">Invited</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+                {hasActiveFilters && (
+                  <Button variant="ghost" size="icon" onClick={clearFilters} title="Clear filters">
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Result count */}
+            <p className="text-xs text-muted-foreground mb-3">
+              Showing {filteredMembers.length} of {members.length} members
+            </p>
+
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -234,7 +281,13 @@ export function MembersTable({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {members.map((member) => (
+                {filteredMembers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      No members match your filters
+                    </TableCell>
+                  </TableRow>
+                ) : filteredMembers.map((member) => (
                   <TableRow key={member.id}>
                     <TableCell className="font-medium">
                       {getDisplayName(member)}
