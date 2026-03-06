@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
@@ -8,6 +8,7 @@ import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
 import { log } from '@/lib/logger'
 import { useQueryClient } from '@tanstack/react-query'
 import { logActivity } from '@/lib/activityLogger'
+import { useUserJobRoles } from './useUserJobRoles'
 
 export interface Job {
   id: string
