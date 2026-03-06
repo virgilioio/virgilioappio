@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabaseClient'
 export interface Member {
   id: string
   user_id: string
+  system_role: string
   member_role: string
   user_status: string
   created_at: string
