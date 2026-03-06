@@ -56,21 +56,6 @@ function displayName(name: string) {
 }
 
 export function GeographyInsights({ countryCounts, cityCounts, totalCandidates }: GeographyInsightsProps) {
-  if (countryCounts.length === 0 && cityCounts.length === 0) {
-    return (
-      <Card className="border-virgilio-border">
-        <CardHeader>
-          <CardTitle className="text-sm font-poppins font-semibold text-virgilio-text" withPeriod={false}>
-            Candidate Geography
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <TalentInsightEmptyState message="No location data available yet" />
-        </CardContent>
-      </Card>
-    )
-  }
-
   const maxCount = countryCounts.length > 0 ? countryCounts[0].count : 1
   const topCountries = countryCounts.slice(0, 5)
 
