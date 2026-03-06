@@ -469,399 +469,78 @@ export function IndependentCandidateProfileSheet({
                                   </div>
                                 </AccordionTrigger>
                                 <AccordionContent>
-                                  <CardContent className="pt-0 space-y-4">
-                                    {/* Title row */}
-                                    <div className="space-y-1">
+                                  <CardContent className="pt-0">
+                                    <dl className="divide-y divide-border">
                                       {candidate.current_job_title && (
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                          <span className="font-medium text-sm">{candidate.current_job_title}</span>
-                                          {candidate.standardized_title && candidate.standardized_title !== candidate.current_job_title && (
+                                        <div className="flex items-center justify-between py-2.5">
+                                          <dt className="text-sm text-muted-foreground">Current Title</dt>
+                                          <dd className="text-sm font-medium text-foreground text-right">{candidate.current_job_title}</dd>
+                                        </div>
+                                      )}
+                                      {candidate.standardized_title && candidate.standardized_title !== candidate.current_job_title && (
+                                        <div className="flex items-center justify-between py-2.5">
+                                          <dt className="text-sm text-muted-foreground">Standardized Title</dt>
+                                          <dd>
                                             <Badge variant="outline" className="text-xs gap-1">
                                               <Sparkles className="h-3 w-3" />
                                               {candidate.standardized_title}
                                             </Badge>
-                                          )}
+                                          </dd>
                                         </div>
                                       )}
                                       {candidate.company_current && (
-                                        <p className="text-sm text-muted-foreground">at {candidate.company_current}</p>
+                                        <div className="flex items-center justify-between py-2.5">
+                                          <dt className="text-sm text-muted-foreground">Current Company</dt>
+                                          <dd className="text-sm font-medium text-foreground">{candidate.company_current}</dd>
+                                        </div>
                                       )}
-                                    </div>
-                                    
-                                    {/* Badges row */}
-                                    <div className="flex flex-wrap gap-2">
                                       {candidate.seniority_level && (
-                                        <Badge variant="secondary" className="capitalize text-xs">
-                                          {candidate.seniority_level.replace('_', ' ')}
-                                        </Badge>
+                                        <div className="flex items-center justify-between py-2.5">
+                                          <dt className="text-sm text-muted-foreground">Seniority</dt>
+                                          <dd className="text-sm font-medium text-foreground capitalize">{candidate.seniority_level.replace('_', ' ')}</dd>
+                                        </div>
                                       )}
                                       {candidate.functional_area && (
-                                        <Badge variant="secondary" className="text-xs">
-                                          {candidate.functional_area}
-                                        </Badge>
+                                        <div className="flex items-center justify-between py-2.5">
+                                          <dt className="text-sm text-muted-foreground">Functional Area</dt>
+                                          <dd className="text-sm font-medium text-foreground">{candidate.functional_area}</dd>
+                                        </div>
                                       )}
                                       {candidate.specialization && (
-                                        <Badge variant="outline" className="text-xs">
-                                          {candidate.specialization}
-                                        </Badge>
+                                        <div className="flex items-center justify-between py-2.5">
+                                          <dt className="text-sm text-muted-foreground">Specialization</dt>
+                                          <dd className="text-sm font-medium text-foreground">{candidate.specialization}</dd>
+                                        </div>
                                       )}
-                                    </div>
-
-                                    {/* Metrics row */}
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                       {candidate.years_experience != null && (
-                                        <div className="text-center p-2 rounded-md bg-muted/50">
-                                          <div className="text-lg font-semibold">{candidate.years_experience}</div>
-                                          <div className="text-xs text-muted-foreground">Years Exp.</div>
+                                        <div className="flex items-center justify-between py-2.5">
+                                          <dt className="text-sm text-muted-foreground">Years Experience</dt>
+                                          <dd className="text-sm font-medium text-foreground">{candidate.years_experience}</dd>
                                         </div>
                                       )}
                                       {candidate.company_count != null && candidate.company_count > 0 && (
-                                        <div className="text-center p-2 rounded-md bg-muted/50">
-                                          <div className="text-lg font-semibold">{candidate.company_count}</div>
-                                          <div className="text-xs text-muted-foreground">Companies</div>
+                                        <div className="flex items-center justify-between py-2.5">
+                                          <dt className="text-sm text-muted-foreground">Companies</dt>
+                                          <dd className="text-sm font-medium text-foreground">{candidate.company_count}</dd>
                                         </div>
                                       )}
                                       {candidate.avg_tenure_months != null && candidate.avg_tenure_months > 0 && (
-                                        <div className="text-center p-2 rounded-md bg-muted/50">
-                                          <div className="text-lg font-semibold">
+                                        <div className="flex items-center justify-between py-2.5">
+                                          <dt className="text-sm text-muted-foreground">Avg. Tenure</dt>
+                                          <dd className="text-sm font-medium text-foreground">
                                             {candidate.avg_tenure_months >= 12 
                                               ? `${Math.round(candidate.avg_tenure_months / 12)}y`
                                               : `${candidate.avg_tenure_months}m`}
-                                          </div>
-                                          <div className="text-xs text-muted-foreground">Avg. Tenure</div>
+                                          </dd>
                                         </div>
                                       )}
                                       {candidate.years_in_leadership != null && candidate.years_in_leadership > 0 && (
-                                        <div className="text-center p-2 rounded-md bg-muted/50">
-                                          <div className="text-lg font-semibold">{candidate.years_in_leadership}</div>
-                                          <div className="text-xs text-muted-foreground">Yrs Leadership</div>
+                                        <div className="flex items-center justify-between py-2.5">
+                                          <dt className="text-sm text-muted-foreground">Years Leadership</dt>
+                                          <dd className="text-sm font-medium text-foreground">{candidate.years_in_leadership}</dd>
                                         </div>
                                       )}
-                                    </div>
-                                  </CardContent>
-                                </AccordionContent>
-                              </Card>
-                            </AccordionItem>
-                          )}
-
-                          {/* Contact Information */}
-                          <AccordionItem value="contact" className="border-0">
-                            <Card className="bg-surface-primary border-border">
-                              <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                                <CardTitle>Contact Information</CardTitle>
-                              </AccordionTrigger>
-                              <AccordionContent>
-                                <CardContent className="space-y-4 pt-0">
-                                      {/* Emails Section */}
-                                      <div className="space-y-2">
-                                        {candidate?.contact_emails && candidate.contact_emails.length > 0 ? (
-                                          candidate.contact_emails.map((ce: any, idx: number) => {
-                                            const { email: emailValue, type: emailType } = getEmailFromEntry(ce);
-                                            if (!emailValue) return null;
-                                            return (
-                                              <div key={`email-${idx}`} className="flex items-start justify-between gap-2">
-                                                <div className="flex items-start gap-2 flex-1 min-w-0">
-                                                  <Mail className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                                                  <div className="flex flex-col min-w-0">
-                                                    <a href={`mailto:${emailValue}`} className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all">
-                                                      {emailValue}
-                                                    </a>
-                                                    <span className="text-xs text-text-tertiary capitalize">{emailType}</span>
-                                                  </div>
-                                                </div>
-                                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={() => copyToClipboard(emailValue, 'Email copied to clipboard')}>
-                                                  <Copy className="h-3.5 w-3.5" />
-                                                </Button>
-                                              </div>
-                                            );
-                                          })
-                                        ) : candidate?.email ? (
-                                          <div className="flex items-start justify-between gap-2">
-                                            <div className="flex items-start gap-2 flex-1 min-w-0">
-                                              <Mail className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                                              <a href={`mailto:${candidate.email}`} className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all">
-                                                {candidate.email}
-                                              </a>
-                                            </div>
-                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={() => copyToClipboard(candidate.email, 'Email copied to clipboard')}>
-                                              <Copy className="h-3.5 w-3.5" />
-                                            </Button>
-                                          </div>
-                                        ) : null}
-                                      </div>
-
-                                      {/* Phones Section */}
-                                      <div className="space-y-2">
-                                        {candidate?.contact_phones && candidate.contact_phones.length > 0 ? (
-                                          candidate.contact_phones.map((cp: any, idx: number) => {
-                                            const { phone: phoneValue, type: phoneType } = getPhoneFromEntry(cp);
-                                            if (!phoneValue) return null;
-                                            return (
-                                              <div key={`phone-${idx}`} className="flex items-start justify-between gap-2">
-                                                <div className="flex items-start gap-2 flex-1 min-w-0">
-                                                  <Phone className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                                                  <div className="flex flex-col min-w-0">
-                                                    <a href={`tel:${phoneValue}`} className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all">
-                                                      {phoneValue}
-                                                    </a>
-                                                    <span className="text-xs text-text-tertiary capitalize">{phoneType}</span>
-                                                  </div>
-                                                </div>
-                                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={() => copyToClipboard(phoneValue, 'Phone number copied to clipboard')}>
-                                                  <Copy className="h-3.5 w-3.5" />
-                                                </Button>
-                                              </div>
-                                            );
-                                          })
-                                        ) : (
-                                          <div className="flex items-start justify-between gap-2">
-                                            <div className="flex items-start gap-2 flex-1 min-w-0">
-                                              <Phone className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                                              {candidate?.phone ? (
-                                                <a href={`tel:${candidate.phone}`} className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all">
-                                                  {candidate.phone}
-                                                </a>
-                                              ) : (
-                                                <span className="text-sm text-text-tertiary italic">Phone not available</span>
-                                              )}
-                                            </div>
-                                            {candidate?.phone && (
-                                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={() => copyToClipboard(candidate.phone, 'Phone number copied to clipboard')}>
-                                                <Copy className="h-3.5 w-3.5" />
-                                              </Button>
-                                            )}
-                                          </div>
-                                        )}
-                                      </div>
-
-                                      {candidate?.linkedin_url && (
-                                        <div className="flex items-start justify-between gap-2">
-                                          <div className="flex items-start gap-2 flex-1 min-w-0">
-                                            <LinkedInFilled className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                                            <a
-                                              href={candidate.linkedin_url}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all"
-                                            >
-                                              LinkedIn Profile
-                                            </a>
-                                          </div>
-                                          <ExternalLink className="h-3.5 w-3.5 text-text-tertiary flex-shrink-0 mt-0.5" />
-                                        </div>
-                                      )}
-                                </CardContent>
-                              </AccordionContent>
-                            </Card>
-                          </AccordionItem>
-
-                          {/* URLs - hidden on mobile */}
-                          <div className="hidden md:block">
-                            <AccordionItem value="urls" className="border-0">
-                              {candidateId ? (
-                                <CandidateUrls candidateId={candidateId} />
-                              ) : (
-                                <Card className="bg-surface-primary border-border">
-                                  <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                                    <CardTitle>URLs</CardTitle>
-                                  </AccordionTrigger>
-                                  <AccordionContent>
-                                    <CardContent className="pt-0">
-                                      <div className="text-sm text-text-secondary">No candidate data available.</div>
-                                    </CardContent>
-                                  </AccordionContent>
-                                </Card>
-                              )}
-                            </AccordionItem>
-                          </div>
-
-                          {/* Attachments - hidden on mobile */}
-                          <div className="hidden md:block">
-                            <AccordionItem value="attachments" className="border-0">
-                              {candidateId ? (
-                                <CandidateAttachments candidateId={candidateId} />
-                              ) : (
-                                <Card className="bg-surface-primary border-border">
-                                  <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                                    <CardTitle>Attachments</CardTitle>
-                                  </AccordionTrigger>
-                                  <AccordionContent>
-                                    <CardContent className="pt-0">
-                                      <div className="text-sm text-text-secondary">No candidate data available.</div>
-                                    </CardContent>
-                                  </AccordionContent>
-                                </Card>
-                              )}
-                            </AccordionItem>
-                          </div>
-
-                          {/* Skills - hidden on mobile */}
-                          <div className="hidden md:block">
-                            <AccordionItem value="skills" className="border-0">
-                              <Card className="bg-surface-primary border-border">
-                                <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                                  <div className="flex items-center justify-between flex-1 pr-4">
-                                    <CardTitle>Skills</CardTitle>
-                                    <div className="text-xs text-text-tertiary">
-                                      Added {new Date(candidate.created_at as string).toLocaleDateString()}
-                                    </div>
-                                  </div>
-                                </AccordionTrigger>
-                                <AccordionContent>
-                                  <CardContent className="pt-0">
-                                    {(() => {
-                                      const manualSkills = candidate?.skills || []
-                                      const autoGenerated = Array.isArray((candidate as any)?.auto_generated_skills)
-                                        ? ((candidate as any).auto_generated_skills as any[]).map((s) => typeof s === 'string' ? s : s?.name).filter(Boolean)
-                                        : []
-                                      
-                                      const displaySkills = manualSkills.length > 0 ? manualSkills : autoGenerated
-
-                                      return displaySkills && displaySkills.length > 0 ? (
-                                        <div className="flex flex-wrap gap-2">
-                                          {displaySkills.map((s: string, i: number) => (
-                                            <EnhancedSkillBadge 
-                                              key={`${s}-${i}`} 
-                                              skill={s}
-                                              variant="compact"
-                                              showTooltip={true}
-                                              interactive={false}
-                                            />
-                                          ))}
-                                        </div>
-                                      ) : (
-                                        <div className="text-sm text-text-secondary">No skills specified</div>
-                                      )
-                                    })()}
-                                  </CardContent>
-                                </AccordionContent>
-                              </Card>
-                            </AccordionItem>
-                          </div>
-
-                          {/* Profile Summary */}
-                          <AccordionItem value="summary" className="border-0">
-                            <Card className="bg-surface-primary border-border">
-                              <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                                <div className="flex items-center justify-between w-full pr-4">
-                                  <CardTitle>Profile Summary</CardTitle>
-                                  <Sparkles className="h-4 w-4 text-purple-500 flex-shrink-0" />
-                                </div>
-                              </AccordionTrigger>
-                              <AccordionContent>
-                                <CardContent className="pt-0">
-                                  {candidate.profile_summary ? (
-                                    <ProfileSummaryMarkdown
-                                      content={candidate.profile_summary}
-                                      className="text-text-primary leading-relaxed"
-                                    />
-                                  ) : (
-                                    <div className="text-sm text-text-secondary">No summary available.</div>
-                                  )}
-                                </CardContent>
-                              </AccordionContent>
-                            </Card>
-                          </AccordionItem>
-
-                          {/* Work Experience - hidden on mobile */}
-                          <div className="hidden md:block">
-                            <AccordionItem value="experience" className="border-0">
-                              <CandidateWorkExperienceComponent experiences={workExperience} />
-                            </AccordionItem>
-                          </div>
-
-                          {/* Education - hidden on mobile */}
-                          <div className="hidden md:block">
-                            <AccordionItem value="education" className="border-0">
-                              <CandidateEducationComponent education={education} />
-                            </AccordionItem>
-                          </div>
-
-                          {/* Certifications - hidden on mobile */}
-                          {certifications.length > 0 && (
-                            <div className="hidden md:block">
-                              <AccordionItem value="certifications" className="border-0">
-                                <CandidateCertificationsComponent certifications={certifications} />
-                              </AccordionItem>
-                            </div>
-                          )}
-                        </Accordion>
-                      )}
-                    </div>
-
-                    {/* Right column (50%) - hidden on mobile */}
-                    <div className="space-y-6 hidden lg:block">
-                      {/* Controls Card - Right Side */}
-                      <Card className="bg-surface-primary border-border">
-                        <CardContent className="p-4">
-                          <div className="overflow-x-auto scrollbar-none w-full">
-                            <div className="flex items-center justify-between min-w-max">
-                              <div className="flex items-center gap-2">
-                                {canEditCandidates && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setEditOpen(true)}
-                                  >
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Edit
-                                  </Button>
-                                )}
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={async () => {
-                                    try {
-                                      await generateCandidatePdf({ candidate })
-                                      toast({ 
-                                        title: 'Success', 
-                                        description: 'Profile PDF downloaded successfully' 
-                                      })
-                                    } catch (error) {
-                                      console.error('PDF generation failed:', error)
-                                      toast({ 
-                                        title: 'Error', 
-                                        description: 'Failed to generate PDF. Please try again.', 
-                                        variant: 'destructive' 
-                                      })
-                                    }
-                                  }}
-                                >
-                                  <Download className="h-4 w-4 mr-2" />
-                                  Download
-                                </Button>
-                              </div>
-                              
-                              <Separator orientation="vertical" className="h-6" />
-                              
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setRightActiveTab('notes')}
-                                >
-                                  <StickyNote className="h-4 w-4 mr-2" />
-                                  Add Note
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setEmailComposerOpen(true)}
-                                >
-                                  <Mail className="h-4 w-4 mr-2" />
-                                  Send Email
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setScheduleOpen(true)}
-                                >
-                                  <Calendar className="h-4 w-4 mr-2" />
-                                  Schedule Interview
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
+                                    </dl>
                         </CardContent>
                       </Card>
 
