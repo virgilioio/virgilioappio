@@ -108,37 +108,6 @@ export function IndependentCandidateProfileSheet({
     }
   }
 
-  // Email Reply/Forward handlers
-  const handleEmailReply = (email: EmailHistoryCardEmail) => {
-    const isReceived = email.direction === 'received'
-    setEmailComposerMode('reply')
-    setEmailComposerTo(isReceived ? email.from_address : email.to_addresses[0])
-    setEmailComposerSubject(getReplySubject(email.subject))
-    setEmailComposerBody(formatQuotedReply(email))
-    setEmailComposerCc(email.cc_addresses?.join(', ') || undefined)
-    setEmailComposerReplyToId(email.id)
-    setEmailComposerOpen(true)
-  }
-
-  const handleEmailForward = (email: EmailHistoryCardEmail) => {
-    setEmailComposerMode('forward')
-    setEmailComposerTo('')
-    setEmailComposerSubject(getForwardSubject(email.subject))
-    setEmailComposerBody(formatForwardedMessage(email))
-    setEmailComposerCc(undefined)
-    setEmailComposerReplyToId(email.id)
-    setEmailComposerOpen(true)
-  }
-
-  const resetEmailComposer = () => {
-    setEmailComposerMode('compose')
-    setEmailComposerSubject(undefined)
-    setEmailComposerBody(undefined)
-    setEmailComposerTo(undefined)
-    setEmailComposerCc(undefined)
-    setEmailComposerReplyToId(undefined)
-    setEmailComposerOpen(false)
-  }
 
   useEffect(() => {
     if (open) setActiveTab('overview')
