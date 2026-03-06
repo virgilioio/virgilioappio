@@ -163,12 +163,22 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
 
       return request
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey })
       queryClient.invalidateQueries({ queryKey: ['offer-letters'] })
       queryClient.invalidateQueries({ queryKey: ['pending-activities'] })
+      queryClient.invalidateQueries({ queryKey: ['activity-feed'] })
       window.dispatchEvent(new CustomEvent('refetch-offer-letters'))
       toast({ title: 'Approval requested', description: 'The offer approval process has been initiated.' })
+      logActivity({
+        activityType: 'approval_requested',
+        title: 'Approval requested',
+        description: 'Offer approval process initiated',
+        entityType: 'candidate',
+        entityId: variables.candidateId,
+        organizationId: organizationId || undefined,
+        metadata: { jobId: variables.jId, offerLetterId: variables.offerId },
+      })
     },
     onError: (error) => {
       console.error('Request approval error:', error)
