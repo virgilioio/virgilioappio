@@ -430,7 +430,7 @@ export default function AcceptInvite() {
           <CardTitle className="text-2xl font-poppins text-text-primary">You're Invited!</CardTitle>
           <CardDescription className="text-text-secondary">
             Join <strong className="text-text-primary">{invitationData.organization_name}</strong> as a{' '}
-            <strong className="text-text-primary">{invitationData.member_role.replace('_', ' ')}</strong>
+            <strong className="text-text-primary">{invitationData.system_role === 'admin' ? 'Admin' : invitationData.system_role === 'member' ? 'Member' : invitationData.member_role.replace('_', ' ')}</strong>
           </CardDescription>
         </CardHeader>
         
