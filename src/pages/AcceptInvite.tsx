@@ -14,8 +14,7 @@ import { GoGioLogo } from '@/components/GoGioLogo'
 interface InvitationData {
   member_id: string
   organization_id: string
-  member_role: string // legacy from RPC
-  system_role?: string
+  system_role: string
   organization_name: string
   invite_email: string
   is_valid: boolean
