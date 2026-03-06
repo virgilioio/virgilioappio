@@ -29,8 +29,7 @@ export function MembersTab() {
   const parentOrgId = currentOrg?.parent_organization_id || organizationId
   const tenantId = currentOrg?.tenant_id
 
-  const isPayingRole = (r: 'admin' | 'recruiter' | 'hiring_manager' | 'interviewer') =>
-    r === 'admin'
+  const isPayingRole = (r: string) => r === 'admin'
 
   const [tab, setTab] = useState<'members' | 'collaborators'>('members')
 
