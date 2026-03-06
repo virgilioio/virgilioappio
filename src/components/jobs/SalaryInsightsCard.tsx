@@ -104,13 +104,7 @@ export function SalaryInsightsCard({
     const maxSalary = Math.max(...displaySalaries);
     const avgSalary = displaySalaries.reduce((sum, s) => sum + s, 0) / displaySalaries.length;
 
-    // Standard deviation
-    const variance = displaySalaries.reduce((sum, s) => sum + Math.pow(s - avgSalary, 2), 0) / displaySalaries.length;
-    let stddev = Math.sqrt(variance);
-    // If stddev is 0 (all same salary), use 10% of mean for a visible curve
-    if (stddev === 0) stddev = avgSalary * 0.1 || 1;
-
-    const curveData = generateBellCurve(avgSalary, stddev, minSalary, maxSalary);
+    const curveData = generateKDE(displaySalaries);
 
     return {
       curveData,
