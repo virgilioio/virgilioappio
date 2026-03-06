@@ -1,23 +1,39 @@
 
 
-# Fix: `check_org_hierarchy_role_access` still references `member_role`
+# System Roles Migration — Completed Phases 1-3
 
-## Root Cause
+## Architecture Change
+- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
+- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-The DB function `check_org_hierarchy_role_access` contains:
-```sql
-SELECT organization_id, member_role::text INTO user_org_id, user_role
-FROM public.members
-WHERE user_id = current_user_id AND user_status = 'active'
-```
+## Completed
 
-The `member_role` column was dropped in Phase 4, but this function was not updated. It's called by the `jobs_select_consolidated`, `jobs_update_consolidated`, and `jobs_insert_consolidated` RLS policies, which is why job fetches fail with `column m.member_role does not exist`.
+### Phase 1 — Database
+- ✅ Created `system_role` enum (`admin`, `member`)
+- ✅ Added `system_role` column to `members` table
+- ✅ Migrated data: `admin` → `admin`, all others → `member`
+- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
+- ✅ Updated `check_tenant_member_role` to use `system_role`
+- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
+- ✅ Updated `audit_member_role_change` trigger
 
-## Fix
+### Phase 2 — Frontend Permissions
+- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
+- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
+- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
+- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
 
-Single DB migration to replace `check_org_hierarchy_role_access`:
-- Change `member_role::text` to `system_role::text`
-- Update the role hierarchy logic: `system_role = 'admin'` gets full access; `system_role = 'member'` gets access when `_required_role` is `'recruiter'`, `'hiring_manager'`, or `'interviewer'` (any non-admin role)
+### Phase 3 — UI Updates
+- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
+- ✅ Updated `Dashboard` — sourcing panel for admin+ only
+- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
+- ✅ Updated `BillingGuard` — members (non-admin) never blocked
+- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
+- ✅ Updated `Find` page RoleGate
+- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
 
-This is the only change needed — no frontend changes required.
-
+## Phase 4 — Remaining Cleanup (Future)
+- Drop `member_role` column from `members` table
+- Drop old `member_role` enum type
+- Update `MemberInviteSheet` role picker to only offer Admin/Member
+- Update RLS policies that still reference `member_role` directly (not via helper functions)
