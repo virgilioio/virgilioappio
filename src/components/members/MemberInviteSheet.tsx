@@ -82,6 +82,8 @@ export function MemberInviteSheet({
   const selectedRole = watch("role")
   const seatsPreview = useSeatsPreview(selectedRole as any)
 
+  const isEditing = !!member
+
   useEffect(() => {
     if (!isOpen) {
       reset()
@@ -90,6 +92,13 @@ export function MemberInviteSheet({
       setInvitedEmail("")
     }
   }, [isOpen, reset])
+
+  useEffect(() => {
+    if (member && isOpen) {
+      setValue('email', member.user_email || member.invited_email || '')
+      setValue('role', member.system_role || '')
+    }
+  }, [member, isOpen, setValue])
 
   const getRoleOptions = () => {
     const roles = []
@@ -111,11 +120,17 @@ export function MemberInviteSheet({
 
   const onFormSubmit = async (data: FormData) => {
     try {
+      if (isEditing) {
+        await onSubmit({ system_role: data.role as 'admin' | 'member' })
+        onClose()
+        return
+      }
+
       const inviteData = {
         email: data.email.trim(),
         system_role: data.role as 'admin' | 'member',
-        user_type: 'member', // Always default to member
-        organization_id: organizationId, // Use current user's organization
+        user_type: 'member',
+        organization_id: organizationId,
         user_status: 'invited'
       }
 
@@ -239,10 +254,12 @@ export function MemberInviteSheet({
         <SheetContent className="sm:max-w-[540px] flex flex-col">
           <SheetHeader>
             <SheetTitle className="text-h4-mobile font-poppins font-bold text-virgilio-text tracking-page-title">
-              Invite New User<span className="text-purple-period">.</span>
+              {isEditing ? 'Edit Member' : 'Invite New User'}<span className="text-purple-period">.</span>
             </SheetTitle>
             <SheetDescription className="text-virgilio-muted">
-              Send an invitation to join your organization. The invited user will be added to your current organization context.
+              {isEditing
+                ? 'Update this member\'s role within your organization.'
+                : 'Send an invitation to join your organization. The invited user will be added to your current organization context.'}
             </SheetDescription>
           </SheetHeader>
           
@@ -258,7 +275,7 @@ export function MemberInviteSheet({
                   type="email"
                   placeholder="name@company.com"
                   {...register("email", { required: true })}
-                  disabled={isLoading}
+                  disabled={isLoading || isEditing}
                 />
                 {errors.email && (
                   <p className="text-sm text-destructive">Email is required</p>
@@ -340,7 +357,7 @@ export function MemberInviteSheet({
               form="invite-form"
               disabled={isLoading || !selectedRole}
             >
-              {isLoading ? 'Sending...' : 'Send Invitation'}
+              {isLoading ? 'Saving...' : isEditing ? 'Save Changes' : 'Send Invitation'}
             </Button>
           </SheetFooter>
         </SheetContent>

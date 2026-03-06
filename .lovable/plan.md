@@ -1,45 +1,59 @@
 
 
-# Fix Member Edit Sheet
+# System Roles Migration — Completed Phases 1-5
 
-## Problem
+## Architecture Change
+- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
+- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-The `MemberInviteSheet` component ignores the `member` prop entirely. When editing, it shows "Invite New User" with an empty form instead of pre-filling the member's current role and allowing updates.
+## Completed
 
-## Solution
+### Phase 1 — Database
+- ✅ Created `system_role` enum (`admin`, `member`)
+- ✅ Added `system_role` column to `members` table
+- ✅ Migrated data: `admin` → `admin`, all others → `member`
+- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
+- ✅ Updated `check_tenant_member_role` to use `system_role`
+- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
+- ✅ Updated `audit_member_role_change` trigger
 
-Update `MemberInviteSheet` to detect edit mode (`!!member`) and:
+### Phase 2 — Frontend Permissions
+- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
+- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
+- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
+- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
 
-1. **Title/description**: Show "Edit Member" instead of "Invite New User"
-2. **Pre-fill form**: Set the role to the member's current `system_role` and email to their email when `member` is provided
-3. **Email field**: Show as read-only (disabled) in edit mode — you can't change a member's email
-4. **Submit handler**: In edit mode, send only `{ system_role: data.role }` (not invite data with `user_status: 'invited'`)
-5. **Button text**: Show "Save Changes" instead of "Send Invitation"
+### Phase 3 — UI Updates
+- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
+- ✅ Updated `Dashboard` — sourcing panel for admin+ only
+- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
+- ✅ Updated `BillingGuard` — members (non-admin) never blocked
+- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
+- ✅ Updated `Find` page RoleGate
+- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
 
-## File to Change
+### Phase 4 — Runtime Hotfixes
+- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
+- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
+- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
+- ✅ Updated `validate_invite_token` — returns `system_role`
+- ✅ Updated `accept_invitation` — uses `system_role`
 
-| File | Change |
-|---|---|
-| `src/components/members/MemberInviteSheet.tsx` | Add edit mode detection, pre-fill form via `useEffect` when `member` changes, adjust title/description/button text, modify `onFormSubmit` to send update data in edit mode |
+### Phase 5 — Complete Cleanup
+- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
+- ✅ Updated `admin_manage_member` — updates `system_role` column
+- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
+- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
+- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
+- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
+- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
+- ✅ Updated `diagnose_user_auth` — reports `system_role`
+- ✅ Updated `audit_platform_admin_access` — returns `system_role`
+- ✅ Updated `debug_user_permissions` — returns `system_role`
+- ✅ Renamed `invitations.member_role` → `invitations.system_role`
+- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
 
-## Key Detail
-
-The `useEffect` that resets the form on close (line 85-92) already runs on `isOpen` change. A second `useEffect` will set form values when `member` changes:
-
-```typescript
-useEffect(() => {
-  if (member && isOpen) {
-    setValue('email', member.user_email || member.invited_email || '')
-    setValue('role', member.system_role || '')
-  }
-}, [member, isOpen, setValue])
-```
-
-In `onFormSubmit`, when `isEditing`:
-```typescript
-await onSubmit({ system_role: data.role })
-onClose()
-```
-
-No other files need changes — `MembersTab.tsx` already passes the member and calls `updateMember` in its `handleEditSubmit`.
-
+## Phase 6 — Future (Optional)
+- Drop `member_role` column from `members` table (already dropped)
+- Drop old `member_role` enum type
+- Update `MemberInviteSheet` role picker to only offer Admin/Member
