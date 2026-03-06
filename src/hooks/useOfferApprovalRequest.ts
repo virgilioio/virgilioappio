@@ -229,12 +229,25 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
         if (reqError) throw reqError
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey })
       queryClient.invalidateQueries({ queryKey: ['offer-letters'] })
       queryClient.invalidateQueries({ queryKey: ['pending-activities'] })
+      queryClient.invalidateQueries({ queryKey: ['activity-feed'] })
       window.dispatchEvent(new CustomEvent('refetch-offer-letters'))
       toast({ title: 'Approved', description: 'You have approved this offer.' })
+      if (approvalRequest) {
+        const step = approvalRequest.steps.find(s => s.id === variables.stepId)
+        logActivity({
+          activityType: 'approval_approved',
+          title: 'Approval step approved',
+          description: step ? `Step ${step.step_order} approved by ${step.approver_name}` : 'Approval step approved',
+          entityType: 'candidate',
+          entityId: approvalRequest.candidate_id,
+          organizationId: approvalRequest.organization_id,
+          metadata: { jobId: approvalRequest.job_id, offerLetterId: approvalRequest.offer_letter_id, stepOrder: step?.step_order, notes: variables.notes },
+        })
+      }
     },
     onError: (error) => {
       console.error('Approve step error:', error)
