@@ -40,7 +40,7 @@ async function authenticateUser(req: Request, corsHeaders: Record<string, string
     .select(`
       tenant_id,
       organization_id,
-      member_role,
+      system_role,
       user_type,
       tenants!members_tenant_id_fkey (
         id,
