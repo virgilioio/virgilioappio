@@ -133,6 +133,13 @@ export default function Candidates() {
     }
   }
 
+  // Redirect non-recruiter members away from candidates page
+  useEffect(() => {
+    if (!rolesLoading && !isPrivileged && !hasRecruiterRole) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [rolesLoading, isPrivileged, hasRecruiterRole, navigate])
+
   if (error) {
     return (
       <AuthGate>
