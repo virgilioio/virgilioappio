@@ -12,6 +12,7 @@ import { Section } from '@/components/layout/Section'
 import { useOrgContext } from '@/contexts/OrgContext'
 import { WorkspaceProvisioningLoader } from '@/components/onboarding/WorkspaceProvisioningLoader'
 import { useSourcingProjects } from '@/hooks/useSourcingProjects'
+import { useUserJobRoles } from '@/hooks/useUserJobRoles'
 
 export default function Dashboard() {
   const { profile, isLoading } = useUserProfile()
