@@ -196,7 +196,7 @@ export default function AcceptInvite() {
           
           toast({
             title: 'Welcome back to Virgilio!',
-            description: `You've successfully joined ${invitationData.organization_name} as ${edgeFunctionResult.result.member_role.replace('_', ' ')}.`,
+            description: `You've successfully joined ${invitationData.organization_name} as ${edgeFunctionResult.result.system_role === 'admin' ? 'Admin' : 'Member'}.`,
             variant: 'default'
           });
 
