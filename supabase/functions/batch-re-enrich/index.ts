@@ -64,7 +64,7 @@ serve(async (req) => {
     });
   }
 
-  // Auth: accept service role key OR valid JWT
+  // Auth: accept service role key OR valid authenticated user
   const authHeader = req.headers.get('Authorization') || '';
   const apiKey = req.headers.get('apikey') || '';
   const isServiceRole = apiKey === SUPABASE_SERVICE_ROLE_KEY || authHeader === `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`;
@@ -80,14 +80,14 @@ serve(async (req) => {
     const supabaseAuth = createClient(SUPABASE_URL, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsErr } = await supabaseAuth.auth.getClaims(token);
-    if (claimsErr || !claimsData?.claims) {
+    const { data: userData, error: userErr } = await supabaseAuth.auth.getUser();
+    if (userErr || !userData?.user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    console.log(`[batch-re-enrich] Authenticated user: ${userData.user.email}`);
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
