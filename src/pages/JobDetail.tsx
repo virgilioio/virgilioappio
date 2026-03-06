@@ -1630,6 +1630,7 @@ export default function JobDetail() {
                 </TabsContent>
 
                 {/* Job Setup Tab */}
+                {!isRestrictedViewer && (
                 <TabsContent value="job-setup">
                   <JobSetupPanel
                     jobId={id!}
@@ -1642,6 +1643,7 @@ export default function JobDetail() {
                     onArchive={handleArchiveJob}
                   />
                 </TabsContent>
+                )}
               </div>
             </div>
           )}
