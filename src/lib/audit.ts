@@ -52,7 +52,7 @@ export async function logAuditEvent(params: AuditLogParams): Promise<string | nu
  * Common audit event types
  */
 export const AuditEventTypes = {
-  MEMBER_ROLE_CHANGED: 'system_role_changed',
+  SYSTEM_ROLE_CHANGED: 'system_role_changed',
   OFFER_LETTER_STATUS_CHANGED: 'offer_letter_status_changed',
   INVITATION_ACCEPTED: 'invitation_accepted',
   ATTACHMENT_DOWNLOADED: 'attachment_downloaded',

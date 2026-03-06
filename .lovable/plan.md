@@ -1,64 +1,59 @@
 
 
-# Audit: Remaining `member_role` References
+# System Roles Migration — Completed Phases 1-5
 
-The column is dropped from `members`, but references persist in **10 DB functions**, **2 RLS policies** (indirectly clean), **3 frontend files**, and the `invitations` table still has a `member_role` text column.
+## Architecture Change
+- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
+- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-## Database Functions (10 functions still reference `member_role`)
+## Completed
 
-### Critical — will break at runtime if called
+### Phase 1 — Database
+- ✅ Created `system_role` enum (`admin`, `member`)
+- ✅ Added `system_role` column to `members` table
+- ✅ Migrated data: `admin` → `admin`, all others → `member`
+- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
+- ✅ Updated `check_tenant_member_role` to use `system_role`
+- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
+- ✅ Updated `audit_member_role_change` trigger
 
-| Function | Issue | Fix |
-|---|---|---|
-| `admin_insert_first_member` | Inserts into `member_role` column (dropped) | Remove `member_role` from INSERT; ensure `system_role` is set |
-| `admin_manage_member` | Updates `member_role` column via cast `::public.member_role` (enum dropped) | Update to `system_role` column |
-| `audit_member_role_change` (trigger) | Reads `OLD.member_role` / `NEW.member_role` | Remove `member_role` refs; log only `system_role` |
-| `log_member_activation` (trigger) | Reads `NEW.member_role` in metadata | Change to `NEW.system_role` |
-| `get_tenant_billable_seat_count` | Reads `m.member_role IN ('admin','recruiter')` | Change to `m.system_role IN ('admin','member')` |
-| `duplicate_job_posting` | Reads `m.member_role IN ('admin','recruiter')` | Change to `m.system_role IN ('admin','member')` |
-| `user_can_manage_org_members` | Reads `m.member_role = 'admin'` | Change to `m.system_role = 'admin'` |
-| `diagnose_user_auth` | Reads `m.member_role` in SELECT | Change to `m.system_role` |
-| `audit_platform_admin_access` | Reads `m.member_role::text` | Change to `m.system_role::text` |
-| `debug_user_permissions` | Calls `get_member_role()` which is clean internally, but return column is named `member_role` | Rename output alias to `system_role` |
+### Phase 2 — Frontend Permissions
+- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
+- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
+- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
+- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
 
-### RLS Policies — clean
-The `candidates_insert_consolidated` and `candidates_update_consolidated` policies call `check_tenant_member_role()`, which internally uses `system_role`. No changes needed.
+### Phase 3 — UI Updates
+- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
+- ✅ Updated `Dashboard` — sourcing panel for admin+ only
+- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
+- ✅ Updated `BillingGuard` — members (non-admin) never blocked
+- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
+- ✅ Updated `Find` page RoleGate
+- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
 
-## Frontend (3 files with legacy references)
+### Phase 4 — Runtime Hotfixes
+- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
+- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
+- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
+- ✅ Updated `validate_invite_token` — returns `system_role`
+- ✅ Updated `accept_invitation` — uses `system_role`
 
-| File | Issue | Fix |
-|---|---|---|
-| `src/lib/invitationReconciliation.ts` | Lines 57, 69: fallback `result.member_role` | Remove fallback; use `result.system_role` directly |
-| `src/pages/AcceptInvite.tsx` | Line 68: fallback `invitation.member_role` | Remove fallback; use `invitation.system_role` |
-| `src/components/jobs/stage-config/TeamTab.tsx` | Line 43: uses key name `member_role` in object literal (value derived from `system_role`) | Rename key to `system_role` or keep as display-only field name |
+### Phase 5 — Complete Cleanup
+- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
+- ✅ Updated `admin_manage_member` — updates `system_role` column
+- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
+- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
+- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
+- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
+- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
+- ✅ Updated `diagnose_user_auth` — reports `system_role`
+- ✅ Updated `audit_platform_admin_access` — returns `system_role`
+- ✅ Updated `debug_user_permissions` — returns `system_role`
+- ✅ Renamed `invitations.member_role` → `invitations.system_role`
+- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
 
-`src/lib/audit.ts` line 55: cosmetic — constant is `MEMBER_ROLE_CHANGED` but value is `'system_role_changed'`. Optional rename.
-
-## Database Schema
-
-The `invitations` table still has a `member_role` text column. This should either be renamed to `system_role` or dropped if unused. Need to check if any function/frontend reads it.
-
-## `types.ts` (auto-generated)
-
-`src/integrations/supabase/types.ts` has `member_role` in the `invitations` table type and in function return types. This file auto-regenerates after DB changes — it will update automatically once the functions and `invitations` schema are fixed.
-
-## Implementation Plan
-
-### Part 1 — DB Migration (single migration)
-
-1. Update all 10 functions to replace `member_role` with `system_role`
-2. For trigger functions (`audit_member_role_change`, `log_member_activation`), ensure they only reference existing columns
-3. Rename `invitations.member_role` to `invitations.system_role` (or add `system_role` column and drop `member_role`)
-4. Update `debug_user_permissions` return type alias
-
-### Part 2 — Frontend (3 files)
-
-1. `invitationReconciliation.ts`: Remove `member_role` fallbacks
-2. `AcceptInvite.tsx`: Remove `member_role` fallback
-3. `TeamTab.tsx`: Rename object key (cosmetic)
-4. `audit.ts`: Rename constant key (cosmetic)
-
-### Execution
-
-Single DB migration + 4 frontend file edits. No edge function changes needed (already migrated).
-
+## Phase 6 — Future (Optional)
+- Drop `member_role` column from `members` table (already dropped)
+- Drop old `member_role` enum type
+- Update `MemberInviteSheet` role picker to only offer Admin/Member

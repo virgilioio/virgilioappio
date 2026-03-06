@@ -63,7 +63,6 @@ export async function reconcilePendingInvitation(userId: string): Promise<Reconc
       log.warn('User not found during reconciliation');
     }
 
-    // Cast to our interface - RPC may or may not include system_role
     const typedResult: ReconciliationResult = {
       ...result,
       system_role: (result as any).system_role || result.member_role || 'member',

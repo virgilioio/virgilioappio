@@ -1763,8 +1763,8 @@ export type Database = {
           invite_expires_at: string
           invite_token: string | null
           invited_by: string | null
-          member_role: string
           organization_id: string
+          system_role: string
           updated_at: string | null
           used_at: string | null
         }
@@ -1775,8 +1775,8 @@ export type Database = {
           invite_expires_at?: string
           invite_token?: string | null
           invited_by?: string | null
-          member_role: string
           organization_id: string
+          system_role: string
           updated_at?: string | null
           used_at?: string | null
         }
@@ -1787,8 +1787,8 @@ export type Database = {
           invite_expires_at?: string
           invite_token?: string | null
           invited_by?: string | null
-          member_role?: string
           organization_id?: string
+          system_role?: string
           updated_at?: string | null
           used_at?: string | null
         }
@@ -5325,8 +5325,8 @@ export type Database = {
         Returns: {
           has_member_record: boolean
           issue_description: string
-          member_role: string
           organization_id: string
+          system_role: string
           user_email: string
           user_id: string
           user_type: string
@@ -5406,8 +5406,8 @@ export type Database = {
           can_see_all_orgs: boolean
           current_user_id: string
           member_count: number
-          member_role: string
           organization_id: string
+          system_role: string
           user_type: string
         }[]
       }

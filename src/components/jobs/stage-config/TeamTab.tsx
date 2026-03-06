@@ -40,7 +40,7 @@ export function TeamTab({ jhsId, jobId, organizationId }: TeamTabProps) {
         ? `${member.user_first_name || ''} ${member.user_last_name || ''}`.trim() || member.user_email || 'Unnamed'
         : 'Unknown User',
       member_email: member?.user_email || 'No email',
-      member_role: member?.system_role === 'admin' ? 'Admin' : 'Member',
+      system_role: member?.system_role === 'admin' ? 'Admin' : 'Member',
       user_id: member?.user_id || null
     }
   })
@@ -282,7 +282,7 @@ export function TeamTab({ jhsId, jobId, organizationId }: TeamTabProps) {
                         <p className="text-xs text-muted-foreground truncate">{interviewer.member_email}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <Badge variant="outline" className="text-xs">
-                            {interviewer.member_role}
+                            {interviewer.system_role}
                           </Badge>
                           {showWarning && (
                             <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30">
