@@ -28,6 +28,7 @@ const EXTRACTION_TOOL = {
           description: 'Comprehensive professional profile in Spanish (200-300 words) with rich markdown formatting. Use **bold** for headings/key skills, *italic* for emphasis, bullet lists. Structure: opening statement, experience highlights, key competencies, notable achievements.'
         },
         current_job_title: { type: 'string', description: 'Most recent job title exactly as written on resume' },
+        standardized_title: { type: 'string', description: 'Standardized English job title mapped to a common industry equivalent. Translate non-English titles, expand abbreviations. Examples: "Ingeniero de Calidad" → "Quality Engineer", "SDR" → "Sales Development Representative", "Gerente de Ventas" → "Sales Manager", "Jefe de Operaciones" → "Operations Manager"' },
         seniority_level: {
           type: 'string',
           enum: ['entry', 'junior', 'mid', 'senior', 'lead', 'director', 'vp', 'c_level'],
@@ -52,7 +53,8 @@ const EXTRACTION_TOOL = {
               is_current: { type: 'boolean' },
               location: { type: 'string' },
               description: { type: 'string', description: 'Key responsibilities and achievements' },
-              skills_used: { type: 'array', items: { type: 'string' } }
+              skills_used: { type: 'array', items: { type: 'string' } },
+              standardized_title: { type: 'string', description: 'Standardized English job title for this position. Translate non-English titles, expand abbreviations. E.g. "Coordinador de Producción" → "Production Coordinator"' }
             },
             required: ['job_title', 'company_name']
           }
@@ -121,7 +123,12 @@ Detailed Structure:
 ---
 **COMPETENCIAS CLAVE** (Technical, Domain, Soft skills)
 
-For work_experience: Extract ALL positions. Infer company_industry and company_size_category when possible.
+CRITICAL RULES:
+- **functional_area**: ALWAYS infer from job titles and responsibilities. Examples: "Sales", "Engineering", "Marketing", "Operations", "Finance", "HR", "Product", "Design", "Legal", "Quality", "Manufacturing". Never leave empty.
+- **specialization**: ALWAYS infer a specific sub-area. Examples: "Frontend Development", "Enterprise Sales", "Content Marketing", "Quality Assurance", "Process Engineering". Never leave empty.
+- **standardized_title**: ALWAYS provide a standardized English job title. Translate non-English titles (e.g. "Ingeniero de Calidad" → "Quality Engineer"), expand abbreviations (e.g. "SDR" → "Sales Development Representative"), and normalize to common industry titles. Do the same for each work experience entry.
+
+For work_experience: Extract ALL positions. Infer company_industry and company_size_category when possible. Always include standardized_title for each position.
 For skills: Extract 10-20 skills. Mark core skills as is_primary=true (max 5-7 primary).
 For seniority_level: Infer from most recent title and years of experience.
 For years_in_leadership: Count years where title contains Manager, Director, VP, Chief, Head, Lead.
@@ -271,10 +278,12 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
     const extracted = JSON.parse(toolCall.function.arguments);
     console.log(`[enrich] Extracted: ${extracted.work_experience?.length || 0} jobs, ${extracted.education?.length || 0} edu, ${extracted.certifications?.length || 0} certs, ${extracted.skills?.length || 0} skills`);
 
-    // 2. Standardize title
-    const standardizedTitle = extracted.current_job_title 
+    // 2. Standardize title: prefer AI-generated, fallback to DB lookup
+    const aiStandardizedTitle = extracted.standardized_title || null;
+    const dbStandardizedTitle = extracted.current_job_title 
       ? await standardizeTitle(supabase, extracted.current_job_title)
       : null;
+    const finalStandardizedTitle = aiStandardizedTitle || dbStandardizedTitle;
 
     // 3. Standardize skills
     const rawSkillNames = (extracted.skills || []).map((s: any) => s.name).filter(Boolean);
@@ -287,9 +296,11 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
       duration_months: calculateDurationMonths(w.start_date, w.end_date),
     }));
 
-    // 5. Standardize work experience titles (batch)
+    // 5. Standardize work experience titles: prefer AI-generated, fallback to DB lookup
     for (const w of workExperience) {
-      w.standardized_title = await standardizeTitle(supabase, w.job_title);
+      const aiTitle = w.standardized_title || null;
+      const dbTitle = aiTitle ? null : await standardizeTitle(supabase, w.job_title);
+      w.standardized_title = aiTitle || dbTitle;
     }
 
     // 6. Compute derived metrics
@@ -303,7 +314,7 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
       skills: rawSkillNames,
       standardized_skills: standardizedSkills,
       current_job_title: extracted.current_job_title || null,
-      standardized_title: standardizedTitle,
+      standardized_title: finalStandardizedTitle,
       seniority_level: extracted.seniority_level || null,
       functional_area: extracted.functional_area || null,
       specialization: extracted.specialization || null,
