@@ -99,9 +99,16 @@ export function useScorecardsConfiguration(jhsId: string | null) {
         salary_config: (q.salary_config as unknown) as SalaryConfig | undefined
       }))
 
+      // Get visibility from template data (re-fetch if we just created it)
+      let visibility: ScorecardVisibility = 'private'
+      if (templateData?.visibility) {
+        visibility = templateData.visibility as ScorecardVisibility
+      }
+
       setTemplate({
         id: templateId,
         job_hiring_stage_id: jhsId,
+        visibility,
         questions: formattedQuestions
       })
     } catch (err) {
