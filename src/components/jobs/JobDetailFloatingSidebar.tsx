@@ -8,6 +8,7 @@ interface JobDetailFloatingSidebarProps {
   currentTab: string
   onTabChange: (tab: string) => void
   jobTitle: string
+  isRestrictedViewer?: boolean
   className?: string
 }
 
