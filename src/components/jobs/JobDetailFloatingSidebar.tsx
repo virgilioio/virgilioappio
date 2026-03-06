@@ -43,6 +43,10 @@ export function JobDetailFloatingSidebar({
     }
   ]
 
+  const tabs = isRestrictedViewer
+    ? allTabs.filter(tab => !restrictedTabIds.includes(tab.id))
+    : allTabs
+
   return (
     <div className={cn("w-20 flex-shrink-0 p-2 flex justify-center", className)}>
       <div className="bg-card border border-border rounded-full shadow-lg h-fit py-6 px-3 flex flex-col items-center">
