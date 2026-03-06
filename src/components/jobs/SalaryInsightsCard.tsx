@@ -19,19 +19,26 @@ interface SalaryInsightsCardProps {
   className?: string;
 }
 
-/** Generate ~40 points along a normal distribution curve */
-function generateBellCurve(mean: number, stddev: number, min: number, max: number, points = 40) {
-  const data: { salary: number; density: number }[] = [];
-  const range = max - min;
-  const padding = range * 0.15;
+/** Generate a smooth KDE (Kernel Density Estimation) curve from actual salary data points */
+function generateKDE(salaries: number[], points = 60) {
+  const min = Math.min(...salaries);
+  const max = Math.max(...salaries);
+  const range = max - min || 1;
+  const bandwidth = range * 0.15 || 1;
+  const padding = range * 0.2;
   const start = min - padding;
   const end = max + padding;
   const step = (end - start) / (points - 1);
 
+  const data: { salary: number; density: number }[] = [];
   for (let i = 0; i < points; i++) {
     const x = start + i * step;
-    const exponent = -0.5 * Math.pow((x - mean) / stddev, 2);
-    const density = (1 / (stddev * Math.sqrt(2 * Math.PI))) * Math.exp(exponent);
+    let density = 0;
+    for (const s of salaries) {
+      const z = (x - s) / bandwidth;
+      density += Math.exp(-0.5 * z * z);
+    }
+    density /= salaries.length * bandwidth * Math.sqrt(2 * Math.PI);
     data.push({ salary: Math.round(x), density });
   }
   return data;
