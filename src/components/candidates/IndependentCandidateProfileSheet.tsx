@@ -349,15 +349,15 @@ export function IndependentCandidateProfileSheet({
             </SheetHeader>
 
             <div className="flex-1 overflow-y-auto p-6">
-              {loading ? (
+               {loading ? (
                 <div className="text-text-secondary text-sm">Loading profile…</div>
               ) : !candidate ? (
                 <div className="text-text-secondary text-sm">No data available.</div>
               ) : (
-                <div className="flex flex-col lg:flex-row gap-6">
+                <div>
                   {/* Mobile Job Selector - show on small screens */}
                   {candidateId && (
-                    <div className="lg:hidden">
+                    <div className="lg:hidden mb-6">
                       <MobileJobSelector
                         candidateId={candidateId}
                         currentJobId=""
@@ -366,18 +366,6 @@ export function IndependentCandidateProfileSheet({
                     </div>
                   )}
                   
-                  {/* Job Associations Sidebar - desktop only */}
-                  {candidateId && (
-                    <CandidateJobSidebar
-                      candidateId={candidateId}
-                      currentJobId=""
-                      onJobSelect={handleJobSelect}
-                      className="hidden lg:block"
-                    />
-                  )}
-                  
-                  {/* Main Content */}
-                  <div className="flex-1 min-w-0">
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'overview' | 'resume' | 'comments')}>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Left column (50%) */}
