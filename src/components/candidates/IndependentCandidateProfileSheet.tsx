@@ -389,7 +389,7 @@ export function IndependentCandidateProfileSheet({
 
 
                       {activeTab === 'overview' && (
-                        <Accordion type="multiple" defaultValue={['summary', 'experience', 'education', 'certifications', 'skills']} className="space-y-4">
+                        <Accordion type="multiple" defaultValue={['experience', 'education', 'certifications']} className="space-y-4">
 
                           {/* AI Profile Summary Banner */}
                           <Collapsible defaultOpen className="rounded-lg bg-pastel-purple/30 border border-pastel-purple/50">
