@@ -1,6 +1,6 @@
 
 import { useMemo, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { MetricCard } from '@/components/ui/metric-card';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Switch } from '@/components/ui/switch';
@@ -18,11 +18,23 @@ interface SalaryInsightsCardProps {
   jobCurrency?: string;
   className?: string;
 }
-interface SalaryBand {
-  min: number;
-  max: number;
-  label: string;
-  count: number;
+
+/** Generate ~40 points along a normal distribution curve */
+function generateBellCurve(mean: number, stddev: number, min: number, max: number, points = 40) {
+  const data: { salary: number; density: number }[] = [];
+  const range = max - min;
+  const padding = range * 0.15;
+  const start = min - padding;
+  const end = max + padding;
+  const step = (end - start) / (points - 1);
+
+  for (let i = 0; i < points; i++) {
+    const x = start + i * step;
+    const exponent = -0.5 * Math.pow((x - mean) / stddev, 2);
+    const density = (1 / (stddev * Math.sqrt(2 * Math.PI))) * Math.exp(exponent);
+    data.push({ salary: Math.round(x), density });
+  }
+  return data;
 }
 
 export function SalaryInsightsCard({
@@ -31,10 +43,8 @@ export function SalaryInsightsCard({
   className
 }: SalaryInsightsCardProps) {
   const [isOpen, setIsOpen] = useState(true);
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [showMonthly, setShowMonthly] = useState(true);
 
-  // Move utility functions above useMemo to fix temporal dead zone error
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -43,150 +53,64 @@ export function SalaryInsightsCard({
       maximumFractionDigits: 0
     }).format(value);
   };
+
   const formatCurrencyShort = (value: number) => {
     if (value >= 1000) {
-      return `${jobCurrency}${(value / 1000).toFixed(0)}k`;
+      return `${jobCurrency} ${(value / 1000).toFixed(0)}k`;
     }
     return formatCurrency(value);
   };
 
-  // Custom tooltip component
-  const CustomTooltip = ({
-    active,
-    payload,
-    label
-  }: any) => {
+  const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
-      const count = payload[0].value;
-      return <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
-          <p className="font-medium text-foreground">{label}</p>
-          <p className="text-primary">
-            {count} candidate{count !== 1 ? 's' : ''}
-          </p>
-        </div>;
+      const salary = payload[0].payload.salary;
+      return (
+        <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
+          <p className="font-medium text-foreground">{formatCurrency(salary)}</p>
+          <p className="text-xs text-muted-foreground">Salary estimate</p>
+        </div>
+      );
     }
     return null;
   };
 
   const salaryData = useMemo(() => {
-    // Filter candidates with salary data
-    const candidatesWithSalary = candidates.filter(candidate => candidate.salary_amount && candidate.salary_amount > 0);
-    if (candidatesWithSalary.length === 0) {
-      return null;
-    }
+    const candidatesWithSalary = candidates.filter(c => c.salary_amount && c.salary_amount > 0);
+    if (candidatesWithSalary.length === 0) return null;
 
-    // Normalize all salaries to annual amounts first
-    const annualSalaries = candidatesWithSalary.map(candidate => {
-      let annualAmount = candidate.salary_amount!;
-
-      // Convert to annual based on period
-      switch (candidate.salary_period) {
-        case 'hourly':
-          annualAmount = annualAmount * 40 * 52; // 40 hours/week * 52 weeks/year
-          break;
-        case 'monthly':
-          annualAmount = annualAmount * 12;
-          break;
-        case 'annually':
-        default:
-          // Already annual
-          break;
+    // Normalize to annual
+    const annualSalaries = candidatesWithSalary.map(c => {
+      let annual = c.salary_amount!;
+      switch (c.salary_period) {
+        case 'hourly': annual = annual * 40 * 52; break;
+        case 'monthly': annual = annual * 12; break;
+        default: break;
       }
-      return annualAmount;
+      return annual;
     });
 
-    // Convert to display currency (monthly or annual)
-    const displaySalaries = showMonthly 
-      ? annualSalaries.map(salary => salary / 12)
+    const displaySalaries = showMonthly
+      ? annualSalaries.map(s => s / 12)
       : annualSalaries;
 
-    // Calculate basic stats for display
     const minSalary = Math.min(...displaySalaries);
     const maxSalary = Math.max(...displaySalaries);
-    const avgSalary = displaySalaries.reduce((sum, salary) => sum + salary, 0) / displaySalaries.length;
+    const avgSalary = displaySalaries.reduce((sum, s) => sum + s, 0) / displaySalaries.length;
 
-    // Create salary bands
-    const salaryRange = maxSalary - minSalary;
-    let bandSize: number;
+    // Standard deviation
+    const variance = displaySalaries.reduce((sum, s) => sum + Math.pow(s - avgSalary, 2), 0) / displaySalaries.length;
+    let stddev = Math.sqrt(variance);
+    // If stddev is 0 (all same salary), use 10% of mean for a visible curve
+    if (stddev === 0) stddev = avgSalary * 0.1 || 1;
 
-    // Determine appropriate band size based on salary range and view mode
-    if (showMonthly) {
-      if (salaryRange <= 5000) {
-        bandSize = 1000; // $1k bands for smaller monthly ranges
-      } else if (salaryRange <= 15000) {
-        bandSize = 2000; // $2k bands for medium monthly ranges
-      } else {
-        bandSize = 2500; // $2.5k bands for larger monthly ranges
-      }
-    } else {
-      if (salaryRange <= 50000) {
-        bandSize = 10000; // $10k bands for smaller ranges
-      } else if (salaryRange <= 150000) {
-        bandSize = 20000; // $20k bands for medium ranges
-      } else {
-        bandSize = 25000; // $25k bands for larger ranges
-      }
-    }
+    const curveData = generateBellCurve(avgSalary, stddev, minSalary, maxSalary);
 
-    // If all candidates have the same salary, create a single band
-    if (salaryRange === 0) {
-      const salary = minSalary;
-      return {
-        chartData: [{
-          name: formatCurrency(salary),
-          count: candidatesWithSalary.length
-        }],
-        bands: [{
-          min: salary,
-          max: salary,
-          label: formatCurrency(salary),
-          count: candidatesWithSalary.length
-        }],
-        count: candidatesWithSalary.length,
-        minSalary: Math.round(minSalary),
-        maxSalary: Math.round(maxSalary),
-        avgSalary: Math.round(avgSalary)
-      };
-    }
-
-    // Create salary bands
-    const bands: SalaryBand[] = [];
-    const startSalary = Math.floor(minSalary / bandSize) * bandSize;
-    const endSalary = Math.ceil(maxSalary / bandSize) * bandSize;
-    for (let salary = startSalary; salary < endSalary; salary += bandSize) {
-      const bandMin = salary;
-      const bandMax = salary + bandSize;
-
-      // Count candidates in this band
-      const candidatesInBand = displaySalaries.filter(candidateSalary => candidateSalary >= bandMin && candidateSalary < bandMax).length;
-
-      // Only include bands with candidates (except for the last band which should include the max)
-      if (candidatesInBand > 0 || salary + bandSize >= maxSalary) {
-        // For the last band, include candidates at exactly the max salary
-        const actualCount = salary + bandSize >= maxSalary ? displaySalaries.filter(candidateSalary => candidateSalary >= bandMin && candidateSalary <= bandMax).length : candidatesInBand;
-        if (actualCount > 0) {
-          bands.push({
-            min: bandMin,
-            max: bandMax,
-            label: `${formatCurrencyShort(bandMin)}-${formatCurrencyShort(bandMax)}`,
-            count: actualCount
-          });
-        }
-      }
-    }
-
-    // Format data for chart
-    const chartData = bands.map(band => ({
-      name: band.label,
-      count: band.count
-    }));
     return {
-      chartData,
-      bands,
+      curveData,
       count: candidatesWithSalary.length,
       minSalary: Math.round(minSalary),
       maxSalary: Math.round(maxSalary),
-      avgSalary: Math.round(avgSalary)
+      avgSalary: Math.round(avgSalary),
     };
   }, [candidates, showMonthly]);
 
@@ -194,8 +118,9 @@ export function SalaryInsightsCard({
     return <MetricCard title="Salary Insights" value="No salary data available" icon={<TrendingUp />} tooltip="Add candidate salary expectations to see salary insights" />;
   }
 
-  return <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <div className={`bg-white border border-border rounded-lg p-6 ${className}`}>
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <div className={`bg-background border border-border rounded-lg p-6 ${className}`}>
         <CollapsibleTrigger className="flex items-center justify-between w-full mb-4 hover:opacity-80 transition-opacity cursor-pointer">
           <div className="flex flex-col items-start gap-1">
             <div className="flex items-center gap-2">
@@ -220,8 +145,8 @@ export function SalaryInsightsCard({
                 <span className={`text-sm ${!showMonthly ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
                   Annual
                 </span>
-                <Switch 
-                  checked={showMonthly} 
+                <Switch
+                  checked={showMonthly}
                   onCheckedChange={setShowMonthly}
                   aria-label="Toggle between annual and monthly view"
                 />
@@ -232,53 +157,75 @@ export function SalaryInsightsCard({
             </div>
           </div>
 
-        
           <div className="h-60 w-full overflow-hidden">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart 
-                data={salaryData.chartData} 
-                margin={{
-                  top: 20,
-                  right: 30,
-                  left: 20,
-                  bottom: 30
-                }} 
-                barCategoryGap="20%"
+              <AreaChart
+                data={salaryData.curveData}
+                margin={{ top: 20, right: 30, left: 20, bottom: 10 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="name" tick={{
-                fontSize: 11,
-                fill: 'hsl(var(--muted-foreground))'
-              }} tickLine={false} axisLine={false} height={40} />
-                <YAxis tick={{
-                fontSize: 12,
-                fill: 'hsl(var(--muted-foreground))'
-              }} tickLine={false} axisLine={false} allowDecimals={false} label={{
-                value: 'Candidates',
-                angle: -90,
-                position: 'insideLeft'
-              }} />
+                <defs>
+                  <linearGradient id="salaryGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(267 100% 62%)" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="hsl(267 100% 62%)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis
+                  dataKey="salary"
+                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v) => formatCurrencyShort(v)}
+                  tickCount={5}
+                />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="count" fill="#7e3eff" radius={[4, 4, 0, 0]} maxBarSize={60} />
-              </BarChart>
+                <ReferenceLine
+                  x={salaryData.minSalary}
+                  stroke="hsl(var(--muted-foreground))"
+                  strokeDasharray="4 4"
+                  strokeOpacity={0.5}
+                  label={{ value: 'Low', position: 'top', fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                />
+                <ReferenceLine
+                  x={salaryData.avgSalary}
+                  stroke="hsl(267 100% 62%)"
+                  strokeWidth={2}
+                  label={{ value: 'Average', position: 'top', fill: 'hsl(267 100% 62%)', fontSize: 12, fontWeight: 600 }}
+                />
+                <ReferenceLine
+                  x={salaryData.maxSalary}
+                  stroke="hsl(var(--muted-foreground))"
+                  strokeDasharray="4 4"
+                  strokeOpacity={0.5}
+                  label={{ value: 'High', position: 'top', fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="density"
+                  stroke="hsl(267 100% 62%)"
+                  strokeWidth={2}
+                  fillOpacity={1}
+                  fill="url(#salaryGradient)"
+                />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
 
           <div className="grid grid-cols-3 gap-4 text-center">
             <div className="space-y-1">
               <div className="text-lg font-bold text-foreground">{formatCurrency(salaryData.minSalary)}</div>
-              <div className="text-xs text-muted-foreground">Minimum ({showMonthly ? 'Monthly' : 'Annual'})</div>
+              <div className="text-xs text-muted-foreground">Low ({showMonthly ? 'Monthly' : 'Annual'})</div>
             </div>
             <div className="space-y-1">
-              <div className="text-lg font-bold text-foreground">{formatCurrency(salaryData.avgSalary)}</div>
+              <div className="text-lg font-bold text-accent-foreground">{formatCurrency(salaryData.avgSalary)}</div>
               <div className="text-xs text-muted-foreground">Average ({showMonthly ? 'Monthly' : 'Annual'})</div>
             </div>
             <div className="space-y-1">
               <div className="text-lg font-bold text-foreground">{formatCurrency(salaryData.maxSalary)}</div>
-              <div className="text-xs text-muted-foreground">Maximum ({showMonthly ? 'Monthly' : 'Annual'})</div>
+              <div className="text-xs text-muted-foreground">High ({showMonthly ? 'Monthly' : 'Annual'})</div>
             </div>
           </div>
         </CollapsibleContent>
       </div>
-    </Collapsible>;
+    </Collapsible>
+  );
 }
