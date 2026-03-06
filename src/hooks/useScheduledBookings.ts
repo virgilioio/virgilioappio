@@ -117,7 +117,7 @@ export function useScheduledBookings(status?: BookingStatus, permissions?: Permi
       // Step 1: Get user's accessible job IDs (for recruiters/hiring managers)
       let accessibleJobIds: string[] = []
       
-      if (permissions?.isRecruiter || permissions?.isHiringManager) {
+      if (permissions?.isMember && !permissions?.isAdmin) {
         // Get jobs user is assigned to
         const { data: assignments } = await supabase
           .from('job_assignments')
