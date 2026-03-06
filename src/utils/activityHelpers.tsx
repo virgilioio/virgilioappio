@@ -12,6 +12,10 @@ import {
   RefreshCw,
   Archive,
   Award,
+  Send,
+  X,
+  Undo2,
+  FileText,
   LucideIcon
 } from 'lucide-react';
 
@@ -32,6 +36,12 @@ export function getActivityIcon(activityType: string): React.ReactNode {
     'sourcing_project_updated': RefreshCw,
     'sourcing_project_archived': Archive,
     'scorecard_submitted': Award,
+    'approval_requested': Send,
+    'approval_approved': CheckCircle,
+    'approval_declined': X,
+    'approval_recalled': Undo2,
+    'offer_document_generated': FileText,
+    'offer_sent': Mail,
   };
   
   const Icon = iconMap[activityType] || Briefcase;
@@ -55,6 +65,12 @@ export function getActivityColor(activityType: string): string {
     'sourcing_project_updated': 'hsl(var(--info))',
     'sourcing_project_archived': 'hsl(var(--muted))',
     'scorecard_submitted': 'hsl(var(--primary))',
+    'approval_requested': 'hsl(var(--primary))',
+    'approval_approved': 'hsl(var(--success))',
+    'approval_declined': 'hsl(var(--destructive))',
+    'approval_recalled': 'hsl(var(--warning))',
+    'offer_document_generated': 'hsl(var(--info))',
+    'offer_sent': 'hsl(var(--success))',
   };
   
   return colorMap[activityType] || 'hsl(var(--muted))';

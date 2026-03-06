@@ -12,6 +12,7 @@ import gioFaceEmpty from '@/assets/gio-face-empty.png'
 import { GenerateOfferDialog } from './GenerateOfferDialog'
 import { MinimizableEmailComposer } from './MinimizableEmailComposer'
 import { supabase } from '@/lib/supabaseClient'
+import { logActivity } from '@/lib/activityLogger'
 
 const employmentTypeLabels: Record<string, string> = {
   full_time: 'Full-time', part_time: 'Part-time',
@@ -419,8 +420,16 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
           candidateId={candidateId}
           candidateName={candidate.candidate_name || 'Candidate'}
           onSuccess={() => {
-            // Refetch offer letters to reflect finalized status
             window.dispatchEvent(new CustomEvent('refetch-attachments'))
+            logActivity({
+              activityType: 'offer_document_generated',
+              title: 'Offer document generated',
+              description: `Offer letter document generated for ${candidate?.candidate_name || 'candidate'}`,
+              entityType: 'candidate',
+              entityId: candidateId,
+              organizationId: organizationId || undefined,
+              metadata: { jobId, offerLetterId: offerLetter.id },
+            })
           }}
         />
       )}
@@ -434,7 +443,18 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
       defaultTo={candidate?.email || candidate?.contact_email || ''}
       candidateName={candidate?.candidate_name || 'Candidate'}
       defaultSubject={`Offer Letter - ${job?.title || 'Position'}`}
-      onSuccess={() => setShowEmailComposer(false)}
+      onSuccess={() => {
+        setShowEmailComposer(false)
+        logActivity({
+          activityType: 'offer_sent',
+          title: 'Offer sent',
+          description: `Offer letter sent to ${candidate?.candidate_name || 'candidate'}`,
+          entityType: 'candidate',
+          entityId: candidateId,
+          organizationId: organizationId || undefined,
+          metadata: { jobId, offerLetterId: offerLetter?.id },
+        })
+      }}
     />
     </>
   )

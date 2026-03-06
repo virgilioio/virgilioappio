@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 import { useOfferApprovalChain } from '@/hooks/useOfferApprovalChain'
+import { logActivity } from '@/lib/activityLogger'
 
 export interface ApprovalRequestStep {
   id: string
@@ -162,12 +163,22 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
 
       return request
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey })
       queryClient.invalidateQueries({ queryKey: ['offer-letters'] })
       queryClient.invalidateQueries({ queryKey: ['pending-activities'] })
+      queryClient.invalidateQueries({ queryKey: ['activity-feed'] })
       window.dispatchEvent(new CustomEvent('refetch-offer-letters'))
       toast({ title: 'Approval requested', description: 'The offer approval process has been initiated.' })
+      logActivity({
+        activityType: 'approval_requested',
+        title: 'Approval requested',
+        description: 'Offer approval process initiated',
+        entityType: 'candidate',
+        entityId: variables.candidateId,
+        organizationId: organizationId || undefined,
+        metadata: { jobId: variables.jId, offerLetterId: variables.offerId },
+      })
     },
     onError: (error) => {
       console.error('Request approval error:', error)
@@ -218,12 +229,25 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
         if (reqError) throw reqError
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey })
       queryClient.invalidateQueries({ queryKey: ['offer-letters'] })
       queryClient.invalidateQueries({ queryKey: ['pending-activities'] })
+      queryClient.invalidateQueries({ queryKey: ['activity-feed'] })
       window.dispatchEvent(new CustomEvent('refetch-offer-letters'))
       toast({ title: 'Approved', description: 'You have approved this offer.' })
+      if (approvalRequest) {
+        const step = approvalRequest.steps.find(s => s.id === variables.stepId)
+        logActivity({
+          activityType: 'approval_approved',
+          title: 'Approval step approved',
+          description: step ? `Step ${step.step_order} approved by ${step.approver_name}` : 'Approval step approved',
+          entityType: 'candidate',
+          entityId: approvalRequest.candidate_id,
+          organizationId: approvalRequest.organization_id,
+          metadata: { jobId: approvalRequest.job_id, offerLetterId: approvalRequest.offer_letter_id, stepOrder: step?.step_order, notes: variables.notes },
+        })
+      }
     },
     onError: (error) => {
       console.error('Approve step error:', error)
@@ -261,12 +285,25 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
         .eq('id', approvalRequest.offer_letter_id)
       if (offerError) throw offerError
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey })
       queryClient.invalidateQueries({ queryKey: ['offer-letters'] })
       queryClient.invalidateQueries({ queryKey: ['pending-activities'] })
+      queryClient.invalidateQueries({ queryKey: ['activity-feed'] })
       window.dispatchEvent(new CustomEvent('refetch-offer-letters'))
       toast({ title: 'Declined', description: 'You have declined this offer.' })
+      if (approvalRequest) {
+        const step = approvalRequest.steps.find(s => s.id === variables.stepId)
+        logActivity({
+          activityType: 'approval_declined',
+          title: 'Approval declined',
+          description: step ? `Step ${step.step_order} declined by ${step.approver_name}` : 'Approval declined',
+          entityType: 'candidate',
+          entityId: approvalRequest.candidate_id,
+          organizationId: approvalRequest.organization_id,
+          metadata: { jobId: approvalRequest.job_id, offerLetterId: approvalRequest.offer_letter_id, stepOrder: step?.step_order, notes: variables.notes },
+        })
+      }
     },
     onError: (error) => {
       console.error('Decline step error:', error)
@@ -316,8 +353,20 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
       queryClient.invalidateQueries({ queryKey })
       queryClient.invalidateQueries({ queryKey: ['offer-letters'] })
       queryClient.invalidateQueries({ queryKey: ['pending-activities'] })
+      queryClient.invalidateQueries({ queryKey: ['activity-feed'] })
       window.dispatchEvent(new CustomEvent('refetch-offer-letters'))
       toast({ title: 'Recalled', description: 'The approval request has been recalled.' })
+      if (approvalRequest) {
+        logActivity({
+          activityType: 'approval_recalled',
+          title: 'Approval recalled',
+          description: 'Offer approval request was recalled',
+          entityType: 'candidate',
+          entityId: approvalRequest.candidate_id,
+          organizationId: approvalRequest.organization_id,
+          metadata: { jobId: approvalRequest.job_id, offerLetterId: approvalRequest.offer_letter_id },
+        })
+      }
     },
     onError: (error) => {
       console.error('Recall approval error:', error)

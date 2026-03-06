@@ -1,57 +1,44 @@
 
 
-# Record All Offer Movements in the Activity Feed
+# Separate Location Sub-Fields on One Line
 
 ## Current State
+- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
+- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
+- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
 
-Only **2 out of 7+** offer lifecycle events are logged:
-- `offer_created` — logged in `OfferComposerBody.tsx`
-- `offer_updated` — logged in `OfferComposerBody.tsx`
+## What Needs to Change
 
-**Missing events:**
-1. Approval requested
-2. Approval approved (per step + final)
-3. Approval declined
-4. Approval recalled
-5. Offer document generated
-6. Offer sent
+### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
 
-## Changes
+Add a `case 'location':` block that:
+- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
+- Parses the value as JSON `{ city, state, country }`
+- Renders separate inputs for each enabled sub-field in a single-row grid
+- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
+- Shows MapPin icon in the label
 
-### 1. Database migration — Add missing enum values to `activity_type`
+### 2. Make grid columns dynamic everywhere
 
-Add: `approval_requested`, `approval_approved`, `approval_declined`, `approval_recalled`, `offer_document_generated`, `offer_sent`
+When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
 
-### 2. `src/hooks/useOfferApprovalRequest.ts` — Log approval lifecycle events
+**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
 
-Add `logActivity` calls in each mutation's `onSuccess`:
+**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
 
-| Mutation | Activity Type | Title Example |
-|----------|--------------|---------------|
-| `requestApprovalMutation` | `approval_requested` | "Approval requested" |
-| `approveStepMutation` | `approval_approved` | "Approval step approved" (include step order, approver name, notes in metadata) |
-| `declineStepMutation` | `approval_declined` | "Approval declined" (include decline notes in metadata) |
-| `recallApprovalMutation` | `approval_recalled` | "Approval recalled" |
+**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
 
-Each call will include `entityType: 'candidate'`, `entityId: candidateId`, and relevant metadata (job title, step info, notes).
+Column class map:
+```ts
+const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
+```
 
-The hook already has access to `candidateId` and `jobId` via the approval request data. For the request mutation, these are passed as parameters.
+### 3. Also add salary case to `OfferComposerBody.tsx`
 
-### 3. `src/components/candidates/CandidateOfferDetails.tsx` — Log offer sent & document generated
+While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
 
-- **Offer document generated**: Add `logActivity` in the generate offer letter success handler
-- **Offer sent**: Add `logActivity` in the send offer success handler
-
-### 4. `src/utils/activityHelpers.tsx` — Add icons and colors for new activity types
-
-Add icon/color mappings for the 6 new activity types (e.g., `Send` for approval_requested, `CheckCircle` for approval_approved, `X` for approval_declined, `Undo2` for approval_recalled, `FileText` for offer_document_generated, `Mail` for offer_sent).
-
-### Summary
-
-| File | Change |
-|------|--------|
-| DB migration | Add 6 new `activity_type` enum values |
-| `useOfferApprovalRequest.ts` | Log 4 approval events in mutation `onSuccess` callbacks |
-| `CandidateOfferDetails.tsx` | Log offer sent + document generated |
-| `activityHelpers.tsx` | Add icons/colors for 6 new types |
+## Summary of File Changes
+- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
+- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
+- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
 
