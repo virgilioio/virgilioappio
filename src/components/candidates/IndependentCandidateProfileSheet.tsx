@@ -723,9 +723,7 @@ export function IndependentCandidateProfileSheet({
                               </AccordionTrigger>
                               <AccordionContent>
                                 <CardContent className="pt-0">
-                                  {candidateId && (
-                                    <CandidateCertificationsComponent candidateId={candidateId} />
-                                  )}
+                                  <CandidateCertificationsComponent certifications={certifications} />
                                 </CardContent>
                               </AccordionContent>
                             </Card>
