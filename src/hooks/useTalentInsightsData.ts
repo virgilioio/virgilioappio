@@ -228,7 +228,7 @@ export function useTalentInsightsData() {
         }))
 
       // Geography
-      const countryCounts = countBy(candidates, c => c.location_country).slice(0, 10)
+      const countryCounts = countBy(candidates, c => c.location_country, COUNTRY_NORMALIZE).slice(0, 10)
       const cityCounts = countBy(candidates, c => c.location_city).slice(0, 10)
 
       // Role / composition
