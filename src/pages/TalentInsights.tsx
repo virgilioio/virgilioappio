@@ -45,11 +45,11 @@ export default function TalentInsights() {
             {data && data.totalCandidates > 0 && (
               <div className="space-y-6">
                 <SummaryMetricsRow data={data} />
+                <GeographyInsights countryCounts={data.countryCounts} cityCounts={data.cityCounts} totalCandidates={data.totalCandidates} />
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                  <GeographyInsights countryCounts={data.countryCounts} cityCounts={data.cityCounts} />
                   <ExperienceDistribution experienceBands={data.experienceBands} seniorityCounts={data.seniorityCounts} />
+                  <SkillsLandscape topSkills={data.topSkills} />
                 </div>
-                <SkillsLandscape topSkills={data.topSkills} />
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                   <CompensationInsights salaryStats={data.salaryStats} salaryBands={data.salaryBands} />
                   <TalentPoolComposition
