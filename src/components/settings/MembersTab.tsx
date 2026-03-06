@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SeatUsageCard } from '@/components/members/SeatUsageCard'
+import { useRecruiterUserIds } from '@/hooks/useRecruiterUserIds'
 // Tenant subscription functionality removed
 import { addMonths, addYears, format } from 'date-fns'
 
