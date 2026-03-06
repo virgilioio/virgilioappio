@@ -278,10 +278,12 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
     const extracted = JSON.parse(toolCall.function.arguments);
     console.log(`[enrich] Extracted: ${extracted.work_experience?.length || 0} jobs, ${extracted.education?.length || 0} edu, ${extracted.certifications?.length || 0} certs, ${extracted.skills?.length || 0} skills`);
 
-    // 2. Standardize title
-    const standardizedTitle = extracted.current_job_title 
+    // 2. Standardize title: prefer AI-generated, fallback to DB lookup
+    const aiStandardizedTitle = extracted.standardized_title || null;
+    const dbStandardizedTitle = extracted.current_job_title 
       ? await standardizeTitle(supabase, extracted.current_job_title)
       : null;
+    const finalStandardizedTitle = aiStandardizedTitle || dbStandardizedTitle;
 
     // 3. Standardize skills
     const rawSkillNames = (extracted.skills || []).map((s: any) => s.name).filter(Boolean);
