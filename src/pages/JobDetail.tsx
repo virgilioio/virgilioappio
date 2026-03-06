@@ -1303,6 +1303,7 @@ export default function JobDetail() {
                 </TabsContent>
                 
                 {/* All Candidates Tab */}
+                {!isRestrictedViewer && (
                 <TabsContent value="all-candidates">
                   <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
@@ -1329,6 +1330,7 @@ export default function JobDetail() {
                     </CardContent>
                   </Card>
                 </TabsContent>
+                )}
 
                 {/* Pipeline Tab */}
                 <TabsContent value="pipeline">
