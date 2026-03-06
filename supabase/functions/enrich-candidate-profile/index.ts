@@ -123,7 +123,12 @@ Detailed Structure:
 ---
 **COMPETENCIAS CLAVE** (Technical, Domain, Soft skills)
 
-For work_experience: Extract ALL positions. Infer company_industry and company_size_category when possible.
+CRITICAL RULES:
+- **functional_area**: ALWAYS infer from job titles and responsibilities. Examples: "Sales", "Engineering", "Marketing", "Operations", "Finance", "HR", "Product", "Design", "Legal", "Quality", "Manufacturing". Never leave empty.
+- **specialization**: ALWAYS infer a specific sub-area. Examples: "Frontend Development", "Enterprise Sales", "Content Marketing", "Quality Assurance", "Process Engineering". Never leave empty.
+- **standardized_title**: ALWAYS provide a standardized English job title. Translate non-English titles (e.g. "Ingeniero de Calidad" → "Quality Engineer"), expand abbreviations (e.g. "SDR" → "Sales Development Representative"), and normalize to common industry titles. Do the same for each work experience entry.
+
+For work_experience: Extract ALL positions. Infer company_industry and company_size_category when possible. Always include standardized_title for each position.
 For skills: Extract 10-20 skills. Mark core skills as is_primary=true (max 5-7 primary).
 For seniority_level: Infer from most recent title and years of experience.
 For years_in_leadership: Count years where title contains Manager, Director, VP, Chief, Head, Lead.
