@@ -91,6 +91,13 @@ export function useStageInterviewerAssignments(jhsId?: string) {
       queryClient.invalidateQueries({ queryKey: ['stage-interviewers', jhsId] })
       queryClient.invalidateQueries({ queryKey: ['job-assignments', jobId] })
       
+      // If a new job assignment was created, sync seats (may affect billing if role is recruiter)
+      if (result.addedToJobTeam) {
+        supabase.functions.invoke('update-seat-quantity').catch(() => {})
+        queryClient.invalidateQueries({ queryKey: ['recruiter-user-ids'] })
+        queryClient.invalidateQueries({ queryKey: ['billing-status'] })
+      }
+      
       const message = result.addedToJobTeam
         ? 'Interviewer assigned and added to job team'
         : 'Interviewer assigned to stage'
