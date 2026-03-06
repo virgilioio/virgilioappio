@@ -65,7 +65,7 @@ export async function reconcilePendingInvitation(userId: string): Promise<Reconc
 
     const typedResult: ReconciliationResult = {
       ...result,
-      system_role: result.system_role || 'member',
+      system_role: (result as any).system_role || result.member_role || 'member',
     };
     return typedResult;
   } catch (err) {
