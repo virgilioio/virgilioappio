@@ -63,7 +63,10 @@ export default function AcceptInvite() {
       if (data && data.length > 0) {
         const invitation = data[0]
         console.log('Invitation validation result:', invitation)
-        setInvitationData(invitation)
+        setInvitationData({
+          ...invitation,
+          system_role: (invitation as any).system_role || invitation.member_role || 'member',
+        })
       } else {
         setInvitationData({
           member_id: '',
