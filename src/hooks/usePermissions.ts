@@ -53,9 +53,6 @@ export interface PermissionsState {
   isPlatformAdmin: boolean
   isMember: boolean
   isAdmin: boolean
-  isRecruiter: boolean
-  isHiringManager: boolean
-  isInterviewer: boolean
   hasOrganizationContext: boolean
 }
 
