@@ -25,7 +25,7 @@ const EXTRACTION_TOOL = {
       properties: {
         profile_summary: {
           type: 'string',
-          description: 'Comprehensive professional profile in Spanish (200-300 words) with rich markdown formatting. Use **bold** for headings/key skills, *italic* for emphasis, bullet lists. Structure: opening statement, experience highlights, key competencies, notable achievements.'
+          description: 'Executive candidate summary in Spanish with markdown formatting. Structure: 2 short paragraphs (3-5 sentences each) describing the candidate background and value proposition, followed by **Fortalezas Clave** with 3-5 bullet points, then **Áreas de Desarrollo** with 3-5 bullet points. Keep it concise and substantive — no fluff. Total length: 150-200 words max.'
         },
         current_job_title: { type: 'string', description: 'Most recent job title exactly as written on resume' },
         standardized_title: { type: 'string', description: 'Standardized English job title mapped to a common industry equivalent. Translate non-English titles, expand abbreviations. Examples: "Ingeniero de Calidad" → "Quality Engineer", "SDR" → "Sales Development Representative", "Gerente de Ventas" → "Sales Manager", "Jefe de Operaciones" → "Operations Manager"' },
