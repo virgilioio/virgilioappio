@@ -16,9 +16,11 @@ export function JobDetailFloatingSidebar({
   currentTab, 
   onTabChange, 
   jobTitle,
+  isRestrictedViewer = false,
   className 
 }: JobDetailFloatingSidebarProps) {
-  const tabs = [
+  const restrictedTabIds = ['all-candidates', 'job-setup']
+  const allTabs = [
     {
       id: 'candidates',
       label: 'Job Dashboard',
