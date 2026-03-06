@@ -137,7 +137,7 @@ export function Header() {
       href: '/find',
       icon: Sparkles,
       label: 'Find',
-      show: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter,
+      show: isPlatformAdmin || isWorkspaceOwner || isAdmin || isMember,
     },
     {
       href: '/jobs',
