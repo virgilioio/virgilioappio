@@ -94,28 +94,15 @@ export function MemberInviteSheet({
   const getRoleOptions = () => {
     const roles = []
     
-    if (permissions.isPlatformAdmin) {
-      // Platform admins can assign any role
+    if (permissions.isPlatformAdmin || permissions.isWorkspaceOwner) {
       roles.push(
         { value: 'admin', label: 'Admin', description: 'Full organization management access' },
-        { value: 'recruiter', label: 'Recruiter', description: 'Can manage jobs, candidates, and team assignments' },
-        { value: 'hiring_manager', label: 'Hiring Manager', description: 'Can view and manage assigned jobs' },
-        { value: 'interviewer', label: 'Interviewer', description: 'Limited access for conducting interviews' }
-      )
-    } else if (permissions.isWorkspaceOwner) {
-      // Workspace owners can assign any role
-      roles.push(
-        { value: 'admin', label: 'Admin', description: 'Full organization management access' },
-        { value: 'recruiter', label: 'Recruiter', description: 'Can manage jobs, candidates, and team assignments' },
-        { value: 'hiring_manager', label: 'Hiring Manager', description: 'Can view and manage assigned jobs' },
-        { value: 'interviewer', label: 'Interviewer', description: 'Limited access for conducting interviews' }
+        { value: 'member', label: 'Member', description: 'Can be assigned to jobs as recruiter, hiring manager, or interviewer' }
       )
     } else if (permissions.isAdmin) {
       // Admin members cannot create other admins
       roles.push(
-        { value: 'recruiter', label: 'Recruiter', description: 'Can manage jobs, candidates, and team assignments' },
-        { value: 'hiring_manager', label: 'Hiring Manager', description: 'Can view and manage assigned jobs' },
-        { value: 'interviewer', label: 'Interviewer', description: 'Limited access for conducting interviews' }
+        { value: 'member', label: 'Member', description: 'Can be assigned to jobs as recruiter, hiring manager, or interviewer' }
       )
     }
     
