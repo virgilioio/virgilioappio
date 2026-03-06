@@ -371,7 +371,6 @@ export function useMembers(includeHierarchy: boolean = false) {
         organization_id: data.organization_id,
         tenant_id: orgData?.tenant_id,
         system_role: data.system_role as any,
-        member_role: (data.system_role === 'admin' ? 'admin' : (data.member_role || 'recruiter')) as any, // legacy compat
         user_status: data.user_id ? (data.user_status || 'active') : 'invited',
         user_id: data.user_id || null,
         user_type: data.user_type || 'member',
