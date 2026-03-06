@@ -1,50 +1,59 @@
 
 
-# Salary Insights: Replace Idealized Bell Curve with KDE (Kernel Density Estimation)
+# System Roles Migration — Completed Phases 1-5
 
-## Problem
+## Architecture Change
+- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
+- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-The current bell curve assumes a **perfect normal distribution** — it takes the mean and standard deviation, then draws a symmetrical bell shape. This ignores where candidates' salaries actually cluster. If 3 candidates are at $800/mo and 1 is at $1,500/mo, the curve still shows a smooth symmetrical bell centered on the average, which misrepresents the real data.
+## Completed
 
-## Solution
+### Phase 1 — Database
+- ✅ Created `system_role` enum (`admin`, `member`)
+- ✅ Added `system_role` column to `members` table
+- ✅ Migrated data: `admin` → `admin`, all others → `member`
+- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
+- ✅ Updated `check_tenant_member_role` to use `system_role`
+- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
+- ✅ Updated `audit_member_role_change` trigger
 
-Replace `generateBellCurve` with a **Kernel Density Estimation (KDE)** function. KDE places a small Gaussian kernel at each actual salary data point and sums them. The result is a smooth curve that faithfully reflects where salaries cluster — showing bumps at common values and skew when data is lopsided. It keeps the same beautiful curvy aesthetic but is **data-accurate**.
+### Phase 2 — Frontend Permissions
+- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
+- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
+- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
+- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
 
-## File: `src/components/jobs/SalaryInsightsCard.tsx`
+### Phase 3 — UI Updates
+- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
+- ✅ Updated `Dashboard` — sourcing panel for admin+ only
+- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
+- ✅ Updated `BillingGuard` — members (non-admin) never blocked
+- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
+- ✅ Updated `Find` page RoleGate
+- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
 
-### Replace `generateBellCurve` with `generateKDE`
+### Phase 4 — Runtime Hotfixes
+- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
+- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
+- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
+- ✅ Updated `validate_invite_token` — returns `system_role`
+- ✅ Updated `accept_invitation` — uses `system_role`
 
-```typescript
-function generateKDE(salaries: number[], points = 60) {
-  const min = Math.min(...salaries);
-  const max = Math.max(...salaries);
-  const range = max - min || 1;
-  const bandwidth = range * 0.15 || 1; // Silverman-like bandwidth
-  const padding = range * 0.2;
-  const start = min - padding;
-  const end = max + padding;
-  const step = (end - start) / (points - 1);
+### Phase 5 — Complete Cleanup
+- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
+- ✅ Updated `admin_manage_member` — updates `system_role` column
+- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
+- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
+- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
+- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
+- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
+- ✅ Updated `diagnose_user_auth` — reports `system_role`
+- ✅ Updated `audit_platform_admin_access` — returns `system_role`
+- ✅ Updated `debug_user_permissions` — returns `system_role`
+- ✅ Renamed `invitations.member_role` → `invitations.system_role`
+- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
 
-  const data = [];
-  for (let i = 0; i < points; i++) {
-    const x = start + i * step;
-    let density = 0;
-    for (const s of salaries) {
-      const z = (x - s) / bandwidth;
-      density += Math.exp(-0.5 * z * z);
-    }
-    density /= salaries.length * bandwidth * Math.sqrt(2 * Math.PI);
-    data.push({ salary: Math.round(x), density });
-  }
-  return data;
-}
-```
-
-### Update `useMemo` block
-
-Pass `displaySalaries` array directly into `generateKDE(displaySalaries)` instead of passing mean/stddev/min/max to `generateBellCurve`. Everything else (min, max, avg calculations, chart rendering, reference lines) stays identical.
-
-## Result
-
-Same smooth purple curve aesthetic, but now the shape reflects actual candidate salary clusters — multiple peaks when salaries group around different values, skew when data isn't symmetrical.
-
+## Phase 6 — Future (Optional)
+- Drop `member_role` column from `members` table (already dropped)
+- Drop old `member_role` enum type
+- Update `MemberInviteSheet` role picker to only offer Admin/Member
