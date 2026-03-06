@@ -53,7 +53,8 @@ const EXTRACTION_TOOL = {
               is_current: { type: 'boolean' },
               location: { type: 'string' },
               description: { type: 'string', description: 'Key responsibilities and achievements' },
-              skills_used: { type: 'array', items: { type: 'string' } }
+              skills_used: { type: 'array', items: { type: 'string' } },
+              standardized_title: { type: 'string', description: 'Standardized English job title for this position. Translate non-English titles, expand abbreviations. E.g. "Coordinador de Producción" → "Production Coordinator"' }
             },
             required: ['job_title', 'company_name']
           }
