@@ -35,7 +35,7 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
   )
   
   // Show org selector for platform admins, workspace owners, and recruiters
-  const canSelectOrganization = permissions.isPlatformAdmin || permissions.isWorkspaceOwner || permissions.isRecruiter
+  const canSelectOrganization = permissions.isPlatformAdmin || permissions.isWorkspaceOwner
 
   React.useEffect(() => {
     // Set default organization for non-platform-admin users

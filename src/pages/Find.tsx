@@ -66,7 +66,7 @@ export default function Find() {
 
   return (
     <RoleGate
-      allowedRoles={['isPlatformAdmin', 'isWorkspaceOwner', 'isAdmin', 'isRecruiter']}
+      allowedRoles={['isPlatformAdmin', 'isWorkspaceOwner', 'isAdmin', 'isMember']}
       redirectTo="/dashboard"
       accessDeniedMessage="The Find feature is only available to recruiters and administrators."
     >

@@ -128,7 +128,7 @@ export function UpcomingActivities() {
 
   const displayedActivities = isExpanded ? activities : activities.slice(0, 5)
 
-  const showInterviewer = permissions.isRecruiter || permissions.isHiringManager || 
+  const showInterviewer = permissions.isMember || 
     permissions.isAdmin || permissions.isWorkspaceOwner || permissions.isPlatformAdmin
 
   const handleViewDetails = (bookingId: string) => {
