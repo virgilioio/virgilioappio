@@ -75,6 +75,7 @@ export function useJobs() {
   const { user, userId, userType, memberRole, organizationId } = useAuth()
   const { normalizeJobSpecs } = useJobSpecNormalization()
   const queryClient = useQueryClient()
+  const { assignedJobIds, isPrivileged, isLoading: rolesLoading } = useUserJobRoles()
 
   // Optimized single query function to replace N+1 pattern
   const getJobsOptimized = async () => {
