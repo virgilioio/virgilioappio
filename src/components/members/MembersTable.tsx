@@ -1,15 +1,16 @@
-
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton, TableSkeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from '@/hooks/use-toast'
 import { Member } from '@/hooks/useMembers'
-import { MoreVertical, Plus, Send, UserCheck, UserX, Trash2, Copy, Briefcase, Mail, MailX, Clock } from 'lucide-react'
+import { MoreVertical, Plus, Send, UserCheck, UserX, Trash2, Copy, Briefcase, Mail, MailX, Clock, Search, X } from 'lucide-react'
 
 interface MembersTableProps {
   members: Member[]
