@@ -366,7 +366,7 @@ export function IndependentCandidateProfileSheet({
                     </div>
                   )}
                   
-                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'overview' | 'resume' | 'comments')}>
+                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'overview' | 'resume')}>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Left column (50%) */}
                     <div className="space-y-6 min-w-0">
