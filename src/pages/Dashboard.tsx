@@ -36,7 +36,7 @@ export default function Dashboard() {
   const hasSeenValue = (sourcingProjects?.length ?? 0) > 0
   
   // Show sourcing panel for Admin and above (members see it on job-level)
-  const showSourcingPanel = permissions.isAdmin || permissions.isPlatformAdmin || permissions.isWorkspaceOwner
+  const showSourcingPanel = isPrivileged || hasRecruiterRole
   
   return (
     <div>

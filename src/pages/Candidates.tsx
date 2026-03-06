@@ -20,6 +20,8 @@ import { toast } from '@/hooks/use-toast'
 
 export default function Candidates() {
   const { canViewCandidates } = usePermissions()
+  const { hasRecruiterRole, isPrivileged, isLoading: rolesLoading } = useUserJobRoles()
+  const navigate = useNavigate()
   const [selectedCandidate, setSelectedCandidate] = useState(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false)

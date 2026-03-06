@@ -160,7 +160,7 @@ export function Header() {
       href: '/candidates',
       icon: Users,
       label: 'Candidates',
-      show: canViewCandidatesNavigation,
+      show: canSeeRecruiterTools && canViewCandidatesNavigation,
     },
     {
       href: '/analytics',
