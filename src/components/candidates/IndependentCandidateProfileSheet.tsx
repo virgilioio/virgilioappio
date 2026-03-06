@@ -257,7 +257,19 @@ export function IndependentCandidateProfileSheet({
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent side="right" className="w-[96vw] sm:max-w-none h-full p-0" showOverlay={false}>
-          <div className="flex h-full flex-col relative">
+        <div className="flex h-full w-full">
+          {/* Job Associations Sidebar - desktop only, fixed outside scroll */}
+          {candidateId && (
+            <CandidateJobSidebar
+              candidateId={candidateId}
+              currentJobId=""
+              onJobSelect={handleJobSelect}
+              className="hidden lg:flex"
+            />
+          )}
+
+          {/* Main Profile Content */}
+          <div className="flex-1 flex flex-col min-w-0">
             <SheetHeader className="p-6 border-b">
               <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-2">
@@ -337,15 +349,15 @@ export function IndependentCandidateProfileSheet({
             </SheetHeader>
 
             <div className="flex-1 overflow-y-auto p-6">
-              {loading ? (
+               {loading ? (
                 <div className="text-text-secondary text-sm">Loading profile…</div>
               ) : !candidate ? (
                 <div className="text-text-secondary text-sm">No data available.</div>
               ) : (
-                <div className="flex flex-col lg:flex-row gap-6">
+                <div>
                   {/* Mobile Job Selector - show on small screens */}
                   {candidateId && (
-                    <div className="lg:hidden">
+                    <div className="lg:hidden mb-6">
                       <MobileJobSelector
                         candidateId={candidateId}
                         currentJobId=""
@@ -354,18 +366,6 @@ export function IndependentCandidateProfileSheet({
                     </div>
                   )}
                   
-                  {/* Job Associations Sidebar - desktop only */}
-                  {candidateId && (
-                    <CandidateJobSidebar
-                      candidateId={candidateId}
-                      currentJobId=""
-                      onJobSelect={handleJobSelect}
-                      className="hidden lg:block"
-                    />
-                  )}
-                  
-                  {/* Main Content */}
-                  <div className="flex-1 min-w-0">
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'overview' | 'resume' | 'comments')}>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Left column (50%) */}
@@ -452,8 +452,6 @@ export function IndependentCandidateProfileSheet({
 
                       {activeTab === 'overview' && (
                         <Accordion type="multiple" defaultValue={['contact', 'career', 'summary', 'experience', 'education', 'certifications']} className="space-y-4">
-                          
-
                           {/* Contact Information */}
                           <AccordionItem value="contact" className="border-0">
                             <Card className="bg-surface-primary border-border">
@@ -877,7 +875,6 @@ export function IndependentCandidateProfileSheet({
                     </div>
                   </div>
                 </Tabs>
-                  </div>
                 </div>
               )}
               <CandidateFormSheet
@@ -889,6 +886,7 @@ export function IndependentCandidateProfileSheet({
               />
             </div>
           </div>
+        </div>
 
           {/* Minimizable Email Composer (portal to body) */}
           <MinimizableEmailComposer
