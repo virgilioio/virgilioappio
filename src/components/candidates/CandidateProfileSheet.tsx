@@ -42,6 +42,7 @@ import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { useCandidateResolver } from '@/hooks/useCandidateResolver'
 import { triggerFitAnalysis } from '@/utils/triggerFitAnalysis'
+import { useJobRole } from '@/hooks/useJobRole'
 
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 import { MobileJobSelector } from '@/components/candidates/MobileJobSelector'
@@ -106,8 +107,10 @@ interface CandidateProfileSheetProps {
 }
 
 export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, autoOpenScorecardStageId, onScorecardOpened }: CandidateProfileSheetProps) {
-  const { canEditCandidates } = usePermissions()
+  const { canEditCandidates, isAdmin, isWorkspaceOwner, isPlatformAdmin } = usePermissions()
   const { organizationId, user } = useAuth()
+  const { isHiringManagerOnJob, isInterviewerOnJob } = useJobRole(jobId)
+  const isRestrictedViewer = (isHiringManagerOnJob || isInterviewerOnJob) && !isAdmin && !isWorkspaceOwner && !isPlatformAdmin
   const [loading, setLoading] = useState(false)
   const [candidate, setCandidate] = useState<any | null>(null)
   const [jobCandidate, setJobCandidate] = useState<any | null>(null)
@@ -812,7 +815,7 @@ const stageHasAutomation = useMemo(() => {
       <SheetContent side="right" className="w-[96vw] sm:max-w-none h-full p-0" showOverlay={false}>
         <div className="flex h-full w-full">
           {/* Job Navigation Sidebar - desktop only */}
-          {candidateId && (
+          {candidateId && !isRestrictedViewer && (
             <CandidateJobSidebar
               candidateId={candidateId}
               currentJobId={jobId}
@@ -877,7 +880,7 @@ const stageHasAutomation = useMemo(() => {
 
               <div className="flex-1 overflow-y-auto p-6">
                 {/* Mobile Job Selector - at top of content area */}
-                {candidateId && (
+                {candidateId && !isRestrictedViewer && (
                   <div className="lg:hidden mb-6">
                     <MobileJobSelector
                       candidateId={candidateId}
@@ -918,7 +921,8 @@ const stageHasAutomation = useMemo(() => {
                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                    {/* Left column (50%) */}
                    <div className="space-y-6">
-                     {/* Controls Card */}
+                     {/* Controls Card - hidden for restricted viewers */}
+                     {!isRestrictedViewer && (
                       <Card className="bg-surface-primary border-border">
                         <CardContent className="p-4">
                            <div className="flex items-center justify-between w-full">
@@ -999,19 +1003,20 @@ const stageHasAutomation = useMemo(() => {
                               </div>
                            </div>
                         </CardContent>
-                     </Card>
+                      </Card>
+                     )}
 
                      <CandidateNameCard
                        email={candidate.email}
                        phone={candidate.phone}
-                       tabs={[
+                        tabs={[
                           ...((associationStatus === 'offer' || associationStatus === 'hired')
                             ? [{ value: 'offer', label: 'Offer', Icon: FileText }]
                             : []),
                           { value: 'job', label: 'Job Application', Icon: FileText },
-                          { value: 'application', label: 'Application Details', Icon: FileText },
+                          ...(!isRestrictedViewer ? [{ value: 'application', label: 'Application Details', Icon: FileText }] : []),
                           { value: 'resume', label: 'Resume', Icon: FileText },
-                          { value: 'overview', label: 'Overview', Icon: FileText },
+                          ...(!isRestrictedViewer ? [{ value: 'overview', label: 'Overview', Icon: FileText }] : []),
                         ]}
                        activeTab={activeTab}
                        onTabChange={(v) => setActiveTab(v as 'job' | 'application' | 'resume' | 'overview' | 'offer')}
@@ -1563,84 +1568,86 @@ const stageHasAutomation = useMemo(() => {
 
                    {/* Right column (1x) - hidden on mobile */}
                    <div className="space-y-6 hidden lg:block">
-                     {/* Controls Card - Right Side */}
-                     <Card className="bg-surface-primary border-border">
-                       <CardContent className="p-4">
-                          <div className="overflow-x-auto scrollbar-none w-full">
-                            <div className="flex items-center justify-between min-w-max">
-                            <div className="flex items-center gap-2">
-                               {canEditCandidates && (
-                                 <Button
-                                   variant="outline"
-                                   size="sm"
-                                   onClick={() => setEditOpen(true)}
-                                 >
-                                   <Edit className="h-4 w-4 mr-2" />
-                                   Edit
-                                 </Button>
-                               )}
+                     {/* Controls Card - Right Side - hidden for restricted viewers */}
+                     {!isRestrictedViewer && (
+                      <Card className="bg-surface-primary border-border">
+                        <CardContent className="p-4">
+                           <div className="overflow-x-auto scrollbar-none w-full">
+                             <div className="flex items-center justify-between min-w-max">
+                             <div className="flex items-center gap-2">
+                                {canEditCandidates && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setEditOpen(true)}
+                                  >
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={!candidate}
+                                  onClick={async () => {
+                                    if (!candidate) return
+                                    try {
+                                      await generateCandidatePdf({
+                                        candidate,
+                                        job
+                                      })
+                                      toast({ 
+                                        title: 'PDF Generated', 
+                                        description: 'Candidate profile PDF has been downloaded.' 
+                                      })
+                                    } catch (error) {
+                                      console.error('Error generating PDF:', error)
+                                      toast({ 
+                                        title: 'Error', 
+                                        description: 'Failed to generate PDF. Please try again.', 
+                                        variant: 'destructive' 
+                                      })
+                                    }
+                                  }}
+                                >
+                                  <Download className="h-4 w-4 mr-2" />
+                                  Download
+                                </Button>
+                              </div>
+                             
+                             <Separator orientation="vertical" className="h-6" />
+                             
+                             <div className="flex items-center gap-2">
                                <Button
                                  variant="outline"
                                  size="sm"
-                                 disabled={!candidate}
-                                 onClick={async () => {
-                                   if (!candidate) return
-                                   try {
-                                     await generateCandidatePdf({
-                                       candidate,
-                                       job
-                                     })
-                                     toast({ 
-                                       title: 'PDF Generated', 
-                                       description: 'Candidate profile PDF has been downloaded.' 
-                                     })
-                                   } catch (error) {
-                                     console.error('Error generating PDF:', error)
-                                     toast({ 
-                                       title: 'Error', 
-                                       description: 'Failed to generate PDF. Please try again.', 
-                                       variant: 'destructive' 
-                                     })
-                                   }
-                                 }}
+                                 onClick={() => setRightActiveTab('notes')}
                                >
-                                 <Download className="h-4 w-4 mr-2" />
-                                 Download
+                                 <StickyNote className="h-4 w-4 mr-2" />
+                                 Add Note
+                               </Button>
+                               <Button
+                                 variant="outline"
+                                 size="sm"
+                                 onClick={() => setEmailComposerOpen(true)}
+                               >
+                                 <Mail className="h-4 w-4 mr-2" />
+                                 Send Email
+                               </Button>
+                               <Button
+                                 variant="outline"
+                                 size="sm"
+                                 onClick={() => setSimpleScheduleOpen(true)}
+                               >
+                                 <Calendar className="h-4 w-4 mr-2" />
+                                 Schedule Interview
                                </Button>
                              </div>
-                            
-                            <Separator orientation="vertical" className="h-6" />
-                            
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setRightActiveTab('notes')}
-                              >
-                                <StickyNote className="h-4 w-4 mr-2" />
-                                Add Note
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setEmailComposerOpen(true)}
-                              >
-                                <Mail className="h-4 w-4 mr-2" />
-                                Send Email
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setSimpleScheduleOpen(true)}
-                              >
-                                <Calendar className="h-4 w-4 mr-2" />
-                                Schedule Interview
-                              </Button>
-                            </div>
-                          </div>
-                          </div>
-                        </CardContent>
-                     </Card>
+                           </div>
+                           </div>
+                         </CardContent>
+                      </Card>
+                     )}
 
                      {/* Tab Navigation */}
                      <CandidateNameCard
@@ -1649,8 +1656,8 @@ const stageHasAutomation = useMemo(() => {
                         tabs={[
                           { value: 'feed', label: 'Feed', Icon: Activity },
                           { value: 'notes', label: 'Notes', Icon: StickyNote },
-                          { value: 'emails', label: 'Emails', Icon: Mail },
-                          { value: 'reminders', label: 'Reminders', Icon: Bell },
+                          ...(!isRestrictedViewer ? [{ value: 'emails', label: 'Emails', Icon: Mail }] : []),
+                          ...(!isRestrictedViewer ? [{ value: 'reminders', label: 'Reminders', Icon: Bell }] : []),
                           { value: 'insights', label: 'Insights', Icon: Sparkles },
                         ]}
                         activeTab={rightActiveTab}
