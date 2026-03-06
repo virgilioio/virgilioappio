@@ -254,10 +254,12 @@ export function MemberInviteSheet({
         <SheetContent className="sm:max-w-[540px] flex flex-col">
           <SheetHeader>
             <SheetTitle className="text-h4-mobile font-poppins font-bold text-virgilio-text tracking-page-title">
-              Invite New User<span className="text-purple-period">.</span>
+              {isEditing ? 'Edit Member' : 'Invite New User'}<span className="text-purple-period">.</span>
             </SheetTitle>
             <SheetDescription className="text-virgilio-muted">
-              Send an invitation to join your organization. The invited user will be added to your current organization context.
+              {isEditing
+                ? 'Update this member\'s role within your organization.'
+                : 'Send an invitation to join your organization. The invited user will be added to your current organization context.'}
             </SheetDescription>
           </SheetHeader>
           
