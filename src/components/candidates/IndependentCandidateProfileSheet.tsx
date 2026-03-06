@@ -67,7 +67,7 @@ export function IndependentCandidateProfileSheet({
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [candidate, setCandidate] = useState<any | null>(null)
-  const [activeTab, setActiveTab] = useState<'overview' | 'resume' | 'comments'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'resume'>('overview')
   const [rightActiveTab, setRightActiveTab] = useState<'feed' | 'notes' | 'emails' | 'reminders'>('feed')
   const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
   const [education, setEducation] = useState<CandidateEducation[]>([])
