@@ -5,12 +5,13 @@ import type { SkillEntry } from '@/hooks/useTalentInsightsData'
 
 interface SkillsLandscapeProps {
   topSkills: SkillEntry[]
+  onSkillClick?: (skill: string) => void
 }
 
 const PURPLE = 'hsl(267, 100%, 62%)'
 const PURPLE_LIGHT = 'hsl(267, 80%, 75%)'
 
-export function SkillsLandscape({ topSkills }: SkillsLandscapeProps) {
+export function SkillsLandscape({ topSkills, onSkillClick }: SkillsLandscapeProps) {
   if (topSkills.length === 0) {
     return (
       <Card className="border-virgilio-border">
@@ -24,6 +25,10 @@ export function SkillsLandscape({ topSkills }: SkillsLandscapeProps) {
         </CardContent>
       </Card>
     )
+  }
+
+  const handleBarClick = (data: any) => {
+    if (onSkillClick && data?.name) onSkillClick(data.name)
   }
 
   return (
@@ -47,7 +52,13 @@ export function SkillsLandscape({ topSkills }: SkillsLandscapeProps) {
                   'Frequency'
                 ]}
               />
-              <Bar dataKey="percentage" radius={[0, 4, 4, 0]} maxBarSize={20}>
+              <Bar
+                dataKey="percentage"
+                radius={[0, 4, 4, 0]}
+                maxBarSize={20}
+                onClick={handleBarClick}
+                className={onSkillClick ? 'cursor-pointer' : ''}
+              >
                 {topSkills.map((_, i) => (
                   <Cell key={i} fill={i < 5 ? PURPLE : PURPLE_LIGHT} />
                 ))}

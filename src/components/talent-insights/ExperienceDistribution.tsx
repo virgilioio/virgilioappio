@@ -6,6 +6,8 @@ import type { ExperienceBand, CountEntry } from '@/hooks/useTalentInsightsData'
 interface ExperienceDistributionProps {
   experienceBands: ExperienceBand[]
   seniorityCounts: CountEntry[]
+  onBandClick?: (band: string) => void
+  onSeniorityClick?: (seniority: string) => void
 }
 
 const PURPLE = 'hsl(267, 100%, 62%)'
@@ -17,7 +19,7 @@ const PIE_COLORS = [
   'hsl(300, 60%, 70%)',
 ]
 
-export function ExperienceDistribution({ experienceBands, seniorityCounts }: ExperienceDistributionProps) {
+export function ExperienceDistribution({ experienceBands, seniorityCounts, onBandClick, onSeniorityClick }: ExperienceDistributionProps) {
   const hasExperience = experienceBands.some(b => b.count > 0)
   const hasSeniority = seniorityCounts.length > 0
 
@@ -57,7 +59,13 @@ export function ExperienceDistribution({ experienceBands, seniorityCounts }: Exp
                       contentStyle={{ borderRadius: 8, border: '1px solid hsl(var(--border))', fontSize: 12 }}
                       formatter={(value: number) => [`${value} candidates`, 'Count']}
                     />
-                    <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={48}>
+                    <Bar
+                      dataKey="count"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={48}
+                      onClick={(data) => onBandClick?.(data?.band)}
+                      className={onBandClick ? 'cursor-pointer' : ''}
+                    >
                       {experienceBands.map((_, i) => (
                         <Cell key={i} fill={PURPLE} opacity={0.6 + (i * 0.1)} />
                       ))}
@@ -85,6 +93,8 @@ export function ExperienceDistribution({ experienceBands, seniorityCounts }: Exp
                       paddingAngle={2}
                       label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                       labelLine={false}
+                      onClick={(data) => onSeniorityClick?.(data?.name)}
+                      className={onSeniorityClick ? 'cursor-pointer' : ''}
                     >
                       {seniorityCounts.map((_, i) => (
                         <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />

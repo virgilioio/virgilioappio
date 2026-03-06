@@ -1,8 +1,10 @@
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
+import type { TalentInsightsFilters } from '@/contexts/TalentInsightsFilterContext'
 
-interface CandidateRow {
+export interface CandidateRow {
   location_country: string | null
   location_city: string | null
   location_state: string | null
@@ -44,7 +46,7 @@ export interface TalentInsightsData {
   titleCounts: CountEntry[]
 }
 
-function median(arr: number[]): number {
+function medianFn(arr: number[]): number {
   const sorted = [...arr].sort((a, b) => a - b)
   const mid = Math.floor(sorted.length / 2)
   return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
@@ -59,7 +61,6 @@ function percentile(arr: number[], p: number): number {
   return sorted[lower] + (sorted[upper] - sorted[lower]) * (idx - lower)
 }
 
-// Client-side normalization map (defense in depth)
 const COUNTRY_NORMALIZE: Record<string, string> = {
   'México': 'Mexico', 'MX': 'Mexico', 'EEUU': 'United States',
   'Estados Unidos': 'United States', 'US': 'United States', 'USA': 'United States',
@@ -87,25 +88,163 @@ function countBy<T>(items: T[], keyFn: (item: T) => string | null, normalizeMap?
     .sort((a, b) => b.count - a.count)
 }
 
-function normalizeSalaryToAnnual(amount: number, period: string | null): number {
+export function normalizeSalaryToAnnual(amount: number, period: string | null): number {
   switch (period?.toLowerCase()) {
     case 'hourly': return amount * 2080
     case 'monthly': return amount * 12
     case 'weekly': return amount * 52
     case 'daily': return amount * 260
-    default: return amount // assume annual
+    default: return amount
   }
 }
 
-export function useTalentInsightsData() {
+// --- Apply filters to candidate array ---
+export function applyFilters(candidates: CandidateRow[], filters: TalentInsightsFilters): CandidateRow[] {
+  return candidates.filter(c => {
+    // Role
+    if (filters.roles.length > 0 && !filters.roles.includes(c.standardized_title ?? '')) return false
+    // Functional area
+    if (filters.functionalAreas.length > 0 && !filters.functionalAreas.includes(c.functional_area ?? '')) return false
+    // Specialization
+    if (filters.specializations.length > 0 && !filters.specializations.includes(c.specialization ?? '')) return false
+    // Seniority
+    if (filters.seniorities.length > 0 && !filters.seniorities.includes(c.seniority_level ?? '')) return false
+    // Skills (inclusive OR)
+    if (filters.skills.length > 0) {
+      const candidateSkills = c.standardized_skills?.length ? c.standardized_skills : c.skills
+      if (!candidateSkills || !filters.skills.some(s => candidateSkills.includes(s))) return false
+    }
+    // Country
+    if (filters.countries.length > 0) {
+      const normalized = normalizeValue(c.location_country, COUNTRY_NORMALIZE)
+      if (!normalized || !filters.countries.includes(normalized)) return false
+    }
+    // State
+    if (filters.states.length > 0 && !filters.states.includes(c.location_state ?? '')) return false
+    // City
+    if (filters.cities.length > 0 && !filters.cities.includes(c.location_city ?? '')) return false
+    // Experience
+    if (filters.experienceMin !== null && (c.years_experience == null || c.years_experience < filters.experienceMin)) return false
+    if (filters.experienceMax !== null && (c.years_experience == null || c.years_experience > filters.experienceMax)) return false
+    // Salary
+    if (filters.salaryMin !== null || filters.salaryMax !== null) {
+      if (c.salary_amount == null || c.salary_amount <= 0) return false
+      const annual = normalizeSalaryToAnnual(c.salary_amount, c.salary_period)
+      if (filters.salaryMin !== null && annual < filters.salaryMin) return false
+      if (filters.salaryMax !== null && annual > filters.salaryMax) return false
+    }
+    // Date
+    if (filters.dateFrom) {
+      const created = new Date(c.created_at)
+      if (created < filters.dateFrom) return false
+    }
+    if (filters.dateTo) {
+      const created = new Date(c.created_at)
+      if (created > filters.dateTo) return false
+    }
+    return true
+  })
+}
+
+// --- Compute aggregations from a candidate array ---
+function computeInsights(candidates: CandidateRow[]): TalentInsightsData {
+  const total = candidates.length
+
+  if (total === 0) {
+    return {
+      totalCandidates: 0, avgExperience: null, medianSalary: null,
+      mostCommonRole: null, enrichedPercentage: null,
+      countryCounts: [], cityCounts: [], experienceBands: [],
+      seniorityCounts: [], topSkills: [], salaryStats: null,
+      salaryBands: [], salaryValues: [],
+      functionalAreaCounts: [], specializationCounts: [], titleCounts: [],
+    }
+  }
+
+  const expValues = candidates.map(c => c.years_experience).filter((v): v is number => v != null)
+  const avgExperience = expValues.length > 0 ? Math.round((expValues.reduce((a, b) => a + b, 0) / expValues.length) * 10) / 10 : null
+
+  const bandDef = [
+    { band: '0–2 years', min: 0, max: 2 },
+    { band: '3–5 years', min: 3, max: 5 },
+    { band: '6–10 years', min: 6, max: 10 },
+    { band: '10+ years', min: 11, max: Infinity },
+  ]
+  const experienceBands: ExperienceBand[] = bandDef.map(({ band, min, max }) => ({
+    band, count: expValues.filter(v => v >= min && v <= max).length,
+  }))
+
+  const salaryValues = candidates
+    .filter(c => c.salary_amount != null && c.salary_amount > 0)
+    .map(c => normalizeSalaryToAnnual(c.salary_amount!, c.salary_period))
+
+  const salaryStats: SalaryStats | null = salaryValues.length >= 3
+    ? {
+        p25: Math.round(percentile(salaryValues, 25)),
+        median: Math.round(medianFn(salaryValues)),
+        p75: Math.round(percentile(salaryValues, 75)),
+        avg: Math.round(salaryValues.reduce((a, b) => a + b, 0) / salaryValues.length),
+        count: salaryValues.length,
+      }
+    : null
+
+  const salaryBandDefs = [
+    { name: '< $30k', min: 0, max: 30000 },
+    { name: '$30k–$50k', min: 30000, max: 50000 },
+    { name: '$50k–$75k', min: 50000, max: 75000 },
+    { name: '$75k–$100k', min: 75000, max: 100000 },
+    { name: '$100k–$150k', min: 100000, max: 150000 },
+    { name: '$150k+', min: 150000, max: Infinity },
+  ]
+  const salaryBands = salaryBandDefs.map(({ name, min, max }) => ({
+    name, count: salaryValues.filter(v => v >= min && v < max).length,
+  }))
+
+  const skillMap = new Map<string, number>()
+  for (const c of candidates) {
+    const skills = c.standardized_skills?.length ? c.standardized_skills : c.skills
+    if (skills) {
+      for (const s of skills) {
+        const normalized = s.trim()
+        if (normalized) skillMap.set(normalized, (skillMap.get(normalized) || 0) + 1)
+      }
+    }
+  }
+  const topSkills: SkillEntry[] = Array.from(skillMap.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 15)
+    .map(([name, count]) => ({ name, count, percentage: Math.round((count / total) * 100) }))
+
+  const countryCounts = countBy(candidates, c => c.location_country, COUNTRY_NORMALIZE).slice(0, 10)
+  const cityCounts = countBy(candidates, c => c.location_city).slice(0, 10)
+
+  const titleCounts = countBy(candidates, c => c.standardized_title || c.functional_area).slice(0, 10)
+  const mostCommonRole = titleCounts.length > 0 ? titleCounts[0].name : null
+
+  const seniorityCounts = countBy(candidates, c => c.seniority_level)
+  const functionalAreaCounts = countBy(candidates, c => c.functional_area)
+  const specializationCounts = countBy(candidates, c => c.specialization).slice(0, 10)
+
+  const enrichedCount = candidates.filter(c => c.enriched_at != null).length
+  const enrichedPercentage = Math.round((enrichedCount / total) * 100)
+
+  return {
+    totalCandidates: total, avgExperience, medianSalary: salaryStats?.median ?? null,
+    mostCommonRole, enrichedPercentage, countryCounts, cityCounts,
+    experienceBands, seniorityCounts, topSkills, salaryStats, salaryBands,
+    salaryValues, functionalAreaCounts, specializationCounts, titleCounts,
+  }
+}
+
+// --- Raw data hook (fetches once, caches) ---
+export function useTalentInsightsRawData() {
   const { user } = useAuth()
 
   return useQuery({
-    queryKey: ['talent-insights', user?.id],
-    queryFn: async (): Promise<TalentInsightsData> => {
+    queryKey: ['talent-insights-raw', user?.id],
+    queryFn: async (): Promise<CandidateRow[]> => {
       if (!user) throw new Error('No user')
 
-      // Tenant isolation
       const { data: memberData, error: memberError } = await supabase
         .from('members')
         .select('tenant_id')
@@ -117,18 +256,15 @@ export function useTalentInsightsData() {
         throw new Error('Unable to determine tenant context')
       }
 
-      const tenantId = memberData.tenant_id
-
-      // Fetch all candidates (paginate past 1000 limit)
       let allCandidates: CandidateRow[] = []
       let from = 0
       const pageSize = 1000
-      
+
       while (true) {
         const { data, error } = await supabase
           .from('candidates')
           .select('location_country, location_city, location_state, years_experience, seniority_level, standardized_skills, skills, salary_amount, salary_currency, salary_period, functional_area, specialization, standardized_title, enriched_at, created_at')
-          .eq('tenant_id', tenantId)
+          .eq('tenant_id', memberData.tenant_id)
           .is('deleted_at', null)
           .range(from, from + pageSize - 1)
 
@@ -139,132 +275,27 @@ export function useTalentInsightsData() {
         from += pageSize
       }
 
-      const candidates = allCandidates
-      const total = candidates.length
-
-      if (total === 0) {
-        return {
-          totalCandidates: 0,
-          avgExperience: null,
-          medianSalary: null,
-          mostCommonRole: null,
-          enrichedPercentage: null,
-          countryCounts: [],
-          cityCounts: [],
-          experienceBands: [],
-          seniorityCounts: [],
-          topSkills: [],
-          salaryStats: null,
-          salaryBands: [],
-          salaryValues: [],
-          functionalAreaCounts: [],
-          specializationCounts: [],
-          titleCounts: [],
-        }
-      }
-
-      // Experience
-      const expValues = candidates.map(c => c.years_experience).filter((v): v is number => v != null)
-      const avgExperience = expValues.length > 0 ? Math.round((expValues.reduce((a, b) => a + b, 0) / expValues.length) * 10) / 10 : null
-
-      const bandDef = [
-        { band: '0–2 years', min: 0, max: 2 },
-        { band: '3–5 years', min: 3, max: 5 },
-        { band: '6–10 years', min: 6, max: 10 },
-        { band: '10+ years', min: 11, max: Infinity },
-      ]
-      const experienceBands: ExperienceBand[] = bandDef.map(({ band, min, max }) => ({
-        band,
-        count: expValues.filter(v => v >= min && v <= max).length,
-      }))
-
-      // Salary
-      const salaryValues = candidates
-        .filter(c => c.salary_amount != null && c.salary_amount > 0)
-        .map(c => normalizeSalaryToAnnual(c.salary_amount!, c.salary_period))
-
-      const salaryStats: SalaryStats | null = salaryValues.length >= 3
-        ? {
-            p25: Math.round(percentile(salaryValues, 25)),
-            median: Math.round(median(salaryValues)),
-            p75: Math.round(percentile(salaryValues, 75)),
-            avg: Math.round(salaryValues.reduce((a, b) => a + b, 0) / salaryValues.length),
-            count: salaryValues.length,
-          }
-        : null
-
-      const medianSalary = salaryStats?.median ?? null
-
-      // Salary bands
-      const salaryBandDefs = [
-        { name: '< $30k', min: 0, max: 30000 },
-        { name: '$30k–$50k', min: 30000, max: 50000 },
-        { name: '$50k–$75k', min: 50000, max: 75000 },
-        { name: '$75k–$100k', min: 75000, max: 100000 },
-        { name: '$100k–$150k', min: 100000, max: 150000 },
-        { name: '$150k+', min: 150000, max: Infinity },
-      ]
-      const salaryBands = salaryBandDefs.map(({ name, min, max }) => ({
-        name,
-        count: salaryValues.filter(v => v >= min && v < max).length,
-      }))
-
-      // Skills
-      const skillMap = new Map<string, number>()
-      for (const c of candidates) {
-        const skills = c.standardized_skills?.length ? c.standardized_skills : c.skills
-        if (skills) {
-          for (const s of skills) {
-            const normalized = s.trim()
-            if (normalized) skillMap.set(normalized, (skillMap.get(normalized) || 0) + 1)
-          }
-        }
-      }
-      const topSkills: SkillEntry[] = Array.from(skillMap.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 15)
-        .map(([name, count]) => ({
-          name,
-          count,
-          percentage: Math.round((count / total) * 100),
-        }))
-
-      // Geography
-      const countryCounts = countBy(candidates, c => c.location_country, COUNTRY_NORMALIZE).slice(0, 10)
-      const cityCounts = countBy(candidates, c => c.location_city).slice(0, 10)
-
-      // Role / composition
-      const titleCounts = countBy(candidates, c => c.standardized_title || c.functional_area).slice(0, 10)
-      const mostCommonRole = titleCounts.length > 0 ? titleCounts[0].name : null
-
-      const seniorityCounts = countBy(candidates, c => c.seniority_level)
-      const functionalAreaCounts = countBy(candidates, c => c.functional_area)
-      const specializationCounts = countBy(candidates, c => c.specialization).slice(0, 10)
-
-      // Enriched %
-      const enrichedCount = candidates.filter(c => c.enriched_at != null).length
-      const enrichedPercentage = Math.round((enrichedCount / total) * 100)
-
-      return {
-        totalCandidates: total,
-        avgExperience,
-        medianSalary,
-        mostCommonRole,
-        enrichedPercentage,
-        countryCounts,
-        cityCounts,
-        experienceBands,
-        seniorityCounts,
-        topSkills,
-        salaryStats,
-        salaryBands,
-        salaryValues,
-        functionalAreaCounts,
-        specializationCounts,
-        titleCounts,
-      }
+      return allCandidates
     },
     enabled: !!user,
     staleTime: 5 * 60 * 1000,
   })
+}
+
+// --- Filtered + aggregated data hook ---
+export function useTalentInsightsData(filters?: TalentInsightsFilters) {
+  const { data: rawCandidates, isLoading, error } = useTalentInsightsRawData()
+
+  const data = useMemo(() => {
+    if (!rawCandidates) return null
+    const filtered = filters ? applyFilters(rawCandidates, filters) : rawCandidates
+    return computeInsights(filtered)
+  }, [rawCandidates, filters])
+
+  return {
+    data,
+    rawCandidates: rawCandidates ?? [],
+    isLoading,
+    error,
+  }
 }
