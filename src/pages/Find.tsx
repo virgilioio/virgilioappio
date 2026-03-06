@@ -26,6 +26,15 @@ export default function Find() {
   
   // Initialize credit warnings
   useSourcingCreditWarnings()
+  
+  // Redirect non-recruiter members away from Find page
+  const { hasRecruiterRole, isPrivileged, isLoading: rolesLoading } = useUserJobRoles()
+  
+  useEffect(() => {
+    if (!rolesLoading && !isPrivileged && !hasRecruiterRole) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [rolesLoading, isPrivileged, hasRecruiterRole, navigate])
 
   // Navigation handlers
   const handleSelectProject = (id: string) => {
