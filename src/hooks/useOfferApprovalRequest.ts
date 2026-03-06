@@ -285,12 +285,25 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
         .eq('id', approvalRequest.offer_letter_id)
       if (offerError) throw offerError
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey })
       queryClient.invalidateQueries({ queryKey: ['offer-letters'] })
       queryClient.invalidateQueries({ queryKey: ['pending-activities'] })
+      queryClient.invalidateQueries({ queryKey: ['activity-feed'] })
       window.dispatchEvent(new CustomEvent('refetch-offer-letters'))
       toast({ title: 'Declined', description: 'You have declined this offer.' })
+      if (approvalRequest) {
+        const step = approvalRequest.steps.find(s => s.id === variables.stepId)
+        logActivity({
+          activityType: 'approval_declined',
+          title: 'Approval declined',
+          description: step ? `Step ${step.step_order} declined by ${step.approver_name}` : 'Approval declined',
+          entityType: 'candidate',
+          entityId: approvalRequest.candidate_id,
+          organizationId: approvalRequest.organization_id,
+          metadata: { jobId: approvalRequest.job_id, offerLetterId: approvalRequest.offer_letter_id, stepOrder: step?.step_order, notes: variables.notes },
+        })
+      }
     },
     onError: (error) => {
       console.error('Decline step error:', error)
