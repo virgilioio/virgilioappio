@@ -145,10 +145,13 @@ export function SalaryInsightsCard({
     const maxSalary = Math.max(...displaySalaries);
     const avgSalary = displaySalaries.reduce((sum, s) => sum + s, 0) / displaySalaries.length;
 
-    const curveData = generateKDE(displaySalaries);
+    const histogramData = generateHistogram(displaySalaries);
+    const kdeData = generateKDE(displaySalaries);
+    const chartData = mergeChartData(histogramData, kdeData);
 
     return {
-      curveData,
+      chartData,
+      histogramData,
       count: candidatesWithSalary.length,
       minSalary: Math.round(minSalary),
       maxSalary: Math.round(maxSalary),
