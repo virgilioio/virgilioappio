@@ -283,6 +283,31 @@ export function IndependentCandidateProfileSheet({
                       </Button>
                     )}
                   </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {candidate?.job_board_source && (
+                      <Badge variant="secondary" className="gap-1">
+                        <Globe className="h-3 w-3" />
+                        Applied via {candidate.job_board_source}
+                      </Badge>
+                    )}
+                    {candidate && <AddToJobPipelineDialog candidateId={candidate.id} />}
+                    {candidate && canEnrich(candidate) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleEnrichFromLinkedIn}
+                        disabled={isEnriching}
+                        className="gap-1.5"
+                      >
+                        {isEnriching ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-4 w-4" />
+                        )}
+                        Enrich from LinkedIn
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-1 sm:gap-sm">
                   <Button
@@ -345,36 +370,6 @@ export function IndependentCandidateProfileSheet({
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Left column (50%) */}
                     <div className="space-y-6 min-w-0">
-                      {/* Controls Card */}
-                      <Card className="bg-surface-primary border-border">
-                        <CardContent className="p-4">
-                          <div className="flex flex-wrap items-center gap-2 w-full">
-                              {candidate.job_board_source && (
-                                <Badge variant="secondary" className="gap-1">
-                                  <Globe className="h-3 w-3" />
-                                  Applied via {candidate.job_board_source}
-                                </Badge>
-                              )}
-                              <AddToJobPipelineDialog candidateId={candidate.id} />
-                              {canEnrich(candidate) && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={handleEnrichFromLinkedIn}
-                                  disabled={isEnriching}
-                                  className="gap-1.5"
-                                >
-                                  {isEnriching ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Sparkles className="h-4 w-4" />
-                                  )}
-                                  Enrich from LinkedIn
-                                </Button>
-                              )}
-                          </div>
-                        </CardContent>
-                      </Card>
 
                       <CandidateNameCard
                         email={candidate.email}
@@ -456,96 +451,8 @@ export function IndependentCandidateProfileSheet({
                       )}
 
                       {activeTab === 'overview' && (
-                        <Accordion type="multiple" defaultValue={['career', 'contact', 'summary', 'experience', 'education', 'certifications']} className="space-y-4">
+                        <Accordion type="multiple" defaultValue={['contact', 'career', 'summary', 'experience', 'education', 'certifications']} className="space-y-4">
                           
-                          {/* Career Summary - NEW */}
-                          {(candidate?.current_job_title || candidate?.seniority_level || candidate?.functional_area) && (
-                            <AccordionItem value="career" className="border-0">
-                              <Card className="bg-surface-primary border-border">
-                                <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                                  <div className="flex items-center gap-2">
-                                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                                    <CardTitle>Career Summary</CardTitle>
-                                  </div>
-                                </AccordionTrigger>
-                                <AccordionContent>
-                                  <CardContent className="pt-0">
-                                    <dl className="divide-y divide-border">
-                                      {candidate.current_job_title && (
-                                        <div className="flex items-center justify-between py-2.5">
-                                          <dt className="text-sm text-muted-foreground">Current Title</dt>
-                                          <dd className="text-sm font-medium text-foreground text-right">{candidate.current_job_title}</dd>
-                                        </div>
-                                      )}
-                                      {candidate.standardized_title && candidate.standardized_title !== candidate.current_job_title && (
-                                        <div className="flex items-center justify-between py-2.5">
-                                          <dt className="text-sm text-muted-foreground">Standardized Title</dt>
-                                          <dd>
-                                            <Badge variant="outline" className="text-xs gap-1">
-                                              <Sparkles className="h-3 w-3" />
-                                              {candidate.standardized_title}
-                                            </Badge>
-                                          </dd>
-                                        </div>
-                                      )}
-                                      {candidate.company_current && (
-                                        <div className="flex items-center justify-between py-2.5">
-                                          <dt className="text-sm text-muted-foreground">Current Company</dt>
-                                          <dd className="text-sm font-medium text-foreground">{candidate.company_current}</dd>
-                                        </div>
-                                      )}
-                                      {candidate.seniority_level && (
-                                        <div className="flex items-center justify-between py-2.5">
-                                          <dt className="text-sm text-muted-foreground">Seniority</dt>
-                                          <dd className="text-sm font-medium text-foreground capitalize">{candidate.seniority_level.replace('_', ' ')}</dd>
-                                        </div>
-                                      )}
-                                      {candidate.functional_area && (
-                                        <div className="flex items-center justify-between py-2.5">
-                                          <dt className="text-sm text-muted-foreground">Functional Area</dt>
-                                          <dd className="text-sm font-medium text-foreground">{candidate.functional_area}</dd>
-                                        </div>
-                                      )}
-                                      {candidate.specialization && (
-                                        <div className="flex items-center justify-between py-2.5">
-                                          <dt className="text-sm text-muted-foreground">Specialization</dt>
-                                          <dd className="text-sm font-medium text-foreground">{candidate.specialization}</dd>
-                                        </div>
-                                      )}
-                                      {candidate.years_experience != null && (
-                                        <div className="flex items-center justify-between py-2.5">
-                                          <dt className="text-sm text-muted-foreground">Years Experience</dt>
-                                          <dd className="text-sm font-medium text-foreground">{candidate.years_experience}</dd>
-                                        </div>
-                                      )}
-                                      {candidate.company_count != null && candidate.company_count > 0 && (
-                                        <div className="flex items-center justify-between py-2.5">
-                                          <dt className="text-sm text-muted-foreground">Companies</dt>
-                                          <dd className="text-sm font-medium text-foreground">{candidate.company_count}</dd>
-                                        </div>
-                                      )}
-                                      {candidate.avg_tenure_months != null && candidate.avg_tenure_months > 0 && (
-                                        <div className="flex items-center justify-between py-2.5">
-                                          <dt className="text-sm text-muted-foreground">Avg. Tenure</dt>
-                                          <dd className="text-sm font-medium text-foreground">
-                                            {candidate.avg_tenure_months >= 12 
-                                              ? `${Math.round(candidate.avg_tenure_months / 12)}y`
-                                              : `${candidate.avg_tenure_months}m`}
-                                          </dd>
-                                        </div>
-                                      )}
-                                      {candidate.years_in_leadership != null && candidate.years_in_leadership > 0 && (
-                                        <div className="flex items-center justify-between py-2.5">
-                                          <dt className="text-sm text-muted-foreground">Years Leadership</dt>
-                                          <dd className="text-sm font-medium text-foreground">{candidate.years_in_leadership}</dd>
-                                        </div>
-                                      )}
-                                    </dl>
-                                  </CardContent>
-                                </AccordionContent>
-                              </Card>
-                            </AccordionItem>
-                          )}
 
                           {/* Contact Information */}
                           <AccordionItem value="contact" className="border-0">
@@ -654,7 +561,95 @@ export function IndependentCandidateProfileSheet({
                             </Card>
                           </AccordionItem>
 
-                          {/* Profile Summary */}
+                          {/* Career Summary */}
+                          {(candidate?.current_job_title || candidate?.seniority_level || candidate?.functional_area) && (
+                            <AccordionItem value="career" className="border-0">
+                              <Card className="bg-surface-primary border-border">
+                                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                                  <div className="flex items-center gap-2">
+                                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                                    <CardTitle>Career Summary</CardTitle>
+                                  </div>
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                  <CardContent className="pt-0">
+                                    <dl className="divide-y divide-border">
+                                      {candidate.current_job_title && (
+                                        <div className="flex items-center justify-between py-2.5">
+                                          <dt className="text-sm text-muted-foreground">Current Title</dt>
+                                          <dd className="text-sm font-medium text-foreground text-right">{candidate.current_job_title}</dd>
+                                        </div>
+                                      )}
+                                      {candidate.standardized_title && candidate.standardized_title !== candidate.current_job_title && (
+                                        <div className="flex items-center justify-between py-2.5">
+                                          <dt className="text-sm text-muted-foreground">Standardized Title</dt>
+                                          <dd>
+                                            <Badge variant="outline" className="text-xs gap-1">
+                                              <Sparkles className="h-3 w-3" />
+                                              {candidate.standardized_title}
+                                            </Badge>
+                                          </dd>
+                                        </div>
+                                      )}
+                                      {candidate.company_current && (
+                                        <div className="flex items-center justify-between py-2.5">
+                                          <dt className="text-sm text-muted-foreground">Current Company</dt>
+                                          <dd className="text-sm font-medium text-foreground">{candidate.company_current}</dd>
+                                        </div>
+                                      )}
+                                      {candidate.seniority_level && (
+                                        <div className="flex items-center justify-between py-2.5">
+                                          <dt className="text-sm text-muted-foreground">Seniority</dt>
+                                          <dd className="text-sm font-medium text-foreground capitalize">{candidate.seniority_level.replace('_', ' ')}</dd>
+                                        </div>
+                                      )}
+                                      {candidate.functional_area && (
+                                        <div className="flex items-center justify-between py-2.5">
+                                          <dt className="text-sm text-muted-foreground">Functional Area</dt>
+                                          <dd className="text-sm font-medium text-foreground">{candidate.functional_area}</dd>
+                                        </div>
+                                      )}
+                                      {candidate.specialization && (
+                                        <div className="flex items-center justify-between py-2.5">
+                                          <dt className="text-sm text-muted-foreground">Specialization</dt>
+                                          <dd className="text-sm font-medium text-foreground">{candidate.specialization}</dd>
+                                        </div>
+                                      )}
+                                      {candidate.years_experience != null && (
+                                        <div className="flex items-center justify-between py-2.5">
+                                          <dt className="text-sm text-muted-foreground">Years Experience</dt>
+                                          <dd className="text-sm font-medium text-foreground">{candidate.years_experience}</dd>
+                                        </div>
+                                      )}
+                                      {candidate.company_count != null && candidate.company_count > 0 && (
+                                        <div className="flex items-center justify-between py-2.5">
+                                          <dt className="text-sm text-muted-foreground">Companies</dt>
+                                          <dd className="text-sm font-medium text-foreground">{candidate.company_count}</dd>
+                                        </div>
+                                      )}
+                                      {candidate.avg_tenure_months != null && candidate.avg_tenure_months > 0 && (
+                                        <div className="flex items-center justify-between py-2.5">
+                                          <dt className="text-sm text-muted-foreground">Avg. Tenure</dt>
+                                          <dd className="text-sm font-medium text-foreground">
+                                            {candidate.avg_tenure_months >= 12 
+                                              ? `${Math.round(candidate.avg_tenure_months / 12)}y`
+                                              : `${candidate.avg_tenure_months}m`}
+                                          </dd>
+                                        </div>
+                                      )}
+                                      {candidate.years_in_leadership != null && candidate.years_in_leadership > 0 && (
+                                        <div className="flex items-center justify-between py-2.5">
+                                          <dt className="text-sm text-muted-foreground">Years Leadership</dt>
+                                          <dd className="text-sm font-medium text-foreground">{candidate.years_in_leadership}</dd>
+                                        </div>
+                                      )}
+                                    </dl>
+                                  </CardContent>
+                                </AccordionContent>
+                              </Card>
+                            </AccordionItem>
+                          )}
+
                           <AccordionItem value="summary" className="border-0">
                             <Card className="bg-surface-primary border-border">
                               <AccordionTrigger className="px-6 py-4 hover:no-underline">
