@@ -24,7 +24,7 @@ export function MembersList({ tenantId }: MembersListProps) {
       const firstName = member.profile?.first_name?.toLowerCase() || ''
       const lastName = member.profile?.last_name?.toLowerCase() || ''
       const email = member.profile?.email?.toLowerCase() || member.invited_email?.toLowerCase() || ''
-      const role = member.member_role?.toLowerCase() || ''
+      const role = member.system_role?.toLowerCase() || member.member_role?.toLowerCase() || ''
 
       return (
         firstName.includes(search) ||
