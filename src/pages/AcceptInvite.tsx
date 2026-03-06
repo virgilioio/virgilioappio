@@ -14,8 +14,7 @@ import { GoGioLogo } from '@/components/GoGioLogo'
 interface InvitationData {
   member_id: string
   organization_id: string
-  member_role: string // legacy from RPC
-  system_role?: string
+  system_role: string
   organization_name: string
   invite_email: string
   is_valid: boolean
@@ -64,12 +63,15 @@ export default function AcceptInvite() {
       if (data && data.length > 0) {
         const invitation = data[0]
         console.log('Invitation validation result:', invitation)
-        setInvitationData(invitation)
+        setInvitationData({
+          ...invitation,
+          system_role: (invitation as any).system_role || invitation.member_role || 'member',
+        })
       } else {
         setInvitationData({
           member_id: '',
           organization_id: '',
-          member_role: '',
+          system_role: '',
           organization_name: '',
           invite_email: '',
           is_valid: false,
@@ -81,7 +83,7 @@ export default function AcceptInvite() {
       setInvitationData({
         member_id: '',
         organization_id: '',
-        member_role: '',
+        system_role: '',
         organization_name: '',
         invite_email: '',
         is_valid: false,
@@ -430,7 +432,7 @@ export default function AcceptInvite() {
           <CardTitle className="text-2xl font-poppins text-text-primary">You're Invited!</CardTitle>
           <CardDescription className="text-text-secondary">
             Join <strong className="text-text-primary">{invitationData.organization_name}</strong> as a{' '}
-            <strong className="text-text-primary">{invitationData.system_role === 'admin' ? 'Admin' : invitationData.system_role === 'member' ? 'Member' : invitationData.member_role.replace('_', ' ')}</strong>
+            <strong className="text-text-primary">{invitationData.system_role === 'admin' ? 'Admin' : 'Member'}</strong>
           </CardDescription>
         </CardHeader>
         

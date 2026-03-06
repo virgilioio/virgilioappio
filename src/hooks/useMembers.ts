@@ -13,7 +13,6 @@ export interface Member {
   user_id: string | null
   organization_id: string
   system_role: 'admin' | 'member'
-  member_role: string // legacy, kept for backward compat
   user_status: 'active' | 'inactive' | 'invited'
   user_type?: 'member' | 'workspace_owner' | 'platform_admin'
   created_at: string
@@ -35,7 +34,6 @@ export interface CreateMemberData {
   user_id?: string | null
   organization_id: string
   system_role: 'admin' | 'member'
-  member_role?: string // legacy compat
   user_status?: 'active' | 'inactive' | 'invited'
   user_type?: 'member' | 'workspace_owner' | 'platform_admin'
   email?: string
@@ -43,7 +41,6 @@ export interface CreateMemberData {
 
 export interface UpdateMemberData {
   system_role?: 'admin' | 'member'
-  member_role?: string // legacy compat
   user_status?: 'active' | 'inactive' | 'invited'
   organization_id?: string
 }
@@ -160,8 +157,7 @@ export function useMembers(includeHierarchy: boolean = false) {
         
         const typedMember: Member = {
           ...member,
-          system_role: (member.system_role || (member.member_role === 'admin' ? 'admin' : 'member')) as 'admin' | 'member',
-          member_role: member.member_role,
+          system_role: (member.system_role || 'member') as 'admin' | 'member',
           user_status: member.user_status as 'active' | 'inactive' | 'invited',
           user_type: member.user_type as 'member' | 'workspace_owner' | 'platform_admin',
           organization_name: organizationsMap[member.organization_id] || null,
@@ -375,7 +371,6 @@ export function useMembers(includeHierarchy: boolean = false) {
         organization_id: data.organization_id,
         tenant_id: orgData?.tenant_id,
         system_role: data.system_role as any,
-        member_role: (data.system_role === 'admin' ? 'admin' : (data.member_role || 'recruiter')) as any, // legacy compat
         user_status: data.user_id ? (data.user_status || 'active') : 'invited',
         user_id: data.user_id || null,
         user_type: data.user_type || 'member',
@@ -477,9 +472,6 @@ export function useMembers(includeHierarchy: boolean = false) {
       log.debug('Updating member:', id, data)
       // Cast for DB compat - system_role isn't in generated types yet
       const dbData: any = { ...data }
-      if (dbData.member_role) {
-        // Keep member_role as-is for legacy compat
-      }
       const { data: updatedMember, error: updateError } = await withAuthRetry(async () =>
         await supabase
           .from('members')

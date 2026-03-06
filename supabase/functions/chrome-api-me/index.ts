@@ -73,7 +73,7 @@ serve(async (req) => {
       .select(`
         tenant_id,
         organization_id,
-        member_role,
+        system_role,
         user_type,
         tenants!members_tenant_id_fkey (
           id,
@@ -99,7 +99,7 @@ serve(async (req) => {
       email: user.email,
       tenant_id: member.tenant_id,
       tenant_name: tenant?.name ?? null,
-      member_role: member.member_role,
+      system_role: member.system_role,
       user_type: member.user_type
     };
 

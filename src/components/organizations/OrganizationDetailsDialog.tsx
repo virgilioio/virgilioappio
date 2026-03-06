@@ -201,7 +201,7 @@ export function OrganizationDetailsDialog({
                           </div>
                           
                           <div className="flex flex-wrap gap-2">
-                            {getRoleBadge(member.member_role)}
+                            {getRoleBadge(member.system_role)}
                             {getStatusBadge(member.user_status)}
                           </div>
                           

@@ -1763,7 +1763,7 @@ export type Database = {
           invite_expires_at: string
           invite_token: string | null
           invited_by: string | null
-          member_role: Database["public"]["Enums"]["member_role"]
+          member_role: string
           organization_id: string
           updated_at: string | null
           used_at: string | null
@@ -1775,7 +1775,7 @@ export type Database = {
           invite_expires_at?: string
           invite_token?: string | null
           invited_by?: string | null
-          member_role: Database["public"]["Enums"]["member_role"]
+          member_role: string
           organization_id: string
           updated_at?: string | null
           used_at?: string | null
@@ -1787,7 +1787,7 @@ export type Database = {
           invite_expires_at?: string
           invite_token?: string | null
           invited_by?: string | null
-          member_role?: Database["public"]["Enums"]["member_role"]
+          member_role?: string
           organization_id?: string
           updated_at?: string | null
           used_at?: string | null
@@ -2495,7 +2495,6 @@ export type Database = {
           invite_expires_at: string | null
           invite_token: string | null
           invited_email: string | null
-          member_role: Database["public"]["Enums"]["member_role"]
           organization_id: string
           system_role: Database["public"]["Enums"]["system_role"]
           tenant_id: string
@@ -2513,7 +2512,6 @@ export type Database = {
           invite_expires_at?: string | null
           invite_token?: string | null
           invited_email?: string | null
-          member_role: Database["public"]["Enums"]["member_role"]
           organization_id: string
           system_role?: Database["public"]["Enums"]["system_role"]
           tenant_id: string
@@ -2531,7 +2529,6 @@ export type Database = {
           invite_expires_at?: string | null
           invite_token?: string | null
           invited_email?: string | null
-          member_role?: Database["public"]["Enums"]["member_role"]
           organization_id?: string
           system_role?: Database["public"]["Enums"]["system_role"]
           tenant_id?: string
@@ -5368,13 +5365,6 @@ export type Database = {
         Args: { _organization_id: string; _required_role: string }
         Returns: boolean
       }
-      check_org_member_access: {
-        Args: {
-          _organization_id: string
-          _required_role?: Database["public"]["Enums"]["member_role"]
-        }
-        Returns: boolean
-      }
       check_recursion_safety: { Args: never; Returns: boolean }
       check_seat_limit: {
         Args: { p_tenant_id: string }
@@ -5828,7 +5818,6 @@ export type Database = {
         | "salary_expectations"
       job_assignment_role: "recruiter" | "hiring_manager" | "interviewer"
       job_status: "draft" | "open" | "closed" | "archived"
-      member_role: "admin" | "recruiter" | "hiring_manager" | "interviewer"
       org_kind_enum: "tenant" | "client" | "department" | "root"
       payment_frequency_enum: "bi_monthly" | "monthly" | "custom"
       payment_period_enum:
@@ -6087,7 +6076,6 @@ export const Constants = {
       ],
       job_assignment_role: ["recruiter", "hiring_manager", "interviewer"],
       job_status: ["draft", "open", "closed", "archived"],
-      member_role: ["admin", "recruiter", "hiring_manager", "interviewer"],
       org_kind_enum: ["tenant", "client", "department", "root"],
       payment_frequency_enum: ["bi_monthly", "monthly", "custom"],
       payment_period_enum: [

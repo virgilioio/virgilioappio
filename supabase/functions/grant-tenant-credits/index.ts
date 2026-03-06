@@ -37,14 +37,14 @@ serve(async (req) => {
     // Verify the user is a platform admin
     const { data: memberData, error: memberErr } = await supabase
       .from("members")
-      .select("member_role")
+      .select("user_type")
       .eq("user_id", user.id)
       .eq("user_status", "active")
       .limit(1)
       .maybeSingle();
 
     if (memberErr) throw new Error(`Member lookup failed: ${memberErr.message}`);
-    if (!memberData || memberData.member_role !== "platform_admin") {
+    if (!memberData || memberData.user_type !== "platform_admin") {
       throw new Error("Unauthorized: Only platform admins can grant credits");
     }
 

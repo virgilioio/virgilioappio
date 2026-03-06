@@ -17,7 +17,7 @@ import { reconcilePendingInvitation, wasInvitationAccepted } from '@/lib/invitat
 
 interface PendingInvitation {
   organization_name: string
-  member_role: string
+  system_role: string
   invited_by_email?: string
   invite_expires_at: string
   member_id: string
@@ -230,7 +230,7 @@ export default function Onboarding() {
         .from('members')
         .select(`
           id,
-          member_role,
+          system_role,
           invite_expires_at,
           organizations!inner (
             name
@@ -244,7 +244,7 @@ export default function Onboarding() {
         console.log('[Onboarding] User has pending invitation (not auto-accepted)', pendingInvite);
         setPendingInvitation({
           organization_name: (pendingInvite.organizations as any).name || 'Unknown',
-          member_role: pendingInvite.member_role,
+          system_role: pendingInvite.system_role,
           invite_expires_at: pendingInvite.invite_expires_at || '',
           member_id: pendingInvite.id,
           invited_by_email: undefined

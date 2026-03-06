@@ -5,7 +5,6 @@ export interface SaaSMember {
   id: string
   user_id: string | null
   system_role: string
-  member_role: string
   user_status: string
   user_type: string | null
   invited_email: string | null

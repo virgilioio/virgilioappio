@@ -19,7 +19,6 @@ export interface ReconciliationResult {
   organization_id: string | null;
   organization_name: string | null;
   system_role: string | null;
-  member_role: string | null; // legacy
 }
 
 /**
@@ -67,7 +66,7 @@ export async function reconcilePendingInvitation(userId: string): Promise<Reconc
     // Cast to our interface - RPC may or may not include system_role
     const typedResult: ReconciliationResult = {
       ...result,
-      system_role: (result as any).system_role || (result.member_role === 'admin' ? 'admin' : 'member'),
+      system_role: (result as any).system_role || result.member_role || 'member',
     };
     return typedResult;
   } catch (err) {

@@ -8,7 +8,7 @@ const corsHeaders = {
 interface MemberWithProfile {
   id: string
   user_id: string | null
-  member_role: string
+  system_role: string
   user_status: string
   user_type: string | null
   invited_email: string | null
@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
       .select(`
         id,
         user_id,
-        member_role,
+        system_role,
         user_status,
         user_type,
         invited_email,
@@ -145,7 +145,7 @@ Deno.serve(async (req) => {
     const membersWithProfiles: MemberWithProfile[] = members.map(member => ({
       id: member.id,
       user_id: member.user_id,
-      member_role: member.member_role,
+      system_role: member.system_role,
       user_status: member.user_status,
       user_type: member.user_type,
       invited_email: member.invited_email,

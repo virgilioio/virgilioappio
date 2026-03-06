@@ -43,7 +43,7 @@ serve(async (req) => {
     // Check if user is platform admin
     const { data: memberData, error: memberError } = await supabaseClient
       .from('members')
-      .select('user_type, member_role')
+      .select('user_type')
       .eq('user_id', user.id)
       .single()
 

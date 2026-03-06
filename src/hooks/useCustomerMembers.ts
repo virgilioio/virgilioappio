@@ -5,7 +5,6 @@ export interface Member {
   id: string
   user_id: string
   system_role: string
-  member_role: string
   user_status: string
   created_at: string
   updated_at: string
@@ -29,7 +28,6 @@ export function useCustomerMembers(organizationId: string) {
           id,
           user_id,
           system_role,
-          member_role,
           user_status,
           created_at,
           updated_at

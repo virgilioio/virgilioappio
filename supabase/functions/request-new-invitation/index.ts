@@ -77,7 +77,7 @@ const handler = async (req: Request): Promise<Response> => {
         )
       `)
       .eq('organization_id', member.organization_id)
-      .eq('member_role', 'admin')
+      .eq('system_role', 'admin')
       .limit(1)
       .maybeSingle();
 

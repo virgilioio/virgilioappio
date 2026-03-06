@@ -40,7 +40,7 @@ async function authenticateUser(req: Request, corsHeaders: Record<string, string
     .select(`
       tenant_id,
       organization_id,
-      member_role,
+      system_role,
       user_type,
       tenants!members_tenant_id_fkey (
         id,
@@ -73,7 +73,7 @@ async function handleMe(user: any, member: any, corsHeaders: Record<string, stri
     email: user.email,
     tenant_id: member.tenant_id,
     tenant_name: tenant?.name ?? null,
-    member_role: member.member_role,
+    system_role: member.system_role,
     user_type: member.user_type
   };
 

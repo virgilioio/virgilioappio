@@ -231,7 +231,7 @@ const handler = async (req: Request): Promise<Response> => {
       p_description: needsNewToken ? 'New invitation sent to team member' : 'Invitation resent to team member',
       p_metadata: {
         invited_email: email,
-        role: member.member_role,
+        role: member.system_role,
         member_id: memberId,
         is_resend: !needsNewToken
       },
