@@ -453,7 +453,6 @@ export function IndependentCandidateProfileSheet({
                       {activeTab === 'overview' && (
                         <Accordion type="multiple" defaultValue={['contact', 'career', 'summary', 'experience', 'education', 'certifications']} className="space-y-4">
                           
-                          {/* Contact Information - moved here, Career Summary moved below */}
 
                           {/* Contact Information */}
                           <AccordionItem value="contact" className="border-0">
