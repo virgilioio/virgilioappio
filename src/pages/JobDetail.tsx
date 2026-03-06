@@ -876,10 +876,10 @@ export default function JobDetail() {
           {isMobile ? (
             // Mobile: Tabs
             <>
-                <TabsList className="grid w-full grid-cols-3 mb-6">
+                <TabsList className={`grid w-full ${isRestrictedViewer ? 'grid-cols-2' : 'grid-cols-3'} mb-6`}>
                   <TabsTrigger value="candidates">Job Dashboard</TabsTrigger>
                   <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
-                  <TabsTrigger value="job-setup">Setup</TabsTrigger>
+                  {!isRestrictedViewer && <TabsTrigger value="job-setup">Setup</TabsTrigger>}
                 </TabsList>
               
               
