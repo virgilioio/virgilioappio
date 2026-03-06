@@ -13,6 +13,10 @@ export interface CandidateWorkExperience {
   description?: string;
   skills_used?: string[];
   location?: string;
+  standardized_title?: string;
+  company_industry?: string;
+  company_size_category?: string;
+  duration_months?: number;
 }
 
 interface CandidateWorkExperienceProps {
