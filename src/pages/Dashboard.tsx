@@ -60,7 +60,7 @@ export default function Dashboard() {
             <div className="space-y-6 min-w-0">
               <UpcomingActivities />
               <PendingActivities />
-              <StaleCandidates />
+              {(isPrivileged || hasRecruiterRole) && <StaleCandidates />}
             </div>
           </div>
         </div>

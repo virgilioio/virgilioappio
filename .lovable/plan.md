@@ -1,32 +1,59 @@
 
 
-# Scope Upcoming Activities and Hide Stale Candidates for HM/Interviewers
+# System Roles Migration — Completed Phases 1-5
 
-## Problem
-1. **Upcoming Activities**: Hiring managers and interviewers currently see bookings for all assigned jobs. They should only see interviews **where they are the interviewer** (`interviewer_id = user.id`), not all bookings across their assigned jobs. Reminders should stay filtered to own + assigned jobs (current behavior is fine).
-2. **Stale Candidates**: This widget is an operational/recruiter concern. HMs and interviewers don't need it.
+## Architecture Change
+- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
+- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-## Changes
+## Completed
 
-### 1. `src/hooks/useScheduledBookings.ts` — Tighten booking filter for restricted viewers
+### Phase 1 — Database
+- ✅ Created `system_role` enum (`admin`, `member`)
+- ✅ Added `system_role` column to `members` table
+- ✅ Migrated data: `admin` → `admin`, all others → `member`
+- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
+- ✅ Updated `check_tenant_member_role` to use `system_role`
+- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
+- ✅ Updated `audit_member_role_change` trigger
 
-Currently (line ~158-160), members with assigned jobs see bookings where they're the interviewer **OR** the booking is for any of their assigned jobs. For restricted viewers (HM/interviewer), we should only show bookings where `interviewer_id = user.id`.
+### Phase 2 — Frontend Permissions
+- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
+- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
+- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
+- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
 
-The hook receives `permissions` as a parameter. We need to add a check: if the user is a restricted role (not admin, not workspace owner, not platform admin, and `isMember` is true with `system_role = member`), filter strictly by `interviewer_id`.
+### Phase 3 — UI Updates
+- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
+- ✅ Updated `Dashboard` — sourcing panel for admin+ only
+- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
+- ✅ Updated `BillingGuard` — members (non-admin) never blocked
+- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
+- ✅ Updated `Find` page RoleGate
+- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
 
-Change the filter logic around lines 156-164 to:
-- If admin/owner/platform_admin → see all tenant bookings
-- If restricted member (HM/interviewer) → only `interviewer_id.eq.${user.id}`
-- If regular member (recruiter) → current behavior (interviewer OR assigned jobs)
+### Phase 4 — Runtime Hotfixes
+- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
+- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
+- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
+- ✅ Updated `validate_invite_token` — returns `system_role`
+- ✅ Updated `accept_invitation` — uses `system_role`
 
-### 2. `src/pages/Dashboard.tsx` — Conditionally hide `<StaleCandidates />`
+### Phase 5 — Complete Cleanup
+- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
+- ✅ Updated `admin_manage_member` — updates `system_role` column
+- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
+- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
+- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
+- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
+- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
+- ✅ Updated `diagnose_user_auth` — reports `system_role`
+- ✅ Updated `audit_platform_admin_access` — returns `system_role`
+- ✅ Updated `debug_user_permissions` — returns `system_role`
+- ✅ Renamed `invitations.member_role` → `invitations.system_role`
+- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
 
-Import `useUserJobRoles` (already imported) and use the `isPrivileged` / `hasRecruiterRole` flags to conditionally render the `StaleCandidates` component. Only show it when the user is privileged or has a recruiter role — same pattern already used for `showSourcingPanel`.
-
-Wrap `<StaleCandidates />` (line 63) with `{(isPrivileged || hasRecruiterRole) && <StaleCandidates />}`.
-
-## Summary
-- Two files changed: `useScheduledBookings.ts` and `Dashboard.tsx`
-- HM/Interviewers see only their own interviews in Upcoming Activities
-- Stale Candidates card hidden entirely for HM/Interviewers
-
+## Phase 6 — Future (Optional)
+- Drop `member_role` column from `members` table (already dropped)
+- Drop old `member_role` enum type
+- Update `MemberInviteSheet` role picker to only offer Admin/Member
