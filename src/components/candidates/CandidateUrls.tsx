@@ -93,7 +93,7 @@ export function CandidateUrls({ candidateId }: CandidateUrlsProps) {
   }
 
   return (
-    <Accordion type="single" collapsible defaultValue="urls">
+    <Accordion type="single" collapsible>
       <AccordionItem value="urls" className="border-0">
         <Card className="bg-surface-primary border-border">
           <AccordionTrigger className="px-6 py-4 hover:no-underline">
