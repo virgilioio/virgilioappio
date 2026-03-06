@@ -629,9 +629,17 @@ export function useJobs() {
     }
   }, [userId, userType, organizationId])
 
+  // Job-scoped filtering: non-privileged members only see assigned jobs
+  const scopedJobs = useMemo(() => {
+    if (isPrivileged) return jobs
+    if (assignedJobIds.length === 0) return []
+    const idSet = new Set(assignedJobIds)
+    return jobs.filter(j => idSet.has(j.id))
+  }, [jobs, assignedJobIds, isPrivileged])
+
   return {
-    jobs,
-    isLoading,
+    jobs: scopedJobs,
+    isLoading: isLoading || rolesLoading,
     error,
     getJobs,
     getJob,
