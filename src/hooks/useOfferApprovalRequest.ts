@@ -304,6 +304,15 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
       if (offerError) throw offerError
     },
     onSuccess: () => {
+      // Optimistically set cache to recalled to prevent transient stale declined banner
+      queryClient.setQueryData(queryKey, (old: ApprovalRequest | null | undefined) => {
+        if (!old) return old
+        return {
+          ...old,
+          status: 'recalled' as const,
+          steps: old.steps.map(s => s.status === 'pending' ? { ...s, status: 'recalled' as const } : s),
+        }
+      })
       queryClient.invalidateQueries({ queryKey })
       queryClient.invalidateQueries({ queryKey: ['offer-letters'] })
       queryClient.invalidateQueries({ queryKey: ['pending-activities'] })
