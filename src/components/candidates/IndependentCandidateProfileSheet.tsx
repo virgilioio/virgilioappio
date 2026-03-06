@@ -16,7 +16,7 @@ import { CandidateCertificationsComponent, CandidateCertification } from '@/comp
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import { CandidateJobSidebar } from '@/components/candidates/CandidateJobSidebar'
 import { MobileJobSelector } from '@/components/candidates/MobileJobSelector'
-import { Edit, FileText, Download, ChevronLeft, ChevronRight, Mail, Phone, Copy, ExternalLink, Send, Sparkles, User, Globe, Loader2, Calendar, Briefcase, Award, TrendingUp, MapPin } from 'lucide-react'
+import { Edit, FileText, ChevronLeft, ChevronRight, Mail, Phone, Copy, ExternalLink, Sparkles, Globe, Loader2, Briefcase, Award, TrendingUp, MapPin } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
