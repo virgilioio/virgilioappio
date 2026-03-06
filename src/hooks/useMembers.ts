@@ -160,7 +160,8 @@ export function useMembers(includeHierarchy: boolean = false) {
         
         const typedMember: Member = {
           ...member,
-          member_role: member.member_role as 'admin' | 'recruiter' | 'hiring_manager' | 'interviewer',
+          system_role: (member.system_role || (member.member_role === 'admin' ? 'admin' : 'member')) as 'admin' | 'member',
+          member_role: member.member_role,
           user_status: member.user_status as 'active' | 'inactive' | 'invited',
           user_type: member.user_type as 'member' | 'workspace_owner' | 'platform_admin',
           organization_name: organizationsMap[member.organization_id] || null,
