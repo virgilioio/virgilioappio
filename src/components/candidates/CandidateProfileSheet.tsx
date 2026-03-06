@@ -107,8 +107,10 @@ interface CandidateProfileSheetProps {
 }
 
 export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, autoOpenScorecardStageId, onScorecardOpened }: CandidateProfileSheetProps) {
-  const { canEditCandidates } = usePermissions()
+  const { canEditCandidates, isAdmin, isWorkspaceOwner, isPlatformAdmin } = usePermissions()
   const { organizationId, user } = useAuth()
+  const { isHiringManagerOnJob, isInterviewerOnJob } = useJobRole(jobId)
+  const isRestrictedViewer = (isHiringManagerOnJob || isInterviewerOnJob) && !isAdmin && !isWorkspaceOwner && !isPlatformAdmin
   const [loading, setLoading] = useState(false)
   const [candidate, setCandidate] = useState<any | null>(null)
   const [jobCandidate, setJobCandidate] = useState<any | null>(null)
