@@ -87,6 +87,21 @@ export function GeographyInsights({ countryCounts, cityCounts, totalCandidates }
     })
   }, [countryCounts, maxCount])
 
+  if (countryCounts.length === 0 && cityCounts.length === 0) {
+    return (
+      <Card className="border-virgilio-border">
+        <CardHeader>
+          <CardTitle className="text-sm font-poppins font-semibold text-virgilio-text" withPeriod={false}>
+            Candidate Geography
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TalentInsightEmptyState message="No location data available yet" />
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card className="border-virgilio-border">
       <CardHeader>
