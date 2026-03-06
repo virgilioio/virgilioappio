@@ -42,6 +42,7 @@ import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { useCandidateResolver } from '@/hooks/useCandidateResolver'
 import { triggerFitAnalysis } from '@/utils/triggerFitAnalysis'
+import { useJobRole } from '@/hooks/useJobRole'
 
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 import { MobileJobSelector } from '@/components/candidates/MobileJobSelector'
