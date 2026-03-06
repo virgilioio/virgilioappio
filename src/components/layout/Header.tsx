@@ -169,6 +169,12 @@ export function Header() {
       label: 'Analytics',
       show: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     },
+    {
+      href: '/talent-insights',
+      icon: Lightbulb,
+      label: 'Insights',
+      show: isPlatformAdmin || isWorkspaceOwner || isAdmin,
+    },
   ]
 
   const userDisplayName = (profile?.first_name && profile?.last_name
