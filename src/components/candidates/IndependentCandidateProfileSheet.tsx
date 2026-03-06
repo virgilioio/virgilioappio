@@ -877,7 +877,6 @@ export function IndependentCandidateProfileSheet({
                     </div>
                   </div>
                 </Tabs>
-                  </div>
                 </div>
               )}
               <CandidateFormSheet
