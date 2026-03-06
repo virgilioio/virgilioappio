@@ -103,10 +103,9 @@ export function useJobsForCandidateAssignment() {
           setJobs([])
           return
         }
-      } else if (memberRole === 'recruiter') {
-        // Recruiters see jobs in their org hierarchy (parent + children) OR jobs they're assigned to
-        // RLS policies handle the hierarchy access, no filtering needed here
-        // This allows recruiters to assign candidates to ANY job in their org tree
+      } else if (memberRole === 'member') {
+        // Members see jobs they're assigned to (RLS handles filtering)
+        // No additional client-side filtering needed
       } else {
         // Other roles - no jobs
         setJobs([])

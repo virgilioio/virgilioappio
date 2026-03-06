@@ -2497,6 +2497,7 @@ export type Database = {
           invited_email: string | null
           member_role: Database["public"]["Enums"]["member_role"]
           organization_id: string
+          system_role: Database["public"]["Enums"]["system_role"]
           tenant_id: string
           updated_at: string | null
           user_id: string | null
@@ -2514,6 +2515,7 @@ export type Database = {
           invited_email?: string | null
           member_role: Database["public"]["Enums"]["member_role"]
           organization_id: string
+          system_role?: Database["public"]["Enums"]["system_role"]
           tenant_id: string
           updated_at?: string | null
           user_id?: string | null
@@ -2531,6 +2533,7 @@ export type Database = {
           invited_email?: string | null
           member_role?: Database["public"]["Enums"]["member_role"]
           organization_id?: string
+          system_role?: Database["public"]["Enums"]["system_role"]
           tenant_id?: string
           updated_at?: string | null
           user_id?: string | null
@@ -5858,6 +5861,7 @@ export type Database = {
         | "offer"
         | "onboarding"
         | "custom"
+      system_role: "admin" | "member"
       trigger_event_type: "on_stage_enter" | "on_stage_exit"
       user_type_enum: "platform_admin" | "workspace_owner" | "member" | "guest"
     }
@@ -6119,6 +6123,7 @@ export const Constants = {
         "onboarding",
         "custom",
       ],
+      system_role: ["admin", "member"],
       trigger_event_type: ["on_stage_enter", "on_stage_exit"],
       user_type_enum: ["platform_admin", "workspace_owner", "member", "guest"],
     },

@@ -117,7 +117,7 @@ export function useScheduledBookings(status?: BookingStatus, permissions?: Permi
       // Step 1: Get user's accessible job IDs (for recruiters/hiring managers)
       let accessibleJobIds: string[] = []
       
-      if (permissions?.isRecruiter || permissions?.isHiringManager) {
+      if (permissions?.isMember && !permissions?.isAdmin) {
         // Get jobs user is assigned to
         const { data: assignments } = await supabase
           .from('job_assignments')
@@ -155,8 +155,8 @@ export function useScheduledBookings(status?: BookingStatus, permissions?: Permi
       // Apply additional role-based visibility filters within the tenant
       if (permissions?.isPlatformAdmin || permissions?.isWorkspaceOwner || permissions?.isAdmin) {
         // Admins see all bookings within their tenant (tenant filter already applied above)
-      } else if ((permissions?.isRecruiter || permissions?.isHiringManager) && accessibleJobIds.length > 0) {
-        // Recruiters/hiring managers see bookings where they're interviewer OR for their jobs
+      } else if (permissions?.isMember && accessibleJobIds.length > 0) {
+        // Members see bookings where they're interviewer OR for their assigned jobs
         query = query.or(`interviewer_id.eq.${user.id},job_id.in.(${accessibleJobIds.join(',')})`)
       } else {
         // Default: only see bookings where user is the interviewer

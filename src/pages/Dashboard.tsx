@@ -33,8 +33,8 @@ export default function Dashboard() {
   // Compute deemphasis state for checklist
   const hasSeenValue = (sourcingProjects?.length ?? 0) > 0
   
-  // Show sourcing panel for Admin/Recruiter roles
-  const showSourcingPanel = permissions.isAdmin || permissions.isRecruiter || permissions.isPlatformAdmin || permissions.isWorkspaceOwner
+  // Show sourcing panel for Admin and above (members see it on job-level)
+  const showSourcingPanel = permissions.isAdmin || permissions.isPlatformAdmin || permissions.isWorkspaceOwner
   
   return (
     <div>

@@ -28,8 +28,8 @@ export function BillingGuard({
     return <>{children || <Outlet />}</>
   }
 
-  // Hiring managers and interviewers never blocked (read-only roles)
-  if (['hiring_manager', 'interviewer'].includes(memberRole || '')) {
+  // Members (non-admin) are never blocked — they have limited access via job assignments
+  if (memberRole === 'member') {
     return <>{children || <Outlet />}</>
   }
 

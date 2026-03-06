@@ -53,9 +53,6 @@ export interface PermissionsState {
   isPlatformAdmin: boolean
   isMember: boolean
   isAdmin: boolean
-  isRecruiter: boolean
-  isHiringManager: boolean
-  isInterviewer: boolean
   hasOrganizationContext: boolean
 }
 
@@ -63,27 +60,23 @@ export function usePermissions(): PermissionsState {
   const { user, organizationId, userType, memberRole, hasOrganizationContext } = useAuth()
   const isGoGioAdmin = useIsPlatformAdmin()
   
-  // Simplified user type classification
+  // System-level role classification
+  // memberRole now returns 'admin' or 'member' from resolve_org_context (system_role)
   const isPlatformAdmin = userType === 'platform_admin'
   const isWorkspaceOwner = userType === 'workspace_owner'
   const isMember = userType === 'member' && hasOrganizationContext
   
-  // Member role classification (only for members)
+  // System role classification (only 'admin' or 'member' at system level)
   const isAdmin = isMember && memberRole === 'admin'
-  const isRecruiter = isMember && memberRole === 'recruiter'
-  const isHiringManager = isMember && memberRole === 'hiring_manager'
-  const isInterviewer = isMember && memberRole === 'interviewer'
-
-  // Check if user is a platform (GoGio organization) recruiter
-  const isPlatformRecruiter = isRecruiter && hasOrganizationContext
+  // All non-admin members are 'member' — their job-level roles come from job_assignments
 
   return {
     // Job permissions
-    // Note: Recruiters can view jobs, but RLS restricts them to only assigned jobs
-    // HMs and Interviewers are also restricted to assigned jobs via RLS
-    canViewJobs: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter || isHiringManager || isInterviewer,
-    canCreateJobs: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter,
-    canEditJobs: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter,
+    // Members can view jobs they're assigned to (enforced by RLS via job_assignments)
+    // Admins, WOs, PAs see all jobs
+    canViewJobs: isPlatformAdmin || isWorkspaceOwner || isAdmin || isMember,
+    canCreateJobs: isPlatformAdmin || isWorkspaceOwner || isAdmin,
+    canEditJobs: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     canDeleteJobs: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     canArchiveJobs: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     
@@ -96,24 +89,25 @@ export function usePermissions(): PermissionsState {
     
     // Organization permissions - Platform admins and workspace owners only
     canViewOrganizations: isPlatformAdmin || isWorkspaceOwner,
-    canCreateOrganizations: isPlatformAdmin || isWorkspaceOwner, // Only platform admins can create parent orgs, workspace owners can create child orgs
+    canCreateOrganizations: isPlatformAdmin || isWorkspaceOwner,
     canEditOrganizations: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     canDeleteOrganizations: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     canManageOrganization: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     
-    // Candidate permissions - Different access levels based on role
-    canViewCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter || isHiringManager || isInterviewer,
-    canCreateCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter,
-    canEditCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter,
+    // Candidate permissions - All members can view candidates on their assigned jobs
+    // Creating/editing requires admin or job-level recruiter role (enforced by RLS)
+    canViewCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin || isMember,
+    canCreateCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin || isMember,
+    canEditCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin || isMember,
     canDeleteCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin,
-    canManageCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter,
+    canManageCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin || isMember,
     
-    // Navigation permissions - Show candidates for Platform Admins, platform recruiters, Workspace owners, and member recruiters
-    canViewCandidatesNavigation: isPlatformAdmin || isPlatformRecruiter || isWorkspaceOwner || (isRecruiter && hasOrganizationContext),
+    // Navigation permissions - Show candidates for all authenticated users with org context
+    canViewCandidatesNavigation: isPlatformAdmin || isWorkspaceOwner || isAdmin || isMember,
     
-    // Job assignment permissions - Only admins and recruiters can manage assignments
-    canViewJobAssignments: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter,
-    canManageJobAssignments: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter,
+    // Job assignment permissions - Only admins can manage assignments at system level
+    canViewJobAssignments: isPlatformAdmin || isWorkspaceOwner || isAdmin || isMember,
+    canManageJobAssignments: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     
     // Billing & Invoice permissions - Only platform admins and workspace owners
     canViewInvoices: isPlatformAdmin || isWorkspaceOwner,
@@ -130,9 +124,6 @@ export function usePermissions(): PermissionsState {
     isPlatformAdmin,
     isMember,
     isAdmin,
-    isRecruiter,
-    isHiringManager,
-    isInterviewer,
     hasOrganizationContext,
   }
 }

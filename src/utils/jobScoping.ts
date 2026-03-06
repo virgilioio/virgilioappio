@@ -9,9 +9,9 @@ export function isRestrictedRole(permissions: {
   isAdmin: boolean
   isWorkspaceOwner: boolean
   isPlatformAdmin: boolean
-  isRecruiter: boolean
 }): boolean {
-  return !(permissions.isPlatformAdmin || permissions.isWorkspaceOwner || permissions.isAdmin || permissions.isRecruiter)
+  // Members (non-admin) are always restricted to their assigned jobs
+  return !(permissions.isPlatformAdmin || permissions.isWorkspaceOwner || permissions.isAdmin)
 }
 
 /**
