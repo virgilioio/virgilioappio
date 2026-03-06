@@ -18,13 +18,13 @@ export function JobAssignmentGuard({ children }: JobAssignmentGuardProps) {
   const { isAssigned, isLoading } = useIsAssignedToJob(jobId || '')
 
   useEffect(() => {
-    // Skip check for platform admins, workspace owners, and internal team members (from DB context)
-    if (permissions.isPlatformAdmin || permissions.isWorkspaceOwner || permissions.isAdmin || permissions.isRecruiter) {
+    // Skip check for platform admins, workspace owners, and admins (they see all jobs)
+    if (permissions.isPlatformAdmin || permissions.isWorkspaceOwner || permissions.isAdmin) {
       return
     }
 
-    // For hiring managers and interviewers, check if they're assigned to this job
-    if ((permissions.isHiringManager || permissions.isInterviewer) && !isLoading && !isAssigned && jobId) {
+    // For regular members, check if they're assigned to this job
+    if (permissions.isMember && !isLoading && !isAssigned && jobId) {
       console.warn('User attempted to access unassigned job:', jobId)
       navigate('/jobs', { replace: true })
     }
@@ -35,8 +35,8 @@ export function JobAssignmentGuard({ children }: JobAssignmentGuardProps) {
     }
   }, [permissions, isAssigned, isLoading, jobId, navigate, user])
 
-  // Show loading state while checking assignment
-  if (isLoading && (permissions.isHiringManager || permissions.isInterviewer)) {
+  // Show loading state while checking assignment for regular members
+  if (isLoading && permissions.isMember && !permissions.isAdmin) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto py-lg px-md">

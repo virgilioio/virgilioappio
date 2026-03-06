@@ -16,7 +16,9 @@ interface JobSetupPanelProps {
 }
 
 export function JobSetupPanel({ jobId, jobTitle, job, onEdit, onArchive }: JobSetupPanelProps) {
-  const { isHiringManager, isInterviewer } = usePermissions()
+  const { isAdmin, isWorkspaceOwner, isPlatformAdmin } = usePermissions()
+  // Members who are not admin/WO/PA get read-only access to hiring plan and postings
+  const isReadOnly = !(isAdmin || isWorkspaceOwner || isPlatformAdmin)
   return (
     <Card>
       <CardHeader>
@@ -47,11 +49,11 @@ export function JobSetupPanel({ jobId, jobTitle, job, onEdit, onArchive }: JobSe
           </TabsContent>
           
           <TabsContent value="hiring-plan" className="mt-6">
-            <HiringPlanTab jobId={jobId} readOnly={isHiringManager || isInterviewer} />
+            <HiringPlanTab jobId={jobId} readOnly={isReadOnly} />
           </TabsContent>
 
           <TabsContent value="job-postings" className="mt-6">
-            <JobPostingsTab jobId={jobId} jobTitle={jobTitle} readOnly={isHiringManager || isInterviewer} />
+            <JobPostingsTab jobId={jobId} jobTitle={jobTitle} readOnly={isReadOnly} />
           </TabsContent>
         </Tabs>
       </CardContent>

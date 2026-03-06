@@ -52,7 +52,7 @@ export function Header() {
     isPlatformAdmin,
     isWorkspaceOwner,
     isAdmin,
-    isRecruiter,
+    isMember,
     canViewCandidates
   } = usePermissions()
   const navigate = useNavigate()
