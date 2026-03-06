@@ -4,12 +4,15 @@ import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 
+export type JobAssignmentRole = 'recruiter' | 'hiring_manager' | 'interviewer'
+
 export interface JobAssignment {
   id: string
   job_id: string
   user_id: string
   assigned_by: string | null
   organization_id: string
+  role: JobAssignmentRole
   created_at: string
   updated_at: string
 }
@@ -18,6 +21,7 @@ export interface CreateJobAssignmentData {
   job_id: string
   user_id: string
   organization_id: string
+  role: JobAssignmentRole
 }
 
 export function useJobAssignments(jobId?: string) {
@@ -145,6 +149,38 @@ export function useJobAssignments(jobId?: string) {
     }
   }
 
+  const updateAssignmentRole = async (assignmentId: string, role: JobAssignmentRole) => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const { error: updateError } = await supabase
+        .from('job_assignments')
+        .update({ role } as any)
+        .eq('id', assignmentId)
+
+      if (updateError) throw updateError
+
+      toast({
+        title: 'Success',
+        description: 'Assignment role updated successfully'
+      })
+
+      await getAssignments()
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update assignment role'
+      setError(errorMessage)
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const checkUserAssignment = async (userId: string, targetJobId: string): Promise<boolean> => {
     try {
       const { data } = await supabase.rpc('is_user_assigned_to_job', {
@@ -171,6 +207,7 @@ export function useJobAssignments(jobId?: string) {
     getAssignments,
     assignUserToJob,
     removeUserFromJob,
+    updateAssignmentRole,
     checkUserAssignment
   }
 }

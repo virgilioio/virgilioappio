@@ -3,9 +3,10 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { FormField } from '@/components/ui/form-field'
-import { useJobAssignments } from '@/hooks/useJobAssignments'
+import { useJobAssignments, type JobAssignmentRole } from '@/hooks/useJobAssignments'
 import { useMembers } from '@/hooks/useMembers'
 import { usePermissions } from '@/hooks/usePermissions'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { User, UserMinus } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 
@@ -14,9 +15,28 @@ interface JobAssignmentsPanelProps {
   jobTitle: string
 }
 
+const ROLE_OPTIONS: { value: JobAssignmentRole; label: string }[] = [
+  { value: 'recruiter', label: 'Recruiter' },
+  { value: 'hiring_manager', label: 'Hiring Manager' },
+  { value: 'interviewer', label: 'Interviewer' },
+]
+
+const getRoleBadgeVariant = (role: JobAssignmentRole) => {
+  switch (role) {
+    case 'recruiter': return 'default' as const
+    case 'hiring_manager': return 'secondary' as const
+    case 'interviewer': return 'outline' as const
+  }
+}
+
+const getRoleLabel = (role: JobAssignmentRole) => {
+  return ROLE_OPTIONS.find(r => r.value === role)?.label || role
+}
+
 export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProps) {
   const [selectedUserId, setSelectedUserId] = useState('')
-  const { assignments, assignUserToJob, removeUserFromJob, isLoading: assignmentsLoading } = useJobAssignments(jobId)
+  const [selectedRole, setSelectedRole] = useState<JobAssignmentRole>('recruiter')
+  const { assignments, assignUserToJob, removeUserFromJob, updateAssignmentRole, isLoading: assignmentsLoading } = useJobAssignments(jobId)
   const { members, isLoading: membersLoading } = useMembers(true)
   const permissions = usePermissions()
 
@@ -31,18 +51,14 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
 
   const assignedUserIds = new Set(assignments.map(a => a.user_id))
   
-  // Get unassigned users for the dropdown
   const unassignedUsers = members.filter(member => {
     return member.user_id && !assignedUserIds.has(member.user_id)
   })
 
-  // Create options for the searchable select with organization names
   const userOptions = unassignedUsers.map(member => {
     const firstName = member.user_first_name || ''
     const lastName = member.user_last_name || ''
     const displayName = `${firstName} ${lastName}`.trim() || 'Unnamed User'
-    
-    // Use the organization_name already fetched by useMembers
     const organizationName = member.organization_name || 'Unknown Organization'
     
     return {
@@ -51,7 +67,6 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
     }
   })
 
-  // Get assigned users with their details
   const assignedUsers = assignments.map(assignment => {
     const member = members.find(m => m.user_id === assignment.user_id)
     if (!member) return null
@@ -79,9 +94,11 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
       await assignUserToJob({
         job_id: jobId,
         user_id: selectedUserId,
-        organization_id: member.organization_id
+        organization_id: member.organization_id,
+        role: selectedRole
       })
-      setSelectedUserId('') // Clear selection after successful assignment
+      setSelectedUserId('')
+      setSelectedRole('recruiter')
     } catch (error) {
       console.error('Failed to assign user:', error)
     }
@@ -100,13 +117,11 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
     }
   }
 
-  const getRoleBadgeVariant = (role: string) => {
-    switch (role) {
-      case 'admin': return 'destructive'
-      case 'recruiter': return 'default'
-      case 'client': return 'secondary'
-      case 'billing': return 'outline'
-      default: return 'secondary'
+  const handleRoleChange = async (assignmentId: string, newRole: JobAssignmentRole) => {
+    try {
+      await updateAssignmentRole(assignmentId, newRole)
+    } catch (error) {
+      console.error('Failed to update role:', error)
     }
   }
 
@@ -114,11 +129,11 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
     return (
       <div className="p-6">
         <div className="animate-pulse space-y-4">
-          <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-10 bg-gray-200 rounded"></div>
+          <div className="h-4 bg-muted rounded w-1/4"></div>
+          <div className="h-10 bg-muted rounded"></div>
           <div className="space-y-3">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-12 bg-gray-200 rounded"></div>
+              <div key={i} className="h-12 bg-muted rounded"></div>
             ))}
           </div>
         </div>
@@ -132,7 +147,7 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
       <div className="space-y-2">
         <h2 className="text-xl font-semibold text-text-primary">Job Assignments</h2>
         <p className="text-sm text-text-secondary">
-          Manage which users can access "{jobTitle}" and its candidates.
+          Manage which users can access "{jobTitle}" and their role on this job.
         </p>
       </div>
 
@@ -150,6 +165,18 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
               emptyMessage="No unassigned users found."
               disabled={assignmentsLoading}
             />
+          </FormField>
+          <FormField label="Job role">
+            <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as JobAssignmentRole)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a role" />
+              </SelectTrigger>
+              <SelectContent>
+                {ROLE_OPTIONS.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </FormField>
           <Button
             onClick={handleAssignUser}
@@ -188,20 +215,36 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
                       <div className="font-medium text-text-primary">{item.displayName}</div>
                       <div className="text-sm text-text-secondary">{item.email}</div>
                     </div>
-                    <Badge variant={getRoleBadgeVariant(item.member.member_role)}>
-                      {item.member.member_role}
+                    <Badge variant={getRoleBadgeVariant((item.assignment as any).role || 'recruiter')}>
+                      {getRoleLabel((item.assignment as any).role || 'recruiter')}
                     </Badge>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleUnassignUser(item.member.user_id!)}
-                    disabled={assignmentsLoading}
-                    className="gap-2"
-                  >
-                    <UserMinus className="h-3 w-3" />
-                    Unassign
-                  </Button>
+                  <div className="flex items-center gap-3">
+                    <Select
+                      value={(item.assignment as any).role || 'recruiter'}
+                      onValueChange={(v) => handleRoleChange(item.assignment.id, v as JobAssignmentRole)}
+                      disabled={assignmentsLoading}
+                    >
+                      <SelectTrigger className="w-[160px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ROLE_OPTIONS.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleUnassignUser(item.member.user_id!)}
+                      disabled={assignmentsLoading}
+                      className="gap-2"
+                    >
+                      <UserMinus className="h-3 w-3" />
+                      Unassign
+                    </Button>
+                  </div>
                 </div>
               )
             })}

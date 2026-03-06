@@ -1810,6 +1810,7 @@ export type Database = {
           id: string
           job_id: string
           organization_id: string
+          role: Database["public"]["Enums"]["job_assignment_role"]
           updated_at: string
           user_id: string
         }
@@ -1820,6 +1821,7 @@ export type Database = {
           id?: string
           job_id: string
           organization_id: string
+          role?: Database["public"]["Enums"]["job_assignment_role"]
           updated_at?: string
           user_id: string
         }
@@ -1830,6 +1832,7 @@ export type Database = {
           id?: string
           job_id?: string
           organization_id?: string
+          role?: Database["public"]["Enums"]["job_assignment_role"]
           updated_at?: string
           user_id?: string
         }
@@ -5820,6 +5823,7 @@ export type Database = {
         | "single_select"
         | "multi_select"
         | "salary_expectations"
+      job_assignment_role: "recruiter" | "hiring_manager" | "interviewer"
       job_status: "draft" | "open" | "closed" | "archived"
       member_role: "admin" | "recruiter" | "hiring_manager" | "interviewer"
       org_kind_enum: "tenant" | "client" | "department" | "root"
@@ -6077,6 +6081,7 @@ export const Constants = {
         "multi_select",
         "salary_expectations",
       ],
+      job_assignment_role: ["recruiter", "hiring_manager", "interviewer"],
       job_status: ["draft", "open", "closed", "archived"],
       member_role: ["admin", "recruiter", "hiring_manager", "interviewer"],
       org_kind_enum: ["tenant", "client", "department", "root"],
