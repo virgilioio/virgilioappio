@@ -7,6 +7,7 @@ import { SourcingProjectView } from '@/components/sourcing/SourcingProjectView'
 import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
 import { useSourcingProjects } from '@/hooks/useSourcingProjects'
 import { RoleGate } from '@/components/auth/RoleGate'
+import { useUserJobRoles } from '@/hooks/useUserJobRoles'
 import { GioThinkingHeader } from '@/components/sourcing/GioThinkingHeader'
 import { FirstRunOrientationDialog } from '@/components/onboarding/FirstRunOrientationDialog'
 import gioAvatar from '@/assets/gio-avatar.png'
@@ -25,6 +26,15 @@ export default function Find() {
   
   // Initialize credit warnings
   useSourcingCreditWarnings()
+  
+  // Redirect non-recruiter members away from Find page
+  const { hasRecruiterRole, isPrivileged, isLoading: rolesLoading } = useUserJobRoles()
+  
+  useEffect(() => {
+    if (!rolesLoading && !isPrivileged && !hasRecruiterRole) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [rolesLoading, isPrivileged, hasRecruiterRole, navigate])
 
   // Navigation handlers
   const handleSelectProject = (id: string) => {

@@ -42,6 +42,7 @@ import { useMembers } from '@/hooks/useMembers'
 import { useToast } from '@/components/ui/use-toast'
 import { supabase } from '@/lib/supabaseClient'
 import { useUserProfile } from '@/hooks/useUserProfile'
+import { useUserJobRoles } from '@/hooks/useUserJobRoles'
 
 export function Header() {
   const { user, logout, organizationId, isLoggingOut } = useAuth()
@@ -62,6 +63,10 @@ export function Header() {
   const { members } = useMembers()
   const { toast } = useToast()
   const { profile } = useUserProfile()
+  const { hasRecruiterRole, isPrivileged } = useUserJobRoles()
+  
+  // Members without recruiter role cannot see Find/Candidates
+  const canSeeRecruiterTools = isPrivileged || hasRecruiterRole
 
   const handleLogout = async () => {
     await logout()
@@ -137,7 +142,7 @@ export function Header() {
       href: '/find',
       icon: Sparkles,
       label: 'Find',
-      show: isPlatformAdmin || isWorkspaceOwner || isAdmin || isMember,
+      show: canSeeRecruiterTools && (isPlatformAdmin || isWorkspaceOwner || isAdmin || isMember),
     },
     {
       href: '/jobs',
@@ -155,7 +160,7 @@ export function Header() {
       href: '/candidates',
       icon: Users,
       label: 'Candidates',
-      show: canViewCandidatesNavigation,
+      show: canSeeRecruiterTools && canViewCandidatesNavigation,
     },
     {
       href: '/analytics',

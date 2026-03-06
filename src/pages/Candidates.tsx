@@ -1,5 +1,6 @@
 // cache-bust: 8F42B1C3
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -13,11 +14,14 @@ import { MinimizableBulkUploadDialog } from '@/components/candidates/Minimizable
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 import { useIndependentCandidates, CreateIndependentCandidateData } from '@/hooks/useIndependentCandidates'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useUserJobRoles } from '@/hooks/useUserJobRoles'
 
 import { toast } from '@/hooks/use-toast'
 
 export default function Candidates() {
   const { canViewCandidates } = usePermissions()
+  const { hasRecruiterRole, isPrivileged, isLoading: rolesLoading } = useUserJobRoles()
+  const navigate = useNavigate()
   const [selectedCandidate, setSelectedCandidate] = useState(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false)
@@ -128,6 +132,13 @@ export default function Candidates() {
       })
     }
   }
+
+  // Redirect non-recruiter members away from candidates page
+  useEffect(() => {
+    if (!rolesLoading && !isPrivileged && !hasRecruiterRole) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [rolesLoading, isPrivileged, hasRecruiterRole, navigate])
 
   if (error) {
     return (

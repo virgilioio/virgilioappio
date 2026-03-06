@@ -12,12 +12,14 @@ import { Section } from '@/components/layout/Section'
 import { useOrgContext } from '@/contexts/OrgContext'
 import { WorkspaceProvisioningLoader } from '@/components/onboarding/WorkspaceProvisioningLoader'
 import { useSourcingProjects } from '@/hooks/useSourcingProjects'
+import { useUserJobRoles } from '@/hooks/useUserJobRoles'
 
 export default function Dashboard() {
   const { profile, isLoading } = useUserProfile()
   const permissions = usePermissions()
   const { isLoading: orgLoading, hasOrganizationContext } = useOrgContext()
   const { data: sourcingProjects } = useSourcingProjects()
+  const { hasRecruiterRole, isPrivileged } = useUserJobRoles()
   
   // Fallback loader if context isn't ready
   if (orgLoading || !hasOrganizationContext) {
@@ -34,7 +36,7 @@ export default function Dashboard() {
   const hasSeenValue = (sourcingProjects?.length ?? 0) > 0
   
   // Show sourcing panel for Admin and above (members see it on job-level)
-  const showSourcingPanel = permissions.isAdmin || permissions.isPlatformAdmin || permissions.isWorkspaceOwner
+  const showSourcingPanel = isPrivileged || hasRecruiterRole
   
   return (
     <div>

@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
@@ -8,6 +8,7 @@ import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
 import { log } from '@/lib/logger'
 import { useQueryClient } from '@tanstack/react-query'
 import { logActivity } from '@/lib/activityLogger'
+import { useUserJobRoles } from './useUserJobRoles'
 
 export interface Job {
   id: string
@@ -74,6 +75,7 @@ export function useJobs() {
   const { user, userId, userType, memberRole, organizationId } = useAuth()
   const { normalizeJobSpecs } = useJobSpecNormalization()
   const queryClient = useQueryClient()
+  const { assignedJobIds, isPrivileged, isLoading: rolesLoading } = useUserJobRoles()
 
   // Optimized single query function to replace N+1 pattern
   const getJobsOptimized = async () => {
@@ -627,9 +629,17 @@ export function useJobs() {
     }
   }, [userId, userType, organizationId])
 
+  // Job-scoped filtering: non-privileged members only see assigned jobs
+  const scopedJobs = useMemo(() => {
+    if (isPrivileged) return jobs
+    if (assignedJobIds.length === 0) return []
+    const idSet = new Set(assignedJobIds)
+    return jobs.filter(j => idSet.has(j.id))
+  }, [jobs, assignedJobIds, isPrivileged])
+
   return {
-    jobs,
-    isLoading,
+    jobs: scopedJobs,
+    isLoading: isLoading || rolesLoading,
     error,
     getJobs,
     getJob,
