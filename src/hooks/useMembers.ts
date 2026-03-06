@@ -284,7 +284,7 @@ export function useMembers(includeHierarchy: boolean = false) {
       
       // PRE-CHECK: Verify seat limit before creating invitation
       // Only check if adding a billable role (admin or recruiter)
-      const isBillableRole = data.member_role === 'admin' || data.member_role === 'recruiter'
+      const isBillableRole = data.system_role === 'admin'
       
       if (tenantId && isBillableRole) {
         const { data: seatCheck, error: seatError } = await supabase
