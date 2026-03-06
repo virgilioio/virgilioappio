@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
       .select(`
         id,
         user_id,
-        member_role,
+        system_role,
         user_status,
         user_type,
         invited_email,
