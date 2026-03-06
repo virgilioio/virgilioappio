@@ -152,6 +152,15 @@ export function MemberJobAssignmentsDialog({
         title: 'Success',
         description: 'Job assignments updated successfully'
       })
+
+      // Sync seat count — recruiter assignment changes affect billing
+      try {
+        await supabase.functions.invoke('update-seat-quantity')
+        queryClient.invalidateQueries({ queryKey: ['billing-status'] })
+        queryClient.invalidateQueries({ queryKey: ['recruiter-user-ids'] })
+      } catch (e) {
+        console.warn('Seat sync after job assignment change failed (non-fatal):', e)
+      }
       
       onClose()
     } catch (error) {
