@@ -40,18 +40,6 @@ export function MembersTable({
 
   const hasActiveFilters = searchTerm || roleFilter !== 'all' || statusFilter !== 'all'
 
-  const filteredMembers = useMemo(() => {
-    return members.filter(m => {
-      const name = getDisplayName(m).toLowerCase()
-      const email = (m.user_email || m.invited_email || '').toLowerCase()
-      const term = searchTerm.toLowerCase()
-      const matchesSearch = !searchTerm || name.includes(term) || email.includes(term)
-      const matchesRole = roleFilter === 'all' || m.system_role === roleFilter
-      const matchesStatus = statusFilter === 'all' || m.user_status === statusFilter
-      return matchesSearch && matchesRole && matchesStatus
-    })
-  }, [members, searchTerm, roleFilter, statusFilter])
-
   const clearFilters = () => {
     setSearchTerm('')
     setRoleFilter('all')
@@ -119,6 +107,18 @@ export function MembersTable({
     }
     return member.user_email || member.invited_email || 'Unknown User'
   }
+
+  const filteredMembers = useMemo(() => {
+    return members.filter(m => {
+      const name = getDisplayName(m).toLowerCase()
+      const email = (m.user_email || m.invited_email || '').toLowerCase()
+      const term = searchTerm.toLowerCase()
+      const matchesSearch = !searchTerm || name.includes(term) || email.includes(term)
+      const matchesRole = roleFilter === 'all' || m.system_role === roleFilter
+      const matchesStatus = statusFilter === 'all' || m.user_status === statusFilter
+      return matchesSearch && matchesRole && matchesStatus
+    })
+  }, [members, searchTerm, roleFilter, statusFilter])
 
   const getDisplayEmail = (member: Member) => {
     // Show email even for active users now (since we preserve invited_email)
