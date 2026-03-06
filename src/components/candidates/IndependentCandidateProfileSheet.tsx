@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
 import { EnhancedSkillBadge } from '@/components/ui/enhanced-skill-badge'
 import { CandidateAttachments } from '@/components/candidates/CandidateAttachments'
-import { CandidateComments } from '@/components/candidates/CandidateComments'
+
 import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeViewer'
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
@@ -67,7 +67,7 @@ export function IndependentCandidateProfileSheet({
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [candidate, setCandidate] = useState<any | null>(null)
-  const [activeTab, setActiveTab] = useState<'overview' | 'resume' | 'comments'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'resume'>('overview')
   const [rightActiveTab, setRightActiveTab] = useState<'feed' | 'notes' | 'emails' | 'reminders'>('feed')
   const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
   const [education, setEducation] = useState<CandidateEducation[]>([])
@@ -366,7 +366,7 @@ export function IndependentCandidateProfileSheet({
                     </div>
                   )}
                   
-                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'overview' | 'resume' | 'comments')}>
+                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'overview' | 'resume')}>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Left column (50%) */}
                     <div className="space-y-6 min-w-0">
@@ -377,10 +377,9 @@ export function IndependentCandidateProfileSheet({
                         tabs={[
                           { value: 'overview', label: 'Overview', Icon: FileText },
                           { value: 'resume', label: 'Resume', Icon: FileText },
-                          { value: 'comments', label: 'Comments', Icon: User },
                         ]}
                         activeTab={activeTab}
-                        onTabChange={(v) => setActiveTab(v as 'overview' | 'resume' | 'comments')}
+                        onTabChange={(v) => setActiveTab(v as 'overview' | 'resume')}
                       />
 
                       {/* Resume Tab */}
@@ -432,23 +431,6 @@ export function IndependentCandidateProfileSheet({
                         </Card>
                       )}
 
-                      {/* Comments Tab */}
-                      {activeTab === 'comments' && (
-                        <>
-                          {organizationId && candidateId ? (
-                            <CandidateComments candidateId={candidateId} jobId={undefined} organizationId={organizationId} />
-                          ) : (
-                            <Card className="bg-surface-primary border-border">
-                              <CardHeader>
-                                <CardTitle>Comments</CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-sm text-text-secondary">No candidate data available.</div>
-                              </CardContent>
-                            </Card>
-                          )}
-                        </>
-                      )}
 
                       {activeTab === 'overview' && (
                         <Accordion type="multiple" defaultValue={['contact', 'career', 'summary', 'experience', 'education', 'certifications']} className="space-y-4">
@@ -832,20 +814,14 @@ export function IndependentCandidateProfileSheet({
 
                       {/* Notes Tab */}
                       {rightActiveTab === 'notes' && (
-                        <>
-                          {organizationId && candidateId ? (
-                            <CandidateComments candidateId={candidateId} jobId={undefined} organizationId={organizationId} />
-                          ) : (
-                            <Card className="bg-surface-primary border-border">
-                              <CardHeader>
-                                <CardTitle>Notes</CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-sm text-text-secondary">No candidate data available.</div>
-                              </CardContent>
-                            </Card>
-                          )}
-                        </>
+                        <Card className="bg-surface-primary border-border">
+                          <CardHeader>
+                            <CardTitle>Notes</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-sm text-text-secondary">Notes are available in the job-associated profile view.</div>
+                          </CardContent>
+                        </Card>
                       )}
 
                       {/* Emails Tab */}
