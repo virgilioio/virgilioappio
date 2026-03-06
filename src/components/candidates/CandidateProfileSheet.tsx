@@ -815,7 +815,7 @@ const stageHasAutomation = useMemo(() => {
       <SheetContent side="right" className="w-[96vw] sm:max-w-none h-full p-0" showOverlay={false}>
         <div className="flex h-full w-full">
           {/* Job Navigation Sidebar - desktop only */}
-          {candidateId && (
+          {candidateId && !isRestrictedViewer && (
             <CandidateJobSidebar
               candidateId={candidateId}
               currentJobId={jobId}
