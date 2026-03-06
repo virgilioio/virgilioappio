@@ -1,5 +1,6 @@
 // cache-bust: 8F42B1C3
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -13,6 +14,7 @@ import { MinimizableBulkUploadDialog } from '@/components/candidates/Minimizable
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 import { useIndependentCandidates, CreateIndependentCandidateData } from '@/hooks/useIndependentCandidates'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useUserJobRoles } from '@/hooks/useUserJobRoles'
 
 import { toast } from '@/hooks/use-toast'
 
