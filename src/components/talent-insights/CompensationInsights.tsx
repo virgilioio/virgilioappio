@@ -97,7 +97,7 @@ export function CompensationInsights({ salaryStats, salaryValues }: Compensation
   const [showMonthly, setShowMonthly] = useState(false)
 
   const chartData = useMemo(() => {
-    if (salaryValues.length < 3) return null
+    if (!salaryValues || salaryValues.length < 3) return null
 
     const displaySalaries = showMonthly
       ? salaryValues.map(s => s / 12)
