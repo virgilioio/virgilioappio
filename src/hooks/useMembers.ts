@@ -41,7 +41,6 @@ export interface CreateMemberData {
 
 export interface UpdateMemberData {
   system_role?: 'admin' | 'member'
-  member_role?: string // legacy compat
   user_status?: 'active' | 'inactive' | 'invited'
   organization_id?: string
 }
