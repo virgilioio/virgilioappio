@@ -891,6 +891,7 @@ export default function JobDetail() {
                 />
               </TabsContent>
               
+              {!isRestrictedViewer && (
               <TabsContent value="job-setup">
                 <JobSetupPanel
                   jobId={id!}
@@ -903,6 +904,7 @@ export default function JobDetail() {
                   onArchive={handleArchiveJob}
                 />
               </TabsContent>
+              )}
                <TabsContent value="pipeline">
                  <div className="h-[calc(100svh-16rem)] sm:h-[calc(100svh-14rem)] min-h-0">
                    <Card className="mb-4">
