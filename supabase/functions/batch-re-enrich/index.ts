@@ -200,8 +200,8 @@ serve(async (req) => {
           results.push({ id: candidate.id, name: candidate.candidate_name, status: 'failed', error: errText });
         }
 
-        // Small delay between requests to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Small delay between requests (enrich returns 202 instantly)
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
       } catch (err) {
         console.error(`[batch-re-enrich] Error for ${candidate.id}:`, err);
