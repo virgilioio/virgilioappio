@@ -34,7 +34,6 @@ export interface CreateMemberData {
   user_id?: string | null
   organization_id: string
   system_role: 'admin' | 'member'
-  member_role?: string // legacy compat
   user_status?: 'active' | 'inactive' | 'invited'
   user_type?: 'member' | 'workspace_owner' | 'platform_admin'
   email?: string
