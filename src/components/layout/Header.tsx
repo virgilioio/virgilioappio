@@ -27,6 +27,7 @@ import {
   TrendingUp,
   Sparkles,
   BarChart3,
+  Lightbulb,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -166,6 +167,12 @@ export function Header() {
       href: '/analytics',
       icon: BarChart3,
       label: 'Analytics',
+      show: isPlatformAdmin || isWorkspaceOwner || isAdmin,
+    },
+    {
+      href: '/talent-insights',
+      icon: Lightbulb,
+      label: 'Insights',
       show: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     },
   ]
