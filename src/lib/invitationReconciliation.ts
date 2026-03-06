@@ -19,7 +19,6 @@ export interface ReconciliationResult {
   organization_id: string | null;
   organization_name: string | null;
   system_role: string | null;
-  member_role: string | null; // legacy
 }
 
 /**
