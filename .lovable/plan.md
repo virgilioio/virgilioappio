@@ -1,44 +1,37 @@
 
 
-# Separate Location Sub-Fields on One Line
+# Fix: Declined Note Persisting After Approval Restart
 
-## Current State
-- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
-- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
-- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
+## Root Cause
 
-## What Needs to Change
+Two related issues:
 
-### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
+1. **`requestApprovalMutation.onSuccess`** (in `useOfferApprovalRequest.ts`, lines 165-169) calls `queryClient.invalidateQueries({ queryKey: ['offer-letters'] })`, but `useOfferLetters` uses `useState`/`useEffect` — not React Query. So the offer letter status in `CandidateOfferDetails` never refreshes after re-requesting approval. The `refetch-offer-letters` window event (added earlier) is NOT dispatched here.
 
-Add a `case 'location':` block that:
-- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
-- Parses the value as JSON `{ city, state, country }`
-- Renders separate inputs for each enabled sub-field in a single-row grid
-- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
-- Shows MapPin icon in the label
+2. **The declined banner** in `CandidateOfferDetails.tsx` (line 200) only checks `approvalRequest?.status === 'declined'`. Even after the approval request query refetches and returns the new pending request, if the `useOfferLetters` data is stale, the offer status badge still shows "draft" instead of "pending_approval." More critically, if the React Query cache returns the old declined request during a brief window, the banner with decline notes flashes.
 
-### 2. Make grid columns dynamic everywhere
+## Changes
 
-When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
+### 1. `src/hooks/useOfferApprovalRequest.ts` — Dispatch `refetch-offer-letters` in `requestApprovalMutation.onSuccess`
 
-**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
+Add `window.dispatchEvent(new CustomEvent('refetch-offer-letters'))` to the `onSuccess` callback of `requestApprovalMutation` (line 166). This ensures `CandidateOfferDetails` (which uses `useOfferLetters`) picks up the status change from `draft` to `pending_approval` immediately.
 
-**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
+Also add it to `recallApprovalMutation.onSuccess`, `approveStepMutation.onSuccess`, and `declineStepMutation.onSuccess` for consistency — all these mutations change the offer letter status.
 
-**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
+### 2. `src/components/candidates/CandidateOfferDetails.tsx` — Guard declined banner with offer status
 
-Column class map:
-```ts
-const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
+At line 200, add an additional condition: only show the declined banner when the offer letter's status is `draft` (not `pending_approval`). This prevents the stale banner from showing when a new approval has already been requested:
+
+```tsx
+{approvalRequest?.status === 'declined' && offerLetter.status === 'draft' && (
 ```
 
-### 3. Also add salary case to `OfferComposerBody.tsx`
+This is a defense-in-depth measure — even if there's a brief cache inconsistency, the banner won't show once the offer status updates to `pending_approval`.
 
-While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
+## Summary
 
-## Summary of File Changes
-- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
-- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
-- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
+| File | Change |
+|------|--------|
+| `useOfferApprovalRequest.ts` | Dispatch `refetch-offer-letters` in all mutation `onSuccess` callbacks |
+| `CandidateOfferDetails.tsx` | Add `offerLetter.status === 'draft'` guard to declined banner |
 
