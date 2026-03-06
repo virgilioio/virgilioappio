@@ -162,6 +162,20 @@ const [scoreOpen, setScoreOpen] = useState(false)
 const [scoreStageInstId, setScoreStageInstId] = useState<string | null>(null)
 const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefined)
 
+// Fetch scorecard template visibility for the active scorecard stage
+const { data: scorecardTemplateVisibility } = useQuery({
+  queryKey: ['scorecard-visibility', scoreStageInstId],
+  queryFn: async () => {
+    const { data } = await supabase
+      .from('stage_scorecard_templates')
+      .select('visibility')
+      .eq('job_hiring_stage_id', scoreStageInstId!)
+      .maybeSingle()
+    return (data?.visibility as 'private' | 'public') || 'private'
+  },
+  enabled: !!scoreStageInstId
+})
+
 // Schedule Interview
 const [scheduleOpen, setScheduleOpen] = useState(false)
 const [scheduleStageId, setScheduleStageId] = useState<string | null>(null)
@@ -1761,6 +1775,7 @@ const stageHasAutomation = useMemo(() => {
               jobId={jobId}
               linkedinUrl={candidate?.linkedin_url}
               jobTitle={job?.title}
+              scorecardVisibility={scorecardTemplateVisibility || 'private'}
               onSubmit={async (rating, overview) => {
                 await upsertMyScorecard(scoreStageInstId!, rating, overview || '')
                 await refetchScorecards()

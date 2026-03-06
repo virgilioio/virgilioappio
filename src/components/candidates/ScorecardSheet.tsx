@@ -10,12 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { SoonBadge } from "@/components/ui/soon-badge";
 import { toast } from "@/hooks/use-toast";
 import type { ScoreRating, ScorecardRow } from "@/hooks/useScorecards";
-import { ThumbsDown, ThumbsUp, Star, Octagon, Loader2, Sparkles, Lightbulb, Trash2, FileText, DollarSign, ChevronDown, ChevronUp, Copy } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Star, Octagon, Loader2, Sparkles, Lightbulb, Trash2, FileText, DollarSign, ChevronDown, ChevronUp, Copy, Lock, Globe } from "lucide-react";
 import { copyToClipboard } from "@/utils/clipboard";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabaseClient";
 import { triggerFitAnalysis } from "@/utils/triggerFitAnalysis";
-import type { InterviewQuestion, SelectOption, SalaryConfig } from "@/hooks/useScorecardsConfiguration";
+import type { InterviewQuestion, SelectOption, SalaryConfig, ScorecardVisibility } from "@/hooks/useScorecardsConfiguration";
 import { markdownToHtml } from "@/utils/markdown";
 import gioIcon from "@/assets/gio-icon.png";
 import gioAvatar from "@/assets/gio-avatar.png";
@@ -69,6 +69,7 @@ interface ScorecardSheetProps {
   onMoveToNextStage?: () => void;
   onScheduleFollowUp?: () => void;
   onReject?: () => void;
+  scorecardVisibility?: ScorecardVisibility;
 }
 
 interface QuestionResponse {
@@ -109,6 +110,7 @@ export function ScorecardSheet({
   onMoveToNextStage,
   onScheduleFollowUp,
   onReject,
+  scorecardVisibility = 'private',
 }: ScorecardSheetProps) {
   const [rating, setRating] = useState<ScoreRating>(existing?.rating || "yes");
   const [overview, setOverview] = useState<string>(existing?.general_overview || "");
@@ -859,6 +861,20 @@ export function ScorecardSheet({
                         Draft saved
                       </Badge>
                     )}
+                    <Badge
+                      variant="outline"
+                      className={`text-xs gap-1 ${
+                        scorecardVisibility === 'public'
+                          ? 'bg-virgilio-purple/10 text-virgilio-purple border-virgilio-purple/20'
+                          : 'bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      {scorecardVisibility === 'public' ? (
+                        <><Globe className="h-3 w-3" /> Public</>
+                      ) : (
+                        <><Lock className="h-3 w-3" /> Private</>
+                      )}
+                    </Badge>
                   </div>
                   {/* Candidate context row */}
                   {(candidateName || jobTitle) && (

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import type { ScoreRating } from "./useScorecards";
+import type { ScorecardVisibility } from "./useScorecardsConfiguration";
 
 export interface ScorecardWithAuthor {
   id: string;
@@ -24,16 +26,33 @@ export interface ScorecardWithAuthor {
 
 export function useAllStageScorecards(stageInstanceId?: string | null, associationId?: string | null) {
   const { user } = useAuth();
+  const permissions = usePermissions();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [scorecards, setScorecards] = useState<ScorecardWithAuthor[]>([]);
+  const [visibility, setVisibility] = useState<ScorecardVisibility>('private');
+
+  const isAdminOrRecruiter = permissions.isAdmin || permissions.isPlatformAdmin ||
+    (permissions as any).isWorkspaceOwner !== undefined
+      ? !!(permissions as any).canManageMembers
+      : false;
 
   const fetchAllScorecards = async () => {
     if (!stageInstanceId || !associationId) return;
     setLoading(true);
     setError(null);
     try {
-      // First get all scorecards for this stage and association
+      // Fetch template visibility for this stage
+      const { data: templateData } = await supabase
+        .from("stage_scorecard_templates")
+        .select("visibility")
+        .eq("job_hiring_stage_id", stageInstanceId)
+        .maybeSingle();
+
+      const templateVisibility: ScorecardVisibility = (templateData?.visibility as ScorecardVisibility) || 'private';
+      setVisibility(templateVisibility);
+
+      // Fetch all scorecards for this stage and association
       const { data: scorecardsData, error: scorecardsError } = await supabase
         .from("job_stage_scorecards")
         .select("*")
@@ -60,7 +79,6 @@ export function useAllStageScorecards(stageInstanceId?: string | null, associati
               author_email: authorData?.[0]?.email || null,
             } as ScorecardWithAuthor;
           } catch {
-            // Fallback if author info fails
             return {
               ...scorecard,
               author_name: null,
@@ -70,7 +88,12 @@ export function useAllStageScorecards(stageInstanceId?: string | null, associati
         })
       );
 
-      setScorecards(scorecardsWithAuthors);
+      // Apply visibility filtering: private = only own + admin/recruiter see all
+      const filtered = templateVisibility === 'public' || isAdminOrRecruiter
+        ? scorecardsWithAuthors
+        : scorecardsWithAuthors.filter(s => s.created_by === user?.id);
+
+      setScorecards(filtered);
     } catch (e: any) {
       setError(e?.message || "Failed to load scorecards");
     } finally {
@@ -83,5 +106,5 @@ export function useAllStageScorecards(stageInstanceId?: string | null, associati
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stageInstanceId, associationId, user?.id]);
 
-  return { loading, error, scorecards, refetch: fetchAllScorecards };
+  return { loading, error, scorecards, visibility, refetch: fetchAllScorecards };
 }

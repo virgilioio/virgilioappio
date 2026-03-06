@@ -26,9 +26,12 @@ export interface InterviewQuestion {
   salary_config?: SalaryConfig | null
 }
 
+export type ScorecardVisibility = 'private' | 'public'
+
 export interface ScorecardTemplate {
   id: string
   job_hiring_stage_id: string
+  visibility: ScorecardVisibility
   questions: InterviewQuestion[]
 }
 
@@ -96,9 +99,16 @@ export function useScorecardsConfiguration(jhsId: string | null) {
         salary_config: (q.salary_config as unknown) as SalaryConfig | undefined
       }))
 
+      // Get visibility from template data (re-fetch if we just created it)
+      let visibility: ScorecardVisibility = 'private'
+      if (templateData?.visibility) {
+        visibility = templateData.visibility as ScorecardVisibility
+      }
+
       setTemplate({
         id: templateId,
         job_hiring_stage_id: jhsId,
+        visibility,
         questions: formattedQuestions
       })
     } catch (err) {
@@ -222,6 +232,28 @@ export function useScorecardsConfiguration(jhsId: string | null) {
     }
   })
 
+  const updateVisibility = useMutation({
+    mutationFn: async (visibility: ScorecardVisibility) => {
+      if (!template) throw new Error('Template not loaded')
+      const { error } = await supabase
+        .from('stage_scorecard_templates')
+        .update({ visibility })
+        .eq('id', template.id)
+      if (error) throw error
+    },
+    onSuccess: (_, visibility) => {
+      if (template) {
+        setTemplate({ ...template, visibility })
+      }
+      toast.success(`Scorecard visibility set to ${visibility}`)
+      queryClient.invalidateQueries({ queryKey: ['scorecard-configuration', jhsId] })
+    },
+    onError: (error) => {
+      console.error('Error updating visibility:', error)
+      toast.error('Failed to update scorecard visibility')
+    }
+  })
+
   return {
     template,
     isLoading,
@@ -230,6 +262,7 @@ export function useScorecardsConfiguration(jhsId: string | null) {
     createQuestion,
     updateQuestion,
     deleteQuestion,
-    reorderQuestions
+    reorderQuestions,
+    updateVisibility
   }
 }
