@@ -357,7 +357,7 @@ export function MemberInviteSheet({
               form="invite-form"
               disabled={isLoading || !selectedRole}
             >
-              {isLoading ? 'Sending...' : 'Send Invitation'}
+              {isLoading ? 'Saving...' : isEditing ? 'Save Changes' : 'Send Invitation'}
             </Button>
           </SheetFooter>
         </SheetContent>
