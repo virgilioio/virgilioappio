@@ -392,7 +392,7 @@ export function IndependentCandidateProfileSheet({
                         <Accordion type="multiple" defaultValue={['experience', 'education', 'certifications']} className="space-y-4">
 
                           {/* AI Profile Summary Banner */}
-                          <Collapsible defaultOpen className="rounded-lg bg-pastel-purple/30 border border-pastel-purple/50">
+                          <Collapsible className="rounded-lg bg-pastel-purple/30 border border-pastel-purple/50">
                             <div className="p-4 flex items-start gap-3">
                               <img src={gioAiBannerIcon} alt="Gio AI" className="h-10 shrink-0" />
                               <div className="flex-1 min-w-0">
