@@ -204,8 +204,8 @@ export function SalaryInsightsCard({
 
           <div className="h-60 w-full overflow-hidden">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={salaryData.curveData}
+               <ComposedChart
+                data={salaryData.chartData}
                 margin={{ top: 20, right: 30, left: 20, bottom: 10 }}
               >
                 <defs>
@@ -222,6 +222,7 @@ export function SalaryInsightsCard({
                   tickFormatter={(v) => formatCurrencyShort(v)}
                   tickCount={5}
                 />
+                <YAxis hide />
                 <Tooltip content={<CustomTooltip />} />
                 <ReferenceLine
                   x={salaryData.minSalary}
@@ -243,6 +244,13 @@ export function SalaryInsightsCard({
                   strokeOpacity={0.5}
                   label={{ value: 'High', position: 'top', fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
                 />
+                <Bar
+                  dataKey="count"
+                  fill="hsl(267 100% 62% / 0.15)"
+                  stroke="hsl(267 100% 62% / 0.4)"
+                  radius={[4, 4, 0, 0]}
+                  barSize={20}
+                />
                 <Area
                   type="monotone"
                   dataKey="density"
@@ -250,8 +258,9 @@ export function SalaryInsightsCard({
                   strokeWidth={2}
                   fillOpacity={1}
                   fill="url(#salaryGradient)"
+                  connectNulls
                 />
-              </AreaChart>
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
 
