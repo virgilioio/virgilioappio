@@ -443,7 +443,18 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
       defaultTo={candidate?.email || candidate?.contact_email || ''}
       candidateName={candidate?.candidate_name || 'Candidate'}
       defaultSubject={`Offer Letter - ${job?.title || 'Position'}`}
-      onSuccess={() => setShowEmailComposer(false)}
+      onSuccess={() => {
+        setShowEmailComposer(false)
+        logActivity({
+          activityType: 'offer_sent',
+          title: 'Offer sent',
+          description: `Offer letter sent to ${candidate?.candidate_name || 'candidate'}`,
+          entityType: 'candidate',
+          entityId: candidateId,
+          organizationId: organizationId || undefined,
+          metadata: { jobId, offerLetterId: offerLetter?.id },
+        })
+      }}
     />
     </>
   )
