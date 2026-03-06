@@ -1,15 +1,16 @@
-
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton, TableSkeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from '@/hooks/use-toast'
 import { Member } from '@/hooks/useMembers'
-import { MoreVertical, Plus, Send, UserCheck, UserX, Trash2, Copy, Briefcase, Mail, MailX, Clock } from 'lucide-react'
+import { MoreVertical, Plus, Send, UserCheck, UserX, Trash2, Copy, Briefcase, Mail, MailX, Clock, Search, X } from 'lucide-react'
 
 interface MembersTableProps {
   members: Member[]
@@ -33,7 +34,29 @@ export function MembersTable({
   onAddNew
 }: MembersTableProps) {
   const [copyingInvite, setCopyingInvite] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [roleFilter, setRoleFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
 
+  const hasActiveFilters = searchTerm || roleFilter !== 'all' || statusFilter !== 'all'
+
+  const filteredMembers = useMemo(() => {
+    return members.filter(m => {
+      const name = getDisplayName(m).toLowerCase()
+      const email = (m.user_email || m.invited_email || '').toLowerCase()
+      const term = searchTerm.toLowerCase()
+      const matchesSearch = !searchTerm || name.includes(term) || email.includes(term)
+      const matchesRole = roleFilter === 'all' || m.system_role === roleFilter
+      const matchesStatus = statusFilter === 'all' || m.user_status === statusFilter
+      return matchesSearch && matchesRole && matchesStatus
+    })
+  }, [members, searchTerm, roleFilter, statusFilter])
+
+  const clearFilters = () => {
+    setSearchTerm('')
+    setRoleFilter('all')
+    setStatusFilter('all')
+  }
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'admin':
@@ -198,6 +221,53 @@ export function MembersTable({
             } : undefined}
           />
         ) : (
+          <>
+            {/* Toolbar: Search + Filters */}
+            <div className="flex flex-col sm:flex-row gap-3 mb-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name or email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Select value={roleFilter} onValueChange={setRoleFilter}>
+                  <SelectTrigger className="w-[130px]">
+                    <SelectValue placeholder="Role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Roles</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="member">Member</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="invited">Invited</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+                {hasActiveFilters && (
+                  <Button variant="ghost" size="icon" onClick={clearFilters} title="Clear filters">
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Result count */}
+            <p className="text-xs text-muted-foreground mb-3">
+              Showing {filteredMembers.length} of {members.length} members
+            </p>
+
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -211,7 +281,13 @@ export function MembersTable({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {members.map((member) => (
+                {filteredMembers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      No members match your filters
+                    </TableCell>
+                  </TableRow>
+                ) : filteredMembers.map((member) => (
                   <TableRow key={member.id}>
                     <TableCell className="font-medium">
                       {getDisplayName(member)}
@@ -329,6 +405,7 @@ export function MembersTable({
               </TableBody>
             </Table>
           </div>
+          </>
         )}
       </CardContent>
     </Card>
