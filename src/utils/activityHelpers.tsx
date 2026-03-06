@@ -36,6 +36,12 @@ export function getActivityIcon(activityType: string): React.ReactNode {
     'sourcing_project_updated': RefreshCw,
     'sourcing_project_archived': Archive,
     'scorecard_submitted': Award,
+    'approval_requested': Send,
+    'approval_approved': CheckCircle,
+    'approval_declined': X,
+    'approval_recalled': Undo2,
+    'offer_document_generated': FileText,
+    'offer_sent': Mail,
   };
   
   const Icon = iconMap[activityType] || Briefcase;
