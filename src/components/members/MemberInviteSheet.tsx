@@ -275,7 +275,7 @@ export function MemberInviteSheet({
                   type="email"
                   placeholder="name@company.com"
                   {...register("email", { required: true })}
-                  disabled={isLoading}
+                  disabled={isLoading || isEditing}
                 />
                 {errors.email && (
                   <p className="text-sm text-destructive">Email is required</p>
