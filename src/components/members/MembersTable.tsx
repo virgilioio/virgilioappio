@@ -225,8 +225,8 @@ export function MembersTable({
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Badge className={getRoleColor(member.member_role)}>
-                        {member.member_role.replace('_', ' ')}
+                      <Badge className={getRoleColor(member.system_role)}>
+                        {member.system_role === 'admin' ? 'Admin' : 'Member'}
                       </Badge>
                     </TableCell>
                     <TableCell>
