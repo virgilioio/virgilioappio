@@ -296,9 +296,11 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
       duration_months: calculateDurationMonths(w.start_date, w.end_date),
     }));
 
-    // 5. Standardize work experience titles (batch)
+    // 5. Standardize work experience titles: prefer AI-generated, fallback to DB lookup
     for (const w of workExperience) {
-      w.standardized_title = await standardizeTitle(supabase, w.job_title);
+      const aiTitle = w.standardized_title || null;
+      const dbTitle = aiTitle ? null : await standardizeTitle(supabase, w.job_title);
+      w.standardized_title = aiTitle || dbTitle;
     }
 
     // 6. Compute derived metrics
