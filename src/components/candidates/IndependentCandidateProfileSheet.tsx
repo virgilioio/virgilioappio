@@ -377,10 +377,9 @@ export function IndependentCandidateProfileSheet({
                         tabs={[
                           { value: 'overview', label: 'Overview', Icon: FileText },
                           { value: 'resume', label: 'Resume', Icon: FileText },
-                          { value: 'comments', label: 'Comments', Icon: User },
                         ]}
                         activeTab={activeTab}
-                        onTabChange={(v) => setActiveTab(v as 'overview' | 'resume' | 'comments')}
+                        onTabChange={(v) => setActiveTab(v as 'overview' | 'resume')}
                       />
 
                       {/* Resume Tab */}
