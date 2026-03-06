@@ -42,6 +42,7 @@ import { useMembers } from '@/hooks/useMembers'
 import { useToast } from '@/components/ui/use-toast'
 import { supabase } from '@/lib/supabaseClient'
 import { useUserProfile } from '@/hooks/useUserProfile'
+import { useUserJobRoles } from '@/hooks/useUserJobRoles'
 
 export function Header() {
   const { user, logout, organizationId, isLoggingOut } = useAuth()
