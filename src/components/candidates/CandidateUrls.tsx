@@ -74,16 +74,16 @@ export function CandidateUrls({ candidateId }: CandidateUrlsProps) {
 
   if (isLoading) {
     return (
-      <Accordion type="single" collapsible defaultValue="urls">
-        <AccordionItem value="urls" className="border-0">
-          <Card className="bg-surface-primary border-border">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline">
-              <CardTitle>URLs</CardTitle>
-            </AccordionTrigger>
-            <AccordionContent>
-              <CardContent className="space-y-sm pt-0">
-                <Skeleton className="h-[40px] rounded-brand" />
-                <Skeleton className="h-[40px] rounded-brand" />
+    <Accordion type="single" collapsible>
+      <AccordionItem value="urls" className="border-0">
+        <Card className="bg-surface-primary border-border">
+          <AccordionTrigger className="px-6 py-4 hover:no-underline">
+            <CardTitle>URLs</CardTitle>
+          </AccordionTrigger>
+          <AccordionContent>
+            <CardContent className="space-y-sm pt-0">
+              <Skeleton className="h-[40px] rounded-brand" />
+              <Skeleton className="h-[40px] rounded-brand" />
               </CardContent>
             </AccordionContent>
           </Card>
@@ -93,7 +93,7 @@ export function CandidateUrls({ candidateId }: CandidateUrlsProps) {
   }
 
   return (
-    <Accordion type="single" collapsible defaultValue="urls">
+    <Accordion type="single" collapsible>
       <AccordionItem value="urls" className="border-0">
         <Card className="bg-surface-primary border-border">
           <AccordionTrigger className="px-6 py-4 hover:no-underline">
