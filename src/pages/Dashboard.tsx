@@ -19,6 +19,7 @@ export default function Dashboard() {
   const permissions = usePermissions()
   const { isLoading: orgLoading, hasOrganizationContext } = useOrgContext()
   const { data: sourcingProjects } = useSourcingProjects()
+  const { hasRecruiterRole, isPrivileged } = useUserJobRoles()
   
   // Fallback loader if context isn't ready
   if (orgLoading || !hasOrganizationContext) {
