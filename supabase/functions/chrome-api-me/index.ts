@@ -73,7 +73,7 @@ serve(async (req) => {
       .select(`
         tenant_id,
         organization_id,
-        member_role,
+        system_role,
         user_type,
         tenants!members_tenant_id_fkey (
           id,
