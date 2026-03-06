@@ -100,11 +100,27 @@ export const CandidateWorkExperienceComponent = ({ experiences }: CandidateWorkE
                 )}
               </div>
               
-              <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between mb-2">
                   <div>
-                    <h3 className="font-semibold text-lg">{exp.job_title}</h3>
-                    <p className="text-muted-foreground font-medium">{exp.company_name}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold text-lg">{exp.job_title}</h3>
+                      {exp.standardized_title && exp.standardized_title !== exp.job_title && (
+                        <Badge variant="outline" className="text-xs gap-1">
+                          <Sparkles className="h-3 w-3" />
+                          {exp.standardized_title}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-muted-foreground font-medium">{exp.company_name}</p>
+                      {exp.company_industry && (
+                        <Badge variant="secondary" className="text-xs">{exp.company_industry}</Badge>
+                      )}
+                      {exp.company_size_category && (
+                        <Badge variant="outline" className="text-xs capitalize">{exp.company_size_category}</Badge>
+                      )}
+                    </div>
                   </div>
                   {exp.is_current && (
                     <Badge variant="secondary" className="bg-green-100 text-green-800">
