@@ -475,10 +475,15 @@ export function useMembers(includeHierarchy: boolean = false) {
 
     try {
       log.debug('Updating member:', id, data)
+      // Cast for DB compat - system_role isn't in generated types yet
+      const dbData: any = { ...data }
+      if (dbData.member_role) {
+        // Keep member_role as-is for legacy compat
+      }
       const { data: updatedMember, error: updateError } = await withAuthRetry(async () =>
         await supabase
           .from('members')
-          .update(data)
+          .update(dbData)
           .eq('id', id)
           .select()
           .single()
