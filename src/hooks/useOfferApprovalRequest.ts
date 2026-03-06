@@ -166,6 +166,7 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
       queryClient.invalidateQueries({ queryKey })
       queryClient.invalidateQueries({ queryKey: ['offer-letters'] })
       queryClient.invalidateQueries({ queryKey: ['pending-activities'] })
+      window.dispatchEvent(new CustomEvent('refetch-offer-letters'))
       toast({ title: 'Approval requested', description: 'The offer approval process has been initiated.' })
     },
     onError: (error) => {
@@ -221,6 +222,7 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
       queryClient.invalidateQueries({ queryKey })
       queryClient.invalidateQueries({ queryKey: ['offer-letters'] })
       queryClient.invalidateQueries({ queryKey: ['pending-activities'] })
+      window.dispatchEvent(new CustomEvent('refetch-offer-letters'))
       toast({ title: 'Approved', description: 'You have approved this offer.' })
     },
     onError: (error) => {
@@ -263,6 +265,7 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
       queryClient.invalidateQueries({ queryKey })
       queryClient.invalidateQueries({ queryKey: ['offer-letters'] })
       queryClient.invalidateQueries({ queryKey: ['pending-activities'] })
+      window.dispatchEvent(new CustomEvent('refetch-offer-letters'))
       toast({ title: 'Declined', description: 'You have declined this offer.' })
     },
     onError: (error) => {
@@ -304,6 +307,7 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
       queryClient.invalidateQueries({ queryKey })
       queryClient.invalidateQueries({ queryKey: ['offer-letters'] })
       queryClient.invalidateQueries({ queryKey: ['pending-activities'] })
+      window.dispatchEvent(new CustomEvent('refetch-offer-letters'))
       toast({ title: 'Recalled', description: 'The approval request has been recalled.' })
     },
     onError: (error) => {

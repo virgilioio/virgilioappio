@@ -197,7 +197,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
           )}
         </div>
       )}
-      {approvalRequest?.status === 'declined' && (
+      {approvalRequest?.status === 'declined' && offerLetter.status === 'draft' && (
         <div className="mx-6 mt-6 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
           <div className="flex items-center gap-2">
             <X className="h-4 w-4 text-destructive" />
