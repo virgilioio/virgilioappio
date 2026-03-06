@@ -242,8 +242,8 @@ export function useJobs() {
         }
         targetOrganizationId = jobData.organization_id
         console.log('Platform admin creating job for organization:', targetOrganizationId)
-      } else if (userType === 'workspace_owner' || memberRole === 'recruiter') {
-        // Workspace owners and recruiters can create jobs for selected child orgs
+      } else if (userType === 'workspace_owner' || memberRole === 'admin') {
+        // Workspace owners and admins can create jobs for selected child orgs
         if (!jobData.organization_id) {
           throw new Error('Please select a job folder for this job')
         }
