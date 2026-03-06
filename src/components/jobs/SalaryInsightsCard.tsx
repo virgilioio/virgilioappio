@@ -19,6 +19,23 @@ interface SalaryInsightsCardProps {
   className?: string;
 }
 
+/** Generate histogram bins from salary data */
+function generateHistogram(salaries: number[], numBins = 12) {
+  const min = Math.min(...salaries);
+  const max = Math.max(...salaries);
+  const range = max - min || 1;
+  const binWidth = range / numBins;
+  
+  const bins: { salary: number; count: number }[] = [];
+  for (let i = 0; i < numBins; i++) {
+    const binStart = min + i * binWidth;
+    const binCenter = binStart + binWidth / 2;
+    const count = salaries.filter(s => s >= binStart && (i === numBins - 1 ? s <= binStart + binWidth : s < binStart + binWidth)).length;
+    bins.push({ salary: Math.round(binCenter), count });
+  }
+  return bins;
+}
+
 /** Generate a smooth KDE (Kernel Density Estimation) curve from actual salary data points */
 function generateKDE(salaries: number[], points = 60) {
   const min = Math.min(...salaries);
@@ -42,6 +59,30 @@ function generateKDE(salaries: number[], points = 60) {
     data.push({ salary: Math.round(x), density });
   }
   return data;
+}
+
+/** Merge histogram and KDE data into a single dataset for ComposedChart */
+function mergeChartData(histogram: { salary: number; count: number }[], kde: { salary: number; density: number }[]) {
+  // Normalize KDE density to match histogram count scale
+  const maxCount = Math.max(...histogram.map(h => h.count), 1);
+  const maxDensity = Math.max(...kde.map(k => k.density), 0.0001);
+  const scale = maxCount / maxDensity;
+
+  const merged: { salary: number; count?: number; density?: number }[] = [];
+  
+  // Add histogram points
+  for (const bin of histogram) {
+    merged.push({ salary: bin.salary, count: bin.count });
+  }
+  
+  // Add KDE points with scaled density
+  for (const point of kde) {
+    merged.push({ salary: point.salary, density: point.density * scale });
+  }
+  
+  // Sort by salary
+  merged.sort((a, b) => a.salary - b.salary);
+  return merged;
 }
 
 export function SalaryInsightsCard({
