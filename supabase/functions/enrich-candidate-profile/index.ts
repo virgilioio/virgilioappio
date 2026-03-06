@@ -28,6 +28,7 @@ const EXTRACTION_TOOL = {
           description: 'Comprehensive professional profile in Spanish (200-300 words) with rich markdown formatting. Use **bold** for headings/key skills, *italic* for emphasis, bullet lists. Structure: opening statement, experience highlights, key competencies, notable achievements.'
         },
         current_job_title: { type: 'string', description: 'Most recent job title exactly as written on resume' },
+        standardized_title: { type: 'string', description: 'Standardized English job title mapped to a common industry equivalent. Translate non-English titles, expand abbreviations. Examples: "Ingeniero de Calidad" → "Quality Engineer", "SDR" → "Sales Development Representative", "Gerente de Ventas" → "Sales Manager", "Jefe de Operaciones" → "Operations Manager"' },
         seniority_level: {
           type: 'string',
           enum: ['entry', 'junior', 'mid', 'senior', 'lead', 'director', 'vp', 'c_level'],
