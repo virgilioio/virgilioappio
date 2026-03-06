@@ -149,6 +149,38 @@ export function useJobAssignments(jobId?: string) {
     }
   }
 
+  const updateAssignmentRole = async (assignmentId: string, role: JobAssignmentRole) => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const { error: updateError } = await supabase
+        .from('job_assignments')
+        .update({ role } as any)
+        .eq('id', assignmentId)
+
+      if (updateError) throw updateError
+
+      toast({
+        title: 'Success',
+        description: 'Assignment role updated successfully'
+      })
+
+      await getAssignments()
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update assignment role'
+      setError(errorMessage)
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const checkUserAssignment = async (userId: string, targetJobId: string): Promise<boolean> => {
     try {
       const { data } = await supabase.rpc('is_user_assigned_to_job', {
