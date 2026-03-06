@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 import { Briefcase, Loader2 } from 'lucide-react'
 import { Member } from '@/hooks/useMembers'
+import { useQueryClient } from '@tanstack/react-query'
 
 interface MemberJobAssignmentsDialogProps {
   isOpen: boolean
