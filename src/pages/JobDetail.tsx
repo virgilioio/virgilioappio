@@ -51,6 +51,8 @@ export default function JobDetail() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { user, userType } = useAuth()
   const permissions = usePermissions()
+  const { isHiringManagerOnJob, isInterviewerOnJob } = useJobRole(id)
+  const isRestrictedViewer = (isHiringManagerOnJob || isInterviewerOnJob) && !permissions.isAdmin && !permissions.isWorkspaceOwner && !permissions.isPlatformAdmin
   const isMobile = useIsMobile()
   const [showAddCandidate, setShowAddCandidate] = useState(false)
   const [editingCandidate, setEditingCandidate] = useState<any>(null)
