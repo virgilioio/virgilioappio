@@ -38,6 +38,7 @@ export interface TalentInsightsData {
   topSkills: SkillEntry[]
   salaryStats: SalaryStats | null
   salaryBands: CountEntry[]
+  salaryValues: number[]
   functionalAreaCounts: CountEntry[]
   specializationCounts: CountEntry[]
   titleCounts: CountEntry[]
@@ -155,6 +156,7 @@ export function useTalentInsightsData() {
           topSkills: [],
           salaryStats: null,
           salaryBands: [],
+          salaryValues: [],
           functionalAreaCounts: [],
           specializationCounts: [],
           titleCounts: [],
@@ -256,6 +258,7 @@ export function useTalentInsightsData() {
         topSkills,
         salaryStats,
         salaryBands,
+        salaryValues,
         functionalAreaCounts,
         specializationCounts,
         titleCounts,
