@@ -207,6 +207,7 @@ export function useJobAssignments(jobId?: string) {
     getAssignments,
     assignUserToJob,
     removeUserFromJob,
+    updateAssignmentRole,
     checkUserAssignment
   }
 }
