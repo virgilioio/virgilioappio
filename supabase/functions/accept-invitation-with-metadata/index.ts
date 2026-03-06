@@ -128,7 +128,7 @@ Deno.serve(async (req) => {
         p_new_values: {
           member_id: result.member_id,
           user_type: result.user_type,
-          member_role: result.member_role,
+          system_role: result.system_role,
           organization_id: result.organization_id
         }
       });
