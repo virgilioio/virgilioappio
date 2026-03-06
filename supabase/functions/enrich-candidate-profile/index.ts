@@ -314,7 +314,7 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
       skills: rawSkillNames,
       standardized_skills: standardizedSkills,
       current_job_title: extracted.current_job_title || null,
-      standardized_title: standardizedTitle,
+      standardized_title: finalStandardizedTitle,
       seniority_level: extracted.seniority_level || null,
       functional_area: extracted.functional_area || null,
       specialization: extracted.specialization || null,
