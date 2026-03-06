@@ -4545,6 +4545,7 @@ export type Database = {
           id: string
           job_hiring_stage_id: string
           updated_at: string
+          visibility: string
         }
         Insert: {
           created_at?: string
@@ -4552,6 +4553,7 @@ export type Database = {
           id?: string
           job_hiring_stage_id: string
           updated_at?: string
+          visibility?: string
         }
         Update: {
           created_at?: string
@@ -4559,6 +4561,7 @@ export type Database = {
           id?: string
           job_hiring_stage_id?: string
           updated_at?: string
+          visibility?: string
         }
         Relationships: [
           {
