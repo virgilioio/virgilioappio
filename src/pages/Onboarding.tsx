@@ -17,7 +17,7 @@ import { reconcilePendingInvitation, wasInvitationAccepted } from '@/lib/invitat
 
 interface PendingInvitation {
   organization_name: string
-  member_role: string
+  system_role: string
   invited_by_email?: string
   invite_expires_at: string
   member_id: string
