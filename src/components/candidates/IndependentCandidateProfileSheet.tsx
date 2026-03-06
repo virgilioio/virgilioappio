@@ -541,8 +541,13 @@ export function IndependentCandidateProfileSheet({
                                         </div>
                                       )}
                                     </dl>
-                        </CardContent>
-                      </Card>
+                                  </CardContent>
+                                </AccordionContent>
+                              </Card>
+                            </AccordionItem>
+                          )}
+
+                          {/* Contact Information */}
 
                       {/* Tab Navigation */}
                       <CandidateNameCard
