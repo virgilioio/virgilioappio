@@ -814,20 +814,14 @@ export function IndependentCandidateProfileSheet({
 
                       {/* Notes Tab */}
                       {rightActiveTab === 'notes' && (
-                        <>
-                          {organizationId && candidateId ? (
-                            <CandidateComments candidateId={candidateId} jobId={undefined} organizationId={organizationId} />
-                          ) : (
-                            <Card className="bg-surface-primary border-border">
-                              <CardHeader>
-                                <CardTitle>Notes</CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-sm text-text-secondary">No candidate data available.</div>
-                              </CardContent>
-                            </Card>
-                          )}
-                        </>
+                        <Card className="bg-surface-primary border-border">
+                          <CardHeader>
+                            <CardTitle>Notes</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-sm text-text-secondary">Notes are available in the job-associated profile view.</div>
+                          </CardContent>
+                        </Card>
                       )}
 
                       {/* Emails Tab */}
