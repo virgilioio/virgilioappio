@@ -12,7 +12,8 @@ export interface Member {
   id: string
   user_id: string | null
   organization_id: string
-  member_role: 'admin' | 'recruiter' | 'hiring_manager' | 'interviewer'
+  system_role: 'admin' | 'member'
+  member_role: string // legacy, kept for backward compat
   user_status: 'active' | 'inactive' | 'invited'
   user_type?: 'member' | 'workspace_owner' | 'platform_admin'
   created_at: string
