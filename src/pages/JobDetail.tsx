@@ -285,6 +285,13 @@ export default function JobDetail() {
   // Inner tabs for Pipeline section
   const [pipelineSectionTab, setPipelineSectionTab] = useState<'suggested' | 'application' | 'recruiting' | 'offers' | 'hired' | 'rejected'>('recruiting')
 
+  // Force restricted viewers (HM/Interviewer) to 'recruiting' tab only
+  useEffect(() => {
+    if (isRestrictedViewer && pipelineSectionTab !== 'recruiting') {
+      setPipelineSectionTab('recruiting')
+    }
+  }, [isRestrictedViewer, pipelineSectionTab])
+
   // Assocations and status-based lists
   const { fetchAssociationsForJob, updateAssociationStatus } = usePipelineActions()
   const [associations, setAssociations] = useState<PipelineAssociation[]>([])
