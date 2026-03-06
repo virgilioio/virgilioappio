@@ -1656,8 +1656,8 @@ const stageHasAutomation = useMemo(() => {
                         tabs={[
                           { value: 'feed', label: 'Feed', Icon: Activity },
                           { value: 'notes', label: 'Notes', Icon: StickyNote },
-                          { value: 'emails', label: 'Emails', Icon: Mail },
-                          { value: 'reminders', label: 'Reminders', Icon: Bell },
+                          ...(!isRestrictedViewer ? [{ value: 'emails', label: 'Emails', Icon: Mail }] : []),
+                          ...(!isRestrictedViewer ? [{ value: 'reminders', label: 'Reminders', Icon: Bell }] : []),
                           { value: 'insights', label: 'Insights', Icon: Sparkles },
                         ]}
                         activeTab={rightActiveTab}
