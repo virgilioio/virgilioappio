@@ -257,7 +257,19 @@ export function IndependentCandidateProfileSheet({
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent side="right" className="w-[96vw] sm:max-w-none h-full p-0" showOverlay={false}>
-          <div className="flex h-full flex-col relative">
+        <div className="flex h-full w-full">
+          {/* Job Associations Sidebar - desktop only, fixed outside scroll */}
+          {candidateId && (
+            <CandidateJobSidebar
+              candidateId={candidateId}
+              currentJobId=""
+              onJobSelect={handleJobSelect}
+              className="hidden lg:flex"
+            />
+          )}
+
+          {/* Main Profile Content */}
+          <div className="flex-1 flex flex-col min-w-0">
             <SheetHeader className="p-6 border-b">
               <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-2">
