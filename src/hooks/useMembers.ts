@@ -280,6 +280,7 @@ export function useMembers(includeHierarchy: boolean = false) {
       
       // PRE-CHECK: Verify seat limit before creating invitation
       // Only check if adding a billable role (admin or recruiter)
+      // Admins are always billable; recruiters become billable when assigned to jobs (seat recount handles that)
       const isBillableRole = data.system_role === 'admin'
       
       if (tenantId && isBillableRole) {
