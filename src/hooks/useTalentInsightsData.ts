@@ -156,6 +156,7 @@ export function useTalentInsightsData() {
           topSkills: [],
           salaryStats: null,
           salaryBands: [],
+          salaryValues: [],
           functionalAreaCounts: [],
           specializationCounts: [],
           titleCounts: [],
