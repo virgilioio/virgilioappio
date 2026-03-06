@@ -716,6 +716,20 @@ export function IndependentCandidateProfileSheet({
                       {/* URLs */}
                       {candidateId && <CandidateUrls candidateId={candidateId} />}
                     </div>
+                  </div>
+                </Tabs>
+                </div>
+              )}
+              <CandidateFormSheet
+                isOpen={editOpen}
+                onClose={() => setEditOpen(false)}
+                onSubmit={handleUpdateCandidate}
+                candidate={candidate}
+                isLoading={editLoading}
+              />
+            </div>
+          </div>
+        </div>
 
           {/* Simple Schedule Interview Sheet */}
           {candidateId && organizationId && candidate && (
