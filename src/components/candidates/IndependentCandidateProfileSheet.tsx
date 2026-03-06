@@ -776,6 +776,15 @@ export function IndependentCandidateProfileSheet({
                               <CandidateEducationComponent education={education} />
                             </AccordionItem>
                           </div>
+
+                          {/* Certifications - hidden on mobile */}
+                          {certifications.length > 0 && (
+                            <div className="hidden md:block">
+                              <AccordionItem value="certifications" className="border-0">
+                                <CandidateCertificationsComponent certifications={certifications} />
+                              </AccordionItem>
+                            </div>
+                          )}
                         </Accordion>
                       )}
                     </div>
