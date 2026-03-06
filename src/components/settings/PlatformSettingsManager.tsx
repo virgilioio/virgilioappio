@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Settings, Save, Loader2, Coins, Image, Palette } from 'lucide-react'
+import { Settings, Save, Loader2, Coins, Image, Palette, Zap } from 'lucide-react'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 import { usePlatformAssets } from '@/hooks/usePlatformAssets'
 import { PlatformAssetUploader } from './PlatformAssetUploader'
 import { FeatureFlagsManager } from './FeatureFlagsManager'
 import { StyleGuide } from './StyleGuide'
+import { BatchEnrichmentRunner } from './BatchEnrichmentRunner'
 
 export function PlatformSettingsManager() {
   const { settings, isLoading, isUpdating, updateSetting, getSetting } = usePlatformSettings()
@@ -86,6 +87,10 @@ export function PlatformSettingsManager() {
               <Palette className="h-4 w-4" />
               Style Guide
             </TabsTrigger>
+            <TabsTrigger value="enrichment" className="flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              Enrichment
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="general" className="mt-6">
@@ -150,6 +155,10 @@ export function PlatformSettingsManager() {
           
           <TabsContent value="style-guide" className="mt-6">
             <StyleGuide />
+          </TabsContent>
+          
+          <TabsContent value="enrichment" className="mt-6">
+            <BatchEnrichmentRunner />
           </TabsContent>
         </Tabs>
       </CardContent>
