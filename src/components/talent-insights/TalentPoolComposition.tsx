@@ -7,12 +7,15 @@ interface TalentPoolCompositionProps {
   functionalAreaCounts: CountEntry[]
   titleCounts: CountEntry[]
   specializationCounts: CountEntry[]
+  onTitleClick?: (title: string) => void
+  onFunctionalAreaClick?: (area: string) => void
+  onSpecializationClick?: (spec: string) => void
 }
 
 const PURPLE = 'hsl(267, 100%, 62%)'
 const PURPLE_LIGHT = 'hsl(267, 80%, 75%)'
 
-function MiniBarChart({ data, label }: { data: CountEntry[]; label: string }) {
+function MiniBarChart({ data, label, onClick }: { data: CountEntry[]; label: string; onClick?: (name: string) => void }) {
   if (data.length === 0) return null
 
   return (
@@ -27,7 +30,13 @@ function MiniBarChart({ data, label }: { data: CountEntry[]; label: string }) {
               contentStyle={{ borderRadius: 8, border: '1px solid hsl(var(--border))', fontSize: 12 }}
               formatter={(value: number) => [`${value} candidates`, 'Count']}
             />
-            <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={18}>
+            <Bar
+              dataKey="count"
+              radius={[0, 4, 4, 0]}
+              maxBarSize={18}
+              onClick={(d) => onClick?.(d?.name)}
+              className={onClick ? 'cursor-pointer' : ''}
+            >
               {data.slice(0, 8).map((_, i) => (
                 <Cell key={i} fill={i < 3 ? PURPLE : PURPLE_LIGHT} />
               ))}
@@ -39,7 +48,10 @@ function MiniBarChart({ data, label }: { data: CountEntry[]; label: string }) {
   )
 }
 
-export function TalentPoolComposition({ functionalAreaCounts, titleCounts, specializationCounts }: TalentPoolCompositionProps) {
+export function TalentPoolComposition({
+  functionalAreaCounts, titleCounts, specializationCounts,
+  onTitleClick, onFunctionalAreaClick, onSpecializationClick,
+}: TalentPoolCompositionProps) {
   const hasAny = functionalAreaCounts.length > 0 || titleCounts.length > 0 || specializationCounts.length > 0
 
   if (!hasAny) {
@@ -66,9 +78,9 @@ export function TalentPoolComposition({ functionalAreaCounts, titleCounts, speci
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          <MiniBarChart data={titleCounts} label="By Role" />
-          <MiniBarChart data={functionalAreaCounts} label="By Functional Area" />
-          <MiniBarChart data={specializationCounts} label="By Specialization" />
+          <MiniBarChart data={titleCounts} label="By Role" onClick={onTitleClick} />
+          <MiniBarChart data={functionalAreaCounts} label="By Functional Area" onClick={onFunctionalAreaClick} />
+          <MiniBarChart data={specializationCounts} label="By Specialization" onClick={onSpecializationClick} />
         </div>
       </CardContent>
     </Card>

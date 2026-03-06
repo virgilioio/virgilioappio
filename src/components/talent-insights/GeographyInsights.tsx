@@ -11,6 +11,7 @@ interface GeographyInsightsProps {
   countryCounts: CountEntry[]
   cityCounts: CountEntry[]
   totalCandidates: number
+  onCountryClick?: (country: string) => void
 }
 
 // Country name → [longitude, latitude] centroids
@@ -55,7 +56,7 @@ function displayName(name: string) {
   return country ? country.label : name
 }
 
-export function GeographyInsights({ countryCounts, cityCounts, totalCandidates }: GeographyInsightsProps) {
+export function GeographyInsights({ countryCounts, cityCounts, totalCandidates, onCountryClick }: GeographyInsightsProps) {
   const maxCount = countryCounts.length > 0 ? countryCounts[0].count : 1
   const topCountries = countryCounts.slice(0, 5)
 
@@ -139,7 +140,11 @@ export function GeographyInsights({ countryCounts, cityCounts, totalCandidates }
               {topCountries.map((country) => {
                 const pct = Math.round((country.count / totalCandidates) * 100)
                 return (
-                  <div key={country.name} className="space-y-1">
+                  <div
+                    key={country.name}
+                    className={`space-y-1 ${onCountryClick ? 'cursor-pointer hover:bg-muted/50 rounded-md p-1 -m-1 transition-colors' : ''}`}
+                    onClick={() => onCountryClick?.(country.name)}
+                  >
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-poppins text-foreground">{displayName(country.name)}</span>
                       <span className="text-xs font-poppins font-semibold text-muted-foreground">{country.count} ({pct}%)</span>
