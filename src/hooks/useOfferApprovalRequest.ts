@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 import { useOfferApprovalChain } from '@/hooks/useOfferApprovalChain'
+import { logActivity } from '@/lib/activityLogger'
 
 export interface ApprovalRequestStep {
   id: string
