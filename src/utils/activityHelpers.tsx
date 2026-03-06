@@ -12,6 +12,10 @@ import {
   RefreshCw,
   Archive,
   Award,
+  Send,
+  X,
+  Undo2,
+  FileText,
   LucideIcon
 } from 'lucide-react';
 
