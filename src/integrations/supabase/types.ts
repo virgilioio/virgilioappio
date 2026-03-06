@@ -821,6 +821,47 @@ export type Database = {
           },
         ]
       }
+      candidate_certifications: {
+        Row: {
+          candidate_id: string
+          certification_name: string
+          created_at: string | null
+          id: string
+          is_bootcamp: boolean | null
+          issuing_organization: string | null
+          updated_at: string | null
+          year_obtained: number | null
+        }
+        Insert: {
+          candidate_id: string
+          certification_name: string
+          created_at?: string | null
+          id?: string
+          is_bootcamp?: boolean | null
+          issuing_organization?: string | null
+          updated_at?: string | null
+          year_obtained?: number | null
+        }
+        Update: {
+          candidate_id?: string
+          certification_name?: string
+          created_at?: string | null
+          id?: string
+          is_bootcamp?: boolean | null
+          issuing_organization?: string | null
+          updated_at?: string | null
+          year_obtained?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_certifications_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_comments: {
         Row: {
           author_email: string
@@ -878,6 +919,7 @@ export type Database = {
           created_at: string | null
           degree_type: string | null
           description: string | null
+          education_level: string | null
           end_date: string | null
           field_of_study: string | null
           grade: string | null
@@ -891,6 +933,7 @@ export type Database = {
           created_at?: string | null
           degree_type?: string | null
           description?: string | null
+          education_level?: string | null
           end_date?: string | null
           field_of_study?: string | null
           grade?: string | null
@@ -904,6 +947,7 @@ export type Database = {
           created_at?: string | null
           degree_type?: string | null
           description?: string | null
+          education_level?: string | null
           end_date?: string | null
           field_of_study?: string | null
           grade?: string | null
@@ -1035,46 +1079,58 @@ export type Database = {
       candidate_work_experience: {
         Row: {
           candidate_id: string
+          company_industry: string | null
           company_logo_url: string | null
           company_name: string
+          company_size_category: string | null
           created_at: string | null
           description: string | null
+          duration_months: number | null
           end_date: string | null
           id: string
           is_current: boolean | null
           job_title: string
           location: string | null
           skills_used: string[] | null
+          standardized_title: string | null
           start_date: string | null
           updated_at: string | null
         }
         Insert: {
           candidate_id: string
+          company_industry?: string | null
           company_logo_url?: string | null
           company_name: string
+          company_size_category?: string | null
           created_at?: string | null
           description?: string | null
+          duration_months?: number | null
           end_date?: string | null
           id?: string
           is_current?: boolean | null
           job_title: string
           location?: string | null
           skills_used?: string[] | null
+          standardized_title?: string | null
           start_date?: string | null
           updated_at?: string | null
         }
         Update: {
           candidate_id?: string
+          company_industry?: string | null
           company_logo_url?: string | null
           company_name?: string
+          company_size_category?: string | null
           created_at?: string | null
           description?: string | null
+          duration_months?: number | null
           end_date?: string | null
           id?: string
           is_current?: boolean | null
           job_title?: string
           location?: string | null
           skills_used?: string[] | null
+          standardized_title?: string | null
           start_date?: string | null
           updated_at?: string | null
         }
@@ -1093,8 +1149,10 @@ export type Database = {
           apollo_collected_at: string | null
           apollo_id: string | null
           auto_generated_skills: Json | null
+          avg_tenure_months: number | null
           bio: string | null
           candidate_name: string
+          company_count: number | null
           company_current: string | null
           contact_email: string | null
           contact_emails: string[] | null
@@ -1107,12 +1165,14 @@ export type Database = {
           coresignal_search_score: number | null
           created_at: string
           created_by: string | null
+          current_job_title: string | null
           deleted_at: string | null
           email: string | null
           email_status: string | null
           enriched_at: string | null
           enrichment_status: string | null
           external_application_id: string | null
+          functional_area: string | null
           id: string
           job_board_source: string | null
           last_skills_generation: string | null
@@ -1129,22 +1189,29 @@ export type Database = {
           salary_amount: number | null
           salary_currency: string | null
           salary_period: string | null
+          seniority_level: string | null
           skills: string[] | null
           skills_metadata: Json | null
           social_profiles: Json | null
           source: string | null
+          specialization: string | null
           standardized_skills: string[] | null
+          standardized_title: string | null
           status: string | null
           tenant_id: string | null
           updated_at: string
           years_experience: number | null
+          years_in_leadership: number | null
+          years_in_specialization: number | null
         }
         Insert: {
           apollo_collected_at?: string | null
           apollo_id?: string | null
           auto_generated_skills?: Json | null
+          avg_tenure_months?: number | null
           bio?: string | null
           candidate_name: string
+          company_count?: number | null
           company_current?: string | null
           contact_email?: string | null
           contact_emails?: string[] | null
@@ -1157,12 +1224,14 @@ export type Database = {
           coresignal_search_score?: number | null
           created_at?: string
           created_by?: string | null
+          current_job_title?: string | null
           deleted_at?: string | null
           email?: string | null
           email_status?: string | null
           enriched_at?: string | null
           enrichment_status?: string | null
           external_application_id?: string | null
+          functional_area?: string | null
           id?: string
           job_board_source?: string | null
           last_skills_generation?: string | null
@@ -1179,22 +1248,29 @@ export type Database = {
           salary_amount?: number | null
           salary_currency?: string | null
           salary_period?: string | null
+          seniority_level?: string | null
           skills?: string[] | null
           skills_metadata?: Json | null
           social_profiles?: Json | null
           source?: string | null
+          specialization?: string | null
           standardized_skills?: string[] | null
+          standardized_title?: string | null
           status?: string | null
           tenant_id?: string | null
           updated_at?: string
           years_experience?: number | null
+          years_in_leadership?: number | null
+          years_in_specialization?: number | null
         }
         Update: {
           apollo_collected_at?: string | null
           apollo_id?: string | null
           auto_generated_skills?: Json | null
+          avg_tenure_months?: number | null
           bio?: string | null
           candidate_name?: string
+          company_count?: number | null
           company_current?: string | null
           contact_email?: string | null
           contact_emails?: string[] | null
@@ -1207,12 +1283,14 @@ export type Database = {
           coresignal_search_score?: number | null
           created_at?: string
           created_by?: string | null
+          current_job_title?: string | null
           deleted_at?: string | null
           email?: string | null
           email_status?: string | null
           enriched_at?: string | null
           enrichment_status?: string | null
           external_application_id?: string | null
+          functional_area?: string | null
           id?: string
           job_board_source?: string | null
           last_skills_generation?: string | null
@@ -1229,15 +1307,20 @@ export type Database = {
           salary_amount?: number | null
           salary_currency?: string | null
           salary_period?: string | null
+          seniority_level?: string | null
           skills?: string[] | null
           skills_metadata?: Json | null
           social_profiles?: Json | null
           source?: string | null
+          specialization?: string | null
           standardized_skills?: string[] | null
+          standardized_title?: string | null
           status?: string | null
           tenant_id?: string | null
           updated_at?: string
           years_experience?: number | null
+          years_in_leadership?: number | null
+          years_in_specialization?: number | null
         }
         Relationships: [
           {

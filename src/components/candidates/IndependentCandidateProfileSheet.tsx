@@ -12,10 +12,11 @@ import { CandidateComments } from '@/components/candidates/CandidateComments'
 import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeViewer'
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
+import { CandidateCertificationsComponent, CandidateCertification } from '@/components/candidates/CandidateCertifications'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import { CandidateJobSidebar } from '@/components/candidates/CandidateJobSidebar'
 import { MobileJobSelector } from '@/components/candidates/MobileJobSelector'
-import { Edit, FileText, Download, ChevronLeft, ChevronRight, Mail, Phone, Copy, ExternalLink, Send, Activity, StickyNote, Sparkles, User, Globe, Loader2, Bell, Calendar } from 'lucide-react'
+import { Edit, FileText, Download, ChevronLeft, ChevronRight, Mail, Phone, Copy, ExternalLink, Send, Activity, StickyNote, Sparkles, User, Globe, Loader2, Bell, Calendar, Briefcase, Award, TrendingUp } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -70,6 +71,7 @@ export function IndependentCandidateProfileSheet({
   const [rightActiveTab, setRightActiveTab] = useState<'feed' | 'notes' | 'emails' | 'reminders'>('feed')
   const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
   const [education, setEducation] = useState<CandidateEducation[]>([])
+  const [certifications, setCertifications] = useState<CandidateCertification[]>([])
   const [editOpen, setEditOpen] = useState(false)
   const [editLoading, setEditLoading] = useState(false)
   const [emailComposerOpen, setEmailComposerOpen] = useState(false)
@@ -163,6 +165,7 @@ export function IndependentCandidateProfileSheet({
     setCandidate(null)
     setWorkExperience([])
     setEducation([])
+    setCertifications([])
     
     const load = async () => {
       if (!open || !candidateId) return
@@ -190,6 +193,14 @@ export function IndependentCandidateProfileSheet({
           .eq('candidate_id', candidateId)
           .order('start_date', { ascending: false })
         setEducation(eduData || [])
+
+        // Load certifications
+        const { data: certData } = await supabase
+          .from('candidate_certifications')
+          .select('*')
+          .eq('candidate_id', candidateId)
+          .order('year_obtained', { ascending: false })
+        setCertifications(certData || [])
       } finally {
         setLoading(false)
       }
@@ -255,6 +266,12 @@ export function IndependentCandidateProfileSheet({
                       {candidate?.candidate_name || 'Loading...'}
                       <span className="text-purple-period">.</span>
                     </h2>
+                    {candidate?.enrichment_status === 'processing' && (
+                      <Badge variant="secondary" className="gap-1 animate-pulse">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        AI Enriching...
+                      </Badge>
+                    )}
                     {candidate?.linkedin_url && (
                       <Button
                         variant="outline"
@@ -439,7 +456,94 @@ export function IndependentCandidateProfileSheet({
                       )}
 
                       {activeTab === 'overview' && (
-                        <Accordion type="multiple" defaultValue={['contact', 'summary', 'experience', 'education']} className="space-y-4">
+                        <Accordion type="multiple" defaultValue={['career', 'contact', 'summary', 'experience', 'education', 'certifications']} className="space-y-4">
+                          
+                          {/* Career Summary - NEW */}
+                          {(candidate?.current_job_title || candidate?.seniority_level || candidate?.functional_area) && (
+                            <AccordionItem value="career" className="border-0">
+                              <Card className="bg-surface-primary border-border">
+                                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                                  <div className="flex items-center gap-2">
+                                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                                    <CardTitle>Career Summary</CardTitle>
+                                  </div>
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                  <CardContent className="pt-0 space-y-4">
+                                    {/* Title row */}
+                                    <div className="space-y-1">
+                                      {candidate.current_job_title && (
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className="font-medium text-sm">{candidate.current_job_title}</span>
+                                          {candidate.standardized_title && candidate.standardized_title !== candidate.current_job_title && (
+                                            <Badge variant="outline" className="text-xs gap-1">
+                                              <Sparkles className="h-3 w-3" />
+                                              {candidate.standardized_title}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      )}
+                                      {candidate.company_current && (
+                                        <p className="text-sm text-muted-foreground">at {candidate.company_current}</p>
+                                      )}
+                                    </div>
+                                    
+                                    {/* Badges row */}
+                                    <div className="flex flex-wrap gap-2">
+                                      {candidate.seniority_level && (
+                                        <Badge variant="secondary" className="capitalize text-xs">
+                                          {candidate.seniority_level.replace('_', ' ')}
+                                        </Badge>
+                                      )}
+                                      {candidate.functional_area && (
+                                        <Badge variant="secondary" className="text-xs">
+                                          {candidate.functional_area}
+                                        </Badge>
+                                      )}
+                                      {candidate.specialization && (
+                                        <Badge variant="outline" className="text-xs">
+                                          {candidate.specialization}
+                                        </Badge>
+                                      )}
+                                    </div>
+
+                                    {/* Metrics row */}
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                      {candidate.years_experience != null && (
+                                        <div className="text-center p-2 rounded-md bg-muted/50">
+                                          <div className="text-lg font-semibold">{candidate.years_experience}</div>
+                                          <div className="text-xs text-muted-foreground">Years Exp.</div>
+                                        </div>
+                                      )}
+                                      {candidate.company_count != null && candidate.company_count > 0 && (
+                                        <div className="text-center p-2 rounded-md bg-muted/50">
+                                          <div className="text-lg font-semibold">{candidate.company_count}</div>
+                                          <div className="text-xs text-muted-foreground">Companies</div>
+                                        </div>
+                                      )}
+                                      {candidate.avg_tenure_months != null && candidate.avg_tenure_months > 0 && (
+                                        <div className="text-center p-2 rounded-md bg-muted/50">
+                                          <div className="text-lg font-semibold">
+                                            {candidate.avg_tenure_months >= 12 
+                                              ? `${Math.round(candidate.avg_tenure_months / 12)}y`
+                                              : `${candidate.avg_tenure_months}m`}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">Avg. Tenure</div>
+                                        </div>
+                                      )}
+                                      {candidate.years_in_leadership != null && candidate.years_in_leadership > 0 && (
+                                        <div className="text-center p-2 rounded-md bg-muted/50">
+                                          <div className="text-lg font-semibold">{candidate.years_in_leadership}</div>
+                                          <div className="text-xs text-muted-foreground">Yrs Leadership</div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </CardContent>
+                                </AccordionContent>
+                              </Card>
+                            </AccordionItem>
+                          )}
+
                           {/* Contact Information */}
                           <AccordionItem value="contact" className="border-0">
                             <Card className="bg-surface-primary border-border">
@@ -672,6 +776,15 @@ export function IndependentCandidateProfileSheet({
                               <CandidateEducationComponent education={education} />
                             </AccordionItem>
                           </div>
+
+                          {/* Certifications - hidden on mobile */}
+                          {certifications.length > 0 && (
+                            <div className="hidden md:block">
+                              <AccordionItem value="certifications" className="border-0">
+                                <CandidateCertificationsComponent certifications={certifications} />
+                              </AccordionItem>
+                            </div>
+                          )}
                         </Accordion>
                       )}
                     </div>
