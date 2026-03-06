@@ -38,16 +38,8 @@ export function MembersTable({
     switch (role) {
       case 'admin':
         return 'bg-destructive/10 text-destructive'
-      case 'recruiter':
+      case 'member':
         return 'bg-primary/10 text-primary'
-      case 'customer_success':
-        return 'bg-accent/10 text-accent'
-      case 'billing':
-        return 'bg-secondary/10 text-secondary'
-      case 'sales':
-        return 'bg-success/10 text-success'
-      case 'client':
-        return 'bg-warning/10 text-warning'
       default:
         return 'bg-muted/10 text-muted-foreground'
     }
