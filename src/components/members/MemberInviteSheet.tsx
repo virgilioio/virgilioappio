@@ -120,11 +120,17 @@ export function MemberInviteSheet({
 
   const onFormSubmit = async (data: FormData) => {
     try {
+      if (isEditing) {
+        await onSubmit({ system_role: data.role as 'admin' | 'member' })
+        onClose()
+        return
+      }
+
       const inviteData = {
         email: data.email.trim(),
         system_role: data.role as 'admin' | 'member',
-        user_type: 'member', // Always default to member
-        organization_id: organizationId, // Use current user's organization
+        user_type: 'member',
+        organization_id: organizationId,
         user_status: 'invited'
       }
 
