@@ -280,6 +280,7 @@ export function useMembers(includeHierarchy: boolean = false) {
       
       // PRE-CHECK: Verify seat limit before creating invitation
       // Only check if adding a billable role (admin or recruiter)
+      // Admins are always billable; recruiters become billable when assigned to jobs (seat recount handles that)
       const isBillableRole = data.system_role === 'admin'
       
       if (tenantId && isBillableRole) {
@@ -519,6 +520,7 @@ export function useMembers(includeHierarchy: boolean = false) {
       
       // Get member role before deactivating to show in toast
       const member = members.find(m => m.id === id)
+      // Deactivation always triggers syncSeatsAfterChange which recounts admins + recruiters
       const isBillableRole = member?.system_role === 'admin'
       
       const { error: updateError } = await supabase

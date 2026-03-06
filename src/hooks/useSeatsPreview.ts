@@ -19,6 +19,7 @@ export function useSeatsPreview(roleToAdd?: 'admin' | 'member') {
     }
 
     const currentSeats = billing.seat_quantity || 0
+    // At invite time we only know system_role; recruiter billing kicks in when assigned to a job
     const isBillableRole = roleToAdd === 'admin'
     const newSeats = isBillableRole ? currentSeats + 1 : currentSeats
     const willIncreaseBilling = isBillableRole
