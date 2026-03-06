@@ -82,7 +82,7 @@ export function GeographyInsights({ countryCounts, cityCounts, totalCandidates, 
 
     return map.getSVG({
       radius: 0.22,
-      color: 'hsl(var(--muted-foreground) / 0.25)',
+      color: 'hsl(267, 80%, 85%)',
       shape: 'circle',
       backgroundColor: 'transparent',
     })
