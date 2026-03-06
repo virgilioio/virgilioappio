@@ -69,6 +69,7 @@ interface ScorecardSheetProps {
   onMoveToNextStage?: () => void;
   onScheduleFollowUp?: () => void;
   onReject?: () => void;
+  scorecardVisibility?: ScorecardVisibility;
 }
 
 interface QuestionResponse {
