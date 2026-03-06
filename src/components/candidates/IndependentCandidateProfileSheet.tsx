@@ -20,8 +20,6 @@ import { Edit, FileText, ChevronLeft, ChevronRight, Mail, Phone, Copy, ExternalL
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { SafeHtml } from '@/components/ui/safe-html'
 import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMarkdown'
 import { Badge } from '@/components/ui/badge'
 import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
