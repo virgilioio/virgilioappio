@@ -1289,6 +1289,7 @@ export default function JobDetail() {
                 currentTab={activeTab}
                 onTabChange={setActiveTab}
                 jobTitle={job.title}
+                isRestrictedViewer={isRestrictedViewer}
               />
               
               {/* Main content */}
