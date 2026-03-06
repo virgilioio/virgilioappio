@@ -70,6 +70,7 @@ export async function reconcilePendingInvitation(userId: string): Promise<Reconc
       system_role: (result as any).system_role || (result.member_role === 'admin' ? 'admin' : 'member'),
     };
     return typedResult;
+  } catch (err) {
     log.error('Invitation reconciliation check failed:', err);
     return null;
   }
