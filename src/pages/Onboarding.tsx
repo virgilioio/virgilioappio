@@ -244,7 +244,7 @@ export default function Onboarding() {
         console.log('[Onboarding] User has pending invitation (not auto-accepted)', pendingInvite);
         setPendingInvitation({
           organization_name: (pendingInvite.organizations as any).name || 'Unknown',
-          member_role: pendingInvite.member_role,
+          system_role: pendingInvite.system_role,
           invite_expires_at: pendingInvite.invite_expires_at || '',
           member_id: pendingInvite.id,
           invited_by_email: undefined

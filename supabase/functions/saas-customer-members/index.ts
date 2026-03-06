@@ -145,7 +145,7 @@ Deno.serve(async (req) => {
     const membersWithProfiles: MemberWithProfile[] = members.map(member => ({
       id: member.id,
       user_id: member.user_id,
-      member_role: member.member_role,
+      system_role: member.system_role,
       user_status: member.user_status,
       user_type: member.user_type,
       invited_email: member.invited_email,

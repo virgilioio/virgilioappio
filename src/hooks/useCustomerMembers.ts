@@ -28,7 +28,6 @@ export function useCustomerMembers(organizationId: string) {
           id,
           user_id,
           system_role,
-          member_role,
           user_status,
           created_at,
           updated_at

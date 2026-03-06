@@ -155,7 +155,7 @@ serve(async (req) => {
           organization_id: existingTenantId,  // Parent tenant
           tenant_id: existingTenantId,
           user_type: "member",                // Valid user_type_enum value
-          member_role: "recruiter",           // Valid member_role enum value
+          system_role: "member",              // New system_role
           user_status: "active",
         });
 

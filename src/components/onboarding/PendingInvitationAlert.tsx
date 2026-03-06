@@ -61,7 +61,7 @@ export function PendingInvitationAlert({ invitation, userEmail }: PendingInvitat
       <AlertDescription className="mt-2 space-y-3">
         <p className="text-muted-foreground">
           You've been invited to join <strong className="text-foreground">{invitation.organization_name}</strong> as a{' '}
-          <strong className="text-foreground">{invitation.member_role.replace('_', ' ')}</strong>.
+          <strong className="text-foreground">{invitation.system_role === 'admin' ? 'Admin' : 'Member'}</strong>.
         </p>
         
         {isExpired ? (

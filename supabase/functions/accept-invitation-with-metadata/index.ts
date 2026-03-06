@@ -164,7 +164,7 @@ Deno.serve(async (req) => {
         {
           user_metadata: {
             user_type: result.user_type,
-            member_role: result.member_role,
+            system_role: result.system_role,
             organization_id: result.organization_id
           }
         }

@@ -114,7 +114,6 @@ export function MemberInviteSheet({
       const inviteData = {
         email: data.email.trim(),
         system_role: data.role as 'admin' | 'member',
-        member_role: data.role === 'admin' ? 'admin' : 'recruiter', // legacy compat
         user_type: 'member', // Always default to member
         organization_id: organizationId, // Use current user's organization
         user_status: 'invited'

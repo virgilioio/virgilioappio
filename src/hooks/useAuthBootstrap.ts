@@ -117,7 +117,7 @@ export function useAuthBootstrap(): AuthBootstrapReturn {
       if (wasInvitationAccepted(reconcileResult)) {
         log.info('🎉 Bootstrap: Auto-linked pending invitation', {
           orgName: reconcileResult?.organization_name,
-          role: reconcileResult?.system_role || reconcileResult?.member_role
+          role: reconcileResult?.system_role
         });
         
         toast({

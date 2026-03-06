@@ -174,7 +174,7 @@ export function OfferApprovalChainConfig({ jobId, jobTitle }: OfferApprovalChain
     return {
       value: member.user_id!,
       label: displayName,
-      badge: member.member_role,
+      badge: member.system_role,
     }
   })
 

@@ -116,7 +116,7 @@ export function MembersList({ tenantId }: MembersListProps) {
                       <p className={`text-sm font-medium truncate ${hasProfile ? 'text-virgilio-text' : 'text-virgilio-muted italic'}`}>
                         {fullName}
                       </p>
-                      <Badge variant={getRoleBadgeVariant(member.system_role || member.member_role)} className="text-xs">
+                      <Badge variant={getRoleBadgeVariant(member.system_role)} className="text-xs">
                         {member.system_role === 'admin' ? 'Admin' : 'Member'}
                       </Badge>
                     </div>
