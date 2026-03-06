@@ -307,6 +307,7 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
       queryClient.invalidateQueries({ queryKey })
       queryClient.invalidateQueries({ queryKey: ['offer-letters'] })
       queryClient.invalidateQueries({ queryKey: ['pending-activities'] })
+      window.dispatchEvent(new CustomEvent('refetch-offer-letters'))
       toast({ title: 'Recalled', description: 'The approval request has been recalled.' })
     },
     onError: (error) => {
