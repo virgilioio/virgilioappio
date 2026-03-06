@@ -193,6 +193,14 @@ export function IndependentCandidateProfileSheet({
           .eq('candidate_id', candidateId)
           .order('start_date', { ascending: false })
         setEducation(eduData || [])
+
+        // Load certifications
+        const { data: certData } = await supabase
+          .from('candidate_certifications')
+          .select('*')
+          .eq('candidate_id', candidateId)
+          .order('year_obtained', { ascending: false })
+        setCertifications(certData || [])
       } finally {
         setLoading(false)
       }
