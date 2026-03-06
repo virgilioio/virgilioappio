@@ -46,7 +46,7 @@ export default function TalentInsights() {
               <div className="space-y-6">
                 <SummaryMetricsRow data={data} />
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                  <GeographyInsights countryCounts={data.countryCounts} cityCounts={data.cityCounts} />
+                  <GeographyInsights countryCounts={data.countryCounts} cityCounts={data.cityCounts} totalCandidates={data.totalCandidates} />
                   <ExperienceDistribution experienceBands={data.experienceBands} seniorityCounts={data.seniorityCounts} />
                 </div>
                 <SkillsLandscape topSkills={data.topSkills} />
