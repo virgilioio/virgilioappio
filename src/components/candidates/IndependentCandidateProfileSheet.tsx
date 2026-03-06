@@ -22,6 +22,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMarkdown'
 import { Badge } from '@/components/ui/badge'
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
+import gioAiBannerIcon from '@/assets/gio-ai-banner-icon.png'
+import { ChevronDown } from 'lucide-react'
 import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 import { toast } from '@/hooks/use-toast'
@@ -388,24 +391,79 @@ export function IndependentCandidateProfileSheet({
                       {activeTab === 'overview' && (
                         <Accordion type="multiple" defaultValue={['summary', 'experience', 'education', 'certifications', 'skills']} className="space-y-4">
 
-                          <AccordionItem value="summary" className="border-0">
+                          {/* AI Profile Summary Banner */}
+                          <Collapsible defaultOpen className="rounded-lg bg-pastel-purple/30 border border-pastel-purple/50">
+                            <div className="p-4 flex items-start gap-3">
+                              <img src={gioAiBannerIcon} alt="Gio AI" className="h-10 shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-foreground">AI Profile Summary</p>
+                                <p className="text-xs text-muted-foreground">Executive summary based on candidate profile</p>
+                              </div>
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                {candidate.profile_summary && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(candidate.profile_summary || '')
+                                      toast({ title: 'Summary copied to clipboard' })
+                                    }}
+                                  >
+                                    <Copy className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                                <CollapsibleTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 [&[data-state=open]>svg]:rotate-180">
+                                    <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+                                  </Button>
+                                </CollapsibleTrigger>
+                              </div>
+                            </div>
+                            <CollapsibleContent>
+                              <div className="px-4 pb-4">
+                                {candidate.profile_summary ? (
+                                  <ProfileSummaryMarkdown
+                                    content={candidate.profile_summary}
+                                    className="text-text-primary leading-relaxed"
+                                  />
+                                ) : (
+                                  <div className="text-sm text-text-secondary">No summary available. Enrich this candidate to generate one.</div>
+                                )}
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+
+                          {/* Skills */}
+                          <AccordionItem value="skills" className="border-0">
                             <Card className="bg-surface-primary border-border">
                               <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                                <div className="flex items-center justify-between w-full pr-4">
-                                  <CardTitle>Profile Summary</CardTitle>
-                                  <Sparkles className="h-4 w-4 text-purple-500 flex-shrink-0" />
-                                </div>
+                                <CardTitle>Skills</CardTitle>
                               </AccordionTrigger>
                               <AccordionContent>
                                 <CardContent className="pt-0">
-                                  {candidate.profile_summary ? (
-                                    <ProfileSummaryMarkdown
-                                      content={candidate.profile_summary}
-                                      className="text-text-primary leading-relaxed"
-                                    />
-                                  ) : (
-                                    <div className="text-sm text-text-secondary">No summary available.</div>
-                                  )}
+                                  {(() => {
+                                    const manualSkills = candidate?.skills || []
+                                    const autoGenerated = Array.isArray((candidate as any)?.auto_generated_skills)
+                                      ? ((candidate as any).auto_generated_skills as any[]).map((s) => typeof s === 'string' ? s : s?.name).filter(Boolean)
+                                      : []
+                                    const displaySkills = manualSkills.length > 0 ? manualSkills : autoGenerated
+                                    return displaySkills && displaySkills.length > 0 ? (
+                                      <div className="flex flex-wrap gap-2">
+                                        {displaySkills.map((s: string, i: number) => (
+                                          <EnhancedSkillBadge 
+                                            key={`${s}-${i}`} 
+                                            skill={s}
+                                            variant="compact"
+                                            showTooltip={true}
+                                            interactive={false}
+                                          />
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <div className="text-sm text-text-secondary">No skills specified</div>
+                                    )
+                                  })()}
                                 </CardContent>
                               </AccordionContent>
                             </Card>
@@ -462,40 +520,6 @@ export function IndependentCandidateProfileSheet({
                             </Card>
                           </AccordionItem>
 
-                          {/* Skills */}
-                          <AccordionItem value="skills" className="border-0">
-                            <Card className="bg-surface-primary border-border">
-                              <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                                <CardTitle>Skills</CardTitle>
-                              </AccordionTrigger>
-                              <AccordionContent>
-                                <CardContent className="pt-0">
-                                  {(() => {
-                                    const manualSkills = candidate?.skills || []
-                                    const autoGenerated = Array.isArray((candidate as any)?.auto_generated_skills)
-                                      ? ((candidate as any).auto_generated_skills as any[]).map((s) => typeof s === 'string' ? s : s?.name).filter(Boolean)
-                                      : []
-                                    const displaySkills = manualSkills.length > 0 ? manualSkills : autoGenerated
-                                    return displaySkills && displaySkills.length > 0 ? (
-                                      <div className="flex flex-wrap gap-2">
-                                        {displaySkills.map((s: string, i: number) => (
-                                          <EnhancedSkillBadge 
-                                            key={`${s}-${i}`} 
-                                            skill={s}
-                                            variant="compact"
-                                            showTooltip={true}
-                                            interactive={false}
-                                          />
-                                        ))}
-                                      </div>
-                                    ) : (
-                                      <div className="text-sm text-text-secondary">No skills specified</div>
-                                    )
-                                  })()}
-                                </CardContent>
-                              </AccordionContent>
-                            </Card>
-                          </AccordionItem>
                         </Accordion>
                       )}
                     </div>
@@ -605,22 +629,12 @@ export function IndependentCandidateProfileSheet({
 
                           {/* Location */}
                           {(candidate?.location_city || candidate?.location_state || candidate?.location_country) && (
-                            <div className="space-y-1.5">
-                              <Separator />
-                              <div className="flex items-start gap-2 pt-1.5">
-                                <MapPin className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                                <div className="flex flex-col min-w-0">
-                                  {candidate.location_city && (
-                                    <span className="text-sm text-text-primary">{candidate.location_city}</span>
-                                  )}
-                                  {candidate.location_state && (
-                                    <span className="text-sm text-text-secondary">{candidate.location_state}</span>
-                                  )}
-                                  {candidate.location_country && (
-                                    <span className="text-sm text-text-secondary">{candidate.location_country}</span>
-                                  )}
-                                </div>
-                              </div>
+                            <div className="flex items-start gap-2">
+                              <MapPin className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                              <span className="text-sm text-text-primary">
+                                {[candidate.location_city, candidate.location_state, candidate.location_country]
+                                  .filter(Boolean).join(', ')}
+                              </span>
                             </div>
                           )}
                         </CardContent>

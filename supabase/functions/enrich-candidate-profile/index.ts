@@ -25,7 +25,7 @@ const EXTRACTION_TOOL = {
       properties: {
         profile_summary: {
           type: 'string',
-          description: 'Comprehensive professional profile in Spanish (200-300 words) with rich markdown formatting. Use **bold** for headings/key skills, *italic* for emphasis, bullet lists. Structure: opening statement, experience highlights, key competencies, notable achievements.'
+          description: 'Executive candidate summary in Spanish with markdown formatting. Structure: 2 short paragraphs (3-5 sentences each) describing the candidate background and value proposition, followed by **Fortalezas Clave** with 3-5 bullet points, then **Áreas de Desarrollo** with 3-5 bullet points. Keep it concise and substantive — no fluff. Total length: 150-200 words max.'
         },
         current_job_title: { type: 'string', description: 'Most recent job title exactly as written on resume' },
         standardized_title: { type: 'string', description: 'Standardized English job title mapped to a common industry equivalent. Translate non-English titles, expand abbreviations. Examples: "Ingeniero de Calidad" → "Quality Engineer", "SDR" → "Sales Development Representative", "Gerente de Ventas" → "Sales Manager", "Jefe de Operaciones" → "Operations Manager"' },
@@ -109,19 +109,13 @@ const EXTRACTION_TOOL = {
 
 const SYSTEM_PROMPT = `You are an expert ATS resume parser. Extract ALL structured data from the resume.
 
-For the profile_summary field: Write a comprehensive professional profile in Spanish (200-300 words) with rich markdown formatting.
-Detailed Structure:
-**Nombre Completo**
-*Professional headline (short, separated by vertical bars)*
-**Ubicación:** País, Estado, Ciudad (if available)
----
-**RESUMEN PROFESIONAL** (150-200 words covering career overview, expertise, achievements, value propositions)
----
-**EXPERIENCIA PROFESIONAL** (2-3 most recent/relevant positions with achievements)
----
-**EDUCACIÓN** (Institution, Degree, Years)
----
-**COMPETENCIAS CLAVE** (Technical, Domain, Soft skills)
+For the profile_summary field: Write a concise executive summary in Spanish (150-200 words max) with markdown formatting.
+Structure:
+- 2 short paragraphs (3-5 sentences each): candidate background, expertise, and value proposition
+- **Fortalezas Clave**: 3-5 bullet points highlighting the candidate's top strengths
+- **Áreas de Desarrollo**: 3-5 bullet points identifying growth opportunities or areas to explore
+
+Keep it substantive and actionable — no fluff, no headers beyond the two bullet sections.
 
 CRITICAL RULES:
 - **functional_area**: ALWAYS infer from job titles and responsibilities. Examples: "Sales", "Engineering", "Marketing", "Operations", "Finance", "HR", "Product", "Design", "Legal", "Quality", "Manufacturing". Never leave empty.
