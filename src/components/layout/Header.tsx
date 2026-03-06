@@ -63,6 +63,10 @@ export function Header() {
   const { members } = useMembers()
   const { toast } = useToast()
   const { profile } = useUserProfile()
+  const { hasRecruiterRole, isPrivileged } = useUserJobRoles()
+  
+  // Members without recruiter role cannot see Find/Candidates
+  const canSeeRecruiterTools = isPrivileged || hasRecruiterRole
 
   const handleLogout = async () => {
     await logout()
