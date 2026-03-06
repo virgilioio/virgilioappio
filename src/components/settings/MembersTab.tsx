@@ -30,15 +30,20 @@ export function MembersTab() {
   const parentOrgId = currentOrg?.parent_organization_id || organizationId
   const tenantId = currentOrg?.tenant_id
 
-  const isPayingRole = (r: string) => r === 'admin'
+  const { recruiterUserIds } = useRecruiterUserIds()
 
   const [tab, setTab] = useState<'members' | 'collaborators'>('members')
 
-  // Admins are paid seats, Members are collaborators
+  // Paid seats = admins + workspace_owners + recruiters on any job
+  const isBillableMember = (m: any) =>
+    m.system_role === 'admin'
+    || m.user_type === 'workspace_owner'
+    || (m.user_id && recruiterUserIds.has(m.user_id))
+
   const paidMembers = members.filter(
-    (m) => (m.system_role === 'admin' || m.user_type === 'workspace_owner') && (!parentOrgId || m.organization_id === parentOrgId)
+    (m) => isBillableMember(m) && (!parentOrgId || m.organization_id === parentOrgId)
   )
-  const collaboratorMembers = members.filter((m) => m.system_role !== 'admin' && m.user_type !== 'workspace_owner')
+  const collaboratorMembers = members.filter((m) => !isBillableMember(m))
 
   // Tenant subscription functionality removed
   const subscriptionData = null

@@ -520,6 +520,7 @@ export function useMembers(includeHierarchy: boolean = false) {
       
       // Get member role before deactivating to show in toast
       const member = members.find(m => m.id === id)
+      // Deactivation always triggers syncSeatsAfterChange which recounts admins + recruiters
       const isBillableRole = member?.system_role === 'admin'
       
       const { error: updateError } = await supabase
