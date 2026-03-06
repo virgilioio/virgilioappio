@@ -68,7 +68,7 @@ export default function AcceptInvite() {
         setInvitationData({
           member_id: '',
           organization_id: '',
-          member_role: '',
+          system_role: '',
           organization_name: '',
           invite_email: '',
           is_valid: false,
