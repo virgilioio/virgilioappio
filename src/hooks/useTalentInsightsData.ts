@@ -258,6 +258,7 @@ export function useTalentInsightsData() {
         topSkills,
         salaryStats,
         salaryBands,
+        salaryValues,
         functionalAreaCounts,
         specializationCounts,
         titleCounts,

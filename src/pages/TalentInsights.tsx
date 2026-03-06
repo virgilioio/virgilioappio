@@ -51,7 +51,7 @@ export default function TalentInsights() {
                   <SkillsLandscape topSkills={data.topSkills} />
                 </div>
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                  <CompensationInsights salaryStats={data.salaryStats} salaryBands={data.salaryBands} />
+                  <CompensationInsights salaryStats={data.salaryStats} salaryValues={data.salaryValues} />
                   <TalentPoolComposition
                     functionalAreaCounts={data.functionalAreaCounts}
                     titleCounts={data.titleCounts}
