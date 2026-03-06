@@ -254,10 +254,9 @@ export function MembersTable({
                             Edit Member
                           </DropdownMenuItem>
                           
-                          {/* Job Assignments - only for hiring managers and interviewers */}
+                          {/* Job Assignments - any active member can have job assignments */}
                           {onManageJobAssignments && 
-                           member.user_status === 'active' && 
-                           ['hiring_manager', 'interviewer'].includes(member.member_role) && (
+                           member.user_status === 'active' && (
                             <DropdownMenuItem 
                               onClick={() => onManageJobAssignments(member)}
                               className="gap-2"

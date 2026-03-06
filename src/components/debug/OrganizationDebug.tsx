@@ -61,7 +61,7 @@ export function OrganizationDebug() {
         <div className="space-y-2 text-xs">
           <div><strong>User ID:</strong> {debugData.current_user_id?.slice(0, 8)}...</div>
           <div><strong>User Type:</strong> <Badge variant="outline" className="text-xs h-4">{debugData.user_type}</Badge></div>
-          <div><strong>Member Role:</strong> <Badge variant="outline" className="text-xs h-4">{debugData.member_role || 'none'}</Badge></div>
+          <div><strong>System Role:</strong> <Badge variant="outline" className="text-xs h-4">{debugData.system_role || debugData.member_role || 'none'}</Badge></div>
           <div><strong>Org ID:</strong> {debugData.organization_id?.slice(0, 8) || 'None'}...</div>
           <div><strong>Member Count:</strong> {debugData.member_count}</div>
           <div><strong>Can See All Orgs:</strong> 

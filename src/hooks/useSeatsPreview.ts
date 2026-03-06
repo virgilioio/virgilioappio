@@ -19,7 +19,7 @@ export function useSeatsPreview(roleToAdd?: 'admin' | 'member') {
     }
 
     const currentSeats = billing.seat_quantity || 0
-    const isBillableRole = roleToAdd === 'admin' || roleToAdd === 'recruiter'
+    const isBillableRole = roleToAdd === 'admin'
     const newSeats = isBillableRole ? currentSeats + 1 : currentSeats
     const willIncreaseBilling = isBillableRole
 

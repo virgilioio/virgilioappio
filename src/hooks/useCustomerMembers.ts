@@ -28,6 +28,7 @@ export function useCustomerMembers(organizationId: string) {
         .select(`
           id,
           user_id,
+          system_role,
           member_role,
           user_status,
           created_at,

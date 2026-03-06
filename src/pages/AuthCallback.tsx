@@ -56,7 +56,7 @@ export default function AuthCallback() {
           if (wasInvitationAccepted(reconcileResult)) {
             toast({
               title: `Welcome to ${reconcileResult?.organization_name}!`,
-              description: `You've been added as ${reconcileResult?.member_role?.replace('_', ' ')}.`,
+              description: `You've been added as ${reconcileResult?.system_role === 'admin' ? 'Admin' : reconcileResult?.system_role === 'member' ? 'Member' : reconcileResult?.member_role?.replace('_', ' ')}.`,
             })
             // User was auto-linked to org - go straight to dashboard
             navigate('/dashboard', { replace: true })

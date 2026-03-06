@@ -51,8 +51,7 @@ export function useAnalyticsFilterOptions(): AnalyticsFilterOptions {
             )
           `)
           .eq('tenant_id', tenantId)
-          .eq('user_status', 'active')
-          .in('member_role', ['admin', 'recruiter']),
+          .eq('user_status', 'active'),
 
         // Jobs: non-archived jobs
         supabase

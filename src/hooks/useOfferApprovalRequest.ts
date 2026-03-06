@@ -90,12 +90,12 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
 
         const { data: members } = await supabase
           .from('members')
-          .select('user_id, member_role')
+          .select('user_id, system_role')
           .in('user_id', userIds)
           .eq('organization_id', data.organization_id)
 
         if (members) {
-          rolesMap = Object.fromEntries(members.map(m => [m.user_id, m.member_role]))
+          rolesMap = Object.fromEntries(members.map(m => [m.user_id, m.system_role]))
         }
       }
 

@@ -522,7 +522,7 @@ export function useMembers(includeHierarchy: boolean = false) {
       
       // Get member role before deactivating to show in toast
       const member = members.find(m => m.id === id)
-      const isBillableRole = member?.member_role === 'admin' || member?.member_role === 'recruiter'
+      const isBillableRole = member?.system_role === 'admin'
       
       const { error: updateError } = await supabase
         .from('members')

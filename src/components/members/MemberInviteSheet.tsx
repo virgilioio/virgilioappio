@@ -319,7 +319,7 @@ export function MemberInviteSheet({
                   <Info className="h-4 w-4" />
                   <AlertDescription>
                     <div className="text-sm">
-                      <span className="font-medium">Free role:</span> Hiring Managers and Interviewers don't affect billing
+                      <span className="font-medium">Free role:</span> Members don't affect billing
                     </div>
                   </AlertDescription>
                 </Alert>

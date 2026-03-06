@@ -269,7 +269,7 @@ export default function AcceptInvite() {
         title: hasWarning ? 'Welcome to Virgilio!' : 'Welcome to Virgilio!',
         description: hasWarning 
           ? `You've joined ${invitationData.organization_name}! Some metadata may not be immediately available.`
-          : `You've successfully joined ${invitationData.organization_name} as ${edgeFunctionResult.result.member_role.replace('_', ' ')}.`,
+          : `You've successfully joined ${invitationData.organization_name} as ${edgeFunctionResult.result.system_role === 'admin' ? 'Admin' : 'Member'}.`,
         variant: 'default'
       })
 

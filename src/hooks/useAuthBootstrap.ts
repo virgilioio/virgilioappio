@@ -117,12 +117,12 @@ export function useAuthBootstrap(): AuthBootstrapReturn {
       if (wasInvitationAccepted(reconcileResult)) {
         log.info('🎉 Bootstrap: Auto-linked pending invitation', {
           orgName: reconcileResult?.organization_name,
-          role: reconcileResult?.member_role
+          role: reconcileResult?.system_role || reconcileResult?.member_role
         });
         
         toast({
           title: `Welcome to ${reconcileResult?.organization_name}!`,
-          description: `You've been added as ${reconcileResult?.member_role?.replace('_', ' ')}.`,
+          description: `You've been added as ${reconcileResult?.system_role === 'admin' ? 'Admin' : 'Member'}.`,
         });
         
         // Clear cache to force refresh with new org context

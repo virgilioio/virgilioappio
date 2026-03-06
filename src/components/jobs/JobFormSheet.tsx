@@ -387,7 +387,7 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
                               <div className="flex flex-col">
                                 <span>{member.user_email || 'Unknown'}</span>
                                 <span className="text-sm text-muted-foreground">
-                                  {member.member_role} • {member.organization_name || 'No org'}
+                                  {member.system_role === 'admin' ? 'Admin' : 'Member'} • {member.organization_name || 'No org'}
                                 </span>
                               </div>
                             </CommandItem>
