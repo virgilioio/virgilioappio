@@ -880,7 +880,7 @@ const stageHasAutomation = useMemo(() => {
 
               <div className="flex-1 overflow-y-auto p-6">
                 {/* Mobile Job Selector - at top of content area */}
-                {candidateId && (
+                {candidateId && !isRestrictedViewer && (
                   <div className="lg:hidden mb-6">
                     <MobileJobSelector
                       candidateId={candidateId}
