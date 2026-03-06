@@ -155,8 +155,8 @@ export function useScheduledBookings(status?: BookingStatus, permissions?: Permi
       // Apply additional role-based visibility filters within the tenant
       if (permissions?.isPlatformAdmin || permissions?.isWorkspaceOwner || permissions?.isAdmin) {
         // Admins see all bookings within their tenant (tenant filter already applied above)
-      } else if ((permissions?.isRecruiter || permissions?.isHiringManager) && accessibleJobIds.length > 0) {
-        // Recruiters/hiring managers see bookings where they're interviewer OR for their jobs
+      } else if (permissions?.isMember && accessibleJobIds.length > 0) {
+        // Members see bookings where they're interviewer OR for their assigned jobs
         query = query.or(`interviewer_id.eq.${user.id},job_id.in.(${accessibleJobIds.join(',')})`)
       } else {
         // Default: only see bookings where user is the interviewer
