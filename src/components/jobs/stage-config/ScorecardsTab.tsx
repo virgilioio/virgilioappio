@@ -117,8 +117,54 @@ export function ScorecardsTab({ jhsId, jobId, stageName, stageType }: Scorecards
     }
   }
 
+  const isPublic = template?.visibility === 'public'
+
+  const handleVisibilityToggle = (checked: boolean) => {
+    const newVisibility: ScorecardVisibility = checked ? 'public' : 'private'
+    updateVisibility.mutate(newVisibility)
+  }
+
   return (
     <div className="space-y-6">
+      {/* Visibility Toggle */}
+      <div className="bg-gradient-to-b from-muted/50 to-transparent border border-border/50 rounded-lg p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-muted">
+              {isPublic ? (
+                <Globe className="h-5 w-5 text-virgilio-purple" />
+              ) : (
+                <Lock className="h-5 w-5 text-muted-foreground" />
+              )}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-semibold text-foreground">
+                  Scorecard Visibility
+                </h4>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                  isPublic
+                    ? 'bg-virgilio-purple/10 text-virgilio-purple'
+                    : 'bg-muted text-muted-foreground'
+                }`}>
+                  {isPublic ? 'Public' : 'Private'}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {isPublic
+                  ? 'All team members with access to this job can view scorecard responses and recommendations.'
+                  : 'Only the interviewer who submitted and admins/recruiters can view scorecard responses.'}
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={isPublic}
+            onCheckedChange={handleVisibilityToggle}
+            disabled={updateVisibility.isPending}
+          />
+        </div>
+      </div>
+
       {/* AI Question Generator */}
       <ScorecardQuestionsGenerationPanel
         jobId={jobId}

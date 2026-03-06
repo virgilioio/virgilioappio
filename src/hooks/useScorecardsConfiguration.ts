@@ -232,6 +232,28 @@ export function useScorecardsConfiguration(jhsId: string | null) {
     }
   })
 
+  const updateVisibility = useMutation({
+    mutationFn: async (visibility: ScorecardVisibility) => {
+      if (!template) throw new Error('Template not loaded')
+      const { error } = await supabase
+        .from('stage_scorecard_templates')
+        .update({ visibility })
+        .eq('id', template.id)
+      if (error) throw error
+    },
+    onSuccess: (_, visibility) => {
+      if (template) {
+        setTemplate({ ...template, visibility })
+      }
+      toast.success(`Scorecard visibility set to ${visibility}`)
+      queryClient.invalidateQueries({ queryKey: ['scorecard-configuration', jhsId] })
+    },
+    onError: (error) => {
+      console.error('Error updating visibility:', error)
+      toast.error('Failed to update scorecard visibility')
+    }
+  })
+
   return {
     template,
     isLoading,
@@ -240,6 +262,7 @@ export function useScorecardsConfiguration(jhsId: string | null) {
     createQuestion,
     updateQuestion,
     deleteQuestion,
-    reorderQuestions
+    reorderQuestions,
+    updateVisibility
   }
 }
