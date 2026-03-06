@@ -11,6 +11,7 @@ export interface CandidateEducation {
   end_date?: string;
   grade?: string;
   description?: string;
+  education_level?: string;
 }
 
 interface CandidateEducationProps {
