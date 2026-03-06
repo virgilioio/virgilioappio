@@ -8,6 +8,7 @@ interface JobDetailFloatingSidebarProps {
   currentTab: string
   onTabChange: (tab: string) => void
   jobTitle: string
+  isRestrictedViewer?: boolean
   className?: string
 }
 
@@ -15,9 +16,11 @@ export function JobDetailFloatingSidebar({
   currentTab, 
   onTabChange, 
   jobTitle,
+  isRestrictedViewer = false,
   className 
 }: JobDetailFloatingSidebarProps) {
-  const tabs = [
+  const restrictedTabIds = ['all-candidates', 'job-setup']
+  const allTabs = [
     {
       id: 'candidates',
       label: 'Job Dashboard',
@@ -39,6 +42,10 @@ export function JobDetailFloatingSidebar({
       icon: Settings,
     }
   ]
+
+  const tabs = isRestrictedViewer
+    ? allTabs.filter(tab => !restrictedTabIds.includes(tab.id))
+    : allTabs
 
   return (
     <div className={cn("w-20 flex-shrink-0 p-2 flex justify-center", className)}>

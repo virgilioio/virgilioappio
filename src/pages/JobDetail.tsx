@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useJobRole } from '@/hooks/useJobRole'
 import { useCandidates } from '@/hooks/useCandidates'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { useJobs } from '@/hooks/useJobs'
@@ -50,10 +51,19 @@ export default function JobDetail() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { user, userType } = useAuth()
   const permissions = usePermissions()
+  const { isHiringManagerOnJob, isInterviewerOnJob } = useJobRole(id)
+  const isRestrictedViewer = (isHiringManagerOnJob || isInterviewerOnJob) && !permissions.isAdmin && !permissions.isWorkspaceOwner && !permissions.isPlatformAdmin
   const isMobile = useIsMobile()
   const [showAddCandidate, setShowAddCandidate] = useState(false)
   const [editingCandidate, setEditingCandidate] = useState<any>(null)
   const [activeTab, setActiveTab] = useState('pipeline')
+  
+  // Guard: reset to allowed tab if restricted viewer lands on a restricted tab
+  useEffect(() => {
+    if (isRestrictedViewer && (activeTab === 'all-candidates' || activeTab === 'job-setup')) {
+      setActiveTab('pipeline')
+    }
+  }, [isRestrictedViewer, activeTab])
   const [showEditJobModal, setShowEditJobModal] = useState(false)
   const [pipelineView, setPipelineView] = useState<'board' | 'list'>(() => {
     if (typeof window === 'undefined') return isMobile ? 'list' : 'board'
@@ -873,10 +883,10 @@ export default function JobDetail() {
           {isMobile ? (
             // Mobile: Tabs
             <>
-                <TabsList className="grid w-full grid-cols-3 mb-6">
+                <TabsList className={`grid w-full ${isRestrictedViewer ? 'grid-cols-2' : 'grid-cols-3'} mb-6`}>
                   <TabsTrigger value="candidates">Job Dashboard</TabsTrigger>
                   <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
-                  <TabsTrigger value="job-setup">Setup</TabsTrigger>
+                  {!isRestrictedViewer && <TabsTrigger value="job-setup">Setup</TabsTrigger>}
                 </TabsList>
               
               
@@ -888,6 +898,7 @@ export default function JobDetail() {
                 />
               </TabsContent>
               
+              {!isRestrictedViewer && (
               <TabsContent value="job-setup">
                 <JobSetupPanel
                   jobId={id!}
@@ -900,6 +911,7 @@ export default function JobDetail() {
                   onArchive={handleArchiveJob}
                 />
               </TabsContent>
+              )}
                <TabsContent value="pipeline">
                  <div className="h-[calc(100svh-16rem)] sm:h-[calc(100svh-14rem)] min-h-0">
                    <Card className="mb-4">
@@ -1284,6 +1296,7 @@ export default function JobDetail() {
                 currentTab={activeTab}
                 onTabChange={setActiveTab}
                 jobTitle={job.title}
+                isRestrictedViewer={isRestrictedViewer}
               />
               
               {/* Main content */}
@@ -1297,6 +1310,7 @@ export default function JobDetail() {
                 </TabsContent>
                 
                 {/* All Candidates Tab */}
+                {!isRestrictedViewer && (
                 <TabsContent value="all-candidates">
                   <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
@@ -1323,6 +1337,7 @@ export default function JobDetail() {
                     </CardContent>
                   </Card>
                 </TabsContent>
+                )}
 
                 {/* Pipeline Tab */}
                 <TabsContent value="pipeline">
@@ -1622,6 +1637,7 @@ export default function JobDetail() {
                 </TabsContent>
 
                 {/* Job Setup Tab */}
+                {!isRestrictedViewer && (
                 <TabsContent value="job-setup">
                   <JobSetupPanel
                     jobId={id!}
@@ -1634,6 +1650,7 @@ export default function JobDetail() {
                     onArchive={handleArchiveJob}
                   />
                 </TabsContent>
+                )}
               </div>
             </div>
           )}
