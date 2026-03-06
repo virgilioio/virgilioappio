@@ -57,6 +57,13 @@ export default function JobDetail() {
   const [showAddCandidate, setShowAddCandidate] = useState(false)
   const [editingCandidate, setEditingCandidate] = useState<any>(null)
   const [activeTab, setActiveTab] = useState('pipeline')
+  
+  // Guard: reset to allowed tab if restricted viewer lands on a restricted tab
+  useEffect(() => {
+    if (isRestrictedViewer && (activeTab === 'all-candidates' || activeTab === 'job-setup')) {
+      setActiveTab('pipeline')
+    }
+  }, [isRestrictedViewer, activeTab])
   const [showEditJobModal, setShowEditJobModal] = useState(false)
   const [pipelineView, setPipelineView] = useState<'board' | 'list'>(() => {
     if (typeof window === 'undefined') return isMobile ? 'list' : 'board'
