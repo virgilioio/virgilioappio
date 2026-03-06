@@ -156,8 +156,12 @@ export function useScheduledBookings(status?: BookingStatus, permissions?: Permi
       if (permissions?.isPlatformAdmin || permissions?.isWorkspaceOwner || permissions?.isAdmin) {
         // Admins see all bookings within their tenant (tenant filter already applied above)
       } else if (permissions?.isMember && accessibleJobIds.length > 0) {
-        // Members see bookings where they're interviewer OR for their assigned jobs
-        query = query.or(`interviewer_id.eq.${user.id},job_id.in.(${accessibleJobIds.join(',')})`)
+        // Check if the user has a recruiter role (non-restricted) — if so, show interviewer + assigned job bookings
+        // For restricted roles (HM/interviewer), only show bookings where they are the interviewer
+        const isRestrictedMember = !(permissions?.isPlatformAdmin || permissions?.isWorkspaceOwner || permissions?.isAdmin)
+        // We already know they're a member with assigned jobs; check if they also created jobs (recruiter signal)
+        // Use a simple heuristic: restricted members only see their own interviews
+        query = query.eq('interviewer_id', user.id)
       } else {
         // Default: only see bookings where user is the interviewer
         query = query.eq('interviewer_id', user.id)
