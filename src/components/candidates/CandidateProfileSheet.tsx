@@ -1431,22 +1431,12 @@ const stageHasAutomation = useMemo(() => {
 
                                     {/* Location */}
                                     {(candidate?.location_city || candidate?.location_state || candidate?.location_country) && (
-                                      <div className="space-y-1.5">
-                                        <Separator />
-                                        <div className="flex items-start gap-2 pt-1.5">
-                                          <MapPin className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                                          <div className="flex flex-col min-w-0">
-                                            {candidate.location_city && (
-                                              <span className="text-sm text-text-primary">{candidate.location_city}</span>
-                                            )}
-                                            {candidate.location_state && (
-                                              <span className="text-sm text-text-secondary">{candidate.location_state}</span>
-                                            )}
-                                            {candidate.location_country && (
-                                              <span className="text-sm text-text-secondary">{candidate.location_country}</span>
-                                            )}
-                                          </div>
-                                        </div>
+                                      <div className="flex items-start gap-2">
+                                        <MapPin className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                                        <span className="text-sm text-text-primary">
+                                          {[candidate.location_city, candidate.location_state, candidate.location_country]
+                                            .filter(Boolean).join(', ')}
+                                        </span>
                                       </div>
                                     )}
                               </CardContent>
