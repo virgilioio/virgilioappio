@@ -11,6 +11,7 @@ import { usePlatformAssets } from '@/hooks/usePlatformAssets'
 import { PlatformAssetUploader } from './PlatformAssetUploader'
 import { FeatureFlagsManager } from './FeatureFlagsManager'
 import { StyleGuide } from './StyleGuide'
+import { BatchEnrichmentRunner } from './BatchEnrichmentRunner'
 
 export function PlatformSettingsManager() {
   const { settings, isLoading, isUpdating, updateSetting, getSetting } = usePlatformSettings()
