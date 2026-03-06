@@ -165,6 +165,7 @@ export function IndependentCandidateProfileSheet({
     setCandidate(null)
     setWorkExperience([])
     setEducation([])
+    setCertifications([])
     
     const load = async () => {
       if (!open || !candidateId) return
