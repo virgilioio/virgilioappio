@@ -1,44 +1,35 @@
 
+Goal: fix the “declined banner + old decline note persists after Recall” bug by ensuring the UI reads the latest approval request state (including recalled), not an older declined one.
 
-# Separate Location Sub-Fields on One Line
+What’s happening now
+- In `useOfferApprovalRequest.ts`, the fetch query filters to `['pending', 'approved', 'declined']`.
+- After you recall a request, latest request becomes `recalled`, so it is excluded.
+- The hook then falls back to an older `declined` request, and `CandidateOfferDetails` renders that old decline banner/note.
 
-## Current State
-- **`ApplicationFieldsRenderer.tsx`** (line 320): Already renders separate City/State/Country inputs using `grid grid-cols-1 md:grid-cols-3` — so on mobile they stack, on md+ they're on one line. **This is already correct.**
-- **`PublicJobPosting.tsx`** (line 894): Same pattern — `grid grid-cols-1 md:grid-cols-3`. **Already correct.**
-- **`OfferComposerBody.tsx`**: Has NO location case — falls to the default single `Input`. **Needs fixing.**
+Implementation plan
 
-## What Needs to Change
+1) Fix source-of-truth query in `src/hooks/useOfferApprovalRequest.ts`
+- Update approval request fetch filter to include recalled state:
+  - from: `['pending', 'approved', 'declined']`
+  - to: `['pending', 'approved', 'declined', 'recalled']`
+- Keep ordering by newest (`created_at desc`) + `limit(1)` so the latest lifecycle state is always used.
 
-### 1. `src/components/candidates/OfferComposerBody.tsx` — Add location case to `renderFieldInput`
+2) Add immediate UI consistency on recall success (same file)
+- In `recallApprovalMutation.onSuccess`, keep invalidation/events as-is, and also set local React Query cache for `queryKey` to status `recalled` (and steps already recalled where applicable) to prevent any transient stale render.
 
-Add a `case 'location':` block that:
-- Reads `field.field_config` to get which sub-fields are enabled (city/state/country)
-- Parses the value as JSON `{ city, state, country }`
-- Renders separate inputs for each enabled sub-field in a single-row grid
-- Uses dynamic grid columns based on number of enabled fields (e.g., `grid-cols-2` if only 2 fields, `grid-cols-3` if all 3)
-- Shows MapPin icon in the label
+3) Keep declined banner guard in `src/components/candidates/CandidateOfferDetails.tsx`
+- Preserve existing condition:
+  - `approvalRequest?.status === 'declined' && offerLetter.status === 'draft'`
+- With step #1, this condition will correctly evaluate false after recall (latest request is recalled), so old decline note disappears.
 
-### 2. Make grid columns dynamic everywhere
+4) Validate end-to-end scenarios
+- Scenario A: declined request exists historically → create new request → recall it.
+  - Expected: no declined banner/note after recall.
+- Scenario B: decline then edit/re-request approval.
+  - Expected: pending flow shows; old decline note not shown.
+- Scenario C: historical declined request with no new request.
+  - Expected: declined banner still visible (intended historical state).
 
-When only 1 or 2 sub-fields are checked, `grid-cols-3` wastes space. Update all three renderers to use dynamic column count:
-
-**`ApplicationFieldsRenderer.tsx`** (line 320): Change from hardcoded `md:grid-cols-3` to `md:grid-cols-{locationFields.length}` (using a className map).
-
-**`PublicJobPosting.tsx`** (line 894): Same change — dynamic columns based on `locationSubFields.length`.
-
-**`OfferComposerBody.tsx`**: New code will use dynamic columns from the start.
-
-Column class map:
-```ts
-const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3' }[fieldCount] || 'md:grid-cols-3'
-```
-
-### 3. Also add salary case to `OfferComposerBody.tsx`
-
-While we're here, the salary field type also falls to the default Input. Add a `case 'salary':` that renders the salary amount input with currency badge and period badge (matching the pattern in `ApplicationFieldsRenderer` and `PublicJobPosting`).
-
-## Summary of File Changes
-- **`src/components/candidates/OfferComposerBody.tsx`** — Add `location` and `salary` cases to `renderFieldInput`
-- **`src/components/forms/ApplicationFieldsRenderer.tsx`** — Dynamic grid cols for location
-- **`src/pages/PublicJobPosting.tsx`** — Dynamic grid cols for location
-
+Technical notes
+- `ApprovalRequest` type already includes `'recalled'`, so this is mainly a query-selection bug, not a schema/type bug.
+- This change aligns `CandidateOfferDetails` and `CandidateOfferApprovals` with true latest request lifecycle.
