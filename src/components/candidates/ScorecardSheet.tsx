@@ -110,6 +110,7 @@ export function ScorecardSheet({
   onMoveToNextStage,
   onScheduleFollowUp,
   onReject,
+  scorecardVisibility = 'private',
 }: ScorecardSheetProps) {
   const [rating, setRating] = useState<ScoreRating>(existing?.rating || "yes");
   const [overview, setOverview] = useState<string>(existing?.general_overview || "");
