@@ -65,7 +65,7 @@ export default function AcceptInvite() {
         console.log('Invitation validation result:', invitation)
         setInvitationData({
           ...invitation,
-          system_role: (invitation as any).system_role || invitation.member_role || 'member',
+          system_role: invitation.system_role || 'member',
         })
       } else {
         setInvitationData({
