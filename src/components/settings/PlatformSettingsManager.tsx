@@ -87,6 +87,10 @@ export function PlatformSettingsManager() {
               <Palette className="h-4 w-4" />
               Style Guide
             </TabsTrigger>
+            <TabsTrigger value="enrichment" className="flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              Enrichment
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="general" className="mt-6">
