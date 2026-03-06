@@ -886,6 +886,7 @@ export function IndependentCandidateProfileSheet({
               />
             </div>
           </div>
+        </div>
 
           {/* Minimizable Email Composer (portal to body) */}
           <MinimizableEmailComposer
