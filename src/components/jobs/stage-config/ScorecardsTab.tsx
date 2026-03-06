@@ -27,7 +27,8 @@ export function ScorecardsTab({ jhsId, jobId, stageName, stageType }: Scorecards
     createQuestion,
     updateQuestion,
     deleteQuestion,
-    reorderQuestions
+    reorderQuestions,
+    updateVisibility
   } = useScorecardsConfiguration(jhsId)
   const [isAddingMultiple, setIsAddingMultiple] = useState(false)
 
