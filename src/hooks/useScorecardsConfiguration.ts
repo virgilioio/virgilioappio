@@ -26,9 +26,12 @@ export interface InterviewQuestion {
   salary_config?: SalaryConfig | null
 }
 
+export type ScorecardVisibility = 'private' | 'public'
+
 export interface ScorecardTemplate {
   id: string
   job_hiring_stage_id: string
+  visibility: ScorecardVisibility
   questions: InterviewQuestion[]
 }
 
