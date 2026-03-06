@@ -1658,7 +1658,7 @@ const stageHasAutomation = useMemo(() => {
                           { value: 'notes', label: 'Notes', Icon: StickyNote },
                           ...(!isRestrictedViewer ? [{ value: 'emails', label: 'Emails', Icon: Mail }] : []),
                           ...(!isRestrictedViewer ? [{ value: 'reminders', label: 'Reminders', Icon: Bell }] : []),
-                          { value: 'insights', label: 'Insights', Icon: Sparkles },
+                          ...(!isRestrictedViewer ? [{ value: 'insights', label: 'Insights', Icon: Sparkles }] : []),
                         ]}
                         activeTab={rightActiveTab}
                         onTabChange={(v) => setRightActiveTab(v as 'feed' | 'notes' | 'emails' | 'reminders' | 'insights')}
