@@ -29,6 +29,7 @@ export function MemberJobAssignmentsDialog({
   onClose, 
   member 
 }: MemberJobAssignmentsDialogProps) {
+  const queryClient = useQueryClient()
   const [jobs, setJobs] = useState<Job[]>([])
   const [assignedJobIds, setAssignedJobIds] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(true)
