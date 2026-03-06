@@ -283,6 +283,31 @@ export function IndependentCandidateProfileSheet({
                       </Button>
                     )}
                   </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {candidate?.job_board_source && (
+                      <Badge variant="secondary" className="gap-1">
+                        <Globe className="h-3 w-3" />
+                        Applied via {candidate.job_board_source}
+                      </Badge>
+                    )}
+                    {candidate && <AddToJobPipelineDialog candidateId={candidate.id} />}
+                    {candidate && canEnrich(candidate) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleEnrichFromLinkedIn}
+                        disabled={isEnriching}
+                        className="gap-1.5"
+                      >
+                        {isEnriching ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-4 w-4" />
+                        )}
+                        Enrich from LinkedIn
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-1 sm:gap-sm">
                   <Button
