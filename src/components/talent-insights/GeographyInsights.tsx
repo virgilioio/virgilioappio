@@ -1,18 +1,17 @@
-import { useState } from 'react'
+import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from 'react-simple-maps'
 import { TalentInsightEmptyState } from './TalentInsightEmptyState'
 import { Progress } from '@/components/ui/progress'
 import { MapPin, Users } from 'lucide-react'
 import type { CountEntry } from '@/hooks/useTalentInsightsData'
+import { COUNTRIES } from '@/constants/countries'
+import DottedMap from 'dotted-map'
 
 interface GeographyInsightsProps {
   countryCounts: CountEntry[]
   cityCounts: CountEntry[]
   totalCandidates: number
 }
-
-const GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'
 
 // Country name → [longitude, latitude] centroids
 const COUNTRY_COORDS: Record<string, [number, number]> = {
@@ -44,22 +43,49 @@ const COUNTRY_COORDS: Record<string, [number, number]> = {
   'Taiwan': [121, 24], 'Hong Kong': [114, 22],
 }
 
-// Also map ISO codes to coords using the COUNTRIES constant
-import { COUNTRIES } from '@/constants/countries'
-
 function getCoords(name: string): [number, number] | null {
-  // Direct name match
   if (COUNTRY_COORDS[name]) return COUNTRY_COORDS[name]
-  // Try matching ISO code → label → coords
   const country = COUNTRIES.find(c => c.value === name || c.label === name)
   if (country && COUNTRY_COORDS[country.label]) return COUNTRY_COORDS[country.label]
   return null
 }
 
-const PURPLE = 'hsl(267, 100%, 62%)'
+function displayName(name: string) {
+  const country = COUNTRIES.find(c => c.value === name)
+  return country ? country.label : name
+}
 
 export function GeographyInsights({ countryCounts, cityCounts, totalCandidates }: GeographyInsightsProps) {
-  const [tooltip, setTooltip] = useState<{ name: string; count: number } | null>(null)
+  const maxCount = countryCounts.length > 0 ? countryCounts[0].count : 1
+  const topCountries = countryCounts.slice(0, 5)
+
+  const svgString = useMemo(() => {
+    const map = new DottedMap({ height: 60, grid: 'diagonal' })
+
+    // Add pins for each country with candidates
+    countryCounts.forEach(entry => {
+      const coords = getCoords(entry.name)
+      if (!coords) return
+
+      // Scale radius based on count
+      const minR = 0.4
+      const maxR = 1.2
+      const r = maxCount <= 1 ? minR : minR + ((entry.count / maxCount) * (maxR - minR))
+
+      map.addPin({
+        lat: coords[1],
+        lng: coords[0],
+        svgOptions: { color: 'hsl(267, 100%, 62%)', radius: r },
+      })
+    })
+
+    return map.getSVG({
+      radius: 0.22,
+      color: 'hsl(var(--muted-foreground) / 0.25)',
+      shape: 'circle',
+      backgroundColor: 'transparent',
+    })
+  }, [countryCounts, maxCount])
 
   if (countryCounts.length === 0 && cityCounts.length === 0) {
     return (
@@ -76,31 +102,6 @@ export function GeographyInsights({ countryCounts, cityCounts, totalCandidates }
     )
   }
 
-  const maxCount = countryCounts.length > 0 ? countryCounts[0].count : 1
-  const topCountries = countryCounts.slice(0, 5)
-
-  // Build markers
-  const markers = countryCounts
-    .map(entry => {
-      const coords = getCoords(entry.name)
-      if (!coords) return null
-      return { name: entry.name, coordinates: coords as [number, number], count: entry.count }
-    })
-    .filter(Boolean) as { name: string; coordinates: [number, number]; count: number }[]
-
-  const minR = 4
-  const maxR = 18
-  const getRadius = (count: number) => {
-    if (maxCount <= 1) return minR
-    return minR + ((count / maxCount) * (maxR - minR))
-  }
-
-  // Resolve display name (ISO code → full name)
-  const displayName = (name: string) => {
-    const country = COUNTRIES.find(c => c.value === name)
-    return country ? country.label : name
-  }
-
   return (
     <Card className="border-virgilio-border">
       <CardHeader>
@@ -111,60 +112,12 @@ export function GeographyInsights({ countryCounts, cityCounts, totalCandidates }
       <CardContent>
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Map — 3/5 width */}
-          <div className="lg:col-span-3 relative">
-            <div className="bg-muted/30 rounded-lg overflow-hidden" style={{ minHeight: 320 }}>
-              <ComposableMap
-                projectionConfig={{ rotate: [-10, 0, 0], scale: 140 }}
-                width={600}
-                height={320}
-                style={{ width: '100%', height: 'auto' }}
-              >
-                <ZoomableGroup>
-                  <Geographies geography={GEO_URL}>
-                    {({ geographies }) =>
-                      geographies.map((geo) => (
-                        <Geography
-                          key={geo.rsmKey}
-                          geography={geo}
-                          fill="hsl(var(--muted))"
-                          stroke="hsl(var(--border))"
-                          strokeWidth={0.5}
-                          style={{
-                            default: { outline: 'none' },
-                            hover: { outline: 'none', fill: 'hsl(var(--muted-foreground) / 0.3)' },
-                            pressed: { outline: 'none' },
-                          }}
-                        />
-                      ))
-                    }
-                  </Geographies>
-                  {markers.map((marker) => (
-                    <Marker
-                      key={marker.name}
-                      coordinates={marker.coordinates}
-                      onMouseEnter={() => setTooltip({ name: displayName(marker.name), count: marker.count })}
-                      onMouseLeave={() => setTooltip(null)}
-                    >
-                      <circle
-                        r={getRadius(marker.count)}
-                        fill={PURPLE}
-                        fillOpacity={0.65}
-                        stroke={PURPLE}
-                        strokeWidth={1}
-                        strokeOpacity={0.3}
-                        style={{ cursor: 'pointer' }}
-                      />
-                    </Marker>
-                  ))}
-                </ZoomableGroup>
-              </ComposableMap>
-            </div>
-            {tooltip && (
-              <div className="absolute top-2 left-2 bg-popover border border-border rounded-lg px-3 py-2 shadow-md pointer-events-none">
-                <p className="text-sm font-poppins font-semibold text-foreground">{tooltip.name}</p>
-                <p className="text-xs font-poppins text-muted-foreground">{tooltip.count} candidates</p>
-              </div>
-            )}
+          <div className="lg:col-span-3">
+            <div
+              className="bg-muted/30 rounded-lg overflow-hidden p-4"
+              style={{ minHeight: 320 }}
+              dangerouslySetInnerHTML={{ __html: svgString }}
+            />
           </div>
 
           {/* Right panel — 2/5 width */}
