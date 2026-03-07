@@ -85,11 +85,20 @@ export function useCSVCandidateImport() {
 
           // Insert candidate
           const insertData = {
-            ...candidate,
+            candidate_name: candidate.candidate_name as string,
+            email: candidate.email || null,
+            phone: candidate.phone || null,
+            linkedin_url: candidate.linkedin_url || null,
+            resume_url: candidate.resume_url || null,
+            location_city: candidate.location_city || null,
+            location_state: candidate.location_state || null,
+            location_country: candidate.location_country || null,
+            profile_summary: candidate.profile_summary || null,
+            skills: candidate.skills || null,
             organization_id: organizationId,
             tenant_id: tenant.id,
             created_by: user.id,
-            source: candidate.source || 'csv_import',
+            source: (candidate.source as string) || 'csv_import',
             status: 'new',
             enrichment_status: candidate.resume_url ? 'pending' : null,
           }

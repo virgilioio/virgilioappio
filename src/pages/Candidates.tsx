@@ -26,6 +26,7 @@ export default function Candidates() {
   const [selectedCandidate, setSelectedCandidate] = useState(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false)
+  const [isCSVImportOpen, setIsCSVImportOpen] = useState(false)
   const [showMergeDialog, setShowMergeDialog] = useState(false)
   const [duplicateInfo, setDuplicateInfo] = useState<{
     existing: any

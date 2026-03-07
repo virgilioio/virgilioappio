@@ -214,7 +214,7 @@ export function CSVImportDialog({ isOpen, onClose, onComplete }: CSVImportDialog
         {/* Done Step */}
         {step === 'done' && (
           <div className="py-6 text-center space-y-3">
-            <CheckCircle2 className="h-10 w-10 mx-auto text-green-500" />
+            <CheckCircle2 className="h-10 w-10 mx-auto text-primary" />
             <div className="space-y-1">
               <p className="font-medium">{progress.created} candidates imported</p>
               <p className="text-sm text-muted-foreground">
