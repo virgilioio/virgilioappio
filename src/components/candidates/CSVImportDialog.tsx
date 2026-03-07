@@ -136,28 +136,28 @@ export function CSVImportDialog({ isOpen, onClose, onComplete }: CSVImportDialog
 
         {/* Mapping Step */}
         {step === 'mapping' && parsed && (
-          <div className="flex-1 overflow-y-auto flex flex-col gap-4 max-h-[calc(85vh-220px)]">
-            {/* URL skip warning */}
-            {skippedUrlColumns.length > 0 && (
-              <div className="flex items-start gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
-                <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-                <div>
-                  <p className="font-medium text-amber-600 dark:text-amber-400">
-                    Possible unmapped URL columns detected
-                  </p>
-                  <p className="text-muted-foreground mt-0.5">
-                    {skippedUrlColumns.map(i => `"${parsed.headers[i]}"`).join(', ')}{' '}
-                    {skippedUrlColumns.length === 1 ? 'contains' : 'contain'} URLs but{' '}
-                    {skippedUrlColumns.length === 1 ? 'is' : 'are'} set to Skip.
-                    Consider mapping to <strong>Resume / CV URL</strong> or <strong>LinkedIn URL</strong>.
-                  </p>
+          <ScrollArea className="flex-1 min-h-0">
+            <div className="flex flex-col gap-4 pr-4">
+              {/* URL skip warning */}
+              {skippedUrlColumns.length > 0 && (
+                <div className="flex items-start gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+                  <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-medium text-amber-600 dark:text-amber-400">
+                      Possible unmapped URL columns detected
+                    </p>
+                    <p className="text-muted-foreground mt-0.5">
+                      {skippedUrlColumns.map(i => `"${parsed.headers[i]}"`).join(', ')}{' '}
+                      {skippedUrlColumns.length === 1 ? 'contains' : 'contain'} URLs but{' '}
+                      {skippedUrlColumns.length === 1 ? 'is' : 'are'} set to Skip.
+                      Consider mapping to <strong>Resume / CV URL</strong> or <strong>LinkedIn URL</strong>.
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Column Mapping */}
-            <ScrollArea className="max-h-[400px]">
-              <div className="space-y-2 pr-4">
+              {/* Column Mapping */}
+              <div className="space-y-2">
                 {parsed.headers.map((header, index) => (
                   <div key={index} className="flex items-center gap-3">
                     <span className={`text-sm font-mono bg-muted px-2 py-1 rounded min-w-[140px] truncate ${
@@ -184,50 +184,50 @@ export function CSVImportDialog({ isOpen, onClose, onComplete }: CSVImportDialog
                   </div>
                 ))}
               </div>
-            </ScrollArea>
 
-            {!hasNameMapped && (
-              <div className="flex items-center gap-2 text-sm text-destructive">
-                <AlertCircle className="h-4 w-4" />
-                You must map at least one column to "Full Name", "First Name", or "Last Name"
-              </div>
-            )}
+              {!hasNameMapped && (
+                <div className="flex items-center gap-2 text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  You must map at least one column to "Full Name", "First Name", or "Last Name"
+                </div>
+              )}
 
-            {/* Preview */}
-            {previewRows.length > 0 && (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Preview (first {previewRows.length} rows)</p>
-                <ScrollArea className="max-h-[150px]">
-                  <table className="w-full text-xs border">
-                    <thead>
-                      <tr className="bg-muted">
-                        {parsed.headers.map((h, i) => (
-                          mapping[i] !== '__skip__' && (
-                            <th key={i} className="px-2 py-1 text-left border-r font-medium">
-                              {CANDIDATE_FIELD_OPTIONS.find(o => o.value === mapping[i])?.label || h}
-                            </th>
-                          )
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {previewRows.map((row, ri) => (
-                        <tr key={ri} className="border-t">
-                          {parsed.headers.map((_, ci) => (
-                            mapping[ci] !== '__skip__' && (
-                              <td key={ci} className="px-2 py-1 border-r truncate max-w-[150px]">
-                                {row[ci] || '—'}
-                              </td>
+              {/* Preview */}
+              {previewRows.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Preview (first {previewRows.length} rows)</p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs border">
+                      <thead>
+                        <tr className="bg-muted">
+                          {parsed.headers.map((h, i) => (
+                            mapping[i] !== '__skip__' && (
+                              <th key={i} className="px-2 py-1 text-left border-r font-medium">
+                                {CANDIDATE_FIELD_OPTIONS.find(o => o.value === mapping[i])?.label || h}
+                              </th>
                             )
                           ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </ScrollArea>
-              </div>
-            )}
-          </div>
+                      </thead>
+                      <tbody>
+                        {previewRows.map((row, ri) => (
+                          <tr key={ri} className="border-t">
+                            {parsed.headers.map((_, ci) => (
+                              mapping[ci] !== '__skip__' && (
+                                <td key={ci} className="px-2 py-1 border-r truncate max-w-[150px]">
+                                  {row[ci] || '—'}
+                                </td>
+                              )
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
         )}
 
         {/* Importing Step */}
