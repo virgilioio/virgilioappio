@@ -20,27 +20,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Simple PDF text extraction using pdf-parse (works in Deno via npm specifier)
+// PDF text extraction using unpdf (Deno-native, works in edge functions)
 async function extractTextFromPdf(pdfBytes: Uint8Array): Promise<string> {
   try {
-    // Use pdf-parse via esm.sh
-    const pdfParse = (await import("https://esm.sh/pdf-parse@1.1.1")).default;
-    const result = await pdfParse(Buffer.from(pdfBytes));
-    return result.text || '';
+    const { text } = await extractText(pdfBytes);
+    return text || '';
   } catch (err) {
-    console.error('[batch-re-enrich] PDF parse error, trying fallback:', err);
-    // Fallback: decode as UTF-8 and extract readable text
-    const decoder = new TextDecoder('utf-8', { fatal: false });
-    const raw = decoder.decode(pdfBytes);
-    // Extract text between stream markers (very basic)
-    const textChunks: string[] = [];
-    const streamRegex = /stream\s*([\s\S]*?)\s*endstream/g;
-    let match;
-    while ((match = streamRegex.exec(raw)) !== null) {
-      const chunk = match[1].replace(/[^\x20-\x7E\n\r]/g, ' ').trim();
-      if (chunk.length > 20) textChunks.push(chunk);
-    }
-    return textChunks.join('\n').slice(0, 15000);
+    console.error('[batch-re-enrich] unpdf extraction error:', err);
+    return '';
   }
 }
 
@@ -48,9 +35,17 @@ async function extractTextFromPdf(pdfBytes: Uint8Array): Promise<string> {
 function extractTextFromDocx(bytes: Uint8Array): string {
   const decoder = new TextDecoder('utf-8', { fatal: false });
   const raw = decoder.decode(bytes);
-  // Strip XML tags to get plain text
   const text = raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   return text.slice(0, 15000);
+}
+
+// Guard against binary garbage being sent to AI
+function isReadableText(text: string): boolean {
+  if (!text || text.length === 0) return false;
+  const readable = text.replace(/[^a-zA-Z0-9áéíóúñüÁÉÍÓÚÑÜàèìòùâêîôûäëïöüãõçßøåæðþ\s.,;:!?@\-()\/'"#$%&*+={}\[\]<>~`_|\\^]/g, '');
+  const ratio = readable.length / text.length;
+  console.log(`[batch-re-enrich] Text readability ratio: ${ratio.toFixed(3)} (${readable.length}/${text.length})`);
+  return ratio > 0.5;
 }
 
 serve(async (req) => {
