@@ -347,8 +347,11 @@ export function useIndependentCandidates() {
     let channel: any
     
     const setupSubscription = async () => {
-      // Get all org IDs in the hierarchy
-      const orgIds = await getOrganizationTree(organizationId)
+      // Use cached org tree or fetch
+      if (!orgTreeRef.current) {
+        orgTreeRef.current = await getOrganizationTree(organizationId)
+      }
+      const orgIds = orgTreeRef.current
       console.log('📡 Setting up subscriptions for org tree:', orgIds)
       
       // Create unique channel name to avoid subscription conflicts
@@ -368,7 +371,11 @@ export function useIndependentCandidates() {
           },
           (payload) => {
             console.log('📡 Real-time candidate change detected:', payload)
-            getCandidates() // Refresh the list
+            // Debounce: wait 2s after last change before refreshing
+            if (debounceRef.current) clearTimeout(debounceRef.current)
+            debounceRef.current = setTimeout(() => {
+              getCandidates()
+            }, 2000)
           }
         )
       })
@@ -381,6 +388,9 @@ export function useIndependentCandidates() {
     setupSubscription()
 
     return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current)
+      }
       if (channel) {
         console.log('🔄 Cleaning up candidates subscription')
         supabase.removeChannel(channel)
