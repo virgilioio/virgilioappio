@@ -134,7 +134,7 @@ export function BatchEnrichmentRunner() {
           <CardTitle>Batch AI Enrichment</CardTitle>
         </div>
         <CardDescription>
-          Enrich all candidates with missing structured data. Processes 30 candidates at a time with automatic pacing.
+          Enrich all candidates with missing structured data. Processes 10 candidates at a time with automatic pacing and retry.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

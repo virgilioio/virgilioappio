@@ -380,6 +380,11 @@ export function useIndependentCandidates() {
             filter: `organization_id=eq.${orgId}`
           },
           (payload) => {
+            // Skip real-time refresh when batch enrichment is running
+            if ((window as any).__enrichmentActive) {
+              console.log('📡 Real-time change ignored — enrichment active')
+              return
+            }
             console.log('📡 Real-time candidate change detected:', payload)
             // Debounce: wait 2s after last change before refreshing
             if (debounceRef.current) clearTimeout(debounceRef.current)
