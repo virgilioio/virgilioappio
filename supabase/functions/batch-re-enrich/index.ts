@@ -83,7 +83,7 @@ serve(async (req) => {
         .from('candidates')
         .select('id, candidate_attachments!inner(id)', { count: 'exact', head: true })
         .eq('candidate_attachments.is_resume', true)
-        .is('current_job_title', null)
+        .in('enrichment_status', ['pending', 'pending_reparse'])
         .is('deleted_at', null);
 
       if (candidateIds?.length) countQ1 = countQ1.in('id', candidateIds);
