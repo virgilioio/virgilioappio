@@ -176,6 +176,7 @@ serve(async (req) => {
       const fileUrl = resume?.file_url || externalResumeUrl;
 
       if (!fileUrl) {
+        await supabase.from('candidates').update({ enrichment_status: 'skipped' }).eq('id', candidate.id);
         results.push({ id: candidate.id, name: candidate.candidate_name, status: 'skipped', error: 'No resume URL' });
         continue;
       }
