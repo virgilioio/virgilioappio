@@ -175,7 +175,49 @@ serve(async (req) => {
             continue;
           }
           const bytes = new Uint8Array(await pdfResp.arrayBuffer());
-          resumeText = await extractTextFromPdf(bytes);
+
+          // Determine file extension from URL or content-type
+          const contentType = pdfResp.headers.get('content-type') || '';
+          let ext = 'pdf';
+          if (contentType.includes('docx') || fileUrl.toLowerCase().includes('.docx')) ext = 'docx';
+          else if (contentType.includes('doc') || fileUrl.toLowerCase().includes('.doc')) ext = 'doc';
+
+          // Permanently store the resume in Supabase Storage
+          const storagePath = `${candidate.id}/${Date.now()}-resume.${ext}`;
+          const { error: uploadError } = await supabase.storage
+            .from('candidate-attachments')
+            .upload(storagePath, bytes, { contentType: contentType || 'application/pdf' });
+
+          if (uploadError) {
+            console.error(`[batch-re-enrich] Storage upload error for ${candidate.id}:`, uploadError);
+            // Continue with enrichment even if storage fails
+          } else {
+            // Create candidate_attachments record
+            const originalFileName = fileUrl.split('/').pop()?.split('?')[0] || `resume.${ext}`;
+            const { error: insertError } = await supabase
+              .from('candidate_attachments')
+              .insert({
+                candidate_id: candidate.id,
+                file_name: originalFileName,
+                file_url: storagePath,
+                file_size_bytes: bytes.length,
+                file_type: contentType || 'application/pdf',
+                is_resume: true,
+              });
+
+            if (insertError) {
+              console.error(`[batch-re-enrich] Attachment record error for ${candidate.id}:`, insertError);
+            } else {
+              console.log(`[batch-re-enrich] Permanently stored resume for ${candidate.candidate_name} at ${storagePath}`);
+            }
+          }
+
+          // Extract text for enrichment
+          if (ext === 'docx') {
+            resumeText = extractTextFromDocx(bytes);
+          } else {
+            resumeText = await extractTextFromPdf(bytes);
+          }
         } else {
           // Storage path - download from Supabase Storage
           const { data: fileData, error: downloadError } = await supabase
