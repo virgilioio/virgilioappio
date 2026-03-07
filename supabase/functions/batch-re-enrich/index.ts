@@ -83,7 +83,7 @@ serve(async (req) => {
         .from('candidates')
         .select('id, candidate_attachments!inner(id)', { count: 'exact', head: true })
         .eq('candidate_attachments.is_resume', true)
-        .is('current_job_title', null)
+        .in('enrichment_status', ['pending', 'pending_reparse'])
         .is('deleted_at', null);
 
       if (candidateIds?.length) countQ1 = countQ1.in('id', candidateIds);
@@ -95,7 +95,7 @@ serve(async (req) => {
         .from('candidates')
         .select('id', { count: 'exact', head: true })
         .not('resume_url', 'is', null)
-        .is('current_job_title', null)
+        .or('enrichment_status.in.(pending,pending_reparse),and(enrichment_status.is.null,profile_summary.is.null)')
         .is('deleted_at', null);
 
       if (candidateIds?.length) countQ2 = countQ2.in('id', candidateIds);
@@ -122,7 +122,7 @@ serve(async (req) => {
         candidate_attachments!inner (id, file_url, file_name, file_type, is_resume)
       `)
       .eq('candidate_attachments.is_resume', true)
-      .is('current_job_title', null)
+      .in('enrichment_status', ['pending', 'pending_reparse'])
       .is('deleted_at', null)
       .limit(limit);
 
@@ -140,7 +140,7 @@ serve(async (req) => {
       .from('candidates')
       .select('id, candidate_name, current_job_title, enrichment_status, resume_url')
       .not('resume_url', 'is', null)
-      .is('current_job_title', null)
+      .or('enrichment_status.in.(pending,pending_reparse),and(enrichment_status.is.null,profile_summary.is.null)')
       .is('deleted_at', null)
       .limit(limit);
 
