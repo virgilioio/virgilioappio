@@ -144,6 +144,7 @@ export function useIndependentCandidates() {
       })
     } finally {
       setIsLoading(false)
+      isFetchingRef.current = false
     }
   }
 
