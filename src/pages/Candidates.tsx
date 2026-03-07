@@ -1,7 +1,7 @@
 // cache-bust: 8F42B1C3
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Upload } from 'lucide-react'
+import { Upload, FileSpreadsheet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Section } from '@/components/layout/Section'
@@ -11,6 +11,7 @@ import { IndependentCandidateTable } from '@/components/candidates/IndependentCa
 import { CandidateFormSheet } from '@/components/candidates/CandidateFormSheet'
 import { CandidateMergeDialog } from '@/components/candidates/CandidateMergeDialog'
 import { MinimizableBulkUploadDialog } from '@/components/candidates/MinimizableBulkUploadDialog'
+import { CSVImportDialog } from '@/components/candidates/CSVImportDialog'
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 import { useIndependentCandidates, CreateIndependentCandidateData } from '@/hooks/useIndependentCandidates'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -25,6 +26,7 @@ export default function Candidates() {
   const [selectedCandidate, setSelectedCandidate] = useState(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false)
+  const [isCSVImportOpen, setIsCSVImportOpen] = useState(false)
   const [showMergeDialog, setShowMergeDialog] = useState(false)
   const [duplicateInfo, setDuplicateInfo] = useState<{
     existing: any
@@ -165,6 +167,15 @@ export default function Candidates() {
             >
               <div className="flex gap-2">
                 <Button
+                  onClick={() => setIsCSVImportOpen(true)}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Import CSV
+                </Button>
+                <Button
                   onClick={() => setIsBulkUploadOpen(true)}
                   variant="outline"
                   size="sm"
@@ -218,6 +229,16 @@ export default function Candidates() {
             onClose={() => setIsBulkUploadOpen(false)}
             onComplete={() => {
               setIsBulkUploadOpen(false)
+              getCandidates()
+            }}
+          />
+
+          {/* CSV Import Dialog */}
+          <CSVImportDialog
+            isOpen={isCSVImportOpen}
+            onClose={() => setIsCSVImportOpen(false)}
+            onComplete={() => {
+              setIsCSVImportOpen(false)
               getCandidates()
             }}
           />

@@ -76,11 +76,11 @@ serve(async (req) => {
 
     console.log(`[batch-re-enrich] dry_run=${dryRun}, limit=${limit}, specific_ids=${candidateIds?.length || 'all'}`);
 
-    // Find candidates with resumes that are missing the new structured fields
-    let query = supabase
+    // Query 1: Candidates with resume attachments but missing structured fields
+    let attachmentQuery = supabase
       .from('candidates')
       .select(`
-        id, candidate_name, current_job_title, enrichment_status,
+        id, candidate_name, current_job_title, enrichment_status, resume_url,
         candidate_attachments!inner (id, file_url, file_name, file_type, is_resume)
       `)
       .eq('candidate_attachments.is_resume', true)
@@ -89,17 +89,42 @@ serve(async (req) => {
       .limit(limit);
 
     if (candidateIds?.length) {
-      query = query.in('id', candidateIds);
+      attachmentQuery = attachmentQuery.in('id', candidateIds);
     }
 
-    const { data: candidates, error: queryError } = await query;
-    if (queryError) {
-      console.error('[batch-re-enrich] Query error:', queryError);
-      return new Response(JSON.stringify({ error: 'Failed to query candidates', details: queryError }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    const { data: attachmentCandidates, error: q1Error } = await attachmentQuery;
+    if (q1Error) {
+      console.error('[batch-re-enrich] Attachment query error:', q1Error);
     }
+
+    // Query 2: Candidates with resume_url but no attachment (CSV imports)
+    let urlQuery = supabase
+      .from('candidates')
+      .select('id, candidate_name, current_job_title, enrichment_status, resume_url')
+      .not('resume_url', 'is', null)
+      .is('current_job_title', null)
+      .is('deleted_at', null)
+      .limit(limit);
+
+    if (candidateIds?.length) {
+      urlQuery = urlQuery.in('id', candidateIds);
+    }
+
+    const { data: urlCandidates, error: q2Error } = await urlQuery;
+    if (q2Error) {
+      console.error('[batch-re-enrich] URL query error:', q2Error);
+    }
+
+    // Merge and deduplicate
+    const seen = new Set<string>();
+    const candidates: any[] = [];
+    for (const c of [...(attachmentCandidates || []), ...(urlCandidates || [])]) {
+      if (!seen.has(c.id)) {
+        seen.add(c.id);
+        candidates.push(c);
+      }
+    }
+    if (candidates.length > limit) candidates.length = limit;
 
     console.log(`[batch-re-enrich] Found ${candidates?.length || 0} candidates to process`);
 
@@ -107,11 +132,12 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         dry_run: true,
         count: candidates?.length || 0,
-        candidates: (candidates || []).map(c => ({
+        candidates: candidates.map(c => ({
           id: c.id,
           name: c.candidate_name,
           enrichment_status: c.enrichment_status,
-          resume_file: (c.candidate_attachments as any[])?.[0]?.file_name,
+          resume_file: (c as any).candidate_attachments?.[0]?.file_name || null,
+          resume_url: c.resume_url || null,
         })),
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -121,11 +147,15 @@ serve(async (req) => {
     // Process each candidate
     const results: Array<{ id: string; name: string; status: string; error?: string }> = [];
 
-    for (const candidate of (candidates || [])) {
-      const attachments = candidate.candidate_attachments as any[];
+    for (const candidate of candidates) {
+      const attachments = (candidate as any).candidate_attachments as any[] | undefined;
       const resume = attachments?.[0];
+      const externalResumeUrl = candidate.resume_url as string | null;
 
-      if (!resume?.file_url) {
+      // Determine the file URL: prefer attachment, fall back to resume_url field
+      const fileUrl = resume?.file_url || externalResumeUrl;
+
+      if (!fileUrl) {
         results.push({ id: candidate.id, name: candidate.candidate_name, status: 'skipped', error: 'No resume URL' });
         continue;
       }
@@ -133,9 +163,9 @@ serve(async (req) => {
       try {
         console.log(`[batch-re-enrich] Processing ${candidate.candidate_name} (${candidate.id})`);
 
-        // Download the resume file from storage
+        // Download the resume file
         let resumeText = '';
-        const fileUrl = resume.file_url as string;
+        const fileName = resume?.file_name || fileUrl;
 
         if (fileUrl.startsWith('http')) {
           // External URL - fetch directly
@@ -160,9 +190,9 @@ serve(async (req) => {
           }
 
           const bytes = new Uint8Array(await fileData.arrayBuffer());
-          const fileName = (resume.file_name || '').toLowerCase();
+          const fileNameLower = (resume?.file_name || fileUrl || '').toLowerCase();
 
-          if (fileName.endsWith('.pdf') || resume.file_type === 'application/pdf') {
+          if (fileNameLower.endsWith('.pdf') || resume?.file_type === 'application/pdf') {
             resumeText = await extractTextFromPdf(bytes);
           } else if (fileName.endsWith('.docx')) {
             resumeText = extractTextFromDocx(bytes);

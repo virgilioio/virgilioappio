@@ -1,72 +1,89 @@
+# System Roles Migration — Completed Phases 1-5
 
+## Architecture Change
+- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
+- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-# CSV Candidate Import with Resume URL Support
+## Completed
 
-## The Idea
+### Phase 1 — Database
+- ✅ Created `system_role` enum (`admin`, `member`)
+- ✅ Added `system_role` column to `members` table
+- ✅ Migrated data: `admin` → `admin`, all others → `member`
+- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
+- ✅ Updated `check_tenant_member_role` to use `system_role`
+- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
+- ✅ Updated `audit_member_role_change` trigger
 
-Companies migrating to the ATS can upload a CSV file containing their candidate database. Each row has candidate info (name, email, phone, LinkedIn, location, etc.) and optionally a **URL to the resume file**. The system creates all candidates from the CSV data, then uses the existing batch enrichment pipeline to download and parse the resumes from those URLs in the background.
+### Phase 2 — Frontend Permissions
+- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
+- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
+- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
+- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
 
-This is smart because:
-- CSV parsing is instant (no AI cost, no file uploads)
-- Resume downloading + AI enrichment happens asynchronously via the existing `batch-re-enrich` / `enrich-candidate-profile` pipeline
-- No timeout issues — candidates are created first, enrichment runs in batches of 30
+### Phase 3 — UI Updates
+- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
+- ✅ Updated `Dashboard` — sourcing panel for admin+ only
+- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
+- ✅ Updated `BillingGuard` — members (non-admin) never blocked
+- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
+- ✅ Updated `Find` page RoleGate
+- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
 
-## How It Works
+### Phase 4 — Runtime Hotfixes
+- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
+- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
+- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
+- ✅ Updated `validate_invite_token` — returns `system_role`
+- ✅ Updated `accept_invitation` — uses `system_role`
 
-1. User uploads a CSV file in a new "CSV Import" dialog
-2. Frontend parses the CSV client-side, shows a preview table + column mapping UI
-3. User maps CSV columns to candidate fields (name, email, phone, LinkedIn, location, resume URL)
-4. System creates candidates in batches (direct DB inserts via existing `addCandidate`)
-5. For rows with a resume URL, store it on the candidate record and mark `enrichment_status = 'pending'`
-6. After import, user can trigger "Batch Enrich All" (already built) to process all resume URLs
+### Phase 5 — Complete Cleanup
+- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
+- ✅ Updated `admin_manage_member` — updates `system_role` column
+- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
+- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
+- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
+- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
+- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
+- ✅ Updated `diagnose_user_auth` — reports `system_role`
+- ✅ Updated `audit_platform_admin_access` — returns `system_role`
+- ✅ Updated `debug_user_permissions` — returns `system_role`
+- ✅ Renamed `invitations.member_role` → `invitations.system_role`
+- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
 
-## Column Mapping
+## Phase 6 — Future (Optional)
+- Drop `member_role` column from `members` table (already dropped)
+- Drop old `member_role` enum type
+- Update `MemberInviteSheet` role picker to only offer Admin/Member
 
-The UI will auto-detect common column names (Name, Email, Phone, LinkedIn, Resume, Location) and let users manually adjust mappings via dropdowns. Unmapped columns are ignored.
+# Deep Resume Parsing + Data Standardization — Completed
 
-## Changes
+## What was implemented
 
-| Action | File | What |
-|---|---|---|
-| **New** | `src/components/candidates/CSVImportDialog.tsx` | Main dialog: file upload, preview, column mapping, progress |
-| **New** | `src/lib/csvParser.ts` | Client-side CSV parsing utility (handles quotes, commas in values, encoding) |
-| **New** | `src/hooks/useCSVCandidateImport.ts` | Hook: batch-creates candidates from parsed CSV rows, handles duplicates, tracks progress |
-| **Modified** | `src/components/candidates/MinimizableBulkUploadDialog.tsx` or candidate list header | Add "Import CSV" button to trigger the dialog |
-| **Modified** | `supabase/functions/batch-re-enrich/index.ts` | Support candidates with `resume_url` (external URL) but no stored attachment — download from URL, extract text, enrich |
-| **Fix** | `src/components/settings/PlatformSettingsManager.tsx` | Change `grid-cols-5` to `grid-cols-6` so Enrichment tab is visible |
+### Phase 1: Schema Expansion
+- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
+- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
+- ✅ Added to `candidate_education`: `education_level`
+- ✅ Created `candidate_certifications` table with RLS policies
 
-## CSV Import Flow
+### Phase 2: Enrichment Rewrite
+- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
+- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
+- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
+- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
+- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
 
-```text
-┌─────────────────────────────────────┐
-│  1. Upload CSV                      │
-│  ┌───────────────────────────────┐  │
-│  │  Drop CSV file here           │  │
-│  └───────────────────────────────┘  │
-├─────────────────────────────────────┤
-│  2. Map Columns                     │
-│  CSV Column    →  Candidate Field   │
-│  "Full Name"   →  [Name ▾]         │
-│  "E-mail"      →  [Email ▾]        │
-│  "CV Link"     →  [Resume URL ▾]   │
-│  "City"        →  [Location City ▾]│
-├─────────────────────────────────────┤
-│  3. Preview (first 5 rows)          │
-├─────────────────────────────────────┤
-│  [Cancel]              [Import 847] │
-└─────────────────────────────────────┘
-```
+### Phase 3: UI Updates
+- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
+- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
+- ✅ **Certifications section** with `CandidateCertificationsComponent`
+- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
+- ✅ Enhanced **Education** display: education level badge
+- ✅ Certifications loaded alongside work experience and education
 
-## Edge Function Update
-
-The `batch-re-enrich` function already handles external URLs (line 140-148 checks `fileUrl.startsWith('http')`). We just need to also query candidates where `resume_url IS NOT NULL` and `current_job_title IS NULL` (no attachment required), so candidates imported via CSV with a resume URL get picked up by the enrichment pipeline.
-
-## Key Details
-
-- CSV parsing is done entirely client-side (no edge function needed for parsing)
-- Candidate creation uses existing `addCandidate` with duplicate detection (email-based)
-- Batch size for DB inserts: 50 rows at a time to avoid UI freezing
-- Resume URLs are stored on `candidates.resume_url` field (already exists in schema)
-- After import completes, a prompt suggests running Batch Enrichment for candidates with resume URLs
-- Also fixes the Enrichment tab visibility (`grid-cols-5` → `grid-cols-6`)
-
+## Files changed
+- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
+- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
+- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
+- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
+- `src/components/candidates/CandidateCertifications.tsx` — new component
