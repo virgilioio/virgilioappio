@@ -23,12 +23,33 @@ export function BatchEnrichmentRunner() {
   const [error, setError] = useState<string | null>(null)
   const stopRef = useRef(false)
 
-  const invokeBatch = async (dryRun: boolean, limit: number = 30): Promise<BatchResult | { dry_run: true; count: number } | null> => {
+  const BATCH_SIZE = 10
+  const BATCH_DELAY_MS = 8000
+  const MAX_RETRIES = 2
+
+  const invokeBatch = async (dryRun: boolean, limit: number = BATCH_SIZE): Promise<BatchResult | { dry_run: true; count: number } | null> => {
     const { data, error } = await supabase.functions.invoke('batch-re-enrich', {
-      body: dryRun ? { dry_run: true, limit: 1000 } : { limit },
+      body: dryRun ? { dry_run: true } : { limit },
     })
     if (error) throw new Error(error.message || 'Failed to invoke batch-re-enrich')
     return data
+  }
+
+  const invokeBatchWithRetry = async (limit: number): Promise<BatchResult | null> => {
+    let lastError: Error | null = null
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        return await invokeBatch(false, limit) as BatchResult | null
+      } catch (err: any) {
+        lastError = err
+        if (attempt < MAX_RETRIES) {
+          const delay = 10000 * (attempt + 1) // 10s, 20s
+          console.log(`[BatchEnrichment] Retry ${attempt + 1}/${MAX_RETRIES} after ${delay}ms`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+        }
+      }
+    }
+    throw lastError
   }
 
   const handleCheck = async () => {
