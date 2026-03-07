@@ -11,6 +11,7 @@ import { IndependentCandidateTable } from '@/components/candidates/IndependentCa
 import { CandidateFormSheet } from '@/components/candidates/CandidateFormSheet'
 import { CandidateMergeDialog } from '@/components/candidates/CandidateMergeDialog'
 import { MinimizableBulkUploadDialog } from '@/components/candidates/MinimizableBulkUploadDialog'
+import { CSVImportDialog } from '@/components/candidates/CSVImportDialog'
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 import { useIndependentCandidates, CreateIndependentCandidateData } from '@/hooks/useIndependentCandidates'
 import { usePermissions } from '@/hooks/usePermissions'
