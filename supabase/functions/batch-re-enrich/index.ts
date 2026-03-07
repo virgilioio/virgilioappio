@@ -192,6 +192,7 @@ serve(async (req) => {
           // External URL - fetch directly
           const pdfResp = await fetch(fileUrl);
           if (!pdfResp.ok) {
+            await supabase.from('candidates').update({ enrichment_status: 'failed' }).eq('id', candidate.id);
             results.push({ id: candidate.id, name: candidate.candidate_name, status: 'failed', error: 'Failed to download resume' });
             continue;
           }
