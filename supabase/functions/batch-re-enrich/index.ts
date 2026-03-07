@@ -309,6 +309,7 @@ serve(async (req) => {
 
       } catch (err) {
         console.error(`[batch-re-enrich] Error for ${candidate.id}:`, err);
+        await supabase.from('candidates').update({ enrichment_status: 'failed' }).eq('id', candidate.id);
         results.push({ id: candidate.id, name: candidate.candidate_name, status: 'failed', error: String(err) });
       }
     }
