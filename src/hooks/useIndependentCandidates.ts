@@ -91,6 +91,13 @@ export function useIndependentCandidates() {
 
   const getCandidates = async () => {
     if (!user || !organizationId) return
+    
+    // Concurrency guard: skip if already fetching
+    if (isFetchingRef.current) {
+      log.debug('Skipping getCandidates — fetch already in progress')
+      return
+    }
+    isFetchingRef.current = true
 
     setIsLoading(true)
     setError(null)
