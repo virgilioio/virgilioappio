@@ -130,6 +130,8 @@ For skills: Extract 10-20 skills. Mark core skills as is_primary=true (max 5-7 p
 For seniority_level: Infer from most recent title and years of experience.
 For years_in_leadership: Count years where title contains Manager, Director, VP, Chief, Head, Lead.
 
+For location (location_country, location_state, location_city): Infer the candidate's CURRENT location from the resume header/address, their most recent work experience location, or any other signals. Use full country names (e.g. "Mexico" not "MX"). If only a city is clear, still try to infer the state/country.
+
 Be thorough. Extract everything you can find.`;
 
 // ---------- Standardization helpers ----------
