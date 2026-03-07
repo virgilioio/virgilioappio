@@ -75,10 +75,13 @@ export function BatchEnrichmentRunner() {
     setBatchCount(0)
     setError(null)
 
+    // Pause real-time refreshes across the app
+    ;(window as any).__enrichmentActive = true
+
     try {
       let hasMore = true
       while (hasMore && !stopRef.current) {
-        const result = await invokeBatch(false, 30) as BatchResult | null
+        const result = await invokeBatchWithRetry(BATCH_SIZE)
         
         if (!result || result.total === 0) {
           hasMore = false
@@ -94,14 +97,14 @@ export function BatchEnrichmentRunner() {
         }))
 
         // If we got fewer than requested, we're done
-        if (result.total < 30) {
+        if (result.total < BATCH_SIZE) {
           hasMore = false
           break
         }
 
-        // Wait 5s between batches to avoid rate limits
+        // Wait between batches to avoid rate limits
         if (!stopRef.current) {
-          await new Promise(resolve => setTimeout(resolve, 5000))
+          await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS))
         }
       }
 
@@ -109,6 +112,8 @@ export function BatchEnrichmentRunner() {
     } catch (err: any) {
       setError(err.message)
       setStatus('idle')
+    } finally {
+      ;(window as any).__enrichmentActive = false
     }
   }, [])
 
