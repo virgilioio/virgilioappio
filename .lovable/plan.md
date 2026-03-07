@@ -1,89 +1,80 @@
-# System Roles Migration — Completed Phases 1-5
 
-## Architecture Change
-- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
-- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-## Completed
+# Critical Bug: Batch Enrichment Produces Hallucinated Profiles
 
-### Phase 1 — Database
-- ✅ Created `system_role` enum (`admin`, `member`)
-- ✅ Added `system_role` column to `members` table
-- ✅ Migrated data: `admin` → `admin`, all others → `member`
-- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
-- ✅ Updated `check_tenant_member_role` to use `system_role`
-- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
-- ✅ Updated `audit_member_role_change` trigger
+## Root Cause (Confirmed)
 
-### Phase 2 — Frontend Permissions
-- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
-- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
-- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
-- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
+The `batch-re-enrich` edge function has a **completely broken PDF text extractor**. The logs prove it:
 
-### Phase 3 — UI Updates
-- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
-- ✅ Updated `Dashboard` — sourcing panel for admin+ only
-- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
-- ✅ Updated `BillingGuard` — members (non-admin) never blocked
-- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
-- ✅ Updated `Find` page RoleGate
-- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
+1. `pdf-parse@1.1.1` via `esm.sh` **always fails** in Deno with: `fs.readFileSync is not implemented yet!`
+2. The fallback extracts raw binary data between PDF `stream`/`endstream` markers -- this is compressed gibberish, not readable text
+3. Despite being garbage, it passes the `length < 50` check (it's 15,000 chars of binary noise)
+4. The AI receives the candidate's name + 14KB of gibberish, and **hallucinates an entirely fabricated profile**
 
-### Phase 4 — Runtime Hotfixes
-- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
-- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
-- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
-- ✅ Updated `validate_invite_token` — returns `system_role`
-- ✅ Updated `accept_invitation` — uses `system_role`
+This is why every candidate gets nearly identical summaries ("sólida trayectoria en el ámbito de la ingeniería y la gestión de proyectos") and fake company names ("Tecnologías Avanzadas S.A.", "Tech Solutions Inc.", "Innovatech").
 
-### Phase 5 — Complete Cleanup
-- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
-- ✅ Updated `admin_manage_member` — updates `system_role` column
-- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
-- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
-- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
-- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
-- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
-- ✅ Updated `diagnose_user_auth` — reports `system_role`
-- ✅ Updated `audit_platform_admin_access` — returns `system_role`
-- ✅ Updated `debug_user_permissions` — returns `system_role`
-- ✅ Renamed `invitations.member_role` → `invitations.system_role`
-- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
+There is **no data bleeding between candidates** -- each is processed individually. The problem is that **none of them receive real resume text**, so the AI invents generic profiles based only on the name.
 
-## Phase 6 — Future (Optional)
-- Drop `member_role` column from `members` table (already dropped)
-- Drop old `member_role` enum type
-- Update `MemberInviteSheet` role picker to only offer Admin/Member
+## Evidence
 
-# Deep Resume Parsing + Data Standardization — Completed
+- Logs show `PDF parse error, trying fallback` for **every single candidate**
+- All affected candidates show exactly `15000 chars` extracted (the garbage cap)
+- Candidates with 56K+ chars extracted (Karla Treviño, Diego Ancira) likely had simpler PDFs where the fallback accidentally worked
+- Work experience contains fabricated companies not from any real resume
 
-## What was implemented
+## Fix
 
-### Phase 1: Schema Expansion
-- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
-- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
-- ✅ Added to `candidate_education`: `education_level`
-- ✅ Created `candidate_certifications` table with RLS policies
+**File**: `supabase/functions/batch-re-enrich/index.ts`
 
-### Phase 2: Enrichment Rewrite
-- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
-- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
-- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
-- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
-- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
+Replace the broken `extractTextFromPdf` function. Instead of trying to parse PDFs locally (which doesn't work in Deno), delegate to the existing `parse-resume` edge function which already handles PDF text extraction correctly on the client side.
 
-### Phase 3: UI Updates
-- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
-- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
-- ✅ **Certifications section** with `CandidateCertificationsComponent`
-- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
-- ✅ Enhanced **Education** display: education level badge
-- ✅ Certifications loaded alongside work experience and education
+**Strategy**: The batch function already downloads the PDF and has the raw bytes. Instead of parsing locally, it should:
 
-## Files changed
-- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
-- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
-- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
-- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
-- `src/components/candidates/CandidateCertifications.tsx` — new component
+1. Call the existing `parse-resume` function with the text (for PDFs that were already extracted on upload) OR
+2. Use a Deno-compatible PDF library (`pdf-lib` can read text, or use `unpdf`/`pdf2json` which work in Deno)
+3. Add a **garbage detection check**: if the extracted text has a low ratio of alphanumeric characters to total characters, reject it as binary garbage
+
+**Concrete changes**:
+
+1. Replace `extractTextFromPdf` with `unpdf` (a Deno-native PDF text extractor):
+```typescript
+import { extractText } from "https://esm.sh/unpdf@0.12.1";
+
+async function extractTextFromPdf(pdfBytes: Uint8Array): Promise<string> {
+  const { text } = await extractText(pdfBytes);
+  return text;
+}
+```
+
+2. Add a garbage detection guard before sending to AI:
+```typescript
+function isReadableText(text: string): boolean {
+  // Count alphanumeric + common punctuation vs total
+  const readable = text.replace(/[^a-zA-Z0-9áéíóúñüÁÉÍÓÚÑÜ\s.,;:!?@\-()\/]/g, '');
+  return readable.length / text.length > 0.5;
+}
+```
+If the text fails this check, mark the candidate as `failed` with error `"PDF text extraction produced unreadable content"` instead of sending garbage to the AI.
+
+3. Reset the affected candidates so they can be re-processed:
+```sql
+UPDATE candidates 
+SET enrichment_status = 'pending', profile_summary = NULL, enriched_at = NULL
+WHERE enriched_at >= '2026-03-07T05:38:00' 
+  AND enriched_at <= '2026-03-07T05:40:00';
+
+DELETE FROM candidate_work_experience 
+WHERE candidate_id IN (SELECT id FROM candidates WHERE enriched_at IS NULL AND enrichment_status = 'pending');
+
+DELETE FROM candidate_education 
+WHERE candidate_id IN (SELECT id FROM candidates WHERE enriched_at IS NULL AND enrichment_status = 'pending');
+
+DELETE FROM candidate_certifications 
+WHERE candidate_id IN (SELECT id FROM candidates WHERE enriched_at IS NULL AND enrichment_status = 'pending');
+```
+
+| File | Change |
+|---|---|
+| `supabase/functions/batch-re-enrich/index.ts` | Replace broken `extractTextFromPdf` with `unpdf`, add garbage text detection guard |
+| SQL migration | Reset hallucinated enrichment data for affected candidates |
+
