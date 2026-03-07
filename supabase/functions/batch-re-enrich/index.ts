@@ -24,7 +24,9 @@ const corsHeaders = {
 async function extractTextFromPdf(pdfBytes: Uint8Array): Promise<string> {
   try {
     const { text } = await extractText(pdfBytes);
-    return text || '';
+    // unpdf returns text as string[] (per page) or string — normalize
+    const result = Array.isArray(text) ? text.join('\n') : (text || '');
+    return typeof result === 'string' ? result : String(result);
   } catch (err) {
     console.error('[batch-re-enrich] unpdf extraction error:', err);
     return '';
