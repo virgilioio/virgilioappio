@@ -190,9 +190,9 @@ serve(async (req) => {
           }
 
           const bytes = new Uint8Array(await fileData.arrayBuffer());
-          const fileName = (resume.file_name || '').toLowerCase();
+          const fileNameLower = (resume?.file_name || fileUrl || '').toLowerCase();
 
-          if (fileName.endsWith('.pdf') || resume.file_type === 'application/pdf') {
+          if (fileNameLower.endsWith('.pdf') || resume?.file_type === 'application/pdf') {
             resumeText = await extractTextFromPdf(bytes);
           } else if (fileName.endsWith('.docx')) {
             resumeText = extractTextFromDocx(bytes);
