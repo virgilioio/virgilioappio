@@ -167,6 +167,15 @@ export default function Candidates() {
             >
               <div className="flex gap-2">
                 <Button
+                  onClick={() => setIsCSVImportOpen(true)}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Import CSV
+                </Button>
+                <Button
                   onClick={() => setIsBulkUploadOpen(true)}
                   variant="outline"
                   size="sm"
