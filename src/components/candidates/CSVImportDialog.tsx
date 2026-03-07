@@ -126,7 +126,7 @@ export function CSVImportDialog({ isOpen, onClose, onComplete }: CSVImportDialog
 
         {/* Mapping Step */}
         {step === 'mapping' && parsed && (
-          <div className="flex-1 overflow-hidden flex flex-col gap-4">
+          <div className="flex-1 overflow-y-auto flex flex-col gap-4 max-h-[calc(85vh-220px)]">
             {/* Column Mapping */}
             <ScrollArea className="max-h-[250px]">
               <div className="space-y-2 pr-4">
