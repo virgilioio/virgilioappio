@@ -233,6 +233,16 @@ export default function Candidates() {
             }}
           />
 
+          {/* CSV Import Dialog */}
+          <CSVImportDialog
+            isOpen={isCSVImportOpen}
+            onClose={() => setIsCSVImportOpen(false)}
+            onComplete={() => {
+              setIsCSVImportOpen(false)
+              getCandidates()
+            }}
+          />
+
           {/* Profile Sheet for newly created candidate */}
           <UniversalCandidateProfileSheet
             open={showNewCandidateSheet}
