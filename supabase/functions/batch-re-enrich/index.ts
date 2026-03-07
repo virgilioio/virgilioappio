@@ -249,6 +249,7 @@ serve(async (req) => {
 
           if (downloadError || !fileData) {
             console.error(`[batch-re-enrich] Download error for ${candidate.id}:`, downloadError);
+            await supabase.from('candidates').update({ enrichment_status: 'failed' }).eq('id', candidate.id);
             results.push({ id: candidate.id, name: candidate.candidate_name, status: 'failed', error: 'Storage download failed' });
             continue;
           }
