@@ -140,7 +140,7 @@ serve(async (req) => {
       .from('candidates')
       .select('id, candidate_name, current_job_title, enrichment_status, resume_url')
       .not('resume_url', 'is', null)
-      .is('current_job_title', null)
+      .or('enrichment_status.in.(pending,pending_reparse),and(enrichment_status.is.null,profile_summary.is.null)')
       .is('deleted_at', null)
       .limit(limit);
 
