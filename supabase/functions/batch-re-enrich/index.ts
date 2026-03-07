@@ -147,11 +147,15 @@ serve(async (req) => {
     // Process each candidate
     const results: Array<{ id: string; name: string; status: string; error?: string }> = [];
 
-    for (const candidate of (candidates || [])) {
-      const attachments = candidate.candidate_attachments as any[];
+    for (const candidate of candidates) {
+      const attachments = (candidate as any).candidate_attachments as any[] | undefined;
       const resume = attachments?.[0];
+      const externalResumeUrl = candidate.resume_url as string | null;
 
-      if (!resume?.file_url) {
+      // Determine the file URL: prefer attachment, fall back to resume_url field
+      const fileUrl = resume?.file_url || externalResumeUrl;
+
+      if (!fileUrl) {
         results.push({ id: candidate.id, name: candidate.candidate_name, status: 'skipped', error: 'No resume URL' });
         continue;
       }
@@ -159,9 +163,9 @@ serve(async (req) => {
       try {
         console.log(`[batch-re-enrich] Processing ${candidate.candidate_name} (${candidate.id})`);
 
-        // Download the resume file from storage
+        // Download the resume file
         let resumeText = '';
-        const fileUrl = resume.file_url as string;
+        const fileName = resume?.file_name || fileUrl;
 
         if (fileUrl.startsWith('http')) {
           // External URL - fetch directly
