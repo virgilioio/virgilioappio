@@ -76,11 +76,11 @@ serve(async (req) => {
 
     console.log(`[batch-re-enrich] dry_run=${dryRun}, limit=${limit}, specific_ids=${candidateIds?.length || 'all'}`);
 
-    // Find candidates with resumes that are missing the new structured fields
-    let query = supabase
+    // Query 1: Candidates with resume attachments but missing structured fields
+    let attachmentQuery = supabase
       .from('candidates')
       .select(`
-        id, candidate_name, current_job_title, enrichment_status,
+        id, candidate_name, current_job_title, enrichment_status, resume_url,
         candidate_attachments!inner (id, file_url, file_name, file_type, is_resume)
       `)
       .eq('candidate_attachments.is_resume', true)
@@ -89,17 +89,42 @@ serve(async (req) => {
       .limit(limit);
 
     if (candidateIds?.length) {
-      query = query.in('id', candidateIds);
+      attachmentQuery = attachmentQuery.in('id', candidateIds);
     }
 
-    const { data: candidates, error: queryError } = await query;
-    if (queryError) {
-      console.error('[batch-re-enrich] Query error:', queryError);
-      return new Response(JSON.stringify({ error: 'Failed to query candidates', details: queryError }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    const { data: attachmentCandidates, error: q1Error } = await attachmentQuery;
+    if (q1Error) {
+      console.error('[batch-re-enrich] Attachment query error:', q1Error);
     }
+
+    // Query 2: Candidates with resume_url but no attachment (CSV imports)
+    let urlQuery = supabase
+      .from('candidates')
+      .select('id, candidate_name, current_job_title, enrichment_status, resume_url')
+      .not('resume_url', 'is', null)
+      .is('current_job_title', null)
+      .is('deleted_at', null)
+      .limit(limit);
+
+    if (candidateIds?.length) {
+      urlQuery = urlQuery.in('id', candidateIds);
+    }
+
+    const { data: urlCandidates, error: q2Error } = await urlQuery;
+    if (q2Error) {
+      console.error('[batch-re-enrich] URL query error:', q2Error);
+    }
+
+    // Merge and deduplicate
+    const seen = new Set<string>();
+    const candidates: any[] = [];
+    for (const c of [...(attachmentCandidates || []), ...(urlCandidates || [])]) {
+      if (!seen.has(c.id)) {
+        seen.add(c.id);
+        candidates.push(c);
+      }
+    }
+    if (candidates.length > limit) candidates.length = limit;
 
     console.log(`[batch-re-enrich] Found ${candidates?.length || 0} candidates to process`);
 
