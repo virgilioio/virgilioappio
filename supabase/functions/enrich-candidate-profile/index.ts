@@ -324,6 +324,9 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
       avg_tenure_months: avgTenureMonths || null,
       role_current: extracted.current_job_title || null,
       company_current: workExperience.find((w: any) => w.is_current)?.company_name || null,
+      location_country: extracted.location_country || null,
+      location_state: extracted.location_state || null,
+      location_city: extracted.location_city || null,
     };
 
     // Also store skills metadata (categories, primary flags)
