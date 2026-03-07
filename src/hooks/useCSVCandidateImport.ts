@@ -46,10 +46,22 @@ export function useCSVCandidateImport() {
 
         if (field === 'skills') {
           candidate[field] = value.split(',').map(s => s.trim()).filter(Boolean)
+        } else if (field === 'years_experience') {
+          const num = parseInt(value, 10)
+          if (!isNaN(num)) candidate[field] = num
         } else {
           candidate[field] = value
         }
       })
+
+      // Concatenate first_name + last_name into candidate_name if no full name mapped
+      if (!candidate.candidate_name && (candidate.first_name || candidate.last_name)) {
+        candidate.candidate_name = [candidate.first_name, candidate.last_name]
+          .filter(Boolean).join(' ')
+      }
+      delete candidate.first_name
+      delete candidate.last_name
+
       return candidate
     }).filter(c => c.candidate_name) // Name is required
 
@@ -95,6 +107,10 @@ export function useCSVCandidateImport() {
             location_country: candidate.location_country || null,
             profile_summary: candidate.profile_summary || null,
             skills: candidate.skills || null,
+            current_job_title: candidate.current_job_title || null,
+            company_current: candidate.company_current || null,
+            seniority_level: candidate.seniority_level || null,
+            years_experience: candidate.years_experience || null,
             organization_id: organizationId,
             tenant_id: tenant.id,
             created_by: user.id,

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useMemo } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -10,8 +10,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Progress } from '@/components/ui/progress'
-import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, X } from 'lucide-react'
-import { parseCSV, autoMapHeaders, CandidateField, CANDIDATE_FIELD_OPTIONS, ParsedCSV } from '@/lib/csvParser'
+import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { parseCSV, autoMapHeaders, detectSkippedUrlColumns, CandidateField, CANDIDATE_FIELD_OPTIONS, ParsedCSV } from '@/lib/csvParser'
 import { useCSVCandidateImport } from '@/hooks/useCSVCandidateImport'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
@@ -57,8 +57,18 @@ export function CSVImportDialog({ isOpen, onClose, onComplete }: CSVImportDialog
     setMapping(prev => ({ ...prev, [colIndex]: field }))
   }
 
-  const hasNameMapped = Object.values(mapping).includes('candidate_name')
+  const hasNameMapped =
+    Object.values(mapping).includes('candidate_name') ||
+    Object.values(mapping).includes('first_name') ||
+    Object.values(mapping).includes('last_name')
+
   const mappedFieldCount = Object.values(mapping).filter(f => f !== '__skip__').length
+
+  // Detect skipped columns that contain URLs
+  const skippedUrlColumns = useMemo(() => {
+    if (!parsed) return []
+    return detectSkippedUrlColumns(parsed.headers, parsed.rows, mapping)
+  }, [parsed, mapping])
 
   const handleImport = async () => {
     if (!parsed) return
@@ -127,12 +137,32 @@ export function CSVImportDialog({ isOpen, onClose, onComplete }: CSVImportDialog
         {/* Mapping Step */}
         {step === 'mapping' && parsed && (
           <div className="flex-1 overflow-y-auto flex flex-col gap-4 max-h-[calc(85vh-220px)]">
+            {/* URL skip warning */}
+            {skippedUrlColumns.length > 0 && (
+              <div className="flex items-start gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+                <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-medium text-amber-600 dark:text-amber-400">
+                    Possible unmapped URL columns detected
+                  </p>
+                  <p className="text-muted-foreground mt-0.5">
+                    {skippedUrlColumns.map(i => `"${parsed.headers[i]}"`).join(', ')}{' '}
+                    {skippedUrlColumns.length === 1 ? 'contains' : 'contain'} URLs but{' '}
+                    {skippedUrlColumns.length === 1 ? 'is' : 'are'} set to Skip.
+                    Consider mapping to <strong>Resume / CV URL</strong> or <strong>LinkedIn URL</strong>.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Column Mapping */}
             <ScrollArea className="max-h-[400px]">
               <div className="space-y-2 pr-4">
                 {parsed.headers.map((header, index) => (
                   <div key={index} className="flex items-center gap-3">
-                    <span className="text-sm font-mono bg-muted px-2 py-1 rounded min-w-[140px] truncate">
+                    <span className={`text-sm font-mono bg-muted px-2 py-1 rounded min-w-[140px] truncate ${
+                      skippedUrlColumns.includes(index) ? 'ring-2 ring-amber-500/50' : ''
+                    }`}>
                       {header}
                     </span>
                     <span className="text-muted-foreground text-sm">→</span>
@@ -159,7 +189,7 @@ export function CSVImportDialog({ isOpen, onClose, onComplete }: CSVImportDialog
             {!hasNameMapped && (
               <div className="flex items-center gap-2 text-sm text-destructive">
                 <AlertCircle className="h-4 w-4" />
-                You must map at least one column to "Full Name"
+                You must map at least one column to "Full Name", "First Name", or "Last Name"
               </div>
             )}
 
