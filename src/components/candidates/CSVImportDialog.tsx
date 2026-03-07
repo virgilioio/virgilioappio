@@ -128,7 +128,7 @@ export function CSVImportDialog({ isOpen, onClose, onComplete }: CSVImportDialog
         {step === 'mapping' && parsed && (
           <div className="flex-1 overflow-y-auto flex flex-col gap-4 max-h-[calc(85vh-220px)]">
             {/* Column Mapping */}
-            <ScrollArea className="max-h-[250px]">
+            <ScrollArea className="max-h-[400px]">
               <div className="space-y-2 pr-4">
                 {parsed.headers.map((header, index) => (
                   <div key={index} className="flex items-center gap-3">
