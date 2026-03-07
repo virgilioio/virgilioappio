@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTenant } from '@/hooks/useTenant'
@@ -80,6 +80,13 @@ export function useIndependentCandidates() {
   const [error, setError] = useState<string | null>(null)
   const { user, organizationId, userType } = useAuth()
   const { tenant } = useTenant()
+  const orgTreeRef = useRef<string[] | null>(null)
+  const debounceRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Reset org tree cache when organizationId changes
+  useEffect(() => {
+    orgTreeRef.current = null
+  }, [organizationId])
 
   const getCandidates = async () => {
     if (!user || !organizationId) return
@@ -90,14 +97,17 @@ export function useIndependentCandidates() {
     try {
       log.debug('Fetching independent candidates for organization:', organizationId)
       
-      // Get all org IDs in the hierarchy (includes parent, current, and children)
-      const orgIds = await getOrganizationTree(organizationId)
+      // Use cached org tree or fetch once
+      if (!orgTreeRef.current) {
+        orgTreeRef.current = await getOrganizationTree(organizationId)
+      }
+      const orgIds = orgTreeRef.current
       log.debug('Fetching candidates from org tree:', orgIds)
       
       const { data, error: fetchError } = await withAuthRetry(async () =>
         await supabase
           .from('candidates')
-          .select('*')
+          .select('id,candidate_name,email,phone,contact_phones,contact_emails,location_country,location_state,location_city,salary_amount,salary_currency,salary_period,profile_summary,linkedin_url,resume_url,skills,auto_generated_skills,status,source,created_at,updated_at,created_by,organization_id')
           .in('organization_id', orgIds)
           .order('created_at', { ascending: false })
       )
@@ -337,8 +347,11 @@ export function useIndependentCandidates() {
     let channel: any
     
     const setupSubscription = async () => {
-      // Get all org IDs in the hierarchy
-      const orgIds = await getOrganizationTree(organizationId)
+      // Use cached org tree or fetch
+      if (!orgTreeRef.current) {
+        orgTreeRef.current = await getOrganizationTree(organizationId)
+      }
+      const orgIds = orgTreeRef.current
       console.log('📡 Setting up subscriptions for org tree:', orgIds)
       
       // Create unique channel name to avoid subscription conflicts
@@ -358,7 +371,11 @@ export function useIndependentCandidates() {
           },
           (payload) => {
             console.log('📡 Real-time candidate change detected:', payload)
-            getCandidates() // Refresh the list
+            // Debounce: wait 2s after last change before refreshing
+            if (debounceRef.current) clearTimeout(debounceRef.current)
+            debounceRef.current = setTimeout(() => {
+              getCandidates()
+            }, 2000)
           }
         )
       })
@@ -371,6 +388,9 @@ export function useIndependentCandidates() {
     setupSubscription()
 
     return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current)
+      }
       if (channel) {
         console.log('🔄 Cleaning up candidates subscription')
         supabase.removeChannel(channel)
