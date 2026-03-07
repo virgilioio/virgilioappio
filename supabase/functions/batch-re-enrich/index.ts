@@ -71,11 +71,49 @@ serve(async (req) => {
   try {
     const body = await req.json();
     const dryRun = body.dry_run === true;
-    const limit = body.limit || 50;
+    const limit = body.limit || 10;
     const candidateIds: string[] | undefined = body.candidate_ids;
 
     console.log(`[batch-re-enrich] dry_run=${dryRun}, limit=${limit}, specific_ids=${candidateIds?.length || 'all'}`);
 
+    // --- DRY RUN: lightweight count-only queries ---
+    if (dryRun) {
+      // Count candidates with resume attachments but missing structured fields
+      let countQ1 = supabase
+        .from('candidates')
+        .select('id, candidate_attachments!inner(id)', { count: 'exact', head: true })
+        .eq('candidate_attachments.is_resume', true)
+        .is('current_job_title', null)
+        .is('deleted_at', null);
+
+      if (candidateIds?.length) countQ1 = countQ1.in('id', candidateIds);
+      const { count: c1, error: e1 } = await countQ1;
+      if (e1) console.error('[batch-re-enrich] Count query 1 error:', e1);
+
+      // Count candidates with resume_url but missing structured fields
+      let countQ2 = supabase
+        .from('candidates')
+        .select('id', { count: 'exact', head: true })
+        .not('resume_url', 'is', null)
+        .is('current_job_title', null)
+        .is('deleted_at', null);
+
+      if (candidateIds?.length) countQ2 = countQ2.in('id', candidateIds);
+      const { count: c2, error: e2 } = await countQ2;
+      if (e2) console.error('[batch-re-enrich] Count query 2 error:', e2);
+
+      // Approximate total (may have overlap, but good enough for progress display)
+      const totalCount = Math.max(c1 || 0, c2 || 0);
+
+      return new Response(JSON.stringify({
+        dry_run: true,
+        count: totalCount,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // --- PROCESSING: fetch actual candidates ---
     // Query 1: Candidates with resume attachments but missing structured fields
     let attachmentQuery = supabase
       .from('candidates')
@@ -127,22 +165,6 @@ serve(async (req) => {
     if (candidates.length > limit) candidates.length = limit;
 
     console.log(`[batch-re-enrich] Found ${candidates?.length || 0} candidates to process`);
-
-    if (dryRun) {
-      return new Response(JSON.stringify({
-        dry_run: true,
-        count: candidates?.length || 0,
-        candidates: candidates.map(c => ({
-          id: c.id,
-          name: c.candidate_name,
-          enrichment_status: c.enrichment_status,
-          resume_file: (c as any).candidate_attachments?.[0]?.file_name || null,
-          resume_url: c.resume_url || null,
-        })),
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
 
     // Process each candidate
     const results: Array<{ id: string; name: string; status: string; error?: string }> = [];

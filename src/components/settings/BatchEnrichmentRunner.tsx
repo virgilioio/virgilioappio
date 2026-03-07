@@ -23,12 +23,33 @@ export function BatchEnrichmentRunner() {
   const [error, setError] = useState<string | null>(null)
   const stopRef = useRef(false)
 
-  const invokeBatch = async (dryRun: boolean, limit: number = 30): Promise<BatchResult | { dry_run: true; count: number } | null> => {
+  const BATCH_SIZE = 10
+  const BATCH_DELAY_MS = 8000
+  const MAX_RETRIES = 2
+
+  const invokeBatch = async (dryRun: boolean, limit: number = BATCH_SIZE): Promise<BatchResult | { dry_run: true; count: number } | null> => {
     const { data, error } = await supabase.functions.invoke('batch-re-enrich', {
-      body: dryRun ? { dry_run: true, limit: 1000 } : { limit },
+      body: dryRun ? { dry_run: true } : { limit },
     })
     if (error) throw new Error(error.message || 'Failed to invoke batch-re-enrich')
     return data
+  }
+
+  const invokeBatchWithRetry = async (limit: number): Promise<BatchResult | null> => {
+    let lastError: Error | null = null
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        return await invokeBatch(false, limit) as BatchResult | null
+      } catch (err: any) {
+        lastError = err
+        if (attempt < MAX_RETRIES) {
+          const delay = 10000 * (attempt + 1) // 10s, 20s
+          console.log(`[BatchEnrichment] Retry ${attempt + 1}/${MAX_RETRIES} after ${delay}ms`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+        }
+      }
+    }
+    throw lastError
   }
 
   const handleCheck = async () => {
@@ -54,10 +75,13 @@ export function BatchEnrichmentRunner() {
     setBatchCount(0)
     setError(null)
 
+    // Pause real-time refreshes across the app
+    ;(window as any).__enrichmentActive = true
+
     try {
       let hasMore = true
       while (hasMore && !stopRef.current) {
-        const result = await invokeBatch(false, 30) as BatchResult | null
+        const result = await invokeBatchWithRetry(BATCH_SIZE)
         
         if (!result || result.total === 0) {
           hasMore = false
@@ -73,14 +97,14 @@ export function BatchEnrichmentRunner() {
         }))
 
         // If we got fewer than requested, we're done
-        if (result.total < 30) {
+        if (result.total < BATCH_SIZE) {
           hasMore = false
           break
         }
 
-        // Wait 5s between batches to avoid rate limits
+        // Wait between batches to avoid rate limits
         if (!stopRef.current) {
-          await new Promise(resolve => setTimeout(resolve, 5000))
+          await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS))
         }
       }
 
@@ -88,6 +112,8 @@ export function BatchEnrichmentRunner() {
     } catch (err: any) {
       setError(err.message)
       setStatus('idle')
+    } finally {
+      ;(window as any).__enrichmentActive = false
     }
   }, [])
 
@@ -108,7 +134,7 @@ export function BatchEnrichmentRunner() {
           <CardTitle>Batch AI Enrichment</CardTitle>
         </div>
         <CardDescription>
-          Enrich all candidates with missing structured data. Processes 30 candidates at a time with automatic pacing.
+          Enrich all candidates with missing structured data. Processes 10 candidates at a time with automatic pacing and retry.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

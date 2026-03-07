@@ -82,6 +82,7 @@ export function useIndependentCandidates() {
   const { tenant } = useTenant()
   const orgTreeRef = useRef<string[] | null>(null)
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
+  const isFetchingRef = useRef(false)
 
   // Reset org tree cache when organizationId changes
   useEffect(() => {
@@ -90,6 +91,13 @@ export function useIndependentCandidates() {
 
   const getCandidates = async () => {
     if (!user || !organizationId) return
+    
+    // Concurrency guard: skip if already fetching
+    if (isFetchingRef.current) {
+      log.debug('Skipping getCandidates — fetch already in progress')
+      return
+    }
+    isFetchingRef.current = true
 
     setIsLoading(true)
     setError(null)
@@ -110,6 +118,7 @@ export function useIndependentCandidates() {
           .select('id,candidate_name,email,phone,contact_phones,contact_emails,location_country,location_state,location_city,salary_amount,salary_currency,salary_period,profile_summary,linkedin_url,resume_url,skills,auto_generated_skills,status,source,created_at,updated_at,created_by,organization_id')
           .in('organization_id', orgIds)
           .order('created_at', { ascending: false })
+          .limit(1000)
       )
 
       if (fetchError) {
@@ -135,6 +144,7 @@ export function useIndependentCandidates() {
       })
     } finally {
       setIsLoading(false)
+      isFetchingRef.current = false
     }
   }
 
@@ -370,6 +380,11 @@ export function useIndependentCandidates() {
             filter: `organization_id=eq.${orgId}`
           },
           (payload) => {
+            // Skip real-time refresh when batch enrichment is running
+            if ((window as any).__enrichmentActive) {
+              console.log('📡 Real-time change ignored — enrichment active')
+              return
+            }
             console.log('📡 Real-time candidate change detected:', payload)
             // Debounce: wait 2s after last change before refreshing
             if (debounceRef.current) clearTimeout(debounceRef.current)
