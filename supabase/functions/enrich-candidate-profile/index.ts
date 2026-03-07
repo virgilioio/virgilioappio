@@ -100,7 +100,10 @@ const EXTRACTION_TOOL = {
             },
             required: ['name']
           }
-        }
+        },
+        location_country: { type: 'string', description: 'Country of current residence (e.g. "Mexico", "United States", "Colombia"). Infer from resume header address, most recent work experience location, or other signals.' },
+        location_state: { type: 'string', description: 'State or province of current residence (e.g. "Jalisco", "California", "Cundinamarca")' },
+        location_city: { type: 'string', description: 'City of current residence (e.g. "Guadalajara", "San Francisco", "Bogotá")' }
       },
       required: ['profile_summary', 'skills']
     }
