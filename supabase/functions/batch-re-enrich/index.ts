@@ -176,6 +176,7 @@ serve(async (req) => {
       const fileUrl = resume?.file_url || externalResumeUrl;
 
       if (!fileUrl) {
+        await supabase.from('candidates').update({ enrichment_status: 'skipped' }).eq('id', candidate.id);
         results.push({ id: candidate.id, name: candidate.candidate_name, status: 'skipped', error: 'No resume URL' });
         continue;
       }
@@ -191,6 +192,7 @@ serve(async (req) => {
           // External URL - fetch directly
           const pdfResp = await fetch(fileUrl);
           if (!pdfResp.ok) {
+            await supabase.from('candidates').update({ enrichment_status: 'failed' }).eq('id', candidate.id);
             results.push({ id: candidate.id, name: candidate.candidate_name, status: 'failed', error: 'Failed to download resume' });
             continue;
           }
@@ -247,6 +249,7 @@ serve(async (req) => {
 
           if (downloadError || !fileData) {
             console.error(`[batch-re-enrich] Download error for ${candidate.id}:`, downloadError);
+            await supabase.from('candidates').update({ enrichment_status: 'failed' }).eq('id', candidate.id);
             results.push({ id: candidate.id, name: candidate.candidate_name, status: 'failed', error: 'Storage download failed' });
             continue;
           }
@@ -265,6 +268,7 @@ serve(async (req) => {
         }
 
         if (!resumeText || resumeText.trim().length < 50) {
+          await supabase.from('candidates').update({ enrichment_status: 'skipped' }).eq('id', candidate.id);
           results.push({ id: candidate.id, name: candidate.candidate_name, status: 'skipped', error: 'Resume text too short or empty' });
           continue;
         }
@@ -272,6 +276,7 @@ serve(async (req) => {
         // Guard against binary garbage that passed length check
         if (!isReadableText(resumeText)) {
           console.warn(`[batch-re-enrich] Garbage text detected for ${candidate.candidate_name} — skipping`);
+          await supabase.from('candidates').update({ enrichment_status: 'failed' }).eq('id', candidate.id);
           results.push({ id: candidate.id, name: candidate.candidate_name, status: 'failed', error: 'PDF text extraction produced unreadable content' });
           continue;
         }
@@ -304,6 +309,7 @@ serve(async (req) => {
 
       } catch (err) {
         console.error(`[batch-re-enrich] Error for ${candidate.id}:`, err);
+        await supabase.from('candidates').update({ enrichment_status: 'failed' }).eq('id', candidate.id);
         results.push({ id: candidate.id, name: candidate.candidate_name, status: 'failed', error: String(err) });
       }
     }
