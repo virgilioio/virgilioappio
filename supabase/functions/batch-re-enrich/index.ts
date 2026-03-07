@@ -122,7 +122,7 @@ serve(async (req) => {
         candidate_attachments!inner (id, file_url, file_name, file_type, is_resume)
       `)
       .eq('candidate_attachments.is_resume', true)
-      .is('current_job_title', null)
+      .in('enrichment_status', ['pending', 'pending_reparse'])
       .is('deleted_at', null)
       .limit(limit);
 
