@@ -276,6 +276,7 @@ serve(async (req) => {
         // Guard against binary garbage that passed length check
         if (!isReadableText(resumeText)) {
           console.warn(`[batch-re-enrich] Garbage text detected for ${candidate.candidate_name} — skipping`);
+          await supabase.from('candidates').update({ enrichment_status: 'failed' }).eq('id', candidate.id);
           results.push({ id: candidate.id, name: candidate.candidate_name, status: 'failed', error: 'PDF text extraction produced unreadable content' });
           continue;
         }
