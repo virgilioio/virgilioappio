@@ -268,6 +268,7 @@ serve(async (req) => {
         }
 
         if (!resumeText || resumeText.trim().length < 50) {
+          await supabase.from('candidates').update({ enrichment_status: 'skipped' }).eq('id', candidate.id);
           results.push({ id: candidate.id, name: candidate.candidate_name, status: 'skipped', error: 'Resume text too short or empty' });
           continue;
         }
