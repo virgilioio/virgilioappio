@@ -100,7 +100,10 @@ const EXTRACTION_TOOL = {
             },
             required: ['name']
           }
-        }
+        },
+        location_country: { type: 'string', description: 'Country of current residence (e.g. "Mexico", "United States", "Colombia"). Infer from resume header address, most recent work experience location, or other signals.' },
+        location_state: { type: 'string', description: 'State or province of current residence (e.g. "Jalisco", "California", "Cundinamarca")' },
+        location_city: { type: 'string', description: 'City of current residence (e.g. "Guadalajara", "San Francisco", "Bogotá")' }
       },
       required: ['profile_summary', 'skills']
     }
@@ -126,6 +129,8 @@ For work_experience: Extract ALL positions. Infer company_industry and company_s
 For skills: Extract 10-20 skills. Mark core skills as is_primary=true (max 5-7 primary).
 For seniority_level: Infer from most recent title and years of experience.
 For years_in_leadership: Count years where title contains Manager, Director, VP, Chief, Head, Lead.
+
+For location (location_country, location_state, location_city): Infer the candidate's CURRENT location from the resume header/address, their most recent work experience location, or any other signals. Use full country names (e.g. "Mexico" not "MX"). If only a city is clear, still try to infer the state/country.
 
 Be thorough. Extract everything you can find.`;
 
@@ -319,6 +324,9 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
       avg_tenure_months: avgTenureMonths || null,
       role_current: extracted.current_job_title || null,
       company_current: workExperience.find((w: any) => w.is_current)?.company_name || null,
+      location_country: extracted.location_country || null,
+      location_state: extracted.location_state || null,
+      location_city: extracted.location_city || null,
     };
 
     // Also store skills metadata (categories, primary flags)
