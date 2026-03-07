@@ -82,6 +82,7 @@ export function useIndependentCandidates() {
   const { tenant } = useTenant()
   const orgTreeRef = useRef<string[] | null>(null)
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
+  const isFetchingRef = useRef(false)
 
   // Reset org tree cache when organizationId changes
   useEffect(() => {
