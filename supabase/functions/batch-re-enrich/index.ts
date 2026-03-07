@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+import { extractText } from "https://esm.sh/unpdf@0.12.1";
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -19,27 +20,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Simple PDF text extraction using pdf-parse (works in Deno via npm specifier)
+// PDF text extraction using unpdf (Deno-native, works in edge functions)
 async function extractTextFromPdf(pdfBytes: Uint8Array): Promise<string> {
   try {
-    // Use pdf-parse via esm.sh
-    const pdfParse = (await import("https://esm.sh/pdf-parse@1.1.1")).default;
-    const result = await pdfParse(Buffer.from(pdfBytes));
-    return result.text || '';
+    const { text } = await extractText(pdfBytes);
+    return text || '';
   } catch (err) {
-    console.error('[batch-re-enrich] PDF parse error, trying fallback:', err);
-    // Fallback: decode as UTF-8 and extract readable text
-    const decoder = new TextDecoder('utf-8', { fatal: false });
-    const raw = decoder.decode(pdfBytes);
-    // Extract text between stream markers (very basic)
-    const textChunks: string[] = [];
-    const streamRegex = /stream\s*([\s\S]*?)\s*endstream/g;
-    let match;
-    while ((match = streamRegex.exec(raw)) !== null) {
-      const chunk = match[1].replace(/[^\x20-\x7E\n\r]/g, ' ').trim();
-      if (chunk.length > 20) textChunks.push(chunk);
-    }
-    return textChunks.join('\n').slice(0, 15000);
+    console.error('[batch-re-enrich] unpdf extraction error:', err);
+    return '';
   }
 }
 
@@ -47,9 +35,17 @@ async function extractTextFromPdf(pdfBytes: Uint8Array): Promise<string> {
 function extractTextFromDocx(bytes: Uint8Array): string {
   const decoder = new TextDecoder('utf-8', { fatal: false });
   const raw = decoder.decode(bytes);
-  // Strip XML tags to get plain text
   const text = raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   return text.slice(0, 15000);
+}
+
+// Guard against binary garbage being sent to AI
+function isReadableText(text: string): boolean {
+  if (!text || text.length === 0) return false;
+  const readable = text.replace(/[^a-zA-Z0-9áéíóúñüÁÉÍÓÚÑÜàèìòùâêîôûäëïöüãõçßøåæðþ\s.,;:!?@\-()\/'"#$%&*+={}\[\]<>~`_|\\^]/g, '');
+  const ratio = readable.length / text.length;
+  console.log(`[batch-re-enrich] Text readability ratio: ${ratio.toFixed(3)} (${readable.length}/${text.length})`);
+  return ratio > 0.5;
 }
 
 serve(async (req) => {
@@ -271,7 +267,14 @@ serve(async (req) => {
           continue;
         }
 
-        console.log(`[batch-re-enrich] Extracted ${resumeText.length} chars for ${candidate.candidate_name}`);
+        // Guard against binary garbage that passed length check
+        if (!isReadableText(resumeText)) {
+          console.warn(`[batch-re-enrich] Garbage text detected for ${candidate.candidate_name} — skipping`);
+          results.push({ id: candidate.id, name: candidate.candidate_name, status: 'failed', error: 'PDF text extraction produced unreadable content' });
+          continue;
+        }
+
+        console.log(`[batch-re-enrich] Extracted ${resumeText.length} readable chars for ${candidate.candidate_name}`);
 
         // Invoke the enrich-candidate-profile function
         const enrichResp = await fetch(`${SUPABASE_URL}/functions/v1/enrich-candidate-profile`, {
