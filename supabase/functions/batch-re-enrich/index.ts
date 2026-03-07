@@ -132,11 +132,12 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         dry_run: true,
         count: candidates?.length || 0,
-        candidates: (candidates || []).map(c => ({
+        candidates: candidates.map(c => ({
           id: c.id,
           name: c.candidate_name,
           enrichment_status: c.enrichment_status,
-          resume_file: (c.candidate_attachments as any[])?.[0]?.file_name,
+          resume_file: (c as any).candidate_attachments?.[0]?.file_name || null,
+          resume_url: c.resume_url || null,
         })),
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
