@@ -1,89 +1,56 @@
-# System Roles Migration — Completed Phases 1-5
 
-## Architecture Change
-- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
-- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-## Completed
+# Bulletproofing Batch Enrichment Stability
 
-### Phase 1 — Database
-- ✅ Created `system_role` enum (`admin`, `member`)
-- ✅ Added `system_role` column to `members` table
-- ✅ Migrated data: `admin` → `admin`, all others → `member`
-- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
-- ✅ Updated `check_tenant_member_role` to use `system_role`
-- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
-- ✅ Updated `audit_member_role_change` trigger
+## Problems Remaining
 
-### Phase 2 — Frontend Permissions
-- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
-- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
-- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
-- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
+1. **No query limit/pagination**: `getCandidates()` fetches ALL candidates with no `.limit()`. With 1000+ records, this is a heavy query that can timeout under concurrent load.
 
-### Phase 3 — UI Updates
-- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
-- ✅ Updated `Dashboard` — sourcing panel for admin+ only
-- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
-- ✅ Updated `BillingGuard` — members (non-admin) never blocked
-- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
-- ✅ Updated `Find` page RoleGate
-- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
+2. **Real-time still fires during enrichment**: The debounce helps (2s), but during a 30-candidate batch with 1s delay between each, enrichment takes ~30s. The debounce resets on each update, so it fires once at the end — but `getCandidates()` is called while the *next* batch is already running, stacking queries.
 
-### Phase 4 — Runtime Hotfixes
-- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
-- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
-- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
-- ✅ Updated `validate_invite_token` — returns `system_role`
-- ✅ Updated `accept_invitation` — uses `system_role`
+3. **Batch size too large for edge function timeout**: 30 candidates with resume downloads + PDF parsing + AI calls can easily exceed the 60s edge function timeout, causing partial failures.
 
-### Phase 5 — Complete Cleanup
-- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
-- ✅ Updated `admin_manage_member` — updates `system_role` column
-- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
-- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
-- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
-- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
-- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
-- ✅ Updated `diagnose_user_auth` — reports `system_role`
-- ✅ Updated `audit_platform_admin_access` — returns `system_role`
-- ✅ Updated `debug_user_permissions` — returns `system_role`
-- ✅ Renamed `invitations.member_role` → `invitations.system_role`
-- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
+4. **No backoff on errors**: The frontend runner retries immediately on the next batch even if the previous one timed out, compounding the problem.
 
-## Phase 6 — Future (Optional)
-- Drop `member_role` column from `members` table (already dropped)
-- Drop old `member_role` enum type
-- Update `MemberInviteSheet` role picker to only offer Admin/Member
+5. **"Check Remaining" with `limit: 1000`**: The dry-run query fetches up to 1000 candidates with a JOIN on `candidate_attachments` — this is the heaviest query in the system.
 
-# Deep Resume Parsing + Data Standardization — Completed
+## Fixes
 
-## What was implemented
+### 1. Pause real-time during batch enrichment (Frontend)
+**File**: `src/components/settings/BatchEnrichmentRunner.tsx`
 
-### Phase 1: Schema Expansion
-- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
-- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
-- ✅ Added to `candidate_education`: `education_level`
-- ✅ Created `candidate_certifications` table with RLS policies
+Add a global flag (via a simple context or window variable) that tells `useIndependentCandidates` to skip real-time refreshes while enrichment is running. The subscription stays open but the callback becomes a no-op.
 
-### Phase 2: Enrichment Rewrite
-- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
-- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
-- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
-- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
-- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
+### 2. Reduce batch size from 30 to 10 (Frontend)
+**File**: `src/components/settings/BatchEnrichmentRunner.tsx`
 
-### Phase 3: UI Updates
-- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
-- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
-- ✅ **Certifications section** with `CandidateCertificationsComponent`
-- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
-- ✅ Enhanced **Education** display: education level badge
-- ✅ Certifications loaded alongside work experience and education
+Smaller batches = shorter edge function execution time = fewer timeouts. Increase inter-batch delay from 5s to 8s.
 
-## Files changed
-- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
-- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
-- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
-- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
-- `src/components/candidates/CandidateCertifications.tsx` — new component
+### 3. Add pagination to getCandidates (Frontend)
+**File**: `src/hooks/useIndependentCandidates.ts`
+
+Add `.limit(1000)` explicitly to the candidates query as a safety net (matches Supabase default but makes it explicit). This prevents unbounded queries.
+
+### 4. Add retry with exponential backoff (Frontend)
+**File**: `src/components/settings/BatchEnrichmentRunner.tsx`
+
+If a batch invocation fails (timeout/error), retry up to 2 times with increasing delay (10s, 20s) before moving on or stopping.
+
+### 5. Reduce dry-run query weight (Edge Function)
+**File**: `supabase/functions/batch-re-enrich/index.ts`
+
+For dry-run, use `select('id', { count: 'exact', head: true })` instead of fetching all 1000 candidate rows. Just return the count.
+
+### 6. Add concurrency guard to getCandidates (Frontend)
+**File**: `src/hooks/useIndependentCandidates.ts`
+
+Use an `isFetchingRef` to prevent overlapping `getCandidates()` calls. If one is already in-flight, skip the new one.
+
+## Summary of file changes
+
+| File | Changes |
+|---|---|
+| `src/hooks/useIndependentCandidates.ts` | Add fetch-in-progress guard, add `.limit(1000)`, skip real-time refresh when enrichment flag is set |
+| `src/components/settings/BatchEnrichmentRunner.tsx` | Reduce batch to 10, increase delay to 8s, add retry with backoff, set/clear enrichment-active flag |
+| `supabase/functions/batch-re-enrich/index.ts` | Optimize dry-run to use count-only query, reduce default limit to 10 |
+
