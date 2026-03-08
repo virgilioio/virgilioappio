@@ -15,6 +15,9 @@ interface OverviewSectionProps {
 export function OverviewSection({ metrics }: OverviewSectionProps) {
   const appSparkData = useMemo(() => metrics.trendData.map(d => d.applications), [metrics.trendData])
   const hiresSparkData = useMemo(() => metrics.trendData.map(d => d.hires), [metrics.trendData])
+  const offersSparkData = useMemo(() => metrics.trendData.map(d => d.offers), [metrics.trendData])
+  const rejectedSparkData = useMemo(() => metrics.trendData.map(d => d.rejected), [metrics.trendData])
+  const interviewsCompletedSparkData = useMemo(() => metrics.trendData.map(d => d.interviewsCompleted), [metrics.trendData])
 
   return (
     <AnalyticsSection
