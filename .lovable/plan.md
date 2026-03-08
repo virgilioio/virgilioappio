@@ -1,89 +1,64 @@
-# System Roles Migration — Completed Phases 1-5
 
-## Architecture Change
-- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
-- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-## Completed
+# Metric Card Redesign — Horizontal Pill Style
 
-### Phase 1 — Database
-- ✅ Created `system_role` enum (`admin`, `member`)
-- ✅ Added `system_role` column to `members` table
-- ✅ Migrated data: `admin` → `admin`, all others → `member`
-- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
-- ✅ Updated `check_tenant_member_role` to use `system_role`
-- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
-- ✅ Updated `audit_member_role_change` trigger
+## Inspiration from the reference
 
-### Phase 2 — Frontend Permissions
-- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
-- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
-- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
-- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
+The image shows **wide horizontal pill cards** with three zones:
+1. **Left:** Colored icon inside a white/light circle
+2. **Center:** Bold title on top, large value + suffix below
+3. **Right:** A sparkline mini-chart in the icon's accent color
 
-### Phase 3 — UI Updates
-- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
-- ✅ Updated `Dashboard` — sourcing panel for admin+ only
-- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
-- ✅ Updated `BillingGuard` — members (non-admin) never blocked
-- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
-- ✅ Updated `Find` page RoleGate
-- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
+The cards are rounded, spacious, and feel modern. Each card is a horizontal strip rather than a square box.
 
-### Phase 4 — Runtime Hotfixes
-- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
-- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
-- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
-- ✅ Updated `validate_invite_token` — returns `system_role`
-- ✅ Updated `accept_invitation` — uses `system_role`
+## What changes
 
-### Phase 5 — Complete Cleanup
-- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
-- ✅ Updated `admin_manage_member` — updates `system_role` column
-- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
-- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
-- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
-- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
-- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
-- ✅ Updated `diagnose_user_auth` — reports `system_role`
-- ✅ Updated `audit_platform_admin_access` — returns `system_role`
-- ✅ Updated `debug_user_permissions` — returns `system_role`
-- ✅ Renamed `invitations.member_role` → `invitations.system_role`
-- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
+### Visual redesign of all three variants
 
-## Phase 6 — Future (Optional)
-- Drop `member_role` column from `members` table (already dropped)
-- Drop old `member_role` enum type
-- Update `MemberInviteSheet` role picker to only offer Admin/Member
+**Default variant** — becomes a horizontal pill:
+- `rounded-2xl` with generous padding
+- Left: icon in a white circle with subtle shadow (`bg-white shadow-sm rounded-full p-2.5`)
+- Center: title (small, muted) above value (bold, `text-2xl`)
+- Right: optional sparkline slot, rendered in the card's accent color
+- Layout: `flex items-center` horizontal, not stacked
+- Subtle border, soft shadow on hover
 
-# Deep Resume Parsing + Data Standardization — Completed
+**Hero variant** — same horizontal layout but slightly taller:
+- Larger value (`text-3xl`), larger icon circle
+- More prominent sparkline area
 
-## What was implemented
+**Inline variant** — stays minimal for use inside `MetricCardGroup`, but adopts the same font sizing and spacing
 
-### Phase 1: Schema Expansion
-- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
-- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
-- ✅ Added to `candidate_education`: `education_level`
-- ✅ Created `candidate_certifications` table with RLS policies
+### New optional `iconColor` prop
+The reference uses different colors per card (red, purple, orange, blue). We should support an `iconColor` prop that tints the icon and its sparkline. Default remains Virgilio Purple. This isn't the old "custom background" approach — it's a single accent color for icon + chart consistency.
 
-### Phase 2: Enrichment Rewrite
-- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
-- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
-- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
-- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
-- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
+### Files to modify
 
-### Phase 3: UI Updates
-- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
-- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
-- ✅ **Certifications section** with `CandidateCertificationsComponent`
-- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
-- ✅ Enhanced **Education** display: education level badge
-- ✅ Certifications loaded alongside work experience and education
+1. **`src/components/ui/metric-card.tsx`** — complete visual rework of default and hero variants to horizontal pill layout with icon circle, sparkline slot on the right
+2. **`src/components/ui/metric-card-group.tsx`** — adjust border-radius to match new rounded style
+3. **`src/components/settings/styleguide/MetricCardGuide.tsx`** — update examples to show the new horizontal layout with sparkline slots and icon colors
+4. **`src/components/analytics/sections/OverviewSection.tsx`** — no structural changes needed (already uses hero + grouped), just benefits from visual update
+5. **`src/components/talent-intelligence/SummaryMetricsRow.tsx`** — no code changes needed, automatic visual update
+6. **`src/pages/Pipeline.tsx`** — no code changes needed
 
-## Files changed
-- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
-- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
-- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
-- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
-- `src/components/candidates/CandidateCertifications.tsx` — new component
+### Proposed MetricCard default layout (ASCII)
+
+```text
+┌──────────────────────────────────────────────────────┐
+│  ┌─────┐                                             │
+│  │ 📊  │  Title                        ╭─╮  ╭─╮     │
+│  │     │  142 applications             │ │╭─╯ │     │
+│  └─────┘                               ╰─╯   ╰─    │
+└──────────────────────────────────────────────────────┘
+```
+
+### Key design tokens
+- Card: `rounded-2xl border-border bg-card`
+- Icon circle: `w-11 h-11 rounded-full bg-white shadow-sm flex items-center justify-center`
+- Icon: `h-5 w-5` tinted with `iconColor` (default: `text-primary`)
+- Title: `text-xs font-poppins font-medium text-muted-foreground`
+- Value: `text-2xl font-poppins font-bold text-foreground` (hero: `text-3xl`)
+- Sparkline area: `w-24 h-10 shrink-0` on the right side
+
+This is purely a visual/CSS change to the existing component. All existing props and consumers continue to work without modification.
+
