@@ -40,6 +40,7 @@ export function StyleGuide() {
         <CurrencySelectGuide />
         <SmartFieldsGuide />
         <AiBannerGuide />
+        <FiltersGuide />
         <SkeletonGuide />
         <ShadowGuide />
       </div>
