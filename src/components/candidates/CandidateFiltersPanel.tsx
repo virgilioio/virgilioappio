@@ -114,7 +114,6 @@ export function CandidateFiltersPanel({ filterOptions }: CandidateFiltersPanelPr
             Clear filters
           </Button>
         )}
-      </div>
 
       {/* Active filter chips */}
       {activeTags.length > 0 && (
