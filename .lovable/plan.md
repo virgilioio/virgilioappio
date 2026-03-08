@@ -1,59 +1,89 @@
+# System Roles Migration — Completed Phases 1-5
 
+## Architecture Change
+- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
+- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-# Lock in "Pulse Cards" Name + Redesign Charts to Match
+## Completed
 
-## Part 1 — Name & Document the Style
+### Phase 1 — Database
+- ✅ Created `system_role` enum (`admin`, `member`)
+- ✅ Added `system_role` column to `members` table
+- ✅ Migrated data: `admin` → `admin`, all others → `member`
+- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
+- ✅ Updated `check_tenant_member_role` to use `system_role`
+- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
+- ✅ Updated `audit_member_role_change` trigger
 
-The metric card + sparkline system will be officially named **"Pulse Cards"** — reflecting the live-data heartbeat feel of the sparklines. We'll update the style guide to lock this in.
+### Phase 2 — Frontend Permissions
+- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
+- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
+- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
+- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
 
-**File:** `src/components/settings/styleguide/MetricCardGuide.tsx`
-- Rename heading from "Metric Cards" to "Pulse Cards"
-- Update description to: *"Pulse Cards are the platform's signature KPI component — horizontal pill-style cards with three zones: icon circle, label + value, and an integrated sparkline pulse. Three variants: hero, default, and grouped strips."*
+### Phase 3 — UI Updates
+- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
+- ✅ Updated `Dashboard` — sourcing panel for admin+ only
+- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
+- ✅ Updated `BillingGuard` — members (non-admin) never blocked
+- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
+- ✅ Updated `Find` page RoleGate
+- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
 
-**File:** `src/components/settings/StyleGuide.tsx`
-- Rename the import/component reference label if needed for clarity
+### Phase 4 — Runtime Hotfixes
+- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
+- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
+- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
+- ✅ Updated `validate_invite_token` — returns `system_role`
+- ✅ Updated `accept_invitation` — uses `system_role`
 
----
+### Phase 5 — Complete Cleanup
+- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
+- ✅ Updated `admin_manage_member` — updates `system_role` column
+- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
+- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
+- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
+- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
+- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
+- ✅ Updated `diagnose_user_auth` — reports `system_role`
+- ✅ Updated `audit_platform_admin_access` — returns `system_role`
+- ✅ Updated `debug_user_permissions` — returns `system_role`
+- ✅ Renamed `invitations.member_role` → `invitations.system_role`
+- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
 
-## Part 2 — Redesign the Three Charts
+## Phase 6 — Future (Optional)
+- Drop `member_role` column from `members` table (already dropped)
+- Drop old `member_role` enum type
+- Update `MemberInviteSheet` role picker to only offer Admin/Member
 
-The current charts (Candidates Over Time, Recruitment Funnel, Status Distribution) use standard Recharts defaults — grid lines, basic dots, flat colors. We'll redesign them to share the Pulse Card DNA: gradient fills, rounded surfaces, Virgilio palette, no visual noise.
+# Deep Resume Parsing + Data Standardization — Completed
 
-### A. Candidates Over Time (`ApplicationsTrendChart.tsx`)
-**Current:** Multi-line chart with dots, grid, legend at bottom.
-**Redesign:**
-- Replace `Line` with `Area` + gradient fills (like MiniSparkline uses) for each series
-- Remove `CartesianGrid` — replace with subtle horizontal reference lines only
-- Remove dot markers, keep `activeDot` on hover only
-- Use brand palette: purple (applications), blue (active), green (hires), amber (interviews)
-- Style tooltip as a floating Pulse-style pill: rounded-2xl, shadow-md, Poppins font
-- Move legend into the card header as small colored chips/badges instead of below the chart
+## What was implemented
 
-### B. Recruitment Funnel (`RecruitmentFunnelChart.tsx`)
-**Current:** Horizontal bars with border-left accent — already decent but flat.
-**Redesign:**
-- Add subtle gradient fills to each bar (matching the stage color, fading right)
-- Round the bar corners more (rounded-xl)
-- Add the stage icon or a small colored dot before each label
-- Style conversion arrows with a small downward chevron icon instead of pipe characters
-- Add a subtle pulse animation or glow on the "Hired" bar to draw the eye to the outcome
-- Keep the overall conversion rate footer, add a subtle purple gradient underline
+### Phase 1: Schema Expansion
+- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
+- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
+- ✅ Added to `candidate_education`: `education_level`
+- ✅ Created `candidate_certifications` table with RLS policies
 
-### C. Status Distribution (`CandidateStatusPieChart.tsx`)
-**Current:** Standard pie chart with label lines.
-**Redesign:**
-- Switch to a **donut chart** (innerRadius ~55%) with a center stat (total candidates count)
-- Remove `labelLine` — use a clean legend below instead
-- Use Virgilio palette colors: purple, green, red, blue, muted
-- Add subtle shadow/glow on each segment on hover
-- Style tooltip as the same floating pill used in the trend chart
-- Add rounded card styling consistent with Pulse Cards (already has AnalyticsChartCard)
+### Phase 2: Enrichment Rewrite
+- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
+- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
+- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
+- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
+- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
 
-### Files to modify
-| File | Change |
-|------|--------|
-| `src/components/settings/styleguide/MetricCardGuide.tsx` | Rename to "Pulse Cards", update description |
-| `src/components/analytics/ApplicationsTrendChart.tsx` | Area gradients, remove grid, header legend chips |
-| `src/components/analytics/RecruitmentFunnelChart.tsx` | Gradient bars, chevron arrows, hire glow |
-| `src/components/analytics/CandidateStatusPieChart.tsx` | Donut with center stat, clean legend, Virgilio palette |
+### Phase 3: UI Updates
+- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
+- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
+- ✅ **Certifications section** with `CandidateCertificationsComponent`
+- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
+- ✅ Enhanced **Education** display: education level badge
+- ✅ Certifications loaded alongside work experience and education
 
+## Files changed
+- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
+- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
+- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
+- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
+- `src/components/candidates/CandidateCertifications.tsx` — new component

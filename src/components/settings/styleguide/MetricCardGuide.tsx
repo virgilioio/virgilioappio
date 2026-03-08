@@ -11,10 +11,10 @@ export function MetricCardGuide() {
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-heading font-semibold">
-        Metric Cards<span className="text-primary">.</span>
+        Pulse Cards<span className="text-primary">.</span>
       </h3>
       <p className="text-sm text-muted-foreground">
-        Horizontal pill-style cards with three zones: icon circle, label + value, and optional sparkline.
+        Pulse Cards are the platform's signature KPI component — horizontal pill-style cards with three zones: icon circle, label + value, and an integrated sparkline pulse.
         Three variants: <strong>hero</strong>, <strong>default</strong>, and <strong>grouped</strong> strips.
       </p>
 
