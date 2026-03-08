@@ -3,7 +3,8 @@ import { AuthGate } from '@/components/auth/AuthGate';
 import { PermissionGate } from '@/components/auth/PermissionGate';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Section } from '@/components/layout/Section';
-import { PipelineMetricCard } from '@/components/pipeline/PipelineMetricCard';
+import { MetricCard } from '@/components/ui/metric-card';
+import { MetricCardGroup } from '@/components/ui/metric-card-group';
 import { FilterCard } from '@/components/pipeline/FilterCard';
 import { JobRow } from '@/components/pipeline/JobRow';
 import { usePipelineGlobalMetrics, PipelineFilters } from '@/hooks/usePipelineGlobalMetrics';
@@ -14,8 +15,9 @@ import { useOrganizations } from '@/hooks/useOrganizations';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUserAssignedJobIds } from '@/hooks/useUserAssignedJobIds';
 import { jobMatchesUsers } from '@/utils/jobInvolvement';
-import { Briefcase, Users, Clock, TrendingUp } from 'lucide-react';
+import { Briefcase } from 'lucide-react';
 import { Accordion } from '@/components/ui/accordion';
+
 export default function Pipeline() {
   const permissions = usePermissions();
   const { jobs, isLoading: jobsLoading } = useJobs();
@@ -34,27 +36,15 @@ export default function Pipeline() {
     search: searchTerm.trim() || undefined,
   }), [selectedUsers, jobStatus, searchTerm]);
 
-  // Fetch global metrics
   const { data: globalMetrics, isLoading: metricsLoading } = usePipelineGlobalMetrics(filters);
-
-  // Fetch job assignments for selected users
   const { assignedJobIds, isLoading: assignmentsLoading } = useUserAssignedJobIds(selectedUsers);
 
-  // Client-side filter to apply status, search, user & department filters (AND logic)
   const filteredJobs = useMemo(() => {
     return jobs.filter(job => {
-      // Status filter
       if (jobStatus !== 'all' && job.status !== jobStatus) return false;
-      
-      // Search filter
       if (searchTerm && !job.title.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-      
-      // User filter - check if any selected user is in the hiring_team OR job_assignments
       if (!jobMatchesUsers(job, selectedUsers, assignedJobIds)) return false;
-      
-      // Department filter - check if job belongs to any selected department
       if (selectedDepartments.length > 0 && !selectedDepartments.includes(job.organization_id)) return false;
-      
       return true;
     });
   }, [jobs, jobStatus, searchTerm, selectedUsers, assignedJobIds, selectedDepartments]);
@@ -64,13 +54,11 @@ export default function Pipeline() {
   const jobIds = filteredJobs.map(j => j.id);
   const { data: jobMetrics } = usePipelineJobMetrics(jobIds);
 
-  // Build metrics lookup
   const metricsMap = useMemo(() => {
     if (!jobMetrics) return new Map();
     return new Map(jobMetrics.map(m => [m.job_id, m]));
   }, [jobMetrics]);
 
-  // User options for filter (only active members)
   const userOptions = useMemo(() => {
     return members
       .filter(m => m.user_status === 'active' && m.user_id)
@@ -80,7 +68,6 @@ export default function Pipeline() {
       }));
   }, [members]);
 
-  // Department options for filter (only active organizations)
   const departmentOptions = useMemo(() => {
     return organizations
       .filter(org => org.status === 'active')
@@ -90,7 +77,7 @@ export default function Pipeline() {
       }));
   }, [organizations]);
 
-  const showUserFilter = permissions.isAdmin || permissions.isPlatformAdmin || permissions.isWorkspaceOwner; // Only admins/owners see user filter
+  const showUserFilter = permissions.isAdmin || permissions.isPlatformAdmin || permissions.isWorkspaceOwner;
 
   return (
     <AuthGate>
@@ -102,7 +89,6 @@ export default function Pipeline() {
 
           <Section container className="animate-fade-in">
             <div className="space-y-12">
-              {/* Filters Card */}
               <FilterCard
                 searchTerm={searchTerm}
                 onSearchChange={setSearchTerm}
@@ -117,35 +103,43 @@ export default function Pipeline() {
                 departmentOptions={departmentOptions}
               />
 
-              {/* Top Metrics Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <PipelineMetricCard
+              {/* Top Metrics */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <MetricCard
+                  variant="hero"
                   title="Active Jobs"
-                  value={metricsLoading ? '...' : globalMetrics?.active_jobs || 0}
+                  value={metricsLoading ? 0 : globalMetrics?.active_jobs || 0}
                   icon={Briefcase}
                   tooltip="Number of open jobs"
+                  isLoading={metricsLoading}
                 />
-                <PipelineMetricCard
-                  title="In Application Review"
-                  value={metricsLoading ? '...' : globalMetrics?.application_review_count || 0}
-                  icon={Users}
-                  tooltip="Candidates in Application Review (not yet in pipeline stages)"
-                />
-                <PipelineMetricCard
-                  title="Avg Days in App Review"
-                  value={metricsLoading ? '...' : globalMetrics?.avg_days_in_application_review !== null ? `${globalMetrics.avg_days_in_application_review}d` : 'N/A'}
-                  icon={Clock}
-                  tooltip="Average time candidates spend in Application Review"
-                />
-                <PipelineMetricCard
-                  title="Active Candidates"
-                  value={metricsLoading ? '...' : globalMetrics?.active_candidates_count || 0}
-                  icon={TrendingUp}
-                  tooltip="Candidates currently in Recruiting Process stages"
-                />
+                <MetricCardGroup title="Pipeline" className="md:col-span-3">
+                  <MetricCard
+                    variant="inline"
+                    title="In App Review"
+                    value={globalMetrics?.application_review_count || 0}
+                    tooltip="Candidates in Application Review"
+                    isLoading={metricsLoading}
+                  />
+                  <MetricCard
+                    variant="inline"
+                    title="Avg Days in Review"
+                    value={globalMetrics?.avg_days_in_application_review !== null && globalMetrics?.avg_days_in_application_review !== undefined ? globalMetrics.avg_days_in_application_review : 'N/A'}
+                    suffix={globalMetrics?.avg_days_in_application_review != null ? 'd' : undefined}
+                    tooltip="Average time in Application Review"
+                    isLoading={metricsLoading}
+                  />
+                  <MetricCard
+                    variant="inline"
+                    title="Active Candidates"
+                    value={globalMetrics?.active_candidates_count || 0}
+                    tooltip="Candidates in Recruiting Process stages"
+                    isLoading={metricsLoading}
+                  />
+                </MetricCardGroup>
               </div>
 
-              {/* Job List with Embedded Kanban */}
+              {/* Job List */}
               {jobsLoading || isFilteringUsers ? (
                 <div className="text-center py-8 text-muted-foreground">Loading jobs...</div>
               ) : filteredJobs.length === 0 ? (

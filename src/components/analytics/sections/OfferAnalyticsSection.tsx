@@ -1,7 +1,8 @@
 import { AnalyticsSection } from '@/components/analytics/shared/AnalyticsSection'
-import { AnalyticsKpiCard } from '@/components/analytics/shared/AnalyticsKpiCard'
+import { MetricCard } from '@/components/ui/metric-card'
+import { MetricCardGroup } from '@/components/ui/metric-card-group'
 import { AnalyticsEmptyState } from '@/components/analytics/shared/AnalyticsEmptyState'
-import { Gift, UserCheck, Percent, Clock } from 'lucide-react'
+import { Gift } from 'lucide-react'
 import type { OfferAnalyticsData } from '@/hooks/analytics/useOfferAnalyticsMetrics'
 
 interface OfferAnalyticsSectionProps {
@@ -24,12 +25,12 @@ export function OfferAnalyticsSection({ data }: OfferAnalyticsSectionProps) {
           description="Offers are tracked via the offered_at timestamp on candidate associations"
         />
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <AnalyticsKpiCard title="Offers Sent" value={data.offersSent} icon={Gift} tooltip="Candidates with offered_at in selected period" isLoading={data.isLoading} />
-          <AnalyticsKpiCard title="Converted to Hire" value={data.offersConverted} icon={UserCheck} tooltip="Offers that resulted in a hire" isLoading={data.isLoading} />
-          <AnalyticsKpiCard title="Conversion Rate" value={data.conversionRate} icon={Percent} suffix="%" tooltip="Offers that converted to hires / total offers" isLoading={data.isLoading} />
-          <AnalyticsKpiCard title="Avg Offer→Hire" value={data.avgOfferToHireDays} icon={Clock} suffix="d" tooltip="Average days from offer to hire" isLoading={data.isLoading} />
-        </div>
+        <MetricCardGroup>
+          <MetricCard variant="inline" title="Offers Sent" value={data.offersSent} tooltip="Candidates with offered_at in selected period" isLoading={data.isLoading} />
+          <MetricCard variant="inline" title="Converted" value={data.offersConverted} tooltip="Offers that resulted in a hire" isLoading={data.isLoading} />
+          <MetricCard variant="inline" title="Conversion Rate" value={data.conversionRate} suffix="%" tooltip="Offers that converted to hires / total offers" isLoading={data.isLoading} />
+          <MetricCard variant="inline" title="Avg Offer→Hire" value={data.avgOfferToHireDays} suffix="d" tooltip="Average days from offer to hire" isLoading={data.isLoading} />
+        </MetricCardGroup>
       )}
     </AnalyticsSection>
   )
