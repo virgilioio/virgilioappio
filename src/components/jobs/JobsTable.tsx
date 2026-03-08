@@ -89,7 +89,27 @@ export function JobsTable({
       .sort((a, b) => a.label.localeCompare(b.label))
   }, [organizations])
 
-  // Client-side filter with AND logic (consistent with Pipeline page)
+  // Chip options for FilterChipPopover
+  const statusChipOptions: FilterChipOption[] = useMemo(() => [
+    { value: 'draft', label: 'Draft', count: 0 },
+    { value: 'open', label: 'Open', count: 0 },
+    { value: 'closed', label: 'Closed', count: 0 },
+    { value: 'archived', label: 'Archived', count: 0 },
+  ], [])
+
+  const orgChipOptions: FilterChipOption[] = useMemo(
+    () => organizationOptions.map(o => ({ value: o.value, label: o.label, count: 0 })),
+    [organizationOptions]
+  )
+
+  const userChipOptions: FilterChipOption[] = useMemo(
+    () => userOptions.map(u => ({ value: u.value, label: u.label, count: 0 })),
+    [userOptions]
+  )
+
+  const hasActiveFilters = statusFilter !== 'open' || selectedOrganizations.length > 0 || selectedUsers.length > 0 || searchTerm.trim() !== ''
+
+
   const filteredJobs = useMemo(() => {
     return jobs.filter(job => {
       // Search filter
