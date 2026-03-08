@@ -947,6 +947,20 @@ export default function PublicJobPosting() {
                                       </div>
                                     )
                                   })()}
+                                  {field.field_type === 'linkedin' && (
+                                    <div className="space-y-2">
+                                      <div className="flex items-center gap-2">
+                                        <Linkedin className="h-4 w-4 text-sky-600 shrink-0" />
+                                        <Input
+                                          type="url"
+                                          placeholder="https://linkedin.com/in/yourprofile"
+                                          value={customFieldResponses[field.id] || ''}
+                                          onChange={(e) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
+                                        />
+                                      </div>
+                                      <p className="text-xs text-green-600">Syncs to your candidate profile</p>
+                                    </div>
+                                  )}
                                   {field.field_type === 'employment_type' && (
                                     <Select
                                       value={customFieldResponses[field.id] || ''}

@@ -74,6 +74,9 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
     if (type === 'location' && !label) {
       setLabel('Location')
     }
+    if (type === 'linkedin' && !label) {
+      setLabel('LinkedIn Profile')
+    }
   }, [type])
 
   // Initialize order from fetched fields

@@ -386,6 +386,12 @@ export function FormFieldEditor({
                     <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600">Remote, Hybrid, On-site</Badge>
                   </div>
                 )}
+                {field.field_type === 'linkedin' && (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                    <Badge variant="outline" className="text-xs bg-sky-500/10 text-sky-700 border-sky-300 gap-1"><Linkedin className="h-3 w-3" /> LinkedIn</Badge>
+                    {showSyncMessaging && <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-300 gap-1"><Link2 className="h-3 w-3" /> Syncs to Profile</Badge>}
+                  </div>
+                )}
               </div>
               {!isSmartField && (
                 <div><div className="text-sm text-muted-foreground capitalize">{fieldTypeLabel(field.field_type)}</div></div>
