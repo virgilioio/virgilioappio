@@ -9,7 +9,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 interface EnrichRequest {
   candidateId: string;
-  resumeText: string;
+  resumeText?: string;
   candidateName?: string;
 }
 
@@ -431,11 +431,76 @@ serve(async (req) => {
   try {
     const body = (await req.json()) as EnrichRequest;
 
-    if (!body.candidateId || !body.resumeText) {
-      return new Response(JSON.stringify({ error: 'candidateId and resumeText are required' }), {
+    if (!body.candidateId) {
+      return new Response(JSON.stringify({ error: 'candidateId is required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // If resumeText not provided, fetch from candidate's resume attachment
+    let resumeText = body.resumeText || '';
+    if (!resumeText) {
+      console.log(`[enrich] No resumeText provided, fetching from storage for candidate ${body.candidateId}`);
+      const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      
+      // Get the resume attachment
+      const { data: attachment } = await supabase
+        .from('candidate_attachments')
+        .select('file_url, file_name')
+        .eq('candidate_id', body.candidateId)
+        .eq('is_resume', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (attachment?.file_url) {
+        // Download the file from storage
+        const { data: fileData, error: dlError } = await supabase.storage
+          .from('candidate-attachments')
+          .download(attachment.file_url);
+
+        if (!dlError && fileData) {
+          // For text-based files, read as text
+          const fileName = attachment.file_name?.toLowerCase() || '';
+          if (fileName.endsWith('.txt') || fileName.endsWith('.md')) {
+            resumeText = await fileData.text();
+          } else {
+            // For PDF/DOCX, use the raw text (edge function will do its best)
+            resumeText = await fileData.text();
+          }
+          console.log(`[enrich] Fetched resume text (${resumeText.length} chars) from ${attachment.file_url}`);
+        } else {
+          console.error('[enrich] Failed to download resume:', dlError);
+        }
+      }
+
+      // Fallback: use candidate bio/profile_summary
+      if (!resumeText) {
+        const { data: candidateData } = await supabase
+          .from('candidates')
+          .select('bio, profile_summary, candidate_name, current_job_title, skills')
+          .eq('id', body.candidateId)
+          .single();
+
+        if (candidateData) {
+          const parts = [
+            candidateData.candidate_name,
+            candidateData.current_job_title,
+            candidateData.bio,
+            candidateData.profile_summary,
+            candidateData.skills?.join(', '),
+          ].filter(Boolean);
+          resumeText = parts.join('\n\n');
+        }
+      }
+
+      if (!resumeText) {
+        return new Response(JSON.stringify({ error: 'No resume text available for this candidate. Upload a resume first.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     console.log(`[enrich] Received request for candidate ${body.candidateId}`);
@@ -451,9 +516,9 @@ serve(async (req) => {
     // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
     if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
       // @ts-ignore
-      EdgeRuntime.waitUntil(enrichCandidateProfile(body.candidateId, body.resumeText, body.candidateName));
+      EdgeRuntime.waitUntil(enrichCandidateProfile(body.candidateId, resumeText, body.candidateName));
     } else {
-      enrichCandidateProfile(body.candidateId, body.resumeText, body.candidateName).catch(console.error);
+      enrichCandidateProfile(body.candidateId, resumeText, body.candidateName).catch(console.error);
     }
 
     return response;

@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabaseClient'
  */
 export async function triggerBackgroundEnrichment(
   candidateId: string,
-  resumeText: string,
+  resumeText?: string,
   candidateName?: string
 ): Promise<void> {
   try {
@@ -17,7 +17,7 @@ export async function triggerBackgroundEnrichment(
     supabase.functions.invoke('enrich-candidate-profile', {
       body: {
         candidateId,
-        resumeText,
+        ...(resumeText ? { resumeText } : {}),
         candidateName,
       },
     }).then(({ error }) => {
