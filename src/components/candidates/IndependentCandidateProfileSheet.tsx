@@ -272,11 +272,11 @@ export function IndependentCandidateProfileSheet({
                       </Button>
                     )}
                     {candidate && <AddToJobPipelineDialog candidateId={candidate.id} />}
-                    {candidate && canEnrich(candidate) && (
+                    {candidate && candidate.enrichment_status !== 'processing' && (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={handleEnrichFromLinkedIn}
+                        onClick={handleAIEnrich}
                         disabled={isEnriching}
                         className="gap-1.5"
                       >
@@ -285,7 +285,7 @@ export function IndependentCandidateProfileSheet({
                         ) : (
                           <Sparkles className="h-4 w-4" />
                         )}
-                        Enrich from LinkedIn
+                        AI Enrich
                       </Button>
                     )}
                   </div>
