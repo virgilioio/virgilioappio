@@ -37,6 +37,7 @@ export interface IndependentCandidate {
   linkedin_url: string | null
   resume_url: string | null
   skills: string[] | null
+  standardized_skills: string[] | null
   auto_generated_skills: any[] | null
   status: string
   source: string
@@ -44,6 +45,14 @@ export interface IndependentCandidate {
   updated_at: string
   created_by: string | null
   organization_id: string | null
+  seniority_level: string | null
+  functional_area: string | null
+  specialization: string | null
+  standardized_title: string | null
+  years_experience: number | null
+  enrichment_status: string | null
+  current_job_title: string | null
+  company_current: string | null
 }
 
 export interface CreateIndependentCandidateData {
@@ -115,7 +124,7 @@ export function useIndependentCandidates() {
       const { data, error: fetchError } = await withAuthRetry(async () =>
         await supabase
           .from('candidates')
-          .select('id,candidate_name,email,phone,contact_phones,contact_emails,location_country,location_state,location_city,salary_amount,salary_currency,salary_period,profile_summary,linkedin_url,resume_url,skills,auto_generated_skills,status,source,created_at,updated_at,created_by,organization_id')
+          .select('id,candidate_name,email,phone,contact_phones,contact_emails,location_country,location_state,location_city,salary_amount,salary_currency,salary_period,profile_summary,linkedin_url,resume_url,skills,standardized_skills,auto_generated_skills,status,source,created_at,updated_at,created_by,organization_id,seniority_level,functional_area,specialization,standardized_title,years_experience,enrichment_status,current_job_title,company_current')
           .in('organization_id', orgIds)
           .order('created_at', { ascending: false })
           .limit(1000)

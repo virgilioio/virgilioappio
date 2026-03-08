@@ -16,6 +16,7 @@ import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCan
 import { useIndependentCandidates, CreateIndependentCandidateData } from '@/hooks/useIndependentCandidates'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useUserJobRoles } from '@/hooks/useUserJobRoles'
+import { CandidateFilterProvider } from '@/contexts/CandidateFilterContext'
 
 import { toast } from '@/hooks/use-toast'
 
@@ -159,6 +160,7 @@ export default function Candidates() {
   return (
     <AuthGate>
       <PermissionGate permission="canViewCandidates">
+        <CandidateFilterProvider>
         <div className="min-h-screen bg-background">
           <Section variant="default" banded container className="animate-fade-in">
             <PageHeader
@@ -252,6 +254,7 @@ export default function Candidates() {
             context={newCandidateJobId ? 'job' : 'independent'}
           />
         </div>
+        </CandidateFilterProvider>
       </PermissionGate>
     </AuthGate>
   )

@@ -18,6 +18,10 @@ import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 import { DeleteCandidateDialog } from '@/components/candidates/DeleteCandidateDialog'
+import { CandidateFiltersPanel } from '@/components/candidates/CandidateFiltersPanel'
+import { useCandidateFilters } from '@/contexts/CandidateFilterContext'
+import { useCandidateFilterOptions } from '@/hooks/useCandidateFilterOptions'
+import { useCandidateFilteredData } from '@/hooks/useCandidateFilteredData'
 
 interface IndependentCandidateTableProps {
   candidates: IndependentCandidate[]
@@ -167,13 +171,10 @@ export function IndependentCandidateTable({
     }
   }
 
-  // Filter logic
-  const filteredCandidates = candidates.filter(candidate => {
-    const matchesSearch = candidate.candidate_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (candidate.email && candidate.email.toLowerCase().includes(searchTerm.toLowerCase()))
-    
-    return matchesSearch
-  })
+  // Filter logic — use context-based filters + search
+  const { filters } = useCandidateFilters()
+  const filterOptions = useCandidateFilterOptions(candidates)
+  const filteredCandidates = useCandidateFilteredData(candidates, filters, searchTerm)
   
   // Fetch job association counts
   useEffect(() => {
@@ -205,10 +206,10 @@ const startIndex = (currentPage - 1) * itemsPerPage
 const endIndex = startIndex + itemsPerPage
 const paginatedCandidates = filteredCandidates.slice(startIndex, endIndex)
 
-// Reset pagination when filters change
+// Reset pagination when filters or search change
 useEffect(() => {
   setCurrentPage(1)
-}, [searchTerm])
+}, [searchTerm, filters])
 
 // Selection helpers
 const isAllCurrentPageSelected = useMemo(() => {
@@ -337,8 +338,16 @@ const getPageNumbers = () => {
 </PermissionGate>
 
         </div>
+        {/* Filter results count */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
+          <span>{filteredCandidates.length} of {candidates.length} candidates</span>
+        </div>
 </CardHeader>
 <CardContent>
+  {/* Filters panel */}
+  <div className="mb-4">
+    <CandidateFiltersPanel filterOptions={filterOptions} />
+  </div>
   {/* Bulk actions toolbar */}
   {selectionMode && selectedIds.length > 0 && (
     <div className="flex items-center justify-between mb-4">
