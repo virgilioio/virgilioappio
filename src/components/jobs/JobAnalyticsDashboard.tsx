@@ -122,50 +122,38 @@ export function JobAnalyticsDashboard({ jobId, jobTitle, candidates = [], jobCur
         <MetricCard
           title="Applications"
           value={isLoading ? '...' : applications}
-          icon={<Users className="h-5 w-5" />}
+          icon={Users}
           tooltip="New applications in selected period"
-          backgroundColor="linear-gradient(135deg, hsl(var(--virgilio-purple) / 0.1), hsl(var(--virgilio-purple) / 0.05))"
-          iconColor="hsl(var(--virgilio-purple))"
         />
         <MetricCard
           title="Active"
           value={isLoading ? '...' : activeCandidates}
-          icon={<UserCheck className="h-5 w-5" />}
+          icon={UserCheck}
           tooltip="Currently active candidates (all time)"
-          backgroundColor="linear-gradient(135deg, hsl(var(--info) / 0.1), hsl(var(--info) / 0.05))"
-          iconColor="hsl(var(--info))"
         />
         <MetricCard
           title="Hires"
           value={isLoading ? '...' : totalHires}
-          icon={<Briefcase className="h-5 w-5" />}
+          icon={Briefcase}
           tooltip="Candidates hired in selected period"
-          backgroundColor="linear-gradient(135deg, hsl(var(--success) / 0.1), hsl(var(--success) / 0.05))"
-          iconColor="hsl(var(--success))"
         />
         <MetricCard
           title="Scheduled"
           value={isLoading ? '...' : interviewsScheduled}
-          icon={<CalendarPlus className="h-5 w-5" />}
+          icon={CalendarPlus}
           tooltip="Interviews scheduled in selected period"
-          backgroundColor="linear-gradient(135deg, hsl(var(--warning) / 0.1), hsl(var(--warning) / 0.05))"
-          iconColor="hsl(var(--warning))"
         />
         <MetricCard
           title="Completed"
           value={isLoading ? '...' : interviewsCompleted}
-          icon={<CalendarCheck className="h-5 w-5" />}
+          icon={CalendarCheck}
           tooltip="Interviews completed in selected period"
-          backgroundColor="linear-gradient(135deg, hsl(var(--success) / 0.1), hsl(var(--success) / 0.05))"
-          iconColor="hsl(var(--success))"
         />
         <MetricCard
           title="Rejected"
           value={isLoading ? '...' : rejectedCandidates}
-          icon={<UserX className="h-5 w-5" />}
+          icon={UserX}
           tooltip="Total rejected candidates (all time)"
-          backgroundColor="linear-gradient(135deg, hsl(var(--destructive) / 0.1), hsl(var(--destructive) / 0.05))"
-          iconColor="hsl(var(--destructive))"
         />
       </div>
 

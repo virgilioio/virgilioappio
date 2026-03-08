@@ -17,14 +17,15 @@ export function SummaryMetricsRow({ data }: SummaryMetricsRowProps) {
       <MetricCard
         title="Total Candidates"
         value={data.totalCandidates.toLocaleString()}
-        icon={<Users className="h-5 w-5 text-virgilio-purple" />}
+        icon={Users}
         tooltip="Total candidates in your talent database"
       />
       {data.avgExperience !== null && (
         <MetricCard
           title="Avg. Experience"
-          value={`${data.avgExperience} yrs`}
-          icon={<Clock className="h-5 w-5 text-virgilio-purple" />}
+          value={data.avgExperience}
+          suffix=" yrs"
+          icon={Clock}
           tooltip="Average years of experience across all candidates"
         />
       )}
@@ -32,7 +33,7 @@ export function SummaryMetricsRow({ data }: SummaryMetricsRowProps) {
         <MetricCard
           title="Median Salary"
           value={formatSalary(data.medianSalary)}
-          icon={<DollarSign className="h-5 w-5 text-virgilio-purple" />}
+          icon={DollarSign}
           tooltip="Median annual salary expectation (normalized)"
         />
       )}
@@ -40,15 +41,16 @@ export function SummaryMetricsRow({ data }: SummaryMetricsRowProps) {
         <MetricCard
           title="Top Role"
           value={data.mostCommonRole}
-          icon={<Briefcase className="h-5 w-5 text-virgilio-purple" />}
+          icon={Briefcase}
           tooltip="Most common role or functional area"
         />
       )}
       {data.enrichedPercentage !== null && (
         <MetricCard
           title="Enriched Profiles"
-          value={`${data.enrichedPercentage}%`}
-          icon={<Sparkles className="h-5 w-5 text-virgilio-purple" />}
+          value={data.enrichedPercentage}
+          suffix="%"
+          icon={Sparkles}
           tooltip="Percentage of candidates with AI-enriched profiles"
         />
       )}
