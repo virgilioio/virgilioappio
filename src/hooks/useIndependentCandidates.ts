@@ -37,6 +37,7 @@ export interface IndependentCandidate {
   linkedin_url: string | null
   resume_url: string | null
   skills: string[] | null
+  standardized_skills: string[] | null
   auto_generated_skills: any[] | null
   status: string
   source: string
@@ -44,6 +45,14 @@ export interface IndependentCandidate {
   updated_at: string
   created_by: string | null
   organization_id: string | null
+  seniority_level: string | null
+  functional_area: string | null
+  specialization: string | null
+  standardized_title: string | null
+  years_experience: number | null
+  enrichment_status: string | null
+  current_job_title: string | null
+  company_current: string | null
 }
 
 export interface CreateIndependentCandidateData {
