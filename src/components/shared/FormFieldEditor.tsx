@@ -176,7 +176,7 @@ export function FormFieldEditor({
   const isDisabled = disabled || readOnly || isLocked
 
   // Smart field type badge (used in both view & edit rows)
-  const isSmartField = field.field_type === 'salary' || field.field_type === 'location' || field.field_type === 'phone' || field.field_type === 'recruiter' || field.field_type === 'employment_type' || field.field_type === 'work_location'
+  const isSmartField = field.field_type === 'salary' || field.field_type === 'location' || field.field_type === 'phone' || field.field_type === 'linkedin' || field.field_type === 'recruiter' || field.field_type === 'employment_type' || field.field_type === 'work_location'
   const showSyncMessaging = context !== 'offer'
 
   return (
