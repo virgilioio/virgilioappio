@@ -1,10 +1,10 @@
+import { useMemo } from 'react'
 import {
   PieChart,
   Pie,
   Cell,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from 'recharts'
 import { AnalyticsChartCard } from '@/components/analytics/shared/AnalyticsChartCard'
 import { PieChart as PieChartIcon } from 'lucide-react'
@@ -21,14 +21,16 @@ interface CandidateStatusPieChartProps {
 }
 
 const COLORS = [
-  'hsl(180 100% 35%)',
-  'hsl(120 100% 30%)',
-  'hsl(0 70% 55%)',
-  'hsl(267 89% 60%)',
-  'hsl(220 13% 50%)',
+  'hsl(var(--virgilio-purple))',
+  'hsl(var(--success))',
+  'hsl(var(--destructive))',
+  'hsl(var(--info))',
+  'hsl(var(--virgilio-muted))',
 ]
 
 export function CandidateStatusPieChart({ data, isLoading }: CandidateStatusPieChartProps) {
+  const total = useMemo(() => data.reduce((sum, d) => sum + d.value, 0), [data])
+
   return (
     <AnalyticsChartCard
       title="Status Distribution"
@@ -36,35 +38,59 @@ export function CandidateStatusPieChart({ data, isLoading }: CandidateStatusPieC
       isLoading={isLoading}
       isEmpty={data.length === 0}
     >
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="50%"
-            labelLine={false}
-            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-            outerRadius={80}
-            fill="#8884d8"
-            dataKey="value"
-          >
-            {data.map((_, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-            ))}
-          </Pie>
-          <Tooltip
-            formatter={(value: number) => [value, 'Count']}
-            contentStyle={{
-              backgroundColor: 'hsl(var(--card))',
-              border: '1px solid hsl(var(--virgilio-border))',
-              borderRadius: '8px',
-              fontFamily: 'Poppins, sans-serif',
-              fontSize: '12px',
-            }}
-          />
-          <Legend wrapperStyle={{ fontFamily: 'Poppins, sans-serif', fontSize: '12px' }} />
-        </PieChart>
-      </ResponsiveContainer>
+      <div className="flex flex-col h-full">
+        <div className="flex-1 relative">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                innerRadius="55%"
+                outerRadius="80%"
+                paddingAngle={2}
+                dataKey="value"
+                stroke="none"
+              >
+                {data.map((_, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip
+                formatter={(value: number, name: string) => [value, name]}
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--virgilio-border))',
+                  borderRadius: '16px',
+                  fontFamily: 'Poppins, sans-serif',
+                  fontSize: '12px',
+                  boxShadow: '0 8px 24px -8px hsl(var(--virgilio-purple) / 0.15)',
+                  padding: '10px 14px',
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+          {/* Center stat */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="text-center">
+              <span className="text-2xl font-poppins font-bold text-virgilio-text">{total}</span>
+              <p className="text-[10px] font-poppins text-virgilio-muted">Total</p>
+            </div>
+          </div>
+        </div>
+        {/* Legend */}
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 pt-2">
+          {data.map((entry, index) => (
+            <span
+              key={entry.name}
+              className="inline-flex items-center gap-1.5 text-[11px] font-poppins font-medium text-virgilio-muted"
+            >
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+              {entry.name}
+            </span>
+          ))}
+        </div>
+      </div>
     </AnalyticsChartCard>
   )
 }
