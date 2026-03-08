@@ -245,7 +245,7 @@ export function JobsTable({
             </PermissionGate>
           </div>
         </div>
-      <CardContent>
+        
         {filteredJobs.length === 0 ? (
           <EmptyState
             assetType="empty-state-jobs"
