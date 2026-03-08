@@ -1,89 +1,79 @@
-# System Roles Migration — Completed Phases 1-5
 
-## Architecture Change
-- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
-- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-## Completed
+# Unified Filter UI — Stripe-Inspired Horizontal Filter Bar + Sheet Pattern
 
-### Phase 1 — Database
-- ✅ Created `system_role` enum (`admin`, `member`)
-- ✅ Added `system_role` column to `members` table
-- ✅ Migrated data: `admin` → `admin`, all others → `member`
-- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
-- ✅ Updated `check_tenant_member_role` to use `system_role`
-- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
-- ✅ Updated `audit_member_role_change` trigger
+## Current State
+Two completely different filter UIs:
+- **Talent Intelligence**: Horizontal bar with `MultiSelect` dropdowns + "More Filters" sheet with more `MultiSelect` dropdowns
+- **Candidates**: Collapsible grid panel with `Popover+Command` dropdowns
 
-### Phase 2 — Frontend Permissions
-- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
-- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
-- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
-- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
+Both look inconsistent and don't match the Stripe-inspired pattern the user wants.
 
-### Phase 3 — UI Updates
-- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
-- ✅ Updated `Dashboard` — sourcing panel for admin+ only
-- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
-- ✅ Updated `BillingGuard` — members (non-admin) never blocked
-- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
-- ✅ Updated `Find` page RoleGate
-- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
+## Target Pattern (from both reference images)
+1. **Horizontal filter chip bar** — pill-shaped buttons showing filter name + active value. Clicking opens a **popover with checkbox list** (not a dropdown select). Like Stripe's `⊕ Status | Failed ▾` chips.
+2. **Active filter chips** below the bar showing selected values as dismissible pills
+3. **"More Filters" button** opens a **Sheet** for overflow/advanced filters (experience slider, date range, etc.)
+4. **"Clear Filters"** link when any are active
 
-### Phase 4 — Runtime Hotfixes
-- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
-- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
-- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
-- ✅ Updated `validate_invite_token` — returns `system_role`
-- ✅ Updated `accept_invitation` — uses `system_role`
+## New Shared Components
 
-### Phase 5 — Complete Cleanup
-- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
-- ✅ Updated `admin_manage_member` — updates `system_role` column
-- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
-- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
-- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
-- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
-- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
-- ✅ Updated `diagnose_user_auth` — reports `system_role`
-- ✅ Updated `audit_platform_admin_access` — returns `system_role`
-- ✅ Updated `debug_user_permissions` — returns `system_role`
-- ✅ Renamed `invitations.member_role` → `invitations.system_role`
-- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
+### 1. `src/components/ui/filter-chip-popover.tsx`
+A reusable filter chip that:
+- Shows as a pill/chip button: `⊕ Label` when empty, `Label | value ▾` when active
+- On click, opens a Popover with a **checkbox list** (with optional search input when >8 options)
+- Each option shows: `☐ Label (count)`
+- Checked items use `primary` color (Virgilio purple checkbox)
+- Bottom of popover: "Apply" button (primary purple, full-width like Stripe)
+- Chip gets a highlighted state (subtle purple bg) when filter is active
+- Font: `font-poppins` for chip label, item labels
 
-## Phase 6 — Future (Optional)
-- Drop `member_role` column from `members` table (already dropped)
-- Drop old `member_role` enum type
-- Update `MemberInviteSheet` role picker to only offer Admin/Member
+### 2. `src/components/ui/filter-bar.tsx`
+A horizontal flex container that:
+- Renders a row of `FilterChipPopover` components
+- Adds a "More Filters" button (with `SlidersHorizontal` icon) at the end
+- Shows a "✕ Clear Filters" link when any filters are active
+- Below: renders active filter chips as dismissible `Badge variant="purple"` pills
 
-# Deep Resume Parsing + Data Standardization — Completed
+### 3. Update `src/components/ui/filter-sheet.tsx`
+Reusable sheet wrapper for "More Filters":
+- Header with title + description
+- Scrollable content with filter sections using `FilterCheckboxGroup` (inline checkbox lists, not dropdowns)
+- Sticky footer: "Clear all" (ghost) + "Apply" (primary) buttons
 
-## What was implemented
+### 4. `src/components/ui/filter-checkbox-group.tsx`
+For use inside the filter sheet — a labeled section with:
+- Section label (uppercase, xs, muted)
+- Optional search input
+- Visible checkbox list with counts
+- "Show N more" toggle when >6 options
 
-### Phase 1: Schema Expansion
-- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
-- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
-- ✅ Added to `candidate_education`: `education_level`
-- ✅ Created `candidate_certifications` table with RLS policies
+## Page Updates
 
-### Phase 2: Enrichment Rewrite
-- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
-- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
-- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
-- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
-- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
+### Talent Intelligence (`TalentIntelligenceFilterBar.tsx`)
+Replace current `MultiSelect` dropdowns with `FilterChipPopover` for: Role, Seniority, Country, Skills.
+Keep Salary slider inline. "More Filters" opens sheet with: Functional Area, Specialization, State, City, Experience, Date.
 
-### Phase 3: UI Updates
-- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
-- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
-- ✅ **Certifications section** with `CandidateCertificationsComponent`
-- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
-- ✅ Enhanced **Education** display: education level badge
-- ✅ Certifications loaded alongside work experience and education
+### Candidates (`IndependentCandidateTable.tsx` + `CandidateFiltersPanel.tsx`)
+- Replace collapsible grid panel with a **horizontal filter bar** using `FilterChipPopover` for: Status, Source, Country, Seniority, Skills
+- "More Filters" button opens a **Sheet** with: State, City, Functional Area, Specialization, Enrichment Status, Experience slider, Salary slider, Date range
+- Active chips row below the bar (reuse the same `ActiveFilterChips` pattern from Talent Intelligence)
 
-## Files changed
-- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
-- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
-- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
-- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
-- `src/components/candidates/CandidateCertifications.tsx` — new component
+## Visual Spec (Virgilio branding)
+- **Chip default**: `border border-border rounded-full px-3 h-8 text-sm font-poppins` with `+` icon prefix
+- **Chip active**: `bg-accent/40 border-accent-foreground/30` with value shown after `|` separator
+- **Popover**: `w-[240px]`, search input at top, checkbox list, full-width purple "Apply" button at bottom
+- **Checkboxes**: `data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground`
+- **Active chips**: `Badge variant="purple"` with `X` dismiss button (existing pattern)
+- **Clear Filters**: ghost button, `text-muted-foreground`
+
+## Files to Create
+1. `src/components/ui/filter-chip-popover.tsx`
+2. `src/components/ui/filter-checkbox-group.tsx`
+3. `src/components/ui/filter-sheet.tsx`
+
+## Files to Modify
+1. `src/components/talent-intelligence/TalentIntelligenceFilterBar.tsx` — use new chip popovers
+2. `src/components/talent-intelligence/TalentIntelligenceFilterSheet.tsx` — use new checkbox groups + sheet wrapper
+3. `src/components/candidates/CandidateFiltersPanel.tsx` — rewrite as horizontal filter bar + sheet
+4. `src/components/candidates/IndependentCandidateTable.tsx` — remove collapsible, use new bar layout
+
