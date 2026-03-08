@@ -669,5 +669,14 @@ export function CandidateTable({
         )}
       </CardContent>
     </Card>
+
+      <DeleteCandidateDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        candidateId={deleteTarget?.id ?? null}
+        candidateName={deleteTarget?.name ?? ''}
+        onConfirm={handleDeleteConfirm}
+      />
+    </>
   )
 }

@@ -620,6 +620,14 @@ const getPageNumbers = () => {
           }
         }}
       />
+
+      <DeleteCandidateDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        candidateId={deleteTarget?.id ?? null}
+        candidateName={deleteTarget?.name ?? ''}
+        onConfirm={handleDeleteConfirm}
+      />
     </Card>
   )
 }
