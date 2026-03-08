@@ -26,7 +26,7 @@ interface MetricCardProps {
 }
 
 function isLucideIcon(icon: any): icon is LucideIcon {
-  return typeof icon === 'function'
+  return typeof icon === 'function' || (typeof icon === 'object' && icon !== null && '$$typeof' in icon && 'render' in icon)
 }
 
 export function MetricCard({
