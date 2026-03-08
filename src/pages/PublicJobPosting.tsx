@@ -631,7 +631,7 @@ export default function PublicJobPosting() {
                         {posting.description && (
                           <SafeHtml 
                             content={posting.description} 
-                            className="prose prose-sm text-text-secondary max-w-none" 
+                            className="prose prose-sm text-text-secondary max-w-none [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-3 [&_li]:my-1 [&_p]:my-2" 
                           />
                         )}
                       </CardContent>
