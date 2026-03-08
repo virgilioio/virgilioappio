@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { useApplicationFields } from '@/hooks/useApplicationFields'
 import { useJobPostingFields, FieldType, PostingField, SelectOptionData, SalaryFieldConfig, LocationFieldConfig } from '@/hooks/useJobPostingFields'
+import { ALL_FIELD_TYPES, SMART_FIELD_TYPES, fieldTypeLabel } from '@/components/shared/FormFieldEditor'
 import { FormField } from '@/components/ui/form-field'
 import { GripVertical, Plus, Trash2, Save, Link2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
