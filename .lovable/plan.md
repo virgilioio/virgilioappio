@@ -1,45 +1,89 @@
+# System Roles Migration — Completed Phases 1-5
 
+## Architecture Change
+- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
+- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-# Redesign Talent Intelligence Charts to Match Analytics Style
+## Completed
 
-The Analytics charts now have the Pulse Card DNA — gradient fills, pill tooltips, no grid noise, Virgilio palette. The Talent Intelligence charts (Experience Distribution and Skills Landscape) are still using flat colors, basic tooltips, and old-style cards. Here's what I'd do:
+### Phase 1 — Database
+- ✅ Created `system_role` enum (`admin`, `member`)
+- ✅ Added `system_role` column to `members` table
+- ✅ Migrated data: `admin` → `admin`, all others → `member`
+- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
+- ✅ Updated `check_tenant_member_role` to use `system_role`
+- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
+- ✅ Updated `audit_member_role_change` trigger
 
----
+### Phase 2 — Frontend Permissions
+- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
+- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
+- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
+- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
 
-## A. Experience Distribution — Two Sub-Charts
+### Phase 3 — UI Updates
+- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
+- ✅ Updated `Dashboard` — sourcing panel for admin+ only
+- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
+- ✅ Updated `BillingGuard` — members (non-admin) never blocked
+- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
+- ✅ Updated `Find` page RoleGate
+- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
 
-### Years of Experience (Bar Chart)
-- **Add gradient fills** to bars using SVG `<linearGradient>` (top-to-bottom, purple at 25% opacity fading to 0), matching the Area chart pattern
-- **Remove the basic `Tooltip`** and replace with the **pill-style tooltip** (rounded-2xl, Poppins, purple box-shadow)
-- **Round bars more** — `radius={[6, 6, 0, 0]}` instead of `[4, 4, 0, 0]`
-- **Clean up axes** — `tickLine={false}`, `axisLine={false}` for a quieter look
+### Phase 4 — Runtime Hotfixes
+- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
+- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
+- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
+- ✅ Updated `validate_invite_token` — returns `system_role`
+- ✅ Updated `accept_invitation` — uses `system_role`
 
-### Seniority Levels (Pie → Donut)
-- Already a donut — but missing the **center stat** (total count) that the Analytics `CandidateStatusPieChart` now has
-- Add the **absolute-positioned center stat** with total count + "Total" label
-- Replace inline `label` prop with a **clean legend below** using the same colored-dot chip pattern from Analytics
-- Apply the **pill tooltip** style
-- Use `stroke="none"` on cells for cleaner segments
+### Phase 5 — Complete Cleanup
+- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
+- ✅ Updated `admin_manage_member` — updates `system_role` column
+- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
+- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
+- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
+- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
+- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
+- ✅ Updated `diagnose_user_auth` — reports `system_role`
+- ✅ Updated `audit_platform_admin_access` — returns `system_role`
+- ✅ Updated `debug_user_permissions` — returns `system_role`
+- ✅ Renamed `invitations.member_role` → `invitations.system_role`
+- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
 
-### Card wrapper
-- Swap the raw `Card` for `AnalyticsChartCard` (or replicate its pattern) to get the consistent icon + title header
+## Phase 6 — Future (Optional)
+- Drop `member_role` column from `members` table (already dropped)
+- Drop old `member_role` enum type
+- Update `MemberInviteSheet` role picker to only offer Admin/Member
 
----
+# Deep Resume Parsing + Data Standardization — Completed
 
-## B. Skills Landscape (Horizontal Bar Chart)
-- **Add horizontal gradient fills** to bars using SVG `<linearGradient>` (left-to-right, purple fading out) — matching the Funnel chart's gradient bar style
-- **Replace the basic tooltip** with the pill-style tooltip
-- **Clean up axes** — remove tick lines and axis lines
-- **Add colored dot** before the "Top Skills Across Candidates" subtitle, matching the Funnel stage labels
-- **Round bars more** — `radius={[0, 6, 6, 0]}`
-- Top 5 skills get a subtle **glow/shadow** (like the Funnel's "Hired" bar) to highlight the most common skills
+## What was implemented
 
----
+### Phase 1: Schema Expansion
+- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
+- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
+- ✅ Added to `candidate_education`: `education_level`
+- ✅ Created `candidate_certifications` table with RLS policies
 
-## Files to Modify
+### Phase 2: Enrichment Rewrite
+- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
+- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
+- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
+- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
+- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
 
-| File | Changes |
-|------|---------|
-| `src/components/talent-intelligence/ExperienceDistribution.tsx` | Gradient bar fills, pill tooltips, donut center stat, clean legend, axis cleanup |
-| `src/components/talent-intelligence/SkillsLandscape.tsx` | Gradient horizontal bars, pill tooltips, top-5 glow, axis cleanup |
+### Phase 3: UI Updates
+- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
+- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
+- ✅ **Certifications section** with `CandidateCertificationsComponent`
+- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
+- ✅ Enhanced **Education** display: education level badge
+- ✅ Certifications loaded alongside work experience and education
 
+## Files changed
+- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
+- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
+- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
+- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
+- `src/components/candidates/CandidateCertifications.tsx` — new component
