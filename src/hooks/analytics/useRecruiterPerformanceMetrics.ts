@@ -56,13 +56,13 @@ export function useRecruiterPerformanceMetrics(
 
       if (userIds.size === 0) return { rows: [] }
 
-      // Get profiles
+      // Get profiles (profiles table uses user_id as PK)
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, email')
-        .in('id', Array.from(userIds))
+        .select('user_id, first_name, last_name, email')
+        .in('user_id', Array.from(userIds))
 
-      const profileMap = new Map((profiles || []).map(p => [p.id, p]))
+      const profileMap = new Map((profiles || []).map(p => [p.user_id, p]))
 
       // Aggregate
       const recruiterMap = new Map<string, RecruiterRow>()
@@ -71,7 +71,7 @@ export function useRecruiterPerformanceMetrics(
           const profile = profileMap.get(userId)
           recruiterMap.set(userId, {
             userId,
-            name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email : userId.slice(0, 8),
+            name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email || userId.slice(0, 8) : userId.slice(0, 8),
             email: profile?.email || '',
             candidatesAdded: 0,
             activePipeline: 0,
