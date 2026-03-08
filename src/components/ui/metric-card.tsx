@@ -142,7 +142,7 @@ export function MetricCard({
   // ─── Hero variant (horizontal pill, larger) ───
   if (variant === 'hero') {
     const card = (
-      <Card className={cn('rounded-2xl border-border hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5', className)}>
+      <Card className={cn('rounded-2xl border-border/60 shadow-md hover:shadow-xl transition-all duration-200 ease-out hover:-translate-y-0.5', className)}>
         <CardContent className="p-5">
           <div className="flex items-center gap-4">
             <IconCircle icon={icon} iconColor={iconColor} size="hero" />
