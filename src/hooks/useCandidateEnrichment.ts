@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabaseClient'
  */
 export async function triggerBackgroundEnrichment(
   candidateId: string,
-  resumeText: string,
+  resumeText?: string,
   candidateName?: string
 ): Promise<void> {
   try {
