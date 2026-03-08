@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { DollarSign, MapPin, Link2, Briefcase, Building2 } from 'lucide-react'
+import { DollarSign, MapPin, Link2, Briefcase, Building2, Linkedin } from 'lucide-react'
 
 export function SmartFieldsGuide() {
   return (
