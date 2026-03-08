@@ -94,21 +94,28 @@ export function IndependentCandidateProfileSheet({
     await deleteAttachment(resumeAttachment.id, resumeAttachment.file_url)
   }
 
-  const { enrichByLinkedIn, canEnrich, isEnriching } = useEnrichCandidate()
+  const [isEnriching, setIsEnriching] = useState(false)
 
-  const handleEnrichFromLinkedIn = async () => {
-    if (!candidateId) return
-    
-    const result = await enrichByLinkedIn(candidateId)
-    
-    // Refresh candidate data after enrichment
-    if (result?.enriched_count && result.enriched_count > 0) {
-      const { data } = await supabase
-        .from('candidates')
-        .select('*')
-        .eq('id', candidateId)
-        .single()
-      setCandidate(data || null)
+  const handleAIEnrich = async () => {
+    if (!candidateId || !candidate) return
+    setIsEnriching(true)
+    try {
+      // Use resume_url or bio as resume text source
+      const resumeText = candidate.resume_url || candidate.bio || ''
+      await triggerBackgroundEnrichment(candidateId, resumeText, candidate.candidate_name)
+      toast({
+        title: 'AI Enrichment triggered',
+        description: 'Profile enrichment is running in the background. The profile will update shortly.',
+      })
+    } catch (err) {
+      console.error('AI Enrich error:', err)
+      toast({
+        title: 'Enrichment failed',
+        description: 'Could not trigger AI enrichment.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsEnriching(false)
     }
   }
 
