@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { MultiSelect } from '@/components/ui/multi-select'
+import { Badge } from '@/components/ui/badge'
 import { Slider } from '@/components/ui/slider'
-import { SlidersHorizontal } from 'lucide-react'
+import { SlidersHorizontal, X } from 'lucide-react'
 import { useTalentIntelligenceFilters } from '@/contexts/TalentIntelligenceFilterContext'
 import type { FilterOption } from '@/hooks/useTalentIntelligenceFilterOptions'
 import { ActiveFilterChips } from './ActiveFilterChips'
 import { TalentIntelligenceFilterSheet } from './TalentIntelligenceFilterSheet'
+import { FilterChipPopover } from '@/components/ui/filter-chip-popover'
 
 interface TalentIntelligenceFilterBarProps {
   roleOptions: FilterOption[]
@@ -21,17 +22,13 @@ interface TalentIntelligenceFilterBarProps {
   salaryRange: { min: number; max: number } | null
 }
 
-function toMultiSelectOptions(opts: FilterOption[]) {
-  return opts.map(o => ({ value: o.value, label: `${o.label} (${o.count})` }))
-}
-
 function formatCurrencyShort(v: number) {
   if (v >= 1000) return `$${Math.round(v / 1000)}k`
   return `$${v}`
 }
 
 export function TalentIntelligenceFilterBar(props: TalentIntelligenceFilterBarProps) {
-  const { filters, setArrayFilter, setNumericFilter } = useTalentIntelligenceFilters()
+  const { filters, setArrayFilter, setNumericFilter, hasActiveFilters, clearAll } = useTalentIntelligenceFilters()
   const [sheetOpen, setSheetOpen] = useState(false)
 
   const {
@@ -44,59 +41,41 @@ export function TalentIntelligenceFilterBar(props: TalentIntelligenceFilterBarPr
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-end gap-3">
-        {roleOptions.length > 0 && (
-          <div className="min-w-[180px] max-w-[220px]">
-            <label className="text-xs font-poppins font-medium text-muted-foreground mb-1 block">Role</label>
-            <MultiSelect
-              options={toMultiSelectOptions(roleOptions)}
-              selectedValues={filters.roles}
-              onSelectionChange={(v) => setArrayFilter('roles', v)}
-              placeholder="All roles"
-              searchable
-            />
-          </div>
-        )}
+      {/* Horizontal chip bar */}
+      <div className="flex flex-wrap items-center gap-2">
+        <FilterChipPopover
+          label="Role"
+          options={roleOptions}
+          selectedValues={filters.roles}
+          onSelectionChange={(v) => setArrayFilter('roles', v)}
+          searchable
+        />
 
-        {seniorityOptions.length > 0 && (
-          <div className="min-w-[160px] max-w-[200px]">
-            <label className="text-xs font-poppins font-medium text-muted-foreground mb-1 block">Seniority</label>
-            <MultiSelect
-              options={toMultiSelectOptions(seniorityOptions)}
-              selectedValues={filters.seniorities}
-              onSelectionChange={(v) => setArrayFilter('seniorities', v)}
-              placeholder="All levels"
-              searchable={false}
-            />
-          </div>
-        )}
+        <FilterChipPopover
+          label="Seniority"
+          options={seniorityOptions}
+          selectedValues={filters.seniorities}
+          onSelectionChange={(v) => setArrayFilter('seniorities', v)}
+          searchable={false}
+        />
 
-        {countryOptions.length > 0 && (
-          <div className="min-w-[180px] max-w-[220px]">
-            <label className="text-xs font-poppins font-medium text-muted-foreground mb-1 block">Country</label>
-            <MultiSelect
-              options={toMultiSelectOptions(countryOptions)}
-              selectedValues={filters.countries}
-              onSelectionChange={(v) => setArrayFilter('countries', v)}
-              placeholder="All countries"
-              searchable
-            />
-          </div>
-        )}
+        <FilterChipPopover
+          label="Country"
+          options={countryOptions}
+          selectedValues={filters.countries}
+          onSelectionChange={(v) => setArrayFilter('countries', v)}
+          searchable
+        />
 
-        {skillOptions.length > 0 && (
-          <div className="min-w-[180px] max-w-[220px]">
-            <label className="text-xs font-poppins font-medium text-muted-foreground mb-1 block">Skills</label>
-            <MultiSelect
-              options={toMultiSelectOptions(skillOptions.slice(0, 50))}
-              selectedValues={filters.skills}
-              onSelectionChange={(v) => setArrayFilter('skills', v)}
-              placeholder="All skills"
-              searchable
-            />
-          </div>
-        )}
+        <FilterChipPopover
+          label="Skills"
+          options={skillOptions.slice(0, 50)}
+          selectedValues={filters.skills}
+          onSelectionChange={(v) => setArrayFilter('skills', v)}
+          searchable
+        />
 
+        {/* Salary inline slider (keep as-is since sliders don't fit in popovers well) */}
         {hasSalaryRange && (
           <div className="min-w-[200px] max-w-[260px]">
             <label className="text-xs font-poppins font-medium text-muted-foreground mb-1 block">
@@ -128,11 +107,23 @@ export function TalentIntelligenceFilterBar(props: TalentIntelligenceFilterBarPr
           variant="outline"
           size="sm"
           onClick={() => setSheetOpen(true)}
-          className="gap-1.5 h-9"
+          className="gap-1.5 h-8 rounded-full font-poppins text-sm"
         >
           <SlidersHorizontal className="h-3.5 w-3.5" />
           More Filters
         </Button>
+
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearAll}
+            className="gap-1 h-8 text-xs text-muted-foreground hover:text-foreground font-poppins"
+          >
+            <X className="h-3 w-3" />
+            Clear filters
+          </Button>
+        )}
       </div>
 
       <ActiveFilterChips />
