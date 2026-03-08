@@ -340,6 +340,6 @@ export function CandidateFiltersPanel({ filterOptions }: CandidateFiltersPanelPr
           </div>
         </div>
       </FilterSheet>
-    </div>
+    </>
   )
 }
