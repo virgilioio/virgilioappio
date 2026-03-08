@@ -206,10 +206,10 @@ const startIndex = (currentPage - 1) * itemsPerPage
 const endIndex = startIndex + itemsPerPage
 const paginatedCandidates = filteredCandidates.slice(startIndex, endIndex)
 
-// Reset pagination when filters change
+// Reset pagination when filters or search change
 useEffect(() => {
   setCurrentPage(1)
-}, [searchTerm])
+}, [searchTerm, filters])
 
 // Selection helpers
 const isAllCurrentPageSelected = useMemo(() => {
