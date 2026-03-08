@@ -16,7 +16,7 @@ import { CandidateCertificationsComponent, CandidateCertification } from '@/comp
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import { CandidateJobSidebar } from '@/components/candidates/CandidateJobSidebar'
 import { MobileJobSelector } from '@/components/candidates/MobileJobSelector'
-import { Edit, FileText, ChevronLeft, ChevronRight, Mail, Phone, Copy, ExternalLink, Sparkles, Globe, Loader2, Briefcase, Award, TrendingUp, MapPin } from 'lucide-react'
+import { Edit, FileText, ChevronLeft, ChevronRight, Mail, Phone, Copy, ExternalLink, Sparkles, Globe, Loader2, Briefcase, Award, TrendingUp, MapPin, DollarSign } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -646,6 +646,16 @@ export function IndependentCandidateProfileSheet({
                               <span className="text-sm text-text-primary">
                                 {[candidate.location_city, candidate.location_state, candidate.location_country]
                                   .filter(Boolean).join(', ')}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Salary Expectations */}
+                          {candidate?.salary_amount && (
+                            <div className="flex items-start gap-2">
+                              <DollarSign className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                              <span className="text-sm text-text-primary">
+                                {candidate.salary_currency || 'USD'} {candidate.salary_amount.toLocaleString()} / {candidate.salary_period || 'annually'}
                               </span>
                             </div>
                           )}
