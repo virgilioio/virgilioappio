@@ -35,7 +35,7 @@ import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 
 import AddToJobPipelineDialog from './AddToJobPipelineDialog'
 import { Separator } from '@/components/ui/separator'
-import { useEnrichCandidate } from '@/hooks/useEnrichCandidate'
+import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment'
 import { SimpleScheduleInterviewSheet } from './SimpleScheduleInterviewSheet'
 
 interface IndependentCandidateProfileSheetProps {
