@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ComposedChart, Area, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { Switch } from '@/components/ui/switch'
-import { TalentInsightEmptyState } from './TalentInsightEmptyState'
-import type { SalaryStats } from '@/hooks/useTalentInsightsData'
+import { TalentIntelligenceEmptyState } from './TalentIntelligenceEmptyState'
+import type { SalaryStats } from '@/hooks/useTalentIntelligenceData'
 
 interface CompensationInsightsProps {
   salaryStats: SalaryStats | null
@@ -129,7 +129,7 @@ export function CompensationInsights({ salaryStats, salaryValues }: Compensation
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <TalentInsightEmptyState message="No salary data available yet" />
+          <TalentIntelligenceEmptyState message="No salary data available yet" />
         </CardContent>
       </Card>
     )

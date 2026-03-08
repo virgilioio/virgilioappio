@@ -1,10 +1,10 @@
 import gioFaceEmpty from '@/assets/gio-face-empty.png'
 
-interface TalentInsightEmptyStateProps {
+interface TalentIntelligenceEmptyStateProps {
   message?: string
 }
 
-export function TalentInsightEmptyState({ message = 'No data available yet for this visualization.' }: TalentInsightEmptyStateProps) {
+export function TalentIntelligenceEmptyState({ message = 'No data available yet for this visualization.' }: TalentIntelligenceEmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-10 gap-3">
       <img src={gioFaceEmpty} alt="No data" className="h-10 w-10 opacity-60" />

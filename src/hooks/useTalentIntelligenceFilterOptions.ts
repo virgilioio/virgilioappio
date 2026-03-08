@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { CandidateRow } from './useTalentInsightsData'
+import type { CandidateRow } from './useTalentIntelligenceData'
 
 export interface FilterOption {
   value: string
@@ -34,7 +34,7 @@ function deriveSkillOptions(candidates: CandidateRow[]): FilterOption[] {
     .map(([value, count]) => ({ value, label: value, count }))
 }
 
-export function useTalentInsightsFilterOptions(candidates: CandidateRow[]) {
+export function useTalentIntelligenceFilterOptions(candidates: CandidateRow[]) {
   return useMemo(() => {
     if (!candidates || candidates.length === 0) {
       return {

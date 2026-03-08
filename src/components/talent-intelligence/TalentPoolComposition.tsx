@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
-import { TalentInsightEmptyState } from './TalentInsightEmptyState'
-import type { CountEntry } from '@/hooks/useTalentInsightsData'
+import { TalentIntelligenceEmptyState } from './TalentIntelligenceEmptyState'
+import type { CountEntry } from '@/hooks/useTalentIntelligenceData'
 
 interface TalentPoolCompositionProps {
   functionalAreaCounts: CountEntry[]
@@ -63,7 +63,7 @@ export function TalentPoolComposition({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <TalentInsightEmptyState message="No role composition data available yet" />
+          <TalentIntelligenceEmptyState message="No role composition data available yet" />
         </CardContent>
       </Card>
     )

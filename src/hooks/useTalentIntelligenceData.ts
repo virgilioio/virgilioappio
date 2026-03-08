@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
-import type { TalentInsightsFilters } from '@/contexts/TalentInsightsFilterContext'
+import type { TalentIntelligenceFilters } from '@/contexts/TalentIntelligenceFilterContext'
 
 export interface CandidateRow {
   location_country: string | null
@@ -27,7 +27,7 @@ export interface SkillEntry { name: string; count: number; percentage: number }
 export interface SalaryStats { p25: number; median: number; p75: number; avg: number; count: number }
 export interface ExperienceBand { band: string; count: number }
 
-export interface TalentInsightsData {
+export interface TalentIntelligenceData {
   totalCandidates: number
   avgExperience: number | null
   medianSalary: number | null
@@ -99,41 +99,30 @@ export function normalizeSalaryToAnnual(amount: number, period: string | null): 
 }
 
 // --- Apply filters to candidate array ---
-export function applyFilters(candidates: CandidateRow[], filters: TalentInsightsFilters): CandidateRow[] {
+export function applyFilters(candidates: CandidateRow[], filters: TalentIntelligenceFilters): CandidateRow[] {
   return candidates.filter(c => {
-    // Role
     if (filters.roles.length > 0 && !filters.roles.includes(c.standardized_title ?? '')) return false
-    // Functional area
     if (filters.functionalAreas.length > 0 && !filters.functionalAreas.includes(c.functional_area ?? '')) return false
-    // Specialization
     if (filters.specializations.length > 0 && !filters.specializations.includes(c.specialization ?? '')) return false
-    // Seniority
     if (filters.seniorities.length > 0 && !filters.seniorities.includes(c.seniority_level ?? '')) return false
-    // Skills (inclusive OR)
     if (filters.skills.length > 0) {
       const candidateSkills = c.standardized_skills?.length ? c.standardized_skills : c.skills
       if (!candidateSkills || !filters.skills.some(s => candidateSkills.includes(s))) return false
     }
-    // Country
     if (filters.countries.length > 0) {
       const normalized = normalizeValue(c.location_country, COUNTRY_NORMALIZE)
       if (!normalized || !filters.countries.includes(normalized)) return false
     }
-    // State
     if (filters.states.length > 0 && !filters.states.includes(c.location_state ?? '')) return false
-    // City
     if (filters.cities.length > 0 && !filters.cities.includes(c.location_city ?? '')) return false
-    // Experience
     if (filters.experienceMin !== null && (c.years_experience == null || c.years_experience < filters.experienceMin)) return false
     if (filters.experienceMax !== null && (c.years_experience == null || c.years_experience > filters.experienceMax)) return false
-    // Salary
     if (filters.salaryMin !== null || filters.salaryMax !== null) {
       if (c.salary_amount == null || c.salary_amount <= 0) return false
       const annual = normalizeSalaryToAnnual(c.salary_amount, c.salary_period)
       if (filters.salaryMin !== null && annual < filters.salaryMin) return false
       if (filters.salaryMax !== null && annual > filters.salaryMax) return false
     }
-    // Date
     if (filters.dateFrom) {
       const created = new Date(c.created_at)
       if (created < filters.dateFrom) return false
@@ -147,7 +136,7 @@ export function applyFilters(candidates: CandidateRow[], filters: TalentInsights
 }
 
 // --- Compute aggregations from a candidate array ---
-function computeInsights(candidates: CandidateRow[]): TalentInsightsData {
+function computeInsights(candidates: CandidateRow[]): TalentIntelligenceData {
   const total = candidates.length
 
   if (total === 0) {
@@ -237,11 +226,11 @@ function computeInsights(candidates: CandidateRow[]): TalentInsightsData {
 }
 
 // --- Raw data hook (fetches once, caches) ---
-export function useTalentInsightsRawData() {
+export function useTalentIntelligenceRawData() {
   const { user } = useAuth()
 
   return useQuery({
-    queryKey: ['talent-insights-raw', user?.id],
+    queryKey: ['talent-intelligence-raw', user?.id],
     queryFn: async (): Promise<CandidateRow[]> => {
       if (!user) throw new Error('No user')
 
@@ -283,8 +272,8 @@ export function useTalentInsightsRawData() {
 }
 
 // --- Filtered + aggregated data hook ---
-export function useTalentInsightsData(filters?: TalentInsightsFilters) {
-  const { data: rawCandidates, isLoading, error } = useTalentInsightsRawData()
+export function useTalentIntelligenceData(filters?: TalentIntelligenceFilters) {
+  const { data: rawCandidates, isLoading, error } = useTalentIntelligenceRawData()
 
   const data = useMemo(() => {
     if (!rawCandidates) return null

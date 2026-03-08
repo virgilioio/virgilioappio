@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts'
-import { TalentInsightEmptyState } from './TalentInsightEmptyState'
-import type { ExperienceBand, CountEntry } from '@/hooks/useTalentInsightsData'
+import { TalentIntelligenceEmptyState } from './TalentIntelligenceEmptyState'
+import type { ExperienceBand, CountEntry } from '@/hooks/useTalentIntelligenceData'
 
 interface ExperienceDistributionProps {
   experienceBands: ExperienceBand[]
@@ -32,7 +32,7 @@ export function ExperienceDistribution({ experienceBands, seniorityCounts, onBan
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <TalentInsightEmptyState message="No experience data available yet" />
+          <TalentIntelligenceEmptyState message="No experience data available yet" />
         </CardContent>
       </Card>
     )

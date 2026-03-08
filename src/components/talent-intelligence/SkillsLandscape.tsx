@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
-import { TalentInsightEmptyState } from './TalentInsightEmptyState'
-import type { SkillEntry } from '@/hooks/useTalentInsightsData'
+import { TalentIntelligenceEmptyState } from './TalentIntelligenceEmptyState'
+import type { SkillEntry } from '@/hooks/useTalentIntelligenceData'
 
 interface SkillsLandscapeProps {
   topSkills: SkillEntry[]
@@ -21,7 +21,7 @@ export function SkillsLandscape({ topSkills, onSkillClick }: SkillsLandscapeProp
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <TalentInsightEmptyState message="No skills data available yet" />
+          <TalentIntelligenceEmptyState message="No skills data available yet" />
         </CardContent>
       </Card>
     )

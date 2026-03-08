@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { TalentInsightEmptyState } from './TalentInsightEmptyState'
+import { TalentIntelligenceEmptyState } from './TalentIntelligenceEmptyState'
 import { Progress } from '@/components/ui/progress'
 import { MapPin, Users } from 'lucide-react'
-import type { CountEntry } from '@/hooks/useTalentInsightsData'
+import type { CountEntry } from '@/hooks/useTalentIntelligenceData'
 import { COUNTRIES } from '@/constants/countries'
 import DottedMap from 'dotted-map'
 
@@ -14,7 +14,6 @@ interface GeographyInsightsProps {
   onCountryClick?: (country: string) => void
 }
 
-// Country name → [longitude, latitude] centroids
 const COUNTRY_COORDS: Record<string, [number, number]> = {
   'United States': [-98, 39], 'Canada': [-106, 56], 'Mexico': [-102, 23],
   'Brazil': [-51, -14], 'Argentina': [-64, -34], 'Colombia': [-74, 4],
@@ -63,12 +62,10 @@ export function GeographyInsights({ countryCounts, cityCounts, totalCandidates, 
   const svgString = useMemo(() => {
     const map = new DottedMap({ height: 60, grid: 'diagonal' })
 
-    // Add pins for each country with candidates
     countryCounts.forEach(entry => {
       const coords = getCoords(entry.name)
       if (!coords) return
 
-      // Scale radius based on count
       const minR = 0.4
       const maxR = 1.2
       const r = maxCount <= 1 ? minR : minR + ((entry.count / maxCount) * (maxR - minR))
@@ -97,7 +94,7 @@ export function GeographyInsights({ countryCounts, cityCounts, totalCandidates, 
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <TalentInsightEmptyState message="No location data available yet" />
+          <TalentIntelligenceEmptyState message="No location data available yet" />
         </CardContent>
       </Card>
     )
@@ -112,7 +109,6 @@ export function GeographyInsights({ countryCounts, cityCounts, totalCandidates, 
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* Map — 3/5 width */}
           <div className="lg:col-span-3">
             <div
               className="bg-muted/30 rounded-lg overflow-hidden p-4"
@@ -121,9 +117,7 @@ export function GeographyInsights({ countryCounts, cityCounts, totalCandidates, 
             />
           </div>
 
-          {/* Right panel — 2/5 width */}
           <div className="lg:col-span-2 flex flex-col gap-5">
-            {/* Total count */}
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-virgilio-purple/10 flex items-center justify-center">
                 <Users className="h-5 w-5 text-virgilio-purple" />
@@ -134,7 +128,6 @@ export function GeographyInsights({ countryCounts, cityCounts, totalCandidates, 
               </div>
             </div>
 
-            {/* Top countries with progress bars */}
             <div className="space-y-3">
               <p className="text-xs font-poppins font-medium text-muted-foreground uppercase tracking-wide">Top Countries</p>
               {topCountries.map((country) => {
@@ -155,7 +148,6 @@ export function GeographyInsights({ countryCounts, cityCounts, totalCandidates, 
               })}
             </div>
 
-            {/* Top cities */}
             {cityCounts.length > 0 && (
               <div className="space-y-2 pt-2 border-t border-border">
                 <p className="text-xs font-poppins font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">

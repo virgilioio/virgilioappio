@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react'
 
-export interface TalentInsightsFilters {
+export interface TalentIntelligenceFilters {
   roles: string[]
   functionalAreas: string[]
   specializations: string[]
@@ -17,7 +17,7 @@ export interface TalentInsightsFilters {
   dateTo: Date | null
 }
 
-const EMPTY_FILTERS: TalentInsightsFilters = {
+const EMPTY_FILTERS: TalentIntelligenceFilters = {
   roles: [],
   functionalAreas: [],
   specializations: [],
@@ -38,23 +38,23 @@ type ArrayFilterKey = 'roles' | 'functionalAreas' | 'specializations' | 'seniori
 type NumericFilterKey = 'experienceMin' | 'experienceMax' | 'salaryMin' | 'salaryMax'
 type DateFilterKey = 'dateFrom' | 'dateTo'
 
-interface TalentInsightsFilterContextValue {
-  filters: TalentInsightsFilters
+interface TalentIntelligenceFilterContextValue {
+  filters: TalentIntelligenceFilters
   setArrayFilter: (key: ArrayFilterKey, values: string[]) => void
   toggleArrayFilter: (key: ArrayFilterKey, value: string) => void
   removeArrayFilterValue: (key: ArrayFilterKey, value: string) => void
   setNumericFilter: (key: NumericFilterKey, value: number | null) => void
   setDateFilter: (key: DateFilterKey, value: Date | null) => void
   clearAll: () => void
-  clearFilter: (key: keyof TalentInsightsFilters) => void
+  clearFilter: (key: keyof TalentIntelligenceFilters) => void
   activeFilterCount: number
   hasActiveFilters: boolean
 }
 
-const TalentInsightsFilterContext = createContext<TalentInsightsFilterContextValue | null>(null)
+const TalentIntelligenceFilterContext = createContext<TalentIntelligenceFilterContextValue | null>(null)
 
-export function TalentInsightsFilterProvider({ children }: { children: ReactNode }) {
-  const [filters, setFilters] = useState<TalentInsightsFilters>(EMPTY_FILTERS)
+export function TalentIntelligenceFilterProvider({ children }: { children: ReactNode }) {
+  const [filters, setFilters] = useState<TalentIntelligenceFilters>(EMPTY_FILTERS)
 
   const setArrayFilter = useCallback((key: ArrayFilterKey, values: string[]) => {
     setFilters(prev => ({ ...prev, [key]: values }))
@@ -87,7 +87,7 @@ export function TalentInsightsFilterProvider({ children }: { children: ReactNode
 
   const clearAll = useCallback(() => setFilters(EMPTY_FILTERS), [])
 
-  const clearFilter = useCallback((key: keyof TalentInsightsFilters) => {
+  const clearFilter = useCallback((key: keyof TalentIntelligenceFilters) => {
     setFilters(prev => ({ ...prev, [key]: EMPTY_FILTERS[key] }))
   }, [])
 
@@ -118,14 +118,14 @@ export function TalentInsightsFilterProvider({ children }: { children: ReactNode
   }), [filters, setArrayFilter, toggleArrayFilter, removeArrayFilterValue, setNumericFilter, setDateFilter, clearAll, clearFilter, activeFilterCount])
 
   return (
-    <TalentInsightsFilterContext.Provider value={value}>
+    <TalentIntelligenceFilterContext.Provider value={value}>
       {children}
-    </TalentInsightsFilterContext.Provider>
+    </TalentIntelligenceFilterContext.Provider>
   )
 }
 
-export function useTalentInsightsFilters() {
-  const ctx = useContext(TalentInsightsFilterContext)
-  if (!ctx) throw new Error('useTalentInsightsFilters must be used within TalentInsightsFilterProvider')
+export function useTalentIntelligenceFilters() {
+  const ctx = useContext(TalentIntelligenceFilterContext)
+  if (!ctx) throw new Error('useTalentIntelligenceFilters must be used within TalentIntelligenceFilterProvider')
   return ctx
 }

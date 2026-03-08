@@ -1,9 +1,9 @@
 import { MetricCard } from '@/components/ui/metric-card'
 import { Users, Clock, DollarSign, Briefcase, Sparkles } from 'lucide-react'
-import type { TalentInsightsData } from '@/hooks/useTalentInsightsData'
+import type { TalentIntelligenceData } from '@/hooks/useTalentIntelligenceData'
 
 interface SummaryMetricsRowProps {
-  data: TalentInsightsData
+  data: TalentIntelligenceData
 }
 
 export function SummaryMetricsRow({ data }: SummaryMetricsRowProps) {

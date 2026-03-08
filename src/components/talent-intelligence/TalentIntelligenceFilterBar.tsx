@@ -3,12 +3,12 @@ import { Button } from '@/components/ui/button'
 import { MultiSelect } from '@/components/ui/multi-select'
 import { Slider } from '@/components/ui/slider'
 import { SlidersHorizontal } from 'lucide-react'
-import { useTalentInsightsFilters } from '@/contexts/TalentInsightsFilterContext'
-import type { FilterOption } from '@/hooks/useTalentInsightsFilterOptions'
+import { useTalentIntelligenceFilters } from '@/contexts/TalentIntelligenceFilterContext'
+import type { FilterOption } from '@/hooks/useTalentIntelligenceFilterOptions'
 import { ActiveFilterChips } from './ActiveFilterChips'
-import { TalentInsightsFilterSheet } from './TalentInsightsFilterSheet'
+import { TalentIntelligenceFilterSheet } from './TalentIntelligenceFilterSheet'
 
-interface TalentInsightsFilterBarProps {
+interface TalentIntelligenceFilterBarProps {
   roleOptions: FilterOption[]
   seniorityOptions: FilterOption[]
   countryOptions: FilterOption[]
@@ -30,8 +30,8 @@ function formatCurrencyShort(v: number) {
   return `$${v}`
 }
 
-export function TalentInsightsFilterBar(props: TalentInsightsFilterBarProps) {
-  const { filters, setArrayFilter, setNumericFilter } = useTalentInsightsFilters()
+export function TalentIntelligenceFilterBar(props: TalentIntelligenceFilterBarProps) {
+  const { filters, setArrayFilter, setNumericFilter } = useTalentIntelligenceFilters()
   const [sheetOpen, setSheetOpen] = useState(false)
 
   const {
@@ -45,7 +45,6 @@ export function TalentInsightsFilterBar(props: TalentInsightsFilterBarProps) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-end gap-3">
-        {/* Role */}
         {roleOptions.length > 0 && (
           <div className="min-w-[180px] max-w-[220px]">
             <label className="text-xs font-poppins font-medium text-muted-foreground mb-1 block">Role</label>
@@ -59,7 +58,6 @@ export function TalentInsightsFilterBar(props: TalentInsightsFilterBarProps) {
           </div>
         )}
 
-        {/* Seniority */}
         {seniorityOptions.length > 0 && (
           <div className="min-w-[160px] max-w-[200px]">
             <label className="text-xs font-poppins font-medium text-muted-foreground mb-1 block">Seniority</label>
@@ -73,7 +71,6 @@ export function TalentInsightsFilterBar(props: TalentInsightsFilterBarProps) {
           </div>
         )}
 
-        {/* Country */}
         {countryOptions.length > 0 && (
           <div className="min-w-[180px] max-w-[220px]">
             <label className="text-xs font-poppins font-medium text-muted-foreground mb-1 block">Country</label>
@@ -87,7 +84,6 @@ export function TalentInsightsFilterBar(props: TalentInsightsFilterBarProps) {
           </div>
         )}
 
-        {/* Skills */}
         {skillOptions.length > 0 && (
           <div className="min-w-[180px] max-w-[220px]">
             <label className="text-xs font-poppins font-medium text-muted-foreground mb-1 block">Skills</label>
@@ -101,7 +97,6 @@ export function TalentInsightsFilterBar(props: TalentInsightsFilterBarProps) {
           </div>
         )}
 
-        {/* Salary range */}
         {hasSalaryRange && (
           <div className="min-w-[200px] max-w-[260px]">
             <label className="text-xs font-poppins font-medium text-muted-foreground mb-1 block">
@@ -129,7 +124,6 @@ export function TalentInsightsFilterBar(props: TalentInsightsFilterBarProps) {
           </div>
         )}
 
-        {/* More filters button */}
         <Button
           variant="outline"
           size="sm"
@@ -143,7 +137,7 @@ export function TalentInsightsFilterBar(props: TalentInsightsFilterBarProps) {
 
       <ActiveFilterChips />
 
-      <TalentInsightsFilterSheet
+      <TalentIntelligenceFilterSheet
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         functionalAreaOptions={functionalAreaOptions}

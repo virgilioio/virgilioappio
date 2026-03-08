@@ -2,23 +2,23 @@ import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Section } from '@/components/layout/Section'
-import { useTalentInsightsData } from '@/hooks/useTalentInsightsData'
-import { useTalentInsightsFilterOptions } from '@/hooks/useTalentInsightsFilterOptions'
-import { TalentInsightsFilterProvider, useTalentInsightsFilters } from '@/contexts/TalentInsightsFilterContext'
-import { SummaryMetricsRow } from '@/components/talent-insights/SummaryMetricsRow'
-import { GeographyInsights } from '@/components/talent-insights/GeographyInsights'
-import { ExperienceDistribution } from '@/components/talent-insights/ExperienceDistribution'
-import { SkillsLandscape } from '@/components/talent-insights/SkillsLandscape'
-import { CompensationInsights } from '@/components/talent-insights/CompensationInsights'
-import { TalentPoolComposition } from '@/components/talent-insights/TalentPoolComposition'
-import { TalentInsightEmptyState } from '@/components/talent-insights/TalentInsightEmptyState'
-import { TalentInsightsFilterBar } from '@/components/talent-insights/TalentInsightsFilterBar'
+import { useTalentIntelligenceData } from '@/hooks/useTalentIntelligenceData'
+import { useTalentIntelligenceFilterOptions } from '@/hooks/useTalentIntelligenceFilterOptions'
+import { TalentIntelligenceFilterProvider, useTalentIntelligenceFilters } from '@/contexts/TalentIntelligenceFilterContext'
+import { SummaryMetricsRow } from '@/components/talent-intelligence/SummaryMetricsRow'
+import { GeographyInsights } from '@/components/talent-intelligence/GeographyInsights'
+import { ExperienceDistribution } from '@/components/talent-intelligence/ExperienceDistribution'
+import { SkillsLandscape } from '@/components/talent-intelligence/SkillsLandscape'
+import { CompensationInsights } from '@/components/talent-intelligence/CompensationInsights'
+import { TalentPoolComposition } from '@/components/talent-intelligence/TalentPoolComposition'
+import { TalentIntelligenceEmptyState } from '@/components/talent-intelligence/TalentIntelligenceEmptyState'
+import { TalentIntelligenceFilterBar } from '@/components/talent-intelligence/TalentIntelligenceFilterBar'
 import { Button } from '@/components/ui/button'
 
-function TalentInsightsContent() {
-  const { filters, clearAll, hasActiveFilters, toggleArrayFilter, setNumericFilter } = useTalentInsightsFilters()
-  const { data, rawCandidates, isLoading, error } = useTalentInsightsData(filters)
-  const filterOptions = useTalentInsightsFilterOptions(rawCandidates)
+function TalentIntelligenceContent() {
+  const { filters, clearAll, hasActiveFilters, toggleArrayFilter, setNumericFilter } = useTalentIntelligenceFilters()
+  const { data, rawCandidates, isLoading, error } = useTalentIntelligenceData(filters)
+  const filterOptions = useTalentIntelligenceFilterOptions(rawCandidates)
 
   const handleFilterApply = (key: string, value: string) => {
     const keyMap: Record<string, 'roles' | 'functionalAreas' | 'specializations' | 'seniorities' | 'skills' | 'countries' | 'states' | 'cities'> = {
@@ -53,7 +53,7 @@ function TalentInsightsContent() {
     <div className="min-h-screen bg-background">
       <Section variant="default" banded container className="animate-fade-in">
         <PageHeader
-          title="Talent Insights"
+          title="Talent Intelligence"
           subtitle="Understand your candidate pool — geography, experience, skills, compensation, and composition."
         />
       </Section>
@@ -62,7 +62,7 @@ function TalentInsightsContent() {
         {/* Filter bar */}
         {rawCandidates.length > 0 && (
           <div className="mb-6">
-            <TalentInsightsFilterBar
+            <TalentIntelligenceFilterBar
               roleOptions={filterOptions.roleOptions}
               seniorityOptions={filterOptions.seniorityOptions}
               countryOptions={filterOptions.countryOptions}
@@ -85,17 +85,17 @@ function TalentInsightsContent() {
 
         {error && (
           <div className="flex items-center justify-center py-20">
-            <p className="text-destructive text-sm">Failed to load talent insights</p>
+            <p className="text-destructive text-sm">Failed to load talent intelligence</p>
           </div>
         )}
 
         {data && data.totalCandidates === 0 && !hasActiveFilters && (
-          <TalentInsightEmptyState message="No candidates in your talent database yet" />
+          <TalentIntelligenceEmptyState message="No candidates in your talent database yet" />
         )}
 
         {data && data.totalCandidates === 0 && hasActiveFilters && (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
-            <TalentInsightEmptyState message="No candidates match the selected filters" />
+            <TalentIntelligenceEmptyState message="No candidates match the selected filters" />
             <Button variant="outline" size="sm" onClick={clearAll}>
               Clear filters
             </Button>
@@ -141,13 +141,13 @@ function TalentInsightsContent() {
   )
 }
 
-export default function TalentInsights() {
+export default function TalentIntelligence() {
   return (
     <AuthGate>
       <PermissionGate permission="canViewCandidates">
-        <TalentInsightsFilterProvider>
-          <TalentInsightsContent />
-        </TalentInsightsFilterProvider>
+        <TalentIntelligenceFilterProvider>
+          <TalentIntelligenceContent />
+        </TalentIntelligenceFilterProvider>
       </PermissionGate>
     </AuthGate>
   )

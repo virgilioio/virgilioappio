@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { X } from 'lucide-react'
-import { useTalentInsightsFilters } from '@/contexts/TalentInsightsFilterContext'
+import { useTalentIntelligenceFilters } from '@/contexts/TalentIntelligenceFilterContext'
 import { format } from 'date-fns'
 
 const FILTER_LABELS: Record<string, string> = {
@@ -21,7 +21,7 @@ function formatCurrency(v: number) {
 }
 
 export function ActiveFilterChips() {
-  const { filters, removeArrayFilterValue, clearFilter, clearAll, hasActiveFilters } = useTalentInsightsFilters()
+  const { filters, removeArrayFilterValue, clearFilter, clearAll, hasActiveFilters } = useTalentIntelligenceFilters()
 
   if (!hasActiveFilters) return null
 

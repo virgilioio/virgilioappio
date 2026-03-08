@@ -4,11 +4,11 @@ import {
 import { MultiSelect } from '@/components/ui/multi-select'
 import { Slider } from '@/components/ui/slider'
 import { Button } from '@/components/ui/button'
-import { useTalentInsightsFilters } from '@/contexts/TalentInsightsFilterContext'
-import type { FilterOption } from '@/hooks/useTalentInsightsFilterOptions'
+import { useTalentIntelligenceFilters } from '@/contexts/TalentIntelligenceFilterContext'
+import type { FilterOption } from '@/hooks/useTalentIntelligenceFilterOptions'
 import { subDays, subMonths } from 'date-fns'
 
-interface TalentInsightsFilterSheetProps {
+interface TalentIntelligenceFilterSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   functionalAreaOptions: FilterOption[]
@@ -22,12 +22,12 @@ function toOpts(opts: FilterOption[]) {
   return opts.map(o => ({ value: o.value, label: `${o.label} (${o.count})` }))
 }
 
-export function TalentInsightsFilterSheet({
+export function TalentIntelligenceFilterSheet({
   open, onOpenChange,
   functionalAreaOptions, specializationOptions,
   stateOptions, cityOptions, experienceRange,
-}: TalentInsightsFilterSheetProps) {
-  const { filters, setArrayFilter, setNumericFilter, setDateFilter, clearAll } = useTalentInsightsFilters()
+}: TalentIntelligenceFilterSheetProps) {
+  const { filters, setArrayFilter, setNumericFilter, setDateFilter, clearAll } = useTalentIntelligenceFilters()
 
   const hasExp = experienceRange && experienceRange.max > experienceRange.min
 
@@ -49,7 +49,6 @@ export function TalentInsightsFilterSheet({
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
-          {/* Functional Area */}
           {functionalAreaOptions.length > 0 && (
             <div>
               <label className="text-xs font-poppins font-medium text-muted-foreground mb-1.5 block">Functional Area</label>
@@ -63,7 +62,6 @@ export function TalentInsightsFilterSheet({
             </div>
           )}
 
-          {/* Specialization */}
           {specializationOptions.length > 0 && (
             <div>
               <label className="text-xs font-poppins font-medium text-muted-foreground mb-1.5 block">Specialization</label>
@@ -77,7 +75,6 @@ export function TalentInsightsFilterSheet({
             </div>
           )}
 
-          {/* State */}
           {stateOptions.length > 0 && (
             <div>
               <label className="text-xs font-poppins font-medium text-muted-foreground mb-1.5 block">State / Region</label>
@@ -91,7 +88,6 @@ export function TalentInsightsFilterSheet({
             </div>
           )}
 
-          {/* City */}
           {cityOptions.length > 0 && (
             <div>
               <label className="text-xs font-poppins font-medium text-muted-foreground mb-1.5 block">City</label>
@@ -105,7 +101,6 @@ export function TalentInsightsFilterSheet({
             </div>
           )}
 
-          {/* Experience range */}
           {hasExp && (
             <div>
               <label className="text-xs font-poppins font-medium text-muted-foreground mb-1.5 block">
@@ -130,7 +125,6 @@ export function TalentInsightsFilterSheet({
             </div>
           )}
 
-          {/* Date range presets */}
           <div>
             <label className="text-xs font-poppins font-medium text-muted-foreground mb-1.5 block">Added Since</label>
             <div className="flex flex-wrap gap-2">
@@ -157,7 +151,6 @@ export function TalentInsightsFilterSheet({
             </div>
           </div>
 
-          {/* Clear all */}
           <Button
             variant="ghost"
             size="sm"
