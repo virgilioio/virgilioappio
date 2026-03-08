@@ -15,7 +15,7 @@ import { useOrganizations } from '@/hooks/useOrganizations';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUserAssignedJobIds } from '@/hooks/useUserAssignedJobIds';
 import { jobMatchesUsers } from '@/utils/jobInvolvement';
-import { Briefcase } from 'lucide-react';
+import { Briefcase, FileText, Clock, Users } from 'lucide-react';
 import { Accordion } from '@/components/ui/accordion';
 
 export default function Pipeline() {
@@ -103,41 +103,51 @@ export default function Pipeline() {
                 departmentOptions={departmentOptions}
               />
 
-              {/* Top Metrics */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                <MetricCard
-                  variant="hero"
-                  title="Active Jobs"
-                  value={metricsLoading ? 0 : globalMetrics?.active_jobs || 0}
-                  icon={Briefcase}
-                  iconColor="text-primary"
-                  tooltip="Number of open jobs"
-                  isLoading={metricsLoading}
-                />
-                <MetricCardGroup title="Pipeline" className="md:col-span-3">
+              {/* Row 1: Hero KPIs */}
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <MetricCard
-                    variant="inline"
+                    variant="hero"
+                    title="Active Jobs"
+                    value={metricsLoading ? 0 : globalMetrics?.active_jobs || 0}
+                    icon={Briefcase}
+                    iconColor="text-primary"
+                    tooltip="Number of open jobs"
+                    isLoading={metricsLoading}
+                  />
+                  <MetricCard
+                    variant="hero"
                     title="In App Review"
                     value={globalMetrics?.application_review_count || 0}
+                    icon={FileText}
+                    iconColor="text-warning"
                     tooltip="Candidates in Application Review"
                     isLoading={metricsLoading}
                   />
                   <MetricCard
-                    variant="inline"
-                    title="Avg Days in Review"
-                    value={globalMetrics?.avg_days_in_application_review !== null && globalMetrics?.avg_days_in_application_review !== undefined ? globalMetrics.avg_days_in_application_review : 'N/A'}
-                    suffix={globalMetrics?.avg_days_in_application_review != null ? 'd' : undefined}
-                    tooltip="Average time in Application Review"
-                    isLoading={metricsLoading}
-                  />
-                  <MetricCard
-                    variant="inline"
+                    variant="hero"
                     title="Active Candidates"
                     value={globalMetrics?.active_candidates_count || 0}
+                    icon={Users}
+                    iconColor="text-virgilio-success"
                     tooltip="Candidates in Recruiting Process stages"
                     isLoading={metricsLoading}
                   />
-                </MetricCardGroup>
+                </div>
+
+                {/* Row 2: Grouped strip */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <MetricCardGroup title="Pipeline Health" direction="vertical">
+                    <MetricCard
+                      variant="inline"
+                      title="Avg Days in Review"
+                      value={globalMetrics?.avg_days_in_application_review !== null && globalMetrics?.avg_days_in_application_review !== undefined ? globalMetrics.avg_days_in_application_review : 'N/A'}
+                      suffix={globalMetrics?.avg_days_in_application_review != null ? 'd' : undefined}
+                      tooltip="Average time in Application Review"
+                      isLoading={metricsLoading}
+                    />
+                  </MetricCardGroup>
+                </div>
               </div>
 
               {/* Job List */}
