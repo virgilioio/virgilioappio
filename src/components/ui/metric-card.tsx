@@ -75,11 +75,11 @@ function IconCircle({
 }) {
   if (!icon) return null
 
-  const circleSize = size === 'hero' ? 'w-12 h-12' : 'w-10 h-10'
-  const iconSize = size === 'hero' ? 'h-5 w-5' : 'h-4 w-4'
+  const circleSize = size === 'hero' ? 'w-14 h-14' : 'w-12 h-12'
+  const iconSize = size === 'hero' ? 'h-6 w-6' : 'h-5 w-5'
 
   return (
-    <div className={cn('rounded-full bg-background shadow-sm flex items-center justify-center shrink-0 border border-border/50', circleSize)}>
+    <div className={cn('rounded-full bg-background shadow-md flex items-center justify-center shrink-0 border border-border/50', circleSize)}>
       {isLucideIcon(icon) ? (
         (() => { const Icon = icon; return <Icon className={cn(iconSize, iconColor)} /> })()
       ) : (
@@ -142,7 +142,7 @@ export function MetricCard({
   // ─── Hero variant (horizontal pill, larger) ───
   if (variant === 'hero') {
     const card = (
-      <Card className={cn('rounded-2xl border-border hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5', className)}>
+      <Card className={cn('rounded-2xl border-border/60 shadow-md hover:shadow-xl transition-all duration-200 ease-out hover:-translate-y-0.5', className)}>
         <CardContent className="p-5">
           <div className="flex items-center gap-4">
             <IconCircle icon={icon} iconColor={iconColor} size="hero" />
@@ -163,7 +163,7 @@ export function MetricCard({
               {footer && !isLoading && <div className="mt-2">{footer}</div>}
             </div>
             {sparkline && !isLoading && (
-              <div className="w-28 h-12 shrink-0">{sparkline}</div>
+              <div className="w-32 h-14 shrink-0">{sparkline}</div>
             )}
           </div>
         </CardContent>
@@ -174,7 +174,7 @@ export function MetricCard({
 
   // ─── Default variant (horizontal pill) ───
   const card = (
-    <Card className={cn('rounded-2xl border-border hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5', className)}>
+    <Card className={cn('rounded-2xl border-border/60 shadow-md hover:shadow-xl transition-all duration-200 ease-out hover:-translate-y-0.5', className)}>
       <CardContent className="p-4">
         <div className="flex items-center gap-3">
           <IconCircle icon={icon} iconColor={iconColor} />
@@ -195,7 +195,7 @@ export function MetricCard({
             {footer && !isLoading && <div className="mt-1.5">{footer}</div>}
           </div>
           {sparkline && !isLoading && (
-            <div className="w-24 h-10 shrink-0">{sparkline}</div>
+            <div className="w-28 h-10 shrink-0">{sparkline}</div>
           )}
         </div>
       </CardContent>

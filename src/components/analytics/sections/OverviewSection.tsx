@@ -1,16 +1,21 @@
 import { AnalyticsSection } from '@/components/analytics/shared/AnalyticsSection'
 import { MetricCard } from '@/components/ui/metric-card'
 import { MetricCardGroup } from '@/components/ui/metric-card-group'
+import { MiniSparkline } from '@/components/ui/mini-sparkline'
 import { ApplicationsTrendChart } from '@/components/analytics/ApplicationsTrendChart'
-import { FileText, UserCheck, Clock, Users, Gift, UserX, CalendarPlus, CalendarCheck } from 'lucide-react'
+import { FileText, UserCheck, Clock } from 'lucide-react'
 import { BarChart3 } from 'lucide-react'
 import type { AnalyticsMetrics } from '@/hooks/useAnalyticsMetrics'
+import { useMemo } from 'react'
 
 interface OverviewSectionProps {
   metrics: AnalyticsMetrics
 }
 
 export function OverviewSection({ metrics }: OverviewSectionProps) {
+  const appSparkData = useMemo(() => metrics.trendData.map(d => d.applications), [metrics.trendData])
+  const hiresSparkData = useMemo(() => metrics.trendData.map(d => d.hires), [metrics.trendData])
+
   return (
     <AnalyticsSection
       title="Overview"
@@ -24,16 +29,20 @@ export function OverviewSection({ metrics }: OverviewSectionProps) {
           title="Applications"
           value={metrics.applications}
           icon={FileText}
+          iconColor="text-primary"
           tooltip="New applications in selected period"
           isLoading={metrics.isLoading}
+          sparkline={<MiniSparkline data={appSparkData} color="hsl(267 100% 62%)" />}
         />
         <MetricCard
           variant="hero"
           title="Hires"
           value={metrics.totalHires}
           icon={UserCheck}
+          iconColor="text-virgilio-success"
           tooltip="Candidates hired in selected period"
           isLoading={metrics.isLoading}
+          sparkline={<MiniSparkline data={hiresSparkData} color="hsl(152 69% 41%)" />}
         />
         <MetricCard
           variant="hero"
@@ -41,6 +50,7 @@ export function OverviewSection({ metrics }: OverviewSectionProps) {
           value={metrics.avgTimeToHire}
           suffix="d"
           icon={Clock}
+          iconColor="text-warning"
           tooltip="Average days from candidate creation to hire"
           isLoading={metrics.isLoading}
         />
