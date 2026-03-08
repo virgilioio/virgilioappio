@@ -163,7 +163,7 @@ export function MetricCard({
               {footer && !isLoading && <div className="mt-2">{footer}</div>}
             </div>
             {sparkline && !isLoading && (
-              <div className="w-28 h-12 shrink-0">{sparkline}</div>
+              <div className="w-32 h-14 shrink-0">{sparkline}</div>
             )}
           </div>
         </CardContent>
@@ -174,7 +174,7 @@ export function MetricCard({
 
   // ─── Default variant (horizontal pill) ───
   const card = (
-    <Card className={cn('rounded-2xl border-border hover:shadow-lg transition-all duration-200 ease-out hover:-translate-y-0.5', className)}>
+    <Card className={cn('rounded-2xl border-border/60 shadow-md hover:shadow-xl transition-all duration-200 ease-out hover:-translate-y-0.5', className)}>
       <CardContent className="p-4">
         <div className="flex items-center gap-3">
           <IconCircle icon={icon} iconColor={iconColor} />
