@@ -1,89 +1,55 @@
-# System Roles Migration — Completed Phases 1-5
 
-## Architecture Change
-- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
-- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-## Completed
+# Fix Candidate Deletion: Warning Dialog + Handle Scheduled Bookings
 
-### Phase 1 — Database
-- ✅ Created `system_role` enum (`admin`, `member`)
-- ✅ Added `system_role` column to `members` table
-- ✅ Migrated data: `admin` → `admin`, all others → `member`
-- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
-- ✅ Updated `check_tenant_member_role` to use `system_role`
-- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
-- ✅ Updated `audit_member_role_change` trigger
+## Problem
+1. `scheduled_bookings.candidate_id` FK has no `ON DELETE CASCADE`, so deleting a candidate with interviews fails with a 23503 FK violation error.
+2. All delete buttons use browser `confirm()` -- ugly, no context about what will be affected.
 
-### Phase 2 — Frontend Permissions
-- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
-- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
-- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
-- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
+## Solution
 
-### Phase 3 — UI Updates
-- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
-- ✅ Updated `Dashboard` — sourcing panel for admin+ only
-- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
-- ✅ Updated `BillingGuard` — members (non-admin) never blocked
-- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
-- ✅ Updated `Find` page RoleGate
-- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
+### 1. Database Migration
+Update the `admin_delete_candidate` function to delete from `scheduled_bookings` before deleting the candidate. Also alter the FK constraint to add `ON DELETE CASCADE` so non-admin (RLS) deletions also work.
 
-### Phase 4 — Runtime Hotfixes
-- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
-- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
-- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
-- ✅ Updated `validate_invite_token` — returns `system_role`
-- ✅ Updated `accept_invitation` — uses `system_role`
+```sql
+-- Fix the FK constraint
+ALTER TABLE public.scheduled_bookings 
+  DROP CONSTRAINT scheduled_bookings_candidate_id_fkey,
+  ADD CONSTRAINT scheduled_bookings_candidate_id_fkey 
+    FOREIGN KEY (candidate_id) REFERENCES candidates(id) ON DELETE CASCADE;
 
-### Phase 5 — Complete Cleanup
-- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
-- ✅ Updated `admin_manage_member` — updates `system_role` column
-- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
-- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
-- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
-- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
-- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
-- ✅ Updated `diagnose_user_auth` — reports `system_role`
-- ✅ Updated `audit_platform_admin_access` — returns `system_role`
-- ✅ Updated `debug_user_permissions` — returns `system_role`
-- ✅ Renamed `invitations.member_role` → `invitations.system_role`
-- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
+-- Update the admin function to be explicit anyway
+CREATE OR REPLACE FUNCTION public.admin_delete_candidate(p_candidate_id UUID)
+RETURNS jsonb ...
+  -- Add: DELETE FROM public.scheduled_bookings WHERE candidate_id = p_candidate_id;
+  -- before DELETE FROM public.candidates
+```
 
-## Phase 6 — Future (Optional)
-- Drop `member_role` column from `members` table (already dropped)
-- Drop old `member_role` enum type
-- Update `MemberInviteSheet` role picker to only offer Admin/Member
+### 2. New Component: `DeleteCandidateDialog`
+**File**: `src/components/candidates/DeleteCandidateDialog.tsx`
 
-# Deep Resume Parsing + Data Standardization — Completed
+A reusable AlertDialog component that:
+- Accepts `candidateId`, `candidateName`, `open`, `onOpenChange`, `onConfirm`
+- On open, queries `scheduled_bookings` for active interviews (`status = 'confirmed'`) for that candidate
+- Shows count of scheduled interviews in the warning message:
+  - No interviews: "Are you sure you want to delete {name}? This action cannot be undone."
+  - With interviews: "Deleting {name} will also cancel {N} scheduled interview(s). This action cannot be undone."
+- "Delete" button (destructive) and "Cancel" button
 
-## What was implemented
+### 3. Update All Delete Entry Points
 
-### Phase 1: Schema Expansion
-- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
-- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
-- ✅ Added to `candidate_education`: `education_level`
-- ✅ Created `candidate_certifications` table with RLS policies
+Replace `confirm()` + direct `onDelete()` calls with the new `DeleteCandidateDialog`:
 
-### Phase 2: Enrichment Rewrite
-- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
-- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
-- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
-- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
-- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
+- **`IndependentCandidateTable.tsx`** (line 78-81): Replace `confirm()` with dialog state, render `DeleteCandidateDialog`
+- **`CandidateTable.tsx`** (line 110-113): Same replacement
+- **`Candidates.tsx`** (handleDelete): Already delegates to table, no change needed
+- **`JobDetail.tsx`** (handleDeleteCandidate, line 791): Wrap with dialog state if needed -- but since CandidateTable handles the confirm, this is already covered
 
-### Phase 3: UI Updates
-- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
-- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
-- ✅ **Certifications section** with `CandidateCertificationsComponent`
-- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
-- ✅ Enhanced **Education** display: education level badge
-- ✅ Certifications loaded alongside work experience and education
+Both table components follow the same pattern: add `deleteTarget` state, open dialog on trash click, call `onDelete` on confirm.
 
-## Files changed
-- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
-- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
-- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
-- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
-- `src/components/candidates/CandidateCertifications.tsx` — new component
+### Files Changed
+1. **Database migration** -- ALTER FK + update `admin_delete_candidate` function
+2. **New**: `src/components/candidates/DeleteCandidateDialog.tsx`
+3. **Edit**: `src/components/candidates/IndependentCandidateTable.tsx`
+4. **Edit**: `src/components/candidates/CandidateTable.tsx`
+
