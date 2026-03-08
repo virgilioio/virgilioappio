@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react'
-import { MultiSelect } from '@/components/ui/multi-select'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useEffect, useState, useCallback } from 'react'
+import { FilterChipPopover, type FilterChipOption } from '@/components/ui/filter-chip-popover'
 import { useAnalyticsFilterOptions } from '@/hooks/useAnalyticsFilterOptions'
-import { Users, Briefcase, Building2, CircleDot } from 'lucide-react'
+import { X } from 'lucide-react'
 
 export interface AnalyticsFilters {
   recruiterIds: string[]
@@ -11,12 +10,11 @@ export interface AnalyticsFilters {
   jobStatus: string
 }
 
-const JOB_STATUS_OPTIONS = [
-  { value: 'all', label: 'All Statuses' },
-  { value: 'open', label: 'Open' },
-  { value: 'closed', label: 'Closed' },
-  { value: 'draft', label: 'Draft' },
-  { value: 'archived', label: 'Archived' },
+const JOB_STATUS_OPTIONS: FilterChipOption[] = [
+  { value: 'open', label: 'Open', count: 0 },
+  { value: 'closed', label: 'Closed', count: 0 },
+  { value: 'draft', label: 'Draft', count: 0 },
+  { value: 'archived', label: 'Archived', count: 0 },
 ]
 
 interface AnalyticsFiltersBarProps {
@@ -26,10 +24,24 @@ interface AnalyticsFiltersBarProps {
 export function AnalyticsFiltersBar({ onFiltersChange }: AnalyticsFiltersBarProps) {
   const { recruiters, jobs, organizations, isLoading } = useAnalyticsFilterOptions()
 
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(['open'])
   const [selectedRecruiters, setSelectedRecruiters] = useState<string[]>([])
   const [selectedJobs, setSelectedJobs] = useState<string[]>([])
   const [selectedOrgs, setSelectedOrgs] = useState<string[]>([])
-  const [jobStatus, setJobStatus] = useState<string>('open')
+
+  // Map FilterOption[] → FilterChipOption[] (no counts in analytics)
+  const recruiterChipOptions: FilterChipOption[] = recruiters.map(r => ({ ...r, count: 0 }))
+  const jobChipOptions: FilterChipOption[] = jobs.map(j => ({ ...j, count: 0 }))
+  const orgChipOptions: FilterChipOption[] = organizations.map(o => ({ ...o, count: 0 }))
+
+  const hasActiveFilters = selectedStatuses.length > 0 || selectedRecruiters.length > 0 || selectedJobs.length > 0 || selectedOrgs.length > 0
+
+  const clearAll = useCallback(() => {
+    setSelectedStatuses([])
+    setSelectedRecruiters([])
+    setSelectedJobs([])
+    setSelectedOrgs([])
+  }, [])
 
   // Notify parent when filters change
   useEffect(() => {
@@ -37,66 +49,53 @@ export function AnalyticsFiltersBar({ onFiltersChange }: AnalyticsFiltersBarProp
       recruiterIds: selectedRecruiters,
       jobIds: selectedJobs,
       organizationIds: selectedOrgs,
-      jobStatus
+      // Keep backward compat: first selected status or 'all'
+      jobStatus: selectedStatuses.length === 1 ? selectedStatuses[0] : 'all'
     })
-  }, [selectedRecruiters, selectedJobs, selectedOrgs, jobStatus, onFiltersChange])
+  }, [selectedRecruiters, selectedJobs, selectedOrgs, selectedStatuses, onFiltersChange])
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <div className="flex items-center gap-2 min-w-[160px]">
-        <CircleDot className="h-4 w-4 text-muted-foreground shrink-0" />
-        <Select value={jobStatus} onValueChange={setJobStatus}>
-          <SelectTrigger className="flex-1 bg-background">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent className="bg-background z-50">
-            {JOB_STATUS_OPTIONS.map(option => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+    <div className="flex flex-wrap items-center gap-2">
+      <FilterChipPopover
+        label="Status"
+        options={JOB_STATUS_OPTIONS}
+        selectedValues={selectedStatuses}
+        onSelectionChange={setSelectedStatuses}
+      />
 
-      <div className="flex items-center gap-2 min-w-[200px]">
-        <Users className="h-4 w-4 text-muted-foreground shrink-0" />
-        <MultiSelect
-          options={recruiters}
-          selectedValues={selectedRecruiters}
-          onSelectionChange={setSelectedRecruiters}
-          placeholder={isLoading ? "Loading..." : "All Recruiters"}
-          searchable
-          className="flex-1"
-          emptyMessage="No recruiters found"
-        />
-      </div>
+      <FilterChipPopover
+        label="Recruiter"
+        options={recruiterChipOptions}
+        selectedValues={selectedRecruiters}
+        onSelectionChange={setSelectedRecruiters}
+        searchable
+      />
 
-      <div className="flex items-center gap-2 min-w-[200px]">
-        <Briefcase className="h-4 w-4 text-muted-foreground shrink-0" />
-        <MultiSelect
-          options={jobs}
-          selectedValues={selectedJobs}
-          onSelectionChange={setSelectedJobs}
-          placeholder={isLoading ? "Loading..." : "All Jobs"}
-          searchable
-          className="flex-1"
-          emptyMessage="No jobs found"
-        />
-      </div>
+      <FilterChipPopover
+        label="Job"
+        options={jobChipOptions}
+        selectedValues={selectedJobs}
+        onSelectionChange={setSelectedJobs}
+        searchable
+      />
 
-      <div className="flex items-center gap-2 min-w-[200px]">
-        <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
-        <MultiSelect
-          options={organizations}
-          selectedValues={selectedOrgs}
-          onSelectionChange={setSelectedOrgs}
-          placeholder={isLoading ? "Loading..." : "All Departments"}
-          searchable
-          className="flex-1"
-          emptyMessage="No departments found"
-        />
-      </div>
+      <FilterChipPopover
+        label="Department"
+        options={orgChipOptions}
+        selectedValues={selectedOrgs}
+        onSelectionChange={setSelectedOrgs}
+        searchable
+      />
+
+      {hasActiveFilters && (
+        <button
+          onClick={clearAll}
+          className="inline-flex items-center gap-1 text-xs font-poppins text-muted-foreground hover:text-foreground transition-colors ml-1"
+        >
+          <X className="h-3 w-3" />
+          Clear filters
+        </button>
+      )}
     </div>
   )
 }
