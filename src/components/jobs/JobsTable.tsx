@@ -183,13 +183,12 @@ export function JobsTable({
   if (isLoading) {
     return (
       <Card className="bg-surface-primary">
-        <CardHeader>
-          <div className="flex gap-4">
-            <Skeleton className="h-10 flex-1" />
-            <Skeleton className="h-10 w-32" />
+        <CardContent className="pt-6">
+          <div className="flex gap-4 mb-4">
+            <Skeleton className="h-8 w-56" />
+            <Skeleton className="h-8 w-24" />
+            <Skeleton className="h-8 w-24" />
           </div>
-        </CardHeader>
-        <CardContent>
           <TableSkeleton rows={5} />
         </CardContent>
       </Card>
