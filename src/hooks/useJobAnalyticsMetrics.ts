@@ -415,12 +415,33 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
           return createdDate === dayDate
         }).length
 
+        const dayOffers = allAssociations.filter(a => {
+          if (a.status !== 'offer') return false
+          const updatedAt = new Date(a.updated_at)
+          return updatedAt >= dayStartUTC && updatedAt <= dayEndUTC
+        }).length
+
+        const dayRejected = allAssociations.filter(a => {
+          if (a.status !== 'rejected') return false
+          const updatedAt = new Date(a.updated_at)
+          return updatedAt >= dayStartUTC && updatedAt <= dayEndUTC
+        }).length
+
+        const now = new Date()
+        const dayInterviewsCompleted = (allBookings || []).filter(b => {
+          const scheduledStart = new Date(b.scheduled_start)
+          return scheduledStart <= now && scheduledStart >= dayStartUTC && scheduledStart <= dayEndUTC
+        }).length
+
         return {
           date: format(day, 'MMM d'),
           applications: dayApplications,
           active: dayActive,
           hires: dayHires,
-          interviewsScheduled: dayInterviewsScheduled
+          interviewsScheduled: dayInterviewsScheduled,
+          offers: dayOffers,
+          rejected: dayRejected,
+          interviewsCompleted: dayInterviewsCompleted
         }
       })
 

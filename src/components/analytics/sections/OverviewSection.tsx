@@ -70,7 +70,7 @@ export function OverviewSection({ metrics }: OverviewSectionProps) {
 
         <MetricCardGroup title="Interviews" direction="vertical">
           <MetricCard variant="inline" title="Scheduled" value={metrics.interviewsScheduled} tooltip="Interviews scheduled in selected period" isLoading={metrics.isLoading} sparkline={<MiniSparkline data={appSparkData} color="hsl(267 100% 62%)" />} />
-          <MetricCard variant="inline" title="Completed" value={metrics.interviewsCompleted} tooltip="Interviews completed in selected period" isLoading={metrics.isLoading} sparkline={<MiniSparkline data={hiresSparkData} color="hsl(152 69% 41%)" />} />
+          <MetricCard variant="inline" title="Completed" value={metrics.interviewsCompleted} tooltip="Interviews completed in selected period" isLoading={metrics.isLoading} sparkline={<MiniSparkline data={interviewsCompletedSparkData} color="hsl(152 69% 41%)" />} />
         </MetricCardGroup>
       </div>
 
