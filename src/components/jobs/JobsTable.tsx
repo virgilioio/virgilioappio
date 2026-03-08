@@ -178,64 +178,73 @@ export function JobsTable({
 
   return (
     <Card className="bg-surface-primary">
-      <CardHeader>
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <CardContent className="pt-6">
+        {/* Unified filter toolbar */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <div className="relative w-56">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               placeholder="Search jobs..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-9 h-8 text-sm rounded-full"
             />
           </div>
-          
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[140px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="open">Open</SelectItem>
-                <SelectItem value="closed">Closed</SelectItem>
-                <SelectItem value="archived">Archived</SelectItem>
-              </SelectContent>
-            </Select>
 
-            {(permissions.canViewOrganizations || permissions.isPlatformAdmin) && organizationOptions.length > 0 && (
-              <MultiSelect
-                options={organizationOptions}
-                selectedValues={selectedOrganizations}
-                onSelectionChange={setSelectedOrganizations}
-                placeholder="Filter by organization..."
-                className="w-full sm:w-[220px]"
-              />
-            )}
+          <FilterChipPopover
+            label="Status"
+            options={statusChipOptions}
+            selectedValues={statusFilter === 'all' ? [] : [statusFilter]}
+            onSelectionChange={(vals) => setStatusFilter(vals.length === 0 ? 'all' : vals[vals.length - 1])}
+            searchable={false}
+          />
 
-            {!membersLoading && userOptions.length > 0 && (
-              <MultiSelect
-                options={userOptions}
-                selectedValues={selectedUsers}
-                onSelectionChange={setSelectedUsers}
-                placeholder="Filter by user..."
-                className="w-full sm:w-[220px]"
-              />
-            )}
+          {(permissions.canViewOrganizations || permissions.isPlatformAdmin) && orgChipOptions.length > 0 && (
+            <FilterChipPopover
+              label="Organization"
+              options={orgChipOptions}
+              selectedValues={selectedOrganizations}
+              onSelectionChange={setSelectedOrganizations}
+              searchable
+            />
+          )}
 
-            <div className="flex gap-2">
-              <PermissionGate permission="canCreateJobs">
-                <Button onClick={onCreateNew} size="sm" className="gap-sm whitespace-nowrap">
-                  <Plus className="h-4 w-4" />
-                  Create Job
-                </Button>
-              </PermissionGate>
-              
-            </div>
+          {!membersLoading && userChipOptions.length > 0 && (
+            <FilterChipPopover
+              label="User"
+              options={userChipOptions}
+              selectedValues={selectedUsers}
+              onSelectionChange={setSelectedUsers}
+              searchable
+            />
+          )}
+
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSearchTerm('')
+                setStatusFilter('open')
+                setSelectedOrganizations([])
+                setSelectedUsers([])
+              }}
+              className="gap-1 h-8 text-xs text-muted-foreground hover:text-foreground font-poppins"
+            >
+              <X className="h-3 w-3" />
+              Clear filters
+            </Button>
+          )}
+
+          <div className="ml-auto">
+            <PermissionGate permission="canCreateJobs">
+              <Button onClick={onCreateNew} size="sm" className="gap-1.5 h-8 whitespace-nowrap">
+                <Plus className="h-3.5 w-3.5" />
+                Create Job
+              </Button>
+            </PermissionGate>
           </div>
         </div>
-      </CardHeader>
       <CardContent>
         {filteredJobs.length === 0 ? (
           <EmptyState
