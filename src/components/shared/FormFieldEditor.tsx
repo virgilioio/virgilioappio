@@ -12,10 +12,10 @@ import type { SalaryFieldConfig, LocationFieldConfig, PhoneFieldConfig, FieldTyp
 
 export const ALL_FIELD_TYPES: FieldType[] = [
   'text', 'number', 'email', 'url', 'textarea', 'select',
-  'checkbox', 'checkbox_group', 'date', 'file', 'salary', 'location', 'phone', 'recruiter', 'employment_type', 'work_location'
+  'checkbox', 'checkbox_group', 'date', 'file', 'salary', 'location', 'phone', 'linkedin', 'recruiter', 'employment_type', 'work_location'
 ]
 
-export const SMART_FIELD_TYPES: FieldType[] = ['salary', 'location', 'phone', 'recruiter', 'employment_type', 'work_location']
+export const SMART_FIELD_TYPES: FieldType[] = ['salary', 'location', 'phone', 'linkedin', 'recruiter', 'employment_type', 'work_location']
 
 export const CURRENCIES = ['USD','EUR','GBP','CAD','AUD','CHF','JPY','INR','BRL','MXN','SGD','HKD','NZD','ZAR','AED','SAR']
 
