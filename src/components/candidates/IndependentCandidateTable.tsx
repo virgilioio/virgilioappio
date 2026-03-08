@@ -171,13 +171,10 @@ export function IndependentCandidateTable({
     }
   }
 
-  // Filter logic
-  const filteredCandidates = candidates.filter(candidate => {
-    const matchesSearch = candidate.candidate_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (candidate.email && candidate.email.toLowerCase().includes(searchTerm.toLowerCase()))
-    
-    return matchesSearch
-  })
+  // Filter logic — use context-based filters + search
+  const { filters } = useCandidateFilters()
+  const filterOptions = useCandidateFilterOptions(candidates)
+  const filteredCandidates = useCandidateFilteredData(candidates, filters, searchTerm)
   
   // Fetch job association counts
   useEffect(() => {
