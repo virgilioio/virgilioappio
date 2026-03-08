@@ -17,6 +17,7 @@ import BulkAddToJobPipelineDialog from '@/components/candidates/BulkAddToJobPipe
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
+import { DeleteCandidateDialog } from '@/components/candidates/DeleteCandidateDialog'
 
 interface IndependentCandidateTableProps {
   candidates: IndependentCandidate[]
@@ -68,6 +69,9 @@ export function IndependentCandidateTable({
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
 
+  // Delete dialog state
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
+
   const handleViewProfile = (candidateId: string) => {
     if (!selectionMode) {
       setSelectedCandidateId(candidateId)
@@ -75,9 +79,14 @@ export function IndependentCandidateTable({
     }
   }
 
-  const handleDelete = (candidateId: string) => {
-    if (confirm('Are you sure you want to delete this candidate?')) {
-      onDelete(candidateId)
+  const handleDelete = (candidate: IndependentCandidate) => {
+    setDeleteTarget({ id: candidate.id, name: candidate.candidate_name })
+  }
+
+  const handleDeleteConfirm = () => {
+    if (deleteTarget) {
+      onDelete(deleteTarget.id)
+      setDeleteTarget(null)
     }
   }
 
@@ -428,7 +437,7 @@ const getPageNumbers = () => {
                                 onClick={(e) => {
                                   e.preventDefault()
                                   e.stopPropagation()
-                                  handleDelete(candidate.id)
+                                  handleDelete(candidate)
                                 }}
                                 className="h-[36px] w-[36px] p-0 text-destructive hover:bg-destructive/10 hover:scale-110 transition-all duration-150"
                               >
@@ -477,7 +486,7 @@ const getPageNumbers = () => {
                                 onClick={(e) => {
                                   e.preventDefault()
                                   e.stopPropagation()
-                                  handleDelete(candidate.id)
+                                  handleDelete(candidate)
                                 }}
                                 className="h-[40px] w-[40px] p-0 text-destructive hover:bg-destructive/10"
                               >
@@ -610,6 +619,14 @@ const getPageNumbers = () => {
             setSelectedCandidateId(filteredCandidates[currentIndex + 1].id)
           }
         }}
+      />
+
+      <DeleteCandidateDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        candidateId={deleteTarget?.id ?? null}
+        candidateName={deleteTarget?.name ?? ''}
+        onConfirm={handleDeleteConfirm}
       />
     </Card>
   )

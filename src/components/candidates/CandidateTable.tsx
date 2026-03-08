@@ -16,6 +16,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { NewBadge } from '@/components/ui/new-badge'
 import { getSkillColor } from '@/utils/skillColors'
 import BulkMoveJobCandidatesToPipelineDialog from '@/components/candidates/BulkMoveJobCandidatesToPipelineDialog'
+import { DeleteCandidateDialog } from '@/components/candidates/DeleteCandidateDialog'
 
 // Support both local job candidates and global candidates with job info
 interface BaseCandidate {
@@ -107,9 +108,17 @@ export function CandidateTable({
   const selectedIds = controlledSelectedIds ?? internalSelectedIds
   const setSelectedIds = onSelectedIdsChange ?? setInternalSelectedIds
 
-  const handleDelete = (candidateId: string) => {
-    if (confirm('Are you sure you want to delete this candidate?')) {
-      onDelete(candidateId)
+  // Delete dialog state
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
+
+  const handleDelete = (candidate: CandidateTableCandidate) => {
+    setDeleteTarget({ id: candidate.id, name: candidate.candidate_name })
+  }
+
+  const handleDeleteConfirm = () => {
+    if (deleteTarget) {
+      onDelete(deleteTarget.id)
+      setDeleteTarget(null)
     }
   }
 
@@ -239,6 +248,7 @@ export function CandidateTable({
   }
 
   return (
+    <>
     <Card className="bg-surface-primary border-border">
       <CardHeader>
         <div className="flex flex-col sm:flex-row gap-4">
@@ -442,7 +452,7 @@ export function CandidateTable({
                                     onClick={(e) => {
                                       e.preventDefault()
                                       e.stopPropagation()
-                                      handleDelete(candidate.id)
+                                      handleDelete(candidate)
                                     }}
                                     className="h-[36px] w-[36px] p-0 text-destructive hover:bg-destructive/10 hover:scale-110 transition-all duration-150"
                                   >
@@ -488,7 +498,7 @@ export function CandidateTable({
                                 onClick={(e) => {
                                   e.preventDefault()
                                   e.stopPropagation()
-                                  handleDelete(candidate.id)
+                                  handleDelete(candidate)
                                 }}
                                 className="h-[40px] w-[40px] p-0 text-destructive hover:bg-destructive/10"
                               >
@@ -660,5 +670,14 @@ export function CandidateTable({
         )}
       </CardContent>
     </Card>
+
+      <DeleteCandidateDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        candidateId={deleteTarget?.id ?? null}
+        candidateName={deleteTarget?.name ?? ''}
+        onConfirm={handleDeleteConfirm}
+      />
+    </>
   )
 }
