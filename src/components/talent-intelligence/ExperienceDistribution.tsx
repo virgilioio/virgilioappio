@@ -45,7 +45,9 @@ export function ExperienceDistribution({ experienceBands, seniorityCounts, onBan
         icon={Clock}
         isEmpty
         emptyMessage="No experience data available yet"
-      />
+      >
+        <div />
+      </AnalyticsChartCard>
     )
   }
 
