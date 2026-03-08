@@ -64,8 +64,8 @@ export function OverviewSection({ metrics }: OverviewSectionProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <MetricCardGroup title="Pipeline" direction="vertical">
           <MetricCard variant="inline" title="Active" value={metrics.activeCandidates} tooltip="Currently active candidates (all time)" isLoading={metrics.isLoading} sparkline={<MiniSparkline data={appSparkData} color="hsl(217 91% 60%)" />} />
-          <MetricCard variant="inline" title="Offers" value={metrics.totalOffers} tooltip="Offers extended in selected period" isLoading={metrics.isLoading} />
-          <MetricCard variant="inline" title="Rejected" value={metrics.rejectedCandidates} tooltip="Total rejected candidates (all time)" isLoading={metrics.isLoading} />
+          <MetricCard variant="inline" title="Offers" value={metrics.totalOffers} tooltip="Offers extended in selected period" isLoading={metrics.isLoading} sparkline={<MiniSparkline data={offersSparkData} color="hsl(217 91% 60%)" />} />
+          <MetricCard variant="inline" title="Rejected" value={metrics.rejectedCandidates} tooltip="Total rejected candidates (all time)" isLoading={metrics.isLoading} sparkline={<MiniSparkline data={rejectedSparkData} color="hsl(0 84% 60%)" />} />
         </MetricCardGroup>
 
         <MetricCardGroup title="Interviews" direction="vertical">
