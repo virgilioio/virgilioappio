@@ -56,17 +56,17 @@ export function OverviewSection({ metrics }: OverviewSectionProps) {
         />
       </div>
 
-      {/* Row 2: Grouped strips */}
+      {/* Row 2: Grouped strips — vertical with sparklines */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <MetricCardGroup title="Pipeline">
-          <MetricCard variant="inline" title="Active" value={metrics.activeCandidates} tooltip="Currently active candidates (all time)" isLoading={metrics.isLoading} />
+        <MetricCardGroup title="Pipeline" direction="vertical">
+          <MetricCard variant="inline" title="Active" value={metrics.activeCandidates} tooltip="Currently active candidates (all time)" isLoading={metrics.isLoading} sparkline={<MiniSparkline data={appSparkData} color="hsl(217 91% 60%)" />} />
           <MetricCard variant="inline" title="Offers" value={metrics.totalOffers} tooltip="Offers extended in selected period" isLoading={metrics.isLoading} />
           <MetricCard variant="inline" title="Rejected" value={metrics.rejectedCandidates} tooltip="Total rejected candidates (all time)" isLoading={metrics.isLoading} />
         </MetricCardGroup>
 
-        <MetricCardGroup title="Interviews">
-          <MetricCard variant="inline" title="Scheduled" value={metrics.interviewsScheduled} tooltip="Interviews scheduled in selected period" isLoading={metrics.isLoading} />
-          <MetricCard variant="inline" title="Completed" value={metrics.interviewsCompleted} tooltip="Interviews completed in selected period" isLoading={metrics.isLoading} />
+        <MetricCardGroup title="Interviews" direction="vertical">
+          <MetricCard variant="inline" title="Scheduled" value={metrics.interviewsScheduled} tooltip="Interviews scheduled in selected period" isLoading={metrics.isLoading} sparkline={<MiniSparkline data={appSparkData} color="hsl(267 100% 62%)" />} />
+          <MetricCard variant="inline" title="Completed" value={metrics.interviewsCompleted} tooltip="Interviews completed in selected period" isLoading={metrics.isLoading} sparkline={<MiniSparkline data={hiresSparkData} color="hsl(152 69% 41%)" />} />
         </MetricCardGroup>
       </div>
 

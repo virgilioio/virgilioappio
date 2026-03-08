@@ -120,20 +120,24 @@ export function MetricCard({
   // ─── Inline variant (no card wrapper, used inside MetricCardGroup) ───
   if (variant === 'inline') {
     const content = (
-      <div className={cn('flex flex-col gap-1 min-w-0 flex-1 px-4 py-3', className)}>
-        <p className="text-xs font-poppins font-medium text-muted-foreground truncate">{title}</p>
-        {sparkline && <div className="h-8">{sparkline}</div>}
-        <div className="flex items-baseline gap-2">
-          {isLoading ? (
-            <span className="inline-block w-10 h-6 bg-border/50 rounded animate-pulse" />
-          ) : (
-            <p className="text-xl font-poppins font-bold text-foreground leading-none truncate">
-              {formattedValue}
-            </p>
-          )}
-          <TrendBadge trend={trend} isLoading={isLoading} />
+      <div className={cn('flex items-center gap-3 min-w-0 flex-1 px-4 py-3', className)}>
+        <div className="flex flex-col gap-1 min-w-0 flex-1">
+          <p className="text-xs font-poppins font-medium text-muted-foreground truncate">{title}</p>
+          <div className="flex items-baseline gap-2">
+            {isLoading ? (
+              <span className="inline-block w-10 h-6 bg-border/50 rounded animate-pulse" />
+            ) : (
+              <p className="text-xl font-poppins font-bold text-foreground leading-none truncate">
+                {formattedValue}
+              </p>
+            )}
+            <TrendBadge trend={trend} isLoading={isLoading} />
+          </div>
+          {footer && !isLoading && <div className="mt-1">{footer}</div>}
         </div>
-        {footer && !isLoading && <div className="mt-1">{footer}</div>}
+        {sparkline && !isLoading && (
+          <div className="w-24 h-10 shrink-0">{sparkline}</div>
+        )}
       </div>
     )
     return wrapTooltip(content, tooltip)
