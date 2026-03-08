@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { useApplicationFields } from '@/hooks/useApplicationFields'
 import { useJobPostingFields, FieldType, PostingField, SelectOptionData, SalaryFieldConfig, LocationFieldConfig } from '@/hooks/useJobPostingFields'
+import { ALL_FIELD_TYPES, SMART_FIELD_TYPES, fieldTypeLabel } from '@/components/shared/FormFieldEditor'
 import { FormField } from '@/components/ui/form-field'
 import { GripVertical, Plus, Trash2, Save, Link2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
@@ -485,8 +486,17 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
               <Select value={type} onValueChange={(v: FieldType) => setType(v)} disabled={readOnly}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {(['text','number','email','url','textarea','select','checkbox','checkbox_group','date','file','salary','location'] as FieldType[]).map((t) => (
-                    <SelectItem key={t} value={t} className="capitalize">{t === 'checkbox_group' ? 'Checkbox Group' : t === 'salary' ? 'Salary' : t === 'location' ? 'Location' : t}</SelectItem>
+                  {ALL_FIELD_TYPES.map((t) => (
+                    <SelectItem key={t} value={t} className="capitalize">
+                      <span className="flex items-center gap-2">
+                        {fieldTypeLabel(t)}
+                        {SMART_FIELD_TYPES.includes(t) && (
+                          <span className="text-[10px] font-medium text-purple-600 bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 px-1.5 py-0.5 rounded-full leading-none">
+                            Smart
+                          </span>
+                        )}
+                      </span>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
