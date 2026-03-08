@@ -254,6 +254,7 @@ export default function Candidates() {
             context={newCandidateJobId ? 'job' : 'independent'}
           />
         </div>
+        </CandidateFilterProvider>
       </PermissionGate>
     </AuthGate>
   )
