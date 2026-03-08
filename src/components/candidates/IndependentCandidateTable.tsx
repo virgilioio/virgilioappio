@@ -69,6 +69,9 @@ export function IndependentCandidateTable({
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
 
+  // Delete dialog state
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
+
   const handleViewProfile = (candidateId: string) => {
     if (!selectionMode) {
       setSelectedCandidateId(candidateId)
@@ -76,9 +79,14 @@ export function IndependentCandidateTable({
     }
   }
 
-  const handleDelete = (candidateId: string) => {
-    if (confirm('Are you sure you want to delete this candidate?')) {
-      onDelete(candidateId)
+  const handleDelete = (candidate: IndependentCandidate) => {
+    setDeleteTarget({ id: candidate.id, name: candidate.candidate_name })
+  }
+
+  const handleDeleteConfirm = () => {
+    if (deleteTarget) {
+      onDelete(deleteTarget.id)
+      setDeleteTarget(null)
     }
   }
 
