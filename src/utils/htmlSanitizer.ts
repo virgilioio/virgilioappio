@@ -51,7 +51,73 @@ export function sanitizeHtml(html: string): string {
   
   // Ensure all <a> tags open in new tab
   const withTargets = ensureLinksOpenNewTab(sanitized)
-  return normalizeTypography(withTargets)
+  const normalized = normalizeTypography(withTargets)
+  return convertBulletParagraphsToLists(normalized)
+}
+
+/**
+ * Converts consecutive <p> tags starting with bullet characters (•, –, -, ◦, ▪)
+ * into proper <ul><li> lists for correct rendering and styling.
+ */
+function convertBulletParagraphsToLists(html: string): string {
+  if (!html) return ''
+  const bulletPattern = /^[\s\u00A0]*(•|–|—|‣|◦|▪|►|-)\s*/
+
+  try {
+    const div = document.createElement('div')
+    div.innerHTML = html
+
+    const children = Array.from(div.childNodes)
+    let i = 0
+
+    while (i < children.length) {
+      const node = children[i]
+      if (
+        node.nodeType === Node.ELEMENT_NODE &&
+        (node as Element).tagName === 'P' &&
+        bulletPattern.test((node as Element).textContent || '')
+      ) {
+        // Start of a bullet run – collect consecutive bullet <p> tags
+        const run: Element[] = []
+        let j = i
+        while (j < children.length) {
+          const n = children[j]
+          if (
+            n.nodeType === Node.ELEMENT_NODE &&
+            (n as Element).tagName === 'P' &&
+            bulletPattern.test((n as Element).textContent || '')
+          ) {
+            run.push(n as Element)
+            j++
+          } else {
+            break
+          }
+        }
+
+        const ul = document.createElement('ul')
+        run.forEach(p => {
+          const li = document.createElement('li')
+          // Strip the leading bullet character from innerHTML
+          li.innerHTML = p.innerHTML.replace(/^[\s\u00A0]*(•|–|—|‣|◦|▪|►|-)\s*/, '')
+          ul.appendChild(li)
+        })
+
+        // Replace the first <p> with <ul>, remove the rest
+        div.insertBefore(ul, run[0])
+        run.forEach(p => div.removeChild(p))
+
+        // Re-read children after DOM mutation
+        children.splice(i, run.length, ul)
+        i++
+      } else {
+        i++
+      }
+    }
+
+    return div.innerHTML
+  } catch {
+    return html
+  }
 }
 
 /**
