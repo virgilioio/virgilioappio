@@ -195,7 +195,7 @@ export function MetricCard({
             {footer && !isLoading && <div className="mt-1.5">{footer}</div>}
           </div>
           {sparkline && !isLoading && (
-            <div className="w-24 h-10 shrink-0">{sparkline}</div>
+            <div className="w-28 h-10 shrink-0">{sparkline}</div>
           )}
         </div>
       </CardContent>
