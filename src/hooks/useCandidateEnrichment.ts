@@ -17,7 +17,7 @@ export async function triggerBackgroundEnrichment(
     supabase.functions.invoke('enrich-candidate-profile', {
       body: {
         candidateId,
-        resumeText,
+        ...(resumeText ? { resumeText } : {}),
         candidateName,
       },
     }).then(({ error }) => {
