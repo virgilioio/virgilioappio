@@ -258,6 +258,12 @@ export function IndependentCandidateProfileSheet({
                         Applied via {candidate.job_board_source}
                       </Badge>
                     )}
+                    {candidate && canEditCandidates && (
+                      <Button variant="outline" size="sm" onClick={() => setEditOpen(true)} className="gap-1.5">
+                        <Edit className="h-4 w-4" />
+                        Edit
+                      </Button>
+                    )}
                     {candidate && <AddToJobPipelineDialog candidateId={candidate.id} />}
                     {candidate && canEnrich(candidate) && (
                       <Button
