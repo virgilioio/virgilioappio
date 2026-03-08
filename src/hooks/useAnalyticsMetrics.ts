@@ -27,7 +27,7 @@ export interface AnalyticsMetrics {
   avgTimeToHire: number | null
   statusDistribution: { name: string; value: number; color: string }[]
   stageDistribution: { name: string; count: number }[]
-  trendData: { date: string; applications: number; active: number; hires: number; interviewsScheduled: number }[]
+  trendData: { date: string; applications: number; active: number; hires: number; interviewsScheduled: number; offers: number; rejected: number; interviewsCompleted: number }[]
   finalJobIds: string[]
   isLoading: boolean
   error: Error | null
@@ -407,12 +407,35 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
           return createdDate === dayDate
         }).length
 
+        // Offers on this day (by updated_at)
+        const dayOffers = allAssociations.filter(a => {
+          if (a.status !== 'offer') return false
+          const updatedAt = new Date(a.updated_at)
+          return updatedAt >= dayStartUTC && updatedAt <= dayEndUTC
+        }).length
+
+        // Rejected on this day (by updated_at)
+        const dayRejected = allAssociations.filter(a => {
+          if (a.status !== 'rejected') return false
+          const updatedAt = new Date(a.updated_at)
+          return updatedAt >= dayStartUTC && updatedAt <= dayEndUTC
+        }).length
+
+        // Interviews completed on this day (scheduled_start in past and on this day)
+        const dayInterviewsCompleted = (allBookings || []).filter(b => {
+          const scheduledStart = new Date(b.scheduled_start)
+          return scheduledStart <= now && scheduledStart >= dayStartUTC && scheduledStart <= dayEndUTC
+        }).length
+
         return {
           date: format(day, 'MMM d'),
           applications: dayApplications,
           active: dayActive,
           hires: dayHires,
-          interviewsScheduled: dayInterviewsScheduled
+          interviewsScheduled: dayInterviewsScheduled,
+          offers: dayOffers,
+          rejected: dayRejected,
+          interviewsCompleted: dayInterviewsCompleted
         }
       })
 

@@ -15,6 +15,9 @@ interface OverviewSectionProps {
 export function OverviewSection({ metrics }: OverviewSectionProps) {
   const appSparkData = useMemo(() => metrics.trendData.map(d => d.applications), [metrics.trendData])
   const hiresSparkData = useMemo(() => metrics.trendData.map(d => d.hires), [metrics.trendData])
+  const offersSparkData = useMemo(() => metrics.trendData.map(d => d.offers), [metrics.trendData])
+  const rejectedSparkData = useMemo(() => metrics.trendData.map(d => d.rejected), [metrics.trendData])
+  const interviewsCompletedSparkData = useMemo(() => metrics.trendData.map(d => d.interviewsCompleted), [metrics.trendData])
 
   return (
     <AnalyticsSection
@@ -53,6 +56,7 @@ export function OverviewSection({ metrics }: OverviewSectionProps) {
           iconColor="text-warning"
           tooltip="Average days from candidate creation to hire"
           isLoading={metrics.isLoading}
+          sparkline={<MiniSparkline data={hiresSparkData} color="hsl(38 92% 50%)" />}
         />
       </div>
 
@@ -60,13 +64,13 @@ export function OverviewSection({ metrics }: OverviewSectionProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <MetricCardGroup title="Pipeline" direction="vertical">
           <MetricCard variant="inline" title="Active" value={metrics.activeCandidates} tooltip="Currently active candidates (all time)" isLoading={metrics.isLoading} sparkline={<MiniSparkline data={appSparkData} color="hsl(217 91% 60%)" />} />
-          <MetricCard variant="inline" title="Offers" value={metrics.totalOffers} tooltip="Offers extended in selected period" isLoading={metrics.isLoading} />
-          <MetricCard variant="inline" title="Rejected" value={metrics.rejectedCandidates} tooltip="Total rejected candidates (all time)" isLoading={metrics.isLoading} />
+          <MetricCard variant="inline" title="Offers" value={metrics.totalOffers} tooltip="Offers extended in selected period" isLoading={metrics.isLoading} sparkline={<MiniSparkline data={offersSparkData} color="hsl(217 91% 60%)" />} />
+          <MetricCard variant="inline" title="Rejected" value={metrics.rejectedCandidates} tooltip="Total rejected candidates (all time)" isLoading={metrics.isLoading} sparkline={<MiniSparkline data={rejectedSparkData} color="hsl(0 84% 60%)" />} />
         </MetricCardGroup>
 
         <MetricCardGroup title="Interviews" direction="vertical">
           <MetricCard variant="inline" title="Scheduled" value={metrics.interviewsScheduled} tooltip="Interviews scheduled in selected period" isLoading={metrics.isLoading} sparkline={<MiniSparkline data={appSparkData} color="hsl(267 100% 62%)" />} />
-          <MetricCard variant="inline" title="Completed" value={metrics.interviewsCompleted} tooltip="Interviews completed in selected period" isLoading={metrics.isLoading} sparkline={<MiniSparkline data={hiresSparkData} color="hsl(152 69% 41%)" />} />
+          <MetricCard variant="inline" title="Completed" value={metrics.interviewsCompleted} tooltip="Interviews completed in selected period" isLoading={metrics.isLoading} sparkline={<MiniSparkline data={interviewsCompletedSparkData} color="hsl(152 69% 41%)" />} />
         </MetricCardGroup>
       </div>
 
