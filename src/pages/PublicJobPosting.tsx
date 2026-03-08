@@ -445,6 +445,7 @@ export default function PublicJobPosting() {
       let salarySync: { amount: number; currency: string; period: string } | null = null
       let locationSync: { city?: string; state?: string; country?: string } | null = null
       let phoneSync: string | null = null
+      let linkedinSync: string | null = null
       Object.entries(customFieldResponses).forEach(([fieldId, value]) => {
         const field = customFields.find(f => f.id === fieldId)
         if (field?.field_name) {
@@ -473,6 +474,10 @@ export default function PublicJobPosting() {
         // Detect phone field for candidate profile sync
         if ((field?.field_type as string) === 'phone' && value) {
           phoneSync = value as string
+        }
+        // Detect linkedin field for candidate profile sync
+        if (field?.field_type === 'linkedin' && value) {
+          linkedinSync = value as string
         }
       })
 
