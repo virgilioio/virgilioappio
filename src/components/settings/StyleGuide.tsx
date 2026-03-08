@@ -12,6 +12,7 @@ import { DateTimePickerGuide } from './styleguide/DateTimePickerGuide'
 import { CurrencySelectGuide } from './styleguide/CurrencySelectGuide'
 import { SmartFieldsGuide } from './styleguide/SmartFieldsGuide'
 import { AiBannerGuide } from './styleguide/AiBannerGuide'
+import { FiltersGuide } from './styleguide/FiltersGuide'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
 export function StyleGuide() {
