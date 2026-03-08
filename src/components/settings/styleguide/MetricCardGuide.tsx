@@ -9,8 +9,8 @@ export function MetricCardGuide() {
         Metric Cards<span className="text-primary">.</span>
       </h3>
       <p className="text-sm text-muted-foreground">
-        Three variants for different visual weights: <strong>hero</strong> for primary KPIs,
-        <strong> grouped</strong> strips for related metrics, and <strong>default</strong> for compact grids.
+        Horizontal pill-style cards with three zones: icon circle, label + value, and optional sparkline.
+        Three variants: <strong>hero</strong>, <strong>default</strong>, and <strong>grouped</strong> strips.
       </p>
 
       {/* Hero */}
@@ -18,8 +18,19 @@ export function MetricCardGuide() {
         <p className="text-xs font-poppins font-semibold text-muted-foreground uppercase tracking-wider">Hero</p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <MetricCard variant="hero" title="Applications" value={142} icon={Users} tooltip="Total applications" />
-          <MetricCard variant="hero" title="Hires" value={12} icon={Briefcase} trend={{ value: 15, direction: 'up' }} />
-          <MetricCard variant="hero" title="Time to Hire" value={28} suffix="d" icon={Clock} trend={{ value: 8, direction: 'down', positiveDirection: 'down' }} />
+          <MetricCard variant="hero" title="Hires" value={12} icon={Briefcase} trend={{ value: 15, direction: 'up' }} iconColor="text-virgilio-success" />
+          <MetricCard variant="hero" title="Time to Hire" value={28} suffix="d" icon={Clock} trend={{ value: 8, direction: 'down', positiveDirection: 'down' }} iconColor="text-warning" />
+        </div>
+      </div>
+
+      {/* Default (horizontal pill) */}
+      <div className="space-y-2">
+        <p className="text-xs font-poppins font-semibold text-muted-foreground uppercase tracking-wider">Default (Horizontal Pill)</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <MetricCard title="Applications" value={142} icon={Users} tooltip="Total applications received" />
+          <MetricCard title="Active" value={38} icon={Briefcase} iconColor="text-virgilio-success" />
+          <MetricCard title="Avg. Experience" value={5.2} suffix=" yrs" icon={Clock} iconColor="text-warning" />
+          <MetricCard title="Enriched" value={87} suffix="%" icon={Sparkles} iconColor="text-destructive" />
         </div>
       </div>
 
@@ -39,40 +50,13 @@ export function MetricCardGuide() {
         </div>
       </div>
 
-      {/* Default compact */}
-      <div className="space-y-2">
-        <p className="text-xs font-poppins font-semibold text-muted-foreground uppercase tracking-wider">Default (Compact)</p>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <MetricCard title="Applications" value={142} icon={Users} tooltip="Total applications received" />
-          <MetricCard title="Active" value={38} icon={Briefcase} />
-          <MetricCard title="Avg. Experience" value={5.2} suffix=" yrs" icon={Clock} />
-          <MetricCard title="Enriched" value={87} suffix="%" icon={Sparkles} />
-        </div>
-      </div>
-
       {/* With trend */}
       <div className="space-y-2">
         <p className="text-xs font-poppins font-semibold text-muted-foreground uppercase tracking-wider">With Trend</p>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-          <MetricCard
-            title="Hires"
-            value={12}
-            icon={Users}
-            trend={{ value: 15, direction: 'up' }}
-          />
-          <MetricCard
-            title="Time to Hire"
-            value={28}
-            suffix="d"
-            icon={Clock}
-            trend={{ value: 8, direction: 'down', positiveDirection: 'down' }}
-          />
-          <MetricCard
-            title="Rejected"
-            value={23}
-            icon={Users}
-            trend={{ value: 5, direction: 'up', positiveDirection: 'down' }}
-          />
+          <MetricCard title="Hires" value={12} icon={Users} trend={{ value: 15, direction: 'up' }} />
+          <MetricCard title="Time to Hire" value={28} suffix="d" icon={Clock} trend={{ value: 8, direction: 'down', positiveDirection: 'down' }} iconColor="text-warning" />
+          <MetricCard title="Rejected" value={23} icon={Users} trend={{ value: 5, direction: 'up', positiveDirection: 'down' }} iconColor="text-destructive" />
         </div>
       </div>
 
@@ -96,6 +80,7 @@ export function MetricCardGuide() {
             value="$85k"
             icon={DollarSign}
             tooltip="Median annual salary"
+            iconColor="text-virgilio-success"
             footer={<span className="text-xs text-muted-foreground">Normalized USD</span>}
           />
         </div>
