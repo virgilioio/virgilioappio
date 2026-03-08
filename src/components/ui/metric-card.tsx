@@ -75,11 +75,11 @@ function IconCircle({
 }) {
   if (!icon) return null
 
-  const circleSize = size === 'hero' ? 'w-12 h-12' : 'w-10 h-10'
-  const iconSize = size === 'hero' ? 'h-5 w-5' : 'h-4 w-4'
+  const circleSize = size === 'hero' ? 'w-14 h-14' : 'w-12 h-12'
+  const iconSize = size === 'hero' ? 'h-6 w-6' : 'h-5 w-5'
 
   return (
-    <div className={cn('rounded-full bg-background shadow-sm flex items-center justify-center shrink-0 border border-border/50', circleSize)}>
+    <div className={cn('rounded-full bg-background shadow-md flex items-center justify-center shrink-0 border border-border/50', circleSize)}>
       {isLucideIcon(icon) ? (
         (() => { const Icon = icon; return <Icon className={cn(iconSize, iconColor)} /> })()
       ) : (
