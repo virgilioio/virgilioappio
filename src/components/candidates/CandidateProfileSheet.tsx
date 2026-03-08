@@ -1439,6 +1439,16 @@ const stageHasAutomation = useMemo(() => {
                                         </span>
                                       </div>
                                     )}
+
+                                    {/* Salary Expectations */}
+                                    {candidate?.salary_amount && (
+                                      <div className="flex items-start gap-2">
+                                        <DollarSign className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                                        <span className="text-sm text-text-primary">
+                                          {candidate.salary_currency || 'USD'} {candidate.salary_amount.toLocaleString()} / {candidate.salary_period || 'annually'}
+                                        </span>
+                                      </div>
+                                    )}
                               </CardContent>
                             </AccordionContent>
                           </Card>
