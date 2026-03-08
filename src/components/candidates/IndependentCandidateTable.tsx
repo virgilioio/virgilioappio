@@ -338,8 +338,16 @@ const getPageNumbers = () => {
 </PermissionGate>
 
         </div>
+        {/* Filter results count */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
+          <span>{filteredCandidates.length} of {candidates.length} candidates</span>
+        </div>
 </CardHeader>
 <CardContent>
+  {/* Filters panel */}
+  <div className="mb-4">
+    <CandidateFiltersPanel filterOptions={filterOptions} />
+  </div>
   {/* Bulk actions toolbar */}
   {selectionMode && selectedIds.length > 0 && (
     <div className="flex items-center justify-between mb-4">
