@@ -56,6 +56,7 @@ export function OverviewSection({ metrics }: OverviewSectionProps) {
           iconColor="text-warning"
           tooltip="Average days from candidate creation to hire"
           isLoading={metrics.isLoading}
+          sparkline={<MiniSparkline data={hiresSparkData} color="hsl(38 92% 50%)" />}
         />
       </div>
 
