@@ -1,7 +1,8 @@
 import { AnalyticsSection } from '@/components/analytics/shared/AnalyticsSection'
-import { AnalyticsKpiCard } from '@/components/analytics/shared/AnalyticsKpiCard'
+import { MetricCard } from '@/components/ui/metric-card'
+import { MetricCardGroup } from '@/components/ui/metric-card-group'
 import { ApplicationsTrendChart } from '@/components/analytics/ApplicationsTrendChart'
-import { FileText, Users, UserCheck, CalendarPlus, CalendarCheck, UserX, Clock, Gift } from 'lucide-react'
+import { FileText, UserCheck, Clock, Users, Gift, UserX, CalendarPlus, CalendarCheck } from 'lucide-react'
 import { BarChart3 } from 'lucide-react'
 import type { AnalyticsMetrics } from '@/hooks/useAnalyticsMetrics'
 
@@ -16,16 +17,49 @@ export function OverviewSection({ metrics }: OverviewSectionProps) {
       subtitle="Key recruiting metrics at a glance"
       icon={BarChart3}
     >
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-        <AnalyticsKpiCard title="Applications" value={metrics.applications} icon={FileText} tooltip="New applications in selected period" isLoading={metrics.isLoading} />
-        <AnalyticsKpiCard title="Active" value={metrics.activeCandidates} icon={Users} tooltip="Currently active candidates (all time)" isLoading={metrics.isLoading} />
-        <AnalyticsKpiCard title="Hires" value={metrics.totalHires} icon={UserCheck} tooltip="Candidates hired in selected period" isLoading={metrics.isLoading} />
-        <AnalyticsKpiCard title="Offers" value={metrics.totalOffers} icon={Gift} tooltip="Offers extended in selected period" isLoading={metrics.isLoading} />
-        <AnalyticsKpiCard title="Scheduled" value={metrics.interviewsScheduled} icon={CalendarPlus} tooltip="Interviews scheduled in selected period" isLoading={metrics.isLoading} />
-        <AnalyticsKpiCard title="Completed" value={metrics.interviewsCompleted} icon={CalendarCheck} tooltip="Interviews completed in selected period" isLoading={metrics.isLoading} />
-        <AnalyticsKpiCard title="Rejected" value={metrics.rejectedCandidates} icon={UserX} tooltip="Total rejected candidates (all time)" isLoading={metrics.isLoading} />
-        <AnalyticsKpiCard title="Avg Time to Hire" value={metrics.avgTimeToHire} icon={Clock} suffix="d" tooltip="Average days from candidate creation to hire" isLoading={metrics.isLoading} />
+      {/* Row 1: Hero KPIs */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <MetricCard
+          variant="hero"
+          title="Applications"
+          value={metrics.applications}
+          icon={FileText}
+          tooltip="New applications in selected period"
+          isLoading={metrics.isLoading}
+        />
+        <MetricCard
+          variant="hero"
+          title="Hires"
+          value={metrics.totalHires}
+          icon={UserCheck}
+          tooltip="Candidates hired in selected period"
+          isLoading={metrics.isLoading}
+        />
+        <MetricCard
+          variant="hero"
+          title="Avg Time to Hire"
+          value={metrics.avgTimeToHire}
+          suffix="d"
+          icon={Clock}
+          tooltip="Average days from candidate creation to hire"
+          isLoading={metrics.isLoading}
+        />
       </div>
+
+      {/* Row 2: Grouped strips */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <MetricCardGroup title="Pipeline">
+          <MetricCard variant="inline" title="Active" value={metrics.activeCandidates} tooltip="Currently active candidates (all time)" isLoading={metrics.isLoading} />
+          <MetricCard variant="inline" title="Offers" value={metrics.totalOffers} tooltip="Offers extended in selected period" isLoading={metrics.isLoading} />
+          <MetricCard variant="inline" title="Rejected" value={metrics.rejectedCandidates} tooltip="Total rejected candidates (all time)" isLoading={metrics.isLoading} />
+        </MetricCardGroup>
+
+        <MetricCardGroup title="Interviews">
+          <MetricCard variant="inline" title="Scheduled" value={metrics.interviewsScheduled} tooltip="Interviews scheduled in selected period" isLoading={metrics.isLoading} />
+          <MetricCard variant="inline" title="Completed" value={metrics.interviewsCompleted} tooltip="Interviews completed in selected period" isLoading={metrics.isLoading} />
+        </MetricCardGroup>
+      </div>
+
       <ApplicationsTrendChart data={metrics.trendData} isLoading={metrics.isLoading} />
     </AnalyticsSection>
   )
