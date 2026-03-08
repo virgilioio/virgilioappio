@@ -21,6 +21,7 @@ interface SubmitApplicationPayload {
   fields?: Record<string, any>;
   salary_sync?: { amount: number; currency: string; period: string } | null;
   location_sync?: { city?: string; state?: string; country?: string } | null;
+  linkedin_sync?: string | null;
   uploadedFiles?: Record<string, {
     name: string;
     type: string;
