@@ -1,9 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton, TableSkeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -295,13 +294,12 @@ const getPageNumbers = () => {
   if (isLoading) {
     return (
       <Card className="bg-surface-primary border-border">
-        <CardHeader>
-          <div className="flex gap-4">
-            <Skeleton className="h-10 flex-1" />
-            <Skeleton className="h-10 w-32" />
+        <CardContent className="pt-6">
+          <div className="flex gap-4 mb-4">
+            <Skeleton className="h-8 w-56" />
+            <Skeleton className="h-8 w-24" />
+            <Skeleton className="h-8 w-24" />
           </div>
-        </CardHeader>
-        <CardContent>
           <TableSkeleton rows={5} />
         </CardContent>
       </Card>
@@ -310,46 +308,44 @@ const getPageNumbers = () => {
 
   return (
     <Card className="bg-surface-primary border-border">
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <CardContent className="pt-6">
+        {/* Unified toolbar: search + filter chips + actions */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <div className="relative w-56">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              placeholder="Search candidates by name or email..."
+              placeholder="Search candidates..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-9 h-8 text-sm rounded-full"
             />
           </div>
 
-<PermissionGate permission="canManageCandidates">
-  <div className="ml-auto flex items-center gap-2">
-    {!selectionMode && (
-      <Button onClick={onAddNew} size="sm" className="gap-sm h-[40px]">
-        <UserPlus className="h-4 w-4" />
-        Add Candidate
-      </Button>
-    )}
-    <Button onClick={toggleSelectionMode} variant={selectionMode ? 'secondary' : 'outline'} size="sm" className="gap-2 h-[40px]">
-      <ListChecks className="h-4 w-4" />
-      {selectionMode ? 'Done' : 'Select'}
-    </Button>
-  </div>
-</PermissionGate>
+          <CandidateFiltersPanel filterOptions={filterOptions} />
 
+          <PermissionGate permission="canManageCandidates">
+            <div className="ml-auto flex items-center gap-2">
+              {!selectionMode && (
+                <Button onClick={onAddNew} size="sm" className="gap-1.5 h-8">
+                  <UserPlus className="h-3.5 w-3.5" />
+                  Add Candidate
+                </Button>
+              )}
+              <Button onClick={toggleSelectionMode} variant={selectionMode ? 'secondary' : 'outline'} size="sm" className="gap-1.5 h-8">
+                <ListChecks className="h-3.5 w-3.5" />
+                {selectionMode ? 'Done' : 'Select'}
+              </Button>
+            </div>
+          </PermissionGate>
         </div>
+
         {/* Filter results count */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
+        <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
           <span>{filteredCandidates.length} of {candidates.length} candidates</span>
         </div>
-</CardHeader>
-<CardContent>
-  {/* Filters panel */}
-  <div className="mb-4">
-    <CandidateFiltersPanel filterOptions={filterOptions} />
-  </div>
-  {/* Bulk actions toolbar */}
-  {selectionMode && selectedIds.length > 0 && (
+
+        {/* Bulk actions toolbar */}
+        {selectionMode && selectedIds.length > 0 && (
     <div className="flex items-center justify-between mb-4">
       <div className="text-sm text-text-secondary">
         {selectedIds.length} selected

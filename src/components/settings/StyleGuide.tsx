@@ -13,6 +13,7 @@ import { CurrencySelectGuide } from './styleguide/CurrencySelectGuide'
 import { SmartFieldsGuide } from './styleguide/SmartFieldsGuide'
 import { AiBannerGuide } from './styleguide/AiBannerGuide'
 import { FiltersGuide } from './styleguide/FiltersGuide'
+import { MetricCardGuide } from './styleguide/MetricCardGuide'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
 export function StyleGuide() {
@@ -34,6 +35,7 @@ export function StyleGuide() {
         <ButtonGuide />
         <FormElementsGuide />
         <CardGuide />
+        <MetricCardGuide />
         <BadgeGuide />
         <TabsGuide />
         <DateTimePickerGuide />

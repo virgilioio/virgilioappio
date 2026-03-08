@@ -128,28 +128,25 @@ export function JobOverviewTab({ job, onEdit, onArchive }: JobOverviewTabProps) 
         <MetricCard
           title="Department"
           value={job.organization_name || (job as any).organization?.name || job.department || 'Not specified'}
-          icon={<Building />}
+          icon={Building}
           tooltip="Job department"
         />
-        
         <MetricCard
           title="Location"
           value={job.location || 'Not specified'}
-          icon={<MapPin />}
+          icon={MapPin}
           tooltip="Job location"
         />
-        
         <MetricCard
           title="Salary Range"
           value={formatSalary(job.salary_min, job.salary_max, job.currency)}
-          icon={<DollarSign />}
+          icon={DollarSign}
           tooltip="Salary range for this position"
         />
-        
         <MetricCard
           title="Hiring Team"
           value={job.hiring_team?.length || 0}
-          icon={<Users />}
+          icon={Users}
           tooltip="Number of team members"
         />
       </div>

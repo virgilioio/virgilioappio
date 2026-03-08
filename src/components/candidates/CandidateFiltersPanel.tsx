@@ -48,9 +48,8 @@ export function CandidateFiltersPanel({ filterOptions }: CandidateFiltersPanelPr
   const formatSalary = (v: number) => v >= 1000 ? `$${Math.round(v / 1000)}k` : `$${v}`
 
   return (
-    <div className="space-y-3">
-      {/* Horizontal chip bar */}
-      <div className="flex flex-wrap items-center gap-2">
+    <>
+      {/* Horizontal chip bar — renders as inline fragment for parent flex layout */}
         <FilterChipPopover
           label="Status"
           options={filterOptions.statusOptions}
@@ -115,7 +114,6 @@ export function CandidateFiltersPanel({ filterOptions }: CandidateFiltersPanelPr
             Clear filters
           </Button>
         )}
-      </div>
 
       {/* Active filter chips */}
       {activeTags.length > 0 && (
@@ -342,6 +340,6 @@ export function CandidateFiltersPanel({ filterOptions }: CandidateFiltersPanelPr
           </div>
         </div>
       </FilterSheet>
-    </div>
+    </>
   )
 }

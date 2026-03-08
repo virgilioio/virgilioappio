@@ -1,107 +1,89 @@
+# System Roles Migration — Completed Phases 1-5
 
+## Architecture Change
+- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
+- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-# Three-Part Standardization: Candidates Layout, Filter Chips Everywhere, Metric Cards
+## Completed
 
-## 1. Candidates Page — Move Actions Inline with Filters, Handle Search
+### Phase 1 — Database
+- ✅ Created `system_role` enum (`admin`, `member`)
+- ✅ Added `system_role` column to `members` table
+- ✅ Migrated data: `admin` → `admin`, all others → `member`
+- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
+- ✅ Updated `check_tenant_member_role` to use `system_role`
+- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
+- ✅ Updated `audit_member_role_change` trigger
 
-**Current state:** The `IndependentCandidateTable` has a search bar + "Add Candidate" + "Select" button in the `CardHeader`, then filter chips below in `CardContent`. This creates two separate toolbar rows.
+### Phase 2 — Frontend Permissions
+- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
+- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
+- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
+- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
 
-**Proposed change:** Merge into a single unified toolbar row:
-- Filter chips (Status, Source, Country, Seniority, Skills, More Filters) come first
-- "Add Candidate" and "Select" buttons sit at the right end of the same row
-- "Clear filters" appears inline when active
-- **Search bar recommendation:** Keep it but make it compact — integrate it as the first element in the row with a smaller width, or place it as a search icon that expands. Given the filter chips already take space, I recommend keeping a compact search input at the start of the chip row (same pattern as Jobs currently has, but styled smaller to coexist with chips).
+### Phase 3 — UI Updates
+- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
+- ✅ Updated `Dashboard` — sourcing panel for admin+ only
+- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
+- ✅ Updated `BillingGuard` — members (non-admin) never blocked
+- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
+- ✅ Updated `Find` page RoleGate
+- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
 
-**Files to modify:**
-- `src/components/candidates/IndependentCandidateTable.tsx` — restructure the header to put search (compact), filter chips, and action buttons all in one `flex-wrap` row
+### Phase 4 — Runtime Hotfixes
+- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
+- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
+- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
+- ✅ Updated `validate_invite_token` — returns `system_role`
+- ✅ Updated `accept_invitation` — uses `system_role`
 
-## 2. Implement Filter Chips in Jobs and Pipeline
+### Phase 5 — Complete Cleanup
+- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
+- ✅ Updated `admin_manage_member` — updates `system_role` column
+- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
+- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
+- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
+- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
+- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
+- ✅ Updated `diagnose_user_auth` — reports `system_role`
+- ✅ Updated `audit_platform_admin_access` — returns `system_role`
+- ✅ Updated `debug_user_permissions` — returns `system_role`
+- ✅ Renamed `invitations.member_role` → `invitations.system_role`
+- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
 
-### Jobs Page (`JobsTable.tsx`)
-**Current state:** Uses `Select` for status, `MultiSelect` for organization and user filters, plus a search input. All in a `CardHeader`.
+## Phase 6 — Future (Optional)
+- Drop `member_role` column from `members` table (already dropped)
+- Drop old `member_role` enum type
+- Update `MemberInviteSheet` role picker to only offer Admin/Member
 
-**Proposed change:**
-- Replace `Select` (status) with `FilterChipPopover` using status options
-- Replace `MultiSelect` (organization) with `FilterChipPopover`
-- Replace `MultiSelect` (user) with `FilterChipPopover`
-- Keep search input compact at the start
-- Move "Create Job" button to the right end of the same row
-- Add "Clear filters" when any filter is active
+# Deep Resume Parsing + Data Standardization — Completed
 
-**Files to modify:**
-- `src/components/jobs/JobsTable.tsx` — replace Select/MultiSelect with FilterChipPopover, restructure header layout
+## What was implemented
 
-### Pipeline Page (`FilterCard.tsx`)
-**Current state:** Uses `Input` for search, `Select` for job status, `MultiSelect` for users and departments. Wrapped in a collapsible `Card`.
+### Phase 1: Schema Expansion
+- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
+- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
+- ✅ Added to `candidate_education`: `education_level`
+- ✅ Created `candidate_certifications` table with RLS policies
 
-**Proposed change:**
-- Remove the Card wrapper and Collapsible pattern — use a flat chip bar instead (consistent with Candidates)
-- Replace `Select` (job status) with `FilterChipPopover`
-- Replace `MultiSelect` (users) with `FilterChipPopover`
-- Replace `MultiSelect` (departments) with `FilterChipPopover`
-- Keep search input compact
-- Add "Clear filters" when active
-- Remove the "Advanced" collapsible (it's empty placeholder anyway)
+### Phase 2: Enrichment Rewrite
+- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
+- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
+- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
+- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
+- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
 
-**Files to modify:**
-- `src/components/pipeline/FilterCard.tsx` — rewrite to use FilterChipPopover, remove Card/Collapsible wrapper
-- `src/pages/Pipeline.tsx` — may need minor layout adjustments
+### Phase 3: UI Updates
+- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
+- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
+- ✅ **Certifications section** with `CandidateCertificationsComponent`
+- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
+- ✅ Enhanced **Education** display: education level badge
+- ✅ Certifications loaded alongside work experience and education
 
-## 3. Standardize Metric Cards + Add to Style Guide
-
-### Problem
-There are currently 3 metric card variants:
-1. **`MetricCard`** (`src/components/ui/metric-card.tsx`) — used in Pipeline (via `PipelineMetricCard`), Jobs, Talent Intelligence, SaaS Customer Detail. Has `backgroundColor`/`iconColor` props (Pipeline uses pastel backgrounds like `#c5f5fb`), large `text-3xl` value.
-2. **`AnalyticsKpiCard`** — used in Analytics. Compact, `text-2xl`, icon in purple tinted circle, trend indicator support, loading skeleton.
-3. **`PipelineMetricCard`** — thin wrapper around `MetricCard` that passes custom background colors.
-
-### Standardization approach
-The user loved the `AnalyticsKpiCard` pattern. Consolidate onto that as the standard:
-
-- **Upgrade `MetricCard`** to support the same features as `AnalyticsKpiCard`: trend indicators, suffix, loading skeleton, compact layout
-- **Or** rename/promote `AnalyticsKpiCard` as the new standard `MetricCard` and migrate all consumers
-
-**Recommended:** Merge the best of both into the existing `MetricCard`:
-- Add `trend`, `suffix`, `isLoading` props from `AnalyticsKpiCard`
-- Keep `icon` accepting both `ReactNode` and `LucideIcon` for flexibility
-- Remove `backgroundColor`/`iconColor` — always use the Virgilio purple tinted circle pattern (consistent branding)
-- Keep `footer` prop for extended use cases
-- Compact layout: `text-2xl` value, `text-xs` title, icon in `bg-virgilio-purple/10` circle
-- Add optional sparkline support inspired by the reference image (small inline trend line above the value)
-
-**Migration:**
-- Update `PipelineMetricCard` to use new standardized card (remove custom background colors)
-- Update `Pipeline.tsx` metric cards
-- Update `JobAnalyticsDashboard.tsx` metric cards
-- Update `JobOverviewTab.tsx` metric cards
-- Update `SummaryMetricsRow.tsx` (Talent Intelligence) metric cards
-- Update `SaaSCustomerDetail.tsx` metric cards
-- Remove `AnalyticsKpiCard` (fold into `MetricCard`) or keep as thin re-export
-- Remove `PipelineMetricCard` wrapper
-
-### Style Guide Addition
-Create `src/components/settings/styleguide/MetricCardGuide.tsx`:
-- Show the standard metric card in various configurations: basic, with trend, with suffix, loading state, with tooltip
-- Register in `StyleGuide.tsx`
-
-## Files Summary
-
-**Create:**
-1. `src/components/settings/styleguide/MetricCardGuide.tsx`
-
-**Modify:**
-1. `src/components/ui/metric-card.tsx` — consolidate with AnalyticsKpiCard features
-2. `src/components/candidates/IndependentCandidateTable.tsx` — inline actions with filter chips
-3. `src/components/jobs/JobsTable.tsx` — replace Select/MultiSelect with FilterChipPopover
-4. `src/components/pipeline/FilterCard.tsx` — rewrite with FilterChipPopover
-5. `src/pages/Pipeline.tsx` — update metric cards to standardized version, minor layout
-6. `src/components/pipeline/PipelineMetricCard.tsx` — simplify or remove
-7. `src/components/analytics/shared/AnalyticsKpiCard.tsx` — make thin wrapper of new MetricCard or keep
-8. `src/components/analytics/sections/OverviewSection.tsx` — use standardized card
-9. `src/components/analytics/sections/InterviewHealthSection.tsx` — use standardized card
-10. `src/components/jobs/JobAnalyticsDashboard.tsx` — use standardized card
-11. `src/components/jobs/JobOverviewTab.tsx` — use standardized card
-12. `src/components/talent-intelligence/SummaryMetricsRow.tsx` — use standardized card
-13. `src/pages/settings/saas-customers/SaaSCustomerDetail.tsx` — use standardized card
-14. `src/components/settings/StyleGuide.tsx` — add MetricCardGuide
-
+## Files changed
+- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
+- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
+- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
+- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
+- `src/components/candidates/CandidateCertifications.tsx` — new component

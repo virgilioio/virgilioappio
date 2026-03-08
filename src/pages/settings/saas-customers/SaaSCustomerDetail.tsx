@@ -202,7 +202,7 @@ export function SaaSCustomerDetail() {
         <MetricCard
           title="Total Jobs"
           value={customer.jobs_total ?? customer.jobs_created_30d}
-          icon={<Briefcase />}
+          icon={Briefcase}
           tooltip="Total active jobs"
           footer={
             customer.jobs_created_30d > 0 ? (
@@ -216,7 +216,7 @@ export function SaaSCustomerDetail() {
         <MetricCard
           title="Total Candidates"
           value={customer.candidates_total ?? customer.candidates_added_30d}
-          icon={<Users />}
+          icon={Users}
           tooltip="Total candidates across all jobs"
           footer={
             customer.candidates_added_30d > 0 ? (
@@ -230,7 +230,7 @@ export function SaaSCustomerDetail() {
         <MetricCard
           title="Active Members"
           value={customer.members_active_count}
-          icon={<Activity />}
+          icon={Activity}
           tooltip="Currently active team members"
         />
         <MetricCard
@@ -240,7 +240,7 @@ export function SaaSCustomerDetail() {
               ? formatDistanceToNow(new Date(customer.last_active_at), { addSuffix: true }).replace('ago', '').trim()
               : 'Never'
           }
-          icon={<Calendar />}
+          icon={Calendar}
           tooltip="Last account activity"
         />
       </div>
