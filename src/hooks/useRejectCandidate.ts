@@ -61,6 +61,28 @@ export function useRejectCandidate() {
 
       if (updateError) throw updateError;
 
+      // Cancel any scheduled interviews for this candidate (best-effort)
+      try {
+        const { data: activeBookings } = await supabase
+          .from('scheduled_bookings')
+          .select('id')
+          .eq('candidate_id', association.candidate_id)
+          .eq('job_id', association.job_id)
+          .in('status', ['confirmed', 'rescheduled']);
+
+        if (activeBookings?.length) {
+          await Promise.allSettled(
+            activeBookings.map(booking =>
+              supabase.functions.invoke('cancel-booking', {
+                body: { booking_id: booking.id, reason: 'Candidate rejected' },
+              })
+            )
+          );
+        }
+      } catch (cancelError) {
+        console.error('Failed to cancel interviews on rejection:', cancelError);
+      }
+
       // Handle email
       if (sendEmail && emailData) {
         if (scheduleFor) {
