@@ -124,7 +124,7 @@ export function useIndependentCandidates() {
       const { data, error: fetchError } = await withAuthRetry(async () =>
         await supabase
           .from('candidates')
-          .select('id,candidate_name,email,phone,contact_phones,contact_emails,location_country,location_state,location_city,salary_amount,salary_currency,salary_period,profile_summary,linkedin_url,resume_url,skills,auto_generated_skills,status,source,created_at,updated_at,created_by,organization_id')
+          .select('id,candidate_name,email,phone,contact_phones,contact_emails,location_country,location_state,location_city,salary_amount,salary_currency,salary_period,profile_summary,linkedin_url,resume_url,skills,standardized_skills,auto_generated_skills,status,source,created_at,updated_at,created_by,organization_id,seniority_level,functional_area,specialization,standardized_title,years_experience,enrichment_status,current_job_title,company_current')
           .in('organization_id', orgIds)
           .order('created_at', { ascending: false })
           .limit(1000)
