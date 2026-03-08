@@ -15,7 +15,7 @@ interface JobHealthSectionProps {
 
 export function JobHealthSection({ data }: JobHealthSectionProps) {
   const navigate = useNavigate()
-  const { sortedData, sort, handleSort } = useSortableTable<JobHealthRow>(data.rows, 'totalCandidates', 'desc')
+  const { sortedData, sortConfig: sort, requestSort: handleSort } = useSortableTable<JobHealthRow>(data.rows, { key: 'totalCandidates', direction: 'desc' })
 
   return (
     <AnalyticsSection

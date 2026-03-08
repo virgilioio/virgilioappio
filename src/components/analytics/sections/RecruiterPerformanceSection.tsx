@@ -11,7 +11,7 @@ interface RecruiterPerformanceSectionProps {
 }
 
 export function RecruiterPerformanceSection({ data }: RecruiterPerformanceSectionProps) {
-  const { sortedData, sort, handleSort } = useSortableTable<RecruiterRow>(data.rows, 'candidatesAdded', 'desc')
+  const { sortedData, sortConfig: sort, requestSort: handleSort } = useSortableTable<RecruiterRow>(data.rows, { key: 'candidatesAdded', direction: 'desc' })
 
   return (
     <AnalyticsSection
