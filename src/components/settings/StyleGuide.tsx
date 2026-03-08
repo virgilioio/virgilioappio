@@ -37,7 +37,7 @@ export function StyleGuide() {
         <FormElementsGuide />
         <CardGuide />
         <MetricCardGuide />
-        <BadgeGuide />
+        <ChartsGuide />
         <TabsGuide />
         <DateTimePickerGuide />
         <CurrencySelectGuide />
