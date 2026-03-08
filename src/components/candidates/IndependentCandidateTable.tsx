@@ -486,7 +486,7 @@ const getPageNumbers = () => {
                                 onClick={(e) => {
                                   e.preventDefault()
                                   e.stopPropagation()
-                                  handleDelete(candidate.id)
+                                  handleDelete(candidate)
                                 }}
                                 className="h-[40px] w-[40px] p-0 text-destructive hover:bg-destructive/10"
                               >
