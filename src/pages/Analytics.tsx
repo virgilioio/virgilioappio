@@ -3,51 +3,28 @@ import { useNavigate } from 'react-router-dom'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useToast } from '@/hooks/use-toast'
 import { useAnalyticsMetrics, DateRange } from '@/hooks/useAnalyticsMetrics'
+import { useStagePerformanceMetrics } from '@/hooks/analytics/useStagePerformanceMetrics'
+import { useJobHealthMetrics } from '@/hooks/analytics/useJobHealthMetrics'
+import { useRecruiterPerformanceMetrics } from '@/hooks/analytics/useRecruiterPerformanceMetrics'
+import { useSourcePerformanceMetrics } from '@/hooks/analytics/useSourcePerformanceMetrics'
+import { useInterviewHealthMetrics } from '@/hooks/analytics/useInterviewHealthMetrics'
+import { useOfferAnalyticsMetrics } from '@/hooks/analytics/useOfferAnalyticsMetrics'
+import { useTalentInsightsMetrics } from '@/hooks/analytics/useTalentInsightsMetrics'
 import { AnalyticsTimeFilter } from '@/components/analytics/AnalyticsTimeFilter'
 import { AnalyticsFiltersBar, AnalyticsFilters } from '@/components/analytics/AnalyticsFiltersBar'
-import { ApplicationsTrendChart } from '@/components/analytics/ApplicationsTrendChart'
-import { CandidateStatusPieChart } from '@/components/analytics/CandidateStatusPieChart'
-import { StageDistributionChart } from '@/components/analytics/StageDistributionChart'
-import { RecruitmentFunnelChart } from '@/components/analytics/RecruitmentFunnelChart'
-import { PipelineOverviewTable } from '@/components/analytics/PipelineOverviewTable'
-import { AnalyticsSection } from '@/components/analytics/shared/AnalyticsSection'
-import { AnalyticsKpiCard } from '@/components/analytics/shared/AnalyticsKpiCard'
-import { AnalyticsEmptyState } from '@/components/analytics/shared/AnalyticsEmptyState'
+import { OverviewSection } from '@/components/analytics/sections/OverviewSection'
+import { PipelineHealthSection } from '@/components/analytics/sections/PipelineHealthSection'
+import { StagePerformanceSection } from '@/components/analytics/sections/StagePerformanceSection'
+import { JobHealthSection } from '@/components/analytics/sections/JobHealthSection'
+import { RecruiterPerformanceSection } from '@/components/analytics/sections/RecruiterPerformanceSection'
+import { SourcePerformanceSection } from '@/components/analytics/sections/SourcePerformanceSection'
+import { InterviewHealthSection } from '@/components/analytics/sections/InterviewHealthSection'
+import { OfferAnalyticsSection } from '@/components/analytics/sections/OfferAnalyticsSection'
+import { TalentInsightsSection } from '@/components/analytics/sections/TalentInsightsSection'
 import { Button } from '@/components/ui/button'
-import {
-  BarChart3, Download, Loader2,
-  FileText, Users, UserCheck, CalendarPlus, CalendarCheck, UserX, Clock,
-  GitBranch, Activity, Layers, Globe, Stethoscope
-} from 'lucide-react'
+import { BarChart3, Download, Loader2 } from 'lucide-react'
 import { subDays } from 'date-fns'
 import { generateAnalyticsReport } from '@/utils/analyticsReportGenerator'
-
-/*
- * ══════════════════════════════════════════════════════════════════
- * ANALYTICS DASHBOARD — IMPLEMENTATION STATUS
- * ══════════════════════════════════════════════════════════════════
- *
- * ✅ LIVE (existing metrics):
- *   - Applications, Active, Hires, Scheduled, Completed, Rejected, Avg Time to Hire
- *   - Status Distribution (pie), Stage Distribution (bar), Trend (line), Funnel
- *   - Pipeline Overview Table (per-job stage counts)
- *
- * 🔜 PHASE 1 — derivable from existing data (no schema changes):
- *   - Stage conversion rates (from job_candidate_stage_history)
- *   - Time in stage / stuck candidates (from entered_stage_at, stage_history)
- *   - Source effectiveness (from candidates.source joined with associations)
- *   - Recruiter workload (from job_candidate_associations.added_by)
- *   - Rejection reason breakdown (from rejection_reason_id)
- *   - Interview load per interviewer (from scheduled_bookings.interviewer_id)
- *   - Scorecard completion rate (from job_stage_scorecards)
- *
- * 🔮 FUTURE — requires schema additions:
- *   - Offer details (salary offered, acceptance/decline tracking)
- *   - DEI/diversity metrics
- *   - Candidate activity log (engagement tracking)
- *   - Passthrough rate (explicit stage pass/fail)
- * ══════════════════════════════════════════════════════════════════
- */
 
 export default function Analytics() {
   const navigate = useNavigate()
@@ -78,7 +55,18 @@ export default function Analytics() {
     jobStatus: 'open',
   })
 
+  // Core metrics (existing)
   const metrics = useAnalyticsMetrics({ dateRange, ...advancedFilters })
+  const hasJobIds = metrics.finalJobIds.length > 0 && !metrics.isLoading
+
+  // New section hooks — only fire when we have job IDs
+  const stageData = useStagePerformanceMetrics(metrics.finalJobIds, dateRange, hasJobIds)
+  const jobHealth = useJobHealthMetrics(metrics.finalJobIds, dateRange, hasJobIds)
+  const recruiterData = useRecruiterPerformanceMetrics(metrics.finalJobIds, dateRange, hasJobIds)
+  const sourceData = useSourcePerformanceMetrics(metrics.finalJobIds, hasJobIds)
+  const interviewData = useInterviewHealthMetrics(metrics.finalJobIds, dateRange, hasJobIds)
+  const offerData = useOfferAnalyticsMetrics(metrics.finalJobIds, dateRange, hasJobIds)
+  const talentData = useTalentInsightsMetrics(metrics.finalJobIds, hasJobIds)
 
   const handleDateRangeChange = (startDate: Date, endDate: Date) => {
     setDateRange({ startDate, endDate })
@@ -143,7 +131,7 @@ export default function Analytics() {
               Analytics<span className="text-[hsl(var(--purple-period))]">.</span>
             </h1>
             <p className="text-sm text-virgilio-muted font-poppins">
-              Platform-wide metrics and insights
+              Recruiting operations dashboard
             </p>
           </div>
         </div>
@@ -164,113 +152,16 @@ export default function Analytics() {
       {/* Filter Chips */}
       <AnalyticsFiltersBar onFiltersChange={handleFiltersChange} />
 
-      {/* ─── SECTION: Overview ─── */}
-      {/* LIVE: All KPIs below are backed by real data */}
-      <AnalyticsSection
-        title="Overview"
-        subtitle="Key recruiting metrics at a glance"
-        icon={BarChart3}
-      >
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
-          <AnalyticsKpiCard title="Applications" value={metrics.applications} icon={FileText} tooltip="New applications in selected period" isLoading={metrics.isLoading} />
-          <AnalyticsKpiCard title="Active" value={metrics.activeCandidates} icon={Users} tooltip="Currently active candidates (all time)" isLoading={metrics.isLoading} />
-          <AnalyticsKpiCard title="Hires" value={metrics.totalHires} icon={UserCheck} tooltip="Candidates hired in selected period" isLoading={metrics.isLoading} />
-          <AnalyticsKpiCard title="Scheduled" value={metrics.interviewsScheduled} icon={CalendarPlus} tooltip="Interviews scheduled in selected period" isLoading={metrics.isLoading} />
-          <AnalyticsKpiCard title="Completed" value={metrics.interviewsCompleted} icon={CalendarCheck} tooltip="Interviews completed in selected period" isLoading={metrics.isLoading} />
-          <AnalyticsKpiCard title="Rejected" value={metrics.rejectedCandidates} icon={UserX} tooltip="Total rejected candidates (all time)" isLoading={metrics.isLoading} />
-          <AnalyticsKpiCard title="Avg Time to Hire" value={metrics.avgTimeToHire} icon={Clock} suffix="d" tooltip="Average days from candidate creation to hire" isLoading={metrics.isLoading} />
-        </div>
-
-        {/* Trend chart */}
-        <ApplicationsTrendChart data={metrics.trendData} isLoading={metrics.isLoading} />
-      </AnalyticsSection>
-
-      {/* ─── SECTION: Pipeline Health ─── */}
-      {/* LIVE: Pipeline table, funnel, and status distribution */}
-      <AnalyticsSection
-        title="Pipeline Health"
-        subtitle="Current state of your hiring pipeline across all jobs"
-        icon={GitBranch}
-      >
-        <PipelineOverviewTable jobIds={metrics.finalJobIds} isLoading={metrics.isLoading} />
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <RecruitmentFunnelChart
-            data={{
-              applications: metrics.applications,
-              activeCandidates: metrics.activeCandidates,
-              offers: metrics.totalOffers,
-              totalHires: metrics.totalHires,
-            }}
-            isLoading={metrics.isLoading}
-          />
-          <CandidateStatusPieChart data={metrics.statusDistribution} isLoading={metrics.isLoading} />
-        </div>
-      </AnalyticsSection>
-
-      {/* ─── SECTION: Stage Performance ─── */}
-      {/* LIVE: Stage distribution chart */}
-      {/* PHASE 1: Stage conversion rates, time in stage, stuck candidates (derivable from job_candidate_stage_history) */}
-      <AnalyticsSection
-        title="Stage Performance"
-        subtitle="How candidates move through your pipeline stages"
-        icon={Layers}
-      >
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <StageDistributionChart data={metrics.stageDistribution} isLoading={metrics.isLoading} />
-
-          {/* PHASE 1: Stage conversion rates & time in stage will go here */}
-          {/* Placeholder — will be replaced with real derived data in next phase */}
-        </div>
-      </AnalyticsSection>
-
-      {/* ─── SECTION: Source Performance ─── */}
-      {/* PHASE 1: Source breakdown (derivable from candidates.source joined with associations) */}
-      <AnalyticsSection
-        title="Source Performance"
-        subtitle="Where your best candidates come from"
-        icon={Globe}
-        phase="phase1"
-        defaultCollapsed
-      >
-        <AnalyticsEmptyState
-          icon={Globe}
-          title="Source analytics coming soon"
-          description="Will show application volume, hire rate, and time-to-hire by candidate source"
-        />
-      </AnalyticsSection>
-
-      {/* ─── SECTION: Interview Health ─── */}
-      {/* PHASE 1: Interview load per interviewer, completion rate, cancellation rate (from scheduled_bookings) */}
-      <AnalyticsSection
-        title="Interview Health"
-        subtitle="Interview scheduling, completion, and interviewer workload"
-        icon={Stethoscope}
-        phase="phase1"
-        defaultCollapsed
-      >
-        <AnalyticsEmptyState
-          icon={Stethoscope}
-          title="Interview analytics coming soon"
-          description="Will show interview completion rates, interviewer load, and cancellation trends"
-        />
-      </AnalyticsSection>
-
-      {/* ─── SECTION: Recruiter Performance ─── */}
-      {/* PHASE 1: Recruiter workload (from added_by), candidates per recruiter, hires per recruiter */}
-      <AnalyticsSection
-        title="Recruiter Performance"
-        subtitle="Workload and effectiveness by team member"
-        icon={Activity}
-        phase="phase1"
-        defaultCollapsed
-      >
-        <AnalyticsEmptyState
-          icon={Activity}
-          title="Recruiter analytics coming soon"
-          description="Will show candidate volume, hire rate, and pipeline velocity per recruiter"
-        />
-      </AnalyticsSection>
+      {/* ─── Sections ─── */}
+      <OverviewSection metrics={metrics} />
+      <PipelineHealthSection metrics={metrics} />
+      <StagePerformanceSection metrics={metrics} stageData={stageData} />
+      <JobHealthSection data={jobHealth} />
+      <RecruiterPerformanceSection data={recruiterData} />
+      <SourcePerformanceSection data={sourceData} />
+      <InterviewHealthSection data={interviewData} />
+      <OfferAnalyticsSection data={offerData} />
+      <TalentInsightsSection data={talentData} />
     </div>
   )
 }
