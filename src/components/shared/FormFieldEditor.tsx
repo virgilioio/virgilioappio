@@ -25,6 +25,7 @@ export function fieldTypeLabel(t: string) {
     case 'salary': return 'Salary'
     case 'location': return 'Location'
     case 'phone': return 'Phone'
+    case 'linkedin': return 'LinkedIn'
     case 'recruiter': return 'Recruiter'
     case 'employment_type': return 'Employment Type'
     case 'work_location': return 'Work Location'
