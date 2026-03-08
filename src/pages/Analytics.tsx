@@ -10,26 +10,57 @@ import { CandidateStatusPieChart } from '@/components/analytics/CandidateStatusP
 import { StageDistributionChart } from '@/components/analytics/StageDistributionChart'
 import { RecruitmentFunnelChart } from '@/components/analytics/RecruitmentFunnelChart'
 import { PipelineOverviewTable } from '@/components/analytics/PipelineOverviewTable'
-import { Card, CardContent } from '@/components/ui/card'
+import { AnalyticsSection } from '@/components/analytics/shared/AnalyticsSection'
+import { AnalyticsKpiCard } from '@/components/analytics/shared/AnalyticsKpiCard'
+import { AnalyticsEmptyState } from '@/components/analytics/shared/AnalyticsEmptyState'
 import { Button } from '@/components/ui/button'
-import { FileText, Users, UserCheck, CalendarPlus, CalendarCheck, UserX, BarChart3, Download, Loader2, Clock } from 'lucide-react'
+import {
+  BarChart3, Download, Loader2,
+  FileText, Users, UserCheck, CalendarPlus, CalendarCheck, UserX, Clock,
+  GitBranch, Activity, Layers, Globe, Stethoscope
+} from 'lucide-react'
 import { subDays } from 'date-fns'
 import { generateAnalyticsReport } from '@/utils/analyticsReportGenerator'
+
+/*
+ * ══════════════════════════════════════════════════════════════════
+ * ANALYTICS DASHBOARD — IMPLEMENTATION STATUS
+ * ══════════════════════════════════════════════════════════════════
+ *
+ * ✅ LIVE (existing metrics):
+ *   - Applications, Active, Hires, Scheduled, Completed, Rejected, Avg Time to Hire
+ *   - Status Distribution (pie), Stage Distribution (bar), Trend (line), Funnel
+ *   - Pipeline Overview Table (per-job stage counts)
+ *
+ * 🔜 PHASE 1 — derivable from existing data (no schema changes):
+ *   - Stage conversion rates (from job_candidate_stage_history)
+ *   - Time in stage / stuck candidates (from entered_stage_at, stage_history)
+ *   - Source effectiveness (from candidates.source joined with associations)
+ *   - Recruiter workload (from job_candidate_associations.added_by)
+ *   - Rejection reason breakdown (from rejection_reason_id)
+ *   - Interview load per interviewer (from scheduled_bookings.interviewer_id)
+ *   - Scorecard completion rate (from job_stage_scorecards)
+ *
+ * 🔮 FUTURE — requires schema additions:
+ *   - Offer details (salary offered, acceptance/decline tracking)
+ *   - DEI/diversity metrics
+ *   - Candidate activity log (engagement tracking)
+ *   - Passthrough rate (explicit stage pass/fail)
+ * ══════════════════════════════════════════════════════════════════
+ */
 
 export default function Analytics() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const { isPlatformAdmin, isWorkspaceOwner, isAdmin } = usePermissions()
-  
   const canAccessAnalytics = isPlatformAdmin || isWorkspaceOwner || isAdmin
 
-  // Redirect users without analytics access
   useEffect(() => {
     if (canAccessAnalytics === false) {
       toast({
         title: 'Access Denied',
         description: 'Analytics is only available to administrators.',
-        variant: 'destructive'
+        variant: 'destructive',
       })
       navigate('/dashboard')
     }
@@ -37,20 +68,17 @@ export default function Analytics() {
 
   const [dateRange, setDateRange] = useState<DateRange>({
     startDate: subDays(new Date(), 7),
-    endDate: new Date()
+    endDate: new Date(),
   })
 
   const [advancedFilters, setAdvancedFilters] = useState<AnalyticsFilters>({
     recruiterIds: [],
     jobIds: [],
     organizationIds: [],
-    jobStatus: 'open'
+    jobStatus: 'open',
   })
 
-  const metrics = useAnalyticsMetrics({
-    dateRange,
-    ...advancedFilters
-  })
+  const metrics = useAnalyticsMetrics({ dateRange, ...advancedFilters })
 
   const handleDateRangeChange = (startDate: Date, endDate: Date) => {
     setDateRange({ startDate, endDate })
@@ -77,30 +105,21 @@ export default function Analytics() {
           statusDistribution: metrics.statusDistribution,
           stageDistribution: metrics.stageDistribution,
           trendData: metrics.trendData,
-          // Global analytics doesn't have per-stage breakdowns yet
           interviewsByStage: [],
           stageConversions: [],
-          avgTimePerStage: []
+          avgTimePerStage: [],
         },
-        dateRange
+        dateRange,
       })
-      toast({
-        title: 'Report exported',
-        description: 'Your analytics report has been downloaded.',
-      })
+      toast({ title: 'Report exported', description: 'Your analytics report has been downloaded.' })
     } catch (error) {
       console.error('[Analytics] Export failed:', error)
-      toast({
-        title: 'Export failed',
-        description: 'Failed to generate the report. Please try again.',
-        variant: 'destructive'
-      })
+      toast({ title: 'Export failed', description: 'Failed to generate the report. Please try again.', variant: 'destructive' })
     } finally {
       setIsExporting(false)
     }
   }
 
-  // Don't render until we verify access status
   if (canAccessAnalytics === undefined) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -109,68 +128,7 @@ export default function Analytics() {
     )
   }
 
-  if (!canAccessAnalytics) {
-    return null
-  }
-
-  const metricCards = [
-    {
-      title: 'Applications',
-      value: metrics.applications,
-      icon: FileText,
-      bgColor: 'hsl(267 84% 87%)',
-      iconColor: 'hsl(267 89% 60%)',
-      tooltip: 'New applications in selected period'
-    },
-    {
-      title: 'Active',
-      value: metrics.activeCandidates,
-      icon: Users,
-      bgColor: 'hsl(180 100% 88%)',
-      iconColor: 'hsl(180 100% 35%)',
-      tooltip: 'Currently active candidates (all time)'
-    },
-    {
-      title: 'Hires',
-      value: metrics.totalHires,
-      icon: UserCheck,
-      bgColor: 'hsl(120 100% 88%)',
-      iconColor: 'hsl(120 100% 30%)',
-      tooltip: 'Candidates hired in selected period'
-    },
-    {
-      title: 'Scheduled',
-      value: metrics.interviewsScheduled,
-      icon: CalendarPlus,
-      bgColor: 'hsl(48 100% 90%)',
-      iconColor: 'hsl(48 100% 35%)',
-      tooltip: 'Interviews scheduled in selected period'
-    },
-    {
-      title: 'Completed',
-      value: metrics.interviewsCompleted,
-      icon: CalendarCheck,
-      bgColor: 'hsl(200 100% 88%)',
-      iconColor: 'hsl(200 100% 35%)',
-      tooltip: 'Interviews completed in selected period'
-    },
-    {
-      title: 'Rejected',
-      value: metrics.rejectedCandidates,
-      icon: UserX,
-      bgColor: 'hsl(0 70% 92%)',
-      iconColor: 'hsl(0 70% 50%)',
-      tooltip: 'Total rejected candidates (all time)'
-    },
-    {
-      title: 'Avg Time to Hire',
-      value: metrics.avgTimeToHire,
-      icon: Clock,
-      bgColor: 'hsl(280 80% 90%)',
-      iconColor: 'hsl(280 80% 45%)',
-      tooltip: 'Average days from candidate creation to hire'
-    }
-  ]
+  if (!canAccessAnalytics) return null
 
   return (
     <div className="space-y-6 p-6 max-w-[1600px] mx-auto animate-fade-in">
@@ -196,78 +154,123 @@ export default function Analytics() {
             disabled={isExporting || metrics.isLoading}
             className="gap-2"
           >
-            {isExporting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4" />
-            )}
+            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             Export Report
           </Button>
           <AnalyticsTimeFilter onDateRangeChange={handleDateRangeChange} />
         </div>
       </div>
 
-      {/* Advanced Filters */}
+      {/* Filter Chips */}
       <AnalyticsFiltersBar onFiltersChange={handleFiltersChange} />
 
-      {/* Metric Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-        {metricCards.map((card) => (
-          <Card key={card.title} className="border-virgilio-border hover:shadow-lg transition-shadow" title={card.tooltip}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-poppins font-medium text-virgilio-muted">
-                    {card.title}
-                  </p>
-                  <p className="text-2xl lg:text-3xl font-poppins font-bold text-virgilio-text mt-1">
-                    {metrics.isLoading ? (
-                      <span className="inline-block w-12 h-8 bg-virgilio-border/50 rounded animate-pulse" />
-                    ) : (
-                      card.value !== null ? (card.title === 'Avg Time to Hire' ? `${card.value}d` : card.value.toLocaleString()) : 'N/A'
-                    )}
-                  </p>
-                </div>
-                <div
-                  className="p-2 lg:p-3 rounded-xl"
-                  style={{ backgroundColor: card.bgColor }}
-                >
-                  <card.icon
-                    className="h-4 w-4 lg:h-5 lg:w-5"
-                    style={{ color: card.iconColor }}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* ─── SECTION: Overview ─── */}
+      {/* LIVE: All KPIs below are backed by real data */}
+      <AnalyticsSection
+        title="Overview"
+        subtitle="Key recruiting metrics at a glance"
+        icon={BarChart3}
+      >
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+          <AnalyticsKpiCard title="Applications" value={metrics.applications} icon={FileText} tooltip="New applications in selected period" isLoading={metrics.isLoading} />
+          <AnalyticsKpiCard title="Active" value={metrics.activeCandidates} icon={Users} tooltip="Currently active candidates (all time)" isLoading={metrics.isLoading} />
+          <AnalyticsKpiCard title="Hires" value={metrics.totalHires} icon={UserCheck} tooltip="Candidates hired in selected period" isLoading={metrics.isLoading} />
+          <AnalyticsKpiCard title="Scheduled" value={metrics.interviewsScheduled} icon={CalendarPlus} tooltip="Interviews scheduled in selected period" isLoading={metrics.isLoading} />
+          <AnalyticsKpiCard title="Completed" value={metrics.interviewsCompleted} icon={CalendarCheck} tooltip="Interviews completed in selected period" isLoading={metrics.isLoading} />
+          <AnalyticsKpiCard title="Rejected" value={metrics.rejectedCandidates} icon={UserX} tooltip="Total rejected candidates (all time)" isLoading={metrics.isLoading} />
+          <AnalyticsKpiCard title="Avg Time to Hire" value={metrics.avgTimeToHire} icon={Clock} suffix="d" tooltip="Average days from candidate creation to hire" isLoading={metrics.isLoading} />
+        </div>
 
-      {/* Pipeline Overview Table */}
-      <PipelineOverviewTable 
-        jobIds={metrics.finalJobIds} 
-        isLoading={metrics.isLoading} 
-      />
-
-      {/* Charts Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Trend chart */}
         <ApplicationsTrendChart data={metrics.trendData} isLoading={metrics.isLoading} />
-        <CandidateStatusPieChart data={metrics.statusDistribution} isLoading={metrics.isLoading} />
-      </div>
+      </AnalyticsSection>
 
-      {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RecruitmentFunnelChart 
-          data={{
-            applications: metrics.applications,
-            activeCandidates: metrics.activeCandidates,
-            offers: metrics.totalOffers,
-            totalHires: metrics.totalHires
-          }} 
-          isLoading={metrics.isLoading} 
+      {/* ─── SECTION: Pipeline Health ─── */}
+      {/* LIVE: Pipeline table, funnel, and status distribution */}
+      <AnalyticsSection
+        title="Pipeline Health"
+        subtitle="Current state of your hiring pipeline across all jobs"
+        icon={GitBranch}
+      >
+        <PipelineOverviewTable jobIds={metrics.finalJobIds} isLoading={metrics.isLoading} />
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <RecruitmentFunnelChart
+            data={{
+              applications: metrics.applications,
+              activeCandidates: metrics.activeCandidates,
+              offers: metrics.totalOffers,
+              totalHires: metrics.totalHires,
+            }}
+            isLoading={metrics.isLoading}
+          />
+          <CandidateStatusPieChart data={metrics.statusDistribution} isLoading={metrics.isLoading} />
+        </div>
+      </AnalyticsSection>
+
+      {/* ─── SECTION: Stage Performance ─── */}
+      {/* LIVE: Stage distribution chart */}
+      {/* PHASE 1: Stage conversion rates, time in stage, stuck candidates (derivable from job_candidate_stage_history) */}
+      <AnalyticsSection
+        title="Stage Performance"
+        subtitle="How candidates move through your pipeline stages"
+        icon={Layers}
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <StageDistributionChart data={metrics.stageDistribution} isLoading={metrics.isLoading} />
+
+          {/* PHASE 1: Stage conversion rates & time in stage will go here */}
+          {/* Placeholder — will be replaced with real derived data in next phase */}
+        </div>
+      </AnalyticsSection>
+
+      {/* ─── SECTION: Source Performance ─── */}
+      {/* PHASE 1: Source breakdown (derivable from candidates.source joined with associations) */}
+      <AnalyticsSection
+        title="Source Performance"
+        subtitle="Where your best candidates come from"
+        icon={Globe}
+        phase="phase1"
+        defaultCollapsed
+      >
+        <AnalyticsEmptyState
+          icon={Globe}
+          title="Source analytics coming soon"
+          description="Will show application volume, hire rate, and time-to-hire by candidate source"
         />
-        <StageDistributionChart data={metrics.stageDistribution} isLoading={metrics.isLoading} />
-      </div>
+      </AnalyticsSection>
+
+      {/* ─── SECTION: Interview Health ─── */}
+      {/* PHASE 1: Interview load per interviewer, completion rate, cancellation rate (from scheduled_bookings) */}
+      <AnalyticsSection
+        title="Interview Health"
+        subtitle="Interview scheduling, completion, and interviewer workload"
+        icon={Stethoscope}
+        phase="phase1"
+        defaultCollapsed
+      >
+        <AnalyticsEmptyState
+          icon={Stethoscope}
+          title="Interview analytics coming soon"
+          description="Will show interview completion rates, interviewer load, and cancellation trends"
+        />
+      </AnalyticsSection>
+
+      {/* ─── SECTION: Recruiter Performance ─── */}
+      {/* PHASE 1: Recruiter workload (from added_by), candidates per recruiter, hires per recruiter */}
+      <AnalyticsSection
+        title="Recruiter Performance"
+        subtitle="Workload and effectiveness by team member"
+        icon={Activity}
+        phase="phase1"
+        defaultCollapsed
+      >
+        <AnalyticsEmptyState
+          icon={Activity}
+          title="Recruiter analytics coming soon"
+          description="Will show candidate volume, hire rate, and pipeline velocity per recruiter"
+        />
+      </AnalyticsSection>
     </div>
   )
 }
