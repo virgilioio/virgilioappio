@@ -64,8 +64,8 @@ export function ChartsGuide() {
             </p>
             <div className="h-24 flex flex-col justify-center gap-1.5 px-2">
               <div className="h-4 rounded-xl bg-gradient-to-r from-primary/30 to-primary/5 w-full" />
-              <div className="h-4 rounded-xl bg-gradient-to-r from-blue-500/30 to-blue-500/5 w-[75%]" />
-              <div className="h-4 rounded-xl bg-gradient-to-r from-amber-500/30 to-amber-500/5 w-[45%]" />
+              <div className="h-4 rounded-xl bg-gradient-to-r from-primary/20 to-primary/5 w-[75%]" />
+              <div className="h-4 rounded-xl bg-gradient-to-r from-warning/30 to-warning/5 w-[45%]" />
               <div className="h-4 rounded-xl bg-gradient-to-r from-virgilio-success/30 to-virgilio-success/5 w-[25%] shadow-[0_0_8px_hsl(152_69%_41%/0.3)]" />
             </div>
             <p className="text-xs text-muted-foreground">
