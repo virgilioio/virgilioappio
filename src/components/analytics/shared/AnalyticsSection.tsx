@@ -67,7 +67,7 @@ export function AnalyticsSection({
       </button>
 
       {!collapsed && (
-        <div className="animate-fade-in">
+        <div className="animate-fade-in space-y-4">
           {children}
         </div>
       )}
