@@ -248,7 +248,7 @@ export function CandidateTable({
   }
 
   return (
-    <Card className="bg-surface-primary border-border">
+    <>
       <CardHeader>
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
