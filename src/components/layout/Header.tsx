@@ -170,9 +170,9 @@ export function Header() {
       show: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     },
     {
-      href: '/talent-insights',
+      href: '/talent-intelligence',
       icon: Lightbulb,
-      label: 'Insights',
+      label: 'Intelligence',
       show: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     },
   ]
