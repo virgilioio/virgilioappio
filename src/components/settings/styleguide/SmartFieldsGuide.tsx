@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { DollarSign, MapPin, Link2, Briefcase, Building2 } from 'lucide-react'
+import { DollarSign, MapPin, Link2, Briefcase, Building2, Linkedin } from 'lucide-react'
 
 export function SmartFieldsGuide() {
   return (
@@ -84,6 +84,19 @@ export function SmartFieldsGuide() {
                 </Badge>
               </div>
             </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1.5">LinkedIn</p>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Badge variant="outline" className="text-xs bg-sky-500/10 text-sky-700 border-sky-300 gap-1">
+                  <Linkedin className="h-3 w-3" />
+                  LinkedIn
+                </Badge>
+                <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-300 gap-1">
+                  <Link2 className="h-3 w-3" />
+                  Syncs to Profile
+                </Badge>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -126,6 +139,14 @@ export function SmartFieldsGuide() {
                 <Input placeholder="State / Province" disabled />
                 <Input placeholder="Country" disabled />
               </div>
+              <p className="text-xs text-green-600">This will be added to your candidate profile.</p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm font-medium flex items-center gap-1.5">
+                <Linkedin className="h-3.5 w-3.5" />
+                LinkedIn Profile
+              </p>
+              <Input type="url" placeholder="https://linkedin.com/in/yourprofile" disabled />
               <p className="text-xs text-green-600">This will be added to your candidate profile.</p>
             </div>
           </div>

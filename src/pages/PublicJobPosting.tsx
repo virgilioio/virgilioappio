@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { GoGioLogo } from '@/components/GoGioLogo'
-import { MapPin, Briefcase, DollarSign, Loader2, ArrowLeft } from 'lucide-react'
+import { MapPin, Briefcase, DollarSign, Loader2, ArrowLeft, Linkedin } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
@@ -63,7 +63,7 @@ function getViolationToast(violation: { type?: string; message?: string; cooldow
   }
 }
 
-type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'checkbox_group' | 'date' | 'file' | 'url' | 'salary' | 'location' | 'phone' | 'recruiter' | 'employment_type' | 'work_location'
+type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'checkbox_group' | 'date' | 'file' | 'url' | 'salary' | 'location' | 'phone' | 'recruiter' | 'employment_type' | 'work_location' | 'linkedin'
 
 interface Posting {
   id: string
@@ -445,6 +445,7 @@ export default function PublicJobPosting() {
       let salarySync: { amount: number; currency: string; period: string } | null = null
       let locationSync: { city?: string; state?: string; country?: string } | null = null
       let phoneSync: string | null = null
+      let linkedinSync: string | null = null
       Object.entries(customFieldResponses).forEach(([fieldId, value]) => {
         const field = customFields.find(f => f.id === fieldId)
         if (field?.field_name) {
@@ -474,6 +475,10 @@ export default function PublicJobPosting() {
         if ((field?.field_type as string) === 'phone' && value) {
           phoneSync = value as string
         }
+        // Detect linkedin field for candidate profile sync
+        if (field?.field_type === 'linkedin' && value) {
+          linkedinSync = value as string
+        }
       })
 
       // Prepare application data in the format expected by the edge function
@@ -485,7 +490,8 @@ export default function PublicJobPosting() {
         posting_id: posting.id,
         salary_sync: salarySync,
         location_sync: locationSync,
-        phone_sync: phoneSync
+        phone_sync: phoneSync,
+        linkedin_sync: linkedinSync
       }
 
       const { data, error } = await supabase.functions.invoke('public-submit-application', {
@@ -941,6 +947,20 @@ export default function PublicJobPosting() {
                                       </div>
                                     )
                                   })()}
+                                  {field.field_type === 'linkedin' && (
+                                    <div className="space-y-2">
+                                      <div className="flex items-center gap-2">
+                                        <Linkedin className="h-4 w-4 text-sky-600 shrink-0" />
+                                        <Input
+                                          type="url"
+                                          placeholder="https://linkedin.com/in/yourprofile"
+                                          value={customFieldResponses[field.id] || ''}
+                                          onChange={(e) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
+                                        />
+                                      </div>
+                                      <p className="text-xs text-green-600">Syncs to your candidate profile</p>
+                                    </div>
+                                  )}
                                   {field.field_type === 'employment_type' && (
                                     <Select
                                       value={customFieldResponses[field.id] || ''}

@@ -5896,6 +5896,7 @@ export type Database = {
         | "recruiter"
         | "employment_type"
         | "work_location"
+        | "linkedin"
       interview_answer_type:
         | "text"
         | "yes_no"
@@ -6152,6 +6153,7 @@ export const Constants = {
         "recruiter",
         "employment_type",
         "work_location",
+        "linkedin",
       ],
       interview_answer_type: [
         "text",

@@ -21,6 +21,7 @@ interface SubmitApplicationPayload {
   fields?: Record<string, any>;
   salary_sync?: { amount: number; currency: string; period: string } | null;
   location_sync?: { city?: string; state?: string; country?: string } | null;
+  linkedin_sync?: string | null;
   uploadedFiles?: Record<string, {
     name: string;
     type: string;
@@ -345,6 +346,18 @@ serve(async (req) => {
         if (locationErr) {
           console.error('⚠️ Warning: Failed to sync location data:', locationErr);
         }
+      }
+    }
+
+    // Sync LinkedIn URL to candidate profile if linkedin field was submitted
+    if (body.linkedin_sync && globalCandidateId) {
+      console.log('🔗 Syncing LinkedIn URL to candidate profile:', body.linkedin_sync);
+      const { error: linkedinErr } = await supabase
+        .from('candidates')
+        .update({ linkedin_url: body.linkedin_sync.slice(0, 512) })
+        .eq('id', globalCandidateId);
+      if (linkedinErr) {
+        console.error('⚠️ Warning: Failed to sync LinkedIn URL:', linkedinErr);
       }
     }
 

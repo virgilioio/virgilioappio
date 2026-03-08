@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { GripVertical, Trash2, Edit, Save, X, Plus, DollarSign, Link2, MapPin, Phone, Users, Briefcase, Building2, Info, RefreshCcw } from 'lucide-react'
+import { GripVertical, Trash2, Edit, Save, X, Plus, DollarSign, Link2, MapPin, Phone, Users, Briefcase, Building2, Info, RefreshCcw, Linkedin } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { SalaryFieldConfig, LocationFieldConfig, PhoneFieldConfig, FieldType, SelectOptionData } from '@/hooks/useJobPostingFields'
 
@@ -12,10 +12,10 @@ import type { SalaryFieldConfig, LocationFieldConfig, PhoneFieldConfig, FieldTyp
 
 export const ALL_FIELD_TYPES: FieldType[] = [
   'text', 'number', 'email', 'url', 'textarea', 'select',
-  'checkbox', 'checkbox_group', 'date', 'file', 'salary', 'location', 'phone', 'recruiter', 'employment_type', 'work_location'
+  'checkbox', 'checkbox_group', 'date', 'file', 'salary', 'location', 'phone', 'linkedin', 'recruiter', 'employment_type', 'work_location'
 ]
 
-export const SMART_FIELD_TYPES: FieldType[] = ['salary', 'location', 'phone', 'recruiter', 'employment_type', 'work_location']
+export const SMART_FIELD_TYPES: FieldType[] = ['salary', 'location', 'phone', 'linkedin', 'recruiter', 'employment_type', 'work_location']
 
 export const CURRENCIES = ['USD','EUR','GBP','CAD','AUD','CHF','JPY','INR','BRL','MXN','SGD','HKD','NZD','ZAR','AED','SAR']
 
@@ -25,6 +25,7 @@ export function fieldTypeLabel(t: string) {
     case 'salary': return 'Salary'
     case 'location': return 'Location'
     case 'phone': return 'Phone'
+    case 'linkedin': return 'LinkedIn'
     case 'recruiter': return 'Recruiter'
     case 'employment_type': return 'Employment Type'
     case 'work_location': return 'Work Location'
@@ -175,7 +176,7 @@ export function FormFieldEditor({
   const isDisabled = disabled || readOnly || isLocked
 
   // Smart field type badge (used in both view & edit rows)
-  const isSmartField = field.field_type === 'salary' || field.field_type === 'location' || field.field_type === 'phone' || field.field_type === 'recruiter' || field.field_type === 'employment_type' || field.field_type === 'work_location'
+  const isSmartField = field.field_type === 'salary' || field.field_type === 'location' || field.field_type === 'phone' || field.field_type === 'linkedin' || field.field_type === 'recruiter' || field.field_type === 'employment_type' || field.field_type === 'work_location'
   const showSyncMessaging = context !== 'offer'
 
   return (
@@ -383,6 +384,12 @@ export function FormFieldEditor({
                   <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                     <Badge variant="outline" className="text-xs bg-cyan-500/10 text-cyan-700 border-cyan-300 gap-1"><Building2 className="h-3 w-3" /> Work Location</Badge>
                     <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600">Remote, Hybrid, On-site</Badge>
+                  </div>
+                )}
+                {field.field_type === 'linkedin' && (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                    <Badge variant="outline" className="text-xs bg-sky-500/10 text-sky-700 border-sky-300 gap-1"><Linkedin className="h-3 w-3" /> LinkedIn</Badge>
+                    {showSyncMessaging && <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-300 gap-1"><Link2 className="h-3 w-3" /> Syncs to Profile</Badge>}
                   </div>
                 )}
               </div>
