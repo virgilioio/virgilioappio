@@ -100,9 +100,8 @@ export function IndependentCandidateProfileSheet({
     if (!candidateId || !candidate) return
     setIsEnriching(true)
     try {
-      // Use resume_url or bio as resume text source
-      const resumeText = candidate.resume_url || candidate.bio || ''
-      await triggerBackgroundEnrichment(candidateId, resumeText, candidate.candidate_name)
+      // Let the edge function fetch the resume text server-side
+      await triggerBackgroundEnrichment(candidateId, '', candidate.candidate_name)
       toast({
         title: 'AI Enrichment triggered',
         description: 'Profile enrichment is running in the background. The profile will update shortly.',
