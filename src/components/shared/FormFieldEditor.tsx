@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { GripVertical, Trash2, Edit, Save, X, Plus, DollarSign, Link2, MapPin, Phone, Users, Briefcase, Building2, Info, RefreshCcw } from 'lucide-react'
+import { GripVertical, Trash2, Edit, Save, X, Plus, DollarSign, Link2, MapPin, Phone, Users, Briefcase, Building2, Info, RefreshCcw, Linkedin } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { SalaryFieldConfig, LocationFieldConfig, PhoneFieldConfig, FieldType, SelectOptionData } from '@/hooks/useJobPostingFields'
 
