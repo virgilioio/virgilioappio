@@ -5,6 +5,8 @@ import React from 'react'
 interface MetricCardGroupProps {
   /** Optional group header label */
   title?: string
+  /** Stack children horizontally (default) or vertically */
+  direction?: 'horizontal' | 'vertical'
   children: React.ReactNode
   className?: string
 }
