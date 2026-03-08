@@ -35,7 +35,7 @@ import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 
 import AddToJobPipelineDialog from './AddToJobPipelineDialog'
 import { Separator } from '@/components/ui/separator'
-import { useEnrichCandidate } from '@/hooks/useEnrichCandidate'
+import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment'
 import { SimpleScheduleInterviewSheet } from './SimpleScheduleInterviewSheet'
 
 interface IndependentCandidateProfileSheetProps {
@@ -94,21 +94,28 @@ export function IndependentCandidateProfileSheet({
     await deleteAttachment(resumeAttachment.id, resumeAttachment.file_url)
   }
 
-  const { enrichByLinkedIn, canEnrich, isEnriching } = useEnrichCandidate()
+  const [isEnriching, setIsEnriching] = useState(false)
 
-  const handleEnrichFromLinkedIn = async () => {
-    if (!candidateId) return
-    
-    const result = await enrichByLinkedIn(candidateId)
-    
-    // Refresh candidate data after enrichment
-    if (result?.enriched_count && result.enriched_count > 0) {
-      const { data } = await supabase
-        .from('candidates')
-        .select('*')
-        .eq('id', candidateId)
-        .single()
-      setCandidate(data || null)
+  const handleAIEnrich = async () => {
+    if (!candidateId || !candidate) return
+    setIsEnriching(true)
+    try {
+      // Use resume_url or bio as resume text source
+      const resumeText = candidate.resume_url || candidate.bio || ''
+      await triggerBackgroundEnrichment(candidateId, resumeText, candidate.candidate_name)
+      toast({
+        title: 'AI Enrichment triggered',
+        description: 'Profile enrichment is running in the background. The profile will update shortly.',
+      })
+    } catch (err) {
+      console.error('AI Enrich error:', err)
+      toast({
+        title: 'Enrichment failed',
+        description: 'Could not trigger AI enrichment.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsEnriching(false)
     }
   }
 
@@ -265,11 +272,11 @@ export function IndependentCandidateProfileSheet({
                       </Button>
                     )}
                     {candidate && <AddToJobPipelineDialog candidateId={candidate.id} />}
-                    {candidate && canEnrich(candidate) && (
+                    {candidate && candidate.enrichment_status !== 'processing' && (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={handleEnrichFromLinkedIn}
+                        onClick={handleAIEnrich}
                         disabled={isEnriching}
                         className="gap-1.5"
                       >
@@ -278,7 +285,7 @@ export function IndependentCandidateProfileSheet({
                         ) : (
                           <Sparkles className="h-4 w-4" />
                         )}
-                        Enrich from LinkedIn
+                        AI Enrich
                       </Button>
                     )}
                   </div>
