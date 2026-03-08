@@ -1,26 +1,30 @@
-import { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MultiSelect } from '@/components/ui/multi-select';
-import { Button } from '@/components/ui/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { cn } from '@/lib/utils';
+import { useMemo } from 'react'
+import { Search, X } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { FilterChipPopover, type FilterChipOption } from '@/components/ui/filter-chip-popover'
 
 interface FilterCardProps {
-  searchTerm: string;
-  onSearchChange: (value: string) => void;
-  jobStatus: string;
-  onJobStatusChange: (value: string) => void;
-  selectedUsers: string[];
-  onSelectedUsersChange: (users: string[]) => void;
-  userOptions: { value: string; label: string }[];
-  showUserFilter: boolean;
-  selectedDepartments: string[];
-  onSelectedDepartmentsChange: (departments: string[]) => void;
-  departmentOptions: { value: string; label: string }[];
+  searchTerm: string
+  onSearchChange: (value: string) => void
+  jobStatus: string
+  onJobStatusChange: (value: string) => void
+  selectedUsers: string[]
+  onSelectedUsersChange: (users: string[]) => void
+  userOptions: { value: string; label: string }[]
+  showUserFilter: boolean
+  selectedDepartments: string[]
+  onSelectedDepartmentsChange: (departments: string[]) => void
+  departmentOptions: { value: string; label: string }[]
 }
+
+const STATUS_OPTIONS: FilterChipOption[] = [
+  { value: 'all', label: 'All Statuses', count: 0 },
+  { value: 'draft', label: 'Draft', count: 0 },
+  { value: 'open', label: 'Open', count: 0 },
+  { value: 'closed', label: 'Closed', count: 0 },
+  { value: 'archived', label: 'Archived', count: 0 },
+]
 
 export function FilterCard({
   searchTerm,
@@ -35,81 +39,76 @@ export function FilterCard({
   onSelectedDepartmentsChange,
   departmentOptions,
 }: FilterCardProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const statusSelected = useMemo(() => jobStatus === 'all' ? [] : [jobStatus], [jobStatus])
+
+  const userChipOptions: FilterChipOption[] = useMemo(
+    () => userOptions.map(u => ({ value: u.value, label: u.label, count: 0 })),
+    [userOptions]
+  )
+
+  const deptChipOptions: FilterChipOption[] = useMemo(
+    () => departmentOptions.map(d => ({ value: d.value, label: d.label, count: 0 })),
+    [departmentOptions]
+  )
+
+  const hasActiveFilters = jobStatus !== 'open' || selectedUsers.length > 0 || selectedDepartments.length > 0 || searchTerm.trim() !== ''
 
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-          {/* Always Visible Filters */}
-          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-            <Input
-              placeholder="Search by job title..."
-              value={searchTerm}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="sm:max-w-xs"
-            />
-            <Select value={jobStatus} onValueChange={onJobStatusChange}>
-              <SelectTrigger className="sm:w-[180px]">
-                <SelectValue placeholder="Job Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="open">Open</SelectItem>
-                <SelectItem value="closed">Closed</SelectItem>
-                <SelectItem value="archived">Archived</SelectItem>
-              </SelectContent>
-            </Select>
-            {showUserFilter && userOptions.length > 0 && (
-              <MultiSelect
-                options={userOptions}
-                selectedValues={selectedUsers}
-                onSelectionChange={onSelectedUsersChange}
-                placeholder="Filter by user..."
-                className="sm:w-[220px]"
-              />
-            )}
-            {departmentOptions.length > 0 && (
-              <MultiSelect
-                options={departmentOptions}
-                selectedValues={selectedDepartments}
-                onSelectionChange={onSelectedDepartmentsChange}
-                placeholder="Filter by department..."
-                className="sm:w-[220px]"
-              />
-            )}
-            <div className="ml-auto">
-              <CollapsibleTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  Advanced
-                  <ChevronDown
-                    className={cn(
-                      'h-4 w-4 transition-transform duration-200',
-                      isOpen && 'rotate-180'
-                    )}
-                  />
-                </Button>
-              </CollapsibleTrigger>
-            </div>
-          </div>
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="relative w-56">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+        <Input
+          placeholder="Search by job title..."
+          value={searchTerm}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="pl-9 h-8 text-sm rounded-full"
+        />
+      </div>
 
-          {/* Advanced Filters (Collapsed by default) */}
-          <CollapsibleContent className="pt-4 space-y-3">
-            <div className="border-t pt-4" style={{ borderColor: '#0d0d09' }}>
-              <p className="text-sm text-muted-foreground mb-3">
-                Additional filters coming soon...
-              </p>
-              {/* Placeholder for future filters:
-                - Date range filter
-                - Department/Team filter
-                - Location filter
-                - Salary range filter
-              */}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-      </CardContent>
-    </Card>
-  );
+      <FilterChipPopover
+        label="Status"
+        options={STATUS_OPTIONS.filter(o => o.value !== 'all')}
+        selectedValues={statusSelected}
+        onSelectionChange={(vals) => onJobStatusChange(vals.length === 0 ? 'all' : vals[vals.length - 1])}
+        searchable={false}
+      />
+
+      {showUserFilter && userChipOptions.length > 0 && (
+        <FilterChipPopover
+          label="User"
+          options={userChipOptions}
+          selectedValues={selectedUsers}
+          onSelectionChange={onSelectedUsersChange}
+          searchable
+        />
+      )}
+
+      {deptChipOptions.length > 0 && (
+        <FilterChipPopover
+          label="Department"
+          options={deptChipOptions}
+          selectedValues={selectedDepartments}
+          onSelectionChange={onSelectedDepartmentsChange}
+          searchable
+        />
+      )}
+
+      {hasActiveFilters && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            onSearchChange('')
+            onJobStatusChange('open')
+            onSelectedUsersChange([])
+            onSelectedDepartmentsChange([])
+          }}
+          className="gap-1 h-8 text-xs text-muted-foreground hover:text-foreground font-poppins"
+        >
+          <X className="h-3 w-3" />
+          Clear filters
+        </Button>
+      )}
+    </div>
+  )
 }
