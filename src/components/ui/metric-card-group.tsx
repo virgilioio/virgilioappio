@@ -17,7 +17,7 @@ export function MetricCardGroup({ title, children, className }: MetricCardGroupP
   const items = React.Children.toArray(children).filter(Boolean)
 
   return (
-    <Card className={cn('border-border hover:shadow-lg transition-all duration-200 ease-out', className)}>
+    <Card className={cn('rounded-2xl border-border hover:shadow-lg transition-all duration-200 ease-out', className)}>
       <CardContent className="p-0">
         {title && (
           <div className="px-4 pt-3 pb-0">
