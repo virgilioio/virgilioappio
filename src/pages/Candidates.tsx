@@ -160,6 +160,7 @@ export default function Candidates() {
   return (
     <AuthGate>
       <PermissionGate permission="canViewCandidates">
+        <CandidateFilterProvider>
         <div className="min-h-screen bg-background">
           <Section variant="default" banded container className="animate-fade-in">
             <PageHeader
