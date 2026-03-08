@@ -14,6 +14,7 @@ import { SmartFieldsGuide } from './styleguide/SmartFieldsGuide'
 import { AiBannerGuide } from './styleguide/AiBannerGuide'
 import { FiltersGuide } from './styleguide/FiltersGuide'
 import { MetricCardGuide } from './styleguide/MetricCardGuide'
+import { ChartsGuide } from './styleguide/ChartsGuide'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
 export function StyleGuide() {

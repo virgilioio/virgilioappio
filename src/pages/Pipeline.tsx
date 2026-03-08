@@ -110,6 +110,7 @@ export default function Pipeline() {
                   title="Active Jobs"
                   value={metricsLoading ? 0 : globalMetrics?.active_jobs || 0}
                   icon={Briefcase}
+                  iconColor="text-primary"
                   tooltip="Number of open jobs"
                   isLoading={metricsLoading}
                 />
