@@ -9,7 +9,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 interface EnrichRequest {
   candidateId: string;
-  resumeText: string;
+  resumeText?: string;
   candidateName?: string;
 }
 
