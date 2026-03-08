@@ -17,6 +17,7 @@ import BulkAddToJobPipelineDialog from '@/components/candidates/BulkAddToJobPipe
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
+import { DeleteCandidateDialog } from '@/components/candidates/DeleteCandidateDialog'
 
 interface IndependentCandidateTableProps {
   candidates: IndependentCandidate[]

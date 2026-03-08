@@ -16,6 +16,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { NewBadge } from '@/components/ui/new-badge'
 import { getSkillColor } from '@/utils/skillColors'
 import BulkMoveJobCandidatesToPipelineDialog from '@/components/candidates/BulkMoveJobCandidatesToPipelineDialog'
+import { DeleteCandidateDialog } from '@/components/candidates/DeleteCandidateDialog'
 
 // Support both local job candidates and global candidates with job info
 interface BaseCandidate {
