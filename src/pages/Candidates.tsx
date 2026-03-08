@@ -16,6 +16,7 @@ import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCan
 import { useIndependentCandidates, CreateIndependentCandidateData } from '@/hooks/useIndependentCandidates'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useUserJobRoles } from '@/hooks/useUserJobRoles'
+import { CandidateFilterProvider } from '@/contexts/CandidateFilterContext'
 
 import { toast } from '@/hooks/use-toast'
 
