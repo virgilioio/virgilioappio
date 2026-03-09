@@ -1,40 +1,89 @@
+# System Roles Migration — Completed Phases 1-5
 
+## Architecture Change
+- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
+- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-# Fix: Application Details Not Showing in Candidate Profile
+## Completed
 
-## Root Cause Analysis
+### Phase 1 — Database
+- ✅ Created `system_role` enum (`admin`, `member`)
+- ✅ Added `system_role` column to `members` table
+- ✅ Migrated data: `admin` → `admin`, all others → `member`
+- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
+- ✅ Updated `check_tenant_member_role` to use `system_role`
+- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
+- ✅ Updated `audit_member_role_change` trigger
 
-Data exists — 9 application responses for this candidate+job, 6 of which are custom fields that should display after filtering. The code logic is correct. The most likely cause is a **silent RLS failure** on the client side: the Supabase client returns an empty array instead of an error when RLS blocks access, and the component silently returns `null`.
+### Phase 2 — Frontend Permissions
+- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
+- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
+- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
+- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
 
-The RLS policy on `candidate_application_responses` requires either:
-- A JOIN through `jobs → members` (org membership match), OR  
-- `get_user_type_secure() = 'platform_admin'`
+### Phase 3 — UI Updates
+- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
+- ✅ Updated `Dashboard` — sourcing panel for admin+ only
+- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
+- ✅ Updated `BillingGuard` — members (non-admin) never blocked
+- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
+- ✅ Updated `Find` page RoleGate
+- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
 
-The second path should work for this user. However, if there's any issue with the `get_user_type_secure()` function evaluation in the client JWT context, the query silently returns `[]`.
+### Phase 4 — Runtime Hotfixes
+- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
+- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
+- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
+- ✅ Updated `validate_invite_token` — returns `system_role`
+- ✅ Updated `accept_invitation` — uses `system_role`
 
-## Plan
+### Phase 5 — Complete Cleanup
+- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
+- ✅ Updated `admin_manage_member` — updates `system_role` column
+- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
+- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
+- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
+- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
+- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
+- ✅ Updated `diagnose_user_auth` — reports `system_role`
+- ✅ Updated `audit_platform_admin_access` — returns `system_role`
+- ✅ Updated `debug_user_permissions` — returns `system_role`
+- ✅ Renamed `invitations.member_role` → `invitations.system_role`
+- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
 
-### 1. Add diagnostic logging to `CandidateApplicationResponses.tsx`
+## Phase 6 — Future (Optional)
+- Drop `member_role` column from `members` table (already dropped)
+- Drop old `member_role` enum type
+- Update `MemberInviteSheet` role picker to only offer Admin/Member
 
-Add `console.log` statements to trace:
-- The `candidateId` and `jobId` props received
-- The raw data count before/after filtering
-- Any errors from the Supabase query
+# Deep Resume Parsing + Data Standardization — Completed
 
-This will surface in the console on next load so we can confirm whether the issue is "no data returned" (RLS) or "data returned but filtered out" (logic bug).
+## What was implemented
 
-### 2. Replace `return null` with a visible empty state
+### Phase 1: Schema Expansion
+- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
+- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
+- ✅ Added to `candidate_education`: `education_level`
+- ✅ Created `candidate_certifications` table with RLS policies
 
-Currently when `responses.length === 0`, the component returns `null` — making the tab appear broken. Change this to show "No application responses found" with a subtle message, so the user (and us) can distinguish between "component didn't render" vs "component rendered but found nothing."
+### Phase 2: Enrichment Rewrite
+- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
+- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
+- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
+- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
+- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
 
-### 3. Add RLS fallback: tenant-based access for platform_admin
+### Phase 3: UI Updates
+- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
+- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
+- ✅ **Certifications section** with `CandidateCertificationsComponent`
+- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
+- ✅ Enhanced **Education** display: education level badge
+- ✅ Certifications loaded alongside work experience and education
 
-The current RLS policy relies on `get_user_type_secure()` which queries `auth.users` metadata. As a safety net, add an additional OR condition using the existing tenant-based access pattern (checking if the user's tenant matches the job's tenant), ensuring platform admins from the parent org can always access cross-org application responses.
-
-## Files to modify
-
-| File | Change |
-|------|--------|
-| `src/components/candidates/CandidateApplicationResponses.tsx` | Add console logging, replace `return null` with visible empty state |
-| Migration SQL | Add/update RLS policy on `candidate_application_responses` to include tenant-based platform_admin access |
-
+## Files changed
+- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
+- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
+- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
+- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
+- `src/components/candidates/CandidateCertifications.tsx` — new component

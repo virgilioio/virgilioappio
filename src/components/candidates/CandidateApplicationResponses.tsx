@@ -120,6 +120,8 @@ export const CandidateApplicationResponses: React.FC<CandidateApplicationRespons
   useEffect(() => {
     const fetchResponses = async () => {
       try {
+        console.log('[ApplicationResponses] Fetching for candidateId:', candidateId, 'jobId:', jobId);
+        
         const { data, error } = await supabase
           .from('candidate_application_responses')
           .select('*')
@@ -127,7 +129,12 @@ export const CandidateApplicationResponses: React.FC<CandidateApplicationRespons
           .eq('job_id', jobId)
           .order('created_at', { ascending: true });
 
-        if (error) throw error;
+        if (error) {
+          console.error('[ApplicationResponses] Query error:', error);
+          throw error;
+        }
+        
+        console.log('[ApplicationResponses] Raw data count:', data?.length ?? 0);
         
         // Create exclusion set from core fields + additional excluded fields
         const coreFieldNames = new Set(coreFields.map(f => f.field_name.toLowerCase()));
@@ -140,6 +147,8 @@ export const CandidateApplicationResponses: React.FC<CandidateApplicationRespons
         const filteredResponses = (data || []).filter(response => {
           return !allExcludedFields.has(response.field_name.toLowerCase());
         });
+        
+        console.log('[ApplicationResponses] After filtering:', filteredResponses.length, 'of', data?.length);
 
         // Fetch field_config for salary/location fields from posting fields
         const postingIds = [...new Set(filteredResponses.map(r => r.posting_id).filter(Boolean))];
@@ -187,7 +196,11 @@ export const CandidateApplicationResponses: React.FC<CandidateApplicationRespons
   }
 
   if (responses.length === 0) {
-    return null; // Don't show the card if there are no responses
+    return (
+      <div className="text-sm text-muted-foreground py-4">
+        No application responses found for this candidate.
+      </div>
+    );
   }
 
   return (
