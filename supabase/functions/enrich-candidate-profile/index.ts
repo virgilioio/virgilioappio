@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+import { extractText } from "https://esm.sh/unpdf@0.12.1";
 import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
@@ -461,14 +462,45 @@ serve(async (req) => {
           .download(attachment.file_url);
 
         if (!dlError && fileData) {
-          // For text-based files, read as text
-          const fileName = attachment.file_name?.toLowerCase() || '';
+          const fileName = (attachment.file_name || attachment.file_url || '').toLowerCase();
+
           if (fileName.endsWith('.txt') || fileName.endsWith('.md')) {
+            // Plain text files
             resumeText = await fileData.text();
-          } else {
-            // For PDF/DOCX, use the raw text (edge function will do its best)
-            resumeText = await fileData.text();
+          } else if (fileName.endsWith('.pdf') || (!fileName.endsWith('.docx') && !fileName.endsWith('.doc'))) {
+            // PDF (or unknown → assume PDF): use unpdf for proper extraction
+            try {
+              const pdfBytes = new Uint8Array(await fileData.arrayBuffer());
+              const { text: pdfText } = await extractText(pdfBytes);
+              resumeText = Array.isArray(pdfText) ? pdfText.join('\n') : (pdfText || '');
+              if (typeof resumeText !== 'string') resumeText = String(resumeText);
+            } catch (pdfErr) {
+              console.error('[enrich] unpdf extraction error:', pdfErr);
+              resumeText = '';
+            }
+          } else if (fileName.endsWith('.docx')) {
+            // DOCX: basic XML text extraction
+            try {
+              const decoder = new TextDecoder('utf-8', { fatal: false });
+              const raw = decoder.decode(new Uint8Array(await fileData.arrayBuffer()));
+              resumeText = raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 15000);
+            } catch (docxErr) {
+              console.error('[enrich] DOCX extraction error:', docxErr);
+              resumeText = '';
+            }
           }
+
+          // Guard against binary garbage
+          if (resumeText && resumeText.length > 0) {
+            const readable = resumeText.replace(/[^a-zA-Z0-9áéíóúñüÁÉÍÓÚÑÜàèìòùâêîôûäëïöüãõçßøåæðþ\s.,;:!?@\-()\/'"#$%&*+={}\[\]<>~`_|\\^]/g, '');
+            const ratio = readable.length / resumeText.length;
+            console.log(`[enrich] Text readability ratio: ${ratio.toFixed(3)} (${readable.length}/${resumeText.length})`);
+            if (ratio < 0.5) {
+              console.warn('[enrich] Unreadable text detected — discarding');
+              resumeText = '';
+            }
+          }
+
           console.log(`[enrich] Fetched resume text (${resumeText.length} chars) from ${attachment.file_url}`);
         } else {
           console.error('[enrich] Failed to download resume:', dlError);
