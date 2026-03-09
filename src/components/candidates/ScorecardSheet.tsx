@@ -641,8 +641,8 @@ export function ScorecardSheet({
         }
       }
 
-      // Clear AI draft flag after saving
-      if (isAiDraft && scorecardId) {
+      // Clear AI draft flag for newly created scorecards (no existing.id at save time)
+      if (isAiDraft && scorecardId && scorecardId !== existing?.id) {
         await supabase
           .from('job_stage_scorecards')
           .update({ is_ai_draft: false })
