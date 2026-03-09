@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { FormField } from '@/components/ui/form-field'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
-import { Plus, ExternalLink, Trash2, Github } from 'lucide-react'
+import { Plus, ExternalLink, Trash2, Github, FileText } from 'lucide-react'
 import gioFaceEmpty from '@/assets/gio-face-empty.png'
 import { useCandidateUrls } from '@/hooks/useCandidateUrls'
 import { usePermissions } from '@/hooks/usePermissions'
