@@ -196,7 +196,11 @@ export const CandidateApplicationResponses: React.FC<CandidateApplicationRespons
   }
 
   if (responses.length === 0) {
-    return null; // Don't show the card if there are no responses
+    return (
+      <div className="text-sm text-muted-foreground py-4">
+        No application responses found for this candidate.
+      </div>
+    );
   }
 
   return (
