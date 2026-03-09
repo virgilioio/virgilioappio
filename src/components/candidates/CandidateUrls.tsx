@@ -218,7 +218,7 @@ export function CandidateUrls({ candidateId }: CandidateUrlsProps) {
                             <ExternalLink className="h-4 w-4" />
                           </Button>
                           
-                          {canManageCandidates && (
+                          {canManageCandidates && !url.isResumeUrl && (
                             <Button
                               variant="ghost"
                               size="sm"
