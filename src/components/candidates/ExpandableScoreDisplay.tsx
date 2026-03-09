@@ -25,10 +25,6 @@ export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSh
   const hasAiDrafts = scorecards.some(s => s.is_ai_draft);
   const firstAiDraft = scorecards.find(s => s.is_ai_draft);
 
-  const toggleExpanded = (scorecardId: string) => {
-    setExpandedScorecard(expandedScorecard === scorecardId ? null : scorecardId);
-  };
-
   const getRatingConfig = (rating: ScoreRating) => {
     return ratingOptions.find(opt => opt.value === rating) || ratingOptions[0];
   };
