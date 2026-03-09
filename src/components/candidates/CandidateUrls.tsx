@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { FormField } from '@/components/ui/form-field'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
-import { Plus, ExternalLink, Trash2, Github } from 'lucide-react'
+import { Plus, ExternalLink, Trash2, Github, FileText } from 'lucide-react'
 import gioFaceEmpty from '@/assets/gio-face-empty.png'
 import { useCandidateUrls } from '@/hooks/useCandidateUrls'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -24,6 +24,7 @@ interface CandidateUrlsProps {
 const ICON_OPTIONS = [
   { value: 'link', label: 'Link', icon: ExternalLink },
   { value: 'github', label: 'GitHub', icon: Github },
+  { value: 'file-text', label: 'Resume / CV', icon: FileText },
   { value: 'dribbble', label: 'Dribbble', icon: ExternalLink },
   { value: 'google-drive', label: 'Google Drive', icon: ExternalLink },
   { value: 'behance', label: 'Behance', icon: ExternalLink },
@@ -217,7 +218,7 @@ export function CandidateUrls({ candidateId }: CandidateUrlsProps) {
                             <ExternalLink className="h-4 w-4" />
                           </Button>
                           
-                          {canManageCandidates && (
+                          {canManageCandidates && !url.isResumeUrl && (
                             <Button
                               variant="ghost"
                               size="sm"

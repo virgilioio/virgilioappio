@@ -13,6 +13,7 @@ export interface CandidateUrl {
   created_at: string
   updated_at: string
   created_by: string | null
+  isResumeUrl?: boolean
 }
 
 export function useCandidateUrls(candidateId: string) {
@@ -41,7 +42,31 @@ export function useCandidateUrls(candidateId: string) {
       }
 
       console.log('Fetched URLs:', data)
-      setUrls(data || [])
+
+      // Also fetch resume_url from candidates table
+      const { data: candidate } = await supabase
+        .from('candidates')
+        .select('resume_url')
+        .eq('id', candidateId)
+        .single()
+
+      const urlList: CandidateUrl[] = data || []
+
+      if (candidate?.resume_url?.startsWith('http')) {
+        urlList.unshift({
+          id: `resume-url-${candidateId}`,
+          candidate_id: candidateId,
+          label: 'Resume / CV',
+          url: candidate.resume_url,
+          icon_name: 'file-text',
+          created_at: '',
+          updated_at: '',
+          created_by: null,
+          isResumeUrl: true
+        })
+      }
+
+      setUrls(urlList)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch URLs'
       console.error('URLs fetch error:', err)
