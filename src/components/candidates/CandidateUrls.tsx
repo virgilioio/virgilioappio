@@ -24,6 +24,7 @@ interface CandidateUrlsProps {
 const ICON_OPTIONS = [
   { value: 'link', label: 'Link', icon: ExternalLink },
   { value: 'github', label: 'GitHub', icon: Github },
+  { value: 'file-text', label: 'Resume / CV', icon: FileText },
   { value: 'dribbble', label: 'Dribbble', icon: ExternalLink },
   { value: 'google-drive', label: 'Google Drive', icon: ExternalLink },
   { value: 'behance', label: 'Behance', icon: ExternalLink },
