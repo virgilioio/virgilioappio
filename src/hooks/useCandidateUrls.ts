@@ -13,6 +13,7 @@ export interface CandidateUrl {
   created_at: string
   updated_at: string
   created_by: string | null
+  isResumeUrl?: boolean
 }
 
 export function useCandidateUrls(candidateId: string) {
