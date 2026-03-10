@@ -403,9 +403,7 @@ const getPageNumbers = () => {
       )}
                     </TableCell>
                         <TableCell>
-                          <div className="text-sm text-text-secondary">
-                            {jobCounts[candidate.id] || 0}
-                          </div>
+                          <CandidateJobStatusCell associations={associationsMap.get(candidate.id)} />
                         </TableCell>
                         <TableCell>
                           <div className="text-sm text-text-secondary">
