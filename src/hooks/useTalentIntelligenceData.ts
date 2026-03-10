@@ -432,7 +432,7 @@ export function useTalentIntelligenceRawData() {
       const [associations, jhsData] = await Promise.all([fetchAssociationsByJobs(), fetchJhsByJobs()])
 
       // Step 3: Join job_hiring_stages with job_stages in JS
-      const stageMap = new Map(jobStages.map((s: { id: string; stage_name: string }) => [s.id, s.stage_name]))
+      const stageMap = new Map<string, string>(jobStages.map((s: { id: string; stage_name: string }) => [s.id, s.stage_name]))
       const stageMappings: StageMapping[] = jhsData
         .filter(jhs => stageMap.has(jhs.stage_id))
         .map(jhs => ({
