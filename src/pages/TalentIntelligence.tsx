@@ -143,6 +143,7 @@ function TalentIntelligenceContent() {
                 onSpecializationClick={(s) => handleFilterApply('specialization', s)}
               />
             </div>
+            <TalentOrigins filteredCandidateIds={filteredCandidateIds} />
           </div>
         )}
       </Section>
