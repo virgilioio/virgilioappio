@@ -121,7 +121,7 @@ export function IndependentCandidateForm({
       profile_summary: initialData?.profile_summary || '',
       linkedin_url: initialData?.linkedin_url || '',
       resume_url: initialData?.resume_url || '',
-      status: initialData?.status || 'available',
+      status: initialData?.status || 'active',
       source: initialData?.source || 'direct',
     }
   })
