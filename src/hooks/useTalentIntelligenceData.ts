@@ -356,19 +356,31 @@ export function useTalentIntelligenceRawData() {
       // Fetch associations, jobs, and stage mappings in parallel
       const tenantId = memberData.tenant_id
 
-      const assocPromise = fetchAllPaginated<AssociationRow>(() =>
-        (supabase
-          .from('job_candidate_associations')
-          .select('candidate_id, job_id, status, current_stage_id')
-          .eq('tenant_id', tenantId) as any)
-      )
+      const assocPromise = (async () => {
+        let all: AssociationRow[] = []
+        let from = 0
+        const pageSize = 1000
+        while (true) {
+          const { data, error } = await (supabase as any)
+            .from('job_candidate_associations')
+            .select('candidate_id, job_id, status, current_stage_id')
+            .eq('tenant_id', tenantId)
+            .range(from, from + pageSize - 1)
+          if (error) throw error
+          if (!data || data.length === 0) break
+          all = all.concat(data as AssociationRow[])
+          if (data.length < pageSize) break
+          from += pageSize
+        }
+        return all
+      })()
 
-      const jobsPromise = supabase
+      const jobsPromise = (supabase as any)
         .from('jobs')
         .select('id, title')
         .eq('tenant_id', tenantId)
         .order('title')
-        .then(r => {
+        .then((r: any) => {
           if (r.error) throw r.error
           return (r.data ?? []) as JobRow[]
         })
