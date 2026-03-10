@@ -364,7 +364,7 @@ const getPageNumbers = () => {
         </TableHead>
       )}
       <TableHead>Name</TableHead>
-      <TableHead>In Jobs</TableHead>
+      <TableHead>Job Status</TableHead>
       <TableHead>Added</TableHead>
       <TableHead className="text-right">Actions</TableHead>
     </TableRow>
