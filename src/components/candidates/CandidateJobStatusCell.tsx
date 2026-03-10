@@ -48,7 +48,7 @@ export function CandidateJobStatusCell({ associations }: CandidateJobStatusCellP
 
   // Show the first (most relevant) association
   const primary = associations[0]
-  const stageStatus = getStageStatusLabel(primary)
+  const stageStatus = getStageStatusBadge(primary)
   const pipelineBadge = getPipelineBadge(primary.pipelineStatus)
   const pipelineDate = getPipelineDate(primary)
   const otherCount = associations.length - 1
@@ -67,8 +67,9 @@ export function CandidateJobStatusCell({ associations }: CandidateJobStatusCellP
           {stageStatus && (
             <>
               <span>·</span>
-              <Badge variant="outline" className="text-[10px] h-4 px-1.5 shrink-0">
-                {stageStatus}
+              <Badge variant={stageStatus.variant} className="text-[10px] h-4 px-1.5 shrink-0 gap-0.5">
+                <stageStatus.Icon className="h-3 w-3" />
+                {stageStatus.label}
               </Badge>
             </>
           )}
