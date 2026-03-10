@@ -185,7 +185,7 @@ export function useIndependentCandidates() {
         candidate_name: candidateData.candidate_name,
         organization_id: organizationId,
         created_by: user.id,
-        status: candidateData.status || 'available',
+        status: candidateData.status || 'active',
         source: candidateData.source || 'direct'
       })
 

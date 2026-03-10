@@ -1,65 +1,89 @@
+# System Roles Migration — Completed Phases 1-5
 
+## Architecture Change
+- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
+- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-# Expand Talent Intelligence Filters + Rename "available" → "active"
+## Completed
 
-## Summary
-Four changes:
-1. **Rename** `candidates.status = 'available'` → `'active'` via data migration
-2. Add **Job** filter (multi-select by job title)
-3. Add **Pipeline Status** filter (active/rejected/hired/offer from `job_candidate_associations.status`)
-4. Add **Pipeline Stage** filter (Recruiter Screening, Final Interview, etc. from `job_stages.stage_name`)
+### Phase 1 — Database
+- ✅ Created `system_role` enum (`admin`, `member`)
+- ✅ Added `system_role` column to `members` table
+- ✅ Migrated data: `admin` → `admin`, all others → `member`
+- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
+- ✅ Updated `check_tenant_member_role` to use `system_role`
+- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
+- ✅ Updated `audit_member_role_change` trigger
 
-Candidate-level status filter (`active`/`new`/`inactive`) is also added but may be less useful analytically — included for completeness.
+### Phase 2 — Frontend Permissions
+- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
+- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
+- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
+- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
 
-## Database Migration
-```sql
-UPDATE candidates SET status = 'active' WHERE status = 'available';
-```
-Single migration, no schema change needed (it's a text field).
+### Phase 3 — UI Updates
+- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
+- ✅ Updated `Dashboard` — sourcing panel for admin+ only
+- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
+- ✅ Updated `BillingGuard` — members (non-admin) never blocked
+- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
+- ✅ Updated `Find` page RoleGate
+- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
 
-Also update any hardcoded references to `'available'` in the codebase.
+### Phase 4 — Runtime Hotfixes
+- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
+- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
+- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
+- ✅ Updated `validate_invite_token` — returns `system_role`
+- ✅ Updated `accept_invitation` — uses `system_role`
 
-## Implementation
+### Phase 5 — Complete Cleanup
+- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
+- ✅ Updated `admin_manage_member` — updates `system_role` column
+- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
+- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
+- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
+- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
+- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
+- ✅ Updated `diagnose_user_auth` — reports `system_role`
+- ✅ Updated `audit_platform_admin_access` — returns `system_role`
+- ✅ Updated `debug_user_permissions` — returns `system_role`
+- ✅ Renamed `invitations.member_role` → `invitations.system_role`
+- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
 
-### 1. Filter Context (`TalentIntelligenceFilterContext.tsx`)
-Add 4 new array keys to `TalentIntelligenceFilters`:
-- `jobs: string[]` — job IDs
-- `candidateStatuses: string[]` — candidate.status values
-- `pipelineStatuses: string[]` — job_candidate_associations.status values  
-- `stages: string[]` — stage names
+## Phase 6 — Future (Optional)
+- Drop `member_role` column from `members` table (already dropped)
+- Drop old `member_role` enum type
+- Update `MemberInviteSheet` role picker to only offer Admin/Member
 
-### 2. Data Hook (`useTalentIntelligenceData.ts`)
-- Add `status` to the candidates select
-- Fetch `job_candidate_associations` (candidate_id, job_id, status, current_stage_id) for tenant candidates
-- Fetch `jobs` (id, title) for the tenant
-- Fetch `job_hiring_stages` + `job_stages` to map stage IDs → names
-- Apply filters: when jobs/pipelineStatuses/stages are set, narrow candidates to those with matching associations
+# Deep Resume Parsing + Data Standardization — Completed
 
-### 3. Filter Options (`useTalentIntelligenceFilterOptions.ts`)
-Derive new option lists:
-- `jobOptions` — from jobs query (value=id, label=title)
-- `candidateStatusOptions` — from candidates.status
-- `pipelineStatusOptions` — from association statuses
-- `stageOptions` — from stage names
+## What was implemented
 
-### 4. Filter Bar (`TalentIntelligenceFilterBar.tsx`)
-Add 4 new `FilterChipPopover` components:
-- **Job** — searchable
-- **Candidate Status** — no search (3 values)
-- **Pipeline Status** — no search (4 values)
-- **Stage** — searchable (9+ values)
+### Phase 1: Schema Expansion
+- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
+- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
+- ✅ Added to `candidate_education`: `education_level`
+- ✅ Created `candidate_certifications` table with RLS policies
 
-### 5. Active Filter Chips (`ActiveFilterChips.tsx`)
-Add chip rendering for all 4 new filter keys. Jobs display title (not ID) — requires passing a job lookup map.
+### Phase 2: Enrichment Rewrite
+- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
+- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
+- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
+- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
+- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
 
-### 6. Page (`TalentIntelligence.tsx`)
-Pass new option arrays to filter bar.
+### Phase 3: UI Updates
+- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
+- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
+- ✅ **Certifications section** with `CandidateCertificationsComponent`
+- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
+- ✅ Enhanced **Education** display: education level badge
+- ✅ Certifications loaded alongside work experience and education
 
-### 7. Codebase: rename "available" references
-Search for hardcoded `'available'` status references and update to `'active'`.
-
-## Files
-- **Migration**: rename available → active
-- **Modified**: `TalentIntelligenceFilterContext.tsx`, `useTalentIntelligenceData.ts`, `useTalentIntelligenceFilterOptions.ts`, `TalentIntelligenceFilterBar.tsx`, `ActiveFilterChips.tsx`, `TalentIntelligence.tsx`
-- **Search & update**: any files referencing `status = 'available'` or similar
-
+## Files changed
+- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
+- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
+- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
+- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
+- `src/components/candidates/CandidateCertifications.tsx` — new component

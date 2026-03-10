@@ -121,7 +121,7 @@ export function IndependentCandidateForm({
       profile_summary: initialData?.profile_summary || '',
       linkedin_url: initialData?.linkedin_url || '',
       resume_url: initialData?.resume_url || '',
-      status: initialData?.status || 'available',
+      status: initialData?.status || 'active',
       source: initialData?.source || 'direct',
     }
   })
@@ -155,7 +155,7 @@ export function IndependentCandidateForm({
         linkedin_url: data.linkedin_url || null,
         resume_url: data.resume_url || null,
         skills: skills.length > 0 ? skills : null,
-        status: data.status || 'available',
+        status: data.status || 'active',
         source: data.source || 'direct',
       }
 
@@ -349,9 +349,8 @@ export function IndependentCandidateForm({
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="available">Available</SelectItem>
-                    <SelectItem value="interviewing">Interviewing</SelectItem>
-                    <SelectItem value="hired">Hired</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="new">New</SelectItem>
                     <SelectItem value="inactive">Inactive</SelectItem>
                   </SelectContent>
                 </Select>
