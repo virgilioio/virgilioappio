@@ -477,14 +477,9 @@ const getPageNumbers = () => {
                             </PermissionGate>
                           </div>
 
-                          <div className="flex items-center gap-1 text-sm text-text-secondary">
-                            <DollarSign className="h-3 w-3" />
-                            {formatSalary(candidate)}
-                          </div>
+                          <CandidateJobStatusCell associations={associationsMap.get(candidate.id)} />
 
                           <div className="flex items-center gap-4 text-sm text-text-secondary">
-                            <div>In {jobCounts[candidate.id] || 0} job{(jobCounts[candidate.id] || 0) !== 1 ? 's' : ''}</div>
-                            <div>•</div>
                             <div>{getRelativeTime(candidate.created_at)}</div>
                           </div>
                         </div>
