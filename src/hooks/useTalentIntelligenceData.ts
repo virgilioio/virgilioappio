@@ -354,29 +354,45 @@ export function useTalentIntelligenceRawData() {
       if (!memberData?.tenant_id) throw new Error('No tenant')
 
       // Fetch associations, jobs, and stage mappings in parallel
-      const [associations, jobs, jhsData] = await Promise.all([
-        fetchAllPaginated<AssociationRow>(() =>
-          supabase
-            .from('job_candidate_associations')
-            .select('candidate_id, job_id, status, current_stage_id')
-            .eq('tenant_id', memberData.tenant_id)
-        ),
+      const tenantId = memberData.tenant_id
+
+      const assocPromise = fetchAllPaginated<AssociationRow>(() =>
         supabase
-          .from('jobs')
-          .select('id, title')
-          .eq('tenant_id', memberData.tenant_id)
-          .order('title')
-          .then(r => {
-            if (r.error) throw r.error
-            return (r.data ?? []) as JobRow[]
-          }),
-        fetchAllPaginated<{ id: string; stage_id: string; job_stages: { stage_name: string } | null }>(() =>
-          supabase
-            .from('job_hiring_stages')
-            .select('id, stage_id, job_stages!inner(stage_name)')
-            .eq('tenant_id', memberData.tenant_id)
-        ),
-      ])
+          .from('job_candidate_associations')
+          .select('candidate_id, job_id, status, current_stage_id')
+          .eq('tenant_id', tenantId)
+      )
+
+      const jobsPromise = supabase
+        .from('jobs')
+        .select('id, title')
+        .eq('tenant_id', tenantId)
+        .order('title')
+        .then(r => {
+          if (r.error) throw r.error
+          return (r.data ?? []) as JobRow[]
+        })
+
+      const jhsPromise = (async () => {
+        const query = supabase
+          .from('job_hiring_stages')
+          .select('id, stage_id, job_stages!inner(stage_name)')
+          .eq('tenant_id', tenantId) as any
+        let all: any[] = []
+        let from = 0
+        const pageSize = 1000
+        while (true) {
+          const { data, error } = await query.range(from, from + pageSize - 1)
+          if (error) throw error
+          if (!data || data.length === 0) break
+          all = all.concat(data)
+          if (data.length < pageSize) break
+          from += pageSize
+        }
+        return all as { id: string; stage_id: string; job_stages: { stage_name: string } | null }[]
+      })()
+
+      const [associations, jobs, jhsData] = await Promise.all([assocPromise, jobsPromise, jhsPromise])
 
       const stageMappings: StageMapping[] = jhsData
         .filter(jhs => jhs.job_stages?.stage_name)
