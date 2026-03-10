@@ -353,64 +353,91 @@ export function useTalentIntelligenceRawData() {
 
       if (!memberData?.tenant_id) throw new Error('No tenant')
 
-      // Fetch associations, jobs, and stage mappings in parallel
       const tenantId = memberData.tenant_id
 
-      const assocPromise = (async () => {
+      // Step 1: Fetch jobs and job_stages (both have tenant_id) in parallel
+      const [jobs, jobStages] = await Promise.all([
+        (supabase as any)
+          .from('jobs')
+          .select('id, title')
+          .eq('tenant_id', tenantId)
+          .order('title')
+          .then((r: any) => {
+            if (r.error) throw r.error
+            return (r.data ?? []) as JobRow[]
+          }),
+        (supabase as any)
+          .from('job_stages')
+          .select('id, stage_name')
+          .eq('tenant_id', tenantId)
+          .then((r: any) => {
+            if (r.error) throw r.error
+            return (r.data ?? []) as { id: string; stage_name: string }[]
+          }),
+      ])
+
+      const jobIds = jobs.map((j: JobRow) => j.id)
+      if (jobIds.length === 0) {
+        return { associations: [], jobs, stageMappings: [] }
+      }
+
+      // Step 2: Fetch associations and hiring stages filtered by job IDs (no tenant_id)
+      const fetchAssociationsByJobs = async (): Promise<AssociationRow[]> => {
         let all: AssociationRow[] = []
-        let from = 0
         const pageSize = 1000
-        while (true) {
-          const { data, error } = await (supabase as any)
-            .from('job_candidate_associations')
-            .select('candidate_id, job_id, status, current_stage_id')
-            .eq('tenant_id', tenantId)
-            .range(from, from + pageSize - 1)
-          if (error) throw error
-          if (!data || data.length === 0) break
-          all = all.concat(data as AssociationRow[])
-          if (data.length < pageSize) break
-          from += pageSize
+        // Chunk jobIds to avoid URL length limits (batch 200 at a time)
+        const chunkSize = 200
+        for (let i = 0; i < jobIds.length; i += chunkSize) {
+          const chunk = jobIds.slice(i, i + chunkSize)
+          let from = 0
+          while (true) {
+            const { data, error } = await (supabase as any)
+              .from('job_candidate_associations')
+              .select('candidate_id, job_id, status, current_stage_id')
+              .in('job_id', chunk)
+              .range(from, from + pageSize - 1)
+            if (error) throw error
+            if (!data || data.length === 0) break
+            all = all.concat(data as AssociationRow[])
+            if (data.length < pageSize) break
+            from += pageSize
+          }
         }
         return all
-      })()
+      }
 
-      const jobsPromise = (supabase as any)
-        .from('jobs')
-        .select('id, title')
-        .eq('tenant_id', tenantId)
-        .order('title')
-        .then((r: any) => {
-          if (r.error) throw r.error
-          return (r.data ?? []) as JobRow[]
-        })
-
-      const jhsPromise = (async () => {
-        const query = (supabase as any)
-          .from('job_hiring_stages')
-          .select('id, stage_id, job_stages!inner(stage_name)')
-          .eq('tenant_id', tenantId)
+      const fetchJhsByJobs = async (): Promise<{ id: string; stage_id: string; job_id: string }[]> => {
         let all: any[] = []
-        let from = 0
         const pageSize = 1000
-        while (true) {
-          const { data, error } = await query.range(from, from + pageSize - 1)
-          if (error) throw error
-          if (!data || data.length === 0) break
-          all = all.concat(data)
-          if (data.length < pageSize) break
-          from += pageSize
+        const chunkSize = 200
+        for (let i = 0; i < jobIds.length; i += chunkSize) {
+          const chunk = jobIds.slice(i, i + chunkSize)
+          let from = 0
+          while (true) {
+            const { data, error } = await (supabase as any)
+              .from('job_hiring_stages')
+              .select('id, stage_id, job_id')
+              .in('job_id', chunk)
+              .range(from, from + pageSize - 1)
+            if (error) throw error
+            if (!data || data.length === 0) break
+            all = all.concat(data)
+            if (data.length < pageSize) break
+            from += pageSize
+          }
         }
-        return all as { id: string; stage_id: string; job_stages: { stage_name: string } | null }[]
-      })()
+        return all
+      }
 
-      const [associations, jobs, jhsData] = await Promise.all([assocPromise, jobsPromise, jhsPromise])
+      const [associations, jhsData] = await Promise.all([fetchAssociationsByJobs(), fetchJhsByJobs()])
 
+      // Step 3: Join job_hiring_stages with job_stages in JS
+      const stageMap = new Map<string, string>(jobStages.map((s: { id: string; stage_name: string }) => [s.id, s.stage_name]))
       const stageMappings: StageMapping[] = jhsData
-        .filter(jhs => jhs.job_stages?.stage_name)
+        .filter(jhs => stageMap.has(jhs.stage_id))
         .map(jhs => ({
           jhs_id: jhs.id,
-          stage_name: jhs.job_stages!.stage_name,
+          stage_name: stageMap.get(jhs.stage_id)!,
         }))
 
       return { associations, jobs, stageMappings }
