@@ -31,6 +31,7 @@ const EMPTY_FILTERS: CandidateFilters = {
   specializations: [],
   skills: [],
   enrichmentStatuses: [],
+  pipelineStatuses: [],
   experienceMin: null,
   experienceMax: null,
   salaryMin: null,
