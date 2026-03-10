@@ -1116,11 +1116,20 @@ serve(async (req) => {
         }
         return handleEnrich(body, user, member, corsHeaders);
 
+      case 'lookup':
+        if (req.method !== 'POST') {
+          return new Response(
+            JSON.stringify({ error: 'Method not allowed. Use POST for lookup.' }),
+            { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        return handleLookup(body, user, member, corsHeaders);
+
       default:
         return new Response(
           JSON.stringify({ 
             error: 'Invalid action', 
-            valid_actions: ['me', 'organizations', 'jobs', 'stages', 'candidates', 'resume', 'enrich'],
+            valid_actions: ['me', 'organizations', 'jobs', 'stages', 'candidates', 'resume', 'enrich', 'lookup'],
             usage: 'Pass action as query param (?action=me) or in POST body ({ action: "me" })'
           }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
