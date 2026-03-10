@@ -91,6 +91,14 @@ export function CandidateFiltersPanel({ filterOptions }: CandidateFiltersPanelPr
           searchable
         />
 
+        <FilterChipPopover
+          label="Pipeline"
+          options={filterOptions.pipelineStatusOptions}
+          selectedValues={filters.pipelineStatuses}
+          onSelectionChange={(v) => setArrayFilter('pipelineStatuses', v)}
+          searchable={false}
+        />
+
         <Button
           variant="outline"
           size="sm"
