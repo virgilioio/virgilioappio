@@ -386,10 +386,10 @@ export function useTalentIntelligenceRawData() {
         })
 
       const jhsPromise = (async () => {
-        const query = supabase
+        const query = (supabase as any)
           .from('job_hiring_stages')
           .select('id, stage_id, job_stages!inner(stage_name)')
-          .eq('tenant_id', tenantId) as any
+          .eq('tenant_id', tenantId)
         let all: any[] = []
         let from = 0
         const pageSize = 1000
