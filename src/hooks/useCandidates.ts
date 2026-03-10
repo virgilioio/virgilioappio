@@ -296,7 +296,7 @@ export function useCandidates(jobId: string) {
         candidate_name: candidateData.candidate_name,
         organization_id: jobData.organization_id,
         created_by: user.id,
-        status: 'available',
+        status: 'active',
         source: 'direct'
       })
 

@@ -349,9 +349,8 @@ export function IndependentCandidateForm({
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="available">Available</SelectItem>
-                    <SelectItem value="interviewing">Interviewing</SelectItem>
-                    <SelectItem value="hired">Hired</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="new">New</SelectItem>
                     <SelectItem value="inactive">Inactive</SelectItem>
                   </SelectContent>
                 </Select>

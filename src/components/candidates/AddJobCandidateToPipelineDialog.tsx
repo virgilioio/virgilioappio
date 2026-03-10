@@ -70,7 +70,7 @@ export default function AddJobCandidateToPipelineDialog({ jobId, jobCandidate }:
       profile_summary: jobCandidate.profile_summary,
       linkedin_url: jobCandidate.linkedin_url,
       skills: jobCandidate.skills,
-      status: 'available',
+      status: 'active',
       source: 'direct',
       created_by: createdBy,
     }
