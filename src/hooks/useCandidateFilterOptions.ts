@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import type { IndependentCandidate } from './useIndependentCandidates'
+import type { AssociationDetail } from './useCandidateJobAssociations'
 
 export interface FilterOption {
   value: string
@@ -34,7 +35,11 @@ function deriveSkillOptions(candidates: IndependentCandidate[]): FilterOption[] 
     .map(([value, count]) => ({ value, label: value, count }))
 }
 
-export function useCandidateFilterOptions(candidates: IndependentCandidate[]) {
+function capitalizeStatus(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
+}
+
+export function useCandidateFilterOptions(candidates: IndependentCandidate[], associations?: AssociationDetail[]) {
   return useMemo(() => {
     if (!candidates || candidates.length === 0) {
       return {
@@ -48,6 +53,7 @@ export function useCandidateFilterOptions(candidates: IndependentCandidate[]) {
         specializationOptions: [],
         skillOptions: [],
         enrichmentStatusOptions: [],
+        pipelineStatusOptions: [],
         experienceRange: null as { min: number; max: number } | null,
         salaryRange: null as { min: number; max: number } | null,
       }
@@ -67,6 +73,22 @@ export function useCandidateFilterOptions(candidates: IndependentCandidate[]) {
         }
       })
 
+    // Derive pipeline status options from associations
+    const pipelineStatusMap = new Map<string, { label: string; count: number }>()
+    if (associations) {
+      for (const a of associations) {
+        const s = a.pipelineStatus?.trim()
+        if (s) {
+          const existing = pipelineStatusMap.get(s)
+          if (existing) existing.count++
+          else pipelineStatusMap.set(s, { label: capitalizeStatus(s), count: 1 })
+        }
+      }
+    }
+    const pipelineStatusOptions = Array.from(pipelineStatusMap.entries())
+      .sort((a, b) => b[1].count - a[1].count)
+      .map(([value, { label, count }]) => ({ value, label, count }))
+
     return {
       statusOptions: deriveOptions(candidates, c => c.status),
       sourceOptions: deriveOptions(candidates, c => c.source),
@@ -78,6 +100,7 @@ export function useCandidateFilterOptions(candidates: IndependentCandidate[]) {
       specializationOptions: deriveOptions(candidates, c => c.specialization),
       skillOptions: deriveSkillOptions(candidates),
       enrichmentStatusOptions: deriveOptions(candidates, c => c.enrichment_status),
+      pipelineStatusOptions,
       experienceRange: expValues.length > 0
         ? { min: Math.min(...expValues), max: Math.max(...expValues) }
         : null,
@@ -85,5 +108,5 @@ export function useCandidateFilterOptions(candidates: IndependentCandidate[]) {
         ? { min: Math.round(Math.min(...salValues)), max: Math.round(Math.max(...salValues)) }
         : null,
     }
-  }, [candidates])
+  }, [candidates, associations])
 }

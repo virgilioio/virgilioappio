@@ -23,6 +23,7 @@ interface CandidateFiltersPanelProps {
     specializationOptions: FilterOption[]
     skillOptions: FilterOption[]
     enrichmentStatusOptions: FilterOption[]
+    pipelineStatusOptions: FilterOption[]
     experienceRange: { min: number; max: number } | null
     salaryRange: { min: number; max: number } | null
   }
@@ -37,8 +38,8 @@ export function CandidateFiltersPanel({ filterOptions }: CandidateFiltersPanelPr
   const [sheetOpen, setSheetOpen] = useState(false)
 
   // Collect active filter tags for display below
-  const activeTags: { key: 'statuses' | 'sources' | 'countries' | 'states' | 'cities' | 'seniorityLevels' | 'functionalAreas' | 'specializations' | 'skills' | 'enrichmentStatuses'; value: string }[] = []
-  const arrayKeys = ['statuses', 'sources', 'countries', 'states', 'cities', 'seniorityLevels', 'functionalAreas', 'specializations', 'skills', 'enrichmentStatuses'] as const
+  const activeTags: { key: 'statuses' | 'sources' | 'countries' | 'states' | 'cities' | 'seniorityLevels' | 'functionalAreas' | 'specializations' | 'skills' | 'enrichmentStatuses' | 'pipelineStatuses'; value: string }[] = []
+  const arrayKeys = ['statuses', 'sources', 'countries', 'states', 'cities', 'seniorityLevels', 'functionalAreas', 'specializations', 'skills', 'enrichmentStatuses', 'pipelineStatuses'] as const
   for (const k of arrayKeys) {
     for (const v of filters[k]) {
       activeTags.push({ key: k, value: v })
@@ -88,6 +89,14 @@ export function CandidateFiltersPanel({ filterOptions }: CandidateFiltersPanelPr
           selectedValues={filters.skills}
           onSelectionChange={(v) => setArrayFilter('skills', v)}
           searchable
+        />
+
+        <FilterChipPopover
+          label="Pipeline"
+          options={filterOptions.pipelineStatusOptions}
+          selectedValues={filters.pipelineStatuses}
+          onSelectionChange={(v) => setArrayFilter('pipelineStatuses', v)}
+          searchable={false}
         />
 
         <Button

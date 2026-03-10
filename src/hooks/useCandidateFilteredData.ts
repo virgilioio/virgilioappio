@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import type { IndependentCandidate } from './useIndependentCandidates'
 import type { CandidateFilters } from '@/contexts/CandidateFilterContext'
+import type { AssociationsMap } from './useCandidateJobAssociations'
 
 function normalizeAnnualSalary(amount: number, period?: string | null): number {
   switch (period?.toLowerCase()) {
@@ -15,7 +16,8 @@ function normalizeAnnualSalary(amount: number, period?: string | null): number {
 export function useCandidateFilteredData(
   candidates: IndependentCandidate[],
   filters: CandidateFilters,
-  searchTerm: string
+  searchTerm: string,
+  associationsMap?: AssociationsMap
 ) {
   return useMemo(() => {
     return candidates.filter(c => {
@@ -38,6 +40,12 @@ export function useCandidateFilteredData(
       if (filters.functionalAreas.length > 0 && (!c.functional_area || !filters.functionalAreas.includes(c.functional_area))) return false
       if (filters.specializations.length > 0 && (!c.specialization || !filters.specializations.includes(c.specialization))) return false
       if (filters.enrichmentStatuses.length > 0 && (!c.enrichment_status || !filters.enrichmentStatuses.includes(c.enrichment_status))) return false
+
+      // Pipeline status filter — candidate must have at least one association matching
+      if (filters.pipelineStatuses.length > 0) {
+        const assocs = associationsMap?.get(c.id)
+        if (!assocs || !assocs.some(a => a.pipelineStatus && filters.pipelineStatuses.includes(a.pipelineStatus))) return false
+      }
 
       // Skills filter (match any)
       if (filters.skills.length > 0) {
@@ -69,5 +77,5 @@ export function useCandidateFilteredData(
 
       return true
     })
-  }, [candidates, filters, searchTerm])
+  }, [candidates, filters, searchTerm, associationsMap])
 }

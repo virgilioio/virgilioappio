@@ -18,9 +18,11 @@ import { toast } from '@/hooks/use-toast'
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 import { DeleteCandidateDialog } from '@/components/candidates/DeleteCandidateDialog'
 import { CandidateFiltersPanel } from '@/components/candidates/CandidateFiltersPanel'
+import { CandidateJobStatusCell } from '@/components/candidates/CandidateJobStatusCell'
 import { useCandidateFilters } from '@/contexts/CandidateFilterContext'
 import { useCandidateFilterOptions } from '@/hooks/useCandidateFilterOptions'
 import { useCandidateFilteredData } from '@/hooks/useCandidateFilteredData'
+import { useCandidateJobAssociationsMap } from '@/hooks/useCandidateJobAssociations'
 
 interface IndependentCandidateTableProps {
   candidates: IndependentCandidate[]
@@ -65,8 +67,9 @@ export function IndependentCandidateTable({
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
   
-  // Job association counts
-  const [jobCounts, setJobCounts] = useState<Record<string, number>>({})
+  // Job associations for all candidates
+  const candidateIds = useMemo(() => candidates.map(c => c.id), [candidates])
+  const { associationsMap, associations: allAssociations } = useCandidateJobAssociationsMap(candidateIds)
 
   // Sheet state
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
@@ -172,32 +175,8 @@ export function IndependentCandidateTable({
 
   // Filter logic — use context-based filters + search
   const { filters } = useCandidateFilters()
-  const filterOptions = useCandidateFilterOptions(candidates)
-  const filteredCandidates = useCandidateFilteredData(candidates, filters, searchTerm)
-  
-  // Fetch job association counts
-  useEffect(() => {
-    const fetchJobCounts = async () => {
-      if (candidates.length === 0) return
-      
-      const candidateIds = candidates.map(c => c.id)
-      const { data, error } = await supabase
-        .from('job_candidate_associations')
-        .select('candidate_id')
-        .in('candidate_id', candidateIds)
-        .eq('status', 'active')
-      
-      if (!error && data) {
-        const counts = data.reduce((acc, item) => {
-          acc[item.candidate_id] = (acc[item.candidate_id] || 0) + 1
-          return acc
-        }, {} as Record<string, number>)
-        setJobCounts(counts)
-      }
-    }
-    
-    fetchJobCounts()
-  }, [candidates])
+  const filterOptions = useCandidateFilterOptions(candidates, allAssociations)
+  const filteredCandidates = useCandidateFilteredData(candidates, filters, searchTerm, associationsMap)
 
 // Calculate pagination
 const totalPages = Math.ceil(filteredCandidates.length / itemsPerPage)
@@ -385,7 +364,7 @@ const getPageNumbers = () => {
         </TableHead>
       )}
       <TableHead>Name</TableHead>
-      <TableHead>In Jobs</TableHead>
+      <TableHead>Job Status</TableHead>
       <TableHead>Added</TableHead>
       <TableHead className="text-right">Actions</TableHead>
     </TableRow>
@@ -424,9 +403,7 @@ const getPageNumbers = () => {
       )}
                     </TableCell>
                         <TableCell>
-                          <div className="text-sm text-text-secondary">
-                            {jobCounts[candidate.id] || 0}
-                          </div>
+                          <CandidateJobStatusCell associations={associationsMap.get(candidate.id)} />
                         </TableCell>
                         <TableCell>
                           <div className="text-sm text-text-secondary">
@@ -500,14 +477,9 @@ const getPageNumbers = () => {
                             </PermissionGate>
                           </div>
 
-                          <div className="flex items-center gap-1 text-sm text-text-secondary">
-                            <DollarSign className="h-3 w-3" />
-                            {formatSalary(candidate)}
-                          </div>
+                          <CandidateJobStatusCell associations={associationsMap.get(candidate.id)} />
 
                           <div className="flex items-center gap-4 text-sm text-text-secondary">
-                            <div>In {jobCounts[candidate.id] || 0} job{(jobCounts[candidate.id] || 0) !== 1 ? 's' : ''}</div>
-                            <div>•</div>
                             <div>{getRelativeTime(candidate.created_at)}</div>
                           </div>
                         </div>
