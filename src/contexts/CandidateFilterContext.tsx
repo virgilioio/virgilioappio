@@ -40,7 +40,7 @@ const EMPTY_FILTERS: CandidateFilters = {
   dateTo: null,
 }
 
-type ArrayFilterKey = 'statuses' | 'sources' | 'countries' | 'states' | 'cities' | 'seniorityLevels' | 'functionalAreas' | 'specializations' | 'skills' | 'enrichmentStatuses'
+type ArrayFilterKey = 'statuses' | 'sources' | 'countries' | 'states' | 'cities' | 'seniorityLevels' | 'functionalAreas' | 'specializations' | 'skills' | 'enrichmentStatuses' | 'pipelineStatuses'
 type NumericFilterKey = 'experienceMin' | 'experienceMax' | 'salaryMin' | 'salaryMax'
 type DateFilterKey = 'dateFrom' | 'dateTo'
 
