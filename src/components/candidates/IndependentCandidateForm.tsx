@@ -155,7 +155,7 @@ export function IndependentCandidateForm({
         linkedin_url: data.linkedin_url || null,
         resume_url: data.resume_url || null,
         skills: skills.length > 0 ? skills : null,
-        status: data.status || 'available',
+        status: data.status || 'active',
         source: data.source || 'direct',
       }
 
