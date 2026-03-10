@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import type { TalentIntelligenceFilters } from '@/contexts/TalentIntelligenceFilterContext'
 
 export interface CandidateRow {
+  id: string
   location_country: string | null
   location_city: string | null
   location_state: string | null
