@@ -860,6 +860,7 @@ async function handleEnrich(body: any, user: any, member: any, corsHeaders: Reco
     },
     body: JSON.stringify({
       details: [{ linkedin_url }],
+      reveal_phone_number: true,
     })
   });
 
@@ -924,6 +925,93 @@ async function handleEnrich(body: any, user: any, member: any, corsHeaders: Reco
     credits_remaining: remaining
   }), {
     status: 200,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+// ============================================
+// ACTION: lookup - Check if candidate exists
+// ============================================
+async function handleLookup(body: any, user: any, member: any, corsHeaders: Record<string, string>) {
+  const tenantId = member.tenant_id;
+  const { linkedin_url, email } = body;
+
+  if (!linkedin_url && !email) {
+    return new Response(
+      JSON.stringify({ error: 'At least one of linkedin_url or email is required' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  console.log(`🔍 Chrome API /lookup - tenant: ${tenantId}, linkedin: ${linkedin_url || 'n/a'}, email: ${email || 'n/a'}`);
+
+  let candidate: any = null;
+
+  // Try LinkedIn URL first (exact match)
+  if (linkedin_url) {
+    const { data } = await supabase
+      .from('candidates')
+      .select('id, candidate_name')
+      .eq('tenant_id', tenantId)
+      .eq('linkedin_url', linkedin_url)
+      .is('deleted_at', null)
+      .maybeSingle();
+    if (data) candidate = data;
+  }
+
+  // Fall back to email match
+  if (!candidate && email) {
+    const { data } = await supabase
+      .from('candidates')
+      .select('id, candidate_name')
+      .eq('tenant_id', tenantId)
+      .eq('email', email)
+      .is('deleted_at', null)
+      .maybeSingle();
+    if (data) candidate = data;
+  }
+
+  if (!candidate) {
+    return new Response(JSON.stringify({ exists: false }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  // Fetch current job placements
+  const { data: associations } = await supabase
+    .from('job_candidate_associations')
+    .select(`
+      id,
+      job_id,
+      current_stage_id,
+      jobs!inner ( id, title ),
+      job_hiring_stages (
+        id,
+        custom_stage_name,
+        job_stages ( stage_name )
+      )
+    `)
+    .eq('candidate_id', candidate.id)
+    .in('status', ['active', 'offer', 'hired']);
+
+  const currentJobs = (associations || []).map((assoc: any) => ({
+    job_id: assoc.job_id,
+    job_title: assoc.jobs?.title || 'Unknown Job',
+    stage_name: assoc.job_hiring_stages?.custom_stage_name
+      || assoc.job_hiring_stages?.job_stages?.stage_name
+      || 'Unknown Stage',
+    candidate_url: `/jobs/${assoc.job_id}/candidates/${candidate.id}`
+  }));
+
+  console.log(`✅ Lookup found candidate ${candidate.id} with ${currentJobs.length} active jobs`);
+
+  return new Response(JSON.stringify({
+    exists: true,
+    candidate_id: candidate.id,
+    candidate_name: candidate.candidate_name,
+    candidate_url: currentJobs.length > 0 ? currentJobs[0].candidate_url : null,
+    current_jobs: currentJobs
+  }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 }
@@ -1028,11 +1116,20 @@ serve(async (req) => {
         }
         return handleEnrich(body, user, member, corsHeaders);
 
+      case 'lookup':
+        if (req.method !== 'POST') {
+          return new Response(
+            JSON.stringify({ error: 'Method not allowed. Use POST for lookup.' }),
+            { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        return handleLookup(body, user, member, corsHeaders);
+
       default:
         return new Response(
           JSON.stringify({ 
             error: 'Invalid action', 
-            valid_actions: ['me', 'organizations', 'jobs', 'stages', 'candidates', 'resume', 'enrich'],
+            valid_actions: ['me', 'organizations', 'jobs', 'stages', 'candidates', 'resume', 'enrich', 'lookup'],
             usage: 'Pass action as query param (?action=me) or in POST body ({ action: "me" })'
           }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
