@@ -357,10 +357,10 @@ export function useTalentIntelligenceRawData() {
       const tenantId = memberData.tenant_id
 
       const assocPromise = fetchAllPaginated<AssociationRow>(() =>
-        supabase
+        (supabase
           .from('job_candidate_associations')
           .select('candidate_id, job_id, status, current_stage_id')
-          .eq('tenant_id', tenantId)
+          .eq('tenant_id', tenantId) as any)
       )
 
       const jobsPromise = supabase
