@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { CandidateRow } from './useTalentIntelligenceData'
+import type { CandidateRow, AssociationRow, JobRow, StageMapping } from './useTalentIntelligenceData'
 
 export interface FilterOption {
   value: string
@@ -34,7 +34,16 @@ function deriveSkillOptions(candidates: CandidateRow[]): FilterOption[] {
     .map(([value, count]) => ({ value, label: value, count }))
 }
 
-export function useTalentIntelligenceFilterOptions(candidates: CandidateRow[]) {
+function capitalizeStatus(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ')
+}
+
+export function useTalentIntelligenceFilterOptions(
+  candidates: CandidateRow[],
+  associations: AssociationRow[],
+  jobs: JobRow[],
+  stageMappings: StageMapping[],
+) {
   return useMemo(() => {
     if (!candidates || candidates.length === 0) {
       return {
@@ -46,10 +55,57 @@ export function useTalentIntelligenceFilterOptions(candidates: CandidateRow[]) {
         countryOptions: [],
         stateOptions: [],
         cityOptions: [],
+        jobOptions: [],
+        candidateStatusOptions: [],
+        pipelineStatusOptions: [],
+        stageOptions: [],
         experienceRange: null as { min: number; max: number } | null,
         salaryRange: null as { min: number; max: number } | null,
       }
     }
+
+    // Job options from jobs list
+    const jobCandidateCounts = new Map<string, number>()
+    for (const a of associations) {
+      jobCandidateCounts.set(a.job_id, (jobCandidateCounts.get(a.job_id) || 0) + 1)
+    }
+    const jobOptions: FilterOption[] = jobs.map(j => ({
+      value: j.id,
+      label: j.title,
+      count: jobCandidateCounts.get(j.id) || 0,
+    })).filter(o => o.count > 0).sort((a, b) => b.count - a.count)
+
+    // Candidate status options
+    const candidateStatusOptions = deriveOptions(candidates, c => c.status ? capitalizeStatus(c.status) : null)
+
+    // Pipeline status options from associations
+    const pipelineStatusMap = new Map<string, number>()
+    for (const a of associations) {
+      const s = a.status?.trim()
+      if (s) {
+        const label = capitalizeStatus(s)
+        pipelineStatusMap.set(label, (pipelineStatusMap.get(label) || 0) + 1)
+      }
+    }
+    const pipelineStatusOptions: FilterOption[] = Array.from(pipelineStatusMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([value, count]) => ({ value, label: value, count }))
+
+    // Stage options from stage mappings
+    const stageNameMap = new Map<string, number>()
+    const jhsToName = new Map<string, string>()
+    for (const sm of stageMappings) {
+      jhsToName.set(sm.jhs_id, sm.stage_name)
+    }
+    for (const a of associations) {
+      if (a.current_stage_id) {
+        const name = jhsToName.get(a.current_stage_id)
+        if (name) stageNameMap.set(name, (stageNameMap.get(name) || 0) + 1)
+      }
+    }
+    const stageOptions: FilterOption[] = Array.from(stageNameMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([value, count]) => ({ value, label: value, count }))
 
     const expValues = candidates.map(c => c.years_experience).filter((v): v is number => v != null)
     const salValues = candidates
@@ -74,6 +130,10 @@ export function useTalentIntelligenceFilterOptions(candidates: CandidateRow[]) {
       countryOptions: deriveOptions(candidates, c => c.location_country),
       stateOptions: deriveOptions(candidates, c => c.location_state),
       cityOptions: deriveOptions(candidates, c => c.location_city),
+      jobOptions,
+      candidateStatusOptions,
+      pipelineStatusOptions,
+      stageOptions,
       experienceRange: expValues.length > 0
         ? { min: Math.min(...expValues), max: Math.max(...expValues) }
         : null,
@@ -81,5 +141,5 @@ export function useTalentIntelligenceFilterOptions(candidates: CandidateRow[]) {
         ? { min: Math.round(Math.min(...salValues)), max: Math.round(Math.max(...salValues)) }
         : null,
     }
-  }, [candidates])
+  }, [candidates, associations, jobs, stageMappings])
 }

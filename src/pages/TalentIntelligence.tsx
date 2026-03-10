@@ -19,15 +19,22 @@ import { Button } from '@/components/ui/button'
 
 function TalentIntelligenceContent() {
   const { filters, clearAll, hasActiveFilters, toggleArrayFilter, setNumericFilter } = useTalentIntelligenceFilters()
-  const { data, rawCandidates, isLoading, error } = useTalentIntelligenceData(filters)
-  const filterOptions = useTalentIntelligenceFilterOptions(rawCandidates)
+  const { data, rawCandidates, associations, jobs, stageMappings, isLoading, error } = useTalentIntelligenceData(filters)
+  const filterOptions = useTalentIntelligenceFilterOptions(rawCandidates, associations, jobs, stageMappings)
+
+  // Job ID → title lookup for display in chips
+  const jobLookup = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const j of jobs) map.set(j.id, j.title)
+    return map
+  }, [jobs])
 
   // Compute filtered candidate IDs for the TalentOrigins hook
   const filteredCandidateIds = useMemo(() => {
     if (!rawCandidates.length) return []
-    const filtered = applyFilters(rawCandidates, filters)
+    const filtered = applyFilters(rawCandidates, filters, associations, stageMappings)
     return filtered.map(c => c.id)
-  }, [rawCandidates, filters])
+  }, [rawCandidates, filters, associations, stageMappings])
 
   const handleFilterApply = (key: string, value: string) => {
     const keyMap: Record<string, 'roles' | 'functionalAreas' | 'specializations' | 'seniorities' | 'skills' | 'countries' | 'states' | 'cities'> = {
@@ -80,8 +87,13 @@ function TalentIntelligenceContent() {
               specializationOptions={filterOptions.specializationOptions}
               stateOptions={filterOptions.stateOptions}
               cityOptions={filterOptions.cityOptions}
+              jobOptions={filterOptions.jobOptions}
+              candidateStatusOptions={filterOptions.candidateStatusOptions}
+              pipelineStatusOptions={filterOptions.pipelineStatusOptions}
+              stageOptions={filterOptions.stageOptions}
               experienceRange={filterOptions.experienceRange}
               salaryRange={filterOptions.salaryRange}
+              jobLookup={jobLookup}
             />
           </div>
         )}

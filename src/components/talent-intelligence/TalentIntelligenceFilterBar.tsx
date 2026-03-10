@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Slider } from '@/components/ui/slider'
 import { SlidersHorizontal, X } from 'lucide-react'
 import { useTalentIntelligenceFilters } from '@/contexts/TalentIntelligenceFilterContext'
@@ -18,8 +17,13 @@ interface TalentIntelligenceFilterBarProps {
   specializationOptions: FilterOption[]
   stateOptions: FilterOption[]
   cityOptions: FilterOption[]
+  jobOptions: FilterOption[]
+  candidateStatusOptions: FilterOption[]
+  pipelineStatusOptions: FilterOption[]
+  stageOptions: FilterOption[]
   experienceRange: { min: number; max: number } | null
   salaryRange: { min: number; max: number } | null
+  jobLookup: Map<string, string>
 }
 
 function formatCurrencyShort(v: number) {
@@ -34,7 +38,8 @@ export function TalentIntelligenceFilterBar(props: TalentIntelligenceFilterBarPr
   const {
     roleOptions, seniorityOptions, countryOptions, skillOptions,
     functionalAreaOptions, specializationOptions, stateOptions, cityOptions,
-    experienceRange, salaryRange,
+    jobOptions, candidateStatusOptions, pipelineStatusOptions, stageOptions,
+    experienceRange, salaryRange, jobLookup,
   } = props
 
   const hasSalaryRange = salaryRange && salaryRange.max > salaryRange.min
@@ -43,6 +48,14 @@ export function TalentIntelligenceFilterBar(props: TalentIntelligenceFilterBarPr
     <div className="space-y-3">
       {/* Horizontal chip bar */}
       <div className="flex flex-wrap items-center gap-2">
+        <FilterChipPopover
+          label="Job"
+          options={jobOptions}
+          selectedValues={filters.jobs}
+          onSelectionChange={(v) => setArrayFilter('jobs', v)}
+          searchable
+        />
+
         <FilterChipPopover
           label="Role"
           options={roleOptions}
@@ -57,6 +70,30 @@ export function TalentIntelligenceFilterBar(props: TalentIntelligenceFilterBarPr
           selectedValues={filters.seniorities}
           onSelectionChange={(v) => setArrayFilter('seniorities', v)}
           searchable={false}
+        />
+
+        <FilterChipPopover
+          label="Status"
+          options={candidateStatusOptions}
+          selectedValues={filters.candidateStatuses}
+          onSelectionChange={(v) => setArrayFilter('candidateStatuses', v)}
+          searchable={false}
+        />
+
+        <FilterChipPopover
+          label="Pipeline"
+          options={pipelineStatusOptions}
+          selectedValues={filters.pipelineStatuses}
+          onSelectionChange={(v) => setArrayFilter('pipelineStatuses', v)}
+          searchable={false}
+        />
+
+        <FilterChipPopover
+          label="Stage"
+          options={stageOptions}
+          selectedValues={filters.stages}
+          onSelectionChange={(v) => setArrayFilter('stages', v)}
+          searchable
         />
 
         <FilterChipPopover
@@ -75,7 +112,7 @@ export function TalentIntelligenceFilterBar(props: TalentIntelligenceFilterBarPr
           searchable
         />
 
-        {/* Salary inline slider (keep as-is since sliders don't fit in popovers well) */}
+        {/* Salary inline slider */}
         {hasSalaryRange && (
           <div className="min-w-[200px] max-w-[260px]">
             <label className="text-xs font-poppins font-medium text-muted-foreground mb-1 block">
@@ -126,7 +163,7 @@ export function TalentIntelligenceFilterBar(props: TalentIntelligenceFilterBarPr
         )}
       </div>
 
-      <ActiveFilterChips />
+      <ActiveFilterChips jobLookup={jobLookup} />
 
       <TalentIntelligenceFilterSheet
         open={sheetOpen}

@@ -6,6 +6,7 @@ import type { TalentIntelligenceFilters } from '@/contexts/TalentIntelligenceFil
 
 export interface CandidateRow {
   id: string
+  status: string | null
   location_country: string | null
   location_city: string | null
   location_state: string | null
@@ -21,6 +22,23 @@ export interface CandidateRow {
   standardized_title: string | null
   enriched_at: string | null
   created_at: string
+}
+
+export interface AssociationRow {
+  candidate_id: string
+  job_id: string
+  status: string | null
+  current_stage_id: string | null
+}
+
+export interface JobRow {
+  id: string
+  title: string
+}
+
+export interface StageMapping {
+  jhs_id: string
+  stage_name: string
 }
 
 export interface CountEntry { name: string; count: number }
@@ -100,7 +118,38 @@ export function normalizeSalaryToAnnual(amount: number, period: string | null): 
 }
 
 // --- Apply filters to candidate array ---
-export function applyFilters(candidates: CandidateRow[], filters: TalentIntelligenceFilters): CandidateRow[] {
+export function applyFilters(
+  candidates: CandidateRow[],
+  filters: TalentIntelligenceFilters,
+  associations?: AssociationRow[],
+  stageMappings?: StageMapping[],
+): CandidateRow[] {
+  // Pre-compute association lookups for job/pipeline/stage filters
+  let candidateIdsByJob: Set<string> | null = null
+  let candidateIdsByPipelineStatus: Set<string> | null = null
+  let candidateIdsByStage: Set<string> | null = null
+
+  if (associations && associations.length > 0) {
+    if (filters.jobs.length > 0) {
+      candidateIdsByJob = new Set(
+        associations.filter(a => filters.jobs.includes(a.job_id)).map(a => a.candidate_id)
+      )
+    }
+    if (filters.pipelineStatuses.length > 0) {
+      candidateIdsByPipelineStatus = new Set(
+        associations.filter(a => a.status && filters.pipelineStatuses.includes(a.status)).map(a => a.candidate_id)
+      )
+    }
+    if (filters.stages.length > 0 && stageMappings) {
+      const stageJhsIds = new Set(
+        stageMappings.filter(sm => filters.stages.includes(sm.stage_name)).map(sm => sm.jhs_id)
+      )
+      candidateIdsByStage = new Set(
+        associations.filter(a => a.current_stage_id && stageJhsIds.has(a.current_stage_id)).map(a => a.candidate_id)
+      )
+    }
+  }
+
   return candidates.filter(c => {
     if (filters.roles.length > 0 && !filters.roles.includes(c.standardized_title ?? '')) return false
     if (filters.functionalAreas.length > 0 && !filters.functionalAreas.includes(c.functional_area ?? '')) return false
@@ -116,6 +165,19 @@ export function applyFilters(candidates: CandidateRow[], filters: TalentIntellig
     }
     if (filters.states.length > 0 && !filters.states.includes(c.location_state ?? '')) return false
     if (filters.cities.length > 0 && !filters.cities.includes(c.location_city ?? '')) return false
+
+    // Candidate status filter
+    if (filters.candidateStatuses.length > 0 && !filters.candidateStatuses.includes(c.status ?? '')) return false
+
+    // Job filter
+    if (candidateIdsByJob && !candidateIdsByJob.has(c.id)) return false
+
+    // Pipeline status filter
+    if (candidateIdsByPipelineStatus && !candidateIdsByPipelineStatus.has(c.id)) return false
+
+    // Stage filter
+    if (candidateIdsByStage && !candidateIdsByStage.has(c.id)) return false
+
     if (filters.experienceMin !== null && (c.years_experience == null || c.years_experience < filters.experienceMin)) return false
     if (filters.experienceMax !== null && (c.years_experience == null || c.years_experience > filters.experienceMax)) return false
     if (filters.salaryMin !== null || filters.salaryMax !== null) {
@@ -226,11 +288,29 @@ function computeInsights(candidates: CandidateRow[]): TalentIntelligenceData {
   }
 }
 
+// --- Paginated fetch helper ---
+async function fetchAllPaginated<T>(
+  queryBuilder: () => any,
+  pageSize = 1000,
+): Promise<T[]> {
+  let all: T[] = []
+  let from = 0
+  while (true) {
+    const { data, error } = await queryBuilder().range(from, from + pageSize - 1)
+    if (error) throw error
+    if (!data || data.length === 0) break
+    all = all.concat(data as T[])
+    if (data.length < pageSize) break
+    from += pageSize
+  }
+  return all
+}
+
 // --- Raw data hook (fetches once, caches) ---
 export function useTalentIntelligenceRawData() {
   const { user } = useAuth()
 
-  return useQuery({
+  const candidatesQuery = useQuery({
     queryKey: ['talent-intelligence-raw', user?.id],
     queryFn: async (): Promise<CandidateRow[]> => {
       if (!user) throw new Error('No user')
@@ -246,46 +326,98 @@ export function useTalentIntelligenceRawData() {
         throw new Error('Unable to determine tenant context')
       }
 
-      let allCandidates: CandidateRow[] = []
-      let from = 0
-      const pageSize = 1000
-
-      while (true) {
-        const { data, error } = await supabase
+      return fetchAllPaginated<CandidateRow>(() =>
+        supabase
           .from('candidates')
-          .select('id, location_country, location_city, location_state, years_experience, seniority_level, standardized_skills, skills, salary_amount, salary_currency, salary_period, functional_area, specialization, standardized_title, enriched_at, created_at')
+          .select('id, status, location_country, location_city, location_state, years_experience, seniority_level, standardized_skills, skills, salary_amount, salary_currency, salary_period, functional_area, specialization, standardized_title, enriched_at, created_at')
           .eq('tenant_id', memberData.tenant_id)
           .is('deleted_at', null)
-          .range(from, from + pageSize - 1)
-
-        if (error) throw error
-        if (!data || data.length === 0) break
-        allCandidates = allCandidates.concat(data as CandidateRow[])
-        if (data.length < pageSize) break
-        from += pageSize
-      }
-
-      return allCandidates
+      )
     },
     enabled: !!user,
     staleTime: 5 * 60 * 1000,
   })
+
+  // Fetch associations, jobs, and stage mappings
+  const associationsQuery = useQuery({
+    queryKey: ['talent-intelligence-associations', user?.id],
+    queryFn: async (): Promise<{ associations: AssociationRow[]; jobs: JobRow[]; stageMappings: StageMapping[] }> => {
+      if (!user) throw new Error('No user')
+
+      const { data: memberData } = await supabase
+        .from('members')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .eq('user_status', 'active')
+        .single()
+
+      if (!memberData?.tenant_id) throw new Error('No tenant')
+
+      // Fetch associations, jobs, and stage mappings in parallel
+      const [associations, jobs, jhsData] = await Promise.all([
+        fetchAllPaginated<AssociationRow>(() =>
+          supabase
+            .from('job_candidate_associations')
+            .select('candidate_id, job_id, status, current_stage_id')
+            .eq('tenant_id', memberData.tenant_id)
+        ),
+        supabase
+          .from('jobs')
+          .select('id, title')
+          .eq('tenant_id', memberData.tenant_id)
+          .order('title')
+          .then(r => {
+            if (r.error) throw r.error
+            return (r.data ?? []) as JobRow[]
+          }),
+        fetchAllPaginated<{ id: string; stage_id: string; job_stages: { stage_name: string } | null }>(() =>
+          supabase
+            .from('job_hiring_stages')
+            .select('id, stage_id, job_stages!inner(stage_name)')
+            .eq('tenant_id', memberData.tenant_id)
+        ),
+      ])
+
+      const stageMappings: StageMapping[] = jhsData
+        .filter(jhs => jhs.job_stages?.stage_name)
+        .map(jhs => ({
+          jhs_id: jhs.id,
+          stage_name: jhs.job_stages!.stage_name,
+        }))
+
+      return { associations, jobs, stageMappings }
+    },
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  return {
+    candidatesQuery,
+    associationsQuery,
+  }
 }
 
 // --- Filtered + aggregated data hook ---
 export function useTalentIntelligenceData(filters?: TalentIntelligenceFilters) {
-  const { data: rawCandidates, isLoading, error } = useTalentIntelligenceRawData()
+  const { candidatesQuery, associationsQuery } = useTalentIntelligenceRawData()
+  const rawCandidates = candidatesQuery.data
+  const assocData = associationsQuery.data
 
   const data = useMemo(() => {
     if (!rawCandidates) return null
-    const filtered = filters ? applyFilters(rawCandidates, filters) : rawCandidates
+    const filtered = filters
+      ? applyFilters(rawCandidates, filters, assocData?.associations, assocData?.stageMappings)
+      : rawCandidates
     return computeInsights(filtered)
-  }, [rawCandidates, filters])
+  }, [rawCandidates, filters, assocData])
 
   return {
     data,
     rawCandidates: rawCandidates ?? [],
-    isLoading,
-    error,
+    associations: assocData?.associations ?? [],
+    jobs: assocData?.jobs ?? [],
+    stageMappings: assocData?.stageMappings ?? [],
+    isLoading: candidatesQuery.isLoading || associationsQuery.isLoading,
+    error: candidatesQuery.error || associationsQuery.error,
   }
 }

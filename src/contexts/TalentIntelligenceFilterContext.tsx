@@ -9,6 +9,10 @@ export interface TalentIntelligenceFilters {
   countries: string[]
   states: string[]
   cities: string[]
+  jobs: string[]
+  candidateStatuses: string[]
+  pipelineStatuses: string[]
+  stages: string[]
   experienceMin: number | null
   experienceMax: number | null
   salaryMin: number | null
@@ -26,6 +30,10 @@ const EMPTY_FILTERS: TalentIntelligenceFilters = {
   countries: [],
   states: [],
   cities: [],
+  jobs: [],
+  candidateStatuses: [],
+  pipelineStatuses: [],
+  stages: [],
   experienceMin: null,
   experienceMax: null,
   salaryMin: null,
@@ -34,7 +42,7 @@ const EMPTY_FILTERS: TalentIntelligenceFilters = {
   dateTo: null,
 }
 
-type ArrayFilterKey = 'roles' | 'functionalAreas' | 'specializations' | 'seniorities' | 'skills' | 'countries' | 'states' | 'cities'
+type ArrayFilterKey = 'roles' | 'functionalAreas' | 'specializations' | 'seniorities' | 'skills' | 'countries' | 'states' | 'cities' | 'jobs' | 'candidateStatuses' | 'pipelineStatuses' | 'stages'
 type NumericFilterKey = 'experienceMin' | 'experienceMax' | 'salaryMin' | 'salaryMax'
 type DateFilterKey = 'dateFrom' | 'dateTo'
 
@@ -93,7 +101,7 @@ export function TalentIntelligenceFilterProvider({ children }: { children: React
 
   const activeFilterCount = useMemo(() => {
     let count = 0
-    const arrayKeys: ArrayFilterKey[] = ['roles', 'functionalAreas', 'specializations', 'seniorities', 'skills', 'countries', 'states', 'cities']
+    const arrayKeys: ArrayFilterKey[] = ['roles', 'functionalAreas', 'specializations', 'seniorities', 'skills', 'countries', 'states', 'cities', 'jobs', 'candidateStatuses', 'pipelineStatuses', 'stages']
     for (const k of arrayKeys) count += filters[k].length
     if (filters.experienceMin !== null) count++
     if (filters.experienceMax !== null) count++

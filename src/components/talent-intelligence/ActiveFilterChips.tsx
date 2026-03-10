@@ -13,6 +13,10 @@ const FILTER_LABELS: Record<string, string> = {
   countries: 'Country',
   states: 'State',
   cities: 'City',
+  jobs: 'Job',
+  candidateStatuses: 'Status',
+  pipelineStatuses: 'Pipeline',
+  stages: 'Stage',
 }
 
 function formatCurrency(v: number) {
@@ -20,31 +24,39 @@ function formatCurrency(v: number) {
   return `$${v}`
 }
 
-export function ActiveFilterChips() {
+interface ActiveFilterChipsProps {
+  jobLookup?: Map<string, string>
+}
+
+export function ActiveFilterChips({ jobLookup }: ActiveFilterChipsProps) {
   const { filters, removeArrayFilterValue, clearFilter, clearAll, hasActiveFilters } = useTalentIntelligenceFilters()
 
   if (!hasActiveFilters) return null
 
-  const arrayKeys = ['roles', 'functionalAreas', 'specializations', 'seniorities', 'skills', 'countries', 'states', 'cities'] as const
+  const arrayKeys = ['roles', 'functionalAreas', 'specializations', 'seniorities', 'skills', 'countries', 'states', 'cities', 'jobs', 'candidateStatuses', 'pipelineStatuses', 'stages'] as const
 
   return (
     <div className="flex flex-wrap items-center gap-2">
       {arrayKeys.map(key =>
-        filters[key].map(val => (
-          <Badge
-            key={`${key}-${val}`}
-            variant="purple"
-            className="gap-1 pr-1 text-xs font-poppins"
-          >
-            <span className="text-muted-foreground">{FILTER_LABELS[key]}:</span> {val}
-            <button
-              onClick={() => removeArrayFilterValue(key, val)}
-              className="ml-0.5 rounded-full p-0.5 hover:bg-foreground/10 transition-colors"
+        filters[key].map(val => {
+          // For jobs, display the title instead of the ID
+          const displayVal = key === 'jobs' && jobLookup ? (jobLookup.get(val) ?? val) : val
+          return (
+            <Badge
+              key={`${key}-${val}`}
+              variant="purple"
+              className="gap-1 pr-1 text-xs font-poppins"
             >
-              <X className="h-3 w-3" />
-            </button>
-          </Badge>
-        ))
+              <span className="text-muted-foreground">{FILTER_LABELS[key]}:</span> {displayVal}
+              <button
+                onClick={() => removeArrayFilterValue(key, val)}
+                className="ml-0.5 rounded-full p-0.5 hover:bg-foreground/10 transition-colors"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          )
+        })
       )}
 
       {(filters.experienceMin !== null || filters.experienceMax !== null) && (
