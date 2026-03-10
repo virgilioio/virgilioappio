@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import type { TalentIntelligenceFilters } from '@/contexts/TalentIntelligenceFilterContext'
 
 export interface CandidateRow {
+  id: string
   location_country: string | null
   location_city: string | null
   location_state: string | null
@@ -252,7 +253,7 @@ export function useTalentIntelligenceRawData() {
       while (true) {
         const { data, error } = await supabase
           .from('candidates')
-          .select('location_country, location_city, location_state, years_experience, seniority_level, standardized_skills, skills, salary_amount, salary_currency, salary_period, functional_area, specialization, standardized_title, enriched_at, created_at')
+          .select('id, location_country, location_city, location_state, years_experience, seniority_level, standardized_skills, skills, salary_amount, salary_currency, salary_period, functional_area, specialization, standardized_title, enriched_at, created_at')
           .eq('tenant_id', memberData.tenant_id)
           .is('deleted_at', null)
           .range(from, from + pageSize - 1)

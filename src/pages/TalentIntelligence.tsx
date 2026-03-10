@@ -1,8 +1,9 @@
+import { useMemo } from 'react'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Section } from '@/components/layout/Section'
-import { useTalentIntelligenceData } from '@/hooks/useTalentIntelligenceData'
+import { useTalentIntelligenceData, applyFilters } from '@/hooks/useTalentIntelligenceData'
 import { useTalentIntelligenceFilterOptions } from '@/hooks/useTalentIntelligenceFilterOptions'
 import { TalentIntelligenceFilterProvider, useTalentIntelligenceFilters } from '@/contexts/TalentIntelligenceFilterContext'
 import { SummaryMetricsRow } from '@/components/talent-intelligence/SummaryMetricsRow'
@@ -11,6 +12,7 @@ import { ExperienceDistribution } from '@/components/talent-intelligence/Experie
 import { SkillsLandscape } from '@/components/talent-intelligence/SkillsLandscape'
 import { CompensationInsights } from '@/components/talent-intelligence/CompensationInsights'
 import { TalentPoolComposition } from '@/components/talent-intelligence/TalentPoolComposition'
+import { TalentOrigins } from '@/components/talent-intelligence/TalentOrigins'
 import { TalentIntelligenceEmptyState } from '@/components/talent-intelligence/TalentIntelligenceEmptyState'
 import { TalentIntelligenceFilterBar } from '@/components/talent-intelligence/TalentIntelligenceFilterBar'
 import { Button } from '@/components/ui/button'
@@ -19,6 +21,13 @@ function TalentIntelligenceContent() {
   const { filters, clearAll, hasActiveFilters, toggleArrayFilter, setNumericFilter } = useTalentIntelligenceFilters()
   const { data, rawCandidates, isLoading, error } = useTalentIntelligenceData(filters)
   const filterOptions = useTalentIntelligenceFilterOptions(rawCandidates)
+
+  // Compute filtered candidate IDs for the TalentOrigins hook
+  const filteredCandidateIds = useMemo(() => {
+    if (!rawCandidates.length) return []
+    const filtered = applyFilters(rawCandidates, filters)
+    return filtered.map(c => c.id)
+  }, [rawCandidates, filters])
 
   const handleFilterApply = (key: string, value: string) => {
     const keyMap: Record<string, 'roles' | 'functionalAreas' | 'specializations' | 'seniorities' | 'skills' | 'countries' | 'states' | 'cities'> = {
@@ -134,6 +143,7 @@ function TalentIntelligenceContent() {
                 onSpecializationClick={(s) => handleFilterApply('specialization', s)}
               />
             </div>
+            <TalentOrigins filteredCandidateIds={filteredCandidateIds} />
           </div>
         )}
       </Section>
