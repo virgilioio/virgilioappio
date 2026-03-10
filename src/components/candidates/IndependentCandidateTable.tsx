@@ -175,32 +175,8 @@ export function IndependentCandidateTable({
 
   // Filter logic — use context-based filters + search
   const { filters } = useCandidateFilters()
-  const filterOptions = useCandidateFilterOptions(candidates)
-  const filteredCandidates = useCandidateFilteredData(candidates, filters, searchTerm)
-  
-  // Fetch job association counts
-  useEffect(() => {
-    const fetchJobCounts = async () => {
-      if (candidates.length === 0) return
-      
-      const candidateIds = candidates.map(c => c.id)
-      const { data, error } = await supabase
-        .from('job_candidate_associations')
-        .select('candidate_id')
-        .in('candidate_id', candidateIds)
-        .eq('status', 'active')
-      
-      if (!error && data) {
-        const counts = data.reduce((acc, item) => {
-          acc[item.candidate_id] = (acc[item.candidate_id] || 0) + 1
-          return acc
-        }, {} as Record<string, number>)
-        setJobCounts(counts)
-      }
-    }
-    
-    fetchJobCounts()
-  }, [candidates])
+  const filterOptions = useCandidateFilterOptions(candidates, allAssociations)
+  const filteredCandidates = useCandidateFilteredData(candidates, filters, searchTerm, associationsMap)
 
 // Calculate pagination
 const totalPages = Math.ceil(filteredCandidates.length / itemsPerPage)
