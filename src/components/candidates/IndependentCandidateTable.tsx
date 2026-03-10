@@ -18,9 +18,11 @@ import { toast } from '@/hooks/use-toast'
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 import { DeleteCandidateDialog } from '@/components/candidates/DeleteCandidateDialog'
 import { CandidateFiltersPanel } from '@/components/candidates/CandidateFiltersPanel'
+import { CandidateJobStatusCell } from '@/components/candidates/CandidateJobStatusCell'
 import { useCandidateFilters } from '@/contexts/CandidateFilterContext'
 import { useCandidateFilterOptions } from '@/hooks/useCandidateFilterOptions'
 import { useCandidateFilteredData } from '@/hooks/useCandidateFilteredData'
+import { useCandidateJobAssociationsMap } from '@/hooks/useCandidateJobAssociations'
 
 interface IndependentCandidateTableProps {
   candidates: IndependentCandidate[]
