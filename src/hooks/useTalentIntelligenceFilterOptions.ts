@@ -75,21 +75,33 @@ export function useTalentIntelligenceFilterOptions(
       count: jobCandidateCounts.get(j.id) || 0,
     })).filter(o => o.count > 0).sort((a, b) => b.count - a.count)
 
-    // Candidate status options
-    const candidateStatusOptions = deriveOptions(candidates, c => c.status ? capitalizeStatus(c.status) : null)
+    // Candidate status options — raw value for filtering, capitalized label for display
+    const candidateStatusMap = new Map<string, { label: string; count: number }>()
+    for (const c of candidates) {
+      const s = c.status?.trim()
+      if (s) {
+        const existing = candidateStatusMap.get(s)
+        if (existing) existing.count++
+        else candidateStatusMap.set(s, { label: capitalizeStatus(s), count: 1 })
+      }
+    }
+    const candidateStatusOptions: FilterOption[] = Array.from(candidateStatusMap.entries())
+      .sort((a, b) => b[1].count - a[1].count)
+      .map(([value, { label, count }]) => ({ value, label, count }))
 
-    // Pipeline status options from associations
-    const pipelineStatusMap = new Map<string, number>()
+    // Pipeline status options from associations — raw value for filtering, capitalized label for display
+    const pipelineStatusMap = new Map<string, { label: string; count: number }>()
     for (const a of associations) {
       const s = a.status?.trim()
       if (s) {
-        const label = capitalizeStatus(s)
-        pipelineStatusMap.set(label, (pipelineStatusMap.get(label) || 0) + 1)
+        const existing = pipelineStatusMap.get(s)
+        if (existing) existing.count++
+        else pipelineStatusMap.set(s, { label: capitalizeStatus(s), count: 1 })
       }
     }
     const pipelineStatusOptions: FilterOption[] = Array.from(pipelineStatusMap.entries())
-      .sort((a, b) => b[1] - a[1])
-      .map(([value, count]) => ({ value, label: value, count }))
+      .sort((a, b) => b[1].count - a[1].count)
+      .map(([value, { label, count }]) => ({ value, label, count }))
 
     // Stage options from stage mappings
     const stageNameMap = new Map<string, number>()
