@@ -1,15 +1,17 @@
-import { Badge } from '@/components/ui/badge'
+import { Badge, type BadgeProps } from '@/components/ui/badge'
+import { Send, Clock } from 'lucide-react'
 import type { AssociationDetail } from '@/hooks/useCandidateJobAssociations'
+import type { ComponentType } from 'react'
 
 interface CandidateJobStatusCellProps {
   associations: AssociationDetail[] | undefined
 }
 
-function getStageStatusLabel(a: AssociationDetail): string | null {
+function getStageStatusBadge(a: AssociationDetail): { label: string; variant: BadgeProps['variant']; Icon: ComponentType<{ className?: string }> } | null {
   if (!a.stageName) return null
-  if (a.bookingLinkSentAt) return 'Booking link sent'
-  if (a.enteredStageAt) return 'Pending schedule'
-  return 'New in stage'
+  if (a.bookingLinkSentAt) return { label: 'Booking link sent', variant: 'secondary', Icon: Send }
+  if (a.enteredStageAt) return { label: 'Pending schedule', variant: 'pastel-yellow', Icon: Clock }
+  return { label: 'New in stage', variant: 'pastel-yellow', Icon: Clock }
 }
 
 function formatShortDate(dateStr: string | null): string {
