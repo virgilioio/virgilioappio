@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -19,7 +19,10 @@ import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCan
 import { DeleteCandidateDialog } from '@/components/candidates/DeleteCandidateDialog'
 import { CandidateFiltersPanel } from '@/components/candidates/CandidateFiltersPanel'
 import { CandidateJobStatusCell } from '@/components/candidates/CandidateJobStatusCell'
-import { useCandidateFilters } from '@/contexts/CandidateFilterContext'
+import { SavedViewSelector } from '@/components/filters/SavedViewSelector'
+import { usePersistentFilters } from '@/hooks/usePersistentFilters'
+import { useSavedViews } from '@/hooks/useSavedViews'
+import { useCandidateFilters, type CandidateFilters } from '@/contexts/CandidateFilterContext'
 import { useCandidateFilterOptions } from '@/hooks/useCandidateFilterOptions'
 import { useCandidateFilteredData } from '@/hooks/useCandidateFilteredData'
 import { useCandidateJobAssociationsMap } from '@/hooks/useCandidateJobAssociations'
@@ -174,9 +177,49 @@ export function IndependentCandidateTable({
   }
 
   // Filter logic — use context-based filters + search
-  const { filters } = useCandidateFilters()
+  const { filters, setArrayFilter } = useCandidateFilters()
   const filterOptions = useCandidateFilterOptions(candidates, allAssociations)
   const filteredCandidates = useCandidateFilteredData(candidates, filters, searchTerm, associationsMap)
+
+  // Saved views integration
+  const [activeViewId, setActiveViewId] = useState<string | null>(null)
+
+  const setFiltersFromRecord = useCallback((record: Record<string, unknown>) => {
+    const f = record as unknown as CandidateFilters
+    const arrayKeys = ['statuses', 'sources', 'countries', 'states', 'cities', 'seniorityLevels', 'functionalAreas', 'specializations', 'skills', 'enrichmentStatuses', 'pipelineStatuses'] as const
+    for (const key of arrayKeys) {
+      setArrayFilter(key, (f[key] as string[]) ?? [])
+    }
+  }, [setArrayFilter])
+
+  const { setActiveViewId: persistViewId, getActiveViewId } = usePersistentFilters(
+    'candidates',
+    filters,
+    setFiltersFromRecord as any,
+    {} as any,
+  )
+
+  const { defaultView } = useSavedViews('candidates')
+
+  useEffect(() => {
+    const storedViewId = getActiveViewId()
+    if (storedViewId) {
+      setActiveViewId(storedViewId)
+    } else if (defaultView) {
+      setActiveViewId(defaultView.id)
+      setFiltersFromRecord(defaultView.filters as Record<string, unknown>)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultView?.id])
+
+  const handleActiveViewChange = useCallback((viewId: string | null) => {
+    setActiveViewId(viewId)
+    persistViewId(viewId)
+  }, [persistViewId])
+
+  const handleApplyView = useCallback((viewFilters: Record<string, unknown>) => {
+    setFiltersFromRecord(viewFilters)
+  }, [setFiltersFromRecord])
 
 // Calculate pagination
 const totalPages = Math.ceil(filteredCandidates.length / itemsPerPage)
@@ -290,6 +333,13 @@ const getPageNumbers = () => {
       <CardContent className="pt-6">
         {/* Unified toolbar: search + filter chips + actions */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
+          <SavedViewSelector
+            pageContext="candidates"
+            currentFilters={filters as unknown as Record<string, unknown>}
+            onApplyView={handleApplyView}
+            activeViewId={activeViewId}
+            onActiveViewChange={handleActiveViewChange}
+          />
           <div className="relative w-56">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input

@@ -19,7 +19,6 @@ interface FilterCardProps {
 }
 
 const STATUS_OPTIONS: FilterChipOption[] = [
-  { value: 'all', label: 'All Statuses', count: 0 },
   { value: 'draft', label: 'Draft', count: 0 },
   { value: 'open', label: 'Open', count: 0 },
   { value: 'closed', label: 'Closed', count: 0 },
@@ -54,7 +53,7 @@ export function FilterCard({
   const hasActiveFilters = jobStatus !== 'open' || selectedUsers.length > 0 || selectedDepartments.length > 0 || searchTerm.trim() !== ''
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <>
       <div className="relative w-56">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
         <Input
@@ -67,7 +66,7 @@ export function FilterCard({
 
       <FilterChipPopover
         label="Status"
-        options={STATUS_OPTIONS.filter(o => o.value !== 'all')}
+        options={STATUS_OPTIONS}
         selectedValues={statusSelected}
         onSelectionChange={(vals) => onJobStatusChange(vals.length === 0 ? 'all' : vals[vals.length - 1])}
         searchable={false}
@@ -109,6 +108,6 @@ export function FilterCard({
           Clear filters
         </Button>
       )}
-    </div>
+    </>
   )
 }

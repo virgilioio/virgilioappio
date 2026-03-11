@@ -12,6 +12,9 @@ import { useOfferAnalyticsMetrics } from '@/hooks/analytics/useOfferAnalyticsMet
 import { useTalentInsightsMetrics } from '@/hooks/analytics/useTalentInsightsMetrics'
 import { AnalyticsTimeFilter } from '@/components/analytics/AnalyticsTimeFilter'
 import { AnalyticsFiltersBar, AnalyticsFilters } from '@/components/analytics/AnalyticsFiltersBar'
+import { SavedViewSelector } from '@/components/filters/SavedViewSelector'
+import { usePersistentFilters } from '@/hooks/usePersistentFilters'
+import { useSavedViews } from '@/hooks/useSavedViews'
 import { OverviewSection } from '@/components/analytics/sections/OverviewSection'
 import { PipelineHealthSection } from '@/components/analytics/sections/PipelineHealthSection'
 import { StagePerformanceSection } from '@/components/analytics/sections/StagePerformanceSection'
@@ -25,6 +28,20 @@ import { Button } from '@/components/ui/button'
 import { BarChart3, Download, Loader2 } from 'lucide-react'
 import { subDays } from 'date-fns'
 import { generateAnalyticsReport } from '@/utils/analyticsReportGenerator'
+
+interface AnalyticsPageFilters {
+  recruiterIds: string[]
+  jobIds: string[]
+  organizationIds: string[]
+  jobStatus: string
+}
+
+const DEFAULT_ANALYTICS_FILTERS: AnalyticsPageFilters = {
+  recruiterIds: [],
+  jobIds: [],
+  organizationIds: [],
+  jobStatus: 'open',
+}
 
 export default function Analytics() {
   const navigate = useNavigate()
@@ -48,18 +65,42 @@ export default function Analytics() {
     endDate: new Date(),
   })
 
-  const [advancedFilters, setAdvancedFilters] = useState<AnalyticsFilters>({
-    recruiterIds: [],
-    jobIds: [],
-    organizationIds: [],
-    jobStatus: 'open',
-  })
+  const [advancedFilters, setAdvancedFilters] = useState<AnalyticsPageFilters>(DEFAULT_ANALYTICS_FILTERS)
+  const [activeViewId, setActiveViewId] = useState<string | null>(null)
 
-  // Core metrics (existing)
+  const { setActiveViewId: persistViewId, getActiveViewId } = usePersistentFilters(
+    'analytics',
+    advancedFilters,
+    setAdvancedFilters,
+    DEFAULT_ANALYTICS_FILTERS,
+  )
+
+  const { defaultView } = useSavedViews('analytics')
+
+  useEffect(() => {
+    const storedViewId = getActiveViewId()
+    if (storedViewId) {
+      setActiveViewId(storedViewId)
+    } else if (defaultView) {
+      setActiveViewId(defaultView.id)
+      setAdvancedFilters(defaultView.filters as unknown as AnalyticsPageFilters)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultView?.id])
+
+  const handleActiveViewChange = useCallback((viewId: string | null) => {
+    setActiveViewId(viewId)
+    persistViewId(viewId)
+  }, [persistViewId])
+
+  const handleApplyView = useCallback((filters: Record<string, unknown>) => {
+    setAdvancedFilters(filters as unknown as AnalyticsPageFilters)
+  }, [])
+
+  // Core metrics
   const metrics = useAnalyticsMetrics({ dateRange, ...advancedFilters })
   const hasJobIds = metrics.finalJobIds.length > 0 && !metrics.isLoading
 
-  // New section hooks — only fire when we have job IDs
   const stageData = useStagePerformanceMetrics(metrics.finalJobIds, dateRange, hasJobIds)
   const jobHealth = useJobHealthMetrics(metrics.finalJobIds, dateRange, hasJobIds)
   const recruiterData = useRecruiterPerformanceMetrics(metrics.finalJobIds, dateRange, hasJobIds)
@@ -149,8 +190,17 @@ export default function Analytics() {
         </div>
       </div>
 
-      {/* Filter Chips */}
-      <AnalyticsFiltersBar onFiltersChange={handleFiltersChange} />
+      {/* Filter Chips + Saved Views */}
+      <div className="flex flex-wrap items-center gap-2">
+        <SavedViewSelector
+          pageContext="analytics"
+          currentFilters={advancedFilters as unknown as Record<string, unknown>}
+          onApplyView={handleApplyView}
+          activeViewId={activeViewId}
+          onActiveViewChange={handleActiveViewChange}
+        />
+        <AnalyticsFiltersBar onFiltersChange={handleFiltersChange} />
+      </div>
 
       {/* ─── Sections ─── */}
       <OverviewSection metrics={metrics} />
