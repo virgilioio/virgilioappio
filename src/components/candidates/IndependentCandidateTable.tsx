@@ -177,9 +177,49 @@ export function IndependentCandidateTable({
   }
 
   // Filter logic — use context-based filters + search
-  const { filters } = useCandidateFilters()
+  const { filters, setArrayFilter } = useCandidateFilters()
   const filterOptions = useCandidateFilterOptions(candidates, allAssociations)
   const filteredCandidates = useCandidateFilteredData(candidates, filters, searchTerm, associationsMap)
+
+  // Saved views integration
+  const [activeViewId, setActiveViewId] = useState<string | null>(null)
+
+  const setFiltersFromRecord = useCallback((record: Record<string, unknown>) => {
+    const f = record as unknown as CandidateFilters
+    const arrayKeys = ['statuses', 'sources', 'countries', 'states', 'cities', 'seniorityLevels', 'functionalAreas', 'specializations', 'skills', 'enrichmentStatuses', 'pipelineStatuses'] as const
+    for (const key of arrayKeys) {
+      setArrayFilter(key, (f[key] as string[]) ?? [])
+    }
+  }, [setArrayFilter])
+
+  const { setActiveViewId: persistViewId, getActiveViewId } = usePersistentFilters(
+    'candidates',
+    filters,
+    setFiltersFromRecord as any,
+    {} as any,
+  )
+
+  const { defaultView } = useSavedViews('candidates')
+
+  useEffect(() => {
+    const storedViewId = getActiveViewId()
+    if (storedViewId) {
+      setActiveViewId(storedViewId)
+    } else if (defaultView) {
+      setActiveViewId(defaultView.id)
+      setFiltersFromRecord(defaultView.filters as Record<string, unknown>)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultView?.id])
+
+  const handleActiveViewChange = useCallback((viewId: string | null) => {
+    setActiveViewId(viewId)
+    persistViewId(viewId)
+  }, [persistViewId])
+
+  const handleApplyView = useCallback((viewFilters: Record<string, unknown>) => {
+    setFiltersFromRecord(viewFilters)
+  }, [setFiltersFromRecord])
 
 // Calculate pagination
 const totalPages = Math.ceil(filteredCandidates.length / itemsPerPage)
