@@ -55,7 +55,7 @@ export function AnalyticsFiltersBar({ onFiltersChange }: AnalyticsFiltersBarProp
   }, [selectedRecruiters, selectedJobs, selectedOrgs, selectedStatuses, onFiltersChange])
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <>
       <FilterChipPopover
         label="Status"
         options={JOB_STATUS_OPTIONS}
@@ -96,6 +96,6 @@ export function AnalyticsFiltersBar({ onFiltersChange }: AnalyticsFiltersBarProp
           Clear filters
         </button>
       )}
-    </div>
+    </>
   )
 }
