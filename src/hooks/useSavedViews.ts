@@ -20,6 +20,9 @@ export interface SavedView {
   updated_at: string
 }
 
+// Use untyped client for saved_views since it's not in generated types
+const db = supabase as any
+
 export function useSavedViews(pageContext: PageContext) {
   const { user } = useAuth()
   const { tenant } = useTenant()
@@ -30,7 +33,7 @@ export function useSavedViews(pageContext: PageContext) {
     queryKey,
     queryFn: async () => {
       if (!user) return []
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('saved_views')
         .select('*')
         .eq('user_id', user.id)
@@ -50,26 +53,26 @@ export function useSavedViews(pageContext: PageContext) {
       
       // If setting as default, unset any existing default first
       if (input.is_default) {
-        await supabase
+        await db
           .from('saved_views')
-          .update({ is_default: false } as any)
+          .update({ is_default: false })
           .eq('user_id', user.id)
           .eq('page_context', pageContext)
           .eq('is_default', true)
       }
       
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('saved_views')
         .insert({
           user_id: user.id,
           tenant_id: tenant.id,
           page_context: pageContext,
           name: input.name,
-          filters: input.filters as any,
-          sort_state: (input.sort_state ?? null) as any,
-          extra_state: (input.extra_state ?? null) as any,
+          filters: input.filters,
+          sort_state: input.sort_state ?? null,
+          extra_state: input.extra_state ?? null,
           is_default: input.is_default ?? false,
-        } as any)
+        })
         .select()
         .single()
       if (error) throw error
@@ -95,10 +98,9 @@ export function useSavedViews(pageContext: PageContext) {
       if (input.extra_state !== undefined) updates.extra_state = input.extra_state
       if (input.is_default !== undefined) {
         if (input.is_default) {
-          // Unset existing default
-          await supabase
+          await db
             .from('saved_views')
-            .update({ is_default: false } as any)
+            .update({ is_default: false })
             .eq('user_id', user.id)
             .eq('page_context', pageContext)
             .eq('is_default', true)
@@ -106,9 +108,9 @@ export function useSavedViews(pageContext: PageContext) {
         updates.is_default = input.is_default
       }
       
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('saved_views')
-        .update(updates as any)
+        .update(updates)
         .eq('id', input.id)
         .eq('user_id', user.id)
         .select()
@@ -130,7 +132,7 @@ export function useSavedViews(pageContext: PageContext) {
   const deleteView = useMutation({
     mutationFn: async (id: string) => {
       if (!user) throw new Error('Not authenticated')
-      const { error } = await supabase
+      const { error } = await db
         .from('saved_views')
         .delete()
         .eq('id', id)
