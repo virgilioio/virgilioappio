@@ -22,7 +22,7 @@ function deserializeFilters<T extends Record<string, unknown>>(raw: string): T {
   }) as T
 }
 
-export function usePersistentFilters<T extends Record<string, unknown>>(
+export function usePersistentFilters<T>(
   pageContext: PageContext,
   currentFilters: T,
   setFilters: (filters: T) => void,
