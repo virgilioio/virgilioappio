@@ -8,14 +8,14 @@ const VIEW_PREFIX = 'virgilio_active_view_'
  * Serialize filters to sessionStorage so they persist across navigation and tab switches.
  * Handles Date objects specially.
  */
-function serializeFilters(filters: Record<string, unknown>): string {
+function serializeFilters(filters: unknown): string {
   return JSON.stringify(filters, (_, value) => {
     if (value instanceof Date) return { __date: value.toISOString() }
     return value
   })
 }
 
-function deserializeFilters<T extends Record<string, unknown>>(raw: string): T {
+function deserializeFilters<T>(raw: string): T {
   return JSON.parse(raw, (_, value) => {
     if (value && typeof value === 'object' && '__date' in value) return new Date(value.__date)
     return value
