@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useCallback, useEffect } from 'react'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -15,12 +15,67 @@ import { TalentPoolComposition } from '@/components/talent-intelligence/TalentPo
 import { TalentOrigins } from '@/components/talent-intelligence/TalentOrigins'
 import { TalentIntelligenceEmptyState } from '@/components/talent-intelligence/TalentIntelligenceEmptyState'
 import { TalentIntelligenceFilterBar } from '@/components/talent-intelligence/TalentIntelligenceFilterBar'
+import { SavedViewSelector } from '@/components/filters/SavedViewSelector'
+import { usePersistentFilters } from '@/hooks/usePersistentFilters'
+import { useSavedViews } from '@/hooks/useSavedViews'
+import type { TalentIntelligenceFilters } from '@/contexts/TalentIntelligenceFilterContext'
 import { Button } from '@/components/ui/button'
 
+const EMPTY_TI_FILTERS: TalentIntelligenceFilters = {
+  roles: [], functionalAreas: [], specializations: [], seniorities: [],
+  skills: [], countries: [], states: [], cities: [], jobs: [],
+  candidateStatuses: [], pipelineStatuses: [], stages: [],
+  experienceMin: null, experienceMax: null,
+  salaryMin: null, salaryMax: null,
+  dateFrom: null, dateTo: null,
+}
+
 function TalentIntelligenceContent() {
-  const { filters, clearAll, hasActiveFilters, toggleArrayFilter, setNumericFilter } = useTalentIntelligenceFilters()
+  const { filters, setArrayFilter, clearAll, hasActiveFilters, toggleArrayFilter, setNumericFilter } = useTalentIntelligenceFilters()
   const { data, rawCandidates, associations, jobs, stageMappings, isLoading, error } = useTalentIntelligenceData(filters)
   const filterOptions = useTalentIntelligenceFilterOptions(rawCandidates, associations, jobs, stageMappings)
+
+  // Saved views integration
+  const [activeViewId, setActiveViewId] = useState<string | null>(null)
+
+  // We need a setter that maps to context
+  const setFiltersFromRecord = useCallback((record: Record<string, unknown>) => {
+    const f = record as unknown as TalentIntelligenceFilters
+    // Apply all array filters
+    const arrayKeys = ['roles', 'functionalAreas', 'specializations', 'seniorities', 'skills', 'countries', 'states', 'cities', 'jobs', 'candidateStatuses', 'pipelineStatuses', 'stages'] as const
+    for (const key of arrayKeys) {
+      setArrayFilter(key, (f[key] as string[]) ?? [])
+    }
+  }, [setArrayFilter])
+
+  const { setActiveViewId: persistViewId, getActiveViewId } = usePersistentFilters(
+    'talent-intelligence',
+    filters as unknown as Record<string, unknown>,
+    setFiltersFromRecord as any,
+    EMPTY_TI_FILTERS as unknown as Record<string, unknown>,
+  )
+
+  const { defaultView } = useSavedViews('talent-intelligence')
+
+  useEffect(() => {
+    const storedViewId = getActiveViewId()
+    if (storedViewId) {
+      setActiveViewId(storedViewId)
+    } else if (defaultView) {
+      setActiveViewId(defaultView.id)
+      setFiltersFromRecord(defaultView.filters as Record<string, unknown>)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultView?.id])
+
+  const handleActiveViewChange = useCallback((viewId: string | null) => {
+    setActiveViewId(viewId)
+    persistViewId(viewId)
+  }, [persistViewId])
+
+  const handleApplyView = useCallback((viewFilters: Record<string, unknown>) => {
+    setFiltersFromRecord(viewFilters)
+  }, [setFiltersFromRecord])
 
   // Job ID → title lookup for display in chips
   const jobLookup = useMemo(() => {
@@ -75,9 +130,18 @@ function TalentIntelligenceContent() {
       </Section>
 
       <Section container className="animate-fade-in">
-        {/* Filter bar */}
+        {/* Filter bar + saved views */}
         {rawCandidates.length > 0 && (
-          <div className="mb-6">
+          <div className="mb-6 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <SavedViewSelector
+                pageContext="talent-intelligence"
+                currentFilters={filters as unknown as Record<string, unknown>}
+                onApplyView={handleApplyView}
+                activeViewId={activeViewId}
+                onActiveViewChange={handleActiveViewChange}
+              />
+            </div>
             <TalentIntelligenceFilterBar
               roleOptions={filterOptions.roleOptions}
               seniorityOptions={filterOptions.seniorityOptions}

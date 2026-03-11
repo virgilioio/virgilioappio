@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { AuthGate } from '@/components/auth/AuthGate';
 import { PermissionGate } from '@/components/auth/PermissionGate';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -7,6 +7,7 @@ import { MetricCard } from '@/components/ui/metric-card';
 import { MetricCardGroup } from '@/components/ui/metric-card-group';
 import { FilterCard } from '@/components/pipeline/FilterCard';
 import { JobRow } from '@/components/pipeline/JobRow';
+import { SavedViewSelector } from '@/components/filters/SavedViewSelector';
 import { usePipelineGlobalMetrics, PipelineFilters } from '@/hooks/usePipelineGlobalMetrics';
 import { usePipelineJobMetrics } from '@/hooks/usePipelineJobMetrics';
 import { useJobs } from '@/hooks/useJobs';
@@ -14,9 +15,25 @@ import { useMembers } from '@/hooks/useMembers';
 import { useOrganizations } from '@/hooks/useOrganizations';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUserAssignedJobIds } from '@/hooks/useUserAssignedJobIds';
+import { usePersistentFilters } from '@/hooks/usePersistentFilters';
+import { useSavedViews } from '@/hooks/useSavedViews';
 import { jobMatchesUsers } from '@/utils/jobInvolvement';
 import { Briefcase, FileText, Clock, Users } from 'lucide-react';
 import { Accordion } from '@/components/ui/accordion';
+
+interface PipelinePageFilters {
+  selectedUsers: string[]
+  selectedDepartments: string[]
+  jobStatus: string
+  searchTerm: string
+}
+
+const DEFAULT_FILTERS: PipelinePageFilters = {
+  selectedUsers: [],
+  selectedDepartments: [],
+  jobStatus: 'open',
+  searchTerm: '',
+}
 
 export default function Pipeline() {
   const permissions = usePermissions();
@@ -25,10 +42,45 @@ export default function Pipeline() {
   const { organizations } = useOrganizations();
 
   // Filters
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
-  const [jobStatus, setJobStatus] = useState<string>('open');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [pageFilters, setPageFilters] = useState<PipelinePageFilters>(DEFAULT_FILTERS);
+  const [activeViewId, setActiveViewId] = useState<string | null>(null);
+
+  const { setActiveViewId: persistViewId, getActiveViewId } = usePersistentFilters(
+    'pipeline',
+    pageFilters,
+    setPageFilters,
+    DEFAULT_FILTERS,
+  );
+
+  const { defaultView } = useSavedViews('pipeline');
+
+  // On mount, restore active view or apply default
+  useEffect(() => {
+    const storedViewId = getActiveViewId();
+    if (storedViewId) {
+      setActiveViewId(storedViewId);
+    } else if (defaultView) {
+      setActiveViewId(defaultView.id);
+      setPageFilters(defaultView.filters as unknown as PipelinePageFilters);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultView?.id]);
+
+  const handleActiveViewChange = useCallback((viewId: string | null) => {
+    setActiveViewId(viewId);
+    persistViewId(viewId);
+  }, [persistViewId]);
+
+  const handleApplyView = useCallback((filters: Record<string, unknown>) => {
+    setPageFilters(filters as unknown as PipelinePageFilters);
+  }, []);
+
+  const { selectedUsers, selectedDepartments, jobStatus, searchTerm } = pageFilters;
+
+  const setSelectedUsers = useCallback((v: string[]) => setPageFilters(p => ({ ...p, selectedUsers: v })), []);
+  const setSelectedDepartments = useCallback((v: string[]) => setPageFilters(p => ({ ...p, selectedDepartments: v })), []);
+  const setJobStatus = useCallback((v: string) => { setPageFilters(p => ({ ...p, jobStatus: v })); setActiveViewId(null); persistViewId(null); }, [persistViewId]);
+  const setSearchTerm = useCallback((v: string) => setPageFilters(p => ({ ...p, searchTerm: v })), []);
 
   const filters: PipelineFilters = useMemo(() => ({
     userIds: selectedUsers.length > 0 ? selectedUsers : undefined,
@@ -89,19 +141,28 @@ export default function Pipeline() {
 
           <Section container className="animate-fade-in">
             <div className="space-y-12">
-              <FilterCard
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
-                jobStatus={jobStatus}
-                onJobStatusChange={setJobStatus}
-                selectedUsers={selectedUsers}
-                onSelectedUsersChange={setSelectedUsers}
-                userOptions={userOptions}
-                showUserFilter={showUserFilter}
-                selectedDepartments={selectedDepartments}
-                onSelectedDepartmentsChange={setSelectedDepartments}
-                departmentOptions={departmentOptions}
-              />
+              <div className="flex flex-wrap items-center gap-2">
+                <SavedViewSelector
+                  pageContext="pipeline"
+                  currentFilters={pageFilters as unknown as Record<string, unknown>}
+                  onApplyView={handleApplyView}
+                  activeViewId={activeViewId}
+                  onActiveViewChange={handleActiveViewChange}
+                />
+                <FilterCard
+                  searchTerm={searchTerm}
+                  onSearchChange={setSearchTerm}
+                  jobStatus={jobStatus}
+                  onJobStatusChange={setJobStatus}
+                  selectedUsers={selectedUsers}
+                  onSelectedUsersChange={setSelectedUsers}
+                  userOptions={userOptions}
+                  showUserFilter={showUserFilter}
+                  selectedDepartments={selectedDepartments}
+                  onSelectedDepartmentsChange={setSelectedDepartments}
+                  departmentOptions={departmentOptions}
+                />
+              </div>
 
               {/* Row 1: Hero KPIs */}
               <div className="space-y-3">
