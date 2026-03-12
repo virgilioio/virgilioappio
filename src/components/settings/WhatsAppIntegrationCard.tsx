@@ -41,7 +41,7 @@ export function WhatsAppIntegrationCard() {
 
   const handleProvision = async () => {
     try {
-      const result = await provisionNumber.mutateAsync()
+      const result = await provisionNumber.mutateAsync('US')
       if (result.already_provisioned) {
         toast.info(`WhatsApp already enabled with ${result.number}`)
       } else {
