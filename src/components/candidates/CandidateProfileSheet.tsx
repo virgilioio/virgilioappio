@@ -1377,14 +1377,6 @@ const stageHasAutomation = useMemo(() => {
                                                 <Button
                                                   variant="ghost"
                                                   size="sm"
-                                                  className="h-6 w-6 p-0 flex-shrink-0"
-                                                  onClick={() => copyToClipboard(phoneValue, 'Phone number copied to clipboard')}
-                                                >
-                                                  <Copy className="h-3.5 w-3.5" />
-                                                </Button>
-                                                <Button
-                                                  variant="ghost"
-                                                  size="sm"
                                                   className="h-6 w-6 p-0 flex-shrink-0 text-[#25D366] hover:text-[#25D366]/80"
                                                   onClick={() => {
                                                     setWhatsAppPhone(phoneValue)
@@ -1393,6 +1385,14 @@ const stageHasAutomation = useMemo(() => {
                                                   title="Send WhatsApp message"
                                                 >
                                                   <img src={whatsappIcon} alt="WhatsApp" className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  className="h-6 w-6 p-0 flex-shrink-0"
+                                                  onClick={() => copyToClipboard(phoneValue, 'Phone number copied to clipboard')}
+                                                >
+                                                  <Copy className="h-3.5 w-3.5" />
                                                 </Button>
                                               </div>
                                             </div>
