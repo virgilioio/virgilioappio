@@ -1701,6 +1701,18 @@ const stageHasAutomation = useMemo(() => {
                          onTabChange={(v) => setRightActiveTab(v as 'chat' | 'feed' | 'notes' | 'emails' | 'reminders' | 'insights')}
                       />
 
+                     {/* Chat Tab */}
+                     {rightActiveTab === 'chat' && candidateId && (
+                       <Card className="bg-surface-primary border-border h-[500px]">
+                         <WhatsAppChatTab
+                           candidateId={candidateId}
+                           jobId={jobId}
+                           phoneNumber={whatsAppPhone || candidate?.phone}
+                           candidateName={candidate?.candidate_name || 'Candidate'}
+                         />
+                       </Card>
+                     )}
+
                      {/* Feed Tab */}
                      {rightActiveTab === 'feed' && (
                         <Card className="bg-surface-primary border-border">
