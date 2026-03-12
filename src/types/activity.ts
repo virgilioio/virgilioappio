@@ -1,7 +1,7 @@
 import type { ScheduledBooking } from '@/hooks/useScheduledBookings'
 import type { CandidateReminder } from '@/hooks/useCandidateReminders'
 
-export type ActivityType = 'interview' | 'reminder'
+export type ActivityType = 'interview' | 'reminder' | 'whatsapp'
 
 export interface UnifiedActivity {
   type: ActivityType
