@@ -212,7 +212,27 @@ export default function PublicBookingPage() {
       return data;
     },
     onSuccess: (data) => {
-      window.location.href = `/schedule/${shortCode}/confirmed/${data.booking_id}`;
+      navigate(`/schedule/${shortCode}/confirmed/${data.booking_id}`, {
+        state: {
+          booking: {
+            id: data.booking_id,
+            scheduled_start: selectedSlot!.start,
+            scheduled_end: selectedSlot!.end,
+            duration_minutes: config!.duration_minutes,
+            candidate_email: (document.querySelector('input[name="candidate_email"]') as HTMLInputElement)?.value || '',
+            candidate_name: (document.querySelector('input[name="candidate_name"]') as HTMLInputElement)?.value || '',
+            candidate_timezone: candidateTimezone,
+            meeting_location: data.google_meet_link || config!.meeting_location || '',
+          },
+          config: {
+            display_name: config!.display_name,
+            description: config!.description,
+          },
+          interviewerName: config!.profiles
+            ? `${config!.profiles.first_name} ${config!.profiles.last_name}`
+            : config!.display_name,
+        },
+      });
     },
     onError: (error: any) => {
       toast({
