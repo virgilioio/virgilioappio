@@ -1,89 +1,37 @@
-# System Roles Migration — Completed Phases 1-5
 
-## Architecture Change
-- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
-- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-## Completed
+# Align WhatsApp Template Creator with GoGio's Placeholder System
 
-### Phase 1 — Database
-- ✅ Created `system_role` enum (`admin`, `member`)
-- ✅ Added `system_role` column to `members` table
-- ✅ Migrated data: `admin` → `admin`, all others → `member`
-- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
-- ✅ Updated `check_tenant_member_role` to use `system_role`
-- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
-- ✅ Updated `audit_member_role_change` trigger
+## What and Why
 
-### Phase 2 — Frontend Permissions
-- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
-- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
-- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
-- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
+The WhatsApp template creator currently uses its own `AVAILABLE_VARIABLES` list with underscore-separated keys (`candidate_name`, `job_title`). GoGio already has a unified placeholder system in `placeholderUtils.ts` using dot-notation keys (`candidate.first_name`, `job.title`) rendered as purple pill badges. The template creator should use the same placeholders and the same visual style.
 
-### Phase 3 — UI Updates
-- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
-- ✅ Updated `Dashboard` — sourcing panel for admin+ only
-- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
-- ✅ Updated `BillingGuard` — members (non-admin) never blocked
-- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
-- ✅ Updated `Find` page RoleGate
-- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
+## Changes
 
-### Phase 4 — Runtime Hotfixes
-- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
-- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
-- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
-- ✅ Updated `validate_invite_token` — returns `system_role`
-- ✅ Updated `accept_invitation` — uses `system_role`
+### 1. `WhatsAppTemplateCreator.tsx`
 
-### Phase 5 — Complete Cleanup
-- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
-- ✅ Updated `admin_manage_member` — updates `system_role` column
-- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
-- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
-- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
-- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
-- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
-- ✅ Updated `diagnose_user_auth` — reports `system_role`
-- ✅ Updated `audit_platform_admin_access` — returns `system_role`
-- ✅ Updated `debug_user_permissions` — returns `system_role`
-- ✅ Renamed `invitations.member_role` → `invitations.system_role`
-- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
+- **Remove** the local `AVAILABLE_VARIABLES` array
+- **Import** `AVAILABLE_PLACEHOLDERS` from `@/utils/placeholderUtils`
+- **Filter** to a WhatsApp-relevant subset (candidate name/first_name, job title, sender name/first_name, plus a few WhatsApp-specific ones like `interview_date`, `interview_time`, `portal_link` — these would be added to `placeholderUtils.ts` if not already there)
+- **Variable chips**: Style them as purple pill badges matching the existing `placeholder-badge` visual style — `bg-purple-500/15 text-purple-600 border-purple-500/30` (the same tokens used in `rich-text-editor.tsx` and `PlaceholderNode.tsx`)
+- **Insert** `{{candidate.first_name}}` (dot-notation) into the textarea
+- **Preview**: Resolve `{{candidate.first_name}}` → `[Candidate First Name]` using the label from `AVAILABLE_PLACEHOLDERS`
+- Group the chips by category (Candidate, Job, Sender) as done in the email PlaceholderHelper
 
-## Phase 6 — Future (Optional)
-- Drop `member_role` column from `members` table (already dropped)
-- Drop old `member_role` enum type
-- Update `MemberInviteSheet` role picker to only offer Admin/Member
+### 2. `placeholderUtils.ts`
 
-# Deep Resume Parsing + Data Standardization — Completed
+- Add WhatsApp-specific placeholders that don't exist yet: `interview.date`, `interview.time`, `offer.details`, `portal.link`
+- Tag them with a `category` so they can be filtered for WhatsApp context
 
-## What was implemented
+### 3. `manage-whatsapp-templates/index.ts` (edge function)
 
-### Phase 1: Schema Expansion
-- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
-- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
-- ✅ Added to `candidate_education`: `education_level`
-- ✅ Created `candidate_certifications` table with RLS policies
+- Update the named-to-numbered conversion regex to handle dot-notation keys (`candidate.first_name` → `{{1}}`). The existing regex `/\{\{([a-z_]+)\}\}/g` needs to become `/\{\{([a-z_.]+)\}\}/g` to match dots.
 
-### Phase 2: Enrichment Rewrite
-- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
-- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
-- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
-- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
-- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
+### 4. Template display (`WhatsAppTemplateLibrary.tsx`, `WhatsAppIntegrationCard.tsx`)
 
-### Phase 3: UI Updates
-- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
-- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
-- ✅ **Certifications section** with `CandidateCertificationsComponent`
-- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
-- ✅ Enhanced **Education** display: education level badge
-- ✅ Certifications loaded alongside work experience and education
+- When showing template previews with `variable_mapping`, resolve numbered placeholders back to labels using the shared `AVAILABLE_PLACEHOLDERS` list
 
-## Files changed
-- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
-- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
-- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
-- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
-- `src/components/candidates/CandidateCertifications.tsx` — new component
+## Visual Result
+
+Variable chips in the WhatsApp template creator will look identical to the purple pill badges used in email template editors — consistent, recognizable, and using the same design tokens.
+
