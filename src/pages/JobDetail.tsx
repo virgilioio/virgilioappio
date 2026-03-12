@@ -21,7 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { ArrowLeft, Archive, LayoutGrid, List, UserPlus, Sparkles, Mail } from 'lucide-react'
+import { ArrowLeft, Archive, LayoutGrid, List, UserPlus, Sparkles, Mail, ClipboardCheck } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -43,6 +43,7 @@ import { CandidateMergeDialog } from '@/components/candidates/CandidateMergeDial
 import { useJobMatchingCandidates, MatchedCandidate } from '@/hooks/useJobMatchingCandidates'
 import { useJobMatchingCandidatesCount } from '@/hooks/useJobMatchingCandidatesCount'
 import { useRealTimeSkillMatching } from '@/hooks/useRealTimeSkillMatching'
+import { ApplicationReviewSheet } from '@/components/candidates/ApplicationReviewSheet'
 
 export default function JobDetail() {
   const params = useParams<{ id?: string; jobId?: string }>()
@@ -55,6 +56,7 @@ export default function JobDetail() {
   const isRestrictedViewer = (isHiringManagerOnJob || isInterviewerOnJob) && !permissions.isAdmin && !permissions.isWorkspaceOwner && !permissions.isPlatformAdmin
   const isMobile = useIsMobile()
   const [showAddCandidate, setShowAddCandidate] = useState(false)
+  const [showApplicationReview, setShowApplicationReview] = useState(false)
   const [editingCandidate, setEditingCandidate] = useState<any>(null)
   const [activeTab, setActiveTab] = useState('pipeline')
   
@@ -1046,14 +1048,27 @@ export default function JobDetail() {
                         </div>
                         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-between md:justify-end">
                           {!selectionMode && (
-                            <Button
-                              size="sm"
-                              className="gap-sm h-[36px]"
-                              onClick={() => setShowAddCandidate(true)}
-                            >
-                              <UserPlus className="h-4 w-4" />
-                              Add Candidate
-                            </Button>
+                            <>
+                              {pipelineSectionTab === 'application' && applicationCount > 0 && (
+                                <Button
+                                  size="sm"
+                                  variant="virgilio"
+                                  className="gap-sm h-[36px]"
+                                  onClick={() => setShowApplicationReview(true)}
+                                >
+                                  <ClipboardCheck className="h-4 w-4" />
+                                  Review Applications
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                className="gap-sm h-[36px]"
+                                onClick={() => setShowAddCandidate(true)}
+                              >
+                                <UserPlus className="h-4 w-4" />
+                                Add Candidate
+                              </Button>
+                            </>
                           )}
                           {selectionMode && selectedCandidateIds.length > 0 && (
                             <div className="flex items-center gap-2">
@@ -1407,14 +1422,27 @@ export default function JobDetail() {
                           </div>
                           <div className="flex items-center gap-2">
                             {!selectionMode && (
-                              <Button
-                                size="sm"
-                                className="gap-sm h-[36px]"
-                                onClick={() => setShowAddCandidate(true)}
-                              >
-                                <UserPlus className="h-4 w-4" />
-                                Add Candidate
-                              </Button>
+                              <>
+                                {pipelineSectionTab === 'application' && applicationCount > 0 && (
+                                  <Button
+                                    size="sm"
+                                    variant="virgilio"
+                                    className="gap-sm h-[36px]"
+                                    onClick={() => setShowApplicationReview(true)}
+                                  >
+                                    <ClipboardCheck className="h-4 w-4" />
+                                    Review Applications
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
+                                  className="gap-sm h-[36px]"
+                                  onClick={() => setShowAddCandidate(true)}
+                                >
+                                  <UserPlus className="h-4 w-4" />
+                                  Add Candidate
+                                </Button>
+                              </>
                             )}
                             {selectionMode && selectedCandidateIds.length > 0 && (
                               <div className="flex items-center gap-2">
@@ -1787,6 +1815,17 @@ export default function JobDetail() {
           existingCandidate={duplicateInfo?.existing}
           newCandidate={duplicateInfo?.incoming}
           mergedCandidate={duplicateInfo?.merged}
+        />
+
+        {/* Application Review Sheet */}
+        <ApplicationReviewSheet
+          open={showApplicationReview}
+          onOpenChange={setShowApplicationReview}
+          jobId={id!}
+          jobTitle={job?.title || ''}
+          onComplete={() => {
+            setPipelineRefresh((v) => v + 1)
+          }}
         />
       </div>
     </div>
