@@ -154,16 +154,16 @@ export function WhatsAppTemplateCreator({ open, onOpenChange }: WhatsAppTemplate
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) handleReset() }}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Create message template</DialogTitle>
-          <DialogDescription>
+    <Sheet open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) handleReset() }}>
+      <SheetContent className="sm:max-w-lg overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Create message template</SheetTitle>
+          <SheetDescription>
             Design a reusable message template for WhatsApp outreach. After saving, you can submit it for Meta approval.
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-4">
           {/* Template name */}
           <div className="space-y-2">
             <Label>Template name</Label>
@@ -287,7 +287,7 @@ export function WhatsAppTemplateCreator({ open, onOpenChange }: WhatsAppTemplate
           </div>
         </div>
 
-        <DialogFooter className="gap-2">
+        <SheetFooter className="gap-2">
           <Button variant="outline" onClick={() => { onOpenChange(false); handleReset() }}>
             Cancel
           </Button>
@@ -298,8 +298,8 @@ export function WhatsAppTemplateCreator({ open, onOpenChange }: WhatsAppTemplate
             {createTemplate.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             Save draft
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   )
 }
