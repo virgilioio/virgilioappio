@@ -6,6 +6,81 @@ import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/c
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
 const corsHeaders = createSecureCorsHeaders();
 
+// Country name/keyword → phone country code (for inferring when resume lacks +prefix)
+const COUNTRY_PHONE_CODES: Record<string, string> = {
+  'united states': '+1', 'usa': '+1', 'us': '+1', 'canada': '+1',
+  'mexico': '+52', 'méxico': '+52', 'mx': '+52',
+  'united kingdom': '+44', 'uk': '+44', 'england': '+44', 'scotland': '+44',
+  'germany': '+49', 'france': '+33', 'spain': '+34', 'italy': '+39',
+  'netherlands': '+31', 'belgium': '+32', 'switzerland': '+41',
+  'portugal': '+351', 'ireland': '+353', 'sweden': '+46', 'norway': '+47',
+  'denmark': '+45', 'finland': '+358', 'austria': '+43', 'poland': '+48',
+  'czech republic': '+420', 'czechia': '+420',
+  'brazil': '+55', 'argentina': '+54', 'colombia': '+57', 'chile': '+56',
+  'peru': '+51', 'venezuela': '+58', 'ecuador': '+593', 'uruguay': '+598',
+  'india': '+91', 'china': '+86', 'japan': '+81', 'south korea': '+82',
+  'australia': '+61', 'new zealand': '+64',
+  'israel': '+972', 'uae': '+971', 'united arab emirates': '+971',
+  'saudi arabia': '+966', 'turkey': '+90', 'south africa': '+27',
+  'nigeria': '+234', 'egypt': '+20', 'philippines': '+63',
+  'singapore': '+65', 'malaysia': '+60', 'indonesia': '+62',
+  'thailand': '+66', 'vietnam': '+84', 'taiwan': '+886',
+  'russia': '+7', 'ukraine': '+380', 'romania': '+40',
+  'costa rica': '+506', 'panama': '+507', 'guatemala': '+502',
+  'dominican republic': '+1', 'puerto rico': '+1', 'honduras': '+504',
+  'el salvador': '+503', 'nicaragua': '+505', 'bolivia': '+591',
+  'paraguay': '+595',
+};
+
+/**
+ * Sanitize phone to E.164 format (strip non-digit/plus chars).
+ */
+function sanitizePhone(phone: string): string {
+  if (!phone) return '';
+  const cleaned = phone.replace(/[^\d+]/g, '');
+  if (cleaned && !cleaned.startsWith('+')) {
+    return '+' + cleaned;
+  }
+  return cleaned;
+}
+
+/**
+ * Infer country code from a location string and prepend to phone if missing.
+ */
+function inferCountryCode(phone: string, location?: string): string {
+  if (!phone) return '';
+  // Already has country code
+  if (phone.startsWith('+')) return phone;
+  
+  if (location) {
+    const locLower = location.toLowerCase();
+    for (const [keyword, code] of Object.entries(COUNTRY_PHONE_CODES)) {
+      if (locLower.includes(keyword)) {
+        return code + phone;
+      }
+    }
+  }
+  
+  // Default to +1 (US) if no location match
+  return '+1' + phone;
+}
+
+/**
+ * Normalize a parsed phone: sanitize, infer country code if needed.
+ */
+function normalizePhone(phone: string | undefined, location?: string): string | undefined {
+  if (!phone) return undefined;
+  let sanitized = sanitizePhone(phone);
+  if (!sanitized) return undefined;
+  
+  // If no + prefix after sanitization, infer from location
+  if (!sanitized.startsWith('+')) {
+    sanitized = inferCountryCode(sanitized, location);
+  }
+  
+  return sanitized;
+}
+
 type ParseRequest = {
   textContent?: string;
   fileName?: string;
