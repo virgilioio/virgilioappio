@@ -1,108 +1,132 @@
 
 
-# WhatsApp Integration — Detailed Plan
+# WhatsApp Integration — Implementation Plan
 
-## Architecture Overview
+## Approach: Platform-Owned Twilio Account
 
-```text
-Settings (Integrations)
-  └── WhatsApp card → Connect Twilio → Configure sender number
-        │
-        ▼ (once connected)
-Candidate Profile Sheet
-  ├── Overview tab: WhatsApp icon next to each phone number
-  │     └── Click → opens Chat tab + starts conversation
-  └── Right panel tabs: [Chat] [Feed] [Notes] [Emails] ...
-        └── Chat tab: conversation thread + compose field
-              └── Each conversation scoped to candidate + job
+GoGio owns the Twilio account. Each workspace configures their WhatsApp sender number (obtained from Twilio) in settings. All recruiters in the workspace share that number; messages are attributed internally via `sender_id`.
 
-Job Detail (Floating Sidebar)
-  └── New "WhatsApp" icon below Pipeline
-        └── Lists all WhatsApp conversations for that job
+---
 
-Notification Center
-  └── WhatsApp message type alongside email/offer notifications
-```
+## Phase 1: Infrastructure (Database + Edge Function + Twilio Connection)
 
-## Database
+### Connect Twilio
+- Use `standard_connectors--connect` for Twilio connector
+- This provides `TWILIO_API_KEY` and `LOVABLE_API_KEY` as env vars for edge functions
 
-**Table: `whatsapp_messages`**
-- `id`, `tenant_id`, `candidate_id`, `job_id`, `sender_id` (recruiter who sent), `to_phone`, `from_phone`, `body`, `twilio_sid`, `status` (sent/delivered/failed/received), `direction` (outbound/inbound), `created_at`
+### Database Migration
+Two new tables:
+
+**`whatsapp_conversations`** — one per candidate+job pair
+- `id` uuid PK, `tenant_id`, `candidate_id`, `job_id`, `phone_number` (candidate's), `last_message_at`, `last_message_preview`, `unread_count` default 0, `created_at`
+- Unique constraint on `(tenant_id, candidate_id, job_id)`
 - RLS: tenant-scoped via `user_has_tenant_access(tenant_id)`
 
-**Table: `whatsapp_conversations`**
-- `id`, `tenant_id`, `candidate_id`, `job_id`, `phone_number` (candidate's), `last_message_at`, `last_message_preview`, `unread_count`, `created_at`
-- Unique on `(tenant_id, candidate_id, job_id)`
-- Purpose: fast lookups for job-level conversation lists and unread badges
+**`whatsapp_messages`** — individual messages
+- `id` uuid PK, `conversation_id` FK, `tenant_id`, `candidate_id`, `job_id`, `sender_id` (recruiter), `to_phone`, `from_phone`, `body`, `twilio_sid`, `status` (sent/delivered/failed/received), `direction` (outbound/inbound), `created_at`
 - RLS: tenant-scoped
 
-**Row in `workspace_automations`** (existing table)
-- `automation_type = 'whatsapp_config'`
-- `config` JSONB stores: `{ twilio_from_number: "whatsapp:+1...", is_connected: true }`
+### Edge Function: `send-whatsapp`
+- Receives `{ to, body, candidate_id, job_id }`
+- Looks up tenant's WhatsApp config from `workspace_automations` (type `whatsapp_config`) to get `from` number
+- Sends via Twilio gateway: `https://connector-gateway.lovable.dev/twilio/Messages.json` with `whatsapp:` prefix on both To and From
+- Upserts `whatsapp_conversations`, inserts into `whatsapp_messages`
+- Config in `config.toml`: `verify_jwt = false` (validates auth in code)
 
-## Edge Function: `send-whatsapp`
+### WhatsApp Config Storage
+Uses existing `workspace_automations` table with `automation_type = 'whatsapp_config'`:
+```json
+{ "twilio_from_number": "whatsapp:+1...", "is_connected": true }
+```
 
-- Receives: `{ to, body, candidate_id, job_id }`
-- Sends via Twilio gateway (`https://connector-gateway.lovable.dev/twilio/Messages.json`)
-- Prefixes numbers with `whatsapp:` for both `To` and `From`
-- Upserts into `whatsapp_conversations` (updates `last_message_at`, `last_message_preview`)
-- Inserts into `whatsapp_messages`
-- Returns message SID
+---
 
-## UI Changes
+## Phase 2: Settings UI
 
-### 1. Settings — Integrations Tab
-- New `WhatsAppIntegrationCard` component added to `IntegrationsTab.tsx`
-- Shows Twilio connection status, allows configuring the WhatsApp sender number
-- Searchable/findable in the integrations list (not hidden, but not pre-activated)
+### `WhatsAppIntegrationCard` component
+- Added to `IntegrationsTab.tsx` after Google Workspace section
+- Card showing WhatsApp logo, connection status badge
+- Input field for the WhatsApp-enabled Twilio number (with validation for E.164 format)
+- Save button stores config in `workspace_automations`
+- Helper text explaining: "Enter your Twilio WhatsApp-enabled number. Get one from your Twilio console."
 
-### 2. Candidate Profile Sheet — Overview Tab (phone section)
-- Next to each phone number's copy button, add a green WhatsApp icon button (only visible when WhatsApp is configured)
-- Clicking it: switches right panel to the new "Chat" tab and auto-starts/opens the conversation for that candidate+job
+### `useWhatsAppConfig` hook
+- Wraps `useWorkspaceAutomation('whatsapp_config')`
+- Exposes `isConfigured`, `fromNumber`, `save`, `toggle`
 
-### 3. Candidate Profile Sheet — Right Panel "Chat" Tab
-- New tab inserted before "Feed" in the right panel tabs: `[Chat] [Feed] [Notes] [Emails] [Reminders] [Insights]`
-- Only visible when WhatsApp integration is configured
-- Shows conversation thread (messages sorted by `created_at`)
-- Compose area at the bottom with text input + send button
-- Messages displayed as chat bubbles (outbound right-aligned, inbound left-aligned)
+---
 
-### 4. Job Detail — Floating Sidebar
-- New WhatsApp icon button added below "Pipeline Overview" (conditionally, only when WhatsApp is configured)
-- New `whatsapp` tab in `JobDetailFloatingSidebar`
-- Tab content: list of WhatsApp conversations for that job, showing candidate name, last message preview, timestamp, unread count
-- Clicking a conversation opens the candidate profile sheet with Chat tab active
+## Phase 3: Candidate Profile — Chat Tab + WhatsApp Button
 
-### 5. Notification Center
+### WhatsApp button next to phone numbers (Overview tab)
+- In `CandidateProfileSheet.tsx`, next to each phone's Copy button, add a green WhatsApp icon button
+- Only visible when `useWhatsAppConfig().isConfigured` is true
+- Clicking sets `rightActiveTab` to `'chat'` and stores the selected phone number
+
+### New "Chat" tab in right panel
+- Add `'chat'` to `rightActiveTab` type: `'chat' | 'feed' | 'notes' | 'emails' | 'reminders' | 'insights'`
+- Insert before "Feed" in the tabs array (only when WhatsApp is configured)
+- New `WhatsAppChatTab` component:
+  - Fetches messages for the candidate+job conversation via `useWhatsApp` hook
+  - Chat bubble UI (outbound right-aligned, inbound left-aligned)
+  - Compose area at bottom with text input + send button
+  - Auto-scrolls to latest message
+
+### `useWhatsApp` hook
+- `useConversation(candidateId, jobId)` — fetches/creates conversation
+- `useMessages(conversationId)` — fetches messages sorted by created_at
+- `sendMessage(to, body, candidateId, jobId)` — calls `send-whatsapp` edge function
+- `useJobConversations(jobId)` — fetches all conversations for a job
+
+---
+
+## Phase 4: Job Detail — WhatsApp Sidebar Tab
+
+### `JobDetailFloatingSidebar` modification
+- Add WhatsApp icon button below Pipeline (conditionally, when WhatsApp is configured)
+- New tab id: `'whatsapp'`
+
+### `WhatsAppConversationsList` component
+- Lists all WhatsApp conversations for the job
+- Shows: candidate name, last message preview, timestamp, unread count badge
+- Clicking opens candidate profile sheet with Chat tab active
+
+### `JobDetail.tsx` modification
+- Add `TabsContent value="whatsapp"` rendering `WhatsAppConversationsList`
+
+---
+
+## Phase 5: Notification Center
+
+### `usePendingActivities` modification
 - Add `'whatsapp'` to `ActivityType`
-- Query `whatsapp_messages` for inbound messages with `direction = 'inbound'` that are unread
-- Show WhatsApp notifications with a WhatsApp icon, candidate name, message preview, and timestamp
-- Clicking navigates to candidate profile with Chat tab open
+- Query `whatsapp_messages` where `direction = 'inbound'` and conversation has `unread_count > 0`
+- Map to `PendingActivity` with WhatsApp-specific fields
 
-## Files to Create
+### `NotificationCenter` modification
+- Render WhatsApp notifications with green WhatsApp icon
+- Show candidate name, message preview, timestamp
+- Click navigates to candidate profile with `chat` tab active
+
+---
+
+## Files Summary
+
+**Create:**
 - `supabase/functions/send-whatsapp/index.ts`
-- `src/hooks/useWhatsApp.ts` — send message, fetch conversations, fetch messages for a conversation
-- `src/hooks/useWhatsAppConfig.ts` — check if WhatsApp is configured, get config
-- `src/components/candidates/WhatsAppChatTab.tsx` — conversation thread + compose
+- `src/hooks/useWhatsApp.ts`
+- `src/hooks/useWhatsAppConfig.ts`
+- `src/components/candidates/WhatsAppChatTab.tsx`
 - `src/components/settings/WhatsAppIntegrationCard.tsx`
-- `src/components/jobs/WhatsAppConversationsList.tsx` — job-level conversation list
+- `src/components/jobs/WhatsAppConversationsList.tsx`
 
-## Files to Modify
+**Modify:**
+- `supabase/config.toml` — add `[functions.send-whatsapp]`
 - `src/components/settings/IntegrationsTab.tsx` — add WhatsApp card
-- `src/components/candidates/CandidateProfileSheet.tsx` — add WhatsApp button next to phones, add Chat tab to right panel
+- `src/components/candidates/CandidateProfileSheet.tsx` — add Chat tab + WhatsApp button next to phones
 - `src/components/jobs/JobDetailFloatingSidebar.tsx` — add WhatsApp tab
+- `src/pages/JobDetail.tsx` — add WhatsApp TabsContent
 - `src/hooks/usePendingActivities.ts` — add WhatsApp notification type
 - `src/components/layout/NotificationCenter.tsx` — render WhatsApp notifications
-- Migration for `whatsapp_messages` and `whatsapp_conversations` tables
-
-## Implementation Order
-1. Connect Twilio connector to project
-2. Database migration (tables + RLS)
-3. WhatsApp config in settings (integration card)
-4. Edge function for sending messages
-5. `useWhatsApp` and `useWhatsAppConfig` hooks
-6. Chat tab in candidate profile sheet
-7. WhatsApp button next to phone numbers in Overview
-8. Job-level WhatsApp conversations list + floating sidebar tab
-9. Notification center integration
+- `src/types/activity.ts` — add `'whatsapp'` to ActivityType
 
