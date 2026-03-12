@@ -1689,16 +1689,17 @@ const stageHasAutomation = useMemo(() => {
                      <CandidateNameCard
                        email={candidate.email}
                        phone={candidate.phone}
-                        tabs={[
-                          { value: 'feed', label: 'Feed', Icon: Activity },
-                          { value: 'notes', label: 'Notes', Icon: StickyNote },
-                          ...(!isRestrictedViewer ? [{ value: 'emails', label: 'Emails', Icon: Mail }] : []),
-                          ...(!isRestrictedViewer ? [{ value: 'reminders', label: 'Reminders', Icon: Bell }] : []),
-                          ...(!isRestrictedViewer ? [{ value: 'insights', label: 'Insights', Icon: Sparkles }] : []),
-                        ]}
-                        activeTab={rightActiveTab}
-                        onTabChange={(v) => setRightActiveTab(v as 'feed' | 'notes' | 'emails' | 'reminders' | 'insights')}
-                     />
+                         tabs={[
+                           { value: 'chat', label: 'Chat', Icon: MessageSquare },
+                           { value: 'feed', label: 'Feed', Icon: Activity },
+                           { value: 'notes', label: 'Notes', Icon: StickyNote },
+                           ...(!isRestrictedViewer ? [{ value: 'emails', label: 'Emails', Icon: Mail }] : []),
+                           ...(!isRestrictedViewer ? [{ value: 'reminders', label: 'Reminders', Icon: Bell }] : []),
+                           ...(!isRestrictedViewer ? [{ value: 'insights', label: 'Insights', Icon: Sparkles }] : []),
+                         ]}
+                         activeTab={rightActiveTab}
+                         onTabChange={(v) => setRightActiveTab(v as 'chat' | 'feed' | 'notes' | 'emails' | 'reminders' | 'insights')}
+                      />
 
                      {/* Feed Tab */}
                      {rightActiveTab === 'feed' && (
