@@ -230,31 +230,55 @@ export function WhatsAppChatTab({
           <div className="space-y-2">
             {showTemplates ? (
               <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                {approvedTemplates.map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => {
-                      setSelectedTemplate(t)
-                      setShowTemplates(false)
-                    }}
-                    className="w-full text-left p-2.5 rounded-md border border-border hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs font-medium">{t.name}</p>
-                      {!t.tenant_id && (
-                        <Badge variant="secondary" className="text-[9px]">GoGio</Badge>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
-                      {getPreviewText(t)}
-                    </p>
-                  </button>
-                ))}
-                {approvedTemplates.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-3">
-                    No approved templates available. Go to Settings to set up WhatsApp templates.
-                  </p>
-                )}
+                {usableTemplates.map((t) => (
+                   <button
+                     key={t.id}
+                     onClick={() => {
+                       setSelectedTemplate(t)
+                       setShowTemplates(false)
+                     }}
+                     className="w-full text-left p-2.5 rounded-md border border-border hover:bg-accent/50 transition-colors"
+                   >
+                     <div className="flex items-center gap-2">
+                       <p className="text-xs font-medium">{t.name}</p>
+                       {!t.tenant_id && (
+                         <Badge variant="secondary" className="text-[9px]">GoGio</Badge>
+                       )}
+                     </div>
+                     <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                       {getPreviewText(t)}
+                     </p>
+                   </button>
+                 ))}
+                 {localOnlyTemplates.length > 0 && usableTemplates.length > 0 && (
+                   <Separator className="my-1" />
+                 )}
+                 {localOnlyTemplates.map((t) => (
+                   <div
+                     key={t.id}
+                     className="w-full text-left p-2.5 rounded-md border border-dashed border-border opacity-60"
+                   >
+                     <div className="flex items-center gap-2">
+                       <p className="text-xs font-medium">{t.name}</p>
+                       <Badge variant="outline" className="text-[9px] border-muted-foreground/30 text-muted-foreground">
+                         Not submitted to Meta
+                       </Badge>
+                     </div>
+                     <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                       {getPreviewText(t)}
+                     </p>
+                   </div>
+                 ))}
+                 {usableTemplates.length === 0 && localOnlyTemplates.length === 0 && (
+                   <p className="text-xs text-muted-foreground text-center py-3">
+                     No approved templates available. Go to Settings to set up WhatsApp templates.
+                   </p>
+                 )}
+                 {usableTemplates.length === 0 && localOnlyTemplates.length > 0 && (
+                   <p className="text-xs text-yellow-600 text-center py-2">
+                     Templates above haven't been submitted to Meta yet. They can't be used for first contact until approved.
+                   </p>
+                 )}
               </div>
             ) : (
               <Button
