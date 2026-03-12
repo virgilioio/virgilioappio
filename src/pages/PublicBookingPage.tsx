@@ -211,7 +211,7 @@ export default function PublicBookingPage() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       navigate(`/schedule/${shortCode}/confirmed/${data.booking_id}`, {
         state: {
           booking: {
@@ -219,8 +219,8 @@ export default function PublicBookingPage() {
             scheduled_start: selectedSlot!.start,
             scheduled_end: selectedSlot!.end,
             duration_minutes: config!.duration_minutes,
-            candidate_email: (document.querySelector('input[name="candidate_email"]') as HTMLInputElement)?.value || '',
-            candidate_name: (document.querySelector('input[name="candidate_name"]') as HTMLInputElement)?.value || '',
+            candidate_email: variables.candidate_email,
+            candidate_name: variables.candidate_name,
             candidate_timezone: candidateTimezone,
             meeting_location: data.google_meet_link || config!.meeting_location || '',
           },
