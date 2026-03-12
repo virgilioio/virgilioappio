@@ -54,7 +54,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
   {
     id: 'chrome-extension',
     name: 'GoGio - LinkedIn Companion',
-    description: 'Add candidates directly from LinkedIn with one click using our browser extension.',
+    description: 'Add candidates from LinkedIn into your GoGio ATS in seconds.',
     category: 'sourcing',
     logo: <img src={gogioAvatar} alt="GoGio" className="h-6 w-6 rounded-full" />,
     useIsConnected: useChromeConnected,
