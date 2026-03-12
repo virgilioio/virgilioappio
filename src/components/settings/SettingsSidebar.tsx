@@ -30,7 +30,7 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
     ['platform-dashboard', 'platform-settings', 'platform-job-settings', 'platform-customers', 'platform-saas-customers'].includes(currentTab)
   )
   const [workspaceOpen, setWorkspaceOpen] = useState(
-    ['workspace-job-settings', 'organization', 'members'].includes(currentTab)
+    ['workspace-job-settings', 'organization', 'members', 'integrations'].includes(currentTab)
   )
 
   const isWorkspaceOwnerOfSaaSOrg = () => {
