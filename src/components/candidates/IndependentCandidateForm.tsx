@@ -253,7 +253,7 @@ export function IndependentCandidateForm({
                   setContactEmails([{ type: 'work', email: parsed.email, status: null }])
                 }
                 if (parsed.phone) {
-                  setContactPhones([{ type: 'mobile', number: parsed.phone, raw_number: null }])
+                  setContactPhones([{ type: 'mobile', number: sanitizeToE164(parsed.phone), raw_number: null }])
                 }
                 
                 if (parsed.linkedinUrl) {

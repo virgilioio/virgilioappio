@@ -218,7 +218,10 @@ export function useResumeParsing() {
           update.contact_emails = uniquePush<string>(existing.contact_emails, parsed.email);
         }
         if (parsed.phone) {
-          update.contact_phones = uniquePush<string>(existing.contact_phones, parsed.phone);
+          const sanitizedPhone = sanitizeToE164(parsed.phone);
+          if (sanitizedPhone) {
+            update.contact_phones = uniquePush<string>(existing.contact_phones, sanitizedPhone);
+          }
         }
         if (parsed.linkedinUrl && !existing.linkedin_url) {
           update.linkedin_url = parsed.linkedinUrl;

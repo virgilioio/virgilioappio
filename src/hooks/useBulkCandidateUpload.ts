@@ -120,7 +120,7 @@ export function useBulkCandidateUpload() {
       const candidateData = {
         candidate_name: parsed.name || file.name.replace(/\.[^/.]+$/, ''),
         email: parsed.email,
-        phone: parsed.phone,
+        phone: parsed.phone ? sanitizeToE164(parsed.phone) : undefined,
         linkedin_url: parsed.linkedinUrl,
         // No profile_summary or skills - will be added by background enrichment
         location_city: locationParts[0],

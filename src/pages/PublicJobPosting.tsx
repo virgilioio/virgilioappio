@@ -268,7 +268,7 @@ export default function PublicJobPosting() {
         ...prev,
         candidate_name: parsed.name || prev.candidate_name,
         email: parsed.email || prev.email,
-        phone: parsed.phone || prev.phone,
+        phone: (parsed.phone ? sanitizeToE164(parsed.phone) : '') || prev.phone,
         linkedin_url: parsed.linkedinUrl || prev.linkedin_url,
         profile_summary: profileSummary
       }

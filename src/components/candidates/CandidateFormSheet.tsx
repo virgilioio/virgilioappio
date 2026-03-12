@@ -636,7 +636,7 @@ export function CandidateFormSheet({
                   // Apply parsed data to form
                   if (parsed.name) form.setValue('candidate_name', parsed.name)
                   if (parsed.email) form.setValue('email', parsed.email)
-                  if (parsed.phone) form.setValue('phone', parsed.phone)
+                  if (parsed.phone) form.setValue('phone', sanitizeToE164(parsed.phone))
                   
                   // Add LinkedIn URL (with normalization)
                   if (parsed.linkedinUrl) {

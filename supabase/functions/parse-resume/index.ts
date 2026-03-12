@@ -400,6 +400,9 @@ Return ONLY JSON. Do not include markdown fences or commentary.`;
   if (parsed.linkedinUrl) parsed.linkedinUrl = parsed.linkedinUrl.trim();
   if (parsed.location) parsed.location = parsed.location.trim();
   if (parsed.profileSummary) parsed.profileSummary = parsed.profileSummary.trim();
+  
+  // Normalize phone to E.164
+  parsed.phone = normalizePhone(parsed.phone, parsed.location);
 
   return parsed;
 }
