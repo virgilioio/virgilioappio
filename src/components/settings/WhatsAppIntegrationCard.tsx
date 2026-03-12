@@ -38,6 +38,7 @@ export function WhatsAppIntegrationCard() {
 
   const [showTemplateForm, setShowTemplateForm] = useState(false)
   const [newTemplate, setNewTemplate] = useState({ name: '', body_template: '', category: 'UTILITY' })
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [manualNumber, setManualNumber] = useState('')
   const [showManualSetup, setShowManualSetup] = useState(false)
 
