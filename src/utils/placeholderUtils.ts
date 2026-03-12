@@ -60,4 +60,8 @@ export const AVAILABLE_PLACEHOLDERS = [
   { value: 'sender.linkedin', label: 'Your LinkedIn URL', category: 'Sender' },
   { value: 'sender.booking_link', label: 'Your Booking Link', category: 'Sender' },
   { value: 'stage.booking_link', label: 'Stage Interviewer Booking Link', category: 'Stage' },
+  { value: 'interview.date', label: 'Interview Date', category: 'Interview' },
+  { value: 'interview.time', label: 'Interview Time', category: 'Interview' },
+  { value: 'offer.details', label: 'Offer Details', category: 'Offer' },
+  { value: 'portal.link', label: 'Portal Link', category: 'Links' },
 ];
