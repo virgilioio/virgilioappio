@@ -1406,7 +1406,7 @@ const stageHasAutomation = useMemo(() => {
                                                 href={`tel:${candidate.phone}`}
                                                 className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all"
                                               >
-                                                {candidate.phone}
+                                                {formatE164Display(candidate.phone)}
                                               </a>
                                             ) : (
                                               <span className="text-sm text-text-tertiary italic">

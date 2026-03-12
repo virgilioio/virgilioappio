@@ -619,7 +619,7 @@ export function IndependentCandidateProfileSheet({
                                   <Phone className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
                                   {candidate?.phone ? (
                                     <a href={`tel:${candidate.phone}`} className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all">
-                                      {candidate.phone}
+                                      {formatE164Display(candidate.phone)}
                                     </a>
                                   ) : (
                                     <span className="text-sm text-text-tertiary italic">Phone not available</span>
