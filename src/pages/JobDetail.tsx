@@ -43,6 +43,7 @@ import { CandidateMergeDialog } from '@/components/candidates/CandidateMergeDial
 import { useJobMatchingCandidates, MatchedCandidate } from '@/hooks/useJobMatchingCandidates'
 import { useJobMatchingCandidatesCount } from '@/hooks/useJobMatchingCandidatesCount'
 import { useRealTimeSkillMatching } from '@/hooks/useRealTimeSkillMatching'
+import { ApplicationReviewSheet } from '@/components/candidates/ApplicationReviewSheet'
 
 export default function JobDetail() {
   const params = useParams<{ id?: string; jobId?: string }>()
