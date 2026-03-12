@@ -673,7 +673,7 @@ serve(async (req) => {
 
     // Send notification email to interviewer
     try {
-      // Import email template (already imported above)
+      const { createEmailTemplate, formatEmailList } = await import('../_shared/emailTemplate.ts');
       const formattedDateInterviewer = new Date(scheduled_start).toLocaleString('en-US', { 
         weekday: 'long', 
         year: 'numeric', 
