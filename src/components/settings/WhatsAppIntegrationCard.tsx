@@ -291,15 +291,43 @@ export function WhatsAppIntegrationCard() {
   )
 }
 
-function TemplateCard({ template, isGlobal }: { template: any; isGlobal?: boolean }) {
-  const hasContentSid = !!template.twilio_content_sid
-
-  const statusColors: Record<string, string> = {
-    approved: 'border-[#25D366]/30 text-[#25D366]',
-    pending: 'border-yellow-500/30 text-yellow-600',
-    rejected: 'border-destructive/30 text-destructive',
-    draft: 'border-muted-foreground/30 text-muted-foreground',
+function resolveTemplatePreview(bodyTemplate: string, variableMapping: Record<string, string> | null) {
+  if (!variableMapping) return bodyTemplate
+  const labelMap: Record<string, string> = {
+    candidate_name: 'Candidate Name',
+    recruiter_name: 'Recruiter Name',
+    company_name: 'Company Name',
+    job_title: 'Job Title',
+    interview_date: 'Interview Date',
+    interview_time: 'Interview Time',
+    offer_details: 'Offer Details',
+    portal_link: 'Portal Link',
   }
+  let text = bodyTemplate
+  Object.entries(variableMapping).forEach(([num, field]) => {
+    const label = labelMap[field] || field
+    text = text.replace(new RegExp(`\\{\\{${num}\\}\\}`, 'g'), `[${label}]`)
+  })
+  return text
+}
+
+function deriveDisplayStatus(template: any): { label: string; className: string } {
+  const hasContentSid = !!template.twilio_content_sid
+  if (!hasContentSid) {
+    return { label: 'Not submitted', className: 'border-muted-foreground/30 text-muted-foreground' }
+  }
+  if (template.approval_status === 'approved') {
+    return { label: 'Approved', className: 'border-[#25D366]/30 text-[#25D366]' }
+  }
+  if (template.approval_status === 'rejected') {
+    return { label: 'Rejected', className: 'border-destructive/30 text-destructive' }
+  }
+  return { label: 'Pending review', className: 'border-yellow-500/30 text-yellow-600' }
+}
+
+function TemplateCard({ template, isGlobal }: { template: any; isGlobal?: boolean }) {
+  const status = deriveDisplayStatus(template)
+  const previewText = resolveTemplatePreview(template.body_template, template.variable_mapping)
 
   return (
     <div className="p-3 rounded-lg border border-border bg-card">
@@ -310,19 +338,14 @@ function TemplateCard({ template, isGlobal }: { template: any; isGlobal?: boolea
             {isGlobal && (
               <Badge variant="secondary" className="text-[10px] shrink-0">GoGio</Badge>
             )}
-            {!hasContentSid && (
-              <Badge variant="outline" className="text-[10px] shrink-0 border-muted-foreground/30 text-muted-foreground">
-                Local only
-              </Badge>
-            )}
           </div>
-          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{template.body_template}</p>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{previewText}</p>
         </div>
         <Badge
           variant="outline"
-          className={`text-[10px] shrink-0 capitalize ${statusColors[template.approval_status] || ''}`}
+          className={`text-[10px] shrink-0 ${status.className}`}
         >
-          {template.approval_status}
+          {status.label}
         </Badge>
       </div>
     </div>
