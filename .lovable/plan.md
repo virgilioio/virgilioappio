@@ -1,47 +1,89 @@
+# System Roles Migration — Completed Phases 1-5
 
+## Architecture Change
+- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
+- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-# Booking Flow Bug Investigation
+## Completed
 
-## Issues Found
+### Phase 1 — Database
+- ✅ Created `system_role` enum (`admin`, `member`)
+- ✅ Added `system_role` column to `members` table
+- ✅ Migrated data: `admin` → `admin`, all others → `member`
+- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
+- ✅ Updated `check_tenant_member_role` to use `system_role`
+- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
+- ✅ Updated `audit_member_role_change` trigger
 
-### Issue 1: Confirmation page fails for unauthenticated candidates (PRIMARY)
-The `BookingConfirmed` page (`src/pages/BookingConfirmed.tsx`) queries `scheduled_bookings` directly via the Supabase client. Candidates are **not authenticated**, so all RLS SELECT policies (which require `auth.uid()`) reject the query. The candidate sees **"Booking not found"** after successfully booking.
+### Phase 2 — Frontend Permissions
+- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
+- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
+- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
+- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
 
-**Fix:** Add an RLS policy allowing anonymous/public SELECT on `scheduled_bookings` scoped by booking ID. Alternatively (and better), return the booking details from the `create-booking` edge function response and pass them via route state, or create a small edge function to fetch a booking by ID publicly (with limited fields).
+### Phase 3 — UI Updates
+- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
+- ✅ Updated `Dashboard` — sourcing panel for admin+ only
+- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
+- ✅ Updated `BillingGuard` — members (non-admin) never blocked
+- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
+- ✅ Updated `Find` page RoleGate
+- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
 
-The cleanest approach: add a public SELECT policy that allows reading a booking by its `id` only (the candidate already has the ID from the redirect URL). This is safe because booking IDs are UUIDs and not guessable.
+### Phase 4 — Runtime Hotfixes
+- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
+- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
+- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
+- ✅ Updated `validate_invite_token` — returns `system_role`
+- ✅ Updated `accept_invitation` — uses `system_role`
 
-**Migration:**
-```sql
-CREATE POLICY "Public can view booking by id"
-ON public.scheduled_bookings
-FOR SELECT
-TO anon, authenticated
-USING (true);
-```
+### Phase 5 — Complete Cleanup
+- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
+- ✅ Updated `admin_manage_member` — updates `system_role` column
+- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
+- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
+- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
+- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
+- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
+- ✅ Updated `diagnose_user_auth` — reports `system_role`
+- ✅ Updated `audit_platform_admin_access` — returns `system_role`
+- ✅ Updated `debug_user_permissions` — returns `system_role`
+- ✅ Renamed `invitations.member_role` → `invitations.system_role`
+- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
 
-Wait -- that's too broad. Better: pass booking data via navigation state from the create-booking mutation success handler, and only show the data from state (no DB query needed for the confirmation page). If state is missing (direct URL visit), show a "Booking confirmed" message without details.
+## Phase 6 — Future (Optional)
+- Drop `member_role` column from `members` table (already dropped)
+- Drop old `member_role` enum type
+- Update `MemberInviteSheet` role picker to only offer Admin/Member
 
-**Recommended approach:** Modify `BookingConfirmed.tsx` to accept booking data from React Router navigation state (passed from `PublicBookingPage` on success). Remove the direct Supabase query. For direct URL visits, show a generic confirmation. This avoids any RLS changes.
+# Deep Resume Parsing + Data Standardization — Completed
 
-### Issue 2: Interviewer notification email fails (SECONDARY)
-In `create-booking/index.ts`, the interviewer email block (line 674) uses `formatEmailList` and `createEmailTemplate` but doesn't import them. The import at line 609 is scoped inside the candidate email `try` block. The interviewer never gets their notification email.
+## What was implemented
 
-**Fix:** Add `const { createEmailTemplate, formatEmailList } = await import('../_shared/emailTemplate.ts');` at the top of the interviewer email `try` block (around line 675).
+### Phase 1: Schema Expansion
+- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
+- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
+- ✅ Added to `candidate_education`: `education_level`
+- ✅ Created `candidate_certifications` table with RLS policies
 
-## Implementation Plan
+### Phase 2: Enrichment Rewrite
+- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
+- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
+- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
+- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
+- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
 
-### 1. Fix `create-booking/index.ts` -- add missing import in interviewer email block
-- Add the import statement inside the interviewer email try block (line 675)
-- Redeploy the edge function
+### Phase 3: UI Updates
+- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
+- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
+- ✅ **Certifications section** with `CandidateCertificationsComponent`
+- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
+- ✅ Enhanced **Education** display: education level badge
+- ✅ Certifications loaded alongside work experience and education
 
-### 2. Fix `BookingConfirmed.tsx` -- pass data via route state instead of querying DB
-- In `PublicBookingPage.tsx`, change `onSuccess` to use `navigate()` with state containing the booking response data + config/profile info
-- In `BookingConfirmed.tsx`, read from `useLocation().state` instead of querying Supabase
-- Keep a fallback generic "Booking Confirmed" message for direct URL visits
-
-### Files to modify
-- `supabase/functions/create-booking/index.ts` -- add missing email template import
-- `src/pages/PublicBookingPage.tsx` -- pass booking data via navigate state
-- `src/pages/BookingConfirmed.tsx` -- read from route state, remove Supabase query
-
+## Files changed
+- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
+- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
+- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
+- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
+- `src/components/candidates/CandidateCertifications.tsx` — new component

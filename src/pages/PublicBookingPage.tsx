@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { GoGioLogo } from '@/components/GoGioLogo';
@@ -43,6 +43,7 @@ const COMMON_TIMEZONES = [
 
 export default function PublicBookingPage() {
   const { shortCode } = useParams<{ shortCode: string }>();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [candidateTimezone, setCandidateTimezone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -210,8 +211,28 @@ export default function PublicBookingPage() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
-      window.location.href = `/schedule/${shortCode}/confirmed/${data.booking_id}`;
+    onSuccess: (data, variables) => {
+      navigate(`/schedule/${shortCode}/confirmed/${data.booking_id}`, {
+        state: {
+          booking: {
+            id: data.booking_id,
+            scheduled_start: selectedSlot!.start,
+            scheduled_end: selectedSlot!.end,
+            duration_minutes: config!.duration_minutes,
+            candidate_email: variables.candidate_email,
+            candidate_name: variables.candidate_name,
+            candidate_timezone: candidateTimezone,
+            meeting_location: data.google_meet_link || config!.meeting_location || '',
+          },
+          config: {
+            display_name: config!.display_name,
+            description: config!.description,
+          },
+          interviewerName: config!.profiles
+            ? `${config!.profiles.first_name} ${config!.profiles.last_name}`
+            : config!.display_name,
+        },
+      });
     },
     onError: (error: any) => {
       toast({
