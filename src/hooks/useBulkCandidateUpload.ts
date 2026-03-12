@@ -6,6 +6,7 @@ import { toast } from './use-toast'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { triggerBackgroundEnrichment } from './useCandidateEnrichment'
+import { sanitizeToE164 } from '@/utils/phoneUtils'
 
 export interface BulkUploadOptions {
   autoGenerateSkills: boolean
