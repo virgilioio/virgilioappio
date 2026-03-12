@@ -5451,6 +5451,59 @@ export type Database = {
           },
         ]
       }
+      whatsapp_templates: {
+        Row: {
+          approval_status: string
+          body_template: string
+          category: string
+          created_at: string
+          created_by: string | null
+          id: string
+          language: string
+          name: string
+          tenant_id: string | null
+          twilio_content_sid: string | null
+          updated_at: string
+          variable_mapping: Json | null
+        }
+        Insert: {
+          approval_status?: string
+          body_template: string
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          language?: string
+          name: string
+          tenant_id?: string | null
+          twilio_content_sid?: string | null
+          updated_at?: string
+          variable_mapping?: Json | null
+        }
+        Update: {
+          approval_status?: string
+          body_template?: string
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          language?: string
+          name?: string
+          tenant_id?: string | null
+          twilio_content_sid?: string | null
+          updated_at?: string
+          variable_mapping?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspace_automations: {
         Row: {
           automation_type: string
