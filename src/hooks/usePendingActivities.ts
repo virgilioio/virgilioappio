@@ -23,6 +23,7 @@ export interface PendingActivity {
   interviewerId?: string;
   interviewerName?: string;
   isOwnTask?: boolean;
+  whatsappMessagePreview?: string;
 }
 
 export function usePendingActivities() {
