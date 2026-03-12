@@ -21,6 +21,7 @@ import { ContactPhonesInput, ContactPhone } from './ContactPhonesInput'
 import { parseContactEntry } from '@/utils/parseContactEntry'
 import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment'
 import { BackgroundEnrichmentBanner } from './BackgroundEnrichmentBanner'
+import { sanitizeToE164 } from '@/utils/phoneUtils'
 
 const candidateSchema = z.object({
   candidate_name: z.string().min(1, 'Name is required'),
@@ -253,7 +254,7 @@ export function IndependentCandidateForm({
                   setContactEmails([{ type: 'work', email: parsed.email, status: null }])
                 }
                 if (parsed.phone) {
-                  setContactPhones([{ type: 'mobile', number: parsed.phone, raw_number: null }])
+                  setContactPhones([{ type: 'mobile', number: sanitizeToE164(parsed.phone), raw_number: null }])
                 }
                 
                 if (parsed.linkedinUrl) {

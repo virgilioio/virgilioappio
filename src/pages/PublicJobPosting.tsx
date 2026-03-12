@@ -28,6 +28,7 @@ import { CoreFieldsRenderer } from '@/components/forms/CoreFieldsRenderer'
 import { ApplicationFieldsRenderer } from '@/components/forms/ApplicationFieldsRenderer'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
+import { sanitizeToE164 } from '@/utils/phoneUtils'
 
 function getViolationToast(violation: { type?: string; message?: string; cooldown_until?: string }) {
   const cooldownDate = violation.cooldown_until ? new Date(violation.cooldown_until) : null
@@ -268,7 +269,7 @@ export default function PublicJobPosting() {
         ...prev,
         candidate_name: parsed.name || prev.candidate_name,
         email: parsed.email || prev.email,
-        phone: parsed.phone || prev.phone,
+        phone: (parsed.phone ? sanitizeToE164(parsed.phone) : '') || prev.phone,
         linkedin_url: parsed.linkedinUrl || prev.linkedin_url,
         profile_summary: profileSummary
       }

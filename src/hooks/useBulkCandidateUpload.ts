@@ -6,6 +6,7 @@ import { toast } from './use-toast'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { triggerBackgroundEnrichment } from './useCandidateEnrichment'
+import { sanitizeToE164 } from '@/utils/phoneUtils'
 
 export interface BulkUploadOptions {
   autoGenerateSkills: boolean
@@ -119,7 +120,7 @@ export function useBulkCandidateUpload() {
       const candidateData = {
         candidate_name: parsed.name || file.name.replace(/\.[^/.]+$/, ''),
         email: parsed.email,
-        phone: parsed.phone,
+        phone: parsed.phone ? sanitizeToE164(parsed.phone) : undefined,
         linkedin_url: parsed.linkedinUrl,
         // No profile_summary or skills - will be added by background enrichment
         location_city: locationParts[0],
