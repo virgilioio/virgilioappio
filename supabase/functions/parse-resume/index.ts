@@ -281,7 +281,7 @@ CRITICAL: Extract ALL available fields. Do not omit fields even if confidence is
 
 - name: the candidate's full name if confidently found; otherwise omit.
 - email: a primary contact email if present.
-- phone: a primary phone in international format if possible.
+- phone: a primary phone in E.164 format with country code, no spaces or dashes (e.g., +5213332555660). Always include country code.
 - linkedinUrl: IMPORTANT - Full LinkedIn profile URL if present anywhere in the resume (e.g., https://linkedin.com/in/username). Check headers, contact sections, and links carefully.
 - location: IMPORTANT - Current location formatted as "City, State/Province, Country" (e.g., "Mexico City, CDMX, Mexico" or "San Francisco, CA, United States"). Extract from any location field in the resume.
 - profileSummary: A comprehensive, detailed professional profile in Spanish (aim for 200-300 words).
