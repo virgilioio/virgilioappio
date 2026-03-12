@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
         }
 
         // Convert named placeholders like {{candidate_name}} → {{1}} and build variable_mapping
-        const namedVarRegex = /\{\{([a-z_]+)\}\}/g;
+        const namedVarRegex = /\{\{([a-z_.]+)\}\}/g;
         const foundVars: string[] = [];
         let match;
         const tempBody = body_template;
