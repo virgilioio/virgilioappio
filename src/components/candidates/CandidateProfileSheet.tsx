@@ -1367,7 +1367,7 @@ const stageHasAutomation = useMemo(() => {
                                                     href={`tel:${phoneValue}`}
                                                     className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all"
                                                   >
-                                                    {phoneValue}
+                                                    {formatE164Display(phoneValue)}
                                                   </a>
                                                   <span className="text-xs text-text-tertiary capitalize">{phoneType}</span>
                                                 </div>
