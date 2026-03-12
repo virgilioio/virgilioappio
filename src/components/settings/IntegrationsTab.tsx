@@ -54,7 +54,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
   {
     id: 'chrome-extension',
     name: 'GoGio - LinkedIn Companion',
-    description: 'Add candidates from LinkedIn into your GoGio ATS in seconds.',
+    description: 'Add candidates directly from LinkedIn with one click using our browser extension.',
     category: 'sourcing',
     logo: <img src={gogioAvatar} alt="GoGio" className="h-6 w-6 rounded-full" />,
     useIsConnected: useChromeConnected,
@@ -164,30 +164,6 @@ export function IntegrationsTab() {
         title="Integrations"
         subtitle="Connect external services to enhance your workflow"
       />
-
-      {/* Essential Integrations Banner */}
-      <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 via-primary/10 to-accent/5 p-5">
-        <div className="mb-4">
-          <h3 className="text-sm font-semibold font-poppins text-foreground">Essential Integrations</h3>
-          <p className="text-xs text-muted-foreground font-poppins mt-0.5">Core tools to power your recruiting workflow</p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          {INTEGRATIONS.map((entry) => (
-            <button
-              key={entry.id}
-              onClick={() => setActiveId(activeId === entry.id ? null : entry.id)}
-              className={`inline-flex items-center gap-2.5 rounded-lg border px-4 py-2.5 text-sm font-medium font-poppins transition-all hover:shadow-sm ${
-                activeId === entry.id
-                  ? 'border-primary bg-primary/10 text-primary shadow-sm'
-                  : 'border-border bg-background text-foreground hover:border-primary/40'
-              }`}
-            >
-              <span className="flex-shrink-0">{entry.logo}</span>
-              {entry.name}
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
