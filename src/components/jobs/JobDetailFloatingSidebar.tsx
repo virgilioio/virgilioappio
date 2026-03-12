@@ -19,7 +19,7 @@ export function JobDetailFloatingSidebar({
   isRestrictedViewer = false,
   className 
 }: JobDetailFloatingSidebarProps) {
-  const restrictedTabIds = ['all-candidates', 'job-setup']
+  const restrictedTabIds = ['all-candidates', 'job-setup', 'whatsapp']
   const allTabs = [
     {
       id: 'candidates',
