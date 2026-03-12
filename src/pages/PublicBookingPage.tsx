@@ -43,6 +43,7 @@ const COMMON_TIMEZONES = [
 
 export default function PublicBookingPage() {
   const { shortCode } = useParams<{ shortCode: string }>();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [candidateTimezone, setCandidateTimezone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone
