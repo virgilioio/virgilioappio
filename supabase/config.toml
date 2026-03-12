@@ -190,3 +190,6 @@ verify_jwt = true
 
 [functions.batch-re-enrich]
 verify_jwt = false
+
+[functions.send-whatsapp]
+verify_jwt = false
