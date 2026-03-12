@@ -1,51 +1,89 @@
+# System Roles Migration — Completed Phases 1-5
 
+## Architecture Change
+- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
+- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-# Fix WhatsApp Template Honesty and Usability
+## Completed
 
-## Problem 1: Templates falsely marked "approved"
+### Phase 1 — Database
+- ✅ Created `system_role` enum (`admin`, `member`)
+- ✅ Added `system_role` column to `members` table
+- ✅ Migrated data: `admin` → `admin`, all others → `member`
+- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
+- ✅ Updated `check_tenant_member_role` to use `system_role`
+- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
+- ✅ Updated `audit_member_role_change` trigger
 
-The 5 GoGio seed templates have `approval_status: 'approved'` in the DB but no `twilio_content_sid` — they were never submitted to Meta. Settings shows them with a green "approved" badge, which is misleading.
+### Phase 2 — Frontend Permissions
+- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
+- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
+- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
+- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
 
-### Fix
+### Phase 3 — UI Updates
+- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
+- ✅ Updated `Dashboard` — sourcing panel for admin+ only
+- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
+- ✅ Updated `BillingGuard` — members (non-admin) never blocked
+- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
+- ✅ Updated `Find` page RoleGate
+- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
 
-**Settings card (`WhatsAppIntegrationCard.tsx`):**
-- In `TemplateCard`, derive the displayed status from actual state: if `twilio_content_sid` is null, show "Not submitted" regardless of `approval_status` in DB.
-- Only show "Approved" badge when `twilio_content_sid` is present.
-- Add a status mapping: no SID → "Not submitted" (gray), SID + approved → "Approved" (green), pending → "Pending review" (yellow).
+### Phase 4 — Runtime Hotfixes
+- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
+- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
+- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
+- ✅ Updated `validate_invite_token` — returns `system_role`
+- ✅ Updated `accept_invitation` — uses `system_role`
 
-**DB cleanup (optional):** Update the 5 seed templates to `approval_status: 'draft'` since they haven't been submitted. But the UI fix above is the primary safeguard.
+### Phase 5 — Complete Cleanup
+- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
+- ✅ Updated `admin_manage_member` — updates `system_role` column
+- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
+- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
+- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
+- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
+- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
+- ✅ Updated `diagnose_user_auth` — reports `system_role`
+- ✅ Updated `audit_platform_admin_access` — returns `system_role`
+- ✅ Updated `debug_user_permissions` — returns `system_role`
+- ✅ Renamed `invitations.member_role` → `invitations.system_role`
+- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
 
-## Problem 2: Users don't understand `{{1}}`, `{{2}}`
+## Phase 6 — Future (Optional)
+- Drop `member_role` column from `members` table (already dropped)
+- Drop old `member_role` enum type
+- Update `MemberInviteSheet` role picker to only offer Admin/Member
 
-The `variable_mapping` data already exists (e.g., `{1: "candidate_name", 2: "recruiter_name"}`). We just need to surface it.
+# Deep Resume Parsing + Data Standardization — Completed
 
-### Fix for custom template creation (`WhatsAppIntegrationCard.tsx`)
+## What was implemented
 
-Replace the cryptic `{{1}}` instructions with a **named placeholder system**:
-- Show a dropdown or chip selector with predefined variable names: "Candidate Name", "Recruiter Name", "Company Name", "Job Title", "Interview Date".
-- When user clicks a variable chip, insert `{{candidate_name}}` (human-readable) into the textarea at cursor position.
-- On save, auto-convert `{{candidate_name}}` → `{{1}}` and build the `variable_mapping` automatically.
-- Update the help text from "Use {{1}}, {{2}}..." to "Click a variable below to insert it into your message."
+### Phase 1: Schema Expansion
+- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
+- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
+- ✅ Added to `candidate_education`: `education_level`
+- ✅ Created `candidate_certifications` table with RLS policies
 
-### Fix for template display everywhere
+### Phase 2: Enrichment Rewrite
+- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
+- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
+- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
+- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
+- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
 
-- In `TemplateCard` (settings) and chat template picker, show the resolved preview using `variable_mapping` labels instead of raw `{{1}}`.
-- E.g., instead of `"Hi {{1}}, this is {{2}} from {{3}}"`, show `"Hi [Candidate Name], this is [Recruiter Name] from [Company Name]"`.
+### Phase 3: UI Updates
+- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
+- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
+- ✅ **Certifications section** with `CandidateCertificationsComponent`
+- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
+- ✅ Enhanced **Education** display: education level badge
+- ✅ Certifications loaded alongside work experience and education
 
-## Files to change
-
-1. **`src/components/settings/WhatsAppIntegrationCard.tsx`**
-   - `TemplateCard`: derive display status from `twilio_content_sid` presence
-   - Template creation dialog: replace `{{1}}` instructions with named variable chips and auto-mapping
-
-2. **`src/components/candidates/WhatsAppChatTab.tsx`**
-   - `getPreviewText` already resolves variables for the chat preview — no change needed there
-   - Template list items: already show resolved preview — confirm no change needed
-
-3. **`supabase/functions/manage-whatsapp-templates/index.ts`**
-   - On `create`: accept `variable_mapping` built from named placeholders, convert `{{candidate_name}}` → `{{1}}` in `body_template` server-side
-
-## Summary
-
-Two targeted fixes: (1) honest status badges derived from actual Twilio submission state, (2) human-readable variable insertion replacing cryptic numbered placeholders.
-
+## Files changed
+- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
+- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
+- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
+- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
+- `src/components/candidates/CandidateCertifications.tsx` — new component

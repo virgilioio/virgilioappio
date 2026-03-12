@@ -86,28 +86,44 @@ Deno.serve(async (req) => {
           );
         }
 
+        // Convert named placeholders like {{candidate_name}} → {{1}} and build variable_mapping
+        const namedVarRegex = /\{\{([a-z_]+)\}\}/g;
+        const foundVars: string[] = [];
+        let match;
+        const tempBody = body_template;
+        while ((match = namedVarRegex.exec(tempBody)) !== null) {
+          const varName = match[1];
+          // Skip if it's already a number (legacy format)
+          if (/^\d+$/.test(varName)) continue;
+          if (!foundVars.includes(varName)) {
+            foundVars.push(varName);
+          }
+        }
+
+        let convertedBody = body_template;
+        const derivedMapping: Record<string, string> = {};
+
+        if (foundVars.length > 0) {
+          foundVars.forEach((varName, index) => {
+            const num = String(index + 1);
+            convertedBody = convertedBody.replace(
+              new RegExp(`\\{\\{${varName}\\}\\}`, 'g'),
+              `{{${num}}}`
+            );
+            derivedMapping[num] = varName;
+          });
+        }
+
+        // Use provided variable_mapping if no named vars were found, otherwise use derived
+        const finalMapping = foundVars.length > 0 ? derivedMapping : (variable_mapping || {});
+
         const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
         if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
         const TWILIO_API_KEY = Deno.env.get("TWILIO_API_KEY");
         if (!TWILIO_API_KEY) throw new Error("TWILIO_API_KEY is not configured");
 
-        // Submit template via Twilio Content API
-        // Note: Content API uses a different base path (/v1/Content) 
-        // The gateway for Twilio prepends /2010-04-01/Accounts/{sid} which is for REST API
-        // For Content API we need to use the content endpoint differently
-        const contentBody = {
-          friendly_name: name,
-          language: language || "en",
-          types: {
-            "twilio/text": {
-              body: body_template,
-            },
-          },
-        };
-
-        // For now, save as draft in our DB. Content API submission 
-        // would require a separate Content API gateway endpoint.
+        // Save as draft in our DB with converted body and mapping
         const { data: template, error: insertError } = await supabase
           .from("whatsapp_templates")
           .insert({
@@ -115,8 +131,8 @@ Deno.serve(async (req) => {
             name,
             category: category || "UTILITY",
             language: language || "en",
-            body_template,
-            variable_mapping: variable_mapping || {},
+            body_template: convertedBody,
+            variable_mapping: finalMapping,
             approval_status: "pending",
             created_by: userId,
           })

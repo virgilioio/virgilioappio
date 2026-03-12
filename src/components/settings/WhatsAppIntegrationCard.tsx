@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Check, Loader2, Phone, MessageSquareText, Plus, Send, Settings } from 'lucide-react'
 import whatsappLogo from '@/assets/whatsapp-logo.png'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -38,6 +38,7 @@ export function WhatsAppIntegrationCard() {
 
   const [showTemplateForm, setShowTemplateForm] = useState(false)
   const [newTemplate, setNewTemplate] = useState({ name: '', body_template: '', category: 'UTILITY' })
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [manualNumber, setManualNumber] = useState('')
   const [showManualSetup, setShowManualSetup] = useState(false)
 
@@ -60,6 +61,34 @@ export function WhatsAppIntegrationCard() {
       toast.success(enabled ? 'WhatsApp enabled' : 'WhatsApp disabled')
     } catch {
       toast.error('Failed to update WhatsApp status')
+    }
+  }
+
+  const AVAILABLE_VARIABLES = [
+    { key: 'candidate_name', label: 'Candidate Name' },
+    { key: 'recruiter_name', label: 'Recruiter Name' },
+    { key: 'company_name', label: 'Company Name' },
+    { key: 'job_title', label: 'Job Title' },
+    { key: 'interview_date', label: 'Interview Date' },
+    { key: 'interview_time', label: 'Interview Time' },
+  ]
+
+  const insertVariable = (varKey: string) => {
+    const tag = `{{${varKey}}}`
+    const textarea = textareaRef.current
+    if (textarea) {
+      const start = textarea.selectionStart
+      const end = textarea.selectionEnd
+      const current = newTemplate.body_template
+      const updated = current.substring(0, start) + tag + current.substring(end)
+      setNewTemplate((p) => ({ ...p, body_template: updated }))
+      setTimeout(() => {
+        textarea.focus()
+        const newPos = start + tag.length
+        textarea.setSelectionRange(newPos, newPos)
+      }, 0)
+    } else {
+      setNewTemplate((p) => ({ ...p, body_template: p.body_template + tag }))
     }
   }
 
@@ -209,7 +238,7 @@ export function WhatsAppIntegrationCard() {
                     <DialogHeader>
                       <DialogTitle>Request Custom Template</DialogTitle>
                       <DialogDescription>
-                        Submit a custom message template for WhatsApp approval. Use {'{{1}}'}, {'{{2}}'}, etc. for variable placeholders.
+                        Submit a custom message template for WhatsApp approval. Click a variable below to insert it into your message.
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-2">
@@ -224,14 +253,27 @@ export function WhatsAppIntegrationCard() {
                       <div className="space-y-2">
                         <Label>Message Body</Label>
                         <Textarea
-                          placeholder="Hi {{1}}, we're pleased to inform you that..."
+                          ref={textareaRef}
+                          placeholder="Hi {{candidate_name}}, we're pleased to inform you that..."
                           value={newTemplate.body_template}
                           onChange={(e) => setNewTemplate((p) => ({ ...p, body_template: e.target.value }))}
                           rows={4}
                         />
-                        <p className="text-xs text-muted-foreground">
-                          Use {'{{1}}'}, {'{{2}}'}, etc. for dynamic values like candidate name, job title, company name.
-                        </p>
+                        <div className="space-y-1.5">
+                          <p className="text-xs text-muted-foreground">Click to insert a variable at cursor position:</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {AVAILABLE_VARIABLES.map((v) => (
+                              <button
+                                key={v.key}
+                                type="button"
+                                onClick={() => insertVariable(v.key)}
+                                className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer border border-primary/20"
+                              >
+                                {v.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
                     <DialogFooter>
@@ -291,15 +333,43 @@ export function WhatsAppIntegrationCard() {
   )
 }
 
-function TemplateCard({ template, isGlobal }: { template: any; isGlobal?: boolean }) {
-  const hasContentSid = !!template.twilio_content_sid
-
-  const statusColors: Record<string, string> = {
-    approved: 'border-[#25D366]/30 text-[#25D366]',
-    pending: 'border-yellow-500/30 text-yellow-600',
-    rejected: 'border-destructive/30 text-destructive',
-    draft: 'border-muted-foreground/30 text-muted-foreground',
+function resolveTemplatePreview(bodyTemplate: string, variableMapping: Record<string, string> | null) {
+  if (!variableMapping) return bodyTemplate
+  const labelMap: Record<string, string> = {
+    candidate_name: 'Candidate Name',
+    recruiter_name: 'Recruiter Name',
+    company_name: 'Company Name',
+    job_title: 'Job Title',
+    interview_date: 'Interview Date',
+    interview_time: 'Interview Time',
+    offer_details: 'Offer Details',
+    portal_link: 'Portal Link',
   }
+  let text = bodyTemplate
+  Object.entries(variableMapping).forEach(([num, field]) => {
+    const label = labelMap[field] || field
+    text = text.replace(new RegExp(`\\{\\{${num}\\}\\}`, 'g'), `[${label}]`)
+  })
+  return text
+}
+
+function deriveDisplayStatus(template: any): { label: string; className: string } {
+  const hasContentSid = !!template.twilio_content_sid
+  if (!hasContentSid) {
+    return { label: 'Not submitted', className: 'border-muted-foreground/30 text-muted-foreground' }
+  }
+  if (template.approval_status === 'approved') {
+    return { label: 'Approved', className: 'border-[#25D366]/30 text-[#25D366]' }
+  }
+  if (template.approval_status === 'rejected') {
+    return { label: 'Rejected', className: 'border-destructive/30 text-destructive' }
+  }
+  return { label: 'Pending review', className: 'border-yellow-500/30 text-yellow-600' }
+}
+
+function TemplateCard({ template, isGlobal }: { template: any; isGlobal?: boolean }) {
+  const status = deriveDisplayStatus(template)
+  const previewText = resolveTemplatePreview(template.body_template, template.variable_mapping)
 
   return (
     <div className="p-3 rounded-lg border border-border bg-card">
@@ -310,19 +380,14 @@ function TemplateCard({ template, isGlobal }: { template: any; isGlobal?: boolea
             {isGlobal && (
               <Badge variant="secondary" className="text-[10px] shrink-0">GoGio</Badge>
             )}
-            {!hasContentSid && (
-              <Badge variant="outline" className="text-[10px] shrink-0 border-muted-foreground/30 text-muted-foreground">
-                Local only
-              </Badge>
-            )}
           </div>
-          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{template.body_template}</p>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{previewText}</p>
         </div>
         <Badge
           variant="outline"
-          className={`text-[10px] shrink-0 capitalize ${statusColors[template.approval_status] || ''}`}
+          className={`text-[10px] shrink-0 ${status.className}`}
         >
-          {template.approval_status}
+          {status.label}
         </Badge>
       </div>
     </div>
