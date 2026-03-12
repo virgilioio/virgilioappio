@@ -758,10 +758,11 @@ export function CandidateFormSheet({
                 htmlFor="phone"
                 helpText="Optional"
               >
-                <Input
+                <PhoneInput
                   id="phone"
-                  {...form.register('phone')}
-                  placeholder="+1 (555) 123-4567"
+                  value={form.watch('phone') || ''}
+                  onChange={(val) => form.setValue('phone', val, { shouldDirty: true })}
+                  placeholder="Enter phone number"
                 />
               </FormField>
 

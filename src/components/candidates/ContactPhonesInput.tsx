@@ -1,8 +1,8 @@
 import { Plus, X, Phone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { PhoneInput } from '@/components/ui/phone-input'
 
 export interface ContactPhone {
   type: 'work' | 'mobile' | 'other'
@@ -22,7 +22,7 @@ export function ContactPhonesInput({ value, onChange, error }: ContactPhonesInpu
   }
 
   const removePhone = (index: number) => {
-    if (value.length <= 1) return // Keep at least one row
+    if (value.length <= 1) return
     onChange(value.filter((_, i) => i !== index))
   }
 
@@ -49,12 +49,10 @@ export function ContactPhonesInput({ value, onChange, error }: ContactPhonesInpu
         {value.map((phoneEntry, index) => (
           <div key={index} className="flex gap-2 items-start">
             <div className="flex-1">
-              <Input
-                type="tel"
+              <PhoneInput
                 value={phoneEntry.number}
-                onChange={(e) => updatePhone(index, 'number', e.target.value)}
-                placeholder="+1 (555) 123-4567"
-                className={index === 0 ? 'border-primary/30' : ''}
+                onChange={(val) => updatePhone(index, 'number', val)}
+                placeholder="Enter phone number"
               />
             </div>
             <Select
