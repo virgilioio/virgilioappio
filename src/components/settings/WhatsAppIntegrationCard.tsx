@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Check, Loader2, Phone, MessageSquareText, Plus, Send, Settings } from 'lucide-react'
 import whatsappLogo from '@/assets/whatsapp-logo.png'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
