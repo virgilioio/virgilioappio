@@ -1,10 +1,9 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { Loader2, AlertCircle, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import {
   Dialog,
@@ -22,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useCreateWhatsAppTemplate } from '@/hooks/useWhatsAppConfig'
+import { AVAILABLE_PLACEHOLDERS } from '@/utils/placeholderUtils'
 import { toast } from 'sonner'
 
 interface WhatsAppTemplateCreatorProps {
@@ -29,16 +29,8 @@ interface WhatsAppTemplateCreatorProps {
   onOpenChange: (open: boolean) => void
 }
 
-const AVAILABLE_VARIABLES = [
-  { key: 'candidate_name', label: 'Candidate Name', description: 'The candidate\'s full name' },
-  { key: 'recruiter_name', label: 'Recruiter Name', description: 'Your name or the assigned recruiter' },
-  { key: 'company_name', label: 'Company Name', description: 'Your organization\'s name' },
-  { key: 'job_title', label: 'Job Title', description: 'The job position title' },
-  { key: 'interview_date', label: 'Interview Date', description: 'Scheduled interview date' },
-  { key: 'interview_time', label: 'Interview Time', description: 'Scheduled interview time' },
-  { key: 'offer_details', label: 'Offer Details', description: 'Summary of the offer' },
-  { key: 'portal_link', label: 'Portal Link', description: 'Link to candidate portal' },
-]
+// WhatsApp-relevant placeholder categories
+const WHATSAPP_CATEGORIES = ['Candidate', 'Job', 'Sender', 'Interview', 'Offer', 'Links']
 
 const CATEGORIES = [
   { value: 'UTILITY', label: 'Utility', description: 'Transaction-related messages (scheduling, updates)' },
@@ -68,6 +60,19 @@ export function WhatsAppTemplateCreator({ open, onOpenChange }: WhatsAppTemplate
 
   const [errors, setErrors] = useState<string[]>([])
 
+  // Filter placeholders to WhatsApp-relevant ones, grouped by category
+  const groupedPlaceholders = useMemo(() => {
+    const relevant = AVAILABLE_PLACEHOLDERS.filter((p) =>
+      WHATSAPP_CATEGORIES.includes(p.category)
+    )
+    const groups: Record<string, typeof AVAILABLE_PLACEHOLDERS> = {}
+    relevant.forEach((p) => {
+      if (!groups[p.category]) groups[p.category] = []
+      groups[p.category].push(p)
+    })
+    return groups
+  }, [])
+
   const insertVariable = (varKey: string) => {
     const tag = `{{${varKey}}}`
     const textarea = textareaRef.current
@@ -93,19 +98,15 @@ export function WhatsAppTemplateCreator({ open, onOpenChange }: WhatsAppTemplate
     if (!form.body_template.trim()) errs.push('Message body is required.')
 
     const body = form.body_template.trim()
-    // Check variable at beginning
     if (/^\{\{[^}]+\}\}/.test(body)) {
       errs.push('Message cannot start with a variable. Add text before it.')
     }
-    // Check variable at end
     if (/\{\{[^}]+\}\}$/.test(body)) {
       errs.push('Message cannot end with a variable. Add text or punctuation after it.')
     }
-    // Check adjacent variables
     if (/\{\{[^}]+\}\}\s*\{\{[^}]+\}\}/.test(body)) {
       errs.push('Variables cannot be adjacent. Insert at least one word between them.')
     }
-    // Check template is not too vague
     const withoutVars = body.replace(/\{\{[^}]+\}\}/g, '').trim()
     if (withoutVars.length < 20) {
       errs.push('Template body is too short. WhatsApp rejects templates that lack context.')
@@ -116,8 +117,8 @@ export function WhatsAppTemplateCreator({ open, onOpenChange }: WhatsAppTemplate
 
   const getPreview = () => {
     let text = form.body_template
-    AVAILABLE_VARIABLES.forEach((v) => {
-      text = text.replace(new RegExp(`\\{\\{${v.key}\\}\\}`, 'g'), `[${v.label}]`)
+    AVAILABLE_PLACEHOLDERS.forEach((p) => {
+      text = text.replace(new RegExp(`\\{\\{${p.value.replace('.', '\\.')}\\}\\}`, 'g'), `[${p.label}]`)
     })
     return text
   }
@@ -234,27 +235,32 @@ export function WhatsAppTemplateCreator({ open, onOpenChange }: WhatsAppTemplate
               <>
                 <Textarea
                   ref={textareaRef}
-                  placeholder="Hi {{candidate_name}}, this is {{recruiter_name}} from {{company_name}}. We'd like to discuss the {{job_title}} position with you."
+                  placeholder="Hi {{candidate.first_name}}, this is {{sender.first_name}} from our team. We'd like to discuss the {{job.title}} position with you."
                   value={form.body_template}
                   onChange={(e) => setForm((p) => ({ ...p, body_template: e.target.value }))}
                   rows={4}
                   className="text-sm"
                 />
-                <div className="space-y-1.5">
+                <div className="space-y-2.5">
                   <p className="text-xs text-muted-foreground">Click a variable to insert it at your cursor:</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {AVAILABLE_VARIABLES.map((v) => (
-                      <button
-                        key={v.key}
-                        type="button"
-                        onClick={() => insertVariable(v.key)}
-                        title={v.description}
-                        className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer border border-primary/20"
-                      >
-                        {v.label}
-                      </button>
-                    ))}
-                  </div>
+                  {Object.entries(groupedPlaceholders).map(([category, placeholders]) => (
+                    <div key={category} className="space-y-1">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{category}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {placeholders.map((p) => (
+                          <button
+                            key={p.value}
+                            type="button"
+                            onClick={() => insertVariable(p.value)}
+                            title={`Inserts {{${p.value}}}`}
+                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-purple-500/15 text-purple-600 dark:text-purple-400 hover:bg-purple-500/25 transition-colors cursor-pointer border border-purple-500/30"
+                          >
+                            {p.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </>
             )}

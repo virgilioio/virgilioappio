@@ -10,6 +10,7 @@ import {
   type WhatsAppTemplate,
 } from '@/hooks/useWhatsAppConfig'
 import { WhatsAppTemplateCreator } from './WhatsAppTemplateCreator'
+import { AVAILABLE_PLACEHOLDERS } from '@/utils/placeholderUtils'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -189,16 +190,10 @@ function getStatusBadge(template: WhatsAppTemplate) {
   }
 }
 
-const LABEL_MAP: Record<string, string> = {
-  candidate_name: 'Candidate Name',
-  recruiter_name: 'Recruiter Name',
-  company_name: 'Company Name',
-  job_title: 'Job Title',
-  interview_date: 'Interview Date',
-  interview_time: 'Interview Time',
-  offer_details: 'Offer Details',
-  portal_link: 'Portal Link',
-}
+// Build label map from shared AVAILABLE_PLACEHOLDERS
+const LABEL_MAP: Record<string, string> = Object.fromEntries(
+  AVAILABLE_PLACEHOLDERS.map((p) => [p.value, p.label])
+)
 
 function resolvePreview(bodyTemplate: string, variableMapping: Record<string, string> | null) {
   if (!variableMapping) return bodyTemplate
