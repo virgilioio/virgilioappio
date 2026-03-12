@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, Loader2, Phone, MessageSquareText, Plus, Send } from 'lucide-react'
+import { Check, Loader2, Phone, MessageSquareText, Plus, Send, Settings } from 'lucide-react'
 import whatsappLogo from '@/assets/whatsapp-logo.png'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -30,7 +30,7 @@ export function WhatsAppIntegrationCard() {
     isSaving,
     isActive,
     toggle,
-    provisionNumber,
+    saveNumber,
   } = useWhatsAppConfig()
 
   const { data: templates = [], isLoading: templatesLoading } = useWhatsAppTemplates()
@@ -38,17 +38,19 @@ export function WhatsAppIntegrationCard() {
 
   const [showTemplateForm, setShowTemplateForm] = useState(false)
   const [newTemplate, setNewTemplate] = useState({ name: '', body_template: '', category: 'UTILITY' })
+  const [manualNumber, setManualNumber] = useState('')
+  const [showManualSetup, setShowManualSetup] = useState(false)
 
-  const handleProvision = async () => {
+  const handleSaveManualNumber = async () => {
+    const cleaned = manualNumber.replace(/[^\d+]/g, '')
+    if (!cleaned) return
     try {
-      const result = await provisionNumber.mutateAsync('US')
-      if (result.already_provisioned) {
-        toast.info(`WhatsApp already enabled with ${result.number}`)
-      } else {
-        toast.success(`WhatsApp enabled! Your number: ${result.number}`)
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to provision WhatsApp number')
+      await saveNumber(cleaned.startsWith('+') ? cleaned : `+${cleaned}`)
+      toast.success('WhatsApp sender number saved')
+      setShowManualSetup(false)
+      setManualNumber('')
+    } catch {
+      toast.error('Failed to save WhatsApp number')
     }
   }
 
@@ -113,40 +115,74 @@ export function WhatsAppIntegrationCard() {
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Number Provisioning */}
+        {/* Number Configuration */}
         <div className="space-y-3">
           <h4 className="text-sm font-medium flex items-center gap-2">
             <Phone className="h-4 w-4 text-muted-foreground" />
-            WhatsApp Number
+            WhatsApp Sender Number
           </h4>
           {isProvisioned ? (
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-              <div className="h-2 w-2 rounded-full bg-[#25D366]" />
-              <span className="text-sm font-mono">{whatsappNumber}</span>
-              <Badge variant="secondary" className="text-xs">Active</Badge>
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <div className="h-2 w-2 rounded-full bg-[#25D366]" />
+                <span className="text-sm font-mono">{whatsappNumber}</span>
+                <Badge variant="secondary" className="text-xs">Active</Badge>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowManualSetup(true)}
+                className="text-xs text-muted-foreground"
+              >
+                <Settings className="h-3 w-3 mr-1" />
+                Change sender number
+              </Button>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <p className="text-xs text-muted-foreground">
-                Click below to get a dedicated WhatsApp number for your workspace. GoGio handles all the setup — no external accounts needed.
+                Enter your active Twilio WhatsApp Sender number. This must be a number already registered as a WhatsApp Sender in your Twilio console.
               </p>
-              <Button
-                onClick={handleProvision}
-                disabled={provisionNumber.isPending}
-                className="bg-[#25D366] hover:bg-[#25D366]/90 text-white"
-              >
-                {provisionNumber.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Setting up...
-                  </>
-                ) : (
-                  <>
-                    <Send className="h-4 w-4 mr-2" />
-                    Enable WhatsApp
-                  </>
-                )}
-              </Button>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="+1 234 567 8900"
+                  value={manualNumber}
+                  onChange={(e) => setManualNumber(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={handleSaveManualNumber}
+                  disabled={!manualNumber.trim() || isSaving}
+                  className="bg-[#25D366] hover:bg-[#25D366]/90 text-white"
+                >
+                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-1" />}
+                  Save
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Manual number change dialog */}
+          {showManualSetup && (
+            <div className="p-3 rounded-lg border border-border space-y-2">
+              <Label className="text-xs">New WhatsApp Sender Number</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="+1 234 567 8900"
+                  value={manualNumber}
+                  onChange={(e) => setManualNumber(e.target.value)}
+                  className="flex-1"
+                />
+                <Button size="sm" onClick={handleSaveManualNumber} disabled={!manualNumber.trim() || isSaving}>
+                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => { setShowManualSetup(false); setManualNumber('') }}>
+                  Cancel
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Must be registered as an active WhatsApp Sender in Twilio.
+              </p>
             </div>
           )}
         </div>
@@ -224,7 +260,6 @@ export function WhatsAppIntegrationCard() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {/* GoGio Templates */}
                   {globalTemplates.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">GoGio Templates</p>
@@ -236,7 +271,6 @@ export function WhatsAppIntegrationCard() {
                     </div>
                   )}
 
-                  {/* Custom Templates */}
                   {customTemplates.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Custom Templates</p>
@@ -258,6 +292,8 @@ export function WhatsAppIntegrationCard() {
 }
 
 function TemplateCard({ template, isGlobal }: { template: any; isGlobal?: boolean }) {
+  const hasContentSid = !!template.twilio_content_sid
+
   const statusColors: Record<string, string> = {
     approved: 'border-[#25D366]/30 text-[#25D366]',
     pending: 'border-yellow-500/30 text-yellow-600',
@@ -273,6 +309,11 @@ function TemplateCard({ template, isGlobal }: { template: any; isGlobal?: boolea
             <p className="text-sm font-medium truncate">{template.name}</p>
             {isGlobal && (
               <Badge variant="secondary" className="text-[10px] shrink-0">GoGio</Badge>
+            )}
+            {!hasContentSid && (
+              <Badge variant="outline" className="text-[10px] shrink-0 border-muted-foreground/30 text-muted-foreground">
+                Local only
+              </Badge>
             )}
           </div>
           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{template.body_template}</p>

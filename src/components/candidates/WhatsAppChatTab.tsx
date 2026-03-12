@@ -153,7 +153,11 @@ export function WhatsAppChatTab({
     )
   }
 
+  // Only show templates that have a twilio_content_sid (actually submitted to Meta/Twilio)
+  // OR allow all approved templates for freeform fallback
   const approvedTemplates = templates.filter((t) => t.approval_status === 'approved')
+  const usableTemplates = approvedTemplates.filter((t) => !!t.twilio_content_sid)
+  const localOnlyTemplates = approvedTemplates.filter((t) => !t.twilio_content_sid)
 
   return (
     <div className="flex flex-col h-full">
