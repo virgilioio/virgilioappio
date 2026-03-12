@@ -37,6 +37,11 @@ export function JobDetailFloatingSidebar({
       icon: Kanban,
     },
     {
+      id: 'whatsapp',
+      label: 'WhatsApp',
+      icon: MessageSquare,
+    },
+    {
       id: 'job-setup',
       label: 'Job Setup',
       icon: Settings,
