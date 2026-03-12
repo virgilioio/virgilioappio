@@ -240,6 +240,9 @@ Return ONLY the JSON object, no markdown, no commentary.`;
     if (parsed.name) parsed.name = parsed.name.trim();
     if (parsed.linkedinUrl) parsed.linkedinUrl = parsed.linkedinUrl.trim();
     if (parsed.location) parsed.location = parsed.location.trim();
+    
+    // Normalize phone to E.164
+    parsed.phone = normalizePhone(parsed.phone, parsed.location);
 
     console.log('[parse-resume] Core AI parsed result:', JSON.stringify(parsed, null, 2));
     return parsed;
