@@ -64,6 +64,34 @@ export function WhatsAppIntegrationCard() {
     }
   }
 
+  const AVAILABLE_VARIABLES = [
+    { key: 'candidate_name', label: 'Candidate Name' },
+    { key: 'recruiter_name', label: 'Recruiter Name' },
+    { key: 'company_name', label: 'Company Name' },
+    { key: 'job_title', label: 'Job Title' },
+    { key: 'interview_date', label: 'Interview Date' },
+    { key: 'interview_time', label: 'Interview Time' },
+  ]
+
+  const insertVariable = (varKey: string) => {
+    const tag = `{{${varKey}}}`
+    const textarea = textareaRef.current
+    if (textarea) {
+      const start = textarea.selectionStart
+      const end = textarea.selectionEnd
+      const current = newTemplate.body_template
+      const updated = current.substring(0, start) + tag + current.substring(end)
+      setNewTemplate((p) => ({ ...p, body_template: updated }))
+      setTimeout(() => {
+        textarea.focus()
+        const newPos = start + tag.length
+        textarea.setSelectionRange(newPos, newPos)
+      }, 0)
+    } else {
+      setNewTemplate((p) => ({ ...p, body_template: p.body_template + tag }))
+    }
+  }
+
   const handleCreateTemplate = async () => {
     if (!newTemplate.name.trim() || !newTemplate.body_template.trim()) return
     try {
