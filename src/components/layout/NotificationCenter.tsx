@@ -98,6 +98,8 @@ export function NotificationCenter() {
                       <div className="mt-0.5 shrink-0">
                         {notification.type === 'offer_approval' ? (
                           <ClipboardCheck className="h-3.5 w-3.5 text-virgilio-purple" />
+                        ) : notification.type === 'whatsapp' ? (
+                          <MessageSquare className="h-3.5 w-3.5 text-[#25D366]" />
                         ) : (
                           <Mail className="h-3.5 w-3.5 text-virgilio-muted" />
                         )}
