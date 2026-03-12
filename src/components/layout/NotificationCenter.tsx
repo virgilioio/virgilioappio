@@ -15,7 +15,7 @@ export function NotificationCenter() {
   const { data: activities, markEmailAsRead } = usePendingActivities()
 
   const notifications = (activities || []).filter(
-    (a): a is PendingActivity => a.type === 'email' || a.type === 'offer_approval'
+    (a): a is PendingActivity => a.type === 'email' || a.type === 'offer_approval' || a.type === 'whatsapp'
   )
 
   const unreadCount = notifications.length
