@@ -1,132 +1,89 @@
+# System Roles Migration — Completed Phases 1-5
 
+## Architecture Change
+- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
+- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-# WhatsApp Integration — Implementation Plan
+## Completed
 
-## Approach: Platform-Owned Twilio Account
+### Phase 1 — Database
+- ✅ Created `system_role` enum (`admin`, `member`)
+- ✅ Added `system_role` column to `members` table
+- ✅ Migrated data: `admin` → `admin`, all others → `member`
+- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
+- ✅ Updated `check_tenant_member_role` to use `system_role`
+- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
+- ✅ Updated `audit_member_role_change` trigger
 
-GoGio owns the Twilio account. Each workspace configures their WhatsApp sender number (obtained from Twilio) in settings. All recruiters in the workspace share that number; messages are attributed internally via `sender_id`.
+### Phase 2 — Frontend Permissions
+- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
+- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
+- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
+- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
 
----
+### Phase 3 — UI Updates
+- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
+- ✅ Updated `Dashboard` — sourcing panel for admin+ only
+- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
+- ✅ Updated `BillingGuard` — members (non-admin) never blocked
+- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
+- ✅ Updated `Find` page RoleGate
+- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
 
-## Phase 1: Infrastructure (Database + Edge Function + Twilio Connection)
+### Phase 4 — Runtime Hotfixes
+- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
+- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
+- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
+- ✅ Updated `validate_invite_token` — returns `system_role`
+- ✅ Updated `accept_invitation` — uses `system_role`
 
-### Connect Twilio
-- Use `standard_connectors--connect` for Twilio connector
-- This provides `TWILIO_API_KEY` and `LOVABLE_API_KEY` as env vars for edge functions
+### Phase 5 — Complete Cleanup
+- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
+- ✅ Updated `admin_manage_member` — updates `system_role` column
+- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
+- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
+- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
+- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
+- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
+- ✅ Updated `diagnose_user_auth` — reports `system_role`
+- ✅ Updated `audit_platform_admin_access` — returns `system_role`
+- ✅ Updated `debug_user_permissions` — returns `system_role`
+- ✅ Renamed `invitations.member_role` → `invitations.system_role`
+- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
 
-### Database Migration
-Two new tables:
+## Phase 6 — Future (Optional)
+- Drop `member_role` column from `members` table (already dropped)
+- Drop old `member_role` enum type
+- Update `MemberInviteSheet` role picker to only offer Admin/Member
 
-**`whatsapp_conversations`** — one per candidate+job pair
-- `id` uuid PK, `tenant_id`, `candidate_id`, `job_id`, `phone_number` (candidate's), `last_message_at`, `last_message_preview`, `unread_count` default 0, `created_at`
-- Unique constraint on `(tenant_id, candidate_id, job_id)`
-- RLS: tenant-scoped via `user_has_tenant_access(tenant_id)`
+# Deep Resume Parsing + Data Standardization — Completed
 
-**`whatsapp_messages`** — individual messages
-- `id` uuid PK, `conversation_id` FK, `tenant_id`, `candidate_id`, `job_id`, `sender_id` (recruiter), `to_phone`, `from_phone`, `body`, `twilio_sid`, `status` (sent/delivered/failed/received), `direction` (outbound/inbound), `created_at`
-- RLS: tenant-scoped
+## What was implemented
 
-### Edge Function: `send-whatsapp`
-- Receives `{ to, body, candidate_id, job_id }`
-- Looks up tenant's WhatsApp config from `workspace_automations` (type `whatsapp_config`) to get `from` number
-- Sends via Twilio gateway: `https://connector-gateway.lovable.dev/twilio/Messages.json` with `whatsapp:` prefix on both To and From
-- Upserts `whatsapp_conversations`, inserts into `whatsapp_messages`
-- Config in `config.toml`: `verify_jwt = false` (validates auth in code)
+### Phase 1: Schema Expansion
+- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
+- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
+- ✅ Added to `candidate_education`: `education_level`
+- ✅ Created `candidate_certifications` table with RLS policies
 
-### WhatsApp Config Storage
-Uses existing `workspace_automations` table with `automation_type = 'whatsapp_config'`:
-```json
-{ "twilio_from_number": "whatsapp:+1...", "is_connected": true }
-```
+### Phase 2: Enrichment Rewrite
+- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
+- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
+- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
+- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
+- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
 
----
+### Phase 3: UI Updates
+- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
+- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
+- ✅ **Certifications section** with `CandidateCertificationsComponent`
+- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
+- ✅ Enhanced **Education** display: education level badge
+- ✅ Certifications loaded alongside work experience and education
 
-## Phase 2: Settings UI
-
-### `WhatsAppIntegrationCard` component
-- Added to `IntegrationsTab.tsx` after Google Workspace section
-- Card showing WhatsApp logo, connection status badge
-- Input field for the WhatsApp-enabled Twilio number (with validation for E.164 format)
-- Save button stores config in `workspace_automations`
-- Helper text explaining: "Enter your Twilio WhatsApp-enabled number. Get one from your Twilio console."
-
-### `useWhatsAppConfig` hook
-- Wraps `useWorkspaceAutomation('whatsapp_config')`
-- Exposes `isConfigured`, `fromNumber`, `save`, `toggle`
-
----
-
-## Phase 3: Candidate Profile — Chat Tab + WhatsApp Button
-
-### WhatsApp button next to phone numbers (Overview tab)
-- In `CandidateProfileSheet.tsx`, next to each phone's Copy button, add a green WhatsApp icon button
-- Only visible when `useWhatsAppConfig().isConfigured` is true
-- Clicking sets `rightActiveTab` to `'chat'` and stores the selected phone number
-
-### New "Chat" tab in right panel
-- Add `'chat'` to `rightActiveTab` type: `'chat' | 'feed' | 'notes' | 'emails' | 'reminders' | 'insights'`
-- Insert before "Feed" in the tabs array (only when WhatsApp is configured)
-- New `WhatsAppChatTab` component:
-  - Fetches messages for the candidate+job conversation via `useWhatsApp` hook
-  - Chat bubble UI (outbound right-aligned, inbound left-aligned)
-  - Compose area at bottom with text input + send button
-  - Auto-scrolls to latest message
-
-### `useWhatsApp` hook
-- `useConversation(candidateId, jobId)` — fetches/creates conversation
-- `useMessages(conversationId)` — fetches messages sorted by created_at
-- `sendMessage(to, body, candidateId, jobId)` — calls `send-whatsapp` edge function
-- `useJobConversations(jobId)` — fetches all conversations for a job
-
----
-
-## Phase 4: Job Detail — WhatsApp Sidebar Tab
-
-### `JobDetailFloatingSidebar` modification
-- Add WhatsApp icon button below Pipeline (conditionally, when WhatsApp is configured)
-- New tab id: `'whatsapp'`
-
-### `WhatsAppConversationsList` component
-- Lists all WhatsApp conversations for the job
-- Shows: candidate name, last message preview, timestamp, unread count badge
-- Clicking opens candidate profile sheet with Chat tab active
-
-### `JobDetail.tsx` modification
-- Add `TabsContent value="whatsapp"` rendering `WhatsAppConversationsList`
-
----
-
-## Phase 5: Notification Center
-
-### `usePendingActivities` modification
-- Add `'whatsapp'` to `ActivityType`
-- Query `whatsapp_messages` where `direction = 'inbound'` and conversation has `unread_count > 0`
-- Map to `PendingActivity` with WhatsApp-specific fields
-
-### `NotificationCenter` modification
-- Render WhatsApp notifications with green WhatsApp icon
-- Show candidate name, message preview, timestamp
-- Click navigates to candidate profile with `chat` tab active
-
----
-
-## Files Summary
-
-**Create:**
-- `supabase/functions/send-whatsapp/index.ts`
-- `src/hooks/useWhatsApp.ts`
-- `src/hooks/useWhatsAppConfig.ts`
-- `src/components/candidates/WhatsAppChatTab.tsx`
-- `src/components/settings/WhatsAppIntegrationCard.tsx`
-- `src/components/jobs/WhatsAppConversationsList.tsx`
-
-**Modify:**
-- `supabase/config.toml` — add `[functions.send-whatsapp]`
-- `src/components/settings/IntegrationsTab.tsx` — add WhatsApp card
-- `src/components/candidates/CandidateProfileSheet.tsx` — add Chat tab + WhatsApp button next to phones
-- `src/components/jobs/JobDetailFloatingSidebar.tsx` — add WhatsApp tab
-- `src/pages/JobDetail.tsx` — add WhatsApp TabsContent
-- `src/hooks/usePendingActivities.ts` — add WhatsApp notification type
-- `src/components/layout/NotificationCenter.tsx` — render WhatsApp notifications
-- `src/types/activity.ts` — add `'whatsapp'` to ActivityType
-
+## Files changed
+- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
+- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
+- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
+- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
+- `src/components/candidates/CandidateCertifications.tsx` — new component

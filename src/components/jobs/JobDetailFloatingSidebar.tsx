@@ -1,6 +1,6 @@
 
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, Settings, Kanban, Users } from 'lucide-react'
+import { LayoutDashboard, Settings, Kanban, Users, MessageSquare } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 
@@ -19,7 +19,7 @@ export function JobDetailFloatingSidebar({
   isRestrictedViewer = false,
   className 
 }: JobDetailFloatingSidebarProps) {
-  const restrictedTabIds = ['all-candidates', 'job-setup']
+  const restrictedTabIds = ['all-candidates', 'job-setup', 'whatsapp']
   const allTabs = [
     {
       id: 'candidates',
@@ -35,6 +35,11 @@ export function JobDetailFloatingSidebar({
       id: 'pipeline',
       label: 'Pipeline Overview',
       icon: Kanban,
+    },
+    {
+      id: 'whatsapp',
+      label: 'WhatsApp',
+      icon: MessageSquare,
     },
     {
       id: 'job-setup',

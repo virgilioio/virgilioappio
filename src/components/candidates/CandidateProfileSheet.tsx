@@ -15,7 +15,7 @@ import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeVi
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign } from 'lucide-react'
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign, MessageSquare } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -43,6 +43,7 @@ import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { useCandidateResolver } from '@/hooks/useCandidateResolver'
 import { triggerFitAnalysis } from '@/utils/triggerFitAnalysis'
 import { useJobRole } from '@/hooks/useJobRole'
+import { WhatsAppChatTab } from '@/components/candidates/WhatsAppChatTab'
 
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 import { MobileJobSelector } from '@/components/candidates/MobileJobSelector'
@@ -117,7 +118,8 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [jobCandidateId, setJobCandidateId] = useState<string | null>(null)
   const [job, setJob] = useState<any | null>(null)
   const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'overview' | 'offer'>('job')
-  const [rightActiveTab, setRightActiveTab] = useState<'feed' | 'notes' | 'emails' | 'reminders' | 'insights'>('feed')
+  const [rightActiveTab, setRightActiveTab] = useState<'chat' | 'feed' | 'notes' | 'emails' | 'reminders' | 'insights'>('feed')
+  const [whatsAppPhone, setWhatsAppPhone] = useState<string | undefined>(undefined)
   const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
   const [education, setEducation] = useState<CandidateEducation[]>([])
   const [editOpen, setEditOpen] = useState(false)
@@ -1369,14 +1371,28 @@ const stageHasAutomation = useMemo(() => {
                                                   <span className="text-xs text-text-tertiary capitalize">{phoneType}</span>
                                                 </div>
                                               </div>
-                                              <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-6 w-6 p-0 flex-shrink-0"
-                                                onClick={() => copyToClipboard(phoneValue, 'Phone number copied to clipboard')}
-                                              >
-                                                <Copy className="h-3.5 w-3.5" />
-                                              </Button>
+                                              <div className="flex items-center gap-0.5">
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  className="h-6 w-6 p-0 flex-shrink-0"
+                                                  onClick={() => copyToClipboard(phoneValue, 'Phone number copied to clipboard')}
+                                                >
+                                                  <Copy className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  className="h-6 w-6 p-0 flex-shrink-0 text-[#25D366] hover:text-[#25D366]/80"
+                                                  onClick={() => {
+                                                    setWhatsAppPhone(phoneValue)
+                                                    setRightActiveTab('chat')
+                                                  }}
+                                                  title="Send WhatsApp message"
+                                                >
+                                                  <MessageSquare className="h-3.5 w-3.5" />
+                                                </Button>
+                                              </div>
                                             </div>
                                           );
                                         })
@@ -1674,16 +1690,29 @@ const stageHasAutomation = useMemo(() => {
                      <CandidateNameCard
                        email={candidate.email}
                        phone={candidate.phone}
-                        tabs={[
-                          { value: 'feed', label: 'Feed', Icon: Activity },
-                          { value: 'notes', label: 'Notes', Icon: StickyNote },
-                          ...(!isRestrictedViewer ? [{ value: 'emails', label: 'Emails', Icon: Mail }] : []),
-                          ...(!isRestrictedViewer ? [{ value: 'reminders', label: 'Reminders', Icon: Bell }] : []),
-                          ...(!isRestrictedViewer ? [{ value: 'insights', label: 'Insights', Icon: Sparkles }] : []),
-                        ]}
-                        activeTab={rightActiveTab}
-                        onTabChange={(v) => setRightActiveTab(v as 'feed' | 'notes' | 'emails' | 'reminders' | 'insights')}
-                     />
+                         tabs={[
+                           { value: 'chat', label: 'Chat', Icon: MessageSquare },
+                           { value: 'feed', label: 'Feed', Icon: Activity },
+                           { value: 'notes', label: 'Notes', Icon: StickyNote },
+                           ...(!isRestrictedViewer ? [{ value: 'emails', label: 'Emails', Icon: Mail }] : []),
+                           ...(!isRestrictedViewer ? [{ value: 'reminders', label: 'Reminders', Icon: Bell }] : []),
+                           ...(!isRestrictedViewer ? [{ value: 'insights', label: 'Insights', Icon: Sparkles }] : []),
+                         ]}
+                         activeTab={rightActiveTab}
+                         onTabChange={(v) => setRightActiveTab(v as 'chat' | 'feed' | 'notes' | 'emails' | 'reminders' | 'insights')}
+                      />
+
+                     {/* Chat Tab */}
+                     {rightActiveTab === 'chat' && candidateId && (
+                       <Card className="bg-surface-primary border-border h-[500px]">
+                         <WhatsAppChatTab
+                           candidateId={candidateId}
+                           jobId={jobId}
+                           phoneNumber={whatsAppPhone || candidate?.phone}
+                           candidateName={candidate?.candidate_name || 'Candidate'}
+                         />
+                       </Card>
+                     )}
 
                      {/* Feed Tab */}
                      {rightActiveTab === 'feed' && (

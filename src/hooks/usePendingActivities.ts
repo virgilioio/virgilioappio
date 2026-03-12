@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { isRestrictedRole, fetchAssignedJobIds } from '@/utils/jobScoping';
 
-export type ActivityType = 'scorecard' | 'decision' | 'email' | 'offer_approval';
+export type ActivityType = 'scorecard' | 'decision' | 'email' | 'offer_approval' | 'whatsapp';
 
 export interface PendingActivity {
   type: ActivityType;
@@ -23,6 +23,7 @@ export interface PendingActivity {
   interviewerId?: string;
   interviewerName?: string;
   isOwnTask?: boolean;
+  whatsappMessagePreview?: string;
 }
 
 export function usePendingActivities() {
@@ -62,6 +63,10 @@ export function usePendingActivities() {
       // 4. Fetch pending offer approvals for this user
       const approvalActivities = await fetchPendingOfferApprovals(user.id);
       activities.push(...approvalActivities);
+
+      // 5. Fetch unread WhatsApp messages
+      const whatsappActivities = await fetchUnreadWhatsApp(assignedJobIds);
+      activities.push(...whatsappActivities);
 
       // Sort all activities by timestamp (oldest/most urgent first)
       return activities.sort((a, b) => 
@@ -407,4 +412,42 @@ async function fetchPendingOfferApprovals(userId: string): Promise<PendingActivi
       timestamp: req.created_at,
     };
   });
+}
+
+async function fetchUnreadWhatsApp(assignedJobIds: string[] | null): Promise<PendingActivity[]> {
+  let query = supabase
+    .from('whatsapp_conversations' as any)
+    .select(`
+      id,
+      candidate_id,
+      job_id,
+      phone_number,
+      last_message_preview,
+      last_message_at,
+      unread_count,
+      candidates(id, candidate_name),
+      jobs(id, title)
+    `)
+    .gt('unread_count', 0)
+    .order('last_message_at', { ascending: false })
+    .limit(20);
+
+  if (assignedJobIds) {
+    query = query.in('job_id', assignedJobIds);
+  }
+
+  const { data: conversations, error } = await query;
+
+  if (error || !conversations || conversations.length === 0) return [];
+
+  return (conversations as any[]).map(conv => ({
+    type: 'whatsapp' as const,
+    id: `whatsapp-${conv.id}`,
+    candidateId: conv.candidate_id,
+    candidateName: conv.candidates?.candidate_name || 'Unknown',
+    jobId: conv.job_id || '',
+    jobTitle: conv.jobs?.title || '',
+    timestamp: conv.last_message_at || new Date().toISOString(),
+    whatsappMessagePreview: conv.last_message_preview || 'New message',
+  }));
 }

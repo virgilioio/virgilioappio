@@ -5316,6 +5316,141 @@ export type Database = {
           },
         ]
       }
+      whatsapp_conversations: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          id: string
+          job_id: string | null
+          last_message_at: string | null
+          last_message_preview: string | null
+          phone_number: string
+          tenant_id: string
+          unread_count: number
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          id?: string
+          job_id?: string | null
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          phone_number: string
+          tenant_id: string
+          unread_count?: number
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          id?: string
+          job_id?: string | null
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          phone_number?: string
+          tenant_id?: string
+          unread_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_conversations_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_conversations_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_conversations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_messages: {
+        Row: {
+          body: string
+          candidate_id: string
+          conversation_id: string
+          created_at: string
+          direction: string
+          from_phone: string
+          id: string
+          job_id: string | null
+          sender_id: string | null
+          status: string
+          tenant_id: string
+          to_phone: string
+          twilio_sid: string | null
+        }
+        Insert: {
+          body: string
+          candidate_id: string
+          conversation_id: string
+          created_at?: string
+          direction?: string
+          from_phone: string
+          id?: string
+          job_id?: string | null
+          sender_id?: string | null
+          status?: string
+          tenant_id: string
+          to_phone: string
+          twilio_sid?: string | null
+        }
+        Update: {
+          body?: string
+          candidate_id?: string
+          conversation_id?: string
+          created_at?: string
+          direction?: string
+          from_phone?: string
+          id?: string
+          job_id?: string | null
+          sender_id?: string | null
+          status?: string
+          tenant_id?: string
+          to_phone?: string
+          twilio_sid?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_messages_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_messages_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_messages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspace_automations: {
         Row: {
           automation_type: string

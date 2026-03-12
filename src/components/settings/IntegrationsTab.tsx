@@ -2,6 +2,7 @@ import { Separator } from '@/components/ui/separator'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { GoogleWorkspaceIntegrationSection } from './GoogleWorkspaceIntegrationSection'
 import { ChromeExtensionTokenCard } from './ChromeExtensionTokenCard'
+import { WhatsAppIntegrationCard } from './WhatsAppIntegrationCard'
 
 export function IntegrationsTab() {
   return (
@@ -16,6 +17,10 @@ export function IntegrationsTab() {
       <Separator className="my-8" />
 
       <GoogleWorkspaceIntegrationSection />
+
+      <Separator className="my-8" />
+
+      <WhatsAppIntegrationCard />
     </div>
   )
 }

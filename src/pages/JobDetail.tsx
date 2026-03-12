@@ -9,6 +9,7 @@ import { useCandidates } from '@/hooks/useCandidates'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { useJobs } from '@/hooks/useJobs'
 import { JobDetailFloatingSidebar } from '@/components/jobs/JobDetailFloatingSidebar'
+import { WhatsAppConversationsList } from '@/components/jobs/WhatsAppConversationsList'
 import { JobDetailMobileHeader } from '@/components/jobs/JobDetailMobileHeader'
 import { PageHeader } from '@/components/layout/PageHeader'
 
@@ -1673,6 +1674,21 @@ export default function JobDetail() {
                       </CardContent>
                     </Card>
                   </div>
+                </TabsContent>
+
+                {/* WhatsApp Tab */}
+                <TabsContent value="whatsapp">
+                  <Card className="p-6">
+                    <WhatsAppConversationsList
+                      jobId={id!}
+                      onOpenCandidate={(candidateId) => {
+                        setSearchParams(prev => {
+                          prev.set('openCandidate', candidateId)
+                          return prev
+                        })
+                      }}
+                    />
+                  </Card>
                 </TabsContent>
 
                 {/* Job Setup Tab */}
