@@ -1,6 +1,6 @@
 
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, Settings, Kanban, Users } from 'lucide-react'
+import { LayoutDashboard, Settings, Kanban, Users, MessageSquare } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 
