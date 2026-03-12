@@ -46,11 +46,19 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Parse request body
-    const { to, body, candidate_id, job_id } = await req.json();
+    const { to, body, candidate_id, job_id, template_id, template_variables } = await req.json();
 
-    if (!to || !body || !candidate_id) {
+    if (!to || !candidate_id) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: to, body, candidate_id" }),
+        JSON.stringify({ error: "Missing required fields: to, candidate_id" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Must have either body (freeform) or template_id
+    if (!body && !template_id) {
+      return new Response(
+        JSON.stringify({ error: "Must provide either body or template_id" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
