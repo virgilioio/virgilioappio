@@ -109,6 +109,8 @@ export function useSendWhatsAppMessage() {
       body: string
       candidate_id: string
       job_id?: string
+      template_id?: string
+      template_variables?: Record<string, string>
     }) => {
       const { data, error } = await supabase.functions.invoke('send-whatsapp', {
         body: params,
