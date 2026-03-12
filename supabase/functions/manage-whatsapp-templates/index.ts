@@ -173,6 +173,58 @@ Deno.serve(async (req) => {
         });
       }
 
+      case "submit": {
+        const { template_id } = params;
+
+        if (!template_id) {
+          return new Response(
+            JSON.stringify({ error: "Missing template_id" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Fetch template and validate tenant ownership
+        const { data: tmpl, error: tmplError } = await supabase
+          .from("whatsapp_templates")
+          .select("*")
+          .eq("id", template_id)
+          .single();
+
+        if (tmplError || !tmpl) {
+          return new Response(
+            JSON.stringify({ error: "Template not found" }),
+            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        if (tmpl.tenant_id && tmpl.tenant_id !== tenantId) {
+          return new Response(
+            JSON.stringify({ error: "Unauthorized: template belongs to another tenant" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // TODO: Call Twilio Content API to create content resource and submit for WhatsApp approval.
+        // The connector gateway prepends /2010-04-01/Accounts/{SID} which doesn't work for
+        // content.twilio.com/v1/Content. Requires direct Twilio credentials or gateway enhancement.
+        console.log(`[WhatsApp Templates] Submit requested for template ${template_id}. Marking as pending.`);
+
+        // Update approval_status to pending
+        const { data: updated, error: updateError } = await supabase
+          .from("whatsapp_templates")
+          .update({ approval_status: "pending" })
+          .eq("id", template_id)
+          .select()
+          .single();
+
+        if (updateError) throw updateError;
+
+        return new Response(JSON.stringify({ template: updated }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: `Unknown action: ${action}` }),
