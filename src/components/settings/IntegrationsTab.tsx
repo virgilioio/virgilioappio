@@ -53,10 +53,10 @@ function useWhatsAppConnected() {
 const INTEGRATIONS: IntegrationEntry[] = [
   {
     id: 'chrome-extension',
-    name: 'Chrome Extension',
+    name: 'GoGio - LinkedIn Companion',
     description: 'Add candidates directly from LinkedIn with one click using our browser extension.',
     category: 'sourcing',
-    logo: <Chrome className="h-6 w-6 text-primary" />,
+    logo: <img src={gogioAvatar} alt="GoGio" className="h-6 w-6 rounded-full" />,
     useIsConnected: useChromeConnected,
     DetailComponent: ChromeExtensionTokenCard,
   },
