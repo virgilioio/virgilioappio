@@ -17,6 +17,7 @@ import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/com
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign, MessageSquare } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
+import whatsappIcon from '@/assets/whatsapp-icon.png'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Separator } from '@/components/ui/separator'
@@ -1390,7 +1391,7 @@ const stageHasAutomation = useMemo(() => {
                                                   }}
                                                   title="Send WhatsApp message"
                                                 >
-                                                  <MessageSquare className="h-3.5 w-3.5" />
+                                                  <img src={whatsappIcon} alt="WhatsApp" className="h-3.5 w-3.5" />
                                                 </Button>
                                               </div>
                                             </div>

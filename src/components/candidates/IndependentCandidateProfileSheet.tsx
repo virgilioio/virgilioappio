@@ -24,6 +24,7 @@ import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMa
 import { Badge } from '@/components/ui/badge'
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
 import gioAiBannerIcon from '@/assets/gio-ai-banner-icon.png'
+import whatsappIcon from '@/assets/whatsapp-icon.png'
 import { ChevronDown } from 'lucide-react'
 import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
@@ -599,9 +600,16 @@ export function IndependentCandidateProfileSheet({
                                         <span className="text-xs text-text-tertiary capitalize">{phoneType}</span>
                                       </div>
                                     </div>
-                                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={() => copyToClipboard(phoneValue, 'Phone number copied to clipboard')}>
-                                      <Copy className="h-3.5 w-3.5" />
-                                    </Button>
+                                    <div className="flex items-center gap-0.5 flex-shrink-0">
+                                      <a href={`https://wa.me/${phoneValue.replace(/[^\d]/g, '')}`} target="_blank" rel="noopener noreferrer" title="Open in WhatsApp">
+                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                          <img src={whatsappIcon} alt="WhatsApp" className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </a>
+                                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => copyToClipboard(phoneValue, 'Phone number copied to clipboard')}>
+                                        <Copy className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </div>
                                   </div>
                                 );
                               })
@@ -618,9 +626,16 @@ export function IndependentCandidateProfileSheet({
                                   )}
                                 </div>
                                 {candidate?.phone && (
-                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={() => copyToClipboard(candidate.phone, 'Phone number copied to clipboard')}>
-                                    <Copy className="h-3.5 w-3.5" />
-                                  </Button>
+                                  <div className="flex items-center gap-0.5 flex-shrink-0">
+                                    <a href={`https://wa.me/${candidate.phone.replace(/[^\d]/g, '')}`} target="_blank" rel="noopener noreferrer" title="Open in WhatsApp">
+                                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                        <img src={whatsappIcon} alt="WhatsApp" className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </a>
+                                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => copyToClipboard(candidate.phone, 'Phone number copied to clipboard')}>
+                                      <Copy className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
                                 )}
                               </div>
                             )}
