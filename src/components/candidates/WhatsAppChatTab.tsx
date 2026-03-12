@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Send, Loader2, MessageSquare, FileText } from 'lucide-react'
+import { Send, Loader2, MessageSquare, FileText, AlertCircle, Settings } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -11,9 +11,10 @@ import {
   useSendWhatsAppMessage,
   useMarkWhatsAppRead,
 } from '@/hooks/useWhatsApp'
-import { useWhatsAppTemplates, type WhatsAppTemplate } from '@/hooks/useWhatsAppConfig'
+import { useWhatsAppTemplates, useWhatsAppSetupStatus, type WhatsAppTemplate } from '@/hooks/useWhatsAppConfig'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
+import { useNavigate } from 'react-router-dom'
 
 interface WhatsAppChatTabProps {
   candidateId: string
@@ -38,11 +39,13 @@ export function WhatsAppChatTab({
   const [selectedTemplate, setSelectedTemplate] = useState<WhatsAppTemplate | null>(null)
   const [showTemplates, setShowTemplates] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const navigate = useNavigate()
   const { data: conversation } = useWhatsAppConversation(candidateId, jobId)
   const { data: messages = [], isLoading } = useWhatsAppMessages(conversation?.id)
   const sendMessage = useSendWhatsAppMessage()
   const markRead = useMarkWhatsAppRead()
   const { data: templates = [] } = useWhatsAppTemplates()
+  const setupState = useWhatsAppSetupStatus()
 
   const targetPhone = phoneNumber || conversation?.phone_number
 
@@ -142,6 +145,50 @@ export function WhatsAppChatTab({
     }
   }
 
+  // Workspace not ready - show blocking state
+  if (!setupState.isLoading && !setupState.canMessage && setupState.status !== 'not_started') {
+    return (
+      <div className="flex flex-col items-center justify-center h-full py-12 text-center px-4">
+        <AlertCircle className="h-8 w-8 text-muted-foreground mb-3" />
+        <p className="text-sm font-medium text-foreground">WhatsApp not ready</p>
+        <p className="text-xs text-muted-foreground mt-1 max-w-[240px]">
+          {setupState.description}
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-4"
+          onClick={() => navigate('/settings?tab=integrations')}
+        >
+          <Settings className="h-3.5 w-3.5 mr-1.5" />
+          Go to settings
+        </Button>
+      </div>
+    )
+  }
+
+  // Not set up at all
+  if (!setupState.isLoading && setupState.status === 'not_started') {
+    return (
+      <div className="flex flex-col items-center justify-center h-full py-12 text-center px-4">
+        <MessageSquare className="h-8 w-8 text-muted-foreground mb-3" />
+        <p className="text-sm font-medium text-foreground">WhatsApp not set up</p>
+        <p className="text-xs text-muted-foreground mt-1 max-w-[240px]">
+          Set up workspace WhatsApp in Settings to start messaging candidates.
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-4"
+          onClick={() => navigate('/settings?tab=integrations')}
+        >
+          <Settings className="h-3.5 w-3.5 mr-1.5" />
+          Set up WhatsApp
+        </Button>
+      </div>
+    )
+  }
+
   if (!targetPhone) {
     return (
       <div className="flex flex-col items-center justify-center h-full py-12 text-center px-4">
@@ -154,11 +201,10 @@ export function WhatsAppChatTab({
     )
   }
 
-  // Only show templates that have a twilio_content_sid (actually submitted to Meta/Twilio)
-  // OR allow all approved templates for freeform fallback
-  const approvedTemplates = templates.filter((t) => t.approval_status === 'approved')
-  const usableTemplates = approvedTemplates.filter((t) => !!t.twilio_content_sid)
-  const localOnlyTemplates = approvedTemplates.filter((t) => !t.twilio_content_sid)
+  // Only truly approved templates with twilio_content_sid
+  const usableTemplates = templates.filter(
+    (t) => !!t.twilio_content_sid && t.approval_status === 'approved'
+  )
 
   return (
     <div className="flex flex-col h-full">
@@ -231,55 +277,41 @@ export function WhatsAppChatTab({
           <div className="space-y-2">
             {showTemplates ? (
               <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                {usableTemplates.map((t) => (
-                   <button
-                     key={t.id}
-                     onClick={() => {
-                       setSelectedTemplate(t)
-                       setShowTemplates(false)
-                     }}
-                     className="w-full text-left p-2.5 rounded-md border border-border hover:bg-accent/50 transition-colors"
-                   >
-                     <div className="flex items-center gap-2">
-                       <p className="text-xs font-medium">{t.name}</p>
-                       {!t.tenant_id && (
-                         <Badge variant="secondary" className="text-[9px]">GoGio</Badge>
-                       )}
-                     </div>
-                     <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
-                       {getPreviewText(t)}
-                     </p>
-                   </button>
-                 ))}
-                 {localOnlyTemplates.length > 0 && usableTemplates.length > 0 && (
-                   <Separator className="my-1" />
-                 )}
-                 {localOnlyTemplates.map((t) => (
-                   <div
-                     key={t.id}
-                     className="w-full text-left p-2.5 rounded-md border border-dashed border-border opacity-60"
-                   >
-                     <div className="flex items-center gap-2">
-                       <p className="text-xs font-medium">{t.name}</p>
-                       <Badge variant="outline" className="text-[9px] border-muted-foreground/30 text-muted-foreground">
-                         Not submitted to Meta
-                       </Badge>
-                     </div>
-                     <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
-                       {getPreviewText(t)}
-                     </p>
-                   </div>
-                 ))}
-                 {usableTemplates.length === 0 && localOnlyTemplates.length === 0 && (
-                   <p className="text-xs text-muted-foreground text-center py-3">
-                     No approved templates available. Go to Settings to set up WhatsApp templates.
-                   </p>
-                 )}
-                 {usableTemplates.length === 0 && localOnlyTemplates.length > 0 && (
-                   <p className="text-xs text-yellow-600 text-center py-2">
-                     Templates above haven't been submitted to Meta yet. They can't be used for first contact until approved.
-                   </p>
-                 )}
+                {usableTemplates.length > 0 ? (
+                  usableTemplates.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => {
+                        setSelectedTemplate(t)
+                        setShowTemplates(false)
+                      }}
+                      className="w-full text-left p-2.5 rounded-md border border-border hover:bg-accent/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-medium">{t.name}</p>
+                        {!t.tenant_id && (
+                          <Badge variant="secondary" className="text-[9px]">GoGio</Badge>
+                        )}
+                        <Badge variant="outline" className="text-[9px] border-[#25D366]/30 text-[#25D366]">
+                          Approved
+                        </Badge>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                        {getPreviewText(t)}
+                      </p>
+                    </button>
+                  ))
+                ) : (
+                  <div className="p-4 text-center">
+                    <FileText className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-xs text-muted-foreground">
+                      No approved templates available.
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Go to Settings → Integrations → WhatsApp to create and submit templates for approval.
+                    </p>
+                  </div>
+                )}
               </div>
             ) : (
               <Button
