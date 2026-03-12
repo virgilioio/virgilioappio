@@ -1391,7 +1391,7 @@ const stageHasAutomation = useMemo(() => {
                                                   }}
                                                   title="Send WhatsApp message"
                                                 >
-                                                  <MessageSquare className="h-3.5 w-3.5" />
+                                                  <img src={whatsappIcon} alt="WhatsApp" className="h-3.5 w-3.5" />
                                                 </Button>
                                               </div>
                                             </div>
