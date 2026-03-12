@@ -39,6 +39,7 @@ import { toast } from '@/hooks/use-toast'
 import CandidateNameCard from '@/components/candidates/CandidateNameCard'
 import { copyToClipboard } from '@/utils/clipboard'
 import { getEmailFromEntry, getPhoneFromEntry } from '@/utils/parseContactEntry'
+import { formatE164Display } from '@/utils/phoneUtils'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { useCandidateResolver } from '@/hooks/useCandidateResolver'
@@ -1367,7 +1368,7 @@ const stageHasAutomation = useMemo(() => {
                                                     href={`tel:${phoneValue}`}
                                                     className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all"
                                                   >
-                                                    {phoneValue}
+                                                    {formatE164Display(phoneValue)}
                                                   </a>
                                                   <span className="text-xs text-text-tertiary capitalize">{phoneType}</span>
                                                 </div>
@@ -1406,7 +1407,7 @@ const stageHasAutomation = useMemo(() => {
                                                 href={`tel:${candidate.phone}`}
                                                 className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all"
                                               >
-                                                {candidate.phone}
+                                                {formatE164Display(candidate.phone)}
                                               </a>
                                             ) : (
                                               <span className="text-sm text-text-tertiary italic">

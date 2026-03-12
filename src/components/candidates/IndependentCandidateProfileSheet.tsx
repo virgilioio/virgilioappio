@@ -32,6 +32,7 @@ import { toast } from '@/hooks/use-toast'
 import CandidateNameCard from '@/components/candidates/CandidateNameCard'
 import { copyToClipboard } from '@/utils/clipboard'
 import { getEmailFromEntry, getPhoneFromEntry } from '@/utils/parseContactEntry'
+import { formatE164Display } from '@/utils/phoneUtils'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 
 import AddToJobPipelineDialog from './AddToJobPipelineDialog'
@@ -595,7 +596,7 @@ export function IndependentCandidateProfileSheet({
                                       <Phone className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
                                       <div className="flex flex-col min-w-0">
                                         <a href={`tel:${phoneValue}`} className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all">
-                                          {phoneValue}
+                                          {formatE164Display(phoneValue)}
                                         </a>
                                         <span className="text-xs text-text-tertiary capitalize">{phoneType}</span>
                                       </div>
@@ -619,7 +620,7 @@ export function IndependentCandidateProfileSheet({
                                   <Phone className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
                                   {candidate?.phone ? (
                                     <a href={`tel:${candidate.phone}`} className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all">
-                                      {candidate.phone}
+                                      {formatE164Display(candidate.phone)}
                                     </a>
                                   ) : (
                                     <span className="text-sm text-text-tertiary italic">Phone not available</span>

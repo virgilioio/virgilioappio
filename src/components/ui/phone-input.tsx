@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
+import { useState, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
@@ -79,6 +78,34 @@ interface PhoneInputProps {
   id?: string
 }
 
+/**
+ * Parses a phone value (ideally E.164) into country code and subscriber number.
+ * Tries longest match first among known codes.
+ */
+function parsePhoneValue(phoneValue: string) {
+  if (!phoneValue) return { countryCode: '+1', number: '' }
+
+  // Clean the value first
+  const cleaned = phoneValue.replace(/[^\d+]/g, '')
+  if (!cleaned) return { countryCode: '+1', number: '' }
+
+  const withPlus = cleaned.startsWith('+') ? cleaned : '+' + cleaned
+
+  // Sort codes by length (longest first) for greedy matching
+  const sortedCodes = [...new Set(COUNTRY_CODES.map(c => c.code))].sort((a, b) => b.length - a.length)
+
+  for (const code of sortedCodes) {
+    if (withPlus.startsWith(code)) {
+      return {
+        countryCode: code,
+        number: withPlus.slice(code.length),
+      }
+    }
+  }
+
+  return { countryCode: '+1', number: withPlus.replace(/^\+/, '') }
+}
+
 export function PhoneInput({ 
   value = '', 
   onChange, 
@@ -87,42 +114,38 @@ export function PhoneInput({
   disabled,
   id
 }: PhoneInputProps) {
-  // Parse existing value to separate country code and number
-  const parsePhoneValue = (phoneValue: string) => {
-    if (!phoneValue) return { countryCode: '+1', number: '' }
-    
-    // Find matching country code
-    const matchedCountry = COUNTRY_CODES.find(country => 
-      phoneValue.startsWith(country.code)
-    )
-    
-    if (matchedCountry) {
-      return {
-        countryCode: matchedCountry.code,
-        number: phoneValue.slice(matchedCountry.code.length).trim()
-      }
-    }
-    
-    // Default to US if no match
-    return { countryCode: '+1', number: phoneValue }
-  }
+  const parsed = parsePhoneValue(value)
+  const [selectedCountryCode, setSelectedCountryCode] = useState(parsed.countryCode)
+  const [phoneNumber, setPhoneNumber] = useState(parsed.number)
 
-  const { countryCode: initialCountryCode, number: initialNumber } = parsePhoneValue(value)
-  const [selectedCountryCode, setSelectedCountryCode] = useState(initialCountryCode)
-  const [phoneNumber, setPhoneNumber] = useState(initialNumber)
+  // Sync internal state when value prop changes externally
+  useEffect(() => {
+    const newParsed = parsePhoneValue(value)
+    setSelectedCountryCode(newParsed.countryCode)
+    setPhoneNumber(newParsed.number)
+  }, [value])
+
+  const emitChange = (countryCode: string, subscriberNumber: string) => {
+    // Strip all non-digit chars from subscriber number
+    const cleanSubscriber = subscriberNumber.replace(/\D/g, '')
+    if (!cleanSubscriber) {
+      onChange?.('')
+      return
+    }
+    // Emit clean E.164: +<code><subscriber> with no spaces
+    onChange?.(`${countryCode}${cleanSubscriber}`)
+  }
 
   const handleCountryCodeChange = (newCountryCode: string) => {
     setSelectedCountryCode(newCountryCode)
-    const newValue = newCountryCode + ' ' + phoneNumber.trim()
-    onChange?.(newValue.trim())
+    emitChange(newCountryCode, phoneNumber)
   }
 
   const handlePhoneNumberChange = (newNumber: string) => {
-    // Remove any non-digit characters except spaces and dashes
-    const cleanNumber = newNumber.replace(/[^\d\s-]/g, '')
-    setPhoneNumber(cleanNumber)
-    const newValue = selectedCountryCode + ' ' + cleanNumber.trim()
-    onChange?.(newValue.trim())
+    // Allow digits, spaces, dashes for typing comfort, but emit clean
+    const displayNumber = newNumber.replace(/[^\d\s-]/g, '')
+    setPhoneNumber(displayNumber)
+    emitChange(selectedCountryCode, displayNumber)
   }
 
   const selectedCountry = COUNTRY_CODES.find(country => country.code === selectedCountryCode)

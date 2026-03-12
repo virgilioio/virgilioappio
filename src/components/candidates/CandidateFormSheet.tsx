@@ -23,6 +23,8 @@ import { getSkillColor } from '@/utils/skillColors'
 import { SkillsGenerationPanel } from './SkillsGenerationPanel'
 import { useResumeParsing } from '@/hooks/useResumeParsing'
 import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
+import { sanitizeToE164 } from '@/utils/phoneUtils'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { markdownToHtml } from '@/utils/markdown'
 import { ParsingAnimation } from '@/components/ui/parsing-animation'
 import { useSkillsGeneration } from '@/hooks/useSkillsGeneration'
@@ -488,7 +490,7 @@ export function CandidateFormSheet({
     const submitData = {
       ...data,
       email: data.email?.trim() ? data.email.trim() : null,
-      phone: data.phone?.trim() ? data.phone.trim() : null,
+      phone: data.phone?.trim() ? sanitizeToE164(data.phone.trim()) : null,
       linkedin_url: normalizedLinkedInUrl || null,
       salary_amount: data.salary_amount ? Number(data.salary_amount) : null,
       profile_summary: sanitizeHtmlForEditor(profileSummary),
@@ -756,10 +758,11 @@ export function CandidateFormSheet({
                 htmlFor="phone"
                 helpText="Optional"
               >
-                <Input
+                <PhoneInput
                   id="phone"
-                  {...form.register('phone')}
-                  placeholder="+1 (555) 123-4567"
+                  value={form.watch('phone') || ''}
+                  onChange={(val) => form.setValue('phone', val, { shouldDirty: true })}
+                  placeholder="Enter phone number"
                 />
               </FormField>
 
