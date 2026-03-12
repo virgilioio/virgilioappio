@@ -10,6 +10,7 @@ import {
   type WhatsAppTemplate,
 } from '@/hooks/useWhatsAppConfig'
 import { WhatsAppTemplateCreator } from './WhatsAppTemplateCreator'
+import { AVAILABLE_PLACEHOLDERS } from '@/utils/placeholderUtils'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
