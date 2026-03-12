@@ -1816,6 +1816,17 @@ export default function JobDetail() {
           newCandidate={duplicateInfo?.incoming}
           mergedCandidate={duplicateInfo?.merged}
         />
+
+        {/* Application Review Sheet */}
+        <ApplicationReviewSheet
+          open={showApplicationReview}
+          onOpenChange={setShowApplicationReview}
+          jobId={id!}
+          jobTitle={job?.title || ''}
+          onComplete={() => {
+            setPipelineRefresh((v) => v + 1)
+          }}
+        />
       </div>
     </div>
   )
