@@ -1048,14 +1048,27 @@ export default function JobDetail() {
                         </div>
                         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-between md:justify-end">
                           {!selectionMode && (
-                            <Button
-                              size="sm"
-                              className="gap-sm h-[36px]"
-                              onClick={() => setShowAddCandidate(true)}
-                            >
-                              <UserPlus className="h-4 w-4" />
-                              Add Candidate
-                            </Button>
+                            <>
+                              {pipelineSectionTab === 'application' && applicationCount > 0 && (
+                                <Button
+                                  size="sm"
+                                  variant="virgilio"
+                                  className="gap-sm h-[36px]"
+                                  onClick={() => setShowApplicationReview(true)}
+                                >
+                                  <ClipboardCheck className="h-4 w-4" />
+                                  Review Applications
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                className="gap-sm h-[36px]"
+                                onClick={() => setShowAddCandidate(true)}
+                              >
+                                <UserPlus className="h-4 w-4" />
+                                Add Candidate
+                              </Button>
+                            </>
                           )}
                           {selectionMode && selectedCandidateIds.length > 0 && (
                             <div className="flex items-center gap-2">
