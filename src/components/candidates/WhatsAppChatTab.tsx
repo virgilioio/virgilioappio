@@ -13,7 +13,6 @@ import {
 } from '@/hooks/useWhatsApp'
 import { useWhatsAppTemplates, type WhatsAppTemplate } from '@/hooks/useWhatsAppConfig'
 import { Separator } from '@/components/ui/separator'
-import { useWhatsAppTemplates, type WhatsAppTemplate } from '@/hooks/useWhatsAppConfig'
 import { cn } from '@/lib/utils'
 
 interface WhatsAppChatTabProps {
