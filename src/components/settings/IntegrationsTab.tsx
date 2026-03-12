@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react'
 import { Search, X, ChevronUp } from 'lucide-react'
-import { Chrome } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
