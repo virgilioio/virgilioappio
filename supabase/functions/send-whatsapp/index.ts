@@ -46,11 +46,19 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Parse request body
-    const { to, body, candidate_id, job_id } = await req.json();
+    const { to, body, candidate_id, job_id, template_id, template_variables } = await req.json();
 
-    if (!to || !body || !candidate_id) {
+    if (!to || !candidate_id) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: to, body, candidate_id" }),
+        JSON.stringify({ error: "Missing required fields: to, candidate_id" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Must have either body (freeform) or template_id
+    if (!body && !template_id) {
+      return new Response(
+        JSON.stringify({ error: "Must provide either body or template_id" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -102,6 +110,42 @@ Deno.serve(async (req) => {
     const toWhatsApp = to.startsWith("whatsapp:") ? to : `whatsapp:${to}`;
     const fromWhatsApp = fromNumber.startsWith("whatsapp:") ? fromNumber : `whatsapp:${fromNumber}`;
 
+    // Build message params - template or freeform
+    const messageParams: Record<string, string> = {
+      To: toWhatsApp,
+      From: fromWhatsApp,
+    };
+
+    let messageBody = body || "";
+
+    if (template_id) {
+      // Look up template to get ContentSid and body
+      const { data: template } = await supabase
+        .from("whatsapp_templates")
+        .select("twilio_content_sid, body_template")
+        .eq("id", template_id)
+        .single();
+
+      if (template?.twilio_content_sid) {
+        // Use Twilio Content API template
+        messageParams.ContentSid = template.twilio_content_sid;
+        if (template_variables) {
+          messageParams.ContentVariables = JSON.stringify(template_variables);
+        }
+      } else {
+        // Template exists but no ContentSid yet - send body with variables substituted
+        messageBody = template?.body_template || body || "";
+        if (template_variables) {
+          Object.entries(template_variables as Record<string, string>).forEach(([key, value]) => {
+            messageBody = messageBody.replace(`{{${key}}}`, value);
+          });
+        }
+        messageParams.Body = messageBody;
+      }
+    } else {
+      messageParams.Body = body;
+    }
+
     // Send via Twilio gateway
     const twilioResponse = await fetch(`${GATEWAY_URL}/Messages.json`, {
       method: "POST",
@@ -110,11 +154,7 @@ Deno.serve(async (req) => {
         "X-Connection-Api-Key": TWILIO_API_KEY,
         "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: new URLSearchParams({
-        To: toWhatsApp,
-        From: fromWhatsApp,
-        Body: body,
-      }),
+      body: new URLSearchParams(messageParams),
     });
 
     const twilioData = await twilioResponse.json();

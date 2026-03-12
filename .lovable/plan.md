@@ -1,124 +1,89 @@
+# System Roles Migration — Completed Phases 1-5
 
+## Architecture Change
+- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
+- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-# Fully Managed WhatsApp Integration for GoGio
+## Completed
 
-## The Vision
+### Phase 1 — Database
+- ✅ Created `system_role` enum (`admin`, `member`)
+- ✅ Added `system_role` column to `members` table
+- ✅ Migrated data: `admin` → `admin`, all others → `member`
+- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
+- ✅ Updated `check_tenant_member_role` to use `system_role`
+- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
+- ✅ Updated `audit_member_role_change` trigger
 
-Users click "Enable WhatsApp" inside GoGio and everything works. No Twilio console, no Meta Business verification, no template submission. GoGio owns the infrastructure end-to-end.
+### Phase 2 — Frontend Permissions
+- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
+- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
+- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
+- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
 
-## Architecture
+### Phase 3 — UI Updates
+- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
+- ✅ Updated `Dashboard` — sourcing panel for admin+ only
+- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
+- ✅ Updated `BillingGuard` — members (non-admin) never blocked
+- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
+- ✅ Updated `Find` page RoleGate
+- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
 
-```text
-┌─────────────────────────────────────────────────────┐
-│  GoGio Frontend (Settings > Integrations > WhatsApp)│
-│                                                     │
-│  [Enable WhatsApp]  ──────────────────────────┐     │
-│  [Pick from Template Library]                 │     │
-│  [Request Custom Template]                    │     │
-└───────────────────────────────────────────────┼─────┘
-                                                │
-                    ┌───────────────────────────▼──────┐
-                    │  Edge Functions                  │
-                    │                                  │
-                    │  provision-whatsapp-number        │
-                    │    → Buy number via Twilio API   │
-                    │    → Save to workspace_automations│
-                    │                                  │
-                    │  manage-whatsapp-templates       │
-                    │    → Twilio Content API          │
-                    │    → Create / list / check status│
-                    │                                  │
-                    │  send-whatsapp (updated)         │
-                    │    → Uses ContentSid for first   │
-                    │      contact, freeform in session│
-                    └──────────────────────────────────┘
-```
+### Phase 4 — Runtime Hotfixes
+- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
+- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
+- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
+- ✅ Updated `validate_invite_token` — returns `system_role`
+- ✅ Updated `accept_invitation` — uses `system_role`
 
-## What Changes
+### Phase 5 — Complete Cleanup
+- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
+- ✅ Updated `admin_manage_member` — updates `system_role` column
+- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
+- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
+- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
+- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
+- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
+- ✅ Updated `diagnose_user_auth` — reports `system_role`
+- ✅ Updated `audit_platform_admin_access` — returns `system_role`
+- ✅ Updated `debug_user_permissions` — returns `system_role`
+- ✅ Renamed `invitations.member_role` → `invitations.system_role`
+- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
 
-### 1. Database: `whatsapp_templates` table
-Stores template metadata per tenant (or GoGio-global defaults).
+## Phase 6 — Future (Optional)
+- Drop `member_role` column from `members` table (already dropped)
+- Drop old `member_role` enum type
+- Update `MemberInviteSheet` role picker to only offer Admin/Member
 
-| Column | Type | Purpose |
-|--------|------|---------|
-| id | uuid | PK |
-| tenant_id | uuid (nullable) | null = GoGio global template |
-| name | text | Internal label ("Interview Invite") |
-| category | text | MARKETING / UTILITY / AUTHENTICATION |
-| language | text | e.g. "en" |
-| body_template | text | Template text with `{{1}}` vars |
-| variable_mapping | jsonb | Maps vars to candidate/job fields |
-| twilio_content_sid | text | Returned by Twilio Content API |
-| approval_status | text | draft / pending / approved / rejected |
-| created_at / updated_at | timestamps | |
+# Deep Resume Parsing + Data Standardization — Completed
 
-RLS: tenant members can read their own + global (tenant_id is null). Only admins write.
+## What was implemented
 
-### 2. Database: Add `whatsapp_number` + `whatsapp_number_sid` to workspace_automations config
-When GoGio provisions a number, store both the E.164 number and the Twilio number SID for management.
+### Phase 1: Schema Expansion
+- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
+- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
+- ✅ Added to `candidate_education`: `education_level`
+- ✅ Created `candidate_certifications` table with RLS policies
 
-### 3. Edge Function: `provision-whatsapp-number`
-- Buys an available Twilio number via `/IncomingPhoneNumbers.json`
-- Enables WhatsApp on it (via Twilio WhatsApp Senders API)
-- Saves number to `workspace_automations` config for the tenant
-- Returns the provisioned number
+### Phase 2: Enrichment Rewrite
+- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
+- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
+- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
+- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
+- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
 
-Important caveat: WhatsApp sender registration on a Twilio number requires Meta Business verification. GoGio would handle this under GoGio's own Meta Business account. All tenants share GoGio's verified business but get their own dedicated numbers.
+### Phase 3: UI Updates
+- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
+- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
+- ✅ **Certifications section** with `CandidateCertificationsComponent`
+- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
+- ✅ Enhanced **Education** display: education level badge
+- ✅ Certifications loaded alongside work experience and education
 
-### 4. Edge Function: `manage-whatsapp-templates`
-Actions: `list`, `create`, `check-status`
-- **list**: Returns GoGio global templates + tenant custom templates
-- **create**: Submits a new template via Twilio Content API (`POST /v1/Content`), saves to DB with status `pending`
-- **check-status**: Polls Twilio for approval status updates
-
-### 5. Update `send-whatsapp` edge function
-- For first-contact (no 24h session): require a `template_id`, resolve it to `ContentSid`, send via `ContentSid` + `ContentVariables`
-- For session messages (within 24h window): allow freeform `Body` as today
-
-### 6. Frontend: New WhatsApp Settings UI
-Replace the current manual number input card with:
-
-**Step 1 - Number Provisioning**
-- Single "Enable WhatsApp" button
-- Shows spinner while provisioning
-- Once done: displays assigned number with green "Active" badge
-
-**Step 2 - Template Library**
-- Tab/section showing available templates
-- GoGio pre-built templates (read-only, always available): "Interview Invitation", "Application Update", "Follow-up Reminder", etc.
-- "Request Custom Template" form: name, category, body with variable placeholders
-- Status badges: Approved / Pending / Rejected
-
-### 7. Frontend: Update Chat Tab
-- When sending first message to a candidate (no existing 24h session), show template picker instead of freeform input
-- After candidate replies (session open), switch to freeform input
-- Visual indicator showing session status
-
-## GoGio Pre-Built Template Library (Initial Set)
-These ship as seed data, submitted under GoGio's Twilio account:
-
-1. **Interview Invitation** - "Hi {{1}}, this is {{2}} from {{3}}. We'd like to invite you for an interview for the {{4}} position. Please reply to confirm your availability."
-2. **Application Received** - "Hi {{1}}, thank you for applying to {{2}} at {{3}}. We've received your application and will be in touch soon."
-3. **Follow-up** - "Hi {{1}}, this is {{2}} from {{3}}. We wanted to follow up regarding the {{4}} position. Are you still interested?"
-4. **Schedule Reminder** - "Hi {{1}}, this is a reminder about your upcoming interview for {{2}} at {{3}} on {{4}}."
-5. **General Outreach** - "Hi {{1}}, this is {{2}} from {{3}}. We have an opportunity that might interest you. Would you like to learn more?"
-
-## Implementation Order
-
-1. Create `whatsapp_templates` table + RLS
-2. Build `provision-whatsapp-number` edge function
-3. Build `manage-whatsapp-templates` edge function
-4. Update `send-whatsapp` to support ContentSid
-5. Seed GoGio global templates
-6. Replace WhatsApp settings UI (number provisioning + template library)
-7. Update chat tab with template picker for first contact
-
-## Key Dependency
-
-GoGio needs a Twilio account with:
-- Ability to purchase phone numbers programmatically
-- WhatsApp Business Profile registered with Meta under GoGio's business
-- Content API access for template management
-
-The Twilio connector is already connected. Number provisioning and Content API both work through the same gateway.
-
+## Files changed
+- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
+- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
+- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
+- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
+- `src/components/candidates/CandidateCertifications.tsx` — new component
