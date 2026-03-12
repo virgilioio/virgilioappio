@@ -45,12 +45,6 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
       show: true 
     },
     { 
-      id: 'integrations', 
-      label: 'Integrations', 
-      icon: Plug, 
-      show: true 
-    },
-    { 
       id: 'organizations', 
       label: 'Departments', 
       icon: Building2, 
