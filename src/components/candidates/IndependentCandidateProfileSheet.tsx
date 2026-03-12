@@ -24,6 +24,7 @@ import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMa
 import { Badge } from '@/components/ui/badge'
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
 import gioAiBannerIcon from '@/assets/gio-ai-banner-icon.png'
+import whatsappIcon from '@/assets/whatsapp-icon.png'
 import { ChevronDown } from 'lucide-react'
 import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
