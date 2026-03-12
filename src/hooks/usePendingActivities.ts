@@ -64,6 +64,10 @@ export function usePendingActivities() {
       const approvalActivities = await fetchPendingOfferApprovals(user.id);
       activities.push(...approvalActivities);
 
+      // 5. Fetch unread WhatsApp messages
+      const whatsappActivities = await fetchUnreadWhatsApp(assignedJobIds);
+      activities.push(...whatsappActivities);
+
       // Sort all activities by timestamp (oldest/most urgent first)
       return activities.sort((a, b) => 
         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
