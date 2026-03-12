@@ -168,7 +168,7 @@ Return ONLY valid JSON with these exact fields:
 EXTRACTION RULES:
 - name: Full name of the candidate. Look at the very top of the resume, headers, and any "Name:" fields.
 - email: Primary contact email address.
-- phone: Phone number. Include country code if present (e.g., +52 for Mexico, +1 for US). Accept any format.
+- phone: Phone number in E.164 format with country code, no spaces or dashes (e.g., +5213332555660, +14155551234). Always include country code based on resume context/location.
 - linkedinUrl: Full LinkedIn profile URL. Check headers, footers, contact sections. Format as https://linkedin.com/in/username
 - location: Current location as "City, State/Province, Country" (e.g., "Mexico City, CDMX, Mexico" or "San Francisco, CA, United States")
 
