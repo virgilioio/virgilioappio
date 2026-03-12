@@ -92,12 +92,12 @@ Deno.serve(async (req) => {
 
     if (!config?.config?.twilio_from_number) {
       return new Response(
-        JSON.stringify({ error: "WhatsApp not configured. Set up your WhatsApp number in Settings > Integrations." }),
+        JSON.stringify({ error: "WhatsApp not configured. Set up your WhatsApp sender number in Settings > Integrations." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const fromNumber = config.config.twilio_from_number;
+    const fromNumber = config.config.twilio_from_number as string;
 
     // Check Twilio credentials
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -147,6 +147,7 @@ Deno.serve(async (req) => {
       }
     } else {
       messageParams.Body = body;
+      messageBody = body;
     }
 
     // Send via Twilio gateway
@@ -162,12 +163,27 @@ Deno.serve(async (req) => {
 
     const twilioData = await twilioResponse.json();
     if (!twilioResponse.ok) {
-      console.error("Twilio API error:", twilioData);
+      console.error("Twilio API error:", JSON.stringify(twilioData));
+
+      // Map known Twilio error codes to actionable messages
+      const twilioCode = twilioData?.code;
+      const errorMap: Record<number, string> = {
+        63007: `The From number (${fromWhatsApp}) is not registered as an active WhatsApp Sender in Twilio. Please verify the number in your Twilio console and update it in Settings > Integrations.`,
+        63016: `The message body or template is not valid for WhatsApp. Please check your template content.`,
+        21211: `The 'To' phone number (${toWhatsApp}) is not valid. Please verify the candidate's phone number.`,
+        21608: `The From number is not enabled for WhatsApp. Register it as a WhatsApp Sender in Twilio first.`,
+      };
+
+      const friendlyError = errorMap[twilioCode] || `Twilio error (${twilioCode || 'unknown'}): ${twilioData.message || JSON.stringify(twilioData)}`;
+
       return new Response(
-        JSON.stringify({ error: `Twilio error: ${twilioData.message || JSON.stringify(twilioData)}` }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: friendlyError }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Safe preview text
+    const previewText = (messageBody || "").substring(0, 100) || "[template message]";
 
     // Upsert conversation
     const { data: conversation } = await supabase
@@ -179,7 +195,7 @@ Deno.serve(async (req) => {
           job_id: job_id || null,
           phone_number: to,
           last_message_at: new Date().toISOString(),
-          last_message_preview: body.substring(0, 100),
+          last_message_preview: previewText,
           unread_count: 0,
         },
         { onConflict: "tenant_id,candidate_id,job_id" }
@@ -202,7 +218,7 @@ Deno.serve(async (req) => {
         sender_id: userId,
         to_phone: to,
         from_phone: fromNumber,
-        body,
+        body: messageBody || previewText,
         twilio_sid: twilioData.sid || null,
         status: "sent",
         direction: "outbound",
