@@ -56,6 +56,7 @@ export default function JobDetail() {
   const isRestrictedViewer = (isHiringManagerOnJob || isInterviewerOnJob) && !permissions.isAdmin && !permissions.isWorkspaceOwner && !permissions.isPlatformAdmin
   const isMobile = useIsMobile()
   const [showAddCandidate, setShowAddCandidate] = useState(false)
+  const [showApplicationReview, setShowApplicationReview] = useState(false)
   const [editingCandidate, setEditingCandidate] = useState<any>(null)
   const [activeTab, setActiveTab] = useState('pipeline')
   
