@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { isRestrictedRole, fetchAssignedJobIds } from '@/utils/jobScoping';
 
-export type ActivityType = 'scorecard' | 'decision' | 'email' | 'offer_approval';
+export type ActivityType = 'scorecard' | 'decision' | 'email' | 'offer_approval' | 'whatsapp';
 
 export interface PendingActivity {
   type: ActivityType;
