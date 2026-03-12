@@ -32,6 +32,7 @@ import { toast } from '@/hooks/use-toast'
 import CandidateNameCard from '@/components/candidates/CandidateNameCard'
 import { copyToClipboard } from '@/utils/clipboard'
 import { getEmailFromEntry, getPhoneFromEntry } from '@/utils/parseContactEntry'
+import { formatE164Display } from '@/utils/phoneUtils'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 
 import AddToJobPipelineDialog from './AddToJobPipelineDialog'
