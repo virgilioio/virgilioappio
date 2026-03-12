@@ -106,9 +106,12 @@ Deno.serve(async (req) => {
     const TWILIO_API_KEY = Deno.env.get("TWILIO_API_KEY");
     if (!TWILIO_API_KEY) throw new Error("TWILIO_API_KEY is not configured");
 
-    // Format WhatsApp numbers
-    const toWhatsApp = to.startsWith("whatsapp:") ? to : `whatsapp:${to}`;
-    const fromWhatsApp = fromNumber.startsWith("whatsapp:") ? fromNumber : `whatsapp:${fromNumber}`;
+    // Sanitize and format WhatsApp numbers to E.164
+    const sanitize = (phone: string) => phone.replace(/[^\d+]/g, '');
+    const toClean = sanitize(to.startsWith("whatsapp:") ? to.slice(9) : to);
+    const fromClean = sanitize(fromNumber.startsWith("whatsapp:") ? fromNumber.slice(9) : fromNumber);
+    const toWhatsApp = `whatsapp:+${toClean.replace(/^\+/, '')}`;
+    const fromWhatsApp = `whatsapp:+${fromClean.replace(/^\+/, '')}`;
 
     // Build message params - template or freeform
     const messageParams: Record<string, string> = {
