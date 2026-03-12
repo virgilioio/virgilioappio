@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 import { extractTextFromFile } from '@/utils/pdfText';
 import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment';
+import { sanitizeToE164 } from '@/utils/phoneUtils';
 
 export type ParsedResume = {
   name?: string;
