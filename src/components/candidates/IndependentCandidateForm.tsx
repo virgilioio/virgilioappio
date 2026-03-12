@@ -21,6 +21,7 @@ import { ContactPhonesInput, ContactPhone } from './ContactPhonesInput'
 import { parseContactEntry } from '@/utils/parseContactEntry'
 import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment'
 import { BackgroundEnrichmentBanner } from './BackgroundEnrichmentBanner'
+import { sanitizeToE164 } from '@/utils/phoneUtils'
 
 const candidateSchema = z.object({
   candidate_name: z.string().min(1, 'Name is required'),

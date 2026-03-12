@@ -28,6 +28,7 @@ import { CoreFieldsRenderer } from '@/components/forms/CoreFieldsRenderer'
 import { ApplicationFieldsRenderer } from '@/components/forms/ApplicationFieldsRenderer'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
+import { sanitizeToE164 } from '@/utils/phoneUtils'
 
 function getViolationToast(violation: { type?: string; message?: string; cooldown_until?: string }) {
   const cooldownDate = violation.cooldown_until ? new Date(violation.cooldown_until) : null
