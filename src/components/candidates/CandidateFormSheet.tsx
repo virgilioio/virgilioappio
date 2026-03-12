@@ -490,7 +490,7 @@ export function CandidateFormSheet({
     const submitData = {
       ...data,
       email: data.email?.trim() ? data.email.trim() : null,
-      phone: data.phone?.trim() ? data.phone.trim() : null,
+      phone: data.phone?.trim() ? sanitizeToE164(data.phone.trim()) : null,
       linkedin_url: normalizedLinkedInUrl || null,
       salary_amount: data.salary_amount ? Number(data.salary_amount) : null,
       profile_summary: sanitizeHtmlForEditor(profileSummary),
