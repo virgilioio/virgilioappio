@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { MessageSquare, Check, Loader2 } from 'lucide-react'
+import { Check, Loader2 } from 'lucide-react'
+import whatsappLogo from '@/assets/whatsapp-logo.png'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -54,8 +55,8 @@ export function WhatsAppIntegrationCard() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#25D366]/10">
-              <MessageSquare className="h-5 w-5 text-[#25D366]" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg">
+              <img src={whatsappLogo} alt="WhatsApp" className="h-8 w-8" />
             </div>
             <div>
               <CardTitle className="text-base">WhatsApp Business</CardTitle>
