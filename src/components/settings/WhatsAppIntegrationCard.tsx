@@ -238,7 +238,7 @@ export function WhatsAppIntegrationCard() {
                     <DialogHeader>
                       <DialogTitle>Request Custom Template</DialogTitle>
                       <DialogDescription>
-                        Submit a custom message template for WhatsApp approval. Use {'{{1}}'}, {'{{2}}'}, etc. for variable placeholders.
+                        Submit a custom message template for WhatsApp approval. Click a variable below to insert it into your message.
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-2">
@@ -253,14 +253,27 @@ export function WhatsAppIntegrationCard() {
                       <div className="space-y-2">
                         <Label>Message Body</Label>
                         <Textarea
-                          placeholder="Hi {{1}}, we're pleased to inform you that..."
+                          ref={textareaRef}
+                          placeholder="Hi {{candidate_name}}, we're pleased to inform you that..."
                           value={newTemplate.body_template}
                           onChange={(e) => setNewTemplate((p) => ({ ...p, body_template: e.target.value }))}
                           rows={4}
                         />
-                        <p className="text-xs text-muted-foreground">
-                          Use {'{{1}}'}, {'{{2}}'}, etc. for dynamic values like candidate name, job title, company name.
-                        </p>
+                        <div className="space-y-1.5">
+                          <p className="text-xs text-muted-foreground">Click to insert a variable at cursor position:</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {AVAILABLE_VARIABLES.map((v) => (
+                              <button
+                                key={v.key}
+                                type="button"
+                                onClick={() => insertVariable(v.key)}
+                                className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer border border-primary/20"
+                              >
+                                {v.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
                     <DialogFooter>
