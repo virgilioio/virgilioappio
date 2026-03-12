@@ -9,6 +9,7 @@ import { useCandidates } from '@/hooks/useCandidates'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { useJobs } from '@/hooks/useJobs'
 import { JobDetailFloatingSidebar } from '@/components/jobs/JobDetailFloatingSidebar'
+import { WhatsAppConversationsList } from '@/components/jobs/WhatsAppConversationsList'
 import { JobDetailMobileHeader } from '@/components/jobs/JobDetailMobileHeader'
 import { PageHeader } from '@/components/layout/PageHeader'
 
