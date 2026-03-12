@@ -1,0 +1,7 @@
+
+INSERT INTO public.whatsapp_templates (tenant_id, name, category, language, body_template, variable_mapping, approval_status) VALUES
+(NULL, 'Interview Invitation', 'UTILITY', 'en', 'Hi {{1}}, this is {{2}} from {{3}}. We''d like to invite you for an interview for the {{4}} position. Please reply to confirm your availability.', '{"1": "candidate_name", "2": "recruiter_name", "3": "company_name", "4": "job_title"}', 'approved'),
+(NULL, 'Application Received', 'UTILITY', 'en', 'Hi {{1}}, thank you for applying to {{2}} at {{3}}. We''ve received your application and will be in touch soon.', '{"1": "candidate_name", "2": "job_title", "3": "company_name"}', 'approved'),
+(NULL, 'Follow-up', 'UTILITY', 'en', 'Hi {{1}}, this is {{2}} from {{3}}. We wanted to follow up regarding the {{4}} position. Are you still interested?', '{"1": "candidate_name", "2": "recruiter_name", "3": "company_name", "4": "job_title"}', 'approved'),
+(NULL, 'Schedule Reminder', 'UTILITY', 'en', 'Hi {{1}}, this is a reminder about your upcoming interview for {{2}} at {{3}} on {{4}}.', '{"1": "candidate_name", "2": "job_title", "3": "company_name", "4": "interview_date"}', 'approved'),
+(NULL, 'General Outreach', 'MARKETING', 'en', 'Hi {{1}}, this is {{2}} from {{3}}. We have an opportunity that might interest you. Would you like to learn more?', '{"1": "candidate_name", "2": "recruiter_name", "3": "company_name"}', 'approved');
