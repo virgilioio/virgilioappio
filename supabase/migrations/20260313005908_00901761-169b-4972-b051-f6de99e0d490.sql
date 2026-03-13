@@ -1,0 +1,1 @@
+DELETE FROM whatsapp_templates WHERE tenant_id IS NULL;
