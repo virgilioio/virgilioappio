@@ -238,8 +238,8 @@ export function ApplicationReviewSheet({
                   </div>
                 </div>
 
-                {/* Column 3 — Review Controls (1/4) */}
-                <div className="col-span-1 flex flex-col min-h-0">
+                {/* Column 3 — Review Controls (2/8) */}
+                <div className="col-span-2 flex flex-col min-h-0 overflow-hidden">
                   <ScrollArea className="flex-1">
                     <div className="p-5 space-y-4">
                       {/* Actions Card */}
