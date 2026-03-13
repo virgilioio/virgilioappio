@@ -332,63 +332,23 @@ export default function JobDetail() {
     isCandidateNewForUser
   } = useCandidates(id!)
 
-  // In-pipeline associations for filtering Application Review
-  const [inPipelineKeys, setInPipelineKeys] = useState<Set<string>>(new Set())
-  const [pipelineLoading, setPipelineLoading] = useState(false)
+  // Application review candidates derived from associations + stageMap
+  const [applicationReviewCandidates, setApplicationReviewCandidates] = useState<any[]>([])
 
-  const normalizeUrl = (url?: string | null) => url?.trim().replace(/\/+$/, '').toLowerCase() || ''
-  const makeNameLocKey = (
-    name?: string | null,
-    city?: string | null,
-    country?: string | null
-  ) => `${(name || '').trim().toLowerCase()}||${(city || '').trim().toLowerCase()}||${(country || '').trim().toLowerCase()}`
-
-  useEffect(() => {
-    if (!id || !user) return
-    const load = async () => {
-      setPipelineLoading(true)
-      try {
-        const { data, error } = await supabase
-          .from('job_candidate_associations')
-          .select(`id, current_stage_id, candidate:candidates(id, candidate_name, linkedin_url, location_city, location_country)`)
-          .eq('job_id', id)
-          .not('current_stage_id', 'is', null)
-        if (error) throw error
-        const keys = new Set<string>()
-        ;(data || []).forEach((row: any) => {
-          const c = (row as any).candidate || {}
-          const link = normalizeUrl(c.linkedin_url)
-          if (link) keys.add('link:' + link)
-          if (c.candidate_name) {
-            keys.add('name:' + makeNameLocKey(c.candidate_name, c.location_city, c.location_country))
-          }
-        })
-        setInPipelineKeys(keys)
-      } catch (e) {
-        console.error('Failed to load pipeline associations', e)
-      } finally {
-        setPipelineLoading(false)
-      }
+  const applicationReviewStageId = useMemo(() => {
+    // Find the job_hiring_stage ID for the application_review stage type
+    for (const [jhsId, info] of Object.entries(stageMap)) {
+      if (info.type === 'application_review') return jhsId
     }
-    load()
-  }, [id, user])
+    return null
+  }, [stageMap])
 
-  const applicationReviewCandidates = useMemo(() => {
-    if (!candidates?.length) return []
-    return candidates.filter((c: any) => {
-      const link = normalizeUrl(c.linkedin_url)
-      if (link && inPipelineKeys.has('link:' + link)) return false
-      const key = 'name:' + makeNameLocKey(c.candidate_name, c.location_city, c.location_country)
-      return !inPipelineKeys.has(key)
-    }).map((c: any) => ({
-      ...c,
-      // Ensure all required fields are present for CandidateTable compatibility
-      job_id: c.job_id || id, // Use current job ID if not set
-      notes: c.notes || c.association_notes || null,
-      added_by: c.added_by || null,
-      first_viewed_by: c.first_viewed_by || {}
-    }))
-  }, [candidates, inPipelineKeys, id])
+  const applicationCount = useMemo(() => {
+    return associations.filter(a => 
+      a.status === 'active' && 
+      a.current_stage_id === applicationReviewStageId
+    ).length
+  }, [associations, applicationReviewStageId])
 
   // Open in-place sheet for Application Review rows (job_candidates)
   const handleApplicationRowClick = async (jobCandidateId: string) => {
