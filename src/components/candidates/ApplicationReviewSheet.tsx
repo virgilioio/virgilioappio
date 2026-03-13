@@ -185,8 +185,8 @@ export function ApplicationReviewSheet({
 
               {/* 3-Column Grid: Resume (3) | Responses (3) | Controls (2) */}
               <div className="flex-1 min-h-0 grid grid-cols-8 gap-0">
-                {/* Column 1 — Resume (3/8) */}
-                <div className="col-span-3 border-r border-border flex flex-col min-h-0">
+                {/* Column 1 — Resume (4/8) */}
+                <div className="col-span-4 border-r border-border flex flex-col min-h-0">
                   <ScrollArea className="flex-1">
                     <div className="p-6 space-y-5">
                       <div className="rounded-lg border border-border overflow-hidden">
