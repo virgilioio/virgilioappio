@@ -184,8 +184,10 @@ export function buildPlaceholderData(options: {
     linkedin_url?: string;
   };
   bookingLink?: string;
+  organizationName?: string;
+  departmentName?: string;
 }): PlaceholderData {
-  const { candidate, job, sender, bookingLink } = options;
+  const { candidate, job, sender, bookingLink, organizationName, departmentName } = options;
   
   const data: PlaceholderData = {};
   
@@ -222,6 +224,14 @@ export function buildPlaceholderData(options: {
   
   if (bookingLink) {
     data['sender.booking_link'] = bookingLink;
+  }
+
+  if (organizationName) {
+    data['organization.name'] = organizationName;
+  }
+
+  if (departmentName) {
+    data['department.name'] = departmentName;
   }
   
   return data;
