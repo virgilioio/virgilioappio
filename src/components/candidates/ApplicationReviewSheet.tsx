@@ -3,18 +3,19 @@ import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { Progress } from '@/components/ui/progress'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CandidateApplicationResponses } from '@/components/candidates/CandidateApplicationResponses'
 import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeViewer'
 import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMarkdown'
 import { RejectionReasonSelector } from '@/components/candidates/RejectionReasonSelector'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { useApplicationReview, RejectionConfig } from '@/hooks/useApplicationReview'
+import { useRejectionEmailTemplates } from '@/hooks/useRejectionEmailTemplates'
 import {
   X,
   ChevronLeft,
@@ -75,35 +76,6 @@ export function ApplicationReviewSheet({
         className="w-[96vw] sm:max-w-none p-0 flex flex-col gap-0"
         showOverlay
       >
-        {/* Header */}
-        <div className="flex-shrink-0 border-b border-border bg-surface-primary px-6 py-3">
-          <div className="flex items-center justify-between">
-            <div className="min-w-0">
-              <h2 className="text-sm font-semibold text-text-primary truncate">
-                Application Review
-              </h2>
-              <p className="text-xs text-text-secondary truncate">{jobTitle}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              {!review.isComplete && review.totalInQueue > 0 && (
-                <Badge variant="secondary" className="text-xs font-medium">
-                  {review.currentPosition} of {review.totalInQueue}
-                </Badge>
-              )}
-              <button
-                onClick={handleClose}
-                className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-              >
-                <X className="h-4 w-4" />
-                <span className="sr-only">Close</span>
-              </button>
-            </div>
-          </div>
-          {!review.isComplete && review.totalInQueue > 0 && (
-            <Progress value={progressPercent} className="h-1 mt-2" />
-          )}
-        </div>
-
         {/* Content */}
         <div className="flex-1 min-h-0 overflow-hidden">
           {review.isLoading ? (
@@ -114,7 +86,7 @@ export function ApplicationReviewSheet({
             <CompletionState stats={review.stats} onClose={handleClose} />
           ) : review.currentCandidate ? (
             <div className="h-full flex flex-col">
-              {/* Candidate Header — matches CandidateProfileSheet */}
+              {/* Candidate Header */}
               <SheetHeader className="p-6 border-b flex-shrink-0">
                 <div className="flex items-center justify-between flex-1">
                   <div className="flex flex-col gap-2">
@@ -134,7 +106,9 @@ export function ApplicationReviewSheet({
                         </Button>
                       )}
                     </div>
-                    {/* Metadata chips as subtitle */}
+                    {/* Job title below candidate name */}
+                    <p className="text-sm text-text-secondary">{jobTitle}</p>
+                    {/* Metadata chips */}
                     <div className="flex flex-wrap items-center gap-2">
                       {review.currentCandidate.currentJobTitle && (
                         <Badge variant="secondary" className="w-fit">
@@ -165,7 +139,12 @@ export function ApplicationReviewSheet({
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 sm:gap-sm">
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    {!review.isComplete && review.totalInQueue > 0 && (
+                      <Badge variant="secondary" className="text-xs font-medium">
+                        {review.currentPosition} of {review.totalInQueue}
+                      </Badge>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
@@ -188,8 +167,18 @@ export function ApplicationReviewSheet({
                       <span className="hidden sm:inline">Next</span>
                       <ChevronRight className="h-4 w-4" />
                     </Button>
+                    <button
+                      onClick={handleClose}
+                      className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ml-2"
+                    >
+                      <X className="h-4 w-4" />
+                      <span className="sr-only">Close</span>
+                    </button>
                   </div>
                 </div>
+                {!review.isComplete && review.totalInQueue > 0 && (
+                  <Progress value={progressPercent} className="h-1 mt-2" />
+                )}
               </SheetHeader>
 
               {/* 3-Column Grid: Resume (2) | Responses (1) | Controls (1) */}
@@ -240,31 +229,9 @@ export function ApplicationReviewSheet({
                   <div className="px-5 py-4 border-b border-border flex-shrink-0">
                     <h4 className="text-sm font-semibold text-text-primary">Review</h4>
                   </div>
-                  <ScrollArea className="flex-1">
-                    <div className="p-5">
-                      <RejectionConfigPanel
-                        config={review.rejectionConfig}
-                        onChange={review.persistRejectionConfig}
-                      />
-                    </div>
-                  </ScrollArea>
 
-                  {/* Action Buttons — pinned to bottom */}
-                  <div className="flex-shrink-0 border-t border-border p-4 space-y-2">
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="w-full gap-1.5"
-                      onClick={review.handleAdvance}
-                      disabled={review.isActioning || !review.firstStageId}
-                    >
-                      {review.isActioning ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      )}
-                      Advance{review.firstStageName ? ` → ${review.firstStageName}` : ''}
-                    </Button>
+                  {/* Action Buttons — at the top */}
+                  <div className="flex-shrink-0 border-b border-border p-4">
                     <div className="flex gap-2">
                       <Button
                         variant="destructive"
@@ -290,8 +257,31 @@ export function ApplicationReviewSheet({
                         <SkipForward className="h-3.5 w-3.5" />
                         Pass
                       </Button>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="flex-1 gap-1.5"
+                        onClick={review.handleAdvance}
+                        disabled={review.isActioning || !review.firstStageId}
+                      >
+                        {review.isActioning ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        )}
+                        Advance{review.firstStageName ? ` → ${review.firstStageName}` : ''}
+                      </Button>
                     </div>
                   </div>
+
+                  <ScrollArea className="flex-1">
+                    <div className="p-5">
+                      <RejectionConfigPanel
+                        config={review.rejectionConfig}
+                        onChange={review.persistRejectionConfig}
+                      />
+                    </div>
+                  </ScrollArea>
                 </div>
               </div>
             </div>
@@ -310,6 +300,8 @@ function RejectionConfigPanel({
   config: RejectionConfig
   onChange: (config: RejectionConfig) => void
 }) {
+  const { templates, isLoading: templatesLoading } = useRejectionEmailTemplates('organization')
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -318,6 +310,25 @@ function RejectionConfigPanel({
           value={config.rejectionReasonId}
           onValueChange={(value) => onChange({ ...config, rejectionReasonId: value })}
         />
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-xs">Rejection Email Template</Label>
+        <Select
+          value={config.rejectionEmailTemplateId || ''}
+          onValueChange={(value) => onChange({ ...config, rejectionEmailTemplateId: value || undefined })}
+        >
+          <SelectTrigger className="text-sm">
+            <SelectValue placeholder={templatesLoading ? 'Loading...' : 'Select template'} />
+          </SelectTrigger>
+          <SelectContent>
+            {templates.map((template) => (
+              <SelectItem key={template.id} value={template.id}>
+                {template.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-2">
