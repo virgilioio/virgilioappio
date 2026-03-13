@@ -1,6 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
-import { useAuth } from '@/contexts/AuthContext'
 
 export interface WhatsAppConversation {
   id: string
@@ -71,7 +70,7 @@ export function useWhatsAppMessages(conversationId: string | undefined) {
       return (data || []) as unknown as WhatsAppMessage[]
     },
     enabled: !!conversationId,
-    refetchInterval: 10000, // Poll every 10s for new messages
+    refetchInterval: 10000,
   })
 }
 
@@ -96,35 +95,6 @@ export function useWhatsAppJobConversations(jobId: string | undefined) {
       })[]
     },
     enabled: !!jobId,
-  })
-}
-
-export function useSendWhatsAppMessage() {
-  const { user } = useAuth()
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (params: {
-      to: string
-      body: string
-      candidate_id: string
-      job_id?: string
-      template_id?: string
-      template_variables?: Record<string, string>
-    }) => {
-      const { data, error } = await supabase.functions.invoke('send-whatsapp', {
-        body: params,
-      })
-
-      if (error) throw error
-      if (data?.error) throw new Error(data.error)
-      return data
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['whatsapp-conversation', variables.candidate_id] })
-      queryClient.invalidateQueries({ queryKey: ['whatsapp-messages'] })
-      queryClient.invalidateQueries({ queryKey: ['whatsapp-job-conversations'] })
-    },
   })
 }
 

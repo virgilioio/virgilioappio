@@ -46,8 +46,8 @@ function useChromeConnected() {
 }
 
 function useWhatsAppConnected() {
-  const { isProvisioned, isActive } = useWhatsAppConfig()
-  return isProvisioned && isActive
+  const { isConnected, isActive } = useWhatsAppConfig()
+  return isConnected && isActive
 }
 
 const INTEGRATIONS: IntegrationEntry[] = [
