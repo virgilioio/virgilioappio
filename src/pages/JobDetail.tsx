@@ -350,59 +350,9 @@ export default function JobDetail() {
     ).length
   }, [associations, applicationReviewStageId])
 
-  // Open in-place sheet for Application Review rows (job_candidates)
-  const handleApplicationRowClick = async (jobCandidateId: string) => {
-    const jc = (applicationReviewCandidates as any[])?.find((c) => c.id === jobCandidateId)
-    if (!jc) return
-
-    const norm = normalizeUrl(jc.linkedin_url)
-    // Try association match by linkedin
-    let assoc = associations.find((a) => norm && normalizeUrl(a.linkedin_url || '') === norm)
-    // Fallback: match by name (best-effort)
-    if (!assoc) {
-      const jcName = (jc.candidate_name || '').trim().toLowerCase()
-      assoc = associations.find((a) => (a.candidate_name || '').trim().toLowerCase() === jcName)
-    }
-
-    if (assoc?.candidate_id) {
-      openProfileInPlace(assoc.candidate_id, 'application', applicationReviewCandidates)
-      return
-    }
-
-    // Final fallback: try to find independent candidate by linkedin or by name+location
-    try {
-      let candId: string | null = null
-      if (norm) {
-        const { data } = await supabase.from('candidates').select('id').eq('linkedin_url', jc.linkedin_url).maybeSingle()
-        candId = data?.id ?? null
-      }
-      if (!candId) {
-        let q = supabase
-          .from('candidates')
-          .select('id')
-          .eq('candidate_name', jc.candidate_name)
-        if (jc.location_country === null || jc.location_country === undefined) {
-          q = q.is('location_country', null)
-        } else {
-          q = q.eq('location_country', jc.location_country)
-        }
-        if (jc.location_city === null || jc.location_city === undefined) {
-          q = q.is('location_city', null)
-        } else {
-          q = q.eq('location_city', jc.location_city)
-        }
-        const { data } = await q.maybeSingle()
-        candId = data?.id ?? null
-      }
-      if (candId) {
-        openProfileInPlace(candId, 'application', applicationReviewCandidates)
-      } else {
-        toast({ title: 'Not found', description: 'Could not locate profile for this candidate yet.', variant: 'destructive' })
-      }
-    } catch (e) {
-      console.error('Error resolving profile candidate id', e)
-      toast({ title: 'Error', description: 'Could not open candidate profile.', variant: 'destructive' })
-    }
+  // Open in-place sheet for Application Review rows
+  const handleApplicationRowClick = (candidateId: string) => {
+    openProfileInPlace(candidateId, 'application', applicationReviewCandidates)
   }
 
   // Derived job stats
