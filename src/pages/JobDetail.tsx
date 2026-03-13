@@ -1527,7 +1527,7 @@ export default function JobDetail() {
                             <div className="w-full p-layout-md">
                               <CandidateTable
                                 candidates={applicationReviewCandidates}
-                                isLoading={pipelineLoading || candidatesLoading}
+                                isLoading={statusListsLoading}
                                 onEdit={handleEditCandidate}
                                 onDelete={handleDeleteCandidate}
                                 markCandidateAsViewed={markCandidateAsViewed}
