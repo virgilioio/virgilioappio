@@ -201,6 +201,24 @@ export function useSubmitWhatsAppTemplate() {
   })
 }
 
+export function useDeleteWhatsAppTemplate() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (templateId: string) => {
+      const { data, error } = await supabase.functions.invoke('manage-whatsapp-templates', {
+        body: { action: 'delete', template_id: templateId },
+      })
+      if (error) throw error
+      if (data?.error) throw new Error(data.error)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-templates'] })
+    },
+  })
+}
+
 export function useCheckWhatsAppTemplateStatus() {
   const queryClient = useQueryClient()
 
