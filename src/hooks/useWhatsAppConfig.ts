@@ -1,5 +1,5 @@
 import { useWorkspaceAutomation } from '@/hooks/useWorkspaceAutomation'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 
