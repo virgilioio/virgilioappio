@@ -242,8 +242,8 @@ export function WhatsAppChatTab({
                 className={cn(
                   'max-w-[80%] rounded-lg px-3 py-2',
                   msg.direction === 'outbound'
-                    ? 'ml-auto bg-[#25D366]/10 text-foreground'
-                    : 'mr-auto bg-muted text-foreground'
+                    ? 'ml-auto bg-[#dcf8c6] text-foreground'
+                    : 'mr-auto bg-white text-foreground shadow-sm'
                 )}
               >
                 <p className="text-sm whitespace-pre-wrap break-words">{msg.body}</p>
