@@ -52,9 +52,9 @@ export function JobDetailFloatingSidebar({
     }
   ]
 
-  const tabs = isRestrictedViewer
-    ? allTabs.filter(tab => !restrictedTabIds.includes(tab.id))
-    : allTabs
+  const tabs = allTabs
+    .filter(tab => isWhatsAppEnabled || tab.id !== 'whatsapp')
+    .filter(tab => !isRestrictedViewer || !restrictedTabIds.includes(tab.id))
 
   return (
     <div className={cn("w-20 flex-shrink-0 p-2 flex justify-center", className)}>

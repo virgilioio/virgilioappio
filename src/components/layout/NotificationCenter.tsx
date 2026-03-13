@@ -14,9 +14,10 @@ export function NotificationCenter() {
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
   const { data: activities, markEmailAsRead } = usePendingActivities()
+  const { isEnabled: isWhatsAppEnabled } = useWhatsAppConfig()
 
   const notifications = (activities || []).filter(
-    (a): a is PendingActivity => a.type === 'email' || a.type === 'offer_approval' || a.type === 'whatsapp'
+    (a): a is PendingActivity => a.type === 'email' || a.type === 'offer_approval' || (a.type === 'whatsapp' && isWhatsAppEnabled)
   )
 
   const unreadCount = notifications.length

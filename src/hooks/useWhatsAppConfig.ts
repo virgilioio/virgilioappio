@@ -206,7 +206,7 @@ export function useWhatsAppConfig() {
  * Returns the current WhatsApp session state for the workspace.
  * Reusable across all WhatsApp surfaces.
  */
-export function useWhatsAppSessionState(): WhatsAppSessionState & { isLoading: boolean } {
-  const { sessionStatus, isLoading } = useWhatsAppConfig()
-  return { ...getWhatsAppSessionState(sessionStatus), isLoading }
+export function useWhatsAppSessionState(): WhatsAppSessionState & { isLoading: boolean; isEnabled: boolean } {
+  const { sessionStatus, isLoading, isEnabled } = useWhatsAppConfig()
+  return { ...getWhatsAppSessionState(sessionStatus), isLoading, isEnabled }
 }
