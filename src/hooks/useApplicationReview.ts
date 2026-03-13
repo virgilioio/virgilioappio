@@ -238,20 +238,48 @@ export function useApplicationReview(jobId: string) {
         shouldSendEmail = false
       }
 
-      await rejectCandidate.mutateAsync({
-        associationId: currentCandidate.associationId,
-        rejectionReasonId: rejectionConfig.rejectionReasonId,
-        rejectionNotes: rejectionConfig.rejectionNotes,
-        sendEmail: shouldSendEmail,
-        emailData,
-      })
+      const candidateToReject = currentCandidate
 
-      setStats(prev => ({ ...prev, rejected: prev.rejected + 1 }))
-      setHasActioned(true)
-      // Remove from queue so rejected candidate disappears immediately
-      setQueue(prev => prev.filter(c => c.associationId !== currentCandidate.associationId))
-    } catch (error) {
-      console.error('Rejection failed:', error)
+      const finalizeLocally = () => {
+        setStats(prev => ({ ...prev, rejected: prev.rejected + 1 }))
+        setHasActioned(true)
+        setQueue(prev => prev.filter(c => c.associationId !== candidateToReject.associationId))
+      }
+
+      try {
+        const result = await rejectCandidate.mutateAsync({
+          associationId: candidateToReject.associationId,
+          rejectionReasonId: rejectionConfig.rejectionReasonId,
+          rejectionNotes: rejectionConfig.rejectionNotes,
+          sendEmail: shouldSendEmail,
+          emailData,
+        })
+
+        finalizeLocally()
+
+        if (result?.emailError) {
+          toast({ title: 'Candidate rejected', description: 'Rejection saved, but the email may not have been delivered.' })
+        }
+      } catch (error) {
+        console.error('Rejection failed, checking if rejection was persisted:', error)
+        // Reconciliation: check if the DB rejection actually went through
+        try {
+          const { data: check } = await supabase
+            .from('job_candidate_associations')
+            .select('status')
+            .eq('id', candidateToReject.associationId)
+            .single()
+
+          if (check?.status === 'rejected') {
+            finalizeLocally()
+            toast({ title: 'Candidate rejected', description: 'Rejection saved, but email confirmation failed.' })
+          } else {
+            toast({ title: 'Error', description: 'Failed to reject candidate. Please try again.', variant: 'destructive' })
+          }
+        } catch {
+          toast({ title: 'Error', description: 'Failed to reject candidate. Please try again.', variant: 'destructive' })
+        }
+      }
     } finally {
       setIsActioning(false)
     }
