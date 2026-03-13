@@ -112,6 +112,7 @@ interface CandidateProfileSheetProps {
 
 export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, autoOpenScorecardStageId, onScorecardOpened }: CandidateProfileSheetProps) {
   const { canEditCandidates, isAdmin, isWorkspaceOwner, isPlatformAdmin } = usePermissions()
+  const { isEnabled: isWhatsAppEnabled } = useWhatsAppConfig()
   const { organizationId, user } = useAuth()
   const { isHiringManagerOnJob, isInterviewerOnJob } = useJobRole(jobId)
   const isRestrictedViewer = (isHiringManagerOnJob || isInterviewerOnJob) && !isAdmin && !isWorkspaceOwner && !isPlatformAdmin
