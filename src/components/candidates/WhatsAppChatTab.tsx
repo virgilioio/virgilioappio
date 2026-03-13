@@ -1,18 +1,17 @@
 import { useRef, useEffect } from 'react'
-import { Loader2, MessageSquare, Settings, Wifi, WifiOff } from 'lucide-react'
+import { Loader2, MessageSquare, Wifi, Lock } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
-import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Badge } from '@/components/ui/badge'
 import {
   useWhatsAppConversation,
   useWhatsAppMessages,
   useMarkWhatsAppRead,
 } from '@/hooks/useWhatsApp'
-import { useWhatsAppConnectionState } from '@/hooks/useWhatsAppConfig'
+import { useWhatsAppSessionState, type WhatsAppSessionStatus } from '@/hooks/useWhatsAppConfig'
+import { WhatsAppConnectionBadge, WhatsAppStatusDot } from '@/components/whatsapp/WhatsAppConnectionBadge'
+import { WhatsAppInboxEmptyState } from '@/components/whatsapp/WhatsAppInboxEmptyState'
 import { cn } from '@/lib/utils'
 import whatsappBg from '@/assets/whatsapp-chat-bg.png'
-import { useNavigate } from 'react-router-dom'
 
 interface WhatsAppChatTabProps {
   candidateId: string
@@ -31,11 +30,10 @@ export function WhatsAppChatTab({
   candidateName,
 }: WhatsAppChatTabProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const navigate = useNavigate()
   const { data: conversation } = useWhatsAppConversation(candidateId, jobId)
   const { data: messages = [], isLoading } = useWhatsAppMessages(conversation?.id)
   const markRead = useMarkWhatsAppRead()
-  const connectionState = useWhatsAppConnectionState()
+  const sessionState = useWhatsAppSessionState()
 
   const targetPhone = phoneNumber || conversation?.phone_number
 
@@ -53,25 +51,14 @@ export function WhatsAppChatTab({
     }
   }, [messages])
 
-  // Not connected
-  if (!connectionState.isLoading && connectionState.status === 'disconnected') {
+  // Show appropriate empty state for non-connected statuses
+  if (!sessionState.isLoading && !sessionState.canSync) {
     return (
-      <div className="flex flex-col items-center justify-center h-full py-12 text-center px-4">
-        <WifiOff className="h-8 w-8 text-muted-foreground mb-3" />
-        <p className="text-sm font-medium text-foreground">WhatsApp not connected</p>
-        <p className="text-xs text-muted-foreground mt-1 max-w-[240px]">
-          Connect your WhatsApp in Settings to sync conversations with candidates.
-        </p>
-        <Button
-          variant="outline"
-          size="sm"
-          className="mt-4"
-          onClick={() => navigate('/settings?tab=integrations')}
-        >
-          <Settings className="h-3.5 w-3.5 mr-1.5" />
-          Connect WhatsApp
-        </Button>
-      </div>
+      <WhatsAppInboxEmptyState
+        sessionStatus={sessionState.status}
+        context="candidate"
+        candidateName={candidateName}
+      />
     )
   }
 
@@ -92,24 +79,12 @@ export function WhatsAppChatTab({
       {/* Chat header */}
       <div className="px-4 py-2 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className={cn(
-            'h-2 w-2 rounded-full',
-            connectionState.status === 'connected' ? 'bg-[#25D366]' : 'bg-muted-foreground'
-          )} />
+          <WhatsAppStatusDot status={sessionState.status} />
           <span className="text-xs text-muted-foreground">
             WhatsApp · {targetPhone}
           </span>
         </div>
-        {connectionState.status === 'connected' ? (
-          <Badge variant="outline" className="text-[10px] border-[#25D366]/30 text-[#25D366]">
-            <Wifi className="h-2.5 w-2.5 mr-1" />
-            Synced
-          </Badge>
-        ) : connectionState.status === 'expired' ? (
-          <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-600">
-            Session expired
-          </Badge>
-        ) : null}
+        <WhatsAppConnectionBadge status={sessionState.status} />
       </div>
 
       {/* Messages */}
@@ -165,11 +140,14 @@ export function WhatsAppChatTab({
         </div>
       </ScrollArea>
 
-      {/* Info footer — messaging happens in WhatsApp directly */}
+      {/* Composer — gated until provider is ready */}
       <div className="border-t border-border p-3">
-        <p className="text-xs text-muted-foreground text-center">
-          Messages are synced from your connected WhatsApp. Reply directly in WhatsApp.
-        </p>
+        <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/30 border border-border">
+          <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <p className="text-xs text-muted-foreground">
+            Sending messages from GoGio will be available once WhatsApp sync is fully configured. Reply directly in WhatsApp for now.
+          </p>
+        </div>
       </div>
     </div>
   )

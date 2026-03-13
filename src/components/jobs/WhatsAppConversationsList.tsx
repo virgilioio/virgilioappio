@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { MessageSquare, Loader2, User } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useWhatsAppJobConversations } from '@/hooks/useWhatsApp'
+import { useWhatsAppSessionState } from '@/hooks/useWhatsAppConfig'
 import { WhatsAppChatTab } from '@/components/candidates/WhatsAppChatTab'
+import { WhatsAppInboxEmptyState, WhatsAppNoConversationsState } from '@/components/whatsapp/WhatsAppInboxEmptyState'
+import { WhatsAppConnectionBadge } from '@/components/whatsapp/WhatsAppConnectionBadge'
 import { cn } from '@/lib/utils'
 import gioEmpty from '@/assets/gio-empty-state.png'
 
@@ -14,12 +17,14 @@ interface WhatsAppConversationsListProps {
 }
 
 export function WhatsAppConversationsList({ jobId, onOpenCandidate }: WhatsAppConversationsListProps) {
-  const { data: conversations = [], isLoading } = useWhatsAppJobConversations(jobId)
+  const { data: conversations = [], isLoading: conversationsLoading } = useWhatsAppJobConversations(jobId)
+  const sessionState = useWhatsAppSessionState()
   const [selectedConvId, setSelectedConvId] = useState<string | null>(null)
 
   const selectedConv = conversations.find(c => c.id === selectedConvId)
 
-  if (isLoading) {
+  // Loading
+  if (conversationsLoading || sessionState.isLoading) {
     return (
       <div className="flex items-center justify-center py-24 bg-card rounded-lg border border-border shadow-sm">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -27,14 +32,23 @@ export function WhatsAppConversationsList({ jobId, onOpenCandidate }: WhatsAppCo
     )
   }
 
+  // Not connected — show full empty state
+  if (!sessionState.canSync) {
+    return (
+      <div className="bg-card rounded-lg border border-border shadow-sm">
+        <WhatsAppInboxEmptyState
+          sessionStatus={sessionState.status}
+          context="job"
+        />
+      </div>
+    )
+  }
+
+  // Connected but no conversations
   if (conversations.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 bg-card rounded-lg border border-border shadow-sm">
-        <img src={gioEmpty} alt="No conversations" className="h-24 w-24 mb-4 opacity-80" />
-        <p className="text-base font-semibold text-foreground">No WhatsApp conversations yet</p>
-        <p className="text-sm text-muted-foreground mt-1 max-w-xs text-center">
-          Start a conversation from a candidate's profile to see it here.
-        </p>
+      <div className="bg-card rounded-lg border border-border shadow-sm">
+        <WhatsAppNoConversationsState />
       </div>
     )
   }
@@ -46,9 +60,12 @@ export function WhatsAppConversationsList({ jobId, onOpenCandidate }: WhatsAppCo
         <div className="px-4 py-3 border-b border-border">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-sm text-foreground">Conversations</h3>
-            <Badge variant="secondary" className="text-xs">
-              {conversations.length}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="text-xs">
+                {conversations.length}
+              </Badge>
+              <WhatsAppConnectionBadge status={sessionState.status} />
+            </div>
           </div>
         </div>
         <ScrollArea className="flex-1">
@@ -126,7 +143,7 @@ export function WhatsAppConversationsList({ jobId, onOpenCandidate }: WhatsAppCo
               Select a conversation
             </p>
             <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-              Pick a conversation from the list to start chatting with a candidate via WhatsApp.
+              Pick a conversation from the list to view the WhatsApp chat history with this candidate.
             </p>
           </div>
         )}
