@@ -13,6 +13,7 @@ import {
 } from '@/hooks/useWhatsApp'
 import { useWhatsAppTemplates, useWhatsAppSetupStatus, type WhatsAppTemplate } from '@/hooks/useWhatsAppConfig'
 import { cn } from '@/lib/utils'
+import { toast } from '@/hooks/use-toast'
 import whatsappBg from '@/assets/whatsapp-chat-bg.png'
 import { useNavigate } from 'react-router-dom'
 import { useTenant } from '@/hooks/useTenant'
