@@ -193,6 +193,8 @@ export function useCreateWhatsAppTemplate() {
       language?: string
       body_template: string
       variable_mapping?: Record<string, string>
+      content_type?: WhatsAppContentType
+      actions?: WhatsAppAction[]
     }) => {
       const { data, error } = await supabase.functions.invoke('manage-whatsapp-templates', {
         body: { action: 'create', ...params },
