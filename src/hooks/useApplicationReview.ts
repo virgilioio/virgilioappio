@@ -60,8 +60,8 @@ export function useApplicationReview(jobId: string) {
     return { sendEmail: false }
   })
 
-  const isComplete = hasActioned && currentCandidate === null
   const currentCandidate = queue[currentIndex] ?? null
+  const isComplete = hasActioned && currentCandidate === null
   const totalInQueue = queue.length
   const currentPosition = currentIndex + 1
 
