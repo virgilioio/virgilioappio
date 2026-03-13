@@ -77,6 +77,7 @@ export function useApplicationReview(jobId: string) {
     setIsLoading(true)
     setStats({ rejected: 0, passed: 0, advanced: 0 })
     setCurrentIndex(0)
+    setHasActioned(false)
 
     try {
       // Find the application_review hiring stage for this job
