@@ -201,39 +201,42 @@ export function ApplicationReviewSheet({
                 </div>
 
                 {/* Column 2 — Application Responses & AI Summary (2/8) */}
+                {/* Column 2 — Application Responses & AI Summary (2/8) */}
                 <div className="col-span-2 border-r border-border flex flex-col min-h-0 overflow-hidden">
-                  <Tabs defaultValue="responses" className="flex flex-col min-h-0">
-                    <CardHeader className="flex-shrink-0">
-                      <TabsList className="w-full overflow-x-auto">
-                        <TabsTrigger value="responses" className="flex-1">Application Responses</TabsTrigger>
-                        <TabsTrigger value="ai-summary" className="flex-1 gap-1.5">
-                          <Sparkles className="h-3.5 w-3.5" />
-                          AI Career Summary
-                        </TabsTrigger>
-                      </TabsList>
-                    </CardHeader>
-                    <TabsContent value="responses" className="flex-1 min-h-0 mt-0">
-                      <ScrollArea className="h-[calc(100vh-280px)]">
-                        <CardContent>
-                          <CandidateApplicationResponses
-                            candidateId={review.currentCandidate.candidateId}
-                            jobId={jobId}
-                          />
-                        </CardContent>
-                      </ScrollArea>
-                    </TabsContent>
-                    <TabsContent value="ai-summary" className="flex-1 min-h-0 mt-0">
-                      <ScrollArea className="h-[calc(100vh-280px)]">
-                        <CardContent>
-                          {review.currentCandidate.profileSummary ? (
-                            <ProfileSummaryMarkdown content={review.currentCandidate.profileSummary} />
-                          ) : (
-                            <p className="text-sm text-text-secondary">No AI career summary available for this candidate.</p>
-                          )}
-                        </CardContent>
-                      </ScrollArea>
-                    </TabsContent>
-                  </Tabs>
+                  <Card className="flex flex-col min-h-0 border-0 border-r-0 rounded-none shadow-none">
+                    <Tabs defaultValue="responses" className="flex flex-col min-h-0">
+                      <CardHeader className="flex-shrink-0">
+                        <TabsList className="w-full overflow-x-auto">
+                          <TabsTrigger value="responses" className="flex-1">Application Responses</TabsTrigger>
+                          <TabsTrigger value="ai-summary" className="flex-1 gap-1.5">
+                            <Sparkles className="h-3.5 w-3.5" />
+                            AI Career Summary
+                          </TabsTrigger>
+                        </TabsList>
+                      </CardHeader>
+                      <TabsContent value="responses" className="flex-1 min-h-0 mt-0">
+                        <ScrollArea className="h-[calc(100vh-280px)]">
+                          <CardContent>
+                            <CandidateApplicationResponses
+                              candidateId={review.currentCandidate.candidateId}
+                              jobId={jobId}
+                            />
+                          </CardContent>
+                        </ScrollArea>
+                      </TabsContent>
+                      <TabsContent value="ai-summary" className="flex-1 min-h-0 mt-0">
+                        <ScrollArea className="h-[calc(100vh-280px)]">
+                          <CardContent>
+                            {review.currentCandidate.profileSummary ? (
+                              <ProfileSummaryMarkdown content={review.currentCandidate.profileSummary} />
+                            ) : (
+                              <p className="text-sm text-text-secondary">No AI career summary available for this candidate.</p>
+                            )}
+                          </CardContent>
+                        </ScrollArea>
+                      </TabsContent>
+                    </Tabs>
+                  </Card>
                 </div>
 
                 {/* Column 3 — Review Controls (2/8) */}
