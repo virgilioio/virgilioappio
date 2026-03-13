@@ -45,7 +45,7 @@ import { useJobMatchingCandidates, MatchedCandidate } from '@/hooks/useJobMatchi
 import { useJobMatchingCandidatesCount } from '@/hooks/useJobMatchingCandidatesCount'
 import { useRealTimeSkillMatching } from '@/hooks/useRealTimeSkillMatching'
 import { ApplicationReviewSheet } from '@/components/candidates/ApplicationReviewSheet'
-import { useWhatsAppConfig } from '@/hooks/useWhatsAppConfig'
+
 
 export default function JobDetail() {
   const params = useParams<{ id?: string; jobId?: string }>()
