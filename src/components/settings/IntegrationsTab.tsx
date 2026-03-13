@@ -100,7 +100,6 @@ function useIntegrationStatuses() {
     'google-workspace': googleConnected,
   } as Record<string, boolean>
 }
-}
 
 export function IntegrationsTab() {
   const [search, setSearch] = useState('')
