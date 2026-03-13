@@ -200,11 +200,11 @@ export function ApplicationReviewSheet({
                   </ScrollArea>
                 </div>
 
-                {/* Column 2 — Application Responses & AI Summary (1/4) */}
-                <div className="col-span-1 border-r border-border flex flex-col min-h-0">
-                  <div className="px-5 py-4 flex-shrink-0">
-                    <Tabs defaultValue="responses" className="w-full">
-                      <TabsList className="w-full">
+                {/* Column 2 — Application Responses & AI Summary (3/8) */}
+                <div className="col-span-3 border-r border-border flex flex-col min-h-0 overflow-hidden">
+                  <div className="px-5 py-4 flex-shrink-0 min-w-0">
+                    <Tabs defaultValue="responses" className="w-full min-w-0">
+                      <TabsList className="w-full overflow-x-auto">
                         <TabsTrigger value="responses" className="flex-1">Application Responses</TabsTrigger>
                         <TabsTrigger value="ai-summary" className="flex-1 gap-1.5">
                           <Sparkles className="h-3.5 w-3.5" />
