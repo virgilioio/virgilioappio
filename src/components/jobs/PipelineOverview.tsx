@@ -46,6 +46,7 @@ interface PipelineOverviewProps {
 
 const stageTypeVariants: Record<string, import('@/components/ui/badge').BadgeProps['variant']> = {
   application: 'pastel-blue',
+  application_review: 'pastel-purple',
   screening: 'info',
   interview: 'pastel-purple',
   assessment: 'warning',
