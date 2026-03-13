@@ -17,7 +17,7 @@ import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/com
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign, MessageSquare } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
-import whatsappIcon from '@/assets/whatsapp-icon.png'
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Separator } from '@/components/ui/separator'
@@ -45,8 +45,6 @@ import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { useCandidateResolver } from '@/hooks/useCandidateResolver'
 import { triggerFitAnalysis } from '@/utils/triggerFitAnalysis'
 import { useJobRole } from '@/hooks/useJobRole'
-import { WhatsAppChatTab } from '@/components/candidates/WhatsAppChatTab'
-import { useWhatsAppConfig } from '@/hooks/useWhatsAppConfig'
 
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 import { MobileJobSelector } from '@/components/candidates/MobileJobSelector'
@@ -112,7 +110,7 @@ interface CandidateProfileSheetProps {
 
 export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, autoOpenScorecardStageId, onScorecardOpened }: CandidateProfileSheetProps) {
   const { canEditCandidates, isAdmin, isWorkspaceOwner, isPlatformAdmin } = usePermissions()
-  const { isEnabled: isWhatsAppEnabled } = useWhatsAppConfig()
+  
   const { organizationId, user } = useAuth()
   const { isHiringManagerOnJob, isInterviewerOnJob } = useJobRole(jobId)
   const isRestrictedViewer = (isHiringManagerOnJob || isInterviewerOnJob) && !isAdmin && !isWorkspaceOwner && !isPlatformAdmin
@@ -123,7 +121,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [job, setJob] = useState<any | null>(null)
   const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'overview' | 'offer'>('job')
   const [rightActiveTab, setRightActiveTab] = useState<'chat' | 'feed' | 'notes' | 'emails' | 'reminders' | 'insights'>('feed')
-  const [whatsAppPhone, setWhatsAppPhone] = useState<string | undefined>(undefined)
+  
   const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
   const [education, setEducation] = useState<CandidateEducation[]>([])
   const [editOpen, setEditOpen] = useState(false)
@@ -1376,20 +1374,6 @@ const stageHasAutomation = useMemo(() => {
                                                 </div>
                                               </div>
                                               <div className="flex items-center gap-0.5">
-                                                {isWhatsAppEnabled && (
-                                                <Button
-                                                  variant="ghost"
-                                                  size="sm"
-                                                  className="h-6 w-6 p-0 flex-shrink-0 text-[#25D366] hover:text-[#25D366]/80"
-                                                  onClick={() => {
-                                                    setWhatsAppPhone(phoneValue)
-                                                    setRightActiveTab('chat')
-                                                  }}
-                                                  title="Send WhatsApp message"
-                                                >
-                                                  <img src={whatsappIcon} alt="WhatsApp" className="h-3.5 w-3.5" />
-                                                </Button>
-                                                )}
                                                 <Button
                                                   variant="ghost"
                                                   size="sm"
@@ -1421,20 +1405,6 @@ const stageHasAutomation = useMemo(() => {
                                           </div>
                                           {candidate?.phone && (
                                             <div className="flex items-center gap-0.5">
-                                              {isWhatsAppEnabled && (
-                                              <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-6 w-6 p-0 flex-shrink-0 text-[#25D366] hover:text-[#25D366]/80"
-                                                onClick={() => {
-                                                  setWhatsAppPhone(candidate.phone)
-                                                  setRightActiveTab('chat')
-                                                }}
-                                                title="Send WhatsApp message"
-                                              >
-                                                <img src={whatsappIcon} alt="WhatsApp" className="h-3.5 w-3.5" />
-                                              </Button>
-                                              )}
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -1713,7 +1683,6 @@ const stageHasAutomation = useMemo(() => {
                        email={candidate.email}
                        phone={candidate.phone}
                          tabs={[
-                           ...(isWhatsAppEnabled ? [{ value: 'chat', label: 'Chat', Icon: MessageSquare }] : []),
                            { value: 'feed', label: 'Feed', Icon: Activity },
                            { value: 'notes', label: 'Notes', Icon: StickyNote },
                            ...(!isRestrictedViewer ? [{ value: 'emails', label: 'Emails', Icon: Mail }] : []),
@@ -1721,22 +1690,8 @@ const stageHasAutomation = useMemo(() => {
                            ...(!isRestrictedViewer ? [{ value: 'insights', label: 'Insights', Icon: Sparkles }] : []),
                          ]}
                          activeTab={rightActiveTab}
-                         onTabChange={(v) => setRightActiveTab(v as 'chat' | 'feed' | 'notes' | 'emails' | 'reminders' | 'insights')}
+                         onTabChange={(v) => setRightActiveTab(v as 'feed' | 'notes' | 'emails' | 'reminders' | 'insights')}
                       />
-
-                     {/* Chat Tab */}
-                     {isWhatsAppEnabled && rightActiveTab === 'chat' && candidateId && (
-                       <Card className="bg-surface-primary border-border h-[500px]">
-                          <WhatsAppChatTab
-                            candidateId={candidateId}
-                            jobId={jobId}
-                            phoneNumber={whatsAppPhone || candidate?.phone}
-                            candidateName={candidate?.candidate_name || 'Candidate'}
-                            jobTitle={job?.title}
-                            recruiterName={user?.user_metadata?.full_name || user?.email}
-                          />
-                       </Card>
-                     )}
 
                      {/* Feed Tab */}
                      {rightActiveTab === 'feed' && (

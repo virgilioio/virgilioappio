@@ -1,7 +1,6 @@
 
 import { cn } from '@/lib/utils'
 import { LayoutDashboard, Settings, Kanban, Users } from 'lucide-react'
-import whatsappIcon from '@/assets/whatsapp-icon.png'
 
 import { Button } from '@/components/ui/button'
 
@@ -10,7 +9,6 @@ interface JobDetailFloatingSidebarProps {
   onTabChange: (tab: string) => void
   jobTitle: string
   isRestrictedViewer?: boolean
-  isWhatsAppEnabled?: boolean
   className?: string
 }
 
@@ -19,10 +17,9 @@ export function JobDetailFloatingSidebar({
   onTabChange, 
   jobTitle,
   isRestrictedViewer = false,
-  isWhatsAppEnabled = false,
   className 
 }: JobDetailFloatingSidebarProps) {
-  const restrictedTabIds = ['all-candidates', 'job-setup', 'whatsapp']
+  const restrictedTabIds = ['all-candidates', 'job-setup']
   const allTabs = [
     {
       id: 'candidates',
@@ -40,12 +37,6 @@ export function JobDetailFloatingSidebar({
       icon: Kanban,
     },
     {
-      id: 'whatsapp',
-      label: 'WhatsApp',
-      icon: null as any,
-      customIcon: whatsappIcon,
-    },
-    {
       id: 'job-setup',
       label: 'Job Setup',
       icon: Settings,
@@ -53,7 +44,6 @@ export function JobDetailFloatingSidebar({
   ]
 
   const tabs = allTabs
-    .filter(tab => isWhatsAppEnabled || tab.id !== 'whatsapp')
     .filter(tab => !isRestrictedViewer || !restrictedTabIds.includes(tab.id))
 
   return (
@@ -63,7 +53,6 @@ export function JobDetailFloatingSidebar({
           {tabs.map((tab) => {
             const Icon = tab.icon
             const isActive = currentTab === tab.id
-            const customIcon = (tab as any).customIcon
             
             return (
               <Button
@@ -81,15 +70,7 @@ export function JobDetailFloatingSidebar({
                 title={tab.label}
                 aria-current={isActive ? 'page' : undefined}
               >
-                {customIcon ? (
-                  <img 
-                    src={customIcon} 
-                    alt={tab.label} 
-                    className={cn("h-5 w-5", isActive && "invert")} 
-                  />
-                ) : (
-                  <Icon className="h-5 w-5" />
-                )}
+                <Icon className="h-5 w-5" />
                 <span className="sr-only">{tab.label}</span>
               </Button>
             )

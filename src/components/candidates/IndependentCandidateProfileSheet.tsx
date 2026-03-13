@@ -24,8 +24,6 @@ import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMa
 import { Badge } from '@/components/ui/badge'
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
 import gioAiBannerIcon from '@/assets/gio-ai-banner-icon.png'
-import whatsappIcon from '@/assets/whatsapp-icon.png'
-import { useWhatsAppConfig } from '@/hooks/useWhatsAppConfig'
 import { ChevronDown } from 'lucide-react'
 import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
@@ -61,7 +59,7 @@ export function IndependentCandidateProfileSheet({
   onNavigateNext,
 }: IndependentCandidateProfileSheetProps) {
   const { canEditCandidates } = usePermissions()
-  const { isEnabled: isWhatsAppEnabled } = useWhatsAppConfig()
+  
   const { organizationId, user } = useAuth()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
@@ -604,13 +602,6 @@ export function IndependentCandidateProfileSheet({
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-0.5 flex-shrink-0">
-                                      {isWhatsAppEnabled && (
-                                      <a href={`https://wa.me/${phoneValue.replace(/[^\d]/g, '')}`} target="_blank" rel="noopener noreferrer" title="Open in WhatsApp">
-                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                          <img src={whatsappIcon} alt="WhatsApp" className="h-3.5 w-3.5" />
-                                        </Button>
-                                      </a>
-                                      )}
                                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => copyToClipboard(phoneValue, 'Phone number copied to clipboard')}>
                                         <Copy className="h-3.5 w-3.5" />
                                       </Button>
@@ -632,13 +623,6 @@ export function IndependentCandidateProfileSheet({
                                 </div>
                                 {candidate?.phone && (
                                   <div className="flex items-center gap-0.5 flex-shrink-0">
-                                    {isWhatsAppEnabled && (
-                                    <a href={`https://wa.me/${candidate.phone.replace(/[^\d]/g, '')}`} target="_blank" rel="noopener noreferrer" title="Open in WhatsApp">
-                                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                        <img src={whatsappIcon} alt="WhatsApp" className="h-3.5 w-3.5" />
-                                      </Button>
-                                    </a>
-                                    )}
                                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => copyToClipboard(candidate.phone, 'Phone number copied to clipboard')}>
                                       <Copy className="h-3.5 w-3.5" />
                                     </Button>

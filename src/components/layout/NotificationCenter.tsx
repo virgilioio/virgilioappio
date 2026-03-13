@@ -7,17 +7,16 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
+
 import { Separator } from '@/components/ui/separator'
-import { useWhatsAppConfig } from '@/hooks/useWhatsAppConfig'
 
 export function NotificationCenter() {
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
   const { data: activities, markEmailAsRead } = usePendingActivities()
-  const { isEnabled: isWhatsAppEnabled } = useWhatsAppConfig()
 
   const notifications = (activities || []).filter(
-    (a): a is PendingActivity => a.type === 'email' || a.type === 'offer_approval' || (a.type === 'whatsapp' && isWhatsAppEnabled)
+    (a): a is PendingActivity => a.type === 'email' || a.type === 'offer_approval'
   )
 
   const unreadCount = notifications.length
@@ -29,8 +28,6 @@ export function NotificationCenter() {
     }
     if (notification.type === 'offer_approval') {
       navigate(`/jobs/${notification.jobId}?candidate=${notification.candidateId}&tab=offer`)
-    } else if (notification.type === 'whatsapp') {
-      navigate(`/candidates?openCandidate=${notification.candidateId}`)
     } else {
       navigate(`/candidates?openCandidate=${notification.candidateId}`)
     }
@@ -100,8 +97,6 @@ export function NotificationCenter() {
                       <div className="mt-0.5 shrink-0">
                         {notification.type === 'offer_approval' ? (
                           <ClipboardCheck className="h-3.5 w-3.5 text-virgilio-purple" />
-                        ) : notification.type === 'whatsapp' ? (
-                          <MessageSquare className="h-3.5 w-3.5 text-[#25D366]" />
                         ) : (
                           <Mail className="h-3.5 w-3.5 text-virgilio-muted" />
                         )}
@@ -111,8 +106,6 @@ export function NotificationCenter() {
                           <span className="text-sm font-poppins font-semibold text-virgilio-text truncate">
                             {notification.type === 'offer_approval'
                               ? `Offer approval needed`
-                              : notification.type === 'whatsapp'
-                              ? `WhatsApp message`
                               : notification.candidateName}
                           </span>
                           <span className="text-[11px] text-virgilio-muted whitespace-nowrap shrink-0">
@@ -122,8 +115,6 @@ export function NotificationCenter() {
                         <p className="text-xs text-virgilio-text truncate">
                           {notification.type === 'offer_approval'
                             ? `Approve offer for ${notification.candidateName}`
-                            : notification.type === 'whatsapp'
-                            ? notification.whatsappMessagePreview || 'New WhatsApp message'
                             : notification.emailSubject || 'No subject'}
                         </p>
                         {notification.type === 'email' && notification.emailSnippet && (

@@ -11,17 +11,17 @@ import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
 // Detail components
 import { ChromeExtensionTokenCard } from './ChromeExtensionTokenCard'
 import { GoogleWorkspaceIntegrationSection } from './GoogleWorkspaceIntegrationSection'
-import { WhatsAppIntegrationCard } from './WhatsAppIntegrationCard'
+
 
 // Logos
 import { GoogleLogo } from '@/components/icons/GoogleLogo'
-import whatsappLogo from '@/assets/whatsapp-logo.png'
+
 import gogioAvatar from '@/assets/gogio-avatar.png'
 
 // Hooks for connection status
 import { useMailIdentities } from '@/hooks/useMailIdentities'
 import { useCalendarIdentities } from '@/hooks/useCalendarIdentities'
-import { useWhatsAppConfig } from '@/hooks/useWhatsAppConfig'
+
 
 interface IntegrationEntry {
   id: string
@@ -45,10 +45,6 @@ function useChromeConnected() {
   return false
 }
 
-function useWhatsAppConnected() {
-  const { isConnected, isActive } = useWhatsAppConfig()
-  return isConnected && isActive
-}
 
 const INTEGRATIONS: IntegrationEntry[] = [
   {
@@ -68,15 +64,6 @@ const INTEGRATIONS: IntegrationEntry[] = [
     logo: <GoogleLogo size={24} />,
     useIsConnected: useGoogleConnected,
     DetailComponent: GoogleWorkspaceIntegrationSection,
-  },
-  {
-    id: 'whatsapp',
-    name: 'WhatsApp Business',
-    description: 'Send WhatsApp messages to candidates via Twilio for faster communication.',
-    category: 'communication',
-    logo: <img src={whatsappLogo} alt="WhatsApp" className="h-6 w-6" />,
-    useIsConnected: useWhatsAppConnected,
-    DetailComponent: WhatsAppIntegrationCard,
   },
 ]
 
@@ -108,11 +95,9 @@ function IntegrationCardWrapper({
 function useIntegrationStatuses() {
   const googleConnected = useGoogleConnected()
   const chromeConnected = useChromeConnected()
-  const whatsappConnected = useWhatsAppConnected()
   return {
     'chrome-extension': chromeConnected,
     'google-workspace': googleConnected,
-    'whatsapp': whatsappConnected,
   } as Record<string, boolean>
 }
 
