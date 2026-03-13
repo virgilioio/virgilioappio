@@ -418,11 +418,11 @@ export default function JobDetail() {
     load()
   }, [id, fetchAssociationsForJob, pipelineRefresh])
 
-  // Load candidate details for offers/hired/rejected and all associated
+  // Load candidate details for offers/hired/rejected/application-review and all associated
   useEffect(() => {
     const run = async () => {
       if (!associations.length) {
-        setOffersCandidates([]); setHiredCandidates([]); setRejectedCandidates([]); setRecruitingProcessCandidates([]); setAllAssociatedCandidates([]); return
+        setOffersCandidates([]); setHiredCandidates([]); setRejectedCandidates([]); setRecruitingProcessCandidates([]); setAllAssociatedCandidates([]); setApplicationReviewCandidates([]); return
       }
       const allIdsAll = Array.from(new Set(associations.map(a => a.candidate_id)))
       const offerIds = associations
@@ -430,13 +430,21 @@ export default function JobDetail() {
         .map(a => a.candidate_id)
       const hiredIds = associations.filter(a => a.status === 'hired').map(a => a.candidate_id)
       const rejectedIds = associations.filter(a => a.status === 'rejected').map(a => a.candidate_id)
+      const applicationReviewIds = associations
+        .filter(a => 
+          a.status === 'active' && 
+          a.current_stage_id && 
+          stageMap[a.current_stage_id]?.type === 'application_review'
+        )
+        .map(a => a.candidate_id)
       const recruitingIds = associations
         .filter(a => 
           a.status !== 'rejected' && 
           a.status !== 'hired' && 
           a.status !== 'offer' &&
           a.current_stage_id &&
-          stageMap[a.current_stage_id]?.type !== 'offer'
+          stageMap[a.current_stage_id]?.type !== 'offer' &&
+          stageMap[a.current_stage_id]?.type !== 'application_review'
         )
         .map(a => a.candidate_id)
       setStatusListsLoading(true)
@@ -454,6 +462,7 @@ export default function JobDetail() {
       setHiredCandidates(hiredIds.map((id) => byId.get(id)).filter(Boolean))
       setRejectedCandidates(rejectedIds.map((id) => byId.get(id)).filter(Boolean))
       setRecruitingProcessCandidates(recruitingIds.map((id) => byId.get(id)).filter(Boolean))
+      setApplicationReviewCandidates(applicationReviewIds.map((id) => byId.get(id)).filter(Boolean))
       setAllAssociatedCandidates(allIdsAll.map((id) => byId.get(id)).filter(Boolean))
       setStatusListsLoading(false)
     }

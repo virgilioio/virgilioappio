@@ -215,14 +215,15 @@ export function useApplicationReview(jobId: string) {
       })
 
       setStats(prev => ({ ...prev, advanced: prev.advanced + 1 }))
-      moveToNext()
+      // Remove from queue so advanced candidate disappears immediately
+      setQueue(prev => prev.filter(c => c.associationId !== currentCandidate.associationId))
     } catch (error) {
       console.error('Advance failed:', error)
       toast({ title: 'Error', description: 'Failed to advance candidate.', variant: 'destructive' })
     } finally {
       setIsActioning(false)
     }
-  }, [currentCandidate, firstStageId, firstStageName, isActioning, moveAssociationToStage, moveToNext])
+  }, [currentCandidate, firstStageId, firstStageName, isActioning, moveAssociationToStage])
 
   const invalidateQueries = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['job-candidates'] })

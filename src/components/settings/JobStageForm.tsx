@@ -19,6 +19,7 @@ const stageTypes = [
   { value: 'offer', label: 'Offer' },
   { value: 'onboarding', label: 'Onboarding' },
   { value: 'custom', label: 'Custom' }
+  // Note: 'application_review' is excluded — it's a system stage auto-created for every job
 ]
 
 const priorityOptions = [
