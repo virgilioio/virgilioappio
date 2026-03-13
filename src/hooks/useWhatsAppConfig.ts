@@ -184,6 +184,7 @@ export function useWhatsAppConfig() {
   return {
     sessionStatus,
     isConnected,
+    isEnabled,
     connectedPhone,
     connectedAt,
     lastSyncAt,
