@@ -106,8 +106,6 @@ export function NotificationCenter() {
                           <span className="text-sm font-poppins font-semibold text-virgilio-text truncate">
                             {notification.type === 'offer_approval'
                               ? `Offer approval needed`
-                              : notification.type === 'whatsapp'
-                              ? `WhatsApp message`
                               : notification.candidateName}
                           </span>
                           <span className="text-[11px] text-virgilio-muted whitespace-nowrap shrink-0">
