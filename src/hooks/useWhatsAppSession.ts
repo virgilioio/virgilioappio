@@ -14,7 +14,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCallback, useMemo } from 'react'
 import type { WhatsAppSessionStatus, WhatsAppSession } from '@/lib/whatsapp/types'
-import { getWhatsAppSessionState } from '@/hooks/useWhatsAppConfig'
+import { getWhatsAppSessionState } from '@/lib/whatsapp/types'
 
 async function getTenantId(userId: string): Promise<string | null> {
   const { data } = await supabase
