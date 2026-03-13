@@ -1,56 +1,22 @@
 import { useState } from 'react'
-import { FileText, Filter, Loader2, RefreshCw, Send, Plus, Copy, AlertCircle } from 'lucide-react'
+import { FileText, Loader2, Plus, AlertCircle, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import {
   useWhatsAppTemplates,
-  useSubmitWhatsAppTemplate,
-  useCheckWhatsAppTemplateStatus,
   type WhatsAppTemplate,
 } from '@/hooks/useWhatsAppConfig'
 import { WhatsAppTemplateCreator } from './WhatsAppTemplateCreator'
 import { AVAILABLE_PLACEHOLDERS } from '@/utils/placeholderUtils'
-import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-
-type TemplateFilter = 'all' | 'draft' | 'pending' | 'approved' | 'rejected'
-
-const FILTER_OPTIONS: { value: TemplateFilter; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'draft', label: 'Drafts' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'approved', label: 'Approved' },
-  { value: 'rejected', label: 'Rejected' },
-]
 
 export function WhatsAppTemplateLibrary() {
   const { data: templates = [], isLoading } = useWhatsAppTemplates()
-  const [filter, setFilter] = useState<TemplateFilter>('all')
   const [showCreator, setShowCreator] = useState(false)
 
-  const getTemplateStatus = (t: WhatsAppTemplate) => {
-    if (!t.twilio_content_sid) return 'draft'
-    if (t.approval_status === 'approved') return 'approved'
-    if (t.approval_status === 'rejected') return 'rejected'
-    return 'pending'
-  }
-
-  const filteredTemplates = templates.filter((t) => {
-    if (filter === 'all') return true
-    return getTemplateStatus(t) === filter
-  })
-
-  const globalTemplates = filteredTemplates.filter((t) => !t.tenant_id)
-  const customTemplates = filteredTemplates.filter((t) => !!t.tenant_id)
-
-  const counts = {
-    all: templates.length,
-    draft: templates.filter((t) => !t.twilio_content_sid).length,
-    pending: templates.filter((t) => !!t.twilio_content_sid && t.approval_status === 'pending').length,
-    approved: templates.filter((t) => !!t.twilio_content_sid && t.approval_status === 'approved').length,
-    rejected: templates.filter((t) => !!t.twilio_content_sid && t.approval_status === 'rejected').length,
-  }
+  const globalTemplates = templates.filter((t) => !t.tenant_id)
+  const customTemplates = templates.filter((t) => !!t.tenant_id)
 
   if (isLoading) {
     return (
@@ -70,7 +36,7 @@ export function WhatsAppTemplateLibrary() {
             Template Library
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Manage your WhatsApp message templates. Templates must be approved by Meta before use.
+            Pre-approved templates for first-contact messaging.
           </p>
         </div>
         <Button
@@ -83,30 +49,12 @@ export function WhatsAppTemplateLibrary() {
         </Button>
       </div>
 
-      {/* Filter tabs */}
-      <div className="flex items-center gap-1 p-1 rounded-lg bg-muted/30">
-        {FILTER_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            onClick={() => setFilter(opt.value)}
-            className={cn(
-              'px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5',
-              filter === opt.value
-                ? 'bg-card text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            {opt.label}
-            {counts[opt.value] > 0 && (
-              <span className={cn(
-                'text-[10px] px-1.5 py-0.5 rounded-full',
-                filter === opt.value ? 'bg-muted text-muted-foreground' : 'bg-muted/50 text-muted-foreground'
-              )}>
-                {counts[opt.value]}
-              </span>
-            )}
-          </button>
-        ))}
+      {/* Info note about custom templates */}
+      <div className="p-3 rounded-lg bg-muted/20 border border-border flex items-start gap-2">
+        <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+        <p className="text-xs text-muted-foreground">
+          GoGio templates are ready to use. Custom templates require GoGio team approval before they can be used for first-contact messaging.
+        </p>
       </div>
 
       {/* Template list */}
@@ -135,12 +83,10 @@ export function WhatsAppTemplateLibrary() {
           </div>
         )}
 
-        {filteredTemplates.length === 0 && (
+        {templates.length === 0 && (
           <div className="text-center py-8">
             <FileText className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">
-              {filter === 'all' ? 'No templates yet.' : `No ${filter} templates.`}
-            </p>
+            <p className="text-sm text-muted-foreground">No templates yet.</p>
           </div>
         )}
       </div>
@@ -161,8 +107,10 @@ function getStatusBadge(template: WhatsAppTemplate) {
 
   if (!hasContentSid) {
     return {
-      label: 'Draft',
-      description: 'Saved locally. Not yet submitted for approval.',
+      label: template.tenant_id ? 'Draft' : 'Local only',
+      description: template.tenant_id
+        ? 'Saved locally. Contact GoGio team for approval.'
+        : 'Template ready — Content SID will be added by GoGio team.',
       className: 'border-muted-foreground/30 text-muted-foreground bg-muted/20',
     }
   }
@@ -170,14 +118,14 @@ function getStatusBadge(template: WhatsAppTemplate) {
   switch (template.approval_status) {
     case 'approved':
       return {
-        label: 'Approved',
+        label: 'Ready to use',
         description: 'Approved by Meta. Ready for first-contact messaging.',
         className: 'border-[#25D366]/30 text-[#25D366] bg-[#25D366]/5',
       }
     case 'rejected':
       return {
         label: 'Rejected',
-        description: 'Rejected by Meta. Edit and resubmit with a new name.',
+        description: 'Rejected by Meta. Contact GoGio team for assistance.',
         className: 'border-destructive/30 text-destructive bg-destructive/5',
       }
     case 'pending':
@@ -208,29 +156,7 @@ function resolvePreview(bodyTemplate: string, variableMapping: Record<string, st
 function TemplateRow({ template }: { template: WhatsAppTemplate }) {
   const status = getStatusBadge(template)
   const preview = resolvePreview(template.body_template, template.variable_mapping)
-  const submitTemplate = useSubmitWhatsAppTemplate()
-  const checkStatus = useCheckWhatsAppTemplateStatus()
-  const isDraft = !template.twilio_content_sid
-  const isPending = !!template.twilio_content_sid && template.approval_status === 'pending'
   const isRejected = !!template.twilio_content_sid && template.approval_status === 'rejected'
-
-  const handleSubmit = async () => {
-    try {
-      await submitTemplate.mutateAsync(template.id)
-      toast.success('Template submitted for approval')
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to submit template')
-    }
-  }
-
-  const handleCheckStatus = async () => {
-    try {
-      const result = await checkStatus.mutateAsync(template.id)
-      toast.success(`Status: ${result.approval_status}`)
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to check status')
-    }
-  }
 
   return (
     <div className="p-4 rounded-lg border border-border bg-card group">
@@ -254,38 +180,6 @@ function TemplateRow({ template }: { template: WhatsAppTemplate }) {
 
         {/* Actions */}
         <div className="flex items-center gap-1.5 shrink-0">
-          {isDraft && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSubmit}
-              disabled={submitTemplate.isPending}
-              className="text-xs h-7"
-            >
-              {submitTemplate.isPending ? (
-                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-              ) : (
-                <Send className="h-3 w-3 mr-1" />
-              )}
-              Submit
-            </Button>
-          )}
-          {isPending && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleCheckStatus}
-              disabled={checkStatus.isPending}
-              className="text-xs h-7"
-            >
-              {checkStatus.isPending ? (
-                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-              ) : (
-                <RefreshCw className="h-3 w-3 mr-1" />
-              )}
-              Refresh
-            </Button>
-          )}
           {isRejected && (
             <div className="flex items-center gap-1">
               <AlertCircle className="h-3.5 w-3.5 text-destructive" />

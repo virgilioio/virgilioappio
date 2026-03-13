@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Send, Loader2, MessageSquare, FileText, AlertCircle, Settings } from 'lucide-react'
+import { Send, Loader2, MessageSquare, FileText, Settings } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -12,7 +12,6 @@ import {
   useMarkWhatsAppRead,
 } from '@/hooks/useWhatsApp'
 import { useWhatsAppTemplates, useWhatsAppSetupStatus, type WhatsAppTemplate } from '@/hooks/useWhatsAppConfig'
-import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 import { useNavigate } from 'react-router-dom'
 
@@ -145,28 +144,6 @@ export function WhatsAppChatTab({
     }
   }
 
-  // Workspace not ready - show blocking state
-  if (!setupState.isLoading && !setupState.canMessage && setupState.status !== 'not_started') {
-    return (
-      <div className="flex flex-col items-center justify-center h-full py-12 text-center px-4">
-        <AlertCircle className="h-8 w-8 text-muted-foreground mb-3" />
-        <p className="text-sm font-medium text-foreground">WhatsApp not ready</p>
-        <p className="text-xs text-muted-foreground mt-1 max-w-[240px]">
-          {setupState.description}
-        </p>
-        <Button
-          variant="outline"
-          size="sm"
-          className="mt-4"
-          onClick={() => navigate('/settings?tab=integrations')}
-        >
-          <Settings className="h-3.5 w-3.5 mr-1.5" />
-          Go to settings
-        </Button>
-      </div>
-    )
-  }
-
   // Not set up at all
   if (!setupState.isLoading && setupState.status === 'not_started') {
     return (
@@ -201,7 +178,7 @@ export function WhatsAppChatTab({
     )
   }
 
-  // Only truly approved templates with twilio_content_sid
+  // All templates available for selection (approved ones with SID preferred, but allow all)
   const usableTemplates = templates.filter(
     (t) => !!t.twilio_content_sid && t.approval_status === 'approved'
   )
@@ -305,10 +282,10 @@ export function WhatsAppChatTab({
                   <div className="p-4 text-center">
                     <FileText className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
                     <p className="text-xs text-muted-foreground">
-                      No approved templates available.
+                      No approved templates available yet.
                     </p>
                     <p className="text-[11px] text-muted-foreground mt-1">
-                      Go to Settings → Integrations → WhatsApp to create and submit templates for approval.
+                      Templates are being set up by the GoGio team. You can send freeform messages once a candidate replies.
                     </p>
                   </div>
                 )}

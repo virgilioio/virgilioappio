@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import {
   Check,
-  Loader2,
   Phone,
   MessageSquare,
   Settings,
@@ -9,19 +8,15 @@ import {
   ChevronUp,
   AlertCircle,
   FileText,
-  Power,
-  RefreshCw,
 } from 'lucide-react'
 import whatsappLogo from '@/assets/whatsapp-logo.png'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
-import { Separator } from '@/components/ui/separator'
 import {
   useWhatsAppConfig,
   useWhatsAppSetupStatus,
-  useWhatsAppTemplates,
 } from '@/hooks/useWhatsAppConfig'
 import { WhatsAppSetupWizard } from './whatsapp/WhatsAppSetupWizard'
 import { WhatsAppTemplateLibrary } from './whatsapp/WhatsAppTemplateLibrary'
@@ -41,7 +36,6 @@ export function WhatsAppIntegrationCard() {
   } = useWhatsAppConfig()
 
   const setupState = useWhatsAppSetupStatus()
-  const { data: templates = [] } = useWhatsAppTemplates()
   const [showWizard, setShowWizard] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
 
@@ -55,14 +49,6 @@ export function WhatsAppIntegrationCard() {
   }
 
   if (isLoading || setupState.isLoading) return null
-
-  const approvedCount = templates.filter(
-    (t) => !!t.twilio_content_sid && t.approval_status === 'approved'
-  ).length
-  const pendingCount = templates.filter(
-    (t) => !!t.twilio_content_sid && t.approval_status === 'pending'
-  ).length
-  const draftCount = templates.filter((t) => !t.twilio_content_sid).length
 
   const statusConfig = getStatusConfig(setupState.status)
 
@@ -141,24 +127,6 @@ export function WhatsAppIntegrationCard() {
                     Since {new Date(provisionedAt).toLocaleDateString()}
                   </span>
                 )}
-              </div>
-            </div>
-          )}
-
-          {/* Quick stats - only show when provisioned */}
-          {isProvisioned && (
-            <div className="grid grid-cols-3 gap-3">
-              <div className="p-3 rounded-lg bg-muted/20 text-center">
-                <p className="text-lg font-semibold text-foreground">{approvedCount}</p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Approved</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/20 text-center">
-                <p className="text-lg font-semibold text-foreground">{pendingCount}</p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Pending</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/20 text-center">
-                <p className="text-lg font-semibold text-foreground">{draftCount}</p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Drafts</p>
               </div>
             </div>
           )}
@@ -252,45 +220,13 @@ export function WhatsAppIntegrationCard() {
 
 function getStatusConfig(status: string) {
   switch (status) {
-    case 'ready':
+    case 'active':
       return {
         icon: Check,
         badgeClass: 'border-[#25D366]/30 text-[#25D366]',
         bgClass: 'bg-[#25D366]/5',
         borderClass: 'border-[#25D366]/20',
         iconClass: 'text-[#25D366]',
-      }
-    case 'templates_required':
-      return {
-        icon: FileText,
-        badgeClass: 'border-yellow-500/30 text-yellow-600',
-        bgClass: 'bg-yellow-500/5',
-        borderClass: 'border-yellow-500/20',
-        iconClass: 'text-yellow-600',
-      }
-    case 'sender_active':
-      return {
-        icon: Power,
-        badgeClass: 'border-blue-500/30 text-blue-600',
-        bgClass: 'bg-blue-500/5',
-        borderClass: 'border-blue-500/20',
-        iconClass: 'text-blue-600',
-      }
-    case 'sender_pending':
-      return {
-        icon: RefreshCw,
-        badgeClass: 'border-yellow-500/30 text-yellow-600',
-        bgClass: 'bg-yellow-500/5',
-        borderClass: 'border-yellow-500/20',
-        iconClass: 'text-yellow-600',
-      }
-    case 'provisioning':
-      return {
-        icon: Loader2,
-        badgeClass: 'border-blue-500/30 text-blue-600',
-        bgClass: 'bg-blue-500/5',
-        borderClass: 'border-blue-500/20',
-        iconClass: 'text-blue-600 animate-spin',
       }
     case 'error':
       return {

@@ -1,8 +1,7 @@
 import { useState } from 'react'
-import { Check, ChevronRight, Loader2, Phone, Shield, FileText, MessageSquare, AlertCircle } from 'lucide-react'
+import { Check, ChevronRight, Loader2, Phone, Shield, MessageSquare, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { useWhatsAppConfig } from '@/hooks/useWhatsAppConfig'
 import { toast } from 'sonner'
@@ -12,19 +11,17 @@ interface WhatsAppSetupWizardProps {
   onComplete?: () => void
 }
 
-type WizardStep = 'welcome' | 'provision' | 'verify' | 'templates' | 'complete'
+type WizardStep = 'welcome' | 'provision' | 'complete'
 
 const STEPS: { id: WizardStep; label: string; icon: React.ElementType }[] = [
   { id: 'welcome', label: 'Overview', icon: MessageSquare },
   { id: 'provision', label: 'Get number', icon: Phone },
-  { id: 'verify', label: 'Verify sender', icon: Shield },
-  { id: 'templates', label: 'Templates', icon: FileText },
   { id: 'complete', label: 'Ready', icon: Check },
 ]
 
 export function WhatsAppSetupWizard({ onComplete }: WhatsAppSetupWizardProps) {
-  const { isProvisioned, whatsappNumber, isActive, provisionNumber, toggle, saveNumber, isSaving } = useWhatsAppConfig()
-  const [currentStep, setCurrentStep] = useState<WizardStep>(isProvisioned ? 'verify' : 'welcome')
+  const { isProvisioned, whatsappNumber, provisionNumber, saveNumber, isSaving } = useWhatsAppConfig()
+  const [currentStep, setCurrentStep] = useState<WizardStep>(isProvisioned ? 'complete' : 'welcome')
   const [manualNumber, setManualNumber] = useState('')
   const [showManual, setShowManual] = useState(false)
 
@@ -34,7 +31,7 @@ export function WhatsAppSetupWizard({ onComplete }: WhatsAppSetupWizardProps) {
     try {
       await provisionNumber.mutateAsync('US')
       toast.success('WhatsApp number provisioned successfully')
-      setCurrentStep('verify')
+      setCurrentStep('complete')
     } catch (error: any) {
       toast.error(error.message || 'Failed to provision number')
     }
@@ -48,19 +45,9 @@ export function WhatsAppSetupWizard({ onComplete }: WhatsAppSetupWizardProps) {
       toast.success('WhatsApp sender number saved')
       setShowManual(false)
       setManualNumber('')
-      setCurrentStep('verify')
+      setCurrentStep('complete')
     } catch {
       toast.error('Failed to save number')
-    }
-  }
-
-  const handleActivate = async () => {
-    try {
-      await toggle(true)
-      toast.success('WhatsApp sender activated')
-      setCurrentStep('templates')
-    } catch {
-      toast.error('Failed to activate sender')
     }
   }
 
@@ -230,108 +217,11 @@ export function WhatsAppSetupWizard({ onComplete }: WhatsAppSetupWizardProps) {
                 Back
               </Button>
               {isProvisioned && (
-                <Button onClick={() => setCurrentStep('verify')} size="sm">
+                <Button onClick={() => setCurrentStep('complete')} size="sm">
                   Continue
                   <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               )}
-            </div>
-          </div>
-        )}
-
-        {currentStep === 'verify' && (
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-base font-semibold text-foreground">Verify sender readiness</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Confirm your WhatsApp sender is ready to send messages.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-lg border border-border space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-2 w-2 rounded-full bg-[#25D366]" />
-                  <span className="text-sm font-mono">{whatsappNumber}</span>
-                </div>
-                <Badge variant="outline" className="border-[#25D366]/30 text-[#25D366] text-[10px]">
-                  Provisioned
-                </Badge>
-              </div>
-
-              {!isActive && (
-                <div className="pt-2">
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Activate your sender to enable WhatsApp messaging for this workspace.
-                  </p>
-                  <Button
-                    onClick={handleActivate}
-                    disabled={isSaving}
-                    size="sm"
-                    className="bg-[#25D366] hover:bg-[#25D366]/90 text-white"
-                  >
-                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                    Activate sender
-                  </Button>
-                </div>
-              )}
-
-              {isActive && (
-                <div className="flex items-center gap-2 pt-1">
-                  <Check className="h-4 w-4 text-[#25D366]" />
-                  <span className="text-sm text-[#25D366] font-medium">Sender is active</span>
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <Button variant="ghost" size="sm" onClick={() => setCurrentStep('provision')}>
-                Back
-              </Button>
-              {isActive && (
-                <Button onClick={() => setCurrentStep('templates')} size="sm">
-                  Continue
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {currentStep === 'templates' && (
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-base font-semibold text-foreground">Message templates</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                WhatsApp requires pre-approved templates for first-contact messages. You can manage templates from the Template Library below after completing setup.
-              </p>
-            </div>
-
-            <div className="p-3 rounded-lg bg-muted/30 flex items-start gap-3">
-              <FileText className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-foreground">What are templates?</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Templates are pre-approved message formats required by Meta for initiating WhatsApp conversations. 
-                  GoGio provides ready-to-use templates, and you can also create custom ones. Each template must be 
-                  submitted to Meta for approval before it can be used for first-contact messaging.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <Button variant="ghost" size="sm" onClick={() => setCurrentStep('verify')}>
-                Back
-              </Button>
-              <Button
-                onClick={() => {
-                  setCurrentStep('complete')
-                }}
-                size="sm"
-              >
-                Continue
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
             </div>
           </div>
         )}
@@ -344,7 +234,7 @@ export function WhatsAppSetupWizard({ onComplete }: WhatsAppSetupWizardProps) {
             <div>
               <h3 className="text-base font-semibold text-foreground">Workspace WhatsApp is set up</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Your workspace has a dedicated WhatsApp sender. You can now manage templates and start messaging candidates.
+                Your workspace has a dedicated WhatsApp number. You can now start messaging candidates using pre-approved templates.
               </p>
             </div>
             <div className="flex items-center justify-center gap-3 p-3 rounded-lg bg-muted/30">
