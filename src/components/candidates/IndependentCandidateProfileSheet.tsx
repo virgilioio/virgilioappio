@@ -61,6 +61,7 @@ export function IndependentCandidateProfileSheet({
   onNavigateNext,
 }: IndependentCandidateProfileSheetProps) {
   const { canEditCandidates } = usePermissions()
+  const { isEnabled: isWhatsAppEnabled } = useWhatsAppConfig()
   const { organizationId, user } = useAuth()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
