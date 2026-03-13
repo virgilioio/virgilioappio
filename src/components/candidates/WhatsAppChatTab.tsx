@@ -263,8 +263,13 @@ export function WhatsAppChatTab({
                     {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
                   </span>
                   {msg.direction === 'outbound' && (
-                    <span className="text-[10px] text-muted-foreground capitalize">
-                      · {msg.status}
+                    <span className={cn(
+                      "text-[10px] capitalize",
+                      msg.status === 'failed' || msg.status === 'undelivered'
+                        ? 'text-destructive font-medium'
+                        : 'text-muted-foreground'
+                    )}>
+                      · {msg.status === 'failed' || msg.status === 'undelivered' ? '⚠ ' + msg.status : msg.status}
                     </span>
                   )}
                 </div>
