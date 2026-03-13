@@ -283,6 +283,91 @@ Deno.serve(async (req) => {
         });
       }
 
+      case "update": {
+        const { template_id, name, body_template, category, language } = params;
+
+        if (!template_id) {
+          return new Response(
+            JSON.stringify({ error: "Missing template_id" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { data: tmplUpd, error: tmplUpdErr } = await supabase
+          .from("whatsapp_templates")
+          .select("*")
+          .eq("id", template_id)
+          .single();
+
+        if (tmplUpdErr || !tmplUpd) {
+          return new Response(
+            JSON.stringify({ error: "Template not found" }),
+            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        if (tmplUpd.tenant_id !== tenantId) {
+          return new Response(
+            JSON.stringify({ error: "Unauthorized" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        if (tmplUpd.twilio_content_sid) {
+          return new Response(
+            JSON.stringify({ error: "Cannot edit a template that has already been submitted" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Re-derive variable mapping from the new body
+        const updBody = body_template || tmplUpd.body_template;
+        const updNamedVarRegex = /\{\{([a-z_.]+)\}\}/g;
+        const updFoundVars: string[] = [];
+        let updMatch;
+        while ((updMatch = updNamedVarRegex.exec(updBody)) !== null) {
+          const varName = updMatch[1];
+          if (/^\d+$/.test(varName)) continue;
+          if (!updFoundVars.includes(varName)) updFoundVars.push(varName);
+        }
+
+        let updConvertedBody = updBody;
+        const updDerivedMapping: Record<string, string> = {};
+
+        if (updFoundVars.length > 0) {
+          updFoundVars.forEach((varName, index) => {
+            const num = String(index + 1);
+            updConvertedBody = updConvertedBody.replace(
+              new RegExp(`\\{\\{${varName}\\}\\}`, 'g'),
+              `{{${num}}}`
+            );
+            updDerivedMapping[num] = varName;
+          });
+        }
+
+        const updateFields: Record<string, unknown> = {
+          body_template: updConvertedBody,
+          variable_mapping: updFoundVars.length > 0 ? updDerivedMapping : {},
+        };
+        if (name) updateFields.name = name;
+        if (category) updateFields.category = category;
+        if (language) updateFields.language = language;
+
+        const { data: updatedTmpl, error: updErr } = await supabase
+          .from("whatsapp_templates")
+          .update(updateFields)
+          .eq("id", template_id)
+          .select()
+          .single();
+
+        if (updErr) throw updErr;
+
+        return new Response(JSON.stringify({ template: updatedTmpl }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       case "delete": {
         const { template_id } = params;
 
