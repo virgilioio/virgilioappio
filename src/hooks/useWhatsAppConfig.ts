@@ -16,14 +16,7 @@ export interface WhatsAppTemplate {
   created_at: string
 }
 
-export type WhatsAppSetupStatus =
-  | 'not_started'
-  | 'provisioning'
-  | 'sender_pending'
-  | 'sender_active'
-  | 'templates_required'
-  | 'ready'
-  | 'error'
+export type WhatsAppSetupStatus = 'not_started' | 'active' | 'error'
 
 export interface WhatsAppSetupState {
   status: WhatsAppSetupStatus
@@ -38,29 +31,9 @@ const SETUP_STATES: Record<WhatsAppSetupStatus, Omit<WhatsAppSetupState, 'status
     description: 'WhatsApp has not been configured for this workspace yet.',
     canMessage: false,
   },
-  provisioning: {
-    label: 'Provisioning',
-    description: 'A WhatsApp number is being provisioned for your workspace.',
-    canMessage: false,
-  },
-  sender_pending: {
-    label: 'Sender pending',
-    description: 'Your WhatsApp sender is registered but pending verification.',
-    canMessage: false,
-  },
-  sender_active: {
-    label: 'Sender active',
-    description: 'Your WhatsApp sender is active. You need approved templates before messaging.',
-    canMessage: false,
-  },
-  templates_required: {
-    label: 'Templates needed',
-    description: 'Your sender is ready but you need at least one approved template for first-contact messaging.',
-    canMessage: false,
-  },
-  ready: {
-    label: 'Ready to message',
-    description: 'Your workspace WhatsApp is fully set up and ready to send messages.',
+  active: {
+    label: 'Active',
+    description: 'Your workspace WhatsApp is set up and ready to send messages.',
     canMessage: true,
   },
   error: {
@@ -151,27 +124,17 @@ export function useWhatsAppConfig() {
 }
 
 /**
- * Computes the workspace WhatsApp setup status from config + templates.
+ * Computes the workspace WhatsApp setup status from config.
+ * Simplified to 3 states: not_started, active, error.
  */
 export function useWhatsAppSetupStatus(): WhatsAppSetupState & { isLoading: boolean } {
-  const { isProvisioned, isActive, lastError, isLoading: configLoading } = useWhatsAppConfig()
-  const { data: templates = [], isLoading: templatesLoading } = useWhatsAppTemplates()
-
-  const isLoading = configLoading || templatesLoading
+  const { isProvisioned, lastError, isLoading } = useWhatsAppConfig()
 
   const status = useMemo((): WhatsAppSetupStatus => {
     if (!isProvisioned) return 'not_started'
     if (lastError) return 'error'
-    if (!isActive) return 'sender_active' // provisioned but disabled
-    
-    // Check for approved templates (ones with twilio_content_sid)
-    const approvedTemplates = templates.filter(
-      (t) => !!t.twilio_content_sid && t.approval_status === 'approved'
-    )
-    
-    if (approvedTemplates.length === 0) return 'templates_required'
-    return 'ready'
-  }, [isProvisioned, isActive, lastError, templates])
+    return 'active'
+  }, [isProvisioned, lastError])
 
   const stateInfo = SETUP_STATES[status]
 

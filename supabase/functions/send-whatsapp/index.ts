@@ -87,7 +87,6 @@ Deno.serve(async (req) => {
       .select("config")
       .eq("tenant_id", tenantId)
       .eq("automation_type", "whatsapp_config")
-      .eq("is_active", true)
       .single();
 
     if (!config?.config?.twilio_from_number) {

@@ -1,0 +1,6 @@
+INSERT INTO public.whatsapp_templates (tenant_id, name, category, language, body_template, variable_mapping, twilio_content_sid, approval_status)
+VALUES
+  (NULL, 'Interview Invitation', 'utility', 'en', 'Hi {{1}}, this is {{2}} from {{3}}. We''d like to invite you to interview for the {{4}} position. Would you be available to chat?', '{"1":"candidate_name","2":"recruiter_name","3":"company_name","4":"job_title"}'::jsonb, NULL, 'draft'),
+  (NULL, 'Application Update', 'utility', 'en', 'Hi {{1}}, thank you for your interest in the {{2}} role at {{3}}. We have an update regarding your application. Please reply to this message so we can share the details.', '{"1":"candidate_name","2":"job_title","3":"company_name"}'::jsonb, NULL, 'draft'),
+  (NULL, 'Job Opportunity', 'marketing', 'en', 'Hi {{1}}, I''m {{2}} from {{3}}. I came across your profile and thought you''d be a great fit for a {{4}} opportunity we have. Would you be open to a quick conversation?', '{"1":"candidate_name","2":"recruiter_name","3":"company_name","4":"job_title"}'::jsonb, NULL, 'draft')
+ON CONFLICT DO NOTHING
