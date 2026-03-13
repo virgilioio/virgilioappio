@@ -1721,12 +1721,14 @@ const stageHasAutomation = useMemo(() => {
                      {/* Chat Tab */}
                      {rightActiveTab === 'chat' && candidateId && (
                        <Card className="bg-surface-primary border-border h-[500px]">
-                         <WhatsAppChatTab
-                           candidateId={candidateId}
-                           jobId={jobId}
-                           phoneNumber={whatsAppPhone || candidate?.phone}
-                           candidateName={candidate?.candidate_name || 'Candidate'}
-                         />
+                          <WhatsAppChatTab
+                            candidateId={candidateId}
+                            jobId={jobId}
+                            phoneNumber={whatsAppPhone || candidate?.phone}
+                            candidateName={candidate?.candidate_name || 'Candidate'}
+                            jobTitle={job?.title}
+                            recruiterName={user?.user_metadata?.full_name || user?.email}
+                          />
                        </Card>
                      )}
 

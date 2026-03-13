@@ -14,6 +14,8 @@ import {
 import { useWhatsAppTemplates, useWhatsAppSetupStatus, type WhatsAppTemplate } from '@/hooks/useWhatsAppConfig'
 import { cn } from '@/lib/utils'
 import { useNavigate } from 'react-router-dom'
+import { useTenant } from '@/hooks/useTenant'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface WhatsAppChatTabProps {
   candidateId: string
@@ -30,9 +32,9 @@ export function WhatsAppChatTab({
   jobId,
   phoneNumber,
   candidateName,
-  companyName,
-  jobTitle,
-  recruiterName,
+  companyName: companyNameProp,
+  jobTitle: jobTitleProp,
+  recruiterName: recruiterNameProp,
 }: WhatsAppChatTabProps) {
   const [message, setMessage] = useState('')
   const [selectedTemplate, setSelectedTemplate] = useState<WhatsAppTemplate | null>(null)
@@ -45,6 +47,14 @@ export function WhatsAppChatTab({
   const markRead = useMarkWhatsAppRead()
   const { data: templates = [] } = useWhatsAppTemplates()
   const setupState = useWhatsAppSetupStatus()
+
+  // Fallback data fetching for template variables
+  const { tenant } = useTenant()
+  const { user } = useAuth()
+
+  const companyName = companyNameProp || tenant?.name
+  const jobTitle = jobTitleProp
+  const recruiterName = recruiterNameProp || user?.user_metadata?.full_name || user?.email
 
   const targetPhone = phoneNumber || conversation?.phone_number
 
