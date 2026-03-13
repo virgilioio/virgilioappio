@@ -95,6 +95,73 @@ export interface WhatsAppMessage {
   createdAt: string
 }
 
+// ─── Session State Machine ──────────────────────────────────
+
+export interface WhatsAppSessionState {
+  status: WhatsAppSessionStatus
+  label: string
+  description: string
+  canSync: boolean
+  canMessage: boolean
+  actionLabel: string | null
+  actionType: 'connect' | 'reconnect' | 'disconnect' | null
+}
+
+const SESSION_STATES: Record<WhatsAppSessionStatus, Omit<WhatsAppSessionState, 'status'>> = {
+  disconnected: {
+    label: 'Not connected',
+    description: 'Connect your WhatsApp to start syncing conversations with candidates.',
+    canSync: false, canMessage: false,
+    actionLabel: 'Connect WhatsApp', actionType: 'connect',
+  },
+  waiting_for_qr: {
+    label: 'Scan QR code',
+    description: 'Open WhatsApp on your phone and scan the QR code to connect.',
+    canSync: false, canMessage: false,
+    actionLabel: null, actionType: null,
+  },
+  connecting: {
+    label: 'Connecting…',
+    description: 'Establishing connection with WhatsApp. This usually takes a few seconds.',
+    canSync: false, canMessage: false,
+    actionLabel: null, actionType: null,
+  },
+  connected: {
+    label: 'Connected',
+    description: 'Your WhatsApp is connected and conversations are being synced.',
+    canSync: true, canMessage: true,
+    actionLabel: 'Disconnect', actionType: 'disconnect',
+  },
+  syncing: {
+    label: 'Syncing…',
+    description: 'Importing your WhatsApp conversations. This may take a few minutes.',
+    canSync: true, canMessage: false,
+    actionLabel: null, actionType: null,
+  },
+  reconnect_required: {
+    label: 'Reconnect required',
+    description: 'Your WhatsApp session was disconnected. Please reconnect to resume syncing.',
+    canSync: false, canMessage: false,
+    actionLabel: 'Reconnect', actionType: 'reconnect',
+  },
+  expired: {
+    label: 'Session expired',
+    description: 'Your WhatsApp session has expired. Please reconnect to continue.',
+    canSync: false, canMessage: false,
+    actionLabel: 'Reconnect', actionType: 'reconnect',
+  },
+  error: {
+    label: 'Connection error',
+    description: 'Something went wrong with your WhatsApp connection. Please try again.',
+    canSync: false, canMessage: false,
+    actionLabel: 'Retry connection', actionType: 'connect',
+  },
+}
+
+export function getWhatsAppSessionState(status: WhatsAppSessionStatus): WhatsAppSessionState {
+  return { status, ...SESSION_STATES[status] }
+}
+
 // ─── Candidate Match ────────────────────────────────────────
 
 export type CandidateMatchType = 'exact' | 'suffix' | 'fuzzy'
