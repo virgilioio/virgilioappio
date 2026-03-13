@@ -1324,7 +1324,7 @@ export default function JobDetail() {
                 onTabChange={setActiveTab}
                 jobTitle={job.title}
                 isRestrictedViewer={isRestrictedViewer}
-                isWhatsAppEnabled={isWhatsAppEnabled}
+                
               />
               
               {/* Main content */}
