@@ -51,6 +51,7 @@ export function useApplicationReview(jobId: string) {
   const [firstStageId, setFirstStageId] = useState<string | null>(null)
   const [firstStageName, setFirstStageName] = useState<string | null>(null)
   const [stats, setStats] = useState<ReviewSessionStats>({ rejected: 0, passed: 0, advanced: 0 })
+  const [hasActioned, setHasActioned] = useState(false)
   const [rejectionConfig, setRejectionConfig] = useState<RejectionConfig>(() => {
     try {
       const stored = localStorage.getItem('app-review-rejection-config')
@@ -59,8 +60,8 @@ export function useApplicationReview(jobId: string) {
     return { sendEmail: false }
   })
 
-  const isComplete = currentIndex >= queue.length && queue.length > 0
   const currentCandidate = queue[currentIndex] ?? null
+  const isComplete = hasActioned && currentCandidate === null
   const totalInQueue = queue.length
   const currentPosition = currentIndex + 1
 
@@ -76,6 +77,7 @@ export function useApplicationReview(jobId: string) {
     setIsLoading(true)
     setStats({ rejected: 0, passed: 0, advanced: 0 })
     setCurrentIndex(0)
+    setHasActioned(false)
 
     try {
       // Find the application_review hiring stage for this job
@@ -245,6 +247,7 @@ export function useApplicationReview(jobId: string) {
       })
 
       setStats(prev => ({ ...prev, rejected: prev.rejected + 1 }))
+      setHasActioned(true)
       // Remove from queue so rejected candidate disappears immediately
       setQueue(prev => prev.filter(c => c.associationId !== currentCandidate.associationId))
     } catch (error) {
@@ -257,6 +260,7 @@ export function useApplicationReview(jobId: string) {
   const handlePass = useCallback(() => {
     if (!currentCandidate) return
     setStats(prev => ({ ...prev, passed: prev.passed + 1 }))
+    setHasActioned(true)
     moveToNext()
   }, [currentCandidate, moveToNext])
 
@@ -273,6 +277,7 @@ export function useApplicationReview(jobId: string) {
       })
 
       setStats(prev => ({ ...prev, advanced: prev.advanced + 1 }))
+      setHasActioned(true)
       // Remove from queue so advanced candidate disappears immediately
       setQueue(prev => prev.filter(c => c.associationId !== currentCandidate.associationId))
     } catch (error) {
