@@ -10,6 +10,7 @@ interface JobDetailFloatingSidebarProps {
   onTabChange: (tab: string) => void
   jobTitle: string
   isRestrictedViewer?: boolean
+  isWhatsAppEnabled?: boolean
   className?: string
 }
 
