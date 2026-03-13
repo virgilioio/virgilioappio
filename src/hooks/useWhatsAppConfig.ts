@@ -2,56 +2,120 @@ import { useWorkspaceAutomation } from '@/hooks/useWorkspaceAutomation'
 import { useCallback, useMemo } from 'react'
 
 /**
- * WhatsApp connection status for QR/session-based model.
- * Replaces the old Twilio provisioning states.
+ * WhatsApp session states for the QR/session-based model.
+ * Reusable across all WhatsApp surfaces in the ATS.
  */
-export type WhatsAppConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'expired'
+export type WhatsAppSessionStatus =
+  | 'disconnected'       // No session exists
+  | 'waiting_for_qr'     // QR code generated, waiting for user to scan
+  | 'connecting'         // QR scanned, establishing session
+  | 'connected'          // Session active, ready for sync
+  | 'syncing'            // Actively syncing conversations
+  | 'reconnect_required' // Session dropped, needs re-authentication
+  | 'expired'            // Session timed out
+  | 'error'              // Something went wrong
 
-export interface WhatsAppConnectionState {
-  status: WhatsAppConnectionStatus
+export interface WhatsAppSessionState {
+  status: WhatsAppSessionStatus
   label: string
   description: string
+  canSync: boolean
   canMessage: boolean
+  actionLabel: string | null
+  actionType: 'connect' | 'reconnect' | 'disconnect' | null
 }
 
-const CONNECTION_STATES: Record<WhatsAppConnectionStatus, Omit<WhatsAppConnectionState, 'status'>> = {
+const SESSION_STATES: Record<WhatsAppSessionStatus, Omit<WhatsAppSessionState, 'status'>> = {
   disconnected: {
     label: 'Not connected',
     description: 'Connect your WhatsApp to start syncing conversations with candidates.',
+    canSync: false,
     canMessage: false,
+    actionLabel: 'Connect WhatsApp',
+    actionType: 'connect',
+  },
+  waiting_for_qr: {
+    label: 'Scan QR code',
+    description: 'Open WhatsApp on your phone and scan the QR code to connect.',
+    canSync: false,
+    canMessage: false,
+    actionLabel: null,
+    actionType: null,
   },
   connecting: {
     label: 'Connecting…',
-    description: 'Scan the QR code with your WhatsApp to complete the connection.',
+    description: 'Establishing connection with WhatsApp. This usually takes a few seconds.',
+    canSync: false,
     canMessage: false,
+    actionLabel: null,
+    actionType: null,
   },
   connected: {
     label: 'Connected',
-    description: 'Your WhatsApp is connected. Conversations are being synced.',
+    description: 'Your WhatsApp is connected and conversations are being synced.',
+    canSync: true,
     canMessage: true,
+    actionLabel: 'Disconnect',
+    actionType: 'disconnect',
+  },
+  syncing: {
+    label: 'Syncing…',
+    description: 'Importing your WhatsApp conversations. This may take a few minutes.',
+    canSync: true,
+    canMessage: false,
+    actionLabel: null,
+    actionType: null,
+  },
+  reconnect_required: {
+    label: 'Reconnect required',
+    description: 'Your WhatsApp session was disconnected. Please reconnect to resume syncing.',
+    canSync: false,
+    canMessage: false,
+    actionLabel: 'Reconnect',
+    actionType: 'reconnect',
   },
   expired: {
     label: 'Session expired',
-    description: 'Your WhatsApp session has expired. Please reconnect.',
+    description: 'Your WhatsApp session has expired. Please reconnect to continue.',
+    canSync: false,
     canMessage: false,
+    actionLabel: 'Reconnect',
+    actionType: 'reconnect',
+  },
+  error: {
+    label: 'Connection error',
+    description: 'Something went wrong with your WhatsApp connection. Please try again.',
+    canSync: false,
+    canMessage: false,
+    actionLabel: 'Retry connection',
+    actionType: 'connect',
   },
 }
 
+/**
+ * Returns the full session state object for a given status.
+ */
+export function getWhatsAppSessionState(status: WhatsAppSessionStatus): WhatsAppSessionState {
+  return { status, ...SESSION_STATES[status] }
+}
+
+/**
+ * Core hook for WhatsApp workspace configuration.
+ * Manages session state and workspace-level settings.
+ */
 export function useWhatsAppConfig() {
   const { automation, isLoading, isSaving, save: baseSave, toggle } = useWorkspaceAutomation('whatsapp_config')
 
   const config = automation?.config || {}
   const isActive = automation?.is_active ?? false
 
-  const connectionStatus = useMemo((): WhatsAppConnectionStatus => {
-    const status = config.connection_status as string | undefined
-    if (status === 'connected') return 'connected'
-    if (status === 'connecting') return 'connecting'
-    if (status === 'expired') return 'expired'
+  const sessionStatus = useMemo((): WhatsAppSessionStatus => {
+    const status = config.session_status as string | undefined
+    if (status && status in SESSION_STATES) return status as WhatsAppSessionStatus
     return 'disconnected'
   }, [config])
 
-  const isConnected = connectionStatus === 'connected'
+  const isConnected = sessionStatus === 'connected' || sessionStatus === 'syncing'
 
   const connectedPhone = useMemo(
     () => (config.connected_phone as string) || '',
@@ -63,15 +127,34 @@ export function useWhatsAppConfig() {
     [config]
   )
 
+  const lastSyncAt = useMemo(
+    () => (config.last_sync_at as string) || null,
+    [config]
+  )
+
   const lastError = useMemo(
     () => (config.last_error as string) || null,
     [config]
   )
 
-  const updateConnectionStatus = useCallback(
-    (status: WhatsAppConnectionStatus, extra?: Record<string, unknown>) => {
+  const conversationCount = useMemo(
+    () => (config.conversation_count as number) || 0,
+    [config]
+  )
+
+  const updateSessionStatus = useCallback(
+    (status: WhatsAppSessionStatus, extra?: Record<string, unknown>) => {
       return baseSave({
-        config: { ...config, connection_status: status, ...extra },
+        config: { ...config, session_status: status, last_error: null, ...extra },
+      })
+    },
+    [baseSave, config]
+  )
+
+  const setError = useCallback(
+    (errorMessage: string) => {
+      return baseSave({
+        config: { ...config, session_status: 'error', last_error: errorMessage },
       })
     },
     [baseSave, config]
@@ -80,37 +163,48 @@ export function useWhatsAppConfig() {
   const disconnect = useCallback(() => {
     return baseSave({
       is_active: false,
-      config: { ...config, connection_status: 'disconnected', connected_phone: null, connected_at: null },
+      config: {
+        ...config,
+        session_status: 'disconnected',
+        connected_phone: null,
+        connected_at: null,
+        last_sync_at: null,
+        last_error: null,
+      },
     } as any)
   }, [baseSave, config])
 
+  const startConnection = useCallback(() => {
+    return baseSave({
+      config: { ...config, session_status: 'waiting_for_qr', last_error: null },
+    })
+  }, [baseSave, config])
+
   return {
+    sessionStatus,
     isConnected,
-    connectionStatus,
     connectedPhone,
     connectedAt,
+    lastSyncAt,
+    conversationCount,
     isLoading,
     isSaving,
     isActive,
     lastError,
     config,
     toggle,
-    updateConnectionStatus,
+    updateSessionStatus,
+    setError,
     disconnect,
+    startConnection,
   }
 }
 
 /**
- * Returns the current WhatsApp connection state for the workspace.
+ * Returns the current WhatsApp session state for the workspace.
+ * Reusable across all WhatsApp surfaces.
  */
-export function useWhatsAppConnectionState(): WhatsAppConnectionState & { isLoading: boolean } {
-  const { connectionStatus, isLoading } = useWhatsAppConfig()
-
-  const stateInfo = CONNECTION_STATES[connectionStatus]
-
-  return {
-    status: connectionStatus,
-    ...stateInfo,
-    isLoading,
-  }
+export function useWhatsAppSessionState(): WhatsAppSessionState & { isLoading: boolean } {
+  const { sessionStatus, isLoading } = useWhatsAppConfig()
+  return { ...getWhatsAppSessionState(sessionStatus), isLoading }
 }
