@@ -1677,18 +1677,16 @@ export default function JobDetail() {
                 </TabsContent>
 
                 {/* WhatsApp Tab */}
-                <TabsContent value="whatsapp">
-                  <Card className="p-6">
-                    <WhatsAppConversationsList
-                      jobId={id!}
-                      onOpenCandidate={(candidateId) => {
-                        setSearchParams(prev => {
-                          prev.set('openCandidate', candidateId)
-                          return prev
-                        })
-                      }}
-                    />
-                  </Card>
+                <TabsContent value="whatsapp" className="mt-0">
+                  <WhatsAppConversationsList
+                    jobId={id!}
+                    onOpenCandidate={(candidateId) => {
+                      setSearchParams(prev => {
+                        prev.set('openCandidate', candidateId)
+                        return prev
+                      })
+                    }}
+                  />
                 </TabsContent>
 
                 {/* Job Setup Tab */}

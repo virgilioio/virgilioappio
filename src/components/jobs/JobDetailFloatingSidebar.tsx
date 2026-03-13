@@ -1,6 +1,7 @@
 
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, Settings, Kanban, Users, MessageSquare } from 'lucide-react'
+import { LayoutDashboard, Settings, Kanban, Users } from 'lucide-react'
+import whatsappIcon from '@/assets/whatsapp-icon.png'
 
 import { Button } from '@/components/ui/button'
 
@@ -39,7 +40,8 @@ export function JobDetailFloatingSidebar({
     {
       id: 'whatsapp',
       label: 'WhatsApp',
-      icon: MessageSquare,
+      icon: null as any,
+      customIcon: whatsappIcon,
     },
     {
       id: 'job-setup',
@@ -59,6 +61,7 @@ export function JobDetailFloatingSidebar({
           {tabs.map((tab) => {
             const Icon = tab.icon
             const isActive = currentTab === tab.id
+            const customIcon = (tab as any).customIcon
             
             return (
               <Button
@@ -76,7 +79,15 @@ export function JobDetailFloatingSidebar({
                 title={tab.label}
                 aria-current={isActive ? 'page' : undefined}
               >
-                <Icon className="h-5 w-5" />
+                {customIcon ? (
+                  <img 
+                    src={customIcon} 
+                    alt={tab.label} 
+                    className={cn("h-5 w-5", isActive && "invert")} 
+                  />
+                ) : (
+                  <Icon className="h-5 w-5" />
+                )}
                 <span className="sr-only">{tab.label}</span>
               </Button>
             )
