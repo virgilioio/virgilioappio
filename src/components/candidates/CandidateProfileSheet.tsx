@@ -1421,6 +1421,7 @@ const stageHasAutomation = useMemo(() => {
                                           </div>
                                           {candidate?.phone && (
                                             <div className="flex items-center gap-0.5">
+                                              {isWhatsAppEnabled && (
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -1433,6 +1434,7 @@ const stageHasAutomation = useMemo(() => {
                                               >
                                                 <img src={whatsappIcon} alt="WhatsApp" className="h-3.5 w-3.5" />
                                               </Button>
+                                              )}
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
