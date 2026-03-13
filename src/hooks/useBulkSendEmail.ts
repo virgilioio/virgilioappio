@@ -41,8 +41,8 @@ export function useBulkSendEmail() {
           candidate_id,
           job_id,
           current_stage_id,
-          candidate:candidates!inner(id, candidate_name, email),
-          job:jobs!inner(id, title, department, location, tenant_id, organization_id)
+          candidate:candidates!inner(id, candidate_name, email, phone, location_city, location_state, location_country),
+          job:jobs!inner(id, title, department, location, tenant_id, organization_id, tenant:tenants!inner(name), organization:organizations!inner(name))
         `)
         .in('id', associationIds);
 
