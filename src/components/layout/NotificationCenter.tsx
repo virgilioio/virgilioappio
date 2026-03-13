@@ -28,8 +28,6 @@ export function NotificationCenter() {
     }
     if (notification.type === 'offer_approval') {
       navigate(`/jobs/${notification.jobId}?candidate=${notification.candidateId}&tab=offer`)
-    } else if (notification.type === 'whatsapp') {
-      navigate(`/candidates?openCandidate=${notification.candidateId}`)
     } else {
       navigate(`/candidates?openCandidate=${notification.candidateId}`)
     }

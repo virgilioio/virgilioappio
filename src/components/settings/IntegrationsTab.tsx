@@ -92,13 +92,9 @@ function IntegrationCardWrapper({
 
 // Wrapper to get connection status for filtering
 function useIntegrationStatuses() {
-  const googleConnected = useGoogleConnected()
-  const chromeConnected = useChromeConnected()
-  const whatsappConnected = useWhatsAppConnected()
   return {
     'chrome-extension': chromeConnected,
     'google-workspace': googleConnected,
-    'whatsapp': whatsappConnected,
   } as Record<string, boolean>
 }
 
