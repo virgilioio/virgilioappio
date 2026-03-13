@@ -3,6 +3,21 @@ import { useCallback, useMemo, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 
+export type WhatsAppContentType = 'text' | 'quick_reply' | 'call_to_action'
+
+export interface QuickReplyAction {
+  title: string
+}
+
+export interface CallToActionAction {
+  type: 'URL' | 'PHONE_NUMBER'
+  title: string
+  url?: string
+  phone?: string
+}
+
+export type WhatsAppAction = QuickReplyAction | CallToActionAction
+
 export interface WhatsAppTemplate {
   id: string
   tenant_id: string | null
@@ -13,6 +28,8 @@ export interface WhatsAppTemplate {
   variable_mapping: Record<string, string>
   twilio_content_sid: string | null
   approval_status: string
+  content_type: WhatsAppContentType
+  actions: WhatsAppAction[] | null
   created_at: string
 }
 
@@ -176,6 +193,8 @@ export function useCreateWhatsAppTemplate() {
       language?: string
       body_template: string
       variable_mapping?: Record<string, string>
+      content_type?: WhatsAppContentType
+      actions?: WhatsAppAction[]
     }) => {
       const { data, error } = await supabase.functions.invoke('manage-whatsapp-templates', {
         body: { action: 'create', ...params },
@@ -218,6 +237,8 @@ export function useUpdateWhatsAppTemplate() {
       body_template?: string
       category?: string
       language?: string
+      content_type?: WhatsAppContentType
+      actions?: WhatsAppAction[]
     }) => {
       const { data, error } = await supabase.functions.invoke('manage-whatsapp-templates', {
         body: { action: 'update', ...params },

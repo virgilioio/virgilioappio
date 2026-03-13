@@ -1,61 +1,151 @@
+# System Roles Migration — Completed Phases 1-5
 
+## Architecture Change
+- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
+- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-# Add Quick Reply and Call-to-Action Content Types to WhatsApp Templates
+## Completed
 
-## Overview
+### Phase 1 — Database
+- ✅ Created `system_role` enum (`admin`, `member`)
+- ✅ Added `system_role` column to `members` table
+- ✅ Migrated data: `admin` → `admin`, all others → `member`
+- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
+- ✅ Updated `check_tenant_member_role` to use `system_role`
+- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
+- ✅ Updated `audit_member_role_change` trigger
 
-Extend the template system to support three Twilio Content API types: `twilio/text` (existing), `twilio/quick-reply` (up to 3 buttons), and `twilio/call-to-action` (up to 2 URL/phone buttons). Changes span the template creator UI, the DB schema, the edge function that creates/submits templates, and the send function.
+### Phase 2 — Frontend Permissions
+- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
+- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
+- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
+- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
 
-## Database Changes
+### Phase 3 — UI Updates
+- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
+- ✅ Updated `Dashboard` — sourcing panel for admin+ only
+- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
+- ✅ Updated `BillingGuard` — members (non-admin) never blocked
+- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
+- ✅ Updated `Find` page RoleGate
+- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
 
-Add a `content_type` column and an `actions` JSONB column to `whatsapp_templates`:
+### Phase 4 — Runtime Hotfixes
+- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
+- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
+- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
+- ✅ Updated `validate_invite_token` — returns `system_role`
+- ✅ Updated `accept_invitation` — uses `system_role`
 
-- `content_type TEXT NOT NULL DEFAULT 'text'` -- values: `text`, `quick_reply`, `call_to_action`
-- `actions JSONB` -- stores button definitions:
-  - Quick Reply: `[{ "title": "Yes" }, { "title": "No" }, { "title": "Maybe" }]`
-  - Call-to-Action: `[{ "type": "URL", "title": "Apply Now", "url": "https://..." }, { "type": "PHONE_NUMBER", "title": "Call Us", "phone": "+1..." }]`
+### Phase 5 — Complete Cleanup
+- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
+- ✅ Updated `admin_manage_member` — updates `system_role` column
+- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
+- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
+- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
+- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
+- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
+- ✅ Updated `diagnose_user_auth` — reports `system_role`
+- ✅ Updated `audit_platform_admin_access` — returns `system_role`
+- ✅ Updated `debug_user_permissions` — returns `system_role`
+- ✅ Renamed `invitations.member_role` → `invitations.system_role`
+- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
 
-## UI Changes — WhatsAppTemplateCreator
+## Phase 6 — Future (Optional)
+- Drop `member_role` column from `members` table (already dropped)
+- Drop old `member_role` enum type
+- Update `MemberInviteSheet` role picker to only offer Admin/Member
 
-1. Add a **Content Type** selector (radio group or select) below Category/Language: Text, Quick Reply, Call-to-Action.
+# Deep Resume Parsing + Data Standardization — Completed
 
-2. **Quick Reply mode**: Show up to 3 button inputs below the message body. Each is a short text field (max 20 chars). Add/remove buttons dynamically (min 1, max 3).
+## What was implemented
 
-3. **Call-to-Action mode**: Show up to 2 action rows. Each row has a type selector (URL or Phone), a title input (max 20 chars), and a URL or phone input. Add/remove rows (min 1, max 2).
+### Phase 1: Schema Expansion
+- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
+- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
+- ✅ Added to `candidate_education`: `education_level`
+- ✅ Created `candidate_certifications` table with RLS policies
 
-4. **Preview**: Render buttons below the message preview — quick reply as rounded pill buttons, CTA as tappable link-style buttons.
+### Phase 2: Enrichment Rewrite
+- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
+- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
+- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
+- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
+- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
 
-5. **Validation**: Ensure button titles are non-empty, URLs are valid, phone numbers are E.164.
+### Phase 3: UI Updates
+- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
+- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
+- ✅ **Certifications section** with `CandidateCertificationsComponent`
+- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
+- ✅ Enhanced **Education** display: education level badge
+- ✅ Certifications loaded alongside work experience and education
 
-## Edge Function Changes — manage-whatsapp-templates
+## Files changed
+- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
+- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
+- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
+- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
+- `src/components/candidates/CandidateCertifications.tsx` — new component
 
-### Create action
-- Accept `content_type` and `actions` params, store them in DB.
+# WhatsApp ISV Architecture — Completed
 
-### Submit action
-- Build the Twilio Content API payload based on `content_type`:
+## Architecture
+Per-tenant dedicated numbers under GoGio's master Twilio account. Each tenant gets their own WhatsApp number provisioned via the Twilio connector gateway.
 
-```text
-text → { "twilio/text": { body } }
+## What was implemented
 
-quick_reply → { "twilio/quick-reply": { body, actions: [{ id: "btn_1", title: "Yes" }, ...] } }
+### Inbound Webhook
+- ✅ Created `whatsapp-inbound-webhook` edge function (public, no JWT)
+- ✅ Matches inbound `From` phone to existing conversations
+- ✅ Inserts messages as `direction: 'inbound'`, updates `unread_count`
+- ✅ Returns empty TwiML (no auto-reply)
+- ✅ Added to `supabase/config.toml` with `verify_jwt = false`
 
-call_to_action → { "twilio/call-to-action": { body, actions: [{ type: "URL", title: "Apply", url: "..." }, { type: "PHONE_NUMBER", title: "Call", phone: "..." }] } }
-```
+### Simplified Setup Wizard
+- ✅ Reduced from 5 steps to 3: Welcome → Provision → Complete
+- ✅ Removed broken "Verify sender" and "Templates" steps
+- ✅ Provisioning = activation (no separate activate step)
 
-### Update action
-- Allow updating `content_type` and `actions` for draft templates.
+### Simplified Setup Status
+- ✅ Reduced from 6 states to 3: `not_started`, `active`, `error`
+- ✅ `canMessage = true` when `active` (no template-gating)
+- ✅ Removed `provisioning`, `sender_pending`, `sender_active`, `templates_required`
 
-## Edge Function Changes — send-whatsapp
+### Integration Card Updates
+- ✅ Removed template count stats (approved/pending/draft)
+- ✅ Simplified status badges to active/not set up/error
+- ✅ Removed unused status configs (sender_pending, provisioning, etc.)
 
-- When sending a template with a `twilio_content_sid`, the existing `ContentSid` + `ContentVariables` flow already works for all content types — Twilio handles rendering. No changes needed here.
+### Template Library Updates
+- ✅ Removed non-functional Submit and Refresh buttons
+- ✅ Removed filter tabs (all/draft/pending/approved/rejected)
+- ✅ Added info note: "Custom templates require GoGio team approval"
+- ✅ Templates show as "Ready to use" or "Local only" status
 
-## Files Modified
+### Chat Tab Updates
+- ✅ Simplified blocking: only blocks when `not_started` or no phone number
+- ✅ Removed intermediate `canMessage` blocking state
+- ✅ Updated empty template message to reference GoGio team
 
-| File | Change |
-|------|--------|
-| DB migration | Add `content_type` and `actions` columns |
-| `src/hooks/useWhatsAppConfig.ts` | Add `content_type` and `actions` to `WhatsAppTemplate` type and mutation params |
-| `src/components/settings/whatsapp/WhatsAppTemplateCreator.tsx` | Add content type selector, button editors for quick reply and CTA, preview rendering, validation |
-| `supabase/functions/manage-whatsapp-templates/index.ts` | Handle `content_type` and `actions` in create/update/submit actions; build correct Twilio Content payload per type |
+### Send Function Updates
+- ✅ Removed `is_active` check — if number exists, can send
+- ✅ Per-tenant `twilio_from_number` logic preserved
 
+### Global Templates Seeded
+- ✅ Interview Invitation, Application Update, Job Opportunity
+- ✅ Inserted with `tenant_id = NULL` (global)
+- ✅ No `twilio_content_sid` yet (marked as draft until GoGio team adds real SIDs)
+
+## Manual Prerequisites (for GoGio team — ONE-TIME ONLY)
+1. Get WhatsApp Business Account approved in Twilio Console
+2. Create a Messaging Service and enable WhatsApp on it
+3. Create Content templates in Twilio Console matching seeded templates
+4. UPDATE `whatsapp_templates` rows with real `twilio_content_sid` values and `approval_status = 'approved'`
+5. Store `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID` as Supabase secrets ✅ Done
+
+## Automated Per-Tenant (Zero-Touch)
+1. ✅ Buy number via gateway
+2. ✅ Configure webhook URL on number via gateway
+3. ✅ Register number as WhatsApp Sender via Messaging Service API
+4. ✅ Save config to DB

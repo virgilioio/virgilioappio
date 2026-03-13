@@ -5453,9 +5453,11 @@ export type Database = {
       }
       whatsapp_templates: {
         Row: {
+          actions: Json | null
           approval_status: string
           body_template: string
           category: string
+          content_type: string
           created_at: string
           created_by: string | null
           id: string
@@ -5467,9 +5469,11 @@ export type Database = {
           variable_mapping: Json | null
         }
         Insert: {
+          actions?: Json | null
           approval_status?: string
           body_template: string
           category?: string
+          content_type?: string
           created_at?: string
           created_by?: string | null
           id?: string
@@ -5481,9 +5485,11 @@ export type Database = {
           variable_mapping?: Json | null
         }
         Update: {
+          actions?: Json | null
           approval_status?: string
           body_template?: string
           category?: string
+          content_type?: string
           created_at?: string
           created_by?: string | null
           id?: string

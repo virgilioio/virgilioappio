@@ -6,7 +6,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-/** Map Twilio approval status string to our internal status */
 function mapTwilioApprovalStatus(twilioStatus: string): string {
   const s = (twilioStatus || "").toLowerCase();
   if (s === "approved") return "approved";
@@ -14,12 +13,9 @@ function mapTwilioApprovalStatus(twilioStatus: string): string {
   return "pending";
 }
 
-/** Extract WhatsApp approval status from Twilio ApprovalRequests response (handles both API shapes) */
 function extractWhatsAppStatus(statusData: Record<string, unknown>): string | null {
-  // Shape 1 (actual): flat object with `whatsapp` key
   const wa = statusData.whatsapp as Record<string, unknown> | undefined;
   if (wa?.status) return mapTwilioApprovalStatus(wa.status as string);
-  // Shape 2 (legacy/fallback): approval_requests array
   const arr = statusData.approval_requests as Array<Record<string, unknown>> | undefined;
   if (Array.isArray(arr)) {
     const found = arr.find((r) => r.channel === "whatsapp");
@@ -42,6 +38,42 @@ function twilioBasicAuth(): string {
   const token = Deno.env.get("TWILIO_AUTH_TOKEN");
   if (!sid || !token) throw new Error("TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN not configured");
   return "Basic " + btoa(`${sid}:${token}`);
+}
+
+/** Build the Twilio Content API `types` payload based on content_type */
+function buildContentTypes(
+  contentType: string,
+  body: string,
+  actions: Array<Record<string, unknown>> | null
+): Record<string, unknown> {
+  if (contentType === "quick_reply" && actions?.length) {
+    return {
+      "twilio/quick-reply": {
+        body,
+        actions: actions.map((a, i) => ({
+          id: `btn_${i + 1}`,
+          title: a.title,
+        })),
+      },
+    };
+  }
+
+  if (contentType === "call_to_action" && actions?.length) {
+    return {
+      "twilio/call-to-action": {
+        body,
+        actions: actions.map((a) => {
+          if (a.type === "URL") {
+            return { type: "URL", title: a.title, url: a.url };
+          }
+          return { type: "PHONE_NUMBER", title: a.title, phone: a.phone };
+        }),
+      },
+    };
+  }
+
+  // Default: text
+  return { "twilio/text": { body } };
 }
 
 Deno.serve(async (req) => {
@@ -105,7 +137,6 @@ Deno.serve(async (req) => {
 
         if (error) throw error;
 
-        // Auto-refresh pending templates by polling Twilio
         const pendingTemplates = (templates || []).filter(
           (t: Record<string, unknown>) => t.twilio_content_sid && t.approval_status === "pending"
         );
@@ -141,7 +172,7 @@ Deno.serve(async (req) => {
       }
 
       case "create": {
-        const { name, category, language, body_template, variable_mapping } = params;
+        const { name, category, language, body_template, variable_mapping, content_type, actions } = params;
 
         if (!name || !body_template) {
           return new Response(
@@ -150,7 +181,6 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Convert named placeholders like {{candidate_name}} → {{1}} and build variable_mapping
         const namedVarRegex = /\{\{([a-z_.]+)\}\}/g;
         const foundVars: string[] = [];
         let match;
@@ -179,18 +209,25 @@ Deno.serve(async (req) => {
 
         const finalMapping = foundVars.length > 0 ? derivedMapping : (variable_mapping || {});
 
+        const insertData: Record<string, unknown> = {
+          tenant_id: tenantId,
+          name,
+          category: category || "UTILITY",
+          language: language || "en",
+          body_template: convertedBody,
+          variable_mapping: finalMapping,
+          approval_status: "draft",
+          created_by: userId,
+          content_type: content_type || "text",
+        };
+
+        if (actions && (content_type === "quick_reply" || content_type === "call_to_action")) {
+          insertData.actions = actions;
+        }
+
         const { data: template, error: insertError } = await supabase
           .from("whatsapp_templates")
-          .insert({
-            tenant_id: tenantId,
-            name,
-            category: category || "UTILITY",
-            language: language || "en",
-            body_template: convertedBody,
-            variable_mapping: finalMapping,
-            approval_status: "draft",
-            created_by: userId,
-          })
+          .insert(insertData)
           .select()
           .single();
 
@@ -212,7 +249,6 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Fetch template and validate tenant ownership
         const { data: tmpl, error: tmplError } = await supabase
           .from("whatsapp_templates")
           .select("*")
@@ -242,28 +278,29 @@ Deno.serve(async (req) => {
 
         const authHeaderTwilio = twilioBasicAuth();
 
-        // Step 1: Create Content resource on Twilio
+        // Build content types payload based on content_type
+        const contentTypes = buildContentTypes(
+          tmpl.content_type || "text",
+          tmpl.body_template,
+          tmpl.actions as Array<Record<string, unknown>> | null
+        );
+
         const variableMapping = tmpl.variable_mapping || {};
         const varKeys = Object.keys(variableMapping);
 
         const contentPayload: Record<string, unknown> = {
           friendly_name: sanitizeTemplateName(tmpl.name),
           language: tmpl.language || "en",
-          types: {
-            "twilio/text": {
-              body: tmpl.body_template,
-            },
-          },
+          types: contentTypes,
         };
 
-        // Add variables definition if template has variables
         if (varKeys.length > 0) {
           contentPayload.variables = Object.fromEntries(
             varKeys.map((k) => [k, `{{${k}}}`])
           );
         }
 
-        console.log(`[WhatsApp Templates] Creating Content resource for template ${template_id}`);
+        console.log(`[WhatsApp Templates] Creating Content resource for template ${template_id}, type: ${tmpl.content_type || "text"}`);
 
         const contentRes = await fetch("https://content.twilio.com/v1/Content", {
           method: "POST",
@@ -284,7 +321,6 @@ Deno.serve(async (req) => {
         const contentSid = contentData.sid;
         console.log(`[WhatsApp Templates] Content created: ${contentSid}`);
 
-        // Step 2: Submit for WhatsApp approval
         const approvalRes = await fetch(
           `https://content.twilio.com/v1/Content/${contentSid}/ApprovalRequests/whatsapp`,
           {
@@ -304,7 +340,6 @@ Deno.serve(async (req) => {
 
         if (!approvalRes.ok) {
           console.error("[WhatsApp Templates] Approval submission error:", JSON.stringify(approvalData));
-          // Still save the content SID even if approval submission fails
           await supabase
             .from("whatsapp_templates")
             .update({ twilio_content_sid: contentSid, approval_status: "error" })
@@ -315,7 +350,6 @@ Deno.serve(async (req) => {
 
         console.log(`[WhatsApp Templates] Approval submitted for ${contentSid}`);
 
-        // Step 3: Update DB with Content SID and pending status
         const { data: updated, error: updateError } = await supabase
           .from("whatsapp_templates")
           .update({
@@ -335,7 +369,7 @@ Deno.serve(async (req) => {
       }
 
       case "update": {
-        const { template_id, name, body_template, category, language } = params;
+        const { template_id, name, body_template, category, language, content_type, actions } = params;
 
         if (!template_id) {
           return new Response(
@@ -371,7 +405,6 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Re-derive variable mapping from the new body
         const updBody = body_template || tmplUpd.body_template;
         const updNamedVarRegex = /\{\{([a-z_.]+)\}\}/g;
         const updFoundVars: string[] = [];
@@ -403,6 +436,12 @@ Deno.serve(async (req) => {
         if (name) updateFields.name = name;
         if (category) updateFields.category = category;
         if (language) updateFields.language = language;
+        if (content_type) updateFields.content_type = content_type;
+        if (actions !== undefined) {
+          updateFields.actions = (content_type === "quick_reply" || content_type === "call_to_action")
+            ? actions
+            : null;
+        }
 
         const { data: updatedTmpl, error: updErr } = await supabase
           .from("whatsapp_templates")
@@ -449,7 +488,6 @@ Deno.serve(async (req) => {
           );
         }
 
-        // If submitted to Twilio, delete the Content resource
         if (tmpl.twilio_content_sid) {
           try {
             const authHeaderTwilio = twilioBasicAuth();
@@ -494,15 +532,12 @@ Deno.serve(async (req) => {
 
         if (error) throw error;
 
-        // If it has a Twilio Content SID, poll Twilio for real approval status
         if (template.twilio_content_sid) {
           try {
             const authHeaderTwilio = twilioBasicAuth();
             const statusRes = await fetch(
               `https://content.twilio.com/v1/Content/${template.twilio_content_sid}/ApprovalRequests`,
-              {
-                headers: { Authorization: authHeaderTwilio },
-              }
+              { headers: { Authorization: authHeaderTwilio } }
             );
 
             if (statusRes.ok) {
@@ -529,7 +564,6 @@ Deno.serve(async (req) => {
             }
           } catch (pollError) {
             console.error("[WhatsApp Templates] Error polling status:", pollError);
-            // Fall through to return current DB status
           }
         }
 
