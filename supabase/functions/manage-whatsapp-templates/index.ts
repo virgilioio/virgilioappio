@@ -6,6 +6,28 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+/** Map Twilio approval status string to our internal status */
+function mapTwilioApprovalStatus(twilioStatus: string): string {
+  const s = (twilioStatus || "").toLowerCase();
+  if (s === "approved") return "approved";
+  if (["rejected", "failed", "paused", "disabled"].includes(s)) return "rejected";
+  return "pending";
+}
+
+/** Extract WhatsApp approval status from Twilio ApprovalRequests response (handles both API shapes) */
+function extractWhatsAppStatus(statusData: Record<string, unknown>): string | null {
+  // Shape 1 (actual): flat object with `whatsapp` key
+  const wa = statusData.whatsapp as Record<string, unknown> | undefined;
+  if (wa?.status) return mapTwilioApprovalStatus(wa.status as string);
+  // Shape 2 (legacy/fallback): approval_requests array
+  const arr = statusData.approval_requests as Array<Record<string, unknown>> | undefined;
+  if (Array.isArray(arr)) {
+    const found = arr.find((r) => r.channel === "whatsapp");
+    if (found?.status) return mapTwilioApprovalStatus(found.status as string);
+  }
+  return null;
+}
+
 function sanitizeTemplateName(name: string): string {
   return name
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
