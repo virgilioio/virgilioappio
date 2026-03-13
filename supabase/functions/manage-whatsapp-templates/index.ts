@@ -96,23 +96,15 @@ Deno.serve(async (req) => {
             );
             if (statusRes.ok) {
               const statusData = await statusRes.json();
-              const wa = statusData.approval_requests?.find(
-                (r: Record<string, unknown>) => r.channel === "whatsapp"
-              );
-              if (wa) {
-                let mapped = "pending";
-                const s = ((wa.status as string) || "").toLowerCase();
-                if (s === "approved") mapped = "approved";
-                else if (s === "rejected" || s === "failed") mapped = "rejected";
-
-                if (mapped !== tmpl.approval_status) {
-                  console.log(`[WhatsApp Templates] Auto-refresh: ${tmpl.id} ${tmpl.approval_status} → ${mapped}`);
-                  await supabase
-                    .from("whatsapp_templates")
-                    .update({ approval_status: mapped })
-                    .eq("id", tmpl.id);
-                  tmpl.approval_status = mapped;
-                }
+              console.log(`[WhatsApp Templates] Poll ${tmpl.id} (${tmpl.twilio_content_sid}) raw:`, JSON.stringify(statusData));
+              const mapped = extractWhatsAppStatus(statusData);
+              if (mapped && mapped !== tmpl.approval_status) {
+                console.log(`[WhatsApp Templates] Auto-refresh: ${tmpl.id} ${tmpl.approval_status} → ${mapped}`);
+                await supabase
+                  .from("whatsapp_templates")
+                  .update({ approval_status: mapped })
+                  .eq("id", tmpl.id);
+                tmpl.approval_status = mapped;
               }
             }
           } catch (e) {
