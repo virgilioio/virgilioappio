@@ -65,16 +65,6 @@ const INTEGRATIONS: IntegrationEntry[] = [
     useIsConnected: useGoogleConnected,
     DetailComponent: GoogleWorkspaceIntegrationSection,
   },
-  {
-    id: 'whatsapp',
-    name: 'WhatsApp Business',
-    description: 'Send WhatsApp messages to candidates via Twilio for faster communication.',
-    category: 'communication',
-    logo: <img src={whatsappLogo} alt="WhatsApp" className="h-6 w-6" />,
-    useIsConnected: useWhatsAppConnected,
-    DetailComponent: WhatsAppIntegrationCard,
-  },
-]
 
 // Wrapper component that calls the hook for each integration
 function IntegrationCardWrapper({
