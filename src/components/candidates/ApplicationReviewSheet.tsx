@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -194,92 +196,113 @@ export function ApplicationReviewSheet({
                         />
                       </div>
 
-                      {review.currentCandidate.profileSummary && (
-                        <section>
-                          <div className="flex items-center gap-2 mb-3">
-                            <Sparkles className="h-4 w-4 text-primary" />
-                            <h4 className="text-sm font-semibold text-text-primary">AI Career Summary</h4>
-                          </div>
-                          <div className="rounded-lg border border-border p-4 bg-surface-secondary/30">
-                            <ProfileSummaryMarkdown content={review.currentCandidate.profileSummary} />
-                          </div>
-                        </section>
-                      )}
                     </div>
                   </ScrollArea>
                 </div>
 
-                {/* Column 2 — Application Responses (1/4) */}
+                {/* Column 2 — Application Responses & AI Summary (1/4) */}
                 <div className="col-span-1 border-r border-border flex flex-col min-h-0">
-                  <div className="px-5 py-4 border-b border-border flex-shrink-0">
-                    <h4 className="text-sm font-semibold text-text-primary">Application Responses</h4>
+                  <div className="px-5 py-4 flex-shrink-0">
+                    <Tabs defaultValue="responses" className="w-full">
+                      <TabsList className="w-full">
+                        <TabsTrigger value="responses" className="flex-1">Application Responses</TabsTrigger>
+                        <TabsTrigger value="ai-summary" className="flex-1 gap-1.5">
+                          <Sparkles className="h-3.5 w-3.5" />
+                          AI Career Summary
+                        </TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="responses">
+                        <ScrollArea className="h-[calc(100vh-280px)]">
+                          <div className="pt-2">
+                            <CandidateApplicationResponses
+                              candidateId={review.currentCandidate.candidateId}
+                              jobId={jobId}
+                            />
+                          </div>
+                        </ScrollArea>
+                      </TabsContent>
+                      <TabsContent value="ai-summary">
+                        <ScrollArea className="h-[calc(100vh-280px)]">
+                          <div className="pt-2">
+                            {review.currentCandidate.profileSummary ? (
+                              <div className="rounded-lg border border-border p-4 bg-surface-secondary/30">
+                                <ProfileSummaryMarkdown content={review.currentCandidate.profileSummary} />
+                              </div>
+                            ) : (
+                              <p className="text-sm text-text-secondary">No AI career summary available for this candidate.</p>
+                            )}
+                          </div>
+                        </ScrollArea>
+                      </TabsContent>
+                    </Tabs>
                   </div>
-                  <ScrollArea className="flex-1">
-                    <div className="p-5">
-                      <CandidateApplicationResponses
-                        candidateId={review.currentCandidate.candidateId}
-                        jobId={jobId}
-                      />
-                    </div>
-                  </ScrollArea>
                 </div>
 
                 {/* Column 3 — Review Controls (1/4) */}
                 <div className="col-span-1 flex flex-col min-h-0">
-                  <div className="px-5 py-4 border-b border-border flex-shrink-0">
-                    <h4 className="text-sm font-semibold text-text-primary">Review</h4>
-                  </div>
-
-                  {/* Action Buttons — at the top */}
-                  <div className="flex-shrink-0 border-b border-border p-4">
-                    <div className="flex gap-2">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="flex-1 gap-1.5"
-                        onClick={review.handleReject}
-                        disabled={review.isActioning}
-                      >
-                        {review.isActioning ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <ThumbsDown className="h-3.5 w-3.5" />
-                        )}
-                        Reject
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 gap-1.5"
-                        onClick={review.handlePass}
-                        disabled={review.isActioning}
-                      >
-                        <SkipForward className="h-3.5 w-3.5" />
-                        Pass
-                      </Button>
-                      <Button
-                        variant="default"
-                        size="sm"
-                        className="flex-1 gap-1.5"
-                        onClick={review.handleAdvance}
-                        disabled={review.isActioning || !review.firstStageId}
-                      >
-                        {review.isActioning ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <ArrowRight className="h-3.5 w-3.5" />
-                        )}
-                        Advance{review.firstStageName ? ` → ${review.firstStageName}` : ''}
-                      </Button>
-                    </div>
-                  </div>
-
                   <ScrollArea className="flex-1">
-                    <div className="p-5">
-                      <RejectionConfigPanel
-                        config={review.rejectionConfig}
-                        onChange={review.persistRejectionConfig}
-                      />
+                    <div className="p-5 space-y-4">
+                      {/* Actions Card */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Actions</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="flex-1 gap-1.5"
+                              onClick={review.handleReject}
+                              disabled={review.isActioning}
+                            >
+                              {review.isActioning ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <ThumbsDown className="h-3.5 w-3.5" />
+                              )}
+                              Reject
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 gap-1.5"
+                              onClick={review.handlePass}
+                              disabled={review.isActioning}
+                            >
+                              <SkipForward className="h-3.5 w-3.5" />
+                              Pass
+                            </Button>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="flex-1 gap-1.5"
+                              onClick={review.handleAdvance}
+                              disabled={review.isActioning || !review.firstStageId}
+                            >
+                              {review.isActioning ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <ArrowRight className="h-3.5 w-3.5" />
+                              )}
+                              Advance{review.firstStageName ? ` → ${review.firstStageName}` : ''}
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Rejection Settings Card */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Rejection Settings</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <RejectionConfigPanel
+                            config={review.rejectionConfig}
+                            onChange={review.persistRejectionConfig}
+                          />
+                        </CardContent>
+                      </Card>
                     </div>
                   </ScrollArea>
                 </div>
