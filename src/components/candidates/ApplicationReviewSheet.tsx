@@ -240,60 +240,69 @@ export function ApplicationReviewSheet({
 
                 {/* Column 3 — Review Controls (1/4) */}
                 <div className="col-span-1 flex flex-col min-h-0">
-                  <div className="px-5 py-4 border-b border-border flex-shrink-0">
-                    <h4 className="text-sm font-semibold text-text-primary">Review</h4>
-                  </div>
-
-                  {/* Action Buttons — at the top */}
-                  <div className="flex-shrink-0 border-b border-border p-4">
-                    <div className="flex gap-2">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="flex-1 gap-1.5"
-                        onClick={review.handleReject}
-                        disabled={review.isActioning}
-                      >
-                        {review.isActioning ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <ThumbsDown className="h-3.5 w-3.5" />
-                        )}
-                        Reject
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 gap-1.5"
-                        onClick={review.handlePass}
-                        disabled={review.isActioning}
-                      >
-                        <SkipForward className="h-3.5 w-3.5" />
-                        Pass
-                      </Button>
-                      <Button
-                        variant="default"
-                        size="sm"
-                        className="flex-1 gap-1.5"
-                        onClick={review.handleAdvance}
-                        disabled={review.isActioning || !review.firstStageId}
-                      >
-                        {review.isActioning ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <ArrowRight className="h-3.5 w-3.5" />
-                        )}
-                        Advance{review.firstStageName ? ` → ${review.firstStageName}` : ''}
-                      </Button>
-                    </div>
-                  </div>
-
                   <ScrollArea className="flex-1">
-                    <div className="p-5">
-                      <RejectionConfigPanel
-                        config={review.rejectionConfig}
-                        onChange={review.persistRejectionConfig}
-                      />
+                    <div className="p-5 space-y-4">
+                      {/* Actions Card */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Actions</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="flex-1 gap-1.5"
+                              onClick={review.handleReject}
+                              disabled={review.isActioning}
+                            >
+                              {review.isActioning ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <ThumbsDown className="h-3.5 w-3.5" />
+                              )}
+                              Reject
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 gap-1.5"
+                              onClick={review.handlePass}
+                              disabled={review.isActioning}
+                            >
+                              <SkipForward className="h-3.5 w-3.5" />
+                              Pass
+                            </Button>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="flex-1 gap-1.5"
+                              onClick={review.handleAdvance}
+                              disabled={review.isActioning || !review.firstStageId}
+                            >
+                              {review.isActioning ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <ArrowRight className="h-3.5 w-3.5" />
+                              )}
+                              Advance{review.firstStageName ? ` → ${review.firstStageName}` : ''}
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Rejection Settings Card */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Rejection Settings</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <RejectionConfigPanel
+                            config={review.rejectionConfig}
+                            onChange={review.persistRejectionConfig}
+                          />
+                        </CardContent>
+                      </Card>
                     </div>
                   </ScrollArea>
                 </div>
