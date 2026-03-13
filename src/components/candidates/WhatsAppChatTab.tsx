@@ -153,8 +153,9 @@ export function WhatsAppChatTab({
         })
         setMessage('')
       }
-    } catch (error) {
-      // Error handled by mutation
+      toast({ title: 'Message sent' })
+    } catch (error: any) {
+      toast({ title: 'Failed to send', description: error?.message || 'Unknown error', variant: 'destructive' })
     }
   }
 
