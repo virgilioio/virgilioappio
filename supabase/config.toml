@@ -191,3 +191,12 @@ verify_jwt = true
 [functions.batch-re-enrich]
 verify_jwt = false
 
+[functions.whatsapp-sync-conversations]
+verify_jwt = false
+
+[functions.whatsapp-sync-messages]
+verify_jwt = false
+
+[functions.whatsapp-link-candidate]
+verify_jwt = false
+
