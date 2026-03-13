@@ -73,6 +73,10 @@ export function useBulkSendEmail() {
               candidate: {
                 candidate_name: candidate.candidate_name,
                 email: candidate.email,
+                phone: candidate.phone,
+                location_city: candidate.location_city,
+                location_state: candidate.location_state,
+                location_country: candidate.location_country,
               },
               job: {
                 title: job.title,
@@ -87,6 +91,8 @@ export function useBulkSendEmail() {
                 phone: (senderProfile as any)?.phone,
                 linkedin_url: (senderProfile as any)?.linkedin_url,
               },
+              organizationName: job.tenant?.name,
+              departmentName: job.organization?.name,
             });
 
             // Resolve placeholders using the robust rendering function
