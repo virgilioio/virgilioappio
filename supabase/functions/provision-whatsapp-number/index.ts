@@ -142,7 +142,67 @@ Deno.serve(async (req) => {
     const phoneNumber = purchaseData.phone_number;
     const phoneSid = purchaseData.sid;
 
-    // Step 3: Save to workspace_automations
+    // Step 3: Configure webhook URL on the purchased number
+    try {
+      const webhookResponse = await fetch(
+        `${GATEWAY_URL}/IncomingPhoneNumbers/${phoneSid}.json`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "X-Connection-Api-Key": TWILIO_API_KEY,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({
+            SmsUrl: `${supabaseUrl}/functions/v1/whatsapp-inbound-webhook`,
+            SmsMethod: "POST",
+          }),
+        }
+      );
+
+      if (!webhookResponse.ok) {
+        const webhookError = await webhookResponse.json();
+        console.error("Webhook config warning (non-fatal):", webhookError);
+      } else {
+        console.log("Webhook URL configured on number:", phoneSid);
+      }
+    } catch (webhookErr) {
+      console.error("Webhook config failed (non-fatal):", webhookErr);
+    }
+
+    // Step 4: Register number as WhatsApp Sender via Messaging Service
+    const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
+    const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
+    const MESSAGING_SERVICE_SID = Deno.env.get("TWILIO_MESSAGING_SERVICE_SID");
+
+    if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && MESSAGING_SERVICE_SID) {
+      try {
+        const senderResponse = await fetch(
+          `https://messaging.twilio.com/v1/Services/${MESSAGING_SERVICE_SID}/PhoneNumbers`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: "Basic " + btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`),
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({ PhoneNumberSid: phoneSid }),
+          }
+        );
+
+        if (!senderResponse.ok) {
+          const senderError = await senderResponse.json();
+          console.error("WhatsApp Sender registration warning (non-fatal):", senderError);
+        } else {
+          console.log("Number registered as WhatsApp Sender:", phoneSid);
+        }
+      } catch (senderErr) {
+        console.error("WhatsApp Sender registration failed (non-fatal):", senderErr);
+      }
+    } else {
+      console.warn("Twilio master credentials not configured — WhatsApp Sender registration skipped");
+    }
+
+    // Step 5: Save to workspace_automations
     const { error: upsertError } = await supabase
       .from("workspace_automations")
       .upsert(
