@@ -15,7 +15,7 @@ import { GoogleWorkspaceIntegrationSection } from './GoogleWorkspaceIntegrationS
 
 // Logos
 import { GoogleLogo } from '@/components/icons/GoogleLogo'
-import whatsappLogo from '@/assets/whatsapp-logo.png'
+
 import gogioAvatar from '@/assets/gogio-avatar.png'
 
 // Hooks for connection status
