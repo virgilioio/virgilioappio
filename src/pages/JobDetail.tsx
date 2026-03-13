@@ -57,6 +57,7 @@ export default function JobDetail() {
   const { isHiringManagerOnJob, isInterviewerOnJob } = useJobRole(id)
   const isRestrictedViewer = (isHiringManagerOnJob || isInterviewerOnJob) && !permissions.isAdmin && !permissions.isWorkspaceOwner && !permissions.isPlatformAdmin
   const isMobile = useIsMobile()
+  const { isEnabled: isWhatsAppEnabled } = useWhatsAppConfig()
   const [showAddCandidate, setShowAddCandidate] = useState(false)
   const [showApplicationReview, setShowApplicationReview] = useState(false)
   const [editingCandidate, setEditingCandidate] = useState<any>(null)
