@@ -283,6 +283,63 @@ Deno.serve(async (req) => {
         });
       }
 
+      case "delete": {
+        const { template_id } = params;
+
+        if (!template_id) {
+          return new Response(
+            JSON.stringify({ error: "Missing template_id" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { data: tmpl, error: tmplErr } = await supabase
+          .from("whatsapp_templates")
+          .select("*")
+          .eq("id", template_id)
+          .single();
+
+        if (tmplErr || !tmpl) {
+          return new Response(
+            JSON.stringify({ error: "Template not found" }),
+            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        if (tmpl.tenant_id !== tenantId) {
+          return new Response(
+            JSON.stringify({ error: "Unauthorized: template belongs to another tenant" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // If submitted to Twilio, delete the Content resource
+        if (tmpl.twilio_content_sid) {
+          try {
+            const authHeaderTwilio = twilioBasicAuth();
+            const delRes = await fetch(
+              `https://content.twilio.com/v1/Content/${tmpl.twilio_content_sid}`,
+              { method: "DELETE", headers: { Authorization: authHeaderTwilio } }
+            );
+            console.log(`[WhatsApp Templates] Twilio Content DELETE ${tmpl.twilio_content_sid}: ${delRes.status}`);
+          } catch (twilioErr) {
+            console.error("[WhatsApp Templates] Twilio delete error (continuing):", twilioErr);
+          }
+        }
+
+        const { error: deleteErr } = await supabase
+          .from("whatsapp_templates")
+          .delete()
+          .eq("id", template_id);
+
+        if (deleteErr) throw deleteErr;
+
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       case "check-status": {
         const { template_id } = params;
 

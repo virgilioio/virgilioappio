@@ -1,12 +1,23 @@
 import { useState } from 'react'
-import { FileText, Loader2, Plus, AlertCircle, Info, Send, RefreshCw } from 'lucide-react'
+import { FileText, Loader2, Plus, AlertCircle, Info, Send, RefreshCw, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   useWhatsAppTemplates,
   useSubmitWhatsAppTemplate,
   useCheckWhatsAppTemplateStatus,
+  useDeleteWhatsAppTemplate,
   type WhatsAppTemplate,
 } from '@/hooks/useWhatsAppConfig'
 import { WhatsAppTemplateCreator } from './WhatsAppTemplateCreator'
