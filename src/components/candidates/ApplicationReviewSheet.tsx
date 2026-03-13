@@ -200,19 +200,42 @@ export function ApplicationReviewSheet({
                   </ScrollArea>
                 </div>
 
-                {/* Column 2 — Application Responses (1/4) */}
+                {/* Column 2 — Application Responses & AI Summary (1/4) */}
                 <div className="col-span-1 border-r border-border flex flex-col min-h-0">
-                  <div className="px-5 py-4 border-b border-border flex-shrink-0">
-                    <h4 className="text-sm font-semibold text-text-primary">Application Responses</h4>
+                  <div className="px-5 py-4 flex-shrink-0">
+                    <Tabs defaultValue="responses" className="w-full">
+                      <TabsList className="w-full">
+                        <TabsTrigger value="responses" className="flex-1">Application Responses</TabsTrigger>
+                        <TabsTrigger value="ai-summary" className="flex-1 gap-1.5">
+                          <Sparkles className="h-3.5 w-3.5" />
+                          AI Career Summary
+                        </TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="responses">
+                        <ScrollArea className="h-[calc(100vh-280px)]">
+                          <div className="pt-2">
+                            <CandidateApplicationResponses
+                              candidateId={review.currentCandidate.candidateId}
+                              jobId={jobId}
+                            />
+                          </div>
+                        </ScrollArea>
+                      </TabsContent>
+                      <TabsContent value="ai-summary">
+                        <ScrollArea className="h-[calc(100vh-280px)]">
+                          <div className="pt-2">
+                            {review.currentCandidate.profileSummary ? (
+                              <div className="rounded-lg border border-border p-4 bg-surface-secondary/30">
+                                <ProfileSummaryMarkdown content={review.currentCandidate.profileSummary} />
+                              </div>
+                            ) : (
+                              <p className="text-sm text-text-secondary">No AI career summary available for this candidate.</p>
+                            )}
+                          </div>
+                        </ScrollArea>
+                      </TabsContent>
+                    </Tabs>
                   </div>
-                  <ScrollArea className="flex-1">
-                    <div className="p-5">
-                      <CandidateApplicationResponses
-                        candidateId={review.currentCandidate.candidateId}
-                        jobId={jobId}
-                      />
-                    </div>
-                  </ScrollArea>
                 </div>
 
                 {/* Column 3 — Review Controls (1/4) */}
