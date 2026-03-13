@@ -6,6 +6,28 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+/** Map Twilio approval status string to our internal status */
+function mapTwilioApprovalStatus(twilioStatus: string): string {
+  const s = (twilioStatus || "").toLowerCase();
+  if (s === "approved") return "approved";
+  if (["rejected", "failed", "paused", "disabled"].includes(s)) return "rejected";
+  return "pending";
+}
+
+/** Extract WhatsApp approval status from Twilio ApprovalRequests response (handles both API shapes) */
+function extractWhatsAppStatus(statusData: Record<string, unknown>): string | null {
+  // Shape 1 (actual): flat object with `whatsapp` key
+  const wa = statusData.whatsapp as Record<string, unknown> | undefined;
+  if (wa?.status) return mapTwilioApprovalStatus(wa.status as string);
+  // Shape 2 (legacy/fallback): approval_requests array
+  const arr = statusData.approval_requests as Array<Record<string, unknown>> | undefined;
+  if (Array.isArray(arr)) {
+    const found = arr.find((r) => r.channel === "whatsapp");
+    if (found?.status) return mapTwilioApprovalStatus(found.status as string);
+  }
+  return null;
+}
+
 function sanitizeTemplateName(name: string): string {
   return name
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -96,23 +118,15 @@ Deno.serve(async (req) => {
             );
             if (statusRes.ok) {
               const statusData = await statusRes.json();
-              const wa = statusData.approval_requests?.find(
-                (r: Record<string, unknown>) => r.channel === "whatsapp"
-              );
-              if (wa) {
-                let mapped = "pending";
-                const s = ((wa.status as string) || "").toLowerCase();
-                if (s === "approved") mapped = "approved";
-                else if (s === "rejected" || s === "failed") mapped = "rejected";
-
-                if (mapped !== tmpl.approval_status) {
-                  console.log(`[WhatsApp Templates] Auto-refresh: ${tmpl.id} ${tmpl.approval_status} → ${mapped}`);
-                  await supabase
-                    .from("whatsapp_templates")
-                    .update({ approval_status: mapped })
-                    .eq("id", tmpl.id);
-                  tmpl.approval_status = mapped;
-                }
+              console.log(`[WhatsApp Templates] Poll ${tmpl.id} (${tmpl.twilio_content_sid}) raw:`, JSON.stringify(statusData));
+              const mapped = extractWhatsAppStatus(statusData);
+              if (mapped && mapped !== tmpl.approval_status) {
+                console.log(`[WhatsApp Templates] Auto-refresh: ${tmpl.id} ${tmpl.approval_status} → ${mapped}`);
+                await supabase
+                  .from("whatsapp_templates")
+                  .update({ approval_status: mapped })
+                  .eq("id", tmpl.id);
+                tmpl.approval_status = mapped;
               }
             }
           } catch (e) {
@@ -493,40 +507,23 @@ Deno.serve(async (req) => {
 
             if (statusRes.ok) {
               const statusData = await statusRes.json();
-              // Twilio returns approval_requests array; find the whatsapp one
-              const whatsappApproval = statusData.approval_requests?.find(
-                (r: Record<string, unknown>) => r.channel === "whatsapp"
-              );
+              console.log(`[WhatsApp Templates] check-status ${template_id} (${template.twilio_content_sid}) raw:`, JSON.stringify(statusData));
+              const mappedStatus = extractWhatsAppStatus(statusData);
 
-              if (whatsappApproval) {
-                // Map Twilio status to our status
-                let mappedStatus = "pending";
-                const twilioStatus = (whatsappApproval.status || "").toLowerCase();
+              if (mappedStatus && mappedStatus !== template.approval_status) {
+                console.log(`[WhatsApp Templates] Status changed for ${template_id}: ${template.approval_status} → ${mappedStatus}`);
+                const { data: updated } = await supabase
+                  .from("whatsapp_templates")
+                  .update({ approval_status: mappedStatus })
+                  .eq("id", template_id)
+                  .select()
+                  .single();
 
-                if (twilioStatus === "approved") {
-                  mappedStatus = "approved";
-                } else if (twilioStatus === "rejected" || twilioStatus === "failed") {
-                  mappedStatus = "rejected";
-                } else if (twilioStatus === "pending" || twilioStatus === "received" || twilioStatus === "in-review") {
-                  mappedStatus = "pending";
-                }
-
-                // Update DB if status changed
-                if (mappedStatus !== template.approval_status) {
-                  console.log(`[WhatsApp Templates] Status changed for ${template_id}: ${template.approval_status} → ${mappedStatus}`);
-                  const { data: updated } = await supabase
-                    .from("whatsapp_templates")
-                    .update({ approval_status: mappedStatus })
-                    .eq("id", template_id)
-                    .select()
-                    .single();
-
-                  if (updated) {
-                    return new Response(JSON.stringify({ template: updated }), {
-                      status: 200,
-                      headers: { ...corsHeaders, "Content-Type": "application/json" },
-                    });
-                  }
+                if (updated) {
+                  return new Response(JSON.stringify({ template: updated }), {
+                    status: 200,
+                    headers: { ...corsHeaders, "Content-Type": "application/json" },
+                  });
                 }
               }
             }
