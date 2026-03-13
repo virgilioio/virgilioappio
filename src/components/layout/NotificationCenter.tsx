@@ -115,8 +115,6 @@ export function NotificationCenter() {
                         <p className="text-xs text-virgilio-text truncate">
                           {notification.type === 'offer_approval'
                             ? `Approve offer for ${notification.candidateName}`
-                            : notification.type === 'whatsapp'
-                            ? notification.whatsappMessagePreview || 'New WhatsApp message'
                             : notification.emailSubject || 'No subject'}
                         </p>
                         {notification.type === 'email' && notification.emailSnippet && (
