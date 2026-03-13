@@ -149,7 +149,7 @@ export function useApplicationReview(jobId: string) {
         .from('job_hiring_stages')
         .select('id, position, stage:job_stages!inner(stage_name, stage_type)')
         .eq('job_id', jobId)
-        .neq('stage:job_stages.stage_type', 'application_review' as any)
+        .neq('job_stages.stage_type', 'application_review' as any)
         .order('position', { ascending: true })
 
       if (!stagesError && stages && stages.length > 0) {
