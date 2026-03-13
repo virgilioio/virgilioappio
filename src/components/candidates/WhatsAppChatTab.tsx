@@ -7,7 +7,7 @@ import {
   useWhatsAppMessages,
   useMarkWhatsAppRead,
 } from '@/hooks/useWhatsApp'
-import { useWhatsAppSessionState, type WhatsAppSessionStatus } from '@/hooks/useWhatsAppConfig'
+import { useWhatsAppSessionState } from '@/hooks/useWhatsAppConfig'
 import { WhatsAppConnectionBadge, WhatsAppStatusDot } from '@/components/whatsapp/WhatsAppConnectionBadge'
 import { WhatsAppInboxEmptyState } from '@/components/whatsapp/WhatsAppInboxEmptyState'
 import { cn } from '@/lib/utils'
