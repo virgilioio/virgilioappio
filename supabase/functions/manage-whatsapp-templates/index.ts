@@ -243,7 +243,7 @@ Deno.serve(async (req) => {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              name: tmpl.name,
+              name: sanitizeTemplateName(tmpl.name),
               category: (tmpl.category || "UTILITY").toLowerCase(),
             }),
           }
