@@ -485,40 +485,23 @@ Deno.serve(async (req) => {
 
             if (statusRes.ok) {
               const statusData = await statusRes.json();
-              // Twilio returns approval_requests array; find the whatsapp one
-              const whatsappApproval = statusData.approval_requests?.find(
-                (r: Record<string, unknown>) => r.channel === "whatsapp"
-              );
+              console.log(`[WhatsApp Templates] check-status ${template_id} (${template.twilio_content_sid}) raw:`, JSON.stringify(statusData));
+              const mappedStatus = extractWhatsAppStatus(statusData);
 
-              if (whatsappApproval) {
-                // Map Twilio status to our status
-                let mappedStatus = "pending";
-                const twilioStatus = (whatsappApproval.status || "").toLowerCase();
+              if (mappedStatus && mappedStatus !== template.approval_status) {
+                console.log(`[WhatsApp Templates] Status changed for ${template_id}: ${template.approval_status} → ${mappedStatus}`);
+                const { data: updated } = await supabase
+                  .from("whatsapp_templates")
+                  .update({ approval_status: mappedStatus })
+                  .eq("id", template_id)
+                  .select()
+                  .single();
 
-                if (twilioStatus === "approved") {
-                  mappedStatus = "approved";
-                } else if (twilioStatus === "rejected" || twilioStatus === "failed") {
-                  mappedStatus = "rejected";
-                } else if (twilioStatus === "pending" || twilioStatus === "received" || twilioStatus === "in-review") {
-                  mappedStatus = "pending";
-                }
-
-                // Update DB if status changed
-                if (mappedStatus !== template.approval_status) {
-                  console.log(`[WhatsApp Templates] Status changed for ${template_id}: ${template.approval_status} → ${mappedStatus}`);
-                  const { data: updated } = await supabase
-                    .from("whatsapp_templates")
-                    .update({ approval_status: mappedStatus })
-                    .eq("id", template_id)
-                    .select()
-                    .single();
-
-                  if (updated) {
-                    return new Response(JSON.stringify({ template: updated }), {
-                      status: 200,
-                      headers: { ...corsHeaders, "Content-Type": "application/json" },
-                    });
-                  }
+                if (updated) {
+                  return new Response(JSON.stringify({ template: updated }), {
+                    status: 200,
+                    headers: { ...corsHeaders, "Content-Type": "application/json" },
+                  });
                 }
               }
             }
