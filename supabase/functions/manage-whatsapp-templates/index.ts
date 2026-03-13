@@ -6,7 +6,12 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const CONTENT_API_GATEWAY = "https://connector-gateway.lovable.dev/twilio";
+function twilioBasicAuth(): string {
+  const sid = Deno.env.get("TWILIO_ACCOUNT_SID");
+  const token = Deno.env.get("TWILIO_AUTH_TOKEN");
+  if (!sid || !token) throw new Error("TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN not configured");
+  return "Basic " + btoa(`${sid}:${token}`);
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -61,7 +66,6 @@ Deno.serve(async (req) => {
 
     switch (action) {
       case "list": {
-        // Return global templates + tenant-specific templates
         const { data: templates, error } = await supabase
           .from("whatsapp_templates")
           .select("*")
@@ -93,7 +97,6 @@ Deno.serve(async (req) => {
         const tempBody = body_template;
         while ((match = namedVarRegex.exec(tempBody)) !== null) {
           const varName = match[1];
-          // Skip if it's already a number (legacy format)
           if (/^\d+$/.test(varName)) continue;
           if (!foundVars.includes(varName)) {
             foundVars.push(varName);
@@ -114,16 +117,8 @@ Deno.serve(async (req) => {
           });
         }
 
-        // Use provided variable_mapping if no named vars were found, otherwise use derived
         const finalMapping = foundVars.length > 0 ? derivedMapping : (variable_mapping || {});
 
-        const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-        if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
-        const TWILIO_API_KEY = Deno.env.get("TWILIO_API_KEY");
-        if (!TWILIO_API_KEY) throw new Error("TWILIO_API_KEY is not configured");
-
-        // Save as draft in our DB with converted body and mapping
         const { data: template, error: insertError } = await supabase
           .from("whatsapp_templates")
           .insert({
@@ -133,7 +128,7 @@ Deno.serve(async (req) => {
             language: language || "en",
             body_template: convertedBody,
             variable_mapping: finalMapping,
-            approval_status: "pending",
+            approval_status: "draft",
             created_by: userId,
           })
           .select()
@@ -141,32 +136,6 @@ Deno.serve(async (req) => {
 
         if (insertError) throw insertError;
 
-        return new Response(JSON.stringify({ template }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      case "check-status": {
-        const { template_id } = params;
-
-        if (!template_id) {
-          return new Response(
-            JSON.stringify({ error: "Missing template_id" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-
-        const { data: template, error } = await supabase
-          .from("whatsapp_templates")
-          .select("*")
-          .eq("id", template_id)
-          .single();
-
-        if (error) throw error;
-
-        // If it has a Twilio Content SID, we could poll Twilio for status
-        // For now return current DB status
         return new Response(JSON.stringify({ template }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -204,15 +173,95 @@ Deno.serve(async (req) => {
           );
         }
 
-        // TODO: Call Twilio Content API to create content resource and submit for WhatsApp approval.
-        // The connector gateway prepends /2010-04-01/Accounts/{SID} which doesn't work for
-        // content.twilio.com/v1/Content. Requires direct Twilio credentials or gateway enhancement.
-        console.log(`[WhatsApp Templates] Submit requested for template ${template_id}. Marking as pending.`);
+        if (tmpl.twilio_content_sid) {
+          return new Response(
+            JSON.stringify({ error: "Template already submitted" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
 
-        // Update approval_status to pending
+        const authHeaderTwilio = twilioBasicAuth();
+
+        // Step 1: Create Content resource on Twilio
+        const variableMapping = tmpl.variable_mapping || {};
+        const varKeys = Object.keys(variableMapping);
+
+        const contentPayload: Record<string, unknown> = {
+          friendly_name: tmpl.name,
+          language: tmpl.language || "en",
+          types: {
+            "twilio/text": {
+              body: tmpl.body_template,
+            },
+          },
+        };
+
+        // Add variables definition if template has variables
+        if (varKeys.length > 0) {
+          contentPayload.variables = Object.fromEntries(
+            varKeys.map((k) => [k, `{{${k}}}`])
+          );
+        }
+
+        console.log(`[WhatsApp Templates] Creating Content resource for template ${template_id}`);
+
+        const contentRes = await fetch("https://content.twilio.com/v1/Content", {
+          method: "POST",
+          headers: {
+            Authorization: authHeaderTwilio,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(contentPayload),
+        });
+
+        const contentData = await contentRes.json();
+
+        if (!contentRes.ok) {
+          console.error("[WhatsApp Templates] Content API error:", JSON.stringify(contentData));
+          throw new Error(`Twilio Content API error: ${contentData.message || JSON.stringify(contentData)}`);
+        }
+
+        const contentSid = contentData.sid;
+        console.log(`[WhatsApp Templates] Content created: ${contentSid}`);
+
+        // Step 2: Submit for WhatsApp approval
+        const approvalRes = await fetch(
+          `https://content.twilio.com/v1/Content/${contentSid}/ApprovalRequests/whatsapp`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: authHeaderTwilio,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              name: tmpl.name,
+              category: (tmpl.category || "UTILITY").toLowerCase(),
+            }),
+          }
+        );
+
+        const approvalData = await approvalRes.json();
+
+        if (!approvalRes.ok) {
+          console.error("[WhatsApp Templates] Approval submission error:", JSON.stringify(approvalData));
+          // Still save the content SID even if approval submission fails
+          await supabase
+            .from("whatsapp_templates")
+            .update({ twilio_content_sid: contentSid, approval_status: "error" })
+            .eq("id", template_id);
+
+          throw new Error(`Approval submission error: ${approvalData.message || JSON.stringify(approvalData)}`);
+        }
+
+        console.log(`[WhatsApp Templates] Approval submitted for ${contentSid}`);
+
+        // Step 3: Update DB with Content SID and pending status
         const { data: updated, error: updateError } = await supabase
           .from("whatsapp_templates")
-          .update({ approval_status: "pending" })
+          .update({
+            twilio_content_sid: contentSid,
+            approval_status: "pending",
+          })
           .eq("id", template_id)
           .select()
           .single();
@@ -220,6 +269,86 @@ Deno.serve(async (req) => {
         if (updateError) throw updateError;
 
         return new Response(JSON.stringify({ template: updated }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      case "check-status": {
+        const { template_id } = params;
+
+        if (!template_id) {
+          return new Response(
+            JSON.stringify({ error: "Missing template_id" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { data: template, error } = await supabase
+          .from("whatsapp_templates")
+          .select("*")
+          .eq("id", template_id)
+          .single();
+
+        if (error) throw error;
+
+        // If it has a Twilio Content SID, poll Twilio for real approval status
+        if (template.twilio_content_sid) {
+          try {
+            const authHeaderTwilio = twilioBasicAuth();
+            const statusRes = await fetch(
+              `https://content.twilio.com/v1/Content/${template.twilio_content_sid}/ApprovalRequests`,
+              {
+                headers: { Authorization: authHeaderTwilio },
+              }
+            );
+
+            if (statusRes.ok) {
+              const statusData = await statusRes.json();
+              // Twilio returns approval_requests array; find the whatsapp one
+              const whatsappApproval = statusData.approval_requests?.find(
+                (r: Record<string, unknown>) => r.channel === "whatsapp"
+              );
+
+              if (whatsappApproval) {
+                // Map Twilio status to our status
+                let mappedStatus = "pending";
+                const twilioStatus = (whatsappApproval.status || "").toLowerCase();
+
+                if (twilioStatus === "approved") {
+                  mappedStatus = "approved";
+                } else if (twilioStatus === "rejected" || twilioStatus === "failed") {
+                  mappedStatus = "rejected";
+                } else if (twilioStatus === "pending" || twilioStatus === "received" || twilioStatus === "in-review") {
+                  mappedStatus = "pending";
+                }
+
+                // Update DB if status changed
+                if (mappedStatus !== template.approval_status) {
+                  console.log(`[WhatsApp Templates] Status changed for ${template_id}: ${template.approval_status} → ${mappedStatus}`);
+                  const { data: updated } = await supabase
+                    .from("whatsapp_templates")
+                    .update({ approval_status: mappedStatus })
+                    .eq("id", template_id)
+                    .select()
+                    .single();
+
+                  if (updated) {
+                    return new Response(JSON.stringify({ template: updated }), {
+                      status: 200,
+                      headers: { ...corsHeaders, "Content-Type": "application/json" },
+                    });
+                  }
+                }
+              }
+            }
+          } catch (pollError) {
+            console.error("[WhatsApp Templates] Error polling status:", pollError);
+            // Fall through to return current DB status
+          }
+        }
+
+        return new Response(JSON.stringify({ template }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
