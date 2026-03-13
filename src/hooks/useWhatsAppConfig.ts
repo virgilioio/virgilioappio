@@ -237,6 +237,8 @@ export function useUpdateWhatsAppTemplate() {
       body_template?: string
       category?: string
       language?: string
+      content_type?: WhatsAppContentType
+      actions?: WhatsAppAction[]
     }) => {
       const { data, error } = await supabase.functions.invoke('manage-whatsapp-templates', {
         body: { action: 'update', ...params },
