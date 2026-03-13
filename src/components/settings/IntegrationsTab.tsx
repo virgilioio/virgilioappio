@@ -21,7 +21,7 @@ import gogioAvatar from '@/assets/gogio-avatar.png'
 // Hooks for connection status
 import { useMailIdentities } from '@/hooks/useMailIdentities'
 import { useCalendarIdentities } from '@/hooks/useCalendarIdentities'
-import { useWhatsAppConfig } from '@/hooks/useWhatsAppConfig'
+
 
 interface IntegrationEntry {
   id: string
