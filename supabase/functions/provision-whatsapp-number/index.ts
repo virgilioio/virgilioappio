@@ -198,6 +198,33 @@ Deno.serve(async (req) => {
       } catch (senderErr) {
         console.error("WhatsApp Sender registration failed (non-fatal):", senderErr);
       }
+
+      // Step 4b: Configure Messaging Service InboundRequestUrl for inbound WhatsApp messages
+      try {
+        const msgServiceResponse = await fetch(
+          `https://messaging.twilio.com/v1/Services/${MESSAGING_SERVICE_SID}`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: "Basic " + btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`),
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+              InboundRequestUrl: `${supabaseUrl}/functions/v1/whatsapp-inbound-webhook`,
+              InboundMethod: "POST",
+            }),
+          }
+        );
+
+        if (!msgServiceResponse.ok) {
+          const msgServiceError = await msgServiceResponse.json();
+          console.error("Messaging Service InboundRequestUrl config warning (non-fatal):", msgServiceError);
+        } else {
+          console.log("Messaging Service InboundRequestUrl configured successfully");
+        }
+      } catch (msgServiceErr) {
+        console.error("Messaging Service InboundRequestUrl config failed (non-fatal):", msgServiceErr);
+      }
     } else {
       console.warn("Twilio master credentials not configured — WhatsApp Sender registration skipped");
     }
