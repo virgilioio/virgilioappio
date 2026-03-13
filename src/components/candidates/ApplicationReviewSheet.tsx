@@ -248,7 +248,7 @@ export function ApplicationReviewSheet({
                           <CardTitle>Actions</CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <div className="flex gap-2">
+                          <div className="flex flex-col gap-2">
                             <Button
                               variant="destructive"
                               size="sm"
