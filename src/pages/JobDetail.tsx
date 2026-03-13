@@ -1679,20 +1679,6 @@ export default function JobDetail() {
                   </div>
                 </TabsContent>
 
-                {/* WhatsApp Tab - only when enabled */}
-                {isWhatsAppEnabled && (
-                <TabsContent value="whatsapp" className="mt-0">
-                  <WhatsAppConversationsList
-                    jobId={id!}
-                    onOpenCandidate={(candidateId) => {
-                      setSearchParams(prev => {
-                        prev.set('openCandidate', candidateId)
-                        return prev
-                      })
-                    }}
-                  />
-                </TabsContent>
-                )}
 
                 {/* Job Setup Tab */}
                 {!isRestrictedViewer && (

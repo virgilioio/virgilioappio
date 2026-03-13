@@ -1683,7 +1683,6 @@ const stageHasAutomation = useMemo(() => {
                        email={candidate.email}
                        phone={candidate.phone}
                          tabs={[
-                           ...[
                            { value: 'feed', label: 'Feed', Icon: Activity },
                            { value: 'notes', label: 'Notes', Icon: StickyNote },
                            ...(!isRestrictedViewer ? [{ value: 'emails', label: 'Emails', Icon: Mail }] : []),
@@ -1691,22 +1690,8 @@ const stageHasAutomation = useMemo(() => {
                            ...(!isRestrictedViewer ? [{ value: 'insights', label: 'Insights', Icon: Sparkles }] : []),
                          ]}
                          activeTab={rightActiveTab}
-                         onTabChange={(v) => setRightActiveTab(v as 'chat' | 'feed' | 'notes' | 'emails' | 'reminders' | 'insights')}
+                         onTabChange={(v) => setRightActiveTab(v as 'feed' | 'notes' | 'emails' | 'reminders' | 'insights')}
                       />
-
-                     {/* Chat Tab */}
-                     {isWhatsAppEnabled && rightActiveTab === 'chat' && candidateId && (
-                       <Card className="bg-surface-primary border-border h-[500px]">
-                          <WhatsAppChatTab
-                            candidateId={candidateId}
-                            jobId={jobId}
-                            phoneNumber={whatsAppPhone || candidate?.phone}
-                            candidateName={candidate?.candidate_name || 'Candidate'}
-                            jobTitle={job?.title}
-                            recruiterName={user?.user_metadata?.full_name || user?.email}
-                          />
-                       </Card>
-                     )}
 
                      {/* Feed Tab */}
                      {rightActiveTab === 'feed' && (
