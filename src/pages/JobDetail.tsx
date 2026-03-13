@@ -45,6 +45,7 @@ import { useJobMatchingCandidates, MatchedCandidate } from '@/hooks/useJobMatchi
 import { useJobMatchingCandidatesCount } from '@/hooks/useJobMatchingCandidatesCount'
 import { useRealTimeSkillMatching } from '@/hooks/useRealTimeSkillMatching'
 import { ApplicationReviewSheet } from '@/components/candidates/ApplicationReviewSheet'
+import { useWhatsAppConfig } from '@/hooks/useWhatsAppConfig'
 
 export default function JobDetail() {
   const params = useParams<{ id?: string; jobId?: string }>()
@@ -56,6 +57,7 @@ export default function JobDetail() {
   const { isHiringManagerOnJob, isInterviewerOnJob } = useJobRole(id)
   const isRestrictedViewer = (isHiringManagerOnJob || isInterviewerOnJob) && !permissions.isAdmin && !permissions.isWorkspaceOwner && !permissions.isPlatformAdmin
   const isMobile = useIsMobile()
+  const { isEnabled: isWhatsAppEnabled } = useWhatsAppConfig()
   const [showAddCandidate, setShowAddCandidate] = useState(false)
   const [showApplicationReview, setShowApplicationReview] = useState(false)
   const [editingCandidate, setEditingCandidate] = useState<any>(null)
@@ -1322,6 +1324,7 @@ export default function JobDetail() {
                 onTabChange={setActiveTab}
                 jobTitle={job.title}
                 isRestrictedViewer={isRestrictedViewer}
+                isWhatsAppEnabled={isWhatsAppEnabled}
               />
               
               {/* Main content */}
@@ -1676,7 +1679,8 @@ export default function JobDetail() {
                   </div>
                 </TabsContent>
 
-                {/* WhatsApp Tab */}
+                {/* WhatsApp Tab - only when enabled */}
+                {isWhatsAppEnabled && (
                 <TabsContent value="whatsapp" className="mt-0">
                   <WhatsAppConversationsList
                     jobId={id!}
@@ -1688,6 +1692,7 @@ export default function JobDetail() {
                     }}
                   />
                 </TabsContent>
+                )}
 
                 {/* Job Setup Tab */}
                 {!isRestrictedViewer && (

@@ -116,6 +116,7 @@ export function useWhatsAppConfig() {
   }, [config])
 
   const isConnected = sessionStatus === 'connected' || sessionStatus === 'syncing'
+  const isEnabled = isActive && isConnected
 
   const connectedPhone = useMemo(
     () => (config.connected_phone as string) || '',
@@ -183,6 +184,7 @@ export function useWhatsAppConfig() {
   return {
     sessionStatus,
     isConnected,
+    isEnabled,
     connectedPhone,
     connectedAt,
     lastSyncAt,
@@ -204,7 +206,7 @@ export function useWhatsAppConfig() {
  * Returns the current WhatsApp session state for the workspace.
  * Reusable across all WhatsApp surfaces.
  */
-export function useWhatsAppSessionState(): WhatsAppSessionState & { isLoading: boolean } {
-  const { sessionStatus, isLoading } = useWhatsAppConfig()
-  return { ...getWhatsAppSessionState(sessionStatus), isLoading }
+export function useWhatsAppSessionState(): WhatsAppSessionState & { isLoading: boolean; isEnabled: boolean } {
+  const { sessionStatus, isLoading, isEnabled } = useWhatsAppConfig()
+  return { ...getWhatsAppSessionState(sessionStatus), isLoading, isEnabled }
 }

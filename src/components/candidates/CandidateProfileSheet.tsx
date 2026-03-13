@@ -46,6 +46,7 @@ import { useCandidateResolver } from '@/hooks/useCandidateResolver'
 import { triggerFitAnalysis } from '@/utils/triggerFitAnalysis'
 import { useJobRole } from '@/hooks/useJobRole'
 import { WhatsAppChatTab } from '@/components/candidates/WhatsAppChatTab'
+import { useWhatsAppConfig } from '@/hooks/useWhatsAppConfig'
 
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 import { MobileJobSelector } from '@/components/candidates/MobileJobSelector'
@@ -111,6 +112,7 @@ interface CandidateProfileSheetProps {
 
 export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, autoOpenScorecardStageId, onScorecardOpened }: CandidateProfileSheetProps) {
   const { canEditCandidates, isAdmin, isWorkspaceOwner, isPlatformAdmin } = usePermissions()
+  const { isEnabled: isWhatsAppEnabled } = useWhatsAppConfig()
   const { organizationId, user } = useAuth()
   const { isHiringManagerOnJob, isInterviewerOnJob } = useJobRole(jobId)
   const isRestrictedViewer = (isHiringManagerOnJob || isInterviewerOnJob) && !isAdmin && !isWorkspaceOwner && !isPlatformAdmin
@@ -1374,6 +1376,7 @@ const stageHasAutomation = useMemo(() => {
                                                 </div>
                                               </div>
                                               <div className="flex items-center gap-0.5">
+                                                {isWhatsAppEnabled && (
                                                 <Button
                                                   variant="ghost"
                                                   size="sm"
@@ -1386,6 +1389,7 @@ const stageHasAutomation = useMemo(() => {
                                                 >
                                                   <img src={whatsappIcon} alt="WhatsApp" className="h-3.5 w-3.5" />
                                                 </Button>
+                                                )}
                                                 <Button
                                                   variant="ghost"
                                                   size="sm"
@@ -1417,6 +1421,7 @@ const stageHasAutomation = useMemo(() => {
                                           </div>
                                           {candidate?.phone && (
                                             <div className="flex items-center gap-0.5">
+                                              {isWhatsAppEnabled && (
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -1429,6 +1434,7 @@ const stageHasAutomation = useMemo(() => {
                                               >
                                                 <img src={whatsappIcon} alt="WhatsApp" className="h-3.5 w-3.5" />
                                               </Button>
+                                              )}
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -1707,7 +1713,7 @@ const stageHasAutomation = useMemo(() => {
                        email={candidate.email}
                        phone={candidate.phone}
                          tabs={[
-                           { value: 'chat', label: 'Chat', Icon: MessageSquare },
+                           ...(isWhatsAppEnabled ? [{ value: 'chat', label: 'Chat', Icon: MessageSquare }] : []),
                            { value: 'feed', label: 'Feed', Icon: Activity },
                            { value: 'notes', label: 'Notes', Icon: StickyNote },
                            ...(!isRestrictedViewer ? [{ value: 'emails', label: 'Emails', Icon: Mail }] : []),
@@ -1719,7 +1725,7 @@ const stageHasAutomation = useMemo(() => {
                       />
 
                      {/* Chat Tab */}
-                     {rightActiveTab === 'chat' && candidateId && (
+                     {isWhatsAppEnabled && rightActiveTab === 'chat' && candidateId && (
                        <Card className="bg-surface-primary border-border h-[500px]">
                           <WhatsAppChatTab
                             candidateId={candidateId}
