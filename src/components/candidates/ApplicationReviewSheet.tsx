@@ -196,17 +196,6 @@ export function ApplicationReviewSheet({
                         />
                       </div>
 
-                      {review.currentCandidate.profileSummary && (
-                        <section>
-                          <div className="flex items-center gap-2 mb-3">
-                            <Sparkles className="h-4 w-4 text-primary" />
-                            <h4 className="text-sm font-semibold text-text-primary">AI Career Summary</h4>
-                          </div>
-                          <div className="rounded-lg border border-border p-4 bg-surface-secondary/30">
-                            <ProfileSummaryMarkdown content={review.currentCandidate.profileSummary} />
-                          </div>
-                        </section>
-                      )}
                     </div>
                   </ScrollArea>
                 </div>
