@@ -260,6 +260,7 @@ export function useApplicationReview(jobId: string) {
   const handlePass = useCallback(() => {
     if (!currentCandidate) return
     setStats(prev => ({ ...prev, passed: prev.passed + 1 }))
+    setHasActioned(true)
     moveToNext()
   }, [currentCandidate, moveToNext])
 
