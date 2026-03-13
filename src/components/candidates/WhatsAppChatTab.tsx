@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Send, Loader2, MessageSquare, FileText, Settings } from 'lucide-react'
+import { Send, Loader2, MessageSquare, FileText, Settings, Clock } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
