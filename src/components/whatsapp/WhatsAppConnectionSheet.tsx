@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { QrCode, Loader2, Wifi, X, Smartphone, ArrowRight } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { QrCode, Loader2, Wifi, X, Smartphone, ArrowRight, RefreshCw, Download } from 'lucide-react'
 import {
   Sheet,
   SheetContent,
@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { useWhatsAppConfig, type WhatsAppSessionStatus } from '@/hooks/useWhatsAppConfig'
+import { useWhatsAppConfig } from '@/hooks/useWhatsAppConfig'
 import { WhatsAppConnectionBadge } from './WhatsAppConnectionBadge'
 import whatsappLogo from '@/assets/whatsapp-logo.png'
 
@@ -25,9 +25,16 @@ export function WhatsAppConnectionSheet({ open, onOpenChange }: WhatsAppConnecti
     startConnection,
     disconnect,
     updateSessionStatus,
+    refreshQr,
+    syncAll,
     connectedPhone,
     lastError,
+    qrCodeData,
+    qrExpiresAt,
+    conversationCount,
   } = useWhatsAppConfig()
+
+  const [isSyncing, setIsSyncing] = useState(false)
 
   const handleStartConnection = async () => {
     try {
@@ -48,10 +55,36 @@ export function WhatsAppConnectionSheet({ open, onOpenChange }: WhatsAppConnecti
 
   const handleCancel = async () => {
     if (sessionStatus === 'waiting_for_qr' || sessionStatus === 'connecting') {
-      await updateSessionStatus('disconnected')
+      try {
+        await disconnect()
+      } catch {
+        await updateSessionStatus('disconnected')
+      }
     }
     onOpenChange(false)
   }
+
+  const handleRefreshQr = async () => {
+    try {
+      await refreshQr()
+    } catch {
+      // Error handled by hook
+    }
+  }
+
+  const handleSyncNow = async () => {
+    setIsSyncing(true)
+    try {
+      await syncAll()
+    } catch {
+      // Error handled by hook
+    } finally {
+      setIsSyncing(false)
+    }
+  }
+
+  // Check if QR is expired
+  const isQrExpired = qrExpiresAt ? new Date(qrExpiresAt) < new Date() : false
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -110,17 +143,60 @@ export function WhatsAppConnectionSheet({ open, onOpenChange }: WhatsAppConnecti
             </div>
           )}
 
-          {/* State: Waiting for QR — show QR placeholder */}
+          {/* State: Waiting for QR — show real QR code */}
           {sessionStatus === 'waiting_for_qr' && (
             <div className="space-y-6">
               <div className="flex flex-col items-center">
-                <div className="w-64 h-64 rounded-xl border-2 border-dashed border-border bg-muted/20 flex flex-col items-center justify-center">
-                  <QrCode className="h-16 w-16 text-muted-foreground/40 mb-3" />
-                  <p className="text-xs text-muted-foreground font-medium">QR code will appear here</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">Provider integration pending</p>
-                </div>
+                {qrCodeData && !isQrExpired ? (
+                  <div className="w-64 h-64 rounded-xl border border-border bg-white flex items-center justify-center overflow-hidden">
+                    <img
+                      src={qrCodeData.startsWith('data:') ? qrCodeData : `data:image/png;base64,${qrCodeData}`}
+                      alt="WhatsApp QR Code"
+                      className="w-full h-full object-contain p-2"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-64 h-64 rounded-xl border-2 border-dashed border-border bg-muted/20 flex flex-col items-center justify-center">
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="h-12 w-12 text-muted-foreground/40 mb-3 animate-spin" />
+                        <p className="text-xs text-muted-foreground font-medium">Generating QR code…</p>
+                      </>
+                    ) : (
+                      <>
+                        <QrCode className="h-12 w-12 text-muted-foreground/40 mb-3" />
+                        <p className="text-xs text-muted-foreground font-medium">
+                          {isQrExpired ? 'QR code expired' : 'Waiting for QR code…'}
+                        </p>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleRefreshQr}
+                          disabled={isSaving}
+                          className="mt-2 text-xs"
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1.5" />
+                          {isQrExpired ? 'Generate new QR' : 'Refresh'}
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
+
                 <div className="mt-4 flex items-center gap-2">
                   <WhatsAppConnectionBadge status="waiting_for_qr" size="md" />
+                  {qrCodeData && !isQrExpired && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRefreshQr}
+                      disabled={isSaving}
+                      className="h-6 text-[10px] text-muted-foreground"
+                    >
+                      <RefreshCw className="h-3 w-3 mr-1" />
+                      Refresh
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -170,28 +246,49 @@ export function WhatsAppConnectionSheet({ open, onOpenChange }: WhatsAppConnecti
             <div className="space-y-6">
               <div className="flex flex-col items-center py-6">
                 <div className="h-16 w-16 rounded-full bg-[#25D366]/10 flex items-center justify-center mb-4">
-                  {sessionStatus === 'syncing' ? (
+                  {sessionStatus === 'syncing' || isSyncing ? (
                     <Loader2 className="h-8 w-8 text-[#25D366] animate-spin" />
                   ) : (
                     <Wifi className="h-8 w-8 text-[#25D366]" />
                   )}
                 </div>
                 <p className="text-sm font-medium text-foreground">
-                  {sessionStatus === 'syncing' ? 'Syncing conversations…' : 'WhatsApp connected'}
+                  {sessionStatus === 'syncing' || isSyncing ? 'Syncing conversations…' : 'WhatsApp connected'}
                 </p>
                 {connectedPhone && (
-                  <p className="text-xs font-mono text-muted-foreground mt-1">{connectedPhone}</p>
+                  <p className="text-xs font-mono text-muted-foreground mt-1">+{connectedPhone}</p>
+                )}
+                {conversationCount > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {conversationCount} conversation{conversationCount !== 1 ? 's' : ''} synced
+                  </p>
                 )}
               </div>
 
-              <Button
-                variant="outline"
-                onClick={handleDisconnect}
-                disabled={isSaving}
-                className="w-full text-destructive hover:text-destructive"
-              >
-                Disconnect WhatsApp
-              </Button>
+              <div className="space-y-2">
+                <Button
+                  variant="outline"
+                  onClick={handleSyncNow}
+                  disabled={isSaving || isSyncing}
+                  className="w-full"
+                >
+                  {isSyncing ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
+                  {isSyncing ? 'Syncing…' : 'Sync conversations now'}
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={handleDisconnect}
+                  disabled={isSaving}
+                  className="w-full text-destructive hover:text-destructive"
+                >
+                  Disconnect WhatsApp
+                </Button>
+              </div>
             </div>
           )}
 
