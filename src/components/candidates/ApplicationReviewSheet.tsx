@@ -183,10 +183,10 @@ export function ApplicationReviewSheet({
                 )}
               </SheetHeader>
 
-              {/* 3-Column Grid: Resume (2) | Responses (1) | Controls (1) */}
-              <div className="flex-1 min-h-0 grid grid-cols-4 gap-0">
-                {/* Column 1 — Resume (2/4) */}
-                <div className="col-span-2 border-r border-border flex flex-col min-h-0">
+              {/* 3-Column Grid: Resume (3) | Responses (3) | Controls (2) */}
+              <div className="flex-1 min-h-0 grid grid-cols-8 gap-0">
+                {/* Column 1 — Resume (3/8) */}
+                <div className="col-span-3 border-r border-border flex flex-col min-h-0">
                   <ScrollArea className="flex-1">
                     <div className="p-6 space-y-5">
                       <div className="rounded-lg border border-border overflow-hidden">
@@ -200,11 +200,11 @@ export function ApplicationReviewSheet({
                   </ScrollArea>
                 </div>
 
-                {/* Column 2 — Application Responses & AI Summary (1/4) */}
-                <div className="col-span-1 border-r border-border flex flex-col min-h-0">
-                  <div className="px-5 py-4 flex-shrink-0">
-                    <Tabs defaultValue="responses" className="w-full">
-                      <TabsList className="w-full">
+                {/* Column 2 — Application Responses & AI Summary (3/8) */}
+                <div className="col-span-3 border-r border-border flex flex-col min-h-0 overflow-hidden">
+                  <div className="px-5 py-4 flex-shrink-0 min-w-0">
+                    <Tabs defaultValue="responses" className="w-full min-w-0">
+                      <TabsList className="w-full overflow-x-auto">
                         <TabsTrigger value="responses" className="flex-1">Application Responses</TabsTrigger>
                         <TabsTrigger value="ai-summary" className="flex-1 gap-1.5">
                           <Sparkles className="h-3.5 w-3.5" />
@@ -238,8 +238,8 @@ export function ApplicationReviewSheet({
                   </div>
                 </div>
 
-                {/* Column 3 — Review Controls (1/4) */}
-                <div className="col-span-1 flex flex-col min-h-0">
+                {/* Column 3 — Review Controls (2/8) */}
+                <div className="col-span-2 flex flex-col min-h-0 overflow-hidden">
                   <ScrollArea className="flex-1">
                     <div className="p-5 space-y-4">
                       {/* Actions Card */}
@@ -248,7 +248,7 @@ export function ApplicationReviewSheet({
                           <CardTitle>Actions</CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <div className="flex gap-2">
+                          <div className="flex flex-col gap-2">
                             <Button
                               variant="destructive"
                               size="sm"
