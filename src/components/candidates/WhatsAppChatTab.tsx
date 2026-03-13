@@ -261,6 +261,7 @@ export function WhatsAppChatTab({
             ))}
           </div>
         )}
+        </div>
       </ScrollArea>
 
       {/* Compose area */}
