@@ -29,9 +29,6 @@ export function WhatsAppTemplateLibrary() {
   const { data: templates = [], isLoading } = useWhatsAppTemplates()
   const [showCreator, setShowCreator] = useState(false)
 
-  const globalTemplates = templates.filter((t) => !t.tenant_id)
-  const customTemplates = templates.filter((t) => !!t.tenant_id)
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
