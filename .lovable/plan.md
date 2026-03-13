@@ -1,89 +1,126 @@
-# System Roles Migration — Completed Phases 1-5
 
-## Architecture Change
-- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
-- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-## Completed
+# Production WhatsApp ISV Architecture: Per-Tenant Numbers
 
-### Phase 1 — Database
-- ✅ Created `system_role` enum (`admin`, `member`)
-- ✅ Added `system_role` column to `members` table
-- ✅ Migrated data: `admin` → `admin`, all others → `member`
-- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
-- ✅ Updated `check_tenant_member_role` to use `system_role`
-- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
-- ✅ Updated `audit_member_role_change` trigger
+## The Reality
 
-### Phase 2 — Frontend Permissions
-- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
-- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
-- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
-- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
+The Twilio connector gateway works for **standard REST API** endpoints:
+- `POST /IncomingPhoneNumbers.json` — buy numbers (works, already implemented)
+- `POST /Messages.json` — send messages (works, already implemented)
+- `GET /AvailablePhoneNumbers/{country}/Local.json` — search numbers (works)
 
-### Phase 3 — UI Updates
-- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
-- ✅ Updated `Dashboard` — sourcing panel for admin+ only
-- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
-- ✅ Updated `BillingGuard` — members (non-admin) never blocked
-- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
-- ✅ Updated `Find` page RoleGate
-- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
+The gateway does **not** support:
+- `content.twilio.com/v1/Content` — Content API for programmatic template creation/submission
+- `POST /IncomingPhoneNumbers/{sid}.json` — configuring webhook URLs on purchased numbers
 
-### Phase 4 — Runtime Hotfixes
-- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
-- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
-- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
-- ✅ Updated `validate_invite_token` — returns `system_role`
-- ✅ Updated `accept_invitation` — uses `system_role`
+This means: number provisioning and messaging work through the gateway. Template creation and WhatsApp Sender registration must happen in Twilio Console by the GoGio team. Inbound webhooks need a publicly accessible edge function URL.
 
-### Phase 5 — Complete Cleanup
-- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
-- ✅ Updated `admin_manage_member` — updates `system_role` column
-- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
-- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
-- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
-- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
-- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
-- ✅ Updated `diagnose_user_auth` — reports `system_role`
-- ✅ Updated `audit_platform_admin_access` — returns `system_role`
-- ✅ Updated `debug_user_permissions` — returns `system_role`
-- ✅ Renamed `invitations.member_role` → `invitations.system_role`
-- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
+## Architecture
 
-## Phase 6 — Future (Optional)
-- Drop `member_role` column from `members` table (already dropped)
-- Drop old `member_role` enum type
-- Update `MemberInviteSheet` role picker to only offer Admin/Member
+```text
+┌──────────────────────────────────────────────────────────┐
+│                    GoGio Master Twilio Account           │
+│                                                          │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐               │
+│  │ Number A │  │ Number B │  │ Number C │  ...           │
+│  │Tenant ABC│  │Tenant DEF│  │Tenant GHI│               │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘               │
+│       │              │              │                    │
+│       ▼              ▼              ▼                    │
+│              Twilio REST API                             │
+│         (via connector gateway)                          │
+└──────────────────────┬───────────────────────────────────┘
+                       │
+          ┌────────────┼────────────┐
+          ▼            ▼            ▼
+    send-whatsapp   provision    inbound-webhook
+    (outbound)      (buy number) (candidate replies)
+```
 
-# Deep Resume Parsing + Data Standardization — Completed
+Each tenant gets their own dedicated number purchased under GoGio's master account. Numbers are stored per-tenant in `workspace_automations`. Messages are isolated by `tenant_id` + `sender_id`.
 
-## What was implemented
+## What works today vs. what needs to change
 
-### Phase 1: Schema Expansion
-- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
-- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
-- ✅ Added to `candidate_education`: `education_level`
-- ✅ Created `candidate_certifications` table with RLS policies
+| Capability | Current State | Target State |
+|---|---|---|
+| Number provisioning | Buys number via gateway -- works | Keep as-is, already correct |
+| Sending messages | Uses per-tenant `twilio_from_number` -- works | Keep as-is |
+| Template submission to Meta | DB-only stub (TODO comment) | GoGio seeds global templates with real Content SIDs from Twilio Console |
+| Inbound messages | Not implemented | New `whatsapp-inbound-webhook` edge function |
+| Setup wizard | 5-step wizard with broken verify/template steps | Simplify: provision → activate (2 steps) |
+| Setup status | 6 states, most unused | 3 states: `not_started`, `active`, `ready` |
+| Template library UI | Shows submit/refresh buttons that don't work | Show approved templates as ready-to-use; hide non-functional submit flow |
+| Chat tab gating | Blocks on `canMessage` which requires approved templates | Simplify -- block only when `not_started` or no phone number |
 
-### Phase 2: Enrichment Rewrite
-- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
-- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
-- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
-- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
-- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
+## Implementation Plan
 
-### Phase 3: UI Updates
-- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
-- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
-- ✅ **Certifications section** with `CandidateCertificationsComponent`
-- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
-- ✅ Enhanced **Education** display: education level badge
-- ✅ Certifications loaded alongside work experience and education
+### 1. New edge function: `whatsapp-inbound-webhook`
+Public endpoint (no JWT) that Twilio calls when a candidate texts back. Matches `From` phone to an existing conversation, inserts message as `direction: 'inbound'`, increments `unread_count`. Must be registered manually in Twilio Console as the webhook URL for each provisioned number.
 
-## Files changed
-- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
-- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
-- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
-- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
-- `src/components/candidates/CandidateCertifications.tsx` — new component
+### 2. Simplify `WhatsAppSetupWizard.tsx`
+Remove the `verify` and `templates` steps. Flow becomes:
+- **Welcome** — explains what happens
+- **Provision** — buy number (keep existing logic, it works)
+- **Complete** — done, number is active
+
+Remove the "Activate sender" step since provisioning = activation.
+
+### 3. Simplify `useWhatsAppConfig.ts` setup status
+Reduce to 3 states:
+- `not_started` — no number provisioned
+- `active` — number provisioned, WhatsApp enabled
+- `error` — something went wrong
+
+Remove `provisioning`, `sender_pending`, `sender_active`, `templates_required`. The `canMessage` flag is `true` when `active`.
+
+### 4. Update `WhatsAppIntegrationCard.tsx`
+- Remove template count stats (approved/pending/draft) from the main card
+- Remove the template-gating logic
+- Keep the "Manage Templates" expand for viewing available templates
+- Simplify status badge to active/inactive/not set up
+
+### 5. Update `WhatsAppTemplateLibrary.tsx`
+- Remove the "Submit" and "Refresh" buttons (they don't work)
+- Remove filter tabs for pending/rejected (irrelevant until Content API is available)
+- Show global GoGio templates as "Ready to use"
+- Keep "New Template" for creating local drafts (future use)
+- Add note: "Custom templates require GoGio team approval"
+
+### 6. Update `WhatsAppChatTab.tsx`
+- Simplify blocking logic: only block when `status === 'not_started'` or no phone number
+- Remove the `canMessage` dependency on approved templates for now
+- Allow freeform messaging always (the Twilio API will enforce template rules at the API level and return clear errors)
+
+### 7. Update `send-whatsapp/index.ts`
+- Remove the `is_active` check on `workspace_automations` (if they have a number, they can send)
+- Keep the existing per-tenant `twilio_from_number` logic (correct architecture)
+
+### 8. Seed global templates via migration
+Insert GoGio's standard recruiting templates into `whatsapp_templates` with `tenant_id = NULL`. Initially without `twilio_content_sid` (marked as "local only"). Once the GoGio team creates them in Twilio Console, a simple UPDATE adds the real SIDs.
+
+Templates to seed:
+- "Interview Invitation" — `Hi {{1}}, this is {{2}} from {{3}}. We'd like to invite you to interview for the {{4}} position. Would you be available to chat?`
+- "Application Update" — `Hi {{1}}, thank you for your interest in the {{2}} role at {{3}}. We have an update regarding your application. Please reply to this message so we can share the details.`
+- "Job Opportunity" — `Hi {{1}}, I'm {{2}} from {{3}}. I came across your profile and thought you'd be a great fit for a {{4}} opportunity we have. Would you be open to a quick conversation?`
+
+### 9. Manual prerequisites (not code)
+Before end-to-end works, the GoGio team needs to:
+1. Register the provisioned number as a WhatsApp Sender in Twilio Console
+2. Create Content templates in Twilio Console matching the seeded templates
+3. Update `whatsapp_templates` rows with real `twilio_content_sid` values
+4. Set the inbound webhook URL on the number in Twilio Console to `https://etrxjxstjfcozdjumfsj.supabase.co/functions/v1/whatsapp-inbound-webhook`
+
+## Files to change
+
+| File | Action |
+|---|---|
+| `supabase/functions/whatsapp-inbound-webhook/index.ts` | **Create** — public webhook for inbound messages |
+| `src/components/settings/whatsapp/WhatsAppSetupWizard.tsx` | Simplify to 3 steps |
+| `src/hooks/useWhatsAppConfig.ts` | Reduce setup states to 3 |
+| `src/components/settings/WhatsAppIntegrationCard.tsx` | Remove template-count gating |
+| `src/components/settings/whatsapp/WhatsAppTemplateLibrary.tsx` | Remove non-functional submit/refresh |
+| `src/components/candidates/WhatsAppChatTab.tsx` | Simplify blocking logic |
+| `supabase/functions/send-whatsapp/index.ts` | Minor cleanup |
+| `supabase/config.toml` | Add `whatsapp-inbound-webhook` with `verify_jwt = false` |
+| DB migration | Seed global templates |
+
