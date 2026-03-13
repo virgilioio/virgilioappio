@@ -35,7 +35,7 @@ const WHATSAPP_CATEGORIES = ['Candidate', 'Job', 'Sender', 'Interview', 'Offer',
 
 const CATEGORIES = [
   { value: 'UTILITY', label: 'Utility', description: 'Transaction-related messages (scheduling, updates)' },
-  { value: 'MARKETING', label: 'Marketing', description: 'Promotional or outreach messages' },
+  { value: 'AUTHENTICATION', label: 'Authentication', description: 'One-time passcodes or verification messages' },
 ]
 
 const LANGUAGES = [
