@@ -247,6 +247,7 @@ export function useApplicationReview(jobId: string) {
       })
 
       setStats(prev => ({ ...prev, rejected: prev.rejected + 1 }))
+      setHasActioned(true)
       // Remove from queue so rejected candidate disappears immediately
       setQueue(prev => prev.filter(c => c.associationId !== currentCandidate.associationId))
     } catch (error) {
