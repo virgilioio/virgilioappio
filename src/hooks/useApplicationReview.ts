@@ -51,6 +51,7 @@ export function useApplicationReview(jobId: string) {
   const [firstStageId, setFirstStageId] = useState<string | null>(null)
   const [firstStageName, setFirstStageName] = useState<string | null>(null)
   const [stats, setStats] = useState<ReviewSessionStats>({ rejected: 0, passed: 0, advanced: 0 })
+  const [hasActioned, setHasActioned] = useState(false)
   const [rejectionConfig, setRejectionConfig] = useState<RejectionConfig>(() => {
     try {
       const stored = localStorage.getItem('app-review-rejection-config')
