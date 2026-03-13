@@ -183,17 +183,18 @@ export function useApplicationReview(jobId: string) {
         associationId: currentCandidate.associationId,
         rejectionReasonId: rejectionConfig.rejectionReasonId,
         rejectionNotes: rejectionConfig.rejectionNotes,
-        sendEmail: false, // For speed in review mode, no email by default via the dialog
+        sendEmail: false,
       })
 
       setStats(prev => ({ ...prev, rejected: prev.rejected + 1 }))
-      moveToNext()
+      // Remove from queue so rejected candidate disappears immediately
+      setQueue(prev => prev.filter(c => c.associationId !== currentCandidate.associationId))
     } catch (error) {
       console.error('Rejection failed:', error)
     } finally {
       setIsActioning(false)
     }
-  }, [currentCandidate, isActioning, rejectionConfig, rejectCandidate, moveToNext])
+  }, [currentCandidate, isActioning, rejectionConfig, rejectCandidate])
 
   const handlePass = useCallback(() => {
     if (!currentCandidate) return
