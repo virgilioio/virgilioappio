@@ -116,6 +116,7 @@ export function useWhatsAppConfig() {
   }, [config])
 
   const isConnected = sessionStatus === 'connected' || sessionStatus === 'syncing'
+  const isEnabled = isActive && isConnected
 
   const connectedPhone = useMemo(
     () => (config.connected_phone as string) || '',
