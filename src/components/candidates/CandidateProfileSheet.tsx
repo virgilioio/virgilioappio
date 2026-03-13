@@ -1713,7 +1713,7 @@ const stageHasAutomation = useMemo(() => {
                        email={candidate.email}
                        phone={candidate.phone}
                          tabs={[
-                           { value: 'chat', label: 'Chat', Icon: MessageSquare },
+                           ...(isWhatsAppEnabled ? [{ value: 'chat', label: 'Chat', Icon: MessageSquare }] : []),
                            { value: 'feed', label: 'Feed', Icon: Activity },
                            { value: 'notes', label: 'Notes', Icon: StickyNote },
                            ...(!isRestrictedViewer ? [{ value: 'emails', label: 'Emails', Icon: Mail }] : []),
