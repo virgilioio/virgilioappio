@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
 import { Separator } from '@/components/ui/separator'
+import { useWhatsAppConfig } from '@/hooks/useWhatsAppConfig'
 
 export function NotificationCenter() {
   const [open, setOpen] = useState(false)
