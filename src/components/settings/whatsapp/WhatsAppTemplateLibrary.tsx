@@ -70,31 +70,13 @@ export function WhatsAppTemplateLibrary() {
 
       {/* Template list */}
       <div className="space-y-4">
-        {globalTemplates.length > 0 && (
+        {templates.length > 0 ? (
           <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">GoGio Templates</p>
-            <div className="space-y-2">
-              {globalTemplates.map((t) => (
-                <TemplateRow key={t.id} template={t} />
-              ))}
-            </div>
+            {templates.map((t) => (
+              <TemplateRow key={t.id} template={t} />
+            ))}
           </div>
-        )}
-
-        {customTemplates.length > 0 && globalTemplates.length > 0 && <Separator />}
-
-        {customTemplates.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Custom Templates</p>
-            <div className="space-y-2">
-              {customTemplates.map((t) => (
-                <TemplateRow key={t.id} template={t} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {templates.length === 0 && (
+        ) : (
           <div className="text-center py-8">
             <FileText className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">No templates yet.</p>
