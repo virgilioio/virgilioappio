@@ -16,6 +16,7 @@ import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeVi
 import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMarkdown'
 import { RejectionReasonSelector } from '@/components/candidates/RejectionReasonSelector'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
+import { SafeHtml } from '@/components/ui/safe-html'
 import { useApplicationReview, RejectionConfig } from '@/hooks/useApplicationReview'
 import { useRejectionEmailTemplates } from '@/hooks/useRejectionEmailTemplates'
 import {
