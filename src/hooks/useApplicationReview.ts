@@ -5,6 +5,7 @@ import { useRejectCandidate } from '@/hooks/useRejectCandidate'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { toast } from '@/hooks/use-toast'
 import { useQueryClient } from '@tanstack/react-query'
+import { renderTemplate, buildPlaceholderData } from '@/utils/templateUtils'
 
 export interface ReviewCandidate {
   candidateId: string
@@ -180,11 +181,67 @@ export function useApplicationReview(jobId: string) {
     setIsActioning(true)
 
     try {
+      let shouldSendEmail = rejectionConfig.sendEmail
+      let emailData: { fromEmail: string; toEmails: string[]; subject: string; bodyHtml: string; candidateId: string; jobId: string } | undefined
+
+      if (shouldSendEmail && rejectionConfig.rejectionEmailTemplateId) {
+        // Validate candidate has an email
+        if (!currentCandidate.email) {
+          toast({ title: 'No email', description: `${currentCandidate.candidateName} has no email address. Rejecting without email.` })
+          shouldSendEmail = false
+        } else {
+          // Fetch template and mail identity in parallel
+          const [templateResult, identityResult] = await Promise.all([
+            supabase
+              .from('rejection_email_templates')
+              .select('subject, body')
+              .eq('id', rejectionConfig.rejectionEmailTemplateId)
+              .single(),
+            supabase
+              .from('user_mail_identities')
+              .select('email_address')
+              .eq('user_id', user?.id ?? '')
+              .eq('is_active', true)
+              .limit(1)
+              .single(),
+          ])
+
+          if (templateResult.error || !templateResult.data) {
+            toast({ title: 'Template error', description: 'Could not load rejection email template. Rejecting without email.', variant: 'destructive' })
+            shouldSendEmail = false
+          } else if (identityResult.error || !identityResult.data) {
+            toast({ title: 'No mail identity', description: 'No active mail identity found. Rejecting without email.', variant: 'destructive' })
+            shouldSendEmail = false
+          } else {
+            const placeholderData = buildPlaceholderData({
+              candidate: {
+                candidate_name: currentCandidate.candidateName,
+                email: currentCandidate.email,
+              },
+              job: { title: '' }, // job title not available in ReviewCandidate; placeholder will be empty
+            })
+
+            emailData = {
+              fromEmail: identityResult.data.email_address,
+              toEmails: [currentCandidate.email],
+              subject: renderTemplate(templateResult.data.subject, placeholderData),
+              bodyHtml: renderTemplate(templateResult.data.body, placeholderData),
+              candidateId: currentCandidate.candidateId,
+              jobId: jobId,
+            }
+          }
+        }
+      } else if (shouldSendEmail && !rejectionConfig.rejectionEmailTemplateId) {
+        // sendEmail is true but no template selected — skip email
+        shouldSendEmail = false
+      }
+
       await rejectCandidate.mutateAsync({
         associationId: currentCandidate.associationId,
         rejectionReasonId: rejectionConfig.rejectionReasonId,
         rejectionNotes: rejectionConfig.rejectionNotes,
-        sendEmail: false,
+        sendEmail: shouldSendEmail,
+        emailData,
       })
 
       setStats(prev => ({ ...prev, rejected: prev.rejected + 1 }))
@@ -195,7 +252,7 @@ export function useApplicationReview(jobId: string) {
     } finally {
       setIsActioning(false)
     }
-  }, [currentCandidate, isActioning, rejectionConfig, rejectCandidate])
+  }, [currentCandidate, isActioning, rejectionConfig, rejectCandidate, user, jobId])
 
   const handlePass = useCallback(() => {
     if (!currentCandidate) return
