@@ -417,11 +417,11 @@ export default function JobDetail() {
       a.status !== 'hired' && 
       a.status !== 'offer' &&
       a.current_stage_id &&
-      stageMap[a.current_stage_id]?.type !== 'offer'
+      stageMap[a.current_stage_id]?.type !== 'offer' &&
+      stageMap[a.current_stage_id]?.type !== 'application_review'
     ).length, 
     [associations, stageMap]
   )
-  const applicationCount = useMemo(() => (applicationReviewCandidates?.length ?? 0), [applicationReviewCandidates])
   // Real-time skill matching for suggested count (using existing job from query below)  
   const { matchingData: skillMatchingData } = useRealTimeSkillMatching({
     skills: [],
