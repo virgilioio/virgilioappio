@@ -1,144 +1,107 @@
-# System Roles Migration — Completed Phases 1-5
 
-## Architecture Change
-- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
-- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-## Completed
+# Automate WhatsApp Provisioning: Zero-Touch Onboarding
 
-### Phase 1 — Database
-- ✅ Created `system_role` enum (`admin`, `member`)
-- ✅ Added `system_role` column to `members` table
-- ✅ Migrated data: `admin` → `admin`, all others → `member`
-- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
-- ✅ Updated `check_tenant_member_role` to use `system_role`
-- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
-- ✅ Updated `audit_member_role_change` trigger
+## Problem
+3 manual steps per new customer = not scalable. Let's fix each one.
 
-### Phase 2 — Frontend Permissions
-- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
-- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
-- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
-- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
+## Analysis: What's Actually Manual vs. Automatable
 
-### Phase 3 — UI Updates
-- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
-- ✅ Updated `Dashboard` — sourcing panel for admin+ only
-- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
-- ✅ Updated `BillingGuard` — members (non-admin) never blocked
-- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
-- ✅ Updated `Find` page RoleGate
-- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
+| Step | Current | Can Automate? | How |
+|------|---------|--------------|-----|
+| Buy number | ✅ Automated | Already done | Gateway `POST /IncomingPhoneNumbers.json` |
+| Set webhook URL | ❌ Manual | **Yes** | Gateway `POST /IncomingPhoneNumbers/{SID}.json` with `SmsUrl` — standard REST |
+| Create templates | ❌ Manual per-tenant | **Not needed per-tenant** | Templates are WABA-level. Create once, all numbers use them |
+| Register WhatsApp Sender | ❌ Manual | **Partially** — needs Twilio credentials stored as secrets | `POST` to `messaging.twilio.com` (different base URL, gateway can't reach it) |
 
-### Phase 4 — Runtime Hotfixes
-- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
-- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
-- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
-- ✅ Updated `validate_invite_token` — returns `system_role`
-- ✅ Updated `accept_invitation` — uses `system_role`
+## The Plan
 
-### Phase 5 — Complete Cleanup
-- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
-- ✅ Updated `admin_manage_member` — updates `system_role` column
-- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
-- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
-- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
-- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
-- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
-- ✅ Updated `diagnose_user_auth` — reports `system_role`
-- ✅ Updated `audit_platform_admin_access` — returns `system_role`
-- ✅ Updated `debug_user_permissions` — returns `system_role`
-- ✅ Renamed `invitations.member_role` → `invitations.system_role`
-- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
+### Step 1: Auto-configure webhook URL during provisioning
+After buying the number, immediately call:
+```
+POST /IncomingPhoneNumbers/{SID}.json
+  SmsUrl=https://etrxjxstjfcozdjumfsj.supabase.co/functions/v1/whatsapp-inbound-webhook
+```
+This IS a standard REST endpoint — the gateway supports it. Add this to `provision-whatsapp-number/index.ts` right after the purchase step.
 
-## Phase 6 — Future (Optional)
-- Drop `member_role` column from `members` table (already dropped)
-- Drop old `member_role` enum type
-- Update `MemberInviteSheet` role picker to only offer Admin/Member
+**This eliminates manual step 3 entirely.**
 
-# Deep Resume Parsing + Data Standardization — Completed
+### Step 2: Auto-register number as WhatsApp Sender
+This requires the Messaging Service API (`messaging.twilio.com/v1/Services/{ServiceSid}/PhoneNumbers`), which the gateway can't reach. Two options:
 
-## What was implemented
+**Option A — Store Twilio credentials directly**: Add `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` as Supabase edge function secrets. Call Twilio's Messaging Service API directly (bypassing gateway) to add the number to GoGio's pre-configured Messaging Service.
 
-### Phase 1: Schema Expansion
-- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
-- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
-- ✅ Added to `candidate_education`: `education_level`
-- ✅ Created `candidate_certifications` table with RLS policies
+**Option B — Gateway-only**: If we can't store direct credentials, this step stays manual. But it's a single API call in Twilio Console per number.
 
-### Phase 2: Enrichment Rewrite
-- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
-- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
-- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
-- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
-- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
+I recommend **Option A** — storing the master credentials as secrets is standard for ISV platforms and eliminates the last manual per-tenant step.
 
-### Phase 3: UI Updates
-- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
-- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
-- ✅ **Certifications section** with `CandidateCertificationsComponent`
-- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
-- ✅ Enhanced **Education** display: education level badge
-- ✅ Certifications loaded alongside work experience and education
+### Step 3: Templates are already solved
+Templates are WABA-level. GoGio creates them once in Twilio Console. They're already seeded in the DB. No per-tenant action needed.
 
-## Files changed
-- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
-- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
-- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
-- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
-- `src/components/candidates/CandidateCertifications.tsx` — new component
+## Implementation
 
-# WhatsApp ISV Architecture — Completed
+### File: `supabase/functions/provision-whatsapp-number/index.ts`
+After the existing purchase step (line 142), add two new steps:
 
-## Architecture
-Per-tenant dedicated numbers under GoGio's master Twilio account. Each tenant gets their own WhatsApp number provisioned via the Twilio connector gateway.
+**New Step 3**: Configure webhook URL on the purchased number
+```typescript
+// POST /IncomingPhoneNumbers/{phoneSid}.json via gateway
+await fetch(`${GATEWAY_URL}/IncomingPhoneNumbers/${phoneSid}.json`, {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${LOVABLE_API_KEY}`,
+    "X-Connection-Api-Key": TWILIO_API_KEY,
+    "Content-Type": "application/x-www-form-urlencoded",
+  },
+  body: new URLSearchParams({
+    SmsUrl: `${supabaseUrl}/functions/v1/whatsapp-inbound-webhook`,
+    SmsMethod: "POST",
+  }),
+});
+```
 
-## What was implemented
+**New Step 4** (if Option A approved): Register as WhatsApp Sender via direct Twilio API
+```typescript
+const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
+const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
+const MESSAGING_SERVICE_SID = Deno.env.get("TWILIO_MESSAGING_SERVICE_SID");
 
-### Inbound Webhook
-- ✅ Created `whatsapp-inbound-webhook` edge function (public, no JWT)
-- ✅ Matches inbound `From` phone to existing conversations
-- ✅ Inserts messages as `direction: 'inbound'`, updates `unread_count`
-- ✅ Returns empty TwiML (no auto-reply)
-- ✅ Added to `supabase/config.toml` with `verify_jwt = false`
+await fetch(
+  `https://messaging.twilio.com/v1/Services/${MESSAGING_SERVICE_SID}/PhoneNumbers`,
+  {
+    method: "POST",
+    headers: {
+      Authorization: "Basic " + btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`),
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({ PhoneNumberSid: phoneSid }),
+  }
+);
+```
 
-### Simplified Setup Wizard
-- ✅ Reduced from 5 steps to 3: Welcome → Provision → Complete
-- ✅ Removed broken "Verify sender" and "Templates" steps
-- ✅ Provisioning = activation (no separate activate step)
+### Secrets needed (for Option A)
+- `TWILIO_ACCOUNT_SID` — GoGio's master account SID
+- `TWILIO_AUTH_TOKEN` — GoGio's master auth token  
+- `TWILIO_MESSAGING_SERVICE_SID` — the pre-configured Messaging Service with WhatsApp enabled
 
-### Simplified Setup Status
-- ✅ Reduced from 6 states to 3: `not_started`, `active`, `error`
-- ✅ `canMessage = true` when `active` (no template-gating)
-- ✅ Removed `provisioning`, `sender_pending`, `sender_active`, `templates_required`
+### One-time prerequisites (GoGio team, done ONCE ever)
+1. Get WhatsApp Business Account approved in Twilio Console
+2. Create a Messaging Service and enable WhatsApp on it
+3. Create Content templates under the WABA (already seeded in DB)
+4. Store the 3 secrets above in Supabase edge function settings
 
-### Integration Card Updates
-- ✅ Removed template count stats (approved/pending/draft)
-- ✅ Simplified status badges to active/not set up/error
-- ✅ Removed unused status configs (sender_pending, provisioning, etc.)
+### Per-tenant flow after implementation
+Customer clicks "Enable WhatsApp" → system automatically:
+1. Buys a number ✅ (already works)
+2. Sets webhook URL on it ✅ (new)
+3. Adds number to Messaging Service as WhatsApp Sender ✅ (new, Option A)
+4. Saves config to DB ✅ (already works)
 
-### Template Library Updates
-- ✅ Removed non-functional Submit and Refresh buttons
-- ✅ Removed filter tabs (all/draft/pending/approved/rejected)
-- ✅ Added info note: "Custom templates require GoGio team approval"
-- ✅ Templates show as "Ready to use" or "Local only" status
+**Zero manual steps per customer.**
 
-### Chat Tab Updates
-- ✅ Simplified blocking: only blocks when `not_started` or no phone number
-- ✅ Removed intermediate `canMessage` blocking state
-- ✅ Updated empty template message to reference GoGio team
+## Files to change
 
-### Send Function Updates
-- ✅ Removed `is_active` check — if number exists, can send
-- ✅ Per-tenant `twilio_from_number` logic preserved
+| File | Change |
+|------|--------|
+| `supabase/functions/provision-whatsapp-number/index.ts` | Add webhook config + WhatsApp Sender registration after purchase |
 
-### Global Templates Seeded
-- ✅ Interview Invitation, Application Update, Job Opportunity
-- ✅ Inserted with `tenant_id = NULL` (global)
-- ✅ No `twilio_content_sid` yet (marked as draft until GoGio team adds real SIDs)
-
-## Manual Prerequisites (for GoGio team)
-1. Register provisioned numbers as WhatsApp Senders in Twilio Console
-2. Create Content templates in Twilio Console matching seeded templates
-3. UPDATE `whatsapp_templates` rows with real `twilio_content_sid` values and `approval_status = 'approved'`
-4. Set inbound webhook URL on each number: `https://etrxjxstjfcozdjumfsj.supabase.co/functions/v1/whatsapp-inbound-webhook`
