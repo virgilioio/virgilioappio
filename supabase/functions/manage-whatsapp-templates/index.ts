@@ -196,7 +196,7 @@ Deno.serve(async (req) => {
         const varKeys = Object.keys(variableMapping);
 
         const contentPayload: Record<string, unknown> = {
-          friendly_name: tmpl.name,
+          friendly_name: sanitizeTemplateName(tmpl.name),
           language: tmpl.language || "en",
           types: {
             "twilio/text": {
