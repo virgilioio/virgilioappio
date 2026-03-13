@@ -332,117 +332,27 @@ export default function JobDetail() {
     isCandidateNewForUser
   } = useCandidates(id!)
 
-  // In-pipeline associations for filtering Application Review
-  const [inPipelineKeys, setInPipelineKeys] = useState<Set<string>>(new Set())
-  const [pipelineLoading, setPipelineLoading] = useState(false)
+  // Application review candidates derived from associations + stageMap
+  const [applicationReviewCandidates, setApplicationReviewCandidates] = useState<any[]>([])
 
-  const normalizeUrl = (url?: string | null) => url?.trim().replace(/\/+$/, '').toLowerCase() || ''
-  const makeNameLocKey = (
-    name?: string | null,
-    city?: string | null,
-    country?: string | null
-  ) => `${(name || '').trim().toLowerCase()}||${(city || '').trim().toLowerCase()}||${(country || '').trim().toLowerCase()}`
-
-  useEffect(() => {
-    if (!id || !user) return
-    const load = async () => {
-      setPipelineLoading(true)
-      try {
-        const { data, error } = await supabase
-          .from('job_candidate_associations')
-          .select(`id, current_stage_id, candidate:candidates(id, candidate_name, linkedin_url, location_city, location_country)`)
-          .eq('job_id', id)
-          .not('current_stage_id', 'is', null)
-        if (error) throw error
-        const keys = new Set<string>()
-        ;(data || []).forEach((row: any) => {
-          const c = (row as any).candidate || {}
-          const link = normalizeUrl(c.linkedin_url)
-          if (link) keys.add('link:' + link)
-          if (c.candidate_name) {
-            keys.add('name:' + makeNameLocKey(c.candidate_name, c.location_city, c.location_country))
-          }
-        })
-        setInPipelineKeys(keys)
-      } catch (e) {
-        console.error('Failed to load pipeline associations', e)
-      } finally {
-        setPipelineLoading(false)
-      }
+  const applicationReviewStageId = useMemo(() => {
+    // Find the job_hiring_stage ID for the application_review stage type
+    for (const [jhsId, info] of Object.entries(stageMap)) {
+      if (info.type === 'application_review') return jhsId
     }
-    load()
-  }, [id, user])
+    return null
+  }, [stageMap])
 
-  const applicationReviewCandidates = useMemo(() => {
-    if (!candidates?.length) return []
-    return candidates.filter((c: any) => {
-      const link = normalizeUrl(c.linkedin_url)
-      if (link && inPipelineKeys.has('link:' + link)) return false
-      const key = 'name:' + makeNameLocKey(c.candidate_name, c.location_city, c.location_country)
-      return !inPipelineKeys.has(key)
-    }).map((c: any) => ({
-      ...c,
-      // Ensure all required fields are present for CandidateTable compatibility
-      job_id: c.job_id || id, // Use current job ID if not set
-      notes: c.notes || c.association_notes || null,
-      added_by: c.added_by || null,
-      first_viewed_by: c.first_viewed_by || {}
-    }))
-  }, [candidates, inPipelineKeys, id])
+  const applicationCount = useMemo(() => {
+    return associations.filter(a => 
+      a.status === 'active' && 
+      a.current_stage_id === applicationReviewStageId
+    ).length
+  }, [associations, applicationReviewStageId])
 
-  // Open in-place sheet for Application Review rows (job_candidates)
-  const handleApplicationRowClick = async (jobCandidateId: string) => {
-    const jc = (applicationReviewCandidates as any[])?.find((c) => c.id === jobCandidateId)
-    if (!jc) return
-
-    const norm = normalizeUrl(jc.linkedin_url)
-    // Try association match by linkedin
-    let assoc = associations.find((a) => norm && normalizeUrl(a.linkedin_url || '') === norm)
-    // Fallback: match by name (best-effort)
-    if (!assoc) {
-      const jcName = (jc.candidate_name || '').trim().toLowerCase()
-      assoc = associations.find((a) => (a.candidate_name || '').trim().toLowerCase() === jcName)
-    }
-
-    if (assoc?.candidate_id) {
-      openProfileInPlace(assoc.candidate_id, 'application', applicationReviewCandidates)
-      return
-    }
-
-    // Final fallback: try to find independent candidate by linkedin or by name+location
-    try {
-      let candId: string | null = null
-      if (norm) {
-        const { data } = await supabase.from('candidates').select('id').eq('linkedin_url', jc.linkedin_url).maybeSingle()
-        candId = data?.id ?? null
-      }
-      if (!candId) {
-        let q = supabase
-          .from('candidates')
-          .select('id')
-          .eq('candidate_name', jc.candidate_name)
-        if (jc.location_country === null || jc.location_country === undefined) {
-          q = q.is('location_country', null)
-        } else {
-          q = q.eq('location_country', jc.location_country)
-        }
-        if (jc.location_city === null || jc.location_city === undefined) {
-          q = q.is('location_city', null)
-        } else {
-          q = q.eq('location_city', jc.location_city)
-        }
-        const { data } = await q.maybeSingle()
-        candId = data?.id ?? null
-      }
-      if (candId) {
-        openProfileInPlace(candId, 'application', applicationReviewCandidates)
-      } else {
-        toast({ title: 'Not found', description: 'Could not locate profile for this candidate yet.', variant: 'destructive' })
-      }
-    } catch (e) {
-      console.error('Error resolving profile candidate id', e)
-      toast({ title: 'Error', description: 'Could not open candidate profile.', variant: 'destructive' })
-    }
+  // Open in-place sheet for Application Review rows
+  const handleApplicationRowClick = (candidateId: string) => {
+    openProfileInPlace(candidateId, 'application', applicationReviewCandidates)
   }
 
   // Derived job stats
@@ -457,11 +367,11 @@ export default function JobDetail() {
       a.status !== 'hired' && 
       a.status !== 'offer' &&
       a.current_stage_id &&
-      stageMap[a.current_stage_id]?.type !== 'offer'
+      stageMap[a.current_stage_id]?.type !== 'offer' &&
+      stageMap[a.current_stage_id]?.type !== 'application_review'
     ).length, 
     [associations, stageMap]
   )
-  const applicationCount = useMemo(() => (applicationReviewCandidates?.length ?? 0), [applicationReviewCandidates])
   // Real-time skill matching for suggested count (using existing job from query below)  
   const { matchingData: skillMatchingData } = useRealTimeSkillMatching({
     skills: [],
@@ -508,11 +418,11 @@ export default function JobDetail() {
     load()
   }, [id, fetchAssociationsForJob, pipelineRefresh])
 
-  // Load candidate details for offers/hired/rejected and all associated
+  // Load candidate details for offers/hired/rejected/application-review and all associated
   useEffect(() => {
     const run = async () => {
       if (!associations.length) {
-        setOffersCandidates([]); setHiredCandidates([]); setRejectedCandidates([]); setRecruitingProcessCandidates([]); setAllAssociatedCandidates([]); return
+        setOffersCandidates([]); setHiredCandidates([]); setRejectedCandidates([]); setRecruitingProcessCandidates([]); setAllAssociatedCandidates([]); setApplicationReviewCandidates([]); return
       }
       const allIdsAll = Array.from(new Set(associations.map(a => a.candidate_id)))
       const offerIds = associations
@@ -520,13 +430,21 @@ export default function JobDetail() {
         .map(a => a.candidate_id)
       const hiredIds = associations.filter(a => a.status === 'hired').map(a => a.candidate_id)
       const rejectedIds = associations.filter(a => a.status === 'rejected').map(a => a.candidate_id)
+      const applicationReviewIds = associations
+        .filter(a => 
+          a.status === 'active' && 
+          a.current_stage_id && 
+          stageMap[a.current_stage_id]?.type === 'application_review'
+        )
+        .map(a => a.candidate_id)
       const recruitingIds = associations
         .filter(a => 
           a.status !== 'rejected' && 
           a.status !== 'hired' && 
           a.status !== 'offer' &&
           a.current_stage_id &&
-          stageMap[a.current_stage_id]?.type !== 'offer'
+          stageMap[a.current_stage_id]?.type !== 'offer' &&
+          stageMap[a.current_stage_id]?.type !== 'application_review'
         )
         .map(a => a.candidate_id)
       setStatusListsLoading(true)
@@ -544,6 +462,7 @@ export default function JobDetail() {
       setHiredCandidates(hiredIds.map((id) => byId.get(id)).filter(Boolean))
       setRejectedCandidates(rejectedIds.map((id) => byId.get(id)).filter(Boolean))
       setRecruitingProcessCandidates(recruitingIds.map((id) => byId.get(id)).filter(Boolean))
+      setApplicationReviewCandidates(applicationReviewIds.map((id) => byId.get(id)).filter(Boolean))
       setAllAssociatedCandidates(allIdsAll.map((id) => byId.get(id)).filter(Boolean))
       setStatusListsLoading(false)
     }
@@ -1608,7 +1527,7 @@ export default function JobDetail() {
                             <div className="w-full p-layout-md">
                               <CandidateTable
                                 candidates={applicationReviewCandidates}
-                                isLoading={pipelineLoading || candidatesLoading}
+                                isLoading={statusListsLoading}
                                 onEdit={handleEditCandidate}
                                 onDelete={handleDeleteCandidate}
                                 markCandidateAsViewed={markCandidateAsViewed}

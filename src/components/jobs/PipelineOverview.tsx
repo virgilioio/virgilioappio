@@ -46,6 +46,7 @@ interface PipelineOverviewProps {
 
 const stageTypeVariants: Record<string, import('@/components/ui/badge').BadgeProps['variant']> = {
   application: 'pastel-blue',
+  application_review: 'pastel-purple',
   screening: 'info',
   interview: 'pastel-purple',
   assessment: 'warning',
@@ -242,7 +243,9 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
 
   const loadStages = useCallback(async () => {
     const plan = await loadHiringPlanInstances(jobId)
-    setStageOptions(plan.length > 0 ? plan : [])
+    // Exclude application_review stages from the pipeline board/list (it has its own dedicated tab)
+    const filtered = plan.filter(opt => opt.stage.stage_type !== 'application_review')
+    setStageOptions(filtered.length > 0 ? filtered : [])
   }, [jobId, loadHiringPlanInstances])
 
   const loadPipeline = useCallback(async () => {
