@@ -158,19 +158,21 @@ function BodyEditorInner({
     if (isFocused) return;
     if (value === lastValueRef.current) return;
 
-    // Normalize: strip any HTML and convert to plain text with {{placeholders}}
-    const plainText = convertHtmlToPlaceholders(value);
-    editor.update(() => {
-      const root = $getRoot();
-      root.clear();
-      const lines = plainText.split('\n');
-      lines.forEach(line => {
-        const paragraph = $createParagraphNode();
-        const nodes = parseTemplateToNodes(line);
-        nodes.forEach(node => paragraph.append(node));
-        root.append(paragraph);
+    if (HTML_TAG_REGEX.test(value)) {
+      loadHtmlIntoEditor(editor, value);
+    } else {
+      editor.update(() => {
+        const root = $getRoot();
+        root.clear();
+        const lines = value.split('\n');
+        lines.forEach(line => {
+          const paragraph = $createParagraphNode();
+          const nodes = parseTemplateToNodes(line);
+          nodes.forEach(node => paragraph.append(node));
+          root.append(paragraph);
+        });
       });
-    });
+    }
     lastValueRef.current = value;
   }, [editor, value, isFocused]);
 
