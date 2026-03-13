@@ -42,8 +42,10 @@ import { PlaceholderNode, $createPlaceholderNode } from './nodes/PlaceholderNode
 import { PlaceholderPlugin } from './plugins/PlaceholderPlugin';
 import { OnChangePlugin } from './plugins/OnChangePlugin';
 import { AutoLinkPlugin } from './plugins/AutoLinkPlugin';
-import { parseTemplateToNodes } from './utils/placeholderLexicalUtils';
+import { parseTemplateToNodes, loadHtmlIntoEditor } from './utils/placeholderLexicalUtils';
 import { convertHtmlToPlaceholders } from '@/utils/placeholderUtils';
+
+const HTML_TAG_REGEX = /<\/?[a-z][\s\S]*>/i;
 
 export interface BodyTemplateEditorProps {
   value: string;
