@@ -1725,7 +1725,7 @@ const stageHasAutomation = useMemo(() => {
                       />
 
                      {/* Chat Tab */}
-                     {rightActiveTab === 'chat' && candidateId && (
+                     {isWhatsAppEnabled && rightActiveTab === 'chat' && candidateId && (
                        <Card className="bg-surface-primary border-border h-[500px]">
                           <WhatsAppChatTab
                             candidateId={candidateId}
