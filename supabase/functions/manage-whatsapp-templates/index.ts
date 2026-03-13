@@ -83,6 +83,43 @@ Deno.serve(async (req) => {
 
         if (error) throw error;
 
+        // Auto-refresh pending templates by polling Twilio
+        const pendingTemplates = (templates || []).filter(
+          (t: Record<string, unknown>) => t.twilio_content_sid && t.approval_status === "pending"
+        );
+
+        for (const tmpl of pendingTemplates) {
+          try {
+            const statusRes = await fetch(
+              `https://content.twilio.com/v1/Content/${tmpl.twilio_content_sid}/ApprovalRequests`,
+              { headers: { Authorization: twilioBasicAuth() } }
+            );
+            if (statusRes.ok) {
+              const statusData = await statusRes.json();
+              const wa = statusData.approval_requests?.find(
+                (r: Record<string, unknown>) => r.channel === "whatsapp"
+              );
+              if (wa) {
+                let mapped = "pending";
+                const s = ((wa.status as string) || "").toLowerCase();
+                if (s === "approved") mapped = "approved";
+                else if (s === "rejected" || s === "failed") mapped = "rejected";
+
+                if (mapped !== tmpl.approval_status) {
+                  console.log(`[WhatsApp Templates] Auto-refresh: ${tmpl.id} ${tmpl.approval_status} → ${mapped}`);
+                  await supabase
+                    .from("whatsapp_templates")
+                    .update({ approval_status: mapped })
+                    .eq("id", tmpl.id);
+                  tmpl.approval_status = mapped;
+                }
+              }
+            }
+          } catch (e) {
+            console.error(`[WhatsApp Templates] Failed to poll status for ${tmpl.id}:`, e);
+          }
+        }
+
         return new Response(JSON.stringify({ templates: templates || [] }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
