@@ -216,7 +216,12 @@ export function WhatsAppChatTab({
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 px-4" ref={scrollRef}>
+      <ScrollArea className="flex-1 relative" ref={scrollRef}>
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-[0.07] pointer-events-none"
+          style={{ backgroundImage: `url(${whatsappBg})` }}
+        />
+        <div className="relative px-4">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
