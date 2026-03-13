@@ -341,16 +341,16 @@ export function WhatsAppChatTab({
         <div className="flex gap-2">
           {needsTemplate ? (
             <Button
-              className="w-full bg-[#25D366] hover:bg-[#25D366]/90 text-white"
+              size="icon"
               onClick={handleSend}
               disabled={!selectedTemplate || sendMessage.isPending}
+              className="shrink-0 ml-auto bg-virgilio-purple hover:bg-virgilio-purple/90 text-white"
             >
               {sendMessage.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Send className="h-4 w-4 mr-2" />
+                <Send className="h-4 w-4" />
               )}
-              Send Template
             </Button>
           ) : (
             <>
