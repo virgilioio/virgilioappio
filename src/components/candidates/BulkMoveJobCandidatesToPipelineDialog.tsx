@@ -104,7 +104,9 @@ export default function BulkMoveJobCandidatesToPipelineDialog({ jobId, candidate
     try {
       const results = await Promise.allSettled(
         candidates.map(async (c) => {
-          const indId = await ensureIndependentCandidateId(c)
+          const indId = c.candidate_name
+            ? await ensureIndependentCandidateId(c)
+            : c.id
           return createAssociationAndMove(jobId, indId, selectedJhsId)
         })
       )
