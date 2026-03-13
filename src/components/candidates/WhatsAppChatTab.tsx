@@ -69,6 +69,9 @@ export function WhatsAppChatTab({
   const isFirstContact = messages.length === 0
   const needsTemplate = isFirstContact || !hasActiveSession
 
+  const hasOutboundMessages = messages.some((m) => m.direction === 'outbound')
+  const awaitingReply = hasOutboundMessages && !hasActiveSession
+
   // Mark as read when conversation opens
   useEffect(() => {
     if (conversation?.id && conversation.unread_count > 0) {
