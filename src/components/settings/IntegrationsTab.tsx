@@ -45,10 +45,6 @@ function useChromeConnected() {
   return false
 }
 
-function useWhatsAppConnected() {
-  const { isConnected, isActive } = useWhatsAppConfig()
-  return isConnected && isActive
-}
 
 const INTEGRATIONS: IntegrationEntry[] = [
   {
