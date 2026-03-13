@@ -38,6 +38,7 @@ export function WhatsAppIntegrationCard() {
     lastError,
     conversationCount,
     disconnect,
+    syncAll,
   } = useWhatsAppConfig()
 
   const sessionState = useWhatsAppSessionState()
