@@ -13,17 +13,13 @@ export type { WhatsAppSessionStatus, WhatsAppSessionState }
  * 
  * Combines two sources of truth:
  * - workspace_automations (whatsapp_config) → feature toggle (is_active)
- * - whatsapp_sessions table → real session state
- * 
- * The UI should use this hook for all WhatsApp state needs.
+ * - whatsapp_sessions table → real session state (via provider)
  */
 export function useWhatsAppConfig() {
   const { automation, isLoading: configLoading, isSaving: configSaving, save: baseSave, toggle } = useWorkspaceAutomation('whatsapp_config')
   const session = useWhatsAppSession()
 
   const isActive = automation?.is_active ?? false
-
-  // Session state comes from the persisted whatsapp_sessions table
   const sessionStatus = session.sessionStatus
   const isConnected = session.isConnected
   const isEnabled = isActive && isConnected
@@ -44,6 +40,7 @@ export function useWhatsAppConfig() {
     isActive,
     lastError: session.lastError,
     qrCodeData: session.qrCodeData,
+    qrExpiresAt: session.qrExpiresAt,
     config: automation?.config || {},
     toggle,
     updateSessionStatus: session.updateStatus,
@@ -55,12 +52,15 @@ export function useWhatsAppConfig() {
     ),
     disconnect: session.disconnect,
     startConnection: session.startConnection,
+    refreshQr: session.refreshQr,
+    checkStatus: session.checkStatus,
+    syncAll: session.syncAll,
+    syncConversations: session.syncConversations,
   }
 }
 
 /**
  * Returns the current WhatsApp session state for the workspace.
- * Reusable across all WhatsApp surfaces.
  */
 export function useWhatsAppSessionState(): WhatsAppSessionState & { isLoading: boolean; isEnabled: boolean } {
   const { sessionStatus, isLoading, isEnabled } = useWhatsAppConfig()
