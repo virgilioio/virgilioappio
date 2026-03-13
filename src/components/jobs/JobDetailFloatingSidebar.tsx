@@ -40,7 +40,8 @@ export function JobDetailFloatingSidebar({
     {
       id: 'whatsapp',
       label: 'WhatsApp',
-      icon: MessageSquare,
+      icon: null as any,
+      customIcon: whatsappIcon,
     },
     {
       id: 'job-setup',
