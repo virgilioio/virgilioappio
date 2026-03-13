@@ -83,53 +83,61 @@ export function useRejectCandidate() {
         console.error('Failed to cancel interviews on rejection:', cancelError);
       }
 
-      // Handle email
+      // Handle email — failures here should not block UI progression
+      let emailError: string | null = null;
       if (sendEmail && emailData) {
-        if (scheduleFor) {
-          // Schedule the email for later
-          const { error: scheduleError } = await supabase
-            .from('scheduled_emails')
-            .insert({
-              tenant_id: tenantId,
-              organization_id: organizationId,
-              scheduled_for: scheduleFor.toISOString(),
-              email_type: 'rejection',
+        try {
+          if (scheduleFor) {
+            // Schedule the email for later
+            const { error: scheduleError } = await supabase
+              .from('scheduled_emails')
+              .insert({
+                tenant_id: tenantId,
+                organization_id: organizationId,
+                scheduled_for: scheduleFor.toISOString(),
+                email_type: 'rejection',
+                from_email: emailData.fromEmail,
+                to_emails: emailData.toEmails,
+                subject: emailData.subject,
+                body_html: emailData.bodyHtml,
+                candidate_id: emailData.candidateId,
+                job_id: emailData.jobId,
+                association_id: associationId,
+                rejection_reason_id: rejectionReasonId,
+                created_by: user?.id,
+                status: 'pending',
+              });
+
+            if (scheduleError) {
+              emailError = scheduleError.message;
+            }
+          } else {
+            // Send immediately
+            const request: SendEmailRequest = {
               from_email: emailData.fromEmail,
-              to_emails: emailData.toEmails,
+              to: emailData.toEmails,
               subject: emailData.subject,
               body_html: emailData.bodyHtml,
+              body_text: emailData.bodyHtml.replace(/<[^>]*>/g, ''),
               candidate_id: emailData.candidateId,
               job_id: emailData.jobId,
-              association_id: associationId,
-              rejection_reason_id: rejectionReasonId,
-              created_by: user?.id,
-              status: 'pending',
-            });
+            };
 
-          if (scheduleError) throw scheduleError;
-        } else {
-          // Send immediately
-          const request: SendEmailRequest = {
-            from_email: emailData.fromEmail,
-            to: emailData.toEmails,
-            subject: emailData.subject,
-            body_html: emailData.bodyHtml,
-            body_text: emailData.bodyHtml.replace(/<[^>]*>/g, ''),
-            candidate_id: emailData.candidateId,
-            job_id: emailData.jobId,
-          };
+            await sendEmailMutation.mutateAsync(request);
 
-          await sendEmailMutation.mutateAsync(request);
-
-          // Mark email as sent on the association
-          await supabase
-            .from('job_candidate_associations')
-            .update({ rejection_email_sent_at: new Date().toISOString() })
-            .eq('id', associationId);
+            // Mark email as sent on the association
+            await supabase
+              .from('job_candidate_associations')
+              .update({ rejection_email_sent_at: new Date().toISOString() })
+              .eq('id', associationId);
+          }
+        } catch (e: any) {
+          console.error('Email send/schedule failed after rejection:', e);
+          emailError = e?.message || 'Email delivery failed';
         }
       }
 
-      return { success: true };
+      return { success: true, emailError };
     },
     onSuccess: (_, variables) => {
       if (variables.sendEmail && variables.scheduleFor) {
