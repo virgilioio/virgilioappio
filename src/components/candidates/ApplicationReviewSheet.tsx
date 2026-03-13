@@ -183,8 +183,8 @@ export function ApplicationReviewSheet({
                 )}
               </SheetHeader>
 
-              {/* 3-Column Grid: Resume (2) | Responses (1) | Controls (1) */}
-              <div className="flex-1 min-h-0 grid grid-cols-4 gap-0">
+              {/* 3-Column Grid: Resume (3) | Responses (3) | Controls (2) */}
+              <div className="flex-1 min-h-0 grid grid-cols-8 gap-0">
                 {/* Column 1 — Resume (2/4) */}
                 <div className="col-span-2 border-r border-border flex flex-col min-h-0">
                   <ScrollArea className="flex-1">
