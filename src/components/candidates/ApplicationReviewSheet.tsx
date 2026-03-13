@@ -329,6 +329,7 @@ function RejectionConfigPanel({
 
   return (
     <div className="space-y-4">
+      {/* Rejection Reason */}
       <div className="space-y-2">
         <Label className="text-xs">Rejection Reason</Label>
         <RejectionReasonSelector
@@ -337,35 +338,7 @@ function RejectionConfigPanel({
         />
       </div>
 
-      <div className="space-y-2">
-        <Label className="text-xs">Rejection Email Template</Label>
-        <Select
-          value={config.rejectionEmailTemplateId || ''}
-          onValueChange={(value) => onChange({ ...config, rejectionEmailTemplateId: value || undefined })}
-        >
-          <SelectTrigger className="text-sm">
-            <SelectValue placeholder={templatesLoading ? 'Loading...' : 'Select template'} />
-          </SelectTrigger>
-          <SelectContent>
-            {templates.map((template) => (
-              <SelectItem key={template.id} value={template.id}>
-                {template.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-2">
-        <Label className="text-xs">Notes (optional)</Label>
-        <Textarea
-          value={config.rejectionNotes || ''}
-          onChange={(e) => onChange({ ...config, rejectionNotes: e.target.value })}
-          placeholder="Brief rejection note..."
-          className="min-h-[60px] text-sm"
-        />
-      </div>
-
+      {/* Send Email Toggle */}
       <div className="flex items-center justify-between rounded-lg border border-border p-3">
         <div>
           <Label className="text-xs cursor-pointer">Send rejection email</Label>
@@ -374,6 +347,57 @@ function RejectionConfigPanel({
         <Switch
           checked={config.sendEmail}
           onCheckedChange={(checked) => onChange({ ...config, sendEmail: checked })}
+        />
+      </div>
+
+      {/* Email Template (visible when toggle is on) */}
+      {config.sendEmail && (
+        <div className="space-y-2">
+          <Label className="text-xs">Rejection Email Template</Label>
+          <Select
+            value={config.rejectionEmailTemplateId || ''}
+            onValueChange={(value) => onChange({ ...config, rejectionEmailTemplateId: value || undefined })}
+          >
+            <SelectTrigger className="text-sm">
+              <SelectValue placeholder={templatesLoading ? 'Loading...' : 'Select template'} />
+            </SelectTrigger>
+            <SelectContent>
+              {templates.map((template) => (
+                <SelectItem key={template.id} value={template.id}>
+                  {template.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {/* Email Preview (visible when toggle is on + template selected) */}
+      {config.sendEmail && config.rejectionEmailTemplateId && (() => {
+        const selectedTemplate = templates.find(t => t.id === config.rejectionEmailTemplateId)
+        if (!selectedTemplate) return null
+        return (
+          <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2 max-h-[200px] overflow-y-auto">
+            <div>
+              <p className="text-[11px] text-text-secondary font-medium uppercase tracking-wide">Subject</p>
+              <p className="text-xs text-text-primary">{selectedTemplate.subject}</p>
+            </div>
+            <div className="border-t border-border pt-2">
+              <p className="text-[11px] text-text-secondary font-medium uppercase tracking-wide mb-1">Body</p>
+              <SafeHtml content={selectedTemplate.body} className="text-xs text-text-primary leading-relaxed prose-sm" />
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Notes */}
+      <div className="space-y-2">
+        <Label className="text-xs">Notes (optional)</Label>
+        <Textarea
+          value={config.rejectionNotes || ''}
+          onChange={(e) => onChange({ ...config, rejectionNotes: e.target.value })}
+          placeholder="Brief rejection note..."
+          className="min-h-[60px] text-sm"
         />
       </div>
     </div>
