@@ -170,6 +170,7 @@ Deno.serve(async (req) => {
         63007: `The From number (${fromWhatsApp}) is not registered as an active WhatsApp Sender in Twilio. Please verify the number in your Twilio console and update it in Settings > Integrations.`,
         63016: `The message body or template is not valid for WhatsApp. Please check your template content.`,
         63049: `This marketing template was blocked by Meta. Since April 2025, WhatsApp marketing messages are blocked for US numbers. Please delete this template and re-create it as a Utility template.`,
+        63112: `Your WhatsApp Business Account has been disabled by Meta. Please check your Meta Business verification status in the Meta Business Suite and contact Meta support if needed.`,
         21211: `The 'To' phone number (${toWhatsApp}) is not valid. Please verify the candidate's phone number.`,
         21608: `The From number is not enabled for WhatsApp. Register it as a WhatsApp Sender in Twilio first.`,
       };

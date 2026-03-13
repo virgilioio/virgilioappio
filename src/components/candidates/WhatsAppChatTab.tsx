@@ -13,6 +13,7 @@ import {
 } from '@/hooks/useWhatsApp'
 import { useWhatsAppTemplates, useWhatsAppSetupStatus, type WhatsAppTemplate } from '@/hooks/useWhatsAppConfig'
 import { cn } from '@/lib/utils'
+import { toast } from '@/hooks/use-toast'
 import whatsappBg from '@/assets/whatsapp-chat-bg.png'
 import { useNavigate } from 'react-router-dom'
 import { useTenant } from '@/hooks/useTenant'
@@ -152,8 +153,9 @@ export function WhatsAppChatTab({
         })
         setMessage('')
       }
-    } catch (error) {
-      // Error handled by mutation
+      toast({ title: 'Message sent' })
+    } catch (error: any) {
+      toast({ title: 'Failed to send', description: error?.message || 'Unknown error', variant: 'destructive' })
     }
   }
 
@@ -261,8 +263,13 @@ export function WhatsAppChatTab({
                     {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
                   </span>
                   {msg.direction === 'outbound' && (
-                    <span className="text-[10px] text-muted-foreground capitalize">
-                      · {msg.status}
+                    <span className={cn(
+                      "text-[10px] capitalize",
+                      msg.status === 'failed' || msg.status === 'undelivered'
+                        ? 'text-destructive font-medium'
+                        : 'text-muted-foreground'
+                    )}>
+                      · {msg.status === 'failed' || msg.status === 'undelivered' ? '⚠ ' + msg.status : msg.status}
                     </span>
                   )}
                 </div>
