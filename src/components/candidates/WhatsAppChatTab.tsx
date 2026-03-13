@@ -266,57 +266,43 @@ export function WhatsAppChatTab({
 
       {/* Compose area */}
       <div className="border-t border-border p-3 space-y-2">
-        {/* Template selector for first contact */}
-        {needsTemplate && !selectedTemplate && (
-          <div className="space-y-2">
-            {showTemplates ? (
-              <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                {usableTemplates.length > 0 ? (
-                  usableTemplates.map((t) => (
-                    <button
-                      key={t.id}
-                      onClick={() => {
-                        setSelectedTemplate(t)
-                        setShowTemplates(false)
-                      }}
-                      className="w-full text-left p-2.5 rounded-md border border-border hover:bg-accent/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs font-medium">{t.name}</p>
-                        {!t.tenant_id && (
-                          <Badge variant="secondary" className="text-[9px]">GoGio</Badge>
-                        )}
-                        <Badge variant="outline" className="text-[9px] border-[#25D366]/30 text-[#25D366]">
-                          Approved
-                        </Badge>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
-                        {getPreviewText(t)}
-                      </p>
-                    </button>
-                  ))
-                ) : (
-                  <div className="p-4 text-center">
-                    <FileText className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-xs text-muted-foreground">
-                      No approved templates available yet.
-                    </p>
-                    <p className="text-[11px] text-muted-foreground mt-1">
-                      Templates are being set up by the GoGio team. You can send freeform messages once a candidate replies.
-                    </p>
+        {/* Template list when expanded */}
+        {needsTemplate && !selectedTemplate && showTemplates && (
+          <div className="space-y-1.5 max-h-48 overflow-y-auto">
+            {usableTemplates.length > 0 ? (
+              usableTemplates.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => {
+                    setSelectedTemplate(t)
+                    setShowTemplates(false)
+                  }}
+                  className="w-full text-left p-2.5 rounded-md border border-border hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-medium">{t.name}</p>
+                    {!t.tenant_id && (
+                      <Badge variant="secondary" className="text-[9px]">GoGio</Badge>
+                    )}
+                    <Badge variant="outline" className="text-[9px] border-[#25D366]/30 text-[#25D366]">
+                      Approved
+                    </Badge>
                   </div>
-                )}
-              </div>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                    {getPreviewText(t)}
+                  </p>
+                </button>
+              ))
             ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowTemplates(true)}
-                className="w-full justify-start text-xs"
-              >
-                <FileText className="h-3.5 w-3.5 mr-2" />
-                Select a template to start conversation
-              </Button>
+              <div className="p-4 text-center">
+                <FileText className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
+                <p className="text-xs text-muted-foreground">
+                  No approved templates available yet.
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Templates are being set up by the GoGio team. You can send freeform messages once a candidate replies.
+                </p>
+              </div>
             )}
           </div>
         )}
@@ -337,21 +323,33 @@ export function WhatsAppChatTab({
           </div>
         )}
 
-        {/* Freeform input or send button */}
-        <div className="flex gap-2">
+        {/* Input row — always a single line with send button */}
+        <div className="flex items-center gap-2">
           {needsTemplate ? (
-            <Button
-              size="icon"
-              onClick={handleSend}
-              disabled={!selectedTemplate || sendMessage.isPending}
-              className="shrink-0 ml-auto bg-virgilio-purple hover:bg-virgilio-purple/90 text-white"
-            >
-              {sendMessage.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
+            <>
+              {!selectedTemplate && !showTemplates && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowTemplates(true)}
+                  className="flex-1 justify-start text-xs"
+                >
+                  <FileText className="h-3.5 w-3.5 mr-2" />
+                  Select a template to start conversation
+                </Button>
               )}
-            </Button>
+              <button
+                onClick={handleSend}
+                disabled={!selectedTemplate || sendMessage.isPending}
+                className="shrink-0 h-10 w-10 rounded-full bg-virgilio-purple hover:bg-virgilio-purple/90 text-white inline-flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none transition-colors ml-auto"
+              >
+                {sendMessage.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </button>
+            </>
           ) : (
             <>
               <Textarea
@@ -359,21 +357,20 @@ export function WhatsAppChatTab({
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={`Message ${candidateName}...`}
-                className="min-h-[40px] max-h-[120px] resize-none text-sm"
+                className="min-h-[40px] max-h-[120px] resize-none text-sm flex-1"
                 rows={1}
               />
-              <Button
-                size="icon"
+              <button
                 onClick={handleSend}
                 disabled={!message.trim() || sendMessage.isPending}
-                className="shrink-0 bg-virgilio-purple hover:bg-virgilio-purple/90 text-white"
+                className="shrink-0 h-10 w-10 rounded-full bg-virgilio-purple hover:bg-virgilio-purple/90 text-white inline-flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none transition-colors"
               >
                 {sendMessage.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Send className="h-4 w-4" />
                 )}
-              </Button>
+              </button>
             </>
           )}
         </div>
