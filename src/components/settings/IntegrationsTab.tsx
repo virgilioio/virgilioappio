@@ -65,6 +65,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
     useIsConnected: useGoogleConnected,
     DetailComponent: GoogleWorkspaceIntegrationSection,
   },
+]
 
 // Wrapper component that calls the hook for each integration
 function IntegrationCardWrapper({
@@ -92,10 +93,13 @@ function IntegrationCardWrapper({
 
 // Wrapper to get connection status for filtering
 function useIntegrationStatuses() {
+  const googleConnected = useGoogleConnected()
+  const chromeConnected = useChromeConnected()
   return {
     'chrome-extension': chromeConnected,
     'google-workspace': googleConnected,
   } as Record<string, boolean>
+}
 }
 
 export function IntegrationsTab() {
