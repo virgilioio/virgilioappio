@@ -146,22 +146,7 @@ export function useWhatsAppSetupStatus(): WhatsAppSetupState & { isLoading: bool
 }
 
 export function useWhatsAppTemplates() {
-  const query = useQuery({
-    queryKey: ['whatsapp-templates'],
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('manage-whatsapp-templates', {
-        body: { action: 'list' },
-      })
-      if (error) throw error
-      if (data?.error) throw new Error(data.error)
-      return (data?.templates || []) as WhatsAppTemplate[]
-    },
-  })
-
-  // Auto-poll every 30s while there are pending templates
-  const hasPending = (query.data || []).some(
-    (t) => t.twilio_content_sid && t.approval_status === 'pending'
-  )
+  const hasPendingRef = useRef(false)
 
   return useQuery({
     queryKey: ['whatsapp-templates'],
@@ -171,9 +156,13 @@ export function useWhatsAppTemplates() {
       })
       if (error) throw error
       if (data?.error) throw new Error(data.error)
-      return (data?.templates || []) as WhatsAppTemplate[]
+      const templates = (data?.templates || []) as WhatsAppTemplate[]
+      hasPendingRef.current = templates.some(
+        (t) => t.twilio_content_sid && t.approval_status === 'pending'
+      )
+      return templates
     },
-    refetchInterval: hasPending ? 30_000 : false,
+    refetchInterval: () => (hasPendingRef.current ? 30_000 : false),
   })
 }
 
