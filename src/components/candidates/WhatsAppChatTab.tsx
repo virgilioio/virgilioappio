@@ -13,6 +13,7 @@ import {
 } from '@/hooks/useWhatsApp'
 import { useWhatsAppTemplates, useWhatsAppSetupStatus, type WhatsAppTemplate } from '@/hooks/useWhatsAppConfig'
 import { cn } from '@/lib/utils'
+import whatsappBg from '@/assets/whatsapp-chat-bg.png'
 import { useNavigate } from 'react-router-dom'
 import { useTenant } from '@/hooks/useTenant'
 import { useAuth } from '@/contexts/AuthContext'
@@ -216,7 +217,12 @@ export function WhatsAppChatTab({
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 px-4" ref={scrollRef}>
+      <ScrollArea className="flex-1 relative" ref={scrollRef}>
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-[0.07] pointer-events-none"
+          style={{ backgroundImage: `url(${whatsappBg})` }}
+        />
+        <div className="relative px-4">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -255,6 +261,7 @@ export function WhatsAppChatTab({
             ))}
           </div>
         )}
+        </div>
       </ScrollArea>
 
       {/* Compose area */}
@@ -334,16 +341,16 @@ export function WhatsAppChatTab({
         <div className="flex gap-2">
           {needsTemplate ? (
             <Button
-              className="w-full bg-[#25D366] hover:bg-[#25D366]/90 text-white"
+              size="icon"
               onClick={handleSend}
               disabled={!selectedTemplate || sendMessage.isPending}
+              className="shrink-0 ml-auto bg-virgilio-purple hover:bg-virgilio-purple/90 text-white"
             >
               {sendMessage.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Send className="h-4 w-4 mr-2" />
+                <Send className="h-4 w-4" />
               )}
-              Send Template
             </Button>
           ) : (
             <>
@@ -359,7 +366,7 @@ export function WhatsAppChatTab({
                 size="icon"
                 onClick={handleSend}
                 disabled={!message.trim() || sendMessage.isPending}
-                className="shrink-0 bg-[#25D366] hover:bg-[#25D366]/90 text-white"
+                className="shrink-0 bg-virgilio-purple hover:bg-virgilio-purple/90 text-white"
               >
                 {sendMessage.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
