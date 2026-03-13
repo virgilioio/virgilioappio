@@ -137,8 +137,15 @@ Per-tenant dedicated numbers under GoGio's master Twilio account. Each tenant ge
 - ✅ Inserted with `tenant_id = NULL` (global)
 - ✅ No `twilio_content_sid` yet (marked as draft until GoGio team adds real SIDs)
 
-## Manual Prerequisites (for GoGio team)
-1. Register provisioned numbers as WhatsApp Senders in Twilio Console
-2. Create Content templates in Twilio Console matching seeded templates
-3. UPDATE `whatsapp_templates` rows with real `twilio_content_sid` values and `approval_status = 'approved'`
-4. Set inbound webhook URL on each number: `https://etrxjxstjfcozdjumfsj.supabase.co/functions/v1/whatsapp-inbound-webhook`
+## Manual Prerequisites (for GoGio team — ONE-TIME ONLY)
+1. Get WhatsApp Business Account approved in Twilio Console
+2. Create a Messaging Service and enable WhatsApp on it
+3. Create Content templates in Twilio Console matching seeded templates
+4. UPDATE `whatsapp_templates` rows with real `twilio_content_sid` values and `approval_status = 'approved'`
+5. Store `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID` as Supabase secrets ✅ Done
+
+## Automated Per-Tenant (Zero-Touch)
+1. ✅ Buy number via gateway
+2. ✅ Configure webhook URL on number via gateway
+3. ✅ Register number as WhatsApp Sender via Messaging Service API
+4. ✅ Save config to DB
