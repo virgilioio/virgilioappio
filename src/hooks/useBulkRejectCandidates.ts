@@ -43,8 +43,8 @@ export function useBulkRejectCandidates() {
           candidate_id,
           job_id,
           current_stage_id,
-          candidate:candidates!inner(id, candidate_name, email),
-          job:jobs!inner(id, title, tenant_id, organization_id)
+          candidate:candidates!inner(id, candidate_name, email, phone, location_city, location_state, location_country),
+          job:jobs!inner(id, title, department, location, tenant_id, organization_id, tenant:tenants!inner(name), organization:organizations!inner(name))
         `)
         .in('id', associationIds);
 
@@ -52,6 +52,13 @@ export function useBulkRejectCandidates() {
       if (!associations || associations.length === 0) {
         throw new Error('No valid associations found');
       }
+
+      // Fetch sender profile for placeholder resolution
+      const { data: senderProfile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, email, title, phone, linkedin_url')
+        .eq('user_id', user?.id)
+        .single();
 
       const results = await Promise.allSettled(
         associations.map(async (assoc, index) => {
