@@ -26,6 +26,7 @@ export interface ReviewCandidate {
 
 export interface RejectionConfig {
   rejectionReasonId?: string
+  rejectionEmailTemplateId?: string
   sendEmail: boolean
   rejectionNotes?: string
 }
