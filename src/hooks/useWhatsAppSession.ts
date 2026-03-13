@@ -1,18 +1,15 @@
 /**
  * useWhatsAppSession — Persisted session state from whatsapp_sessions table.
  * 
- * This replaces the workspace_automations-based config for session state,
- * using the dedicated whatsapp_sessions table as the source of truth.
- * 
- * The workspace_automations config (useWhatsAppConfig) is still used for
- * workspace-level feature toggle (is_active), but session connectivity
- * is now tracked in whatsapp_sessions.
+ * Combines DB polling with real provider edge function calls.
+ * The whatsapp_sessions table is the source of truth for session state,
+ * updated by both direct user actions and provider webhook events.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
-import { useCallback, useMemo } from 'react'
+import { useCallback } from 'react'
 import type { WhatsAppSessionStatus, WhatsAppSession } from '@/lib/whatsapp/types'
 import { getWhatsAppSessionState } from '@/lib/whatsapp/types'
 
@@ -68,10 +65,12 @@ export function useWhatsAppSession() {
     },
     enabled: !!user?.id,
     refetchInterval: (query) => {
-      // Poll more frequently during active connection flow
       const status = query.state.data?.sessionStatus
-      if (status === 'waiting_for_qr' || status === 'connecting' || status === 'syncing') {
-        return 3000
+      if (status === 'waiting_for_qr' || status === 'connecting') {
+        return 2000 // Fast poll during QR/connecting
+      }
+      if (status === 'syncing') {
+        return 5000
       }
       return 30000
     },
@@ -81,21 +80,13 @@ export function useWhatsAppSession() {
   const isConnected = sessionStatus === 'connected' || sessionStatus === 'syncing'
   const sessionState = getWhatsAppSessionState(sessionStatus)
 
-  const upsertMutation = useMutation({
-    mutationFn: async (updates: Record<string, any>) => {
-      if (!user?.id) throw new Error('Not authenticated')
-      const tenantId = await getTenantId(user.id)
-      if (!tenantId) throw new Error('No tenant found')
+  // ─── Real provider actions via edge functions ──────────────
 
-      const { data, error } = await supabase
-        .from('whatsapp_sessions' as any)
-        .upsert(
-          { tenant_id: tenantId, ...updates },
-          { onConflict: 'tenant_id' }
-        )
-        .select()
-        .single()
-
+  const sessionMutation = useMutation({
+    mutationFn: async (params: { action: string; [key: string]: any }) => {
+      const { data, error } = await supabase.functions.invoke('whatsapp-provider-session', {
+        body: params,
+      })
       if (error) throw error
       return data
     },
@@ -104,36 +95,64 @@ export function useWhatsAppSession() {
     },
   })
 
+  const syncMutation = useMutation({
+    mutationFn: async (params: { action: string; [key: string]: any }) => {
+      const { data, error } = await supabase.functions.invoke('whatsapp-provider-sync', {
+        body: params,
+      })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey })
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-all-conversations'] })
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-job-conversations'] })
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-conversation'] })
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-messages'] })
+    },
+  })
+
   const startConnection = useCallback(async () => {
-    // In a real implementation, this would call the edge function
-    // which calls the provider adapter to get a QR code.
-    // For now, update session status to trigger UI flow.
-    return upsertMutation.mutateAsync({
-      session_status: 'waiting_for_qr',
-      last_error: null,
-    })
-  }, [upsertMutation])
+    return sessionMutation.mutateAsync({ action: 'connect' })
+  }, [sessionMutation])
 
   const disconnect = useCallback(async () => {
-    return upsertMutation.mutateAsync({
-      session_status: 'disconnected',
-      connected_phone: null,
-      connected_at: null,
-      disconnected_at: new Date().toISOString(),
-      last_error: null,
-      qr_code_data: null,
-    })
-  }, [upsertMutation])
+    return sessionMutation.mutateAsync({ action: 'disconnect' })
+  }, [sessionMutation])
+
+  const refreshQr = useCallback(async () => {
+    return sessionMutation.mutateAsync({ action: 'refresh_qr' })
+  }, [sessionMutation])
+
+  const checkStatus = useCallback(async () => {
+    return sessionMutation.mutateAsync({ action: 'status' })
+  }, [sessionMutation])
+
+  const syncAll = useCallback(async () => {
+    return syncMutation.mutateAsync({ action: 'sync_all' })
+  }, [syncMutation])
+
+  const syncConversations = useCallback(async () => {
+    return syncMutation.mutateAsync({ action: 'sync_conversations' })
+  }, [syncMutation])
 
   const updateStatus = useCallback(
-    (status: WhatsAppSessionStatus, extra?: Record<string, any>) => {
-      return upsertMutation.mutateAsync({
-        session_status: status,
-        last_error: null,
-        ...extra,
-      })
+    async (status: WhatsAppSessionStatus, extra?: Record<string, any>) => {
+      // For direct status updates (used by UI for cancel etc.), update DB directly
+      if (!user?.id) throw new Error('Not authenticated')
+      const tenantId = await getTenantId(user.id)
+      if (!tenantId) throw new Error('No tenant found')
+
+      const { error } = await supabase
+        .from('whatsapp_sessions' as any)
+        .upsert(
+          { tenant_id: tenantId, session_status: status, last_error: null, ...extra },
+          { onConflict: 'tenant_id' }
+        )
+      if (error) throw error
+      queryClient.invalidateQueries({ queryKey })
     },
-    [upsertMutation]
+    [user?.id, queryClient, queryKey]
   )
 
   return {
@@ -141,10 +160,14 @@ export function useWhatsAppSession() {
     sessionStatus,
     isConnected,
     isLoading,
-    isSaving: upsertMutation.isPending,
+    isSaving: sessionMutation.isPending || syncMutation.isPending,
     sessionState,
     startConnection,
     disconnect,
+    refreshQr,
+    checkStatus,
+    syncAll,
+    syncConversations,
     updateStatus,
     // Convenience accessors
     connectedPhone: session?.connectedPhone ?? null,
@@ -153,5 +176,6 @@ export function useWhatsAppSession() {
     lastError: session?.lastError ?? null,
     conversationCount: session?.conversationCount ?? 0,
     qrCodeData: session?.qrCodeData ?? null,
+    qrExpiresAt: session?.qrExpiresAt ?? null,
   }
 }

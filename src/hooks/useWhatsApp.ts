@@ -150,6 +150,29 @@ export function useMarkWhatsAppRead() {
 }
 
 /**
+ * Send a WhatsApp message through the provider.
+ */
+export function useSendWhatsAppMessage() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (params: { conversation_id: string; text: string }) => {
+      const { data, error } = await supabase.functions.invoke('whatsapp-send-message', {
+        body: params,
+      })
+      if (error) throw error
+      return data
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-messages', variables.conversation_id] })
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-conversation'] })
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-job-conversations'] })
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-all-conversations'] })
+    },
+  })
+}
+
+/**
  * Link/unlink/create candidate for a WhatsApp conversation
  * via the whatsapp-link-candidate edge function.
  */

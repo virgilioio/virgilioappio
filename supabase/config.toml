@@ -200,3 +200,15 @@ verify_jwt = false
 [functions.whatsapp-link-candidate]
 verify_jwt = false
 
+[functions.whatsapp-provider-session]
+verify_jwt = false
+
+[functions.whatsapp-provider-sync]
+verify_jwt = false
+
+[functions.whatsapp-provider-webhook]
+verify_jwt = false
+
+[functions.whatsapp-send-message]
+verify_jwt = false
+
