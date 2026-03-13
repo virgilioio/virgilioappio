@@ -1,5 +1,5 @@
 import { useWorkspaceAutomation } from '@/hooks/useWorkspaceAutomation'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 
@@ -146,6 +146,8 @@ export function useWhatsAppSetupStatus(): WhatsAppSetupState & { isLoading: bool
 }
 
 export function useWhatsAppTemplates() {
+  const hasPendingRef = useRef(false)
+
   return useQuery({
     queryKey: ['whatsapp-templates'],
     queryFn: async () => {
@@ -154,8 +156,13 @@ export function useWhatsAppTemplates() {
       })
       if (error) throw error
       if (data?.error) throw new Error(data.error)
-      return (data?.templates || []) as WhatsAppTemplate[]
+      const templates = (data?.templates || []) as WhatsAppTemplate[]
+      hasPendingRef.current = templates.some(
+        (t) => t.twilio_content_sid && t.approval_status === 'pending'
+      )
+      return templates
     },
+    refetchInterval: () => (hasPendingRef.current ? 30_000 : false),
   })
 }
 
