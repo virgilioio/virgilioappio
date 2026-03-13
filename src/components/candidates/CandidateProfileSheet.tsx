@@ -45,8 +45,6 @@ import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { useCandidateResolver } from '@/hooks/useCandidateResolver'
 import { triggerFitAnalysis } from '@/utils/triggerFitAnalysis'
 import { useJobRole } from '@/hooks/useJobRole'
-import { WhatsAppChatTab } from '@/components/candidates/WhatsAppChatTab'
-import { useWhatsAppConfig } from '@/hooks/useWhatsAppConfig'
 
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 import { MobileJobSelector } from '@/components/candidates/MobileJobSelector'
