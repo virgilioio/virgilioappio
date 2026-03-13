@@ -284,6 +284,21 @@ export function WhatsAppChatTab({
       </ScrollArea>
 
       {/* Compose area */}
+      {awaitingReply ? (
+        <div className="border-t border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800/40 p-4">
+          <div className="flex items-start gap-3">
+            <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                Waiting for reply
+              </p>
+              <p className="text-xs text-amber-700/80 dark:text-amber-400/70 mt-1">
+                You've already sent a template message. Per WhatsApp policy, you cannot send another message until {candidateName.split(' ')[0]} responds (opens a 24-hour session).
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
       <div className="border-t border-border p-3 space-y-2">
         {/* Template list when expanded */}
         {needsTemplate && !selectedTemplate && showTemplates && (
@@ -394,6 +409,7 @@ export function WhatsAppChatTab({
           )}
         </div>
       </div>
+      )}
     </div>
   )
 }
