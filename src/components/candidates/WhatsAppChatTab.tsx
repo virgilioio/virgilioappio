@@ -87,23 +87,32 @@ export function WhatsAppChatTab({
     const variables: Record<string, string> = {}
     Object.entries(mapping).forEach(([key, field]) => {
       switch (field) {
-        case 'candidate_name':
-          variables[key] = candidateName
-          break
-        case 'recruiter_name':
-          variables[key] = recruiterName || 'Our team'
-          break
-        case 'company_name':
-          variables[key] = companyName || 'our company'
-          break
-        case 'job_title':
-          variables[key] = jobTitle || 'the position'
-          break
-        case 'interview_date':
-          variables[key] = '[Date TBD]'
-          break
+        case 'candidate.name':
+          variables[key] = candidateName || ''; break
+        case 'candidate.first_name':
+          variables[key] = candidateName?.split(' ')[0] || ''; break
+        case 'candidate.email':
+          variables[key] = ''; break
+        case 'candidate.phone':
+          variables[key] = phoneNumber || ''; break
+        case 'job.title':
+          variables[key] = jobTitle || 'the position'; break
+        case 'job.department': case 'job.location':
+          variables[key] = ''; break
+        case 'company.name': case 'organization.name':
+          variables[key] = companyName || 'our company'; break
+        case 'recruiter.name': case 'sender.name':
+          variables[key] = recruiterName || 'Our team'; break
+        case 'sender.first_name':
+          variables[key] = recruiterName?.split(' ')[0] || ''; break
+        case 'sender.email':
+          variables[key] = user?.email || ''; break
+        case 'interview.date':
+          variables[key] = '[Date TBD]'; break
+        case 'interview.time':
+          variables[key] = '[Time TBD]'; break
         default:
-          variables[key] = `[${field}]`
+          variables[key] = ''; break
       }
     })
     return variables
