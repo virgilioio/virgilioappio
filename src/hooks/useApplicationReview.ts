@@ -5,6 +5,7 @@ import { useRejectCandidate } from '@/hooks/useRejectCandidate'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { toast } from '@/hooks/use-toast'
 import { useQueryClient } from '@tanstack/react-query'
+import { renderTemplate, buildPlaceholderData } from '@/utils/templateUtils'
 
 export interface ReviewCandidate {
   candidateId: string
