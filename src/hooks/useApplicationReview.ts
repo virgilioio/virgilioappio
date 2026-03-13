@@ -76,7 +76,23 @@ export function useApplicationReview(jobId: string) {
     setCurrentIndex(0)
 
     try {
-      // Get all associations for this job that are in application review (no current_stage_id, status=active)
+      // Find the application_review hiring stage for this job
+      const { data: arStages, error: arError } = await supabase
+        .from('job_hiring_stages')
+        .select('id, stage:job_stages!inner(stage_type)')
+        .eq('job_id', jobId)
+        .eq('stage:job_stages.stage_type', 'application_review' as any)
+
+      if (arError) throw arError
+
+      const arStageId = arStages?.[0]?.id
+      if (!arStageId) {
+        setQueue([])
+        setIsLoading(false)
+        return
+      }
+
+      // Get all associations in the application_review stage
       const { data: associations, error: assocError } = await supabase
         .from('job_candidate_associations')
         .select(`
@@ -100,7 +116,7 @@ export function useApplicationReview(jobId: string) {
         `)
         .eq('job_id', jobId)
         .eq('status', 'active')
-        .is('current_stage_id', null)
+        .eq('current_stage_id', arStageId)
         .order('created_at', { ascending: true })
 
       if (assocError) throw assocError
@@ -128,11 +144,12 @@ export function useApplicationReview(jobId: string) {
 
       setQueue(reviewCandidates)
 
-      // Load the first pipeline stage for this job
+      // Load the first NON-application_review pipeline stage for this job
       const { data: stages, error: stagesError } = await supabase
         .from('job_hiring_stages')
         .select('id, position, stage:job_stages!inner(stage_name, stage_type)')
         .eq('job_id', jobId)
+        .neq('stage:job_stages.stage_type', 'application_review' as any)
         .order('position', { ascending: true })
 
       if (!stagesError && stages && stages.length > 0) {
