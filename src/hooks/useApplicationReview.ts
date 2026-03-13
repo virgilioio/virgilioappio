@@ -277,6 +277,7 @@ export function useApplicationReview(jobId: string) {
       })
 
       setStats(prev => ({ ...prev, advanced: prev.advanced + 1 }))
+      setHasActioned(true)
       // Remove from queue so advanced candidate disappears immediately
       setQueue(prev => prev.filter(c => c.associationId !== currentCandidate.associationId))
     } catch (error) {

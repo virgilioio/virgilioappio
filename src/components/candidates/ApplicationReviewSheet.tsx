@@ -83,10 +83,10 @@ export function ApplicationReviewSheet({
         <div className="flex-1 min-h-0 overflow-hidden">
           {review.isLoading ? (
             <LoadingState />
-          ) : review.totalInQueue === 0 ? (
-            <EmptyState onClose={handleClose} />
           ) : review.isComplete ? (
             <CompletionState stats={review.stats} onClose={handleClose} />
+          ) : review.totalInQueue === 0 ? (
+            <EmptyState onClose={handleClose} />
           ) : review.currentCandidate ? (
             <div className="h-full flex flex-col">
               {/* Candidate Header */}
