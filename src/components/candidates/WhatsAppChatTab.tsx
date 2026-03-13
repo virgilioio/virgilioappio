@@ -366,7 +366,7 @@ export function WhatsAppChatTab({
                 size="icon"
                 onClick={handleSend}
                 disabled={!message.trim() || sendMessage.isPending}
-                className="shrink-0 bg-[#25D366] hover:bg-[#25D366]/90 text-white"
+                className="shrink-0 bg-virgilio-purple hover:bg-virgilio-purple/90 text-white"
               >
                 {sendMessage.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
