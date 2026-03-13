@@ -1,6 +1,7 @@
 
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, Settings, Kanban, Users, MessageSquare } from 'lucide-react'
+import { LayoutDashboard, Settings, Kanban, Users } from 'lucide-react'
+import whatsappIcon from '@/assets/whatsapp-icon.png'
 
 import { Button } from '@/components/ui/button'
 
