@@ -81,7 +81,7 @@ export function useApplicationReview(jobId: string) {
         .from('job_hiring_stages')
         .select('id, stage:job_stages!inner(stage_type)')
         .eq('job_id', jobId)
-        .eq('stage:job_stages.stage_type', 'application_review' as any)
+        .eq('job_stages.stage_type', 'application_review' as any)
 
       if (arError) throw arError
 
