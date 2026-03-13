@@ -43,8 +43,8 @@ export function useBulkRejectCandidates() {
           candidate_id,
           job_id,
           current_stage_id,
-          candidate:candidates!inner(id, candidate_name, email),
-          job:jobs!inner(id, title, tenant_id, organization_id)
+          candidate:candidates!inner(id, candidate_name, email, phone, location_city, location_state, location_country),
+          job:jobs!inner(id, title, department, location, tenant_id, organization_id, tenant:tenants!inner(name), organization:organizations!inner(name))
         `)
         .in('id', associationIds);
 
@@ -52,6 +52,13 @@ export function useBulkRejectCandidates() {
       if (!associations || associations.length === 0) {
         throw new Error('No valid associations found');
       }
+
+      // Fetch sender profile for placeholder resolution
+      const { data: senderProfile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, email, title, phone, linkedin_url')
+        .eq('user_id', user?.id)
+        .single();
 
       const results = await Promise.allSettled(
         associations.map(async (assoc, index) => {
@@ -108,10 +115,26 @@ export function useBulkRejectCandidates() {
                 candidate: {
                   candidate_name: candidate.candidate_name,
                   email: candidate.email,
+                  phone: candidate.phone,
+                  location_city: candidate.location_city,
+                  location_state: candidate.location_state,
+                  location_country: candidate.location_country,
                 },
                 job: {
                   title: job.title,
+                  department: job.department,
+                  location: job.location,
                 },
+                sender: {
+                  first_name: (senderProfile as any)?.first_name,
+                  last_name: (senderProfile as any)?.last_name,
+                  email: (senderProfile as any)?.email,
+                  title: (senderProfile as any)?.title,
+                  phone: (senderProfile as any)?.phone,
+                  linkedin_url: (senderProfile as any)?.linkedin_url,
+                },
+                organizationName: job.tenant?.name,
+                departmentName: job.organization?.name,
               });
 
               // Resolve placeholders using the robust rendering function

@@ -192,8 +192,8 @@ export function useApplicationReview(jobId: string) {
           toast({ title: 'No email', description: `${currentCandidate.candidateName} has no email address. Rejecting without email.` })
           shouldSendEmail = false
         } else {
-          // Fetch template and mail identity in parallel
-          const [templateResult, identityResult] = await Promise.all([
+          // Fetch template, mail identity, sender profile, and job data in parallel
+          const [templateResult, identityResult, senderResult, jobResult] = await Promise.all([
             supabase
               .from('rejection_email_templates')
               .select('subject, body')
@@ -206,6 +206,16 @@ export function useApplicationReview(jobId: string) {
               .eq('is_active', true)
               .limit(1)
               .single(),
+            supabase
+              .from('profiles')
+              .select('first_name, last_name, email, title, phone, linkedin_url')
+              .eq('user_id', user?.id ?? '')
+              .single(),
+            supabase
+              .from('jobs')
+              .select('title, department, location, tenant:tenants!inner(name), organization:organizations!inner(name)')
+              .eq('id', jobId)
+              .single(),
           ])
 
           if (templateResult.error || !templateResult.data) {
@@ -215,12 +225,33 @@ export function useApplicationReview(jobId: string) {
             toast({ title: 'No mail identity', description: 'No active mail identity found. Rejecting without email.', variant: 'destructive' })
             shouldSendEmail = false
           } else {
+            const senderProfile = senderResult.data as any
+            const jobData = jobResult.data as any
+
             const placeholderData = buildPlaceholderData({
               candidate: {
                 candidate_name: currentCandidate.candidateName,
-                email: currentCandidate.email,
+                email: currentCandidate.email || undefined,
+                phone: currentCandidate.phone || undefined,
+                location_city: currentCandidate.locationCity || undefined,
+                location_state: currentCandidate.locationState || undefined,
+                location_country: currentCandidate.locationCountry || undefined,
               },
-              job: { title: '' }, // job title not available in ReviewCandidate; placeholder will be empty
+              job: {
+                title: jobData?.title || '',
+                department: jobData?.department || '',
+                location: jobData?.location || '',
+              },
+              sender: {
+                first_name: senderProfile?.first_name,
+                last_name: senderProfile?.last_name,
+                email: senderProfile?.email || identityResult.data.email_address,
+                title: senderProfile?.title,
+                phone: senderProfile?.phone,
+                linkedin_url: senderProfile?.linkedin_url,
+              },
+              organizationName: jobData?.tenant?.name,
+              departmentName: jobData?.organization?.name,
             })
 
             emailData = {

@@ -41,8 +41,8 @@ export function useBulkSendEmail() {
           candidate_id,
           job_id,
           current_stage_id,
-          candidate:candidates!inner(id, candidate_name, email),
-          job:jobs!inner(id, title, department, location, tenant_id, organization_id)
+          candidate:candidates!inner(id, candidate_name, email, phone, location_city, location_state, location_country),
+          job:jobs!inner(id, title, department, location, tenant_id, organization_id, tenant:tenants!inner(name), organization:organizations!inner(name))
         `)
         .in('id', associationIds);
 
@@ -73,6 +73,10 @@ export function useBulkSendEmail() {
               candidate: {
                 candidate_name: candidate.candidate_name,
                 email: candidate.email,
+                phone: candidate.phone,
+                location_city: candidate.location_city,
+                location_state: candidate.location_state,
+                location_country: candidate.location_country,
               },
               job: {
                 title: job.title,
@@ -87,6 +91,8 @@ export function useBulkSendEmail() {
                 phone: (senderProfile as any)?.phone,
                 linkedin_url: (senderProfile as any)?.linkedin_url,
               },
+              organizationName: job.tenant?.name,
+              departmentName: job.organization?.name,
             });
 
             // Resolve placeholders using the robust rendering function
