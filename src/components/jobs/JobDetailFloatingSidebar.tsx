@@ -19,6 +19,7 @@ export function JobDetailFloatingSidebar({
   onTabChange, 
   jobTitle,
   isRestrictedViewer = false,
+  isWhatsAppEnabled = false,
   className 
 }: JobDetailFloatingSidebarProps) {
   const restrictedTabIds = ['all-candidates', 'job-setup', 'whatsapp']
