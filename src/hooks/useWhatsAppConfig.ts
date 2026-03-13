@@ -1,290 +1,116 @@
 import { useWorkspaceAutomation } from '@/hooks/useWorkspaceAutomation'
-import { useCallback, useMemo, useRef } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/integrations/supabase/client'
+import { useCallback, useMemo } from 'react'
 
-export type WhatsAppContentType = 'text' | 'quick_reply' | 'call_to_action'
+/**
+ * WhatsApp connection status for QR/session-based model.
+ * Replaces the old Twilio provisioning states.
+ */
+export type WhatsAppConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'expired'
 
-export interface QuickReplyAction {
-  title: string
-}
-
-export interface CallToActionAction {
-  type: 'URL' | 'PHONE_NUMBER'
-  title: string
-  url?: string
-  phone?: string
-}
-
-export type WhatsAppAction = QuickReplyAction | CallToActionAction
-
-export interface WhatsAppTemplate {
-  id: string
-  tenant_id: string | null
-  name: string
-  category: string
-  language: string
-  body_template: string
-  variable_mapping: Record<string, string>
-  twilio_content_sid: string | null
-  approval_status: string
-  content_type: WhatsAppContentType
-  actions: WhatsAppAction[] | null
-  created_at: string
-}
-
-export type WhatsAppSetupStatus = 'not_started' | 'active' | 'error'
-
-export interface WhatsAppSetupState {
-  status: WhatsAppSetupStatus
+export interface WhatsAppConnectionState {
+  status: WhatsAppConnectionStatus
   label: string
   description: string
   canMessage: boolean
 }
 
-const SETUP_STATES: Record<WhatsAppSetupStatus, Omit<WhatsAppSetupState, 'status'>> = {
-  not_started: {
-    label: 'Not set up',
-    description: 'WhatsApp has not been configured for this workspace yet.',
+const CONNECTION_STATES: Record<WhatsAppConnectionStatus, Omit<WhatsAppConnectionState, 'status'>> = {
+  disconnected: {
+    label: 'Not connected',
+    description: 'Connect your WhatsApp to start syncing conversations with candidates.',
     canMessage: false,
   },
-  active: {
-    label: 'Active',
-    description: 'Your workspace WhatsApp is set up and ready to send messages.',
+  connecting: {
+    label: 'Connecting…',
+    description: 'Scan the QR code with your WhatsApp to complete the connection.',
+    canMessage: false,
+  },
+  connected: {
+    label: 'Connected',
+    description: 'Your WhatsApp is connected. Conversations are being synced.',
     canMessage: true,
   },
-  error: {
-    label: 'Action needed',
-    description: 'There was an issue with your WhatsApp setup. Please check the details below.',
+  expired: {
+    label: 'Session expired',
+    description: 'Your WhatsApp session has expired. Please reconnect.',
     canMessage: false,
   },
 }
 
 export function useWhatsAppConfig() {
   const { automation, isLoading, isSaving, save: baseSave, toggle } = useWorkspaceAutomation('whatsapp_config')
-  const queryClient = useQueryClient()
 
   const config = automation?.config || {}
-
-  const whatsappNumber = useMemo(
-    () => (config.whatsapp_number as string) || '',
-    [config]
-  )
-
-  const fromNumber = useMemo(
-    () => (config.twilio_from_number as string) || '',
-    [config]
-  )
-
-  const isProvisioned = useMemo(
-    () => !!config.whatsapp_number,
-    [config]
-  )
-
   const isActive = automation?.is_active ?? false
+
+  const connectionStatus = useMemo((): WhatsAppConnectionStatus => {
+    const status = config.connection_status as string | undefined
+    if (status === 'connected') return 'connected'
+    if (status === 'connecting') return 'connecting'
+    if (status === 'expired') return 'expired'
+    return 'disconnected'
+  }, [config])
+
+  const isConnected = connectionStatus === 'connected'
+
+  const connectedPhone = useMemo(
+    () => (config.connected_phone as string) || '',
+    [config]
+  )
+
+  const connectedAt = useMemo(
+    () => (config.connected_at as string) || null,
+    [config]
+  )
 
   const lastError = useMemo(
     () => (config.last_error as string) || null,
     [config]
   )
 
-  const provisionedAt = useMemo(
-    () => (config.provisioned_at as string) || null,
-    [config]
-  )
-
-  const provisionNumber = useMutation({
-    mutationFn: async (countryCode?: string) => {
-      const { data, error } = await supabase.functions.invoke('provision-whatsapp-number', {
-        body: { country_code: countryCode || 'US' },
-      })
-      if (error) throw error
-      if (data?.error) throw new Error(data.error)
-      return data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workspace-automation', 'whatsapp_config'] })
-    },
-  })
-
-  const saveNumber = useCallback(
-    (number: string) => {
+  const updateConnectionStatus = useCallback(
+    (status: WhatsAppConnectionStatus, extra?: Record<string, unknown>) => {
       return baseSave({
-        config: { twilio_from_number: `whatsapp:${number}`, whatsapp_number: number, is_connected: true },
+        config: { ...config, connection_status: status, ...extra },
       })
     },
-    [baseSave]
+    [baseSave, config]
   )
 
-  const disableMessaging = useCallback(() => {
+  const disconnect = useCallback(() => {
     return baseSave({
       is_active: false,
-      config: { ...config, is_connected: false },
+      config: { ...config, connection_status: 'disconnected', connected_phone: null, connected_at: null },
     } as any)
   }, [baseSave, config])
 
   return {
-    isProvisioned,
-    whatsappNumber,
-    fromNumber,
+    isConnected,
+    connectionStatus,
+    connectedPhone,
+    connectedAt,
     isLoading,
     isSaving,
     isActive,
     lastError,
-    provisionedAt,
     config,
-    saveNumber,
     toggle,
-    provisionNumber,
-    disableMessaging,
+    updateConnectionStatus,
+    disconnect,
   }
 }
 
 /**
- * Computes the workspace WhatsApp setup status from config.
- * Simplified to 3 states: not_started, active, error.
+ * Returns the current WhatsApp connection state for the workspace.
  */
-export function useWhatsAppSetupStatus(): WhatsAppSetupState & { isLoading: boolean } {
-  const { isProvisioned, lastError, isLoading } = useWhatsAppConfig()
+export function useWhatsAppConnectionState(): WhatsAppConnectionState & { isLoading: boolean } {
+  const { connectionStatus, isLoading } = useWhatsAppConfig()
 
-  const status = useMemo((): WhatsAppSetupStatus => {
-    if (!isProvisioned) return 'not_started'
-    if (lastError) return 'error'
-    return 'active'
-  }, [isProvisioned, lastError])
-
-  const stateInfo = SETUP_STATES[status]
+  const stateInfo = CONNECTION_STATES[connectionStatus]
 
   return {
-    status,
+    status: connectionStatus,
     ...stateInfo,
     isLoading,
   }
-}
-
-export function useWhatsAppTemplates() {
-  const hasPendingRef = useRef(false)
-
-  return useQuery({
-    queryKey: ['whatsapp-templates'],
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('manage-whatsapp-templates', {
-        body: { action: 'list' },
-      })
-      if (error) throw error
-      if (data?.error) throw new Error(data.error)
-      const templates = (data?.templates || []) as WhatsAppTemplate[]
-      hasPendingRef.current = templates.some(
-        (t) => t.twilio_content_sid && t.approval_status === 'pending'
-      )
-      return templates
-    },
-    refetchInterval: () => (hasPendingRef.current ? 30_000 : false),
-  })
-}
-
-export function useCreateWhatsAppTemplate() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (params: {
-      name: string
-      category?: string
-      language?: string
-      body_template: string
-      variable_mapping?: Record<string, string>
-      content_type?: WhatsAppContentType
-      actions?: WhatsAppAction[]
-    }) => {
-      const { data, error } = await supabase.functions.invoke('manage-whatsapp-templates', {
-        body: { action: 'create', ...params },
-      })
-      if (error) throw error
-      if (data?.error) throw new Error(data.error)
-      return data.template as WhatsAppTemplate
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['whatsapp-templates'] })
-    },
-  })
-}
-
-export function useSubmitWhatsAppTemplate() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (templateId: string) => {
-      const { data, error } = await supabase.functions.invoke('manage-whatsapp-templates', {
-        body: { action: 'submit', template_id: templateId },
-      })
-      if (error) throw error
-      if (data?.error) throw new Error(data.error)
-      return data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['whatsapp-templates'] })
-    },
-  })
-}
-
-export function useUpdateWhatsAppTemplate() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (params: {
-      template_id: string
-      name?: string
-      body_template?: string
-      category?: string
-      language?: string
-      content_type?: WhatsAppContentType
-      actions?: WhatsAppAction[]
-    }) => {
-      const { data, error } = await supabase.functions.invoke('manage-whatsapp-templates', {
-        body: { action: 'update', ...params },
-      })
-      if (error) throw error
-      if (data?.error) throw new Error(data.error)
-      return data.template as WhatsAppTemplate
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['whatsapp-templates'] })
-    },
-  })
-}
-
-export function useDeleteWhatsAppTemplate() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (templateId: string) => {
-      const { data, error } = await supabase.functions.invoke('manage-whatsapp-templates', {
-        body: { action: 'delete', template_id: templateId },
-      })
-      if (error) throw error
-      if (data?.error) throw new Error(data.error)
-      return data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['whatsapp-templates'] })
-    },
-  })
-}
-
-export function useCheckWhatsAppTemplateStatus() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (templateId: string) => {
-      const { data, error } = await supabase.functions.invoke('manage-whatsapp-templates', {
-        body: { action: 'check-status', template_id: templateId },
-      })
-      if (error) throw error
-      if (data?.error) throw new Error(data.error)
-      return data.template as WhatsAppTemplate
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['whatsapp-templates'] })
-    },
-  })
 }
