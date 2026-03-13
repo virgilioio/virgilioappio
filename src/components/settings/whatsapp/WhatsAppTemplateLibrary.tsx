@@ -183,6 +183,8 @@ function TemplateRow({ template }: { template: WhatsAppTemplate }) {
 
   const submitMutation = useSubmitWhatsAppTemplate()
   const checkStatusMutation = useCheckWhatsAppTemplateStatus()
+  const deleteMutation = useDeleteWhatsAppTemplate()
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const handleSubmit = async () => {
     try {
@@ -208,71 +210,115 @@ function TemplateRow({ template }: { template: WhatsAppTemplate }) {
     }
   }
 
-  return (
-    <div className="p-4 rounded-lg border border-border bg-card group">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-medium text-foreground truncate">{template.name}</p>
-            {!template.tenant_id && (
-              <Badge variant="secondary" className="text-[10px] shrink-0">GoGio</Badge>
-            )}
-            <Badge
-              variant="outline"
-              className={cn('text-[10px] shrink-0', status.className)}
-            >
-              {status.label}
-            </Badge>
-          </div>
-          <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{preview}</p>
-          <p className="text-[11px] text-muted-foreground/70 mt-1 hidden group-hover:block">{status.description}</p>
-        </div>
+  const handleDelete = async () => {
+    try {
+      await deleteMutation.mutateAsync(template.id)
+      toast.success('Template deleted')
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete template')
+    } finally {
+      setShowDeleteConfirm(false)
+    }
+  }
 
-        {/* Actions */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {isDraft && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleSubmit}
-              disabled={submitMutation.isPending}
-              className="h-7 text-xs gap-1"
-            >
-              {submitMutation.isPending ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <Send className="h-3 w-3" />
-              )}
-              Submit
-            </Button>
-          )}
-          {isPending && (
+  return (
+    <>
+      <div className="p-4 rounded-lg border border-border bg-card group">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-sm font-medium text-foreground truncate">{template.name}</p>
+              <Badge
+                variant="outline"
+                className={cn('text-[10px] shrink-0', status.className)}
+              >
+                {status.label}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{preview}</p>
+            <p className="text-[11px] text-muted-foreground/70 mt-1 hidden group-hover:block">{status.description}</p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {isDraft && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleSubmit}
+                disabled={submitMutation.isPending}
+                className="h-7 text-xs gap-1"
+              >
+                {submitMutation.isPending ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Send className="h-3 w-3" />
+                )}
+                Submit
+              </Button>
+            )}
+            {isPending && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleRefreshStatus}
+                disabled={checkStatusMutation.isPending}
+                className="h-7 text-xs gap-1"
+              >
+                <RefreshCw className={cn("h-3 w-3", checkStatusMutation.isPending && "animate-spin")} />
+                Refresh
+              </Button>
+            )}
+            {isRejected && (
+              <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+            )}
             <Button
               size="sm"
               variant="ghost"
-              onClick={handleRefreshStatus}
-              disabled={checkStatusMutation.isPending}
-              className="h-7 text-xs gap-1"
+              onClick={() => setShowDeleteConfirm(true)}
+              disabled={deleteMutation.isPending}
+              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
             >
-              <RefreshCw className={cn("h-3 w-3", checkStatusMutation.isPending && "animate-spin")} />
-              Refresh
+              {deleteMutation.isPending ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Trash2 className="h-3 w-3" />
+              )}
             </Button>
-          )}
-          {isRejected && (
-            <AlertCircle className="h-3.5 w-3.5 text-destructive" />
-          )}
+          </div>
+        </div>
+
+        {/* Category + language info */}
+        <div className="flex items-center gap-3 mt-2">
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+            {template.category}
+          </span>
+          <span className="text-[10px] text-muted-foreground">
+            {template.language}
+          </span>
         </div>
       </div>
 
-      {/* Category + language info */}
-      <div className="flex items-center gap-3 mt-2">
-        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-          {template.category}
-        </span>
-        <span className="text-[10px] text-muted-foreground">
-          {template.language}
-        </span>
-      </div>
-    </div>
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete template</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete "{template.name}"
+              {template.twilio_content_sid && ' and remove it from Twilio/Meta'}. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
