@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useEffect } from 'react'
 import { Loader2, AlertCircle, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,13 +20,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useCreateWhatsAppTemplate } from '@/hooks/useWhatsAppConfig'
+import { useCreateWhatsAppTemplate, useUpdateWhatsAppTemplate, type WhatsAppTemplate } from '@/hooks/useWhatsAppConfig'
 import { AVAILABLE_PLACEHOLDERS } from '@/utils/placeholderUtils'
 import { toast } from 'sonner'
 
 interface WhatsAppTemplateCreatorProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  editTemplate?: WhatsAppTemplate | null
 }
 
 // WhatsApp-relevant placeholder categories
@@ -46,19 +47,42 @@ const LANGUAGES = [
   { value: 'it', label: 'Italian' },
 ]
 
-export function WhatsAppTemplateCreator({ open, onOpenChange }: WhatsAppTemplateCreatorProps) {
+/** Reverse the variable_mapping to convert numbered placeholders back to named ones */
+function unconvertBody(body: string, mapping: Record<string, string> | null): string {
+  if (!mapping) return body
+  let result = body
+  Object.entries(mapping).forEach(([num, field]) => {
+    result = result.replace(new RegExp(`\\{\\{${num}\\}\\}`, 'g'), `{{${field}}}`)
+  })
+  return result
+}
+
+const EMPTY_FORM = { name: '', body_template: '', category: 'UTILITY', language: 'en' }
+
+export function WhatsAppTemplateCreator({ open, onOpenChange, editTemplate }: WhatsAppTemplateCreatorProps) {
   const createTemplate = useCreateWhatsAppTemplate()
+  const updateTemplate = useUpdateWhatsAppTemplate()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [showPreview, setShowPreview] = useState(false)
 
-  const [form, setForm] = useState({
-    name: '',
-    body_template: '',
-    category: 'UTILITY',
-    language: 'en',
-  })
+  const isEditing = !!editTemplate
 
+  const [form, setForm] = useState(EMPTY_FORM)
   const [errors, setErrors] = useState<string[]>([])
+
+  // Pre-populate form when editing
+  useEffect(() => {
+    if (editTemplate && open) {
+      setForm({
+        name: editTemplate.name,
+        body_template: unconvertBody(editTemplate.body_template, editTemplate.variable_mapping),
+        category: editTemplate.category || 'UTILITY',
+        language: editTemplate.language || 'en',
+      })
+      setErrors([])
+      setShowPreview(false)
+    }
+  }, [editTemplate, open])
 
   // Filter placeholders to WhatsApp-relevant ones, grouped by category
   const groupedPlaceholders = useMemo(() => {
@@ -132,34 +156,49 @@ export function WhatsAppTemplateCreator({ open, onOpenChange }: WhatsAppTemplate
     setErrors([])
 
     try {
-      await createTemplate.mutateAsync({
-        name: form.name,
-        body_template: form.body_template,
-        category: form.category,
-        language: form.language,
-      })
-      toast.success('Template saved as draft')
-      setForm({ name: '', body_template: '', category: 'UTILITY', language: 'en' })
+      if (isEditing) {
+        await updateTemplate.mutateAsync({
+          template_id: editTemplate.id,
+          name: form.name,
+          body_template: form.body_template,
+          category: form.category,
+          language: form.language,
+        })
+        toast.success('Template updated')
+      } else {
+        await createTemplate.mutateAsync({
+          name: form.name,
+          body_template: form.body_template,
+          category: form.category,
+          language: form.language,
+        })
+        toast.success('Template saved as draft')
+      }
+      setForm(EMPTY_FORM)
       setShowPreview(false)
       onOpenChange(false)
     } catch (error: any) {
-      toast.error(error.message || 'Failed to create template')
+      toast.error(error.message || 'Failed to save template')
     }
   }
 
   const handleReset = () => {
-    setForm({ name: '', body_template: '', category: 'UTILITY', language: 'en' })
+    setForm(EMPTY_FORM)
     setErrors([])
     setShowPreview(false)
   }
+
+  const isSaving = createTemplate.isPending || updateTemplate.isPending
 
   return (
     <Sheet open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) handleReset() }}>
       <SheetContent className="sm:max-w-lg overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>Create message template</SheetTitle>
+          <SheetTitle>{isEditing ? 'Edit message template' : 'Create message template'}</SheetTitle>
           <SheetDescription>
-            Design a reusable message template for WhatsApp outreach. After saving, you can submit it for Meta approval.
+            {isEditing
+              ? 'Update your draft template. Once submitted for approval, it can no longer be edited.'
+              : 'Design a reusable message template for WhatsApp outreach. After saving, you can submit it for Meta approval.'}
           </SheetDescription>
         </SheetHeader>
 
@@ -279,12 +318,14 @@ export function WhatsAppTemplateCreator({ open, onOpenChange }: WhatsAppTemplate
           )}
 
           {/* First-contact note */}
-          <div className="p-2.5 rounded-lg bg-muted/30">
-            <p className="text-[11px] text-muted-foreground">
-              <strong>Note:</strong> This template will be saved as a draft. To use it for first-contact messaging, 
-              submit it for Meta approval from the Template Library. Approval typically takes minutes but can take up to 48 hours.
-            </p>
-          </div>
+          {!isEditing && (
+            <div className="p-2.5 rounded-lg bg-muted/30">
+              <p className="text-[11px] text-muted-foreground">
+                <strong>Note:</strong> This template will be saved as a draft. To use it for first-contact messaging, 
+                submit it for Meta approval from the Template Library. Approval typically takes minutes but can take up to 48 hours.
+              </p>
+            </div>
+          )}
         </div>
 
         <SheetFooter className="gap-2">
@@ -293,10 +334,10 @@ export function WhatsAppTemplateCreator({ open, onOpenChange }: WhatsAppTemplate
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={createTemplate.isPending || !form.name.trim() || !form.body_template.trim()}
+            disabled={isSaving || !form.name.trim() || !form.body_template.trim()}
           >
-            {createTemplate.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            Save draft
+            {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            {isEditing ? 'Save changes' : 'Save draft'}
           </Button>
         </SheetFooter>
       </SheetContent>

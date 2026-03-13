@@ -1,8 +1,7 @@
 import { useState } from 'react'
-import { FileText, Loader2, Plus, AlertCircle, Info, Send, RefreshCw, Trash2 } from 'lucide-react'
+import { FileText, Loader2, Plus, AlertCircle, Info, Send, RefreshCw, Trash2, MoreHorizontal, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,6 +12,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   useWhatsAppTemplates,
   useSubmitWhatsAppTemplate,
@@ -28,6 +34,17 @@ import { toast } from 'sonner'
 export function WhatsAppTemplateLibrary() {
   const { data: templates = [], isLoading } = useWhatsAppTemplates()
   const [showCreator, setShowCreator] = useState(false)
+  const [editingTemplate, setEditingTemplate] = useState<WhatsAppTemplate | null>(null)
+
+  const handleEdit = (template: WhatsAppTemplate) => {
+    setEditingTemplate(template)
+    setShowCreator(true)
+  }
+
+  const handleCreatorClose = (open: boolean) => {
+    setShowCreator(open)
+    if (!open) setEditingTemplate(null)
+  }
 
   if (isLoading) {
     return (
@@ -52,7 +69,7 @@ export function WhatsAppTemplateLibrary() {
         </div>
         <Button
           size="sm"
-          onClick={() => setShowCreator(true)}
+          onClick={() => { setEditingTemplate(null); setShowCreator(true) }}
           className="bg-[#25D366] hover:bg-[#25D366]/90 text-white"
         >
           <Plus className="h-3 w-3 mr-1" />
@@ -64,7 +81,7 @@ export function WhatsAppTemplateLibrary() {
       <div className="p-3 rounded-lg bg-muted/20 border border-border flex items-start gap-2">
         <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
         <p className="text-xs text-muted-foreground">
-          GoGio templates are ready to use. Custom templates are submitted directly to Meta for approval — this typically takes minutes but can take up to 48 hours.
+          Custom templates are submitted directly to Meta for approval — this typically takes minutes but can take up to 48 hours.
         </p>
       </div>
 
@@ -73,7 +90,7 @@ export function WhatsAppTemplateLibrary() {
         {templates.length > 0 ? (
           <div className="space-y-2">
             {templates.map((t) => (
-              <TemplateRow key={t.id} template={t} />
+              <TemplateRow key={t.id} template={t} onEdit={handleEdit} />
             ))}
           </div>
         ) : (
@@ -84,10 +101,11 @@ export function WhatsAppTemplateLibrary() {
         )}
       </div>
 
-      {/* Template creator dialog */}
+      {/* Template creator/editor dialog */}
       <WhatsAppTemplateCreator
         open={showCreator}
-        onOpenChange={setShowCreator}
+        onOpenChange={handleCreatorClose}
+        editTemplate={editingTemplate}
       />
     </div>
   )
@@ -100,10 +118,8 @@ function getStatusBadge(template: WhatsAppTemplate) {
 
   if (!hasContentSid) {
     return {
-      label: template.tenant_id ? 'Draft' : 'Local only',
-      description: template.tenant_id
-        ? 'Not yet submitted. Click "Submit for Approval" to send to Meta.'
-        : 'Template ready — Content SID will be added by GoGio team.',
+      label: 'Draft',
+      description: 'Not yet submitted. Submit for Meta approval when ready.',
       className: 'border-muted-foreground/30 text-muted-foreground bg-muted/20',
     }
   }
@@ -152,18 +168,19 @@ function resolvePreview(bodyTemplate: string, variableMapping: Record<string, st
   return text
 }
 
-function TemplateRow({ template }: { template: WhatsAppTemplate }) {
+function TemplateRow({ template, onEdit }: { template: WhatsAppTemplate; onEdit: (t: WhatsAppTemplate) => void }) {
   const status = getStatusBadge(template)
   const preview = resolvePreview(template.body_template, template.variable_mapping)
   const isRejected = !!template.twilio_content_sid && template.approval_status === 'rejected'
 
-  const isDraft = !!template.tenant_id && !template.twilio_content_sid
+  const isDraft = !template.twilio_content_sid
   const isPending = !!template.twilio_content_sid && template.approval_status === 'pending'
 
   const submitMutation = useSubmitWhatsAppTemplate()
   const checkStatusMutation = useCheckWhatsAppTemplateStatus()
   const deleteMutation = useDeleteWhatsAppTemplate()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
 
   const handleSubmit = async () => {
     try {
@@ -171,6 +188,8 @@ function TemplateRow({ template }: { template: WhatsAppTemplate }) {
       toast.success('Template submitted for Meta approval')
     } catch (err: any) {
       toast.error(err.message || 'Failed to submit template')
+    } finally {
+      setShowSubmitConfirm(false)
     }
   }
 
@@ -220,50 +239,64 @@ function TemplateRow({ template }: { template: WhatsAppTemplate }) {
 
           {/* Actions */}
           <div className="flex items-center gap-1.5 shrink-0">
-            {isDraft && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleSubmit}
-                disabled={submitMutation.isPending}
-                className="h-7 text-xs gap-1"
-              >
-                {submitMutation.isPending ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Send className="h-3 w-3" />
+            {isDraft ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => onEdit(template)}>
+                    <Pencil className="h-3.5 w-3.5 mr-2" />
+                    Edit template
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowSubmitConfirm(true)}>
+                    <Send className="h-3.5 w-3.5 mr-2" />
+                    Submit for approval
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                {isPending && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleRefreshStatus}
+                    disabled={checkStatusMutation.isPending}
+                    className="h-7 text-xs gap-1"
+                  >
+                    <RefreshCw className={cn("h-3 w-3", checkStatusMutation.isPending && "animate-spin")} />
+                    Refresh
+                  </Button>
                 )}
-                Submit
-              </Button>
+                {isRejected && (
+                  <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  disabled={deleteMutation.isPending}
+                  className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                >
+                  {deleteMutation.isPending ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3 w-3" />
+                  )}
+                </Button>
+              </>
             )}
-            {isPending && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={handleRefreshStatus}
-                disabled={checkStatusMutation.isPending}
-                className="h-7 text-xs gap-1"
-              >
-                <RefreshCw className={cn("h-3 w-3", checkStatusMutation.isPending && "animate-spin")} />
-                Refresh
-              </Button>
-            )}
-            {isRejected && (
-              <AlertCircle className="h-3.5 w-3.5 text-destructive" />
-            )}
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setShowDeleteConfirm(true)}
-              disabled={deleteMutation.isPending}
-              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-            >
-              {deleteMutation.isPending ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <Trash2 className="h-3 w-3" />
-              )}
-            </Button>
           </div>
         </div>
 
@@ -278,6 +311,7 @@ function TemplateRow({ template }: { template: WhatsAppTemplate }) {
         </div>
       </div>
 
+      {/* Delete confirmation */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -294,6 +328,28 @@ function TemplateRow({ template }: { template: WhatsAppTemplate }) {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Submit confirmation */}
+      <AlertDialog open={showSubmitConfirm} onOpenChange={setShowSubmitConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Submit for approval?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Once submitted and approved by Meta, this template can no longer be edited. You would need to delete it and create a new one. The review process may take up to 48 hours.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleSubmit}
+              disabled={submitMutation.isPending}
+            >
+              {submitMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Submit template
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
