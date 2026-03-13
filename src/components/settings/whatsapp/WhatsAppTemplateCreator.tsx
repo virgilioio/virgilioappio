@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
   Sheet,
   SheetContent,
@@ -20,8 +21,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useCreateWhatsAppTemplate, useUpdateWhatsAppTemplate, type WhatsAppTemplate } from '@/hooks/useWhatsAppConfig'
+import {
+  useCreateWhatsAppTemplate,
+  useUpdateWhatsAppTemplate,
+  type WhatsAppTemplate,
+  type WhatsAppContentType,
+  type QuickReplyAction,
+  type CallToActionAction,
+} from '@/hooks/useWhatsAppConfig'
 import { AVAILABLE_PLACEHOLDERS } from '@/utils/placeholderUtils'
+import { QuickReplyEditor } from './QuickReplyEditor'
+import { CallToActionEditor } from './CallToActionEditor'
+import { TemplateButtonPreview } from './TemplateButtonPreview'
 import { toast } from 'sonner'
 
 interface WhatsAppTemplateCreatorProps {
@@ -30,7 +41,6 @@ interface WhatsAppTemplateCreatorProps {
   editTemplate?: WhatsAppTemplate | null
 }
 
-// WhatsApp-relevant placeholder categories
 const WHATSAPP_CATEGORIES = ['Candidate', 'Job', 'Sender', 'Interview', 'Offer', 'Links']
 
 const CATEGORIES = [
@@ -47,7 +57,12 @@ const LANGUAGES = [
   { value: 'it', label: 'Italian' },
 ]
 
-/** Reverse the variable_mapping to convert numbered placeholders back to named ones */
+const CONTENT_TYPES: { value: WhatsAppContentType; label: string; description: string }[] = [
+  { value: 'text', label: 'Text only', description: 'Plain message' },
+  { value: 'quick_reply', label: 'Quick Reply', description: 'Up to 3 tap-to-reply buttons' },
+  { value: 'call_to_action', label: 'Call to Action', description: 'Up to 2 URL or phone buttons' },
+]
+
 function unconvertBody(body: string, mapping: Record<string, string> | null): string {
   if (!mapping) return body
   let result = body
@@ -57,7 +72,15 @@ function unconvertBody(body: string, mapping: Record<string, string> | null): st
   return result
 }
 
-const EMPTY_FORM = { name: '', body_template: '', category: 'UTILITY', language: 'en' }
+const EMPTY_FORM = {
+  name: '',
+  body_template: '',
+  category: 'UTILITY',
+  language: 'en',
+  content_type: 'text' as WhatsAppContentType,
+  quick_reply_actions: [{ title: '' }] as QuickReplyAction[],
+  cta_actions: [{ type: 'URL' as const, title: '', url: '' }] as CallToActionAction[],
+}
 
 export function WhatsAppTemplateCreator({ open, onOpenChange, editTemplate }: WhatsAppTemplateCreatorProps) {
   const createTemplate = useCreateWhatsAppTemplate()
@@ -70,21 +93,29 @@ export function WhatsAppTemplateCreator({ open, onOpenChange, editTemplate }: Wh
   const [form, setForm] = useState(EMPTY_FORM)
   const [errors, setErrors] = useState<string[]>([])
 
-  // Pre-populate form when editing
   useEffect(() => {
     if (editTemplate && open) {
+      const ct = (editTemplate.content_type || 'text') as WhatsAppContentType
+      const actions = editTemplate.actions || []
+
       setForm({
         name: editTemplate.name,
         body_template: unconvertBody(editTemplate.body_template, editTemplate.variable_mapping),
         category: editTemplate.category || 'UTILITY',
         language: editTemplate.language || 'en',
+        content_type: ct,
+        quick_reply_actions: ct === 'quick_reply' && actions.length > 0
+          ? (actions as QuickReplyAction[])
+          : [{ title: '' }],
+        cta_actions: ct === 'call_to_action' && actions.length > 0
+          ? (actions as CallToActionAction[])
+          : [{ type: 'URL', title: '', url: '' }],
       })
       setErrors([])
       setShowPreview(false)
     }
   }, [editTemplate, open])
 
-  // Filter placeholders to WhatsApp-relevant ones, grouped by category
   const groupedPlaceholders = useMemo(() => {
     const relevant = AVAILABLE_PLACEHOLDERS.filter((p) =>
       WHATSAPP_CATEGORIES.includes(p.category)
@@ -116,6 +147,12 @@ export function WhatsAppTemplateCreator({ open, onOpenChange, editTemplate }: Wh
     }
   }
 
+  const currentActions = form.content_type === 'quick_reply'
+    ? form.quick_reply_actions
+    : form.content_type === 'call_to_action'
+      ? form.cta_actions
+      : []
+
   const validate = (): string[] => {
     const errs: string[] = []
     if (!form.name.trim()) errs.push('Template name is required.')
@@ -134,6 +171,24 @@ export function WhatsAppTemplateCreator({ open, onOpenChange, editTemplate }: Wh
     const withoutVars = body.replace(/\{\{[^}]+\}\}/g, '').trim()
     if (withoutVars.length < 20) {
       errs.push('Template body is too short. WhatsApp rejects templates that lack context.')
+    }
+
+    // Validate buttons
+    if (form.content_type === 'quick_reply') {
+      const emptyBtns = form.quick_reply_actions.filter((a) => !a.title.trim())
+      if (emptyBtns.length > 0) errs.push('All quick reply buttons must have a label.')
+    }
+
+    if (form.content_type === 'call_to_action') {
+      form.cta_actions.forEach((a, i) => {
+        if (!a.title.trim()) errs.push(`Button ${i + 1} needs a label.`)
+        if (a.type === 'URL' && !a.url?.trim()) errs.push(`Button ${i + 1} needs a URL.`)
+        if (a.type === 'URL' && a.url && !/^https?:\/\/.+/.test(a.url))
+          errs.push(`Button ${i + 1} URL must start with http:// or https://`)
+        if (a.type === 'PHONE_NUMBER' && !a.phone?.trim()) errs.push(`Button ${i + 1} needs a phone number.`)
+        if (a.type === 'PHONE_NUMBER' && a.phone && !/^\+\d{7,15}$/.test(a.phone.replace(/\s/g, '')))
+          errs.push(`Button ${i + 1} phone must be E.164 format (e.g. +1234567890).`)
+      })
     }
 
     return errs
@@ -155,6 +210,12 @@ export function WhatsAppTemplateCreator({ open, onOpenChange, editTemplate }: Wh
     }
     setErrors([])
 
+    const actions = form.content_type === 'quick_reply'
+      ? form.quick_reply_actions
+      : form.content_type === 'call_to_action'
+        ? form.cta_actions
+        : undefined
+
     try {
       if (isEditing) {
         await updateTemplate.mutateAsync({
@@ -163,6 +224,8 @@ export function WhatsAppTemplateCreator({ open, onOpenChange, editTemplate }: Wh
           body_template: form.body_template,
           category: form.category,
           language: form.language,
+          content_type: form.content_type,
+          actions,
         })
         toast.success('Template updated')
       } else {
@@ -171,6 +234,8 @@ export function WhatsAppTemplateCreator({ open, onOpenChange, editTemplate }: Wh
           body_template: form.body_template,
           category: form.category,
           language: form.language,
+          content_type: form.content_type,
+          actions,
         })
         toast.success('Template saved as draft')
       }
@@ -252,6 +317,33 @@ export function WhatsAppTemplateCreator({ open, onOpenChange, editTemplate }: Wh
 
           <Separator />
 
+          {/* Content type selector */}
+          <div className="space-y-2">
+            <Label>Message type</Label>
+            <RadioGroup
+              value={form.content_type}
+              onValueChange={(v) => setForm((p) => ({ ...p, content_type: v as WhatsAppContentType }))}
+              className="grid grid-cols-3 gap-2"
+            >
+              {CONTENT_TYPES.map((ct) => (
+                <label
+                  key={ct.value}
+                  className={`flex flex-col items-center gap-1 rounded-lg border p-2.5 cursor-pointer transition-colors ${
+                    form.content_type === ct.value
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:border-primary/40'
+                  }`}
+                >
+                  <RadioGroupItem value={ct.value} className="sr-only" />
+                  <span className="text-xs font-medium">{ct.label}</span>
+                  <span className="text-[10px] text-muted-foreground text-center leading-tight">{ct.description}</span>
+                </label>
+              ))}
+            </RadioGroup>
+          </div>
+
+          <Separator />
+
           {/* Message body */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -269,6 +361,7 @@ export function WhatsAppTemplateCreator({ open, onOpenChange, editTemplate }: Wh
             {showPreview ? (
               <div className="p-3 rounded-lg bg-[#25D366]/5 border border-[#25D366]/20 min-h-[100px]">
                 <p className="text-sm text-foreground whitespace-pre-wrap">{getPreview() || 'Empty message'}</p>
+                <TemplateButtonPreview contentType={form.content_type} actions={currentActions} />
               </div>
             ) : (
               <>
@@ -304,6 +397,27 @@ export function WhatsAppTemplateCreator({ open, onOpenChange, editTemplate }: Wh
               </>
             )}
           </div>
+
+          {/* Button editors */}
+          {form.content_type === 'quick_reply' && (
+            <>
+              <Separator />
+              <QuickReplyEditor
+                actions={form.quick_reply_actions}
+                onChange={(a) => setForm((p) => ({ ...p, quick_reply_actions: a }))}
+              />
+            </>
+          )}
+
+          {form.content_type === 'call_to_action' && (
+            <>
+              <Separator />
+              <CallToActionEditor
+                actions={form.cta_actions}
+                onChange={(a) => setForm((p) => ({ ...p, cta_actions: a }))}
+              />
+            </>
+          )}
 
           {/* Validation errors */}
           {errors.length > 0 && (
