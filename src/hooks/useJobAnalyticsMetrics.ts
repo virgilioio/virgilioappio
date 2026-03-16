@@ -37,6 +37,7 @@ export interface JobAnalyticsMetrics {
   statusDistribution: { name: string; value: number; color: string }[]
   stageDistribution: { name: string; count: number }[]
   trendData: { date: string; applications: number; active: number; hires: number; interviewsScheduled: number; offers: number; rejected: number; interviewsCompleted: number }[]
+  sourceDistribution: { source: string; total: number }[]
   // New recruiting insight metrics
   interviewsByStage: InterviewsByStage[]
   stageConversions: StageConversion[]
