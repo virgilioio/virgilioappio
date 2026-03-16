@@ -71,6 +71,7 @@ export function MinimizableBulkUploadDialog({
       autoGenerateSkills,
       assignToJob: assignToJob || undefined,
       assignToStage: assignToStage || undefined,
+      source: source || undefined,
     });
     onClose();
     if (onComplete) {
