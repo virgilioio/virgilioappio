@@ -1,151 +1,64 @@
-# System Roles Migration — Completed Phases 1-5
 
-## Architecture Change
-- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
-- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-## Completed
+# Insights Tab — Visual Alignment with Analytics/Intelligence Pages
 
-### Phase 1 — Database
-- ✅ Created `system_role` enum (`admin`, `member`)
-- ✅ Added `system_role` column to `members` table
-- ✅ Migrated data: `admin` → `admin`, all others → `member`
-- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
-- ✅ Updated `check_tenant_member_role` to use `system_role`
-- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
-- ✅ Updated `audit_member_role_change` trigger
+## Current Gaps
 
-### Phase 2 — Frontend Permissions
-- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
-- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
-- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
-- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
+After comparing the Insights tab components with the Analytics and Talent Intelligence visual system, here are the deviations:
 
-### Phase 3 — UI Updates
-- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
-- ✅ Updated `Dashboard` — sourcing panel for admin+ only
-- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
-- ✅ Updated `BillingGuard` — members (non-admin) never blocked
-- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
-- ✅ Updated `Find` page RoleGate
-- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
+### 1. Cards use `bg-surface-primary border-border` instead of `border-virgilio-border`
+Analytics cards consistently use `border-virgilio-border` and the Pulse Card elevated style (`rounded-2xl shadow-md hover:shadow-xl`). The Insights tab uses flat cards with no elevation or shadow.
 
-### Phase 4 — Runtime Hotfixes
-- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
-- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
-- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
-- ✅ Updated `validate_invite_token` — returns `system_role`
-- ✅ Updated `accept_invitation` — uses `system_role`
+### 2. Score Radial uses generic green/yellow/orange/red instead of Virgilio Purple
+The `FitScoreRadial` SVG uses `stroke-green-500`, `stroke-yellow-500`, etc. The brand guidelines demand Virgilio Purple as the primary accent — the radial should use a purple gradient stroke with opacity/saturation variation for score levels, consistent with donut charts in analytics.
 
-### Phase 5 — Complete Cleanup
-- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
-- ✅ Updated `admin_manage_member` — updates `system_role` column
-- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
-- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
-- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
-- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
-- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
-- ✅ Updated `diagnose_user_auth` — reports `system_role`
-- ✅ Updated `audit_platform_admin_access` — returns `system_role`
-- ✅ Updated `debug_user_permissions` — returns `system_role`
-- ✅ Renamed `invitations.member_role` → `invitations.system_role`
-- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
+### 3. Section headers lack the analytics `icon + Poppins font-semibold` pattern
+Card titles in Insights use plain `<CardTitle className="text-sm">` without the icon-badge + Poppins styling used in `AnalyticsChartCard` (purple icon + `font-poppins font-semibold text-virgilio-text`).
 
-## Phase 6 — Future (Optional)
-- Drop `member_role` column from `members` table (already dropped)
-- Drop old `member_role` enum type
-- Update `MemberInviteSheet` role picker to only offer Admin/Member
+### 4. Dimension progress bars use default `bg-primary` with generic score colors
+`FitDimensionCard` uses `Progress` with default styling. Analytics uses branded bar styles with rounded-xl and Virgilio Purple gradients.
 
-# Deep Resume Parsing + Data Standardization — Completed
+### 5. Badges use raw Tailwind colors (`bg-green-100`, `bg-orange-100`, `bg-red-100`)
+Matches/gaps/priority badges hard-code green/orange/red. Should use the platform's purple-based badge pattern or at minimum the `virgilio-success`/`virgilio-warning` tokens.
 
-## What was implemented
+### 6. No floating pill tooltip styling
+Analytics charts use `rounded-2xl, shadow, Poppins font` tooltip style. The confidence tooltip uses default Radix styling.
 
-### Phase 1: Schema Expansion
-- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
-- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
-- ✅ Added to `candidate_education`: `education_level`
-- ✅ Created `candidate_certifications` table with RLS policies
+### 7. Missing font-poppins on values and labels
+Analytics uses `font-poppins` throughout for metric values, labels, and descriptions. Insights tab uses default sans-serif.
 
-### Phase 2: Enrichment Rewrite
-- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
-- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
-- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
-- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
-- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
+## Proposed Changes
 
-### Phase 3: UI Updates
-- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
-- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
-- ✅ **Certifications section** with `CandidateCertificationsComponent`
-- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
-- ✅ Enhanced **Education** display: education level badge
-- ✅ Certifications loaded alongside work experience and education
+### `FitScoreRadial.tsx`
+- Replace green/yellow/orange/red stroke colors with Virgilio Purple at varying opacities (100→80: full purple, 60→79: purple/80, 40→59: purple/50, <40: purple/30)
+- Add `font-poppins` to score value and confidence badge text
+- Style confidence badge with purple tones instead of generic variants
 
-## Files changed
-- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
-- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
-- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
-- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
-- `src/components/candidates/CandidateCertifications.tsx` — new component
+### `FitDimensionCard.tsx`
+- Replace generic score-color progress bars with Virgilio Purple indicator (`indicatorClassName="bg-virgilio-purple"`)
+- Add `font-poppins` to dimension name and score value
+- Replace green/orange hardcoded badge colors with `bg-virgilio-purple/10 text-virgilio-purple` for matches and `bg-virgilio-muted/20 text-virgilio-muted` for gaps
+- Use `border-virgilio-border` on the card borders
 
-# WhatsApp ISV Architecture — Completed
+### `ValidationChecklist.tsx`
+- Replace red/yellow priority badge colors with purple-intensity scale (high: `bg-virgilio-purple/20 text-virgilio-purple`, medium: `bg-virgilio-purple/10 text-virgilio-muted`, low: `bg-muted text-muted-foreground`)
+- Add `font-poppins` to question text
+- Use `border-virgilio-border` on item borders
 
-## Architecture
-Per-tenant dedicated numbers under GoGio's master Twilio account. Each tenant gets their own WhatsApp number provisioned via the Twilio connector gateway.
+### `CandidateInsightsTab.tsx`
+- Replace all `bg-surface-primary border-border` card classes with `border-virgilio-border rounded-2xl shadow-md hover:shadow-xl transition-all duration-200`
+- Add purple icon badges next to section titles (Sparkles for Fit Dimensions, CheckCircle2 for Validation, Database for Data Completeness) using the `AnalyticsChartCard` header pattern
+- Add `font-poppins` to section headers and summary text
 
-## What was implemented
+### `NoJobDescriptionCard.tsx` (if exists)
+- Same card elevation and border treatment for consistency
 
-### Inbound Webhook
-- ✅ Created `whatsapp-inbound-webhook` edge function (public, no JWT)
-- ✅ Matches inbound `From` phone to existing conversations
-- ✅ Inserts messages as `direction: 'inbound'`, updates `unread_count`
-- ✅ Returns empty TwiML (no auto-reply)
-- ✅ Added to `supabase/config.toml` with `verify_jwt = false`
+## Files Changed
 
-### Simplified Setup Wizard
-- ✅ Reduced from 5 steps to 3: Welcome → Provision → Complete
-- ✅ Removed broken "Verify sender" and "Templates" steps
-- ✅ Provisioning = activation (no separate activate step)
+| File | Change |
+|------|--------|
+| `src/components/candidates/insights/FitScoreRadial.tsx` | Purple-based radial, Poppins fonts |
+| `src/components/candidates/insights/FitDimensionCard.tsx` | Purple progress bars, branded badges, Poppins |
+| `src/components/candidates/insights/ValidationChecklist.tsx` | Purple priority scale, branded borders |
+| `src/components/candidates/insights/CandidateInsightsTab.tsx` | Elevated cards, icon headers, Poppins throughout |
 
-### Simplified Setup Status
-- ✅ Reduced from 6 states to 3: `not_started`, `active`, `error`
-- ✅ `canMessage = true` when `active` (no template-gating)
-- ✅ Removed `provisioning`, `sender_pending`, `sender_active`, `templates_required`
-
-### Integration Card Updates
-- ✅ Removed template count stats (approved/pending/draft)
-- ✅ Simplified status badges to active/not set up/error
-- ✅ Removed unused status configs (sender_pending, provisioning, etc.)
-
-### Template Library Updates
-- ✅ Removed non-functional Submit and Refresh buttons
-- ✅ Removed filter tabs (all/draft/pending/approved/rejected)
-- ✅ Added info note: "Custom templates require GoGio team approval"
-- ✅ Templates show as "Ready to use" or "Local only" status
-
-### Chat Tab Updates
-- ✅ Simplified blocking: only blocks when `not_started` or no phone number
-- ✅ Removed intermediate `canMessage` blocking state
-- ✅ Updated empty template message to reference GoGio team
-
-### Send Function Updates
-- ✅ Removed `is_active` check — if number exists, can send
-- ✅ Per-tenant `twilio_from_number` logic preserved
-
-### Global Templates Seeded
-- ✅ Interview Invitation, Application Update, Job Opportunity
-- ✅ Inserted with `tenant_id = NULL` (global)
-- ✅ No `twilio_content_sid` yet (marked as draft until GoGio team adds real SIDs)
-
-## Manual Prerequisites (for GoGio team — ONE-TIME ONLY)
-1. Get WhatsApp Business Account approved in Twilio Console
-2. Create a Messaging Service and enable WhatsApp on it
-3. Create Content templates in Twilio Console matching seeded templates
-4. UPDATE `whatsapp_templates` rows with real `twilio_content_sid` values and `approval_status = 'approved'`
-5. Store `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID` as Supabase secrets ✅ Done
-
-## Automated Per-Tenant (Zero-Touch)
-1. ✅ Buy number via gateway
-2. ✅ Configure webhook URL on number via gateway
-3. ✅ Register number as WhatsApp Sender via Messaging Service API
-4. ✅ Save config to DB
