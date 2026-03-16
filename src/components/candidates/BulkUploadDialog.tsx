@@ -240,7 +240,7 @@ export function BulkUploadDialog({
             </Button>
             <Button
               onClick={handleStartUpload}
-              disabled={files.length === 0}
+              disabled={files.length === 0 || !source}
               className="bg-virgilio-purple hover:bg-virgilio-purple/90 shadow-calendly"
             >
               Start Upload ({files.length})
