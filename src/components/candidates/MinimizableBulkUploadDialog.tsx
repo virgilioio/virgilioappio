@@ -62,6 +62,7 @@ export function MinimizableBulkUploadDialog({
       setAutoGenerateSkills(true);
       setAssignToJob("");
       setAssignToStage("");
+      setSource("");
     }
   }, [isOpen]);
 
