@@ -447,6 +447,28 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
         }
       })
 
+      // === Source Distribution ===
+      const candidateIds = [...new Set(allAssociations.map((a: any) => a.candidate_id).filter(Boolean))]
+      const allCandidateSources: { id: string; source: string | null }[] = []
+      for (let i = 0; i < candidateIds.length; i += 500) {
+        const batch = candidateIds.slice(i, i + 500)
+        const { data: cands } = await supabase
+          .from('candidates')
+          .select('id, source')
+          .in('id', batch)
+        if (cands) allCandidateSources.push(...cands)
+      }
+      const candidateSourceMap = new Map(allCandidateSources.map(c => [c.id, c.source || 'Unknown']))
+      const sourceCountMap = new Map<string, number>()
+      allAssociations.forEach((a: any) => {
+        let src = candidateSourceMap.get(a.candidate_id) || 'Unknown'
+        src = normalizeSource(src)
+        sourceCountMap.set(src, (sourceCountMap.get(src) || 0) + 1)
+      })
+      const sourceDistribution = Array.from(sourceCountMap.entries())
+        .map(([source, total]) => ({ source, total }))
+        .sort((a, b) => b.total - a.total)
+
       return {
         applications,
         activeCandidates,
@@ -459,6 +481,7 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
         statusDistribution,
         stageDistribution,
         trendData,
+        sourceDistribution,
         interviewsByStage,
         stageConversions: stageConversions.map(({ fromStage, toStage, count, rate }) => ({ fromStage, toStage, count, rate })),
         avgTimePerStage
