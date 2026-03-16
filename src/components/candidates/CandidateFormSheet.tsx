@@ -177,7 +177,8 @@ export function CandidateFormSheet({
           notes: candidate.notes || '',
           linkedin_url: candidate.linkedin_url || '',
           email: candidate.email || '',
-          phone: candidate.phone || ''
+          phone: candidate.phone || '',
+          source: candidate.source || ''
         }
         
         form.reset(candidateData)
