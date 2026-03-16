@@ -128,7 +128,8 @@ export function useCandidates(jobId: string) {
               skills,
               auto_generated_skills,
               created_at,
-              updated_at
+              updated_at,
+              source
             )
           `)
           .eq('job_id', jobId)
