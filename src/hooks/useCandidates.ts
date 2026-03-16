@@ -51,6 +51,7 @@ export interface Candidate {
   // Backward compatibility fields (computed from association data)
   notes: string | null // Maps to association_notes
   job_id: string // Required for backward compatibility
+  source: string | null
 }
 
 export interface CreateCandidateData {

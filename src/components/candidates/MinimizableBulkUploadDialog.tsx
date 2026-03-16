@@ -179,7 +179,7 @@ export function MinimizableBulkUploadDialog({
         </Button>
         <Button
           onClick={handleStartUpload}
-          disabled={files.length === 0}
+          disabled={files.length === 0 || !source}
         >
           Upload {files.length} {files.length === 1 ? "Resume" : "Resumes"}
         </Button>
