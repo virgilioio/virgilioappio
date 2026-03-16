@@ -92,7 +92,8 @@ export function BulkUploadDialog({
     await uploadCandidates(files, {
       autoGenerateSkills,
       assignToJob,
-      assignToStage
+      assignToStage,
+      source: source || undefined
     })
   }
 
