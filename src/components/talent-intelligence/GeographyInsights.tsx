@@ -55,6 +55,27 @@ function displayName(name: string) {
   return country ? country.label : name
 }
 
+function getCountryCode(name: string): string | null {
+  const country = COUNTRIES.find(c => c.value === name || c.label === name)
+  return country?.value ?? null
+}
+
+function countryCodeToFlag(code: string): string {
+  return code.toUpperCase().replace(/./g, char =>
+    String.fromCodePoint(127397 + char.charCodeAt(0))
+  )
+}
+
+function CountryFlag({ name }: { name: string }) {
+  const code = getCountryCode(name)
+  if (!code) return <div className="w-6 h-6 rounded-full bg-muted" />
+  return (
+    <div className="w-6 h-6 rounded-full bg-muted/50 flex items-center justify-center text-sm leading-none overflow-hidden">
+      {countryCodeToFlag(code)}
+    </div>
+  )
+}
+
 export function GeographyInsights({ countryCounts, cityCounts, totalCandidates, onCountryClick }: GeographyInsightsProps) {
   const maxCount = countryCounts.length > 0 ? countryCounts[0].count : 1
   const topCountries = countryCounts.slice(0, 5)
@@ -139,7 +160,10 @@ export function GeographyInsights({ countryCounts, cityCounts, totalCandidates, 
                     onClick={() => onCountryClick?.(country.name)}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-poppins text-foreground">{displayName(country.name)}</span>
+                      <div className="flex items-center gap-2">
+                        <CountryFlag name={country.name} />
+                        <span className="text-sm font-poppins text-foreground">{displayName(country.name)}</span>
+                      </div>
                       <span className="text-xs font-poppins font-semibold text-muted-foreground">{country.count} ({pct}%)</span>
                     </div>
                     <Progress value={pct} className="h-2" />
