@@ -1,49 +1,151 @@
+# System Roles Migration — Completed Phases 1-5
 
+## Architecture Change
+- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
+- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-# Bulk Upload Audit — Issues Found and Fix Plan
+## Completed
 
-## Issues Identified
+### Phase 1 — Database
+- ✅ Created `system_role` enum (`admin`, `member`)
+- ✅ Added `system_role` column to `members` table
+- ✅ Migrated data: `admin` → `admin`, all others → `member`
+- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
+- ✅ Updated `check_tenant_member_role` to use `system_role`
+- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
+- ✅ Updated `audit_member_role_change` trigger
 
-### 1. Stale closure bug in toast summary (Critical)
-In `useBulkCandidateUpload.ts` line 208, `calculateSummary(fileResults)` reads the `fileResults` state at the time the `uploadCandidates` function was created — not the final state after all files processed. Since `setFileResults` is async, this always reads the **initial empty array**, so the toast always shows "0 created, 0 merged, 0 failed".
+### Phase 2 — Frontend Permissions
+- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
+- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
+- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
+- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
 
-**Fix**: Use a `useRef` to track results alongside state, or compute the summary from within the `setFileResults` updater. Simplest: maintain a local `results` array in `uploadCandidates` that gets updated alongside `setFileResults`.
+### Phase 3 — UI Updates
+- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
+- ✅ Updated `Dashboard` — sourcing panel for admin+ only
+- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
+- ✅ Updated `BillingGuard` — members (non-admin) never blocked
+- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
+- ✅ Updated `Find` page RoleGate
+- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
 
-### 2. `addCandidate` calls `getCandidates()` after every single insert (Saturation)
-In `useIndependentCandidates.ts` line 197, after creating each candidate, `addCandidate` calls `getCandidates()` which fetches the entire candidate table (up to 1000 rows). For a 20-file bulk upload with concurrency 3, this fires ~20 full table fetches. This saturates the database and slows everything down.
+### Phase 4 — Runtime Hotfixes
+- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
+- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
+- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
+- ✅ Updated `validate_invite_token` — returns `system_role`
+- ✅ Updated `accept_invitation` — uses `system_role`
 
-**Fix**: Add an optional `skipRefresh` parameter to `addCandidate` (default `false`). The bulk upload hook passes `skipRefresh: true` and triggers a single refresh at the end.
+### Phase 5 — Complete Cleanup
+- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
+- ✅ Updated `admin_manage_member` — updates `system_role` column
+- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
+- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
+- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
+- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
+- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
+- ✅ Updated `diagnose_user_auth` — reports `system_role`
+- ✅ Updated `audit_platform_admin_access` — returns `system_role`
+- ✅ Updated `debug_user_permissions` — returns `system_role`
+- ✅ Renamed `invitations.member_role` → `invitations.system_role`
+- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
 
-### 3. `addCandidate` shows individual toasts per candidate (Noise)
-Each successful create fires a "Candidate added successfully" toast. During bulk upload this floods the screen with 20+ toasts.
+## Phase 6 — Future (Optional)
+- Drop `member_role` column from `members` table (already dropped)
+- Drop old `member_role` enum type
+- Update `MemberInviteSheet` role picker to only offer Admin/Member
 
-**Fix**: Add a `silent` option to `addCandidate` to suppress individual toasts during bulk operations.
+# Deep Resume Parsing + Data Standardization — Completed
 
-### 4. Fire-and-forget enrichment with no throttling (Saturation)
-`triggerBackgroundEnrichment` is called for every file immediately after creation. With 20 files, this fires 20 concurrent edge function calls to OpenAI in rapid succession, which can cause rate limits and timeouts.
+## What was implemented
 
-**Fix**: Queue enrichment calls sequentially after all files are processed, with a small delay between each, instead of firing them during per-file processing.
+### Phase 1: Schema Expansion
+- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
+- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
+- ✅ Added to `candidate_education`: `education_level`
+- ✅ Created `candidate_certifications` table with RLS policies
 
-### 5. Concurrency of 3 may be too aggressive for parse-resume edge function
-Each file invokes `parse-resume` (AI call) + `enrich-candidate-profile` (AI call). 3 concurrent = 6 simultaneous AI calls. 
+### Phase 2: Enrichment Rewrite
+- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
+- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
+- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
+- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
+- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
 
-**Fix**: Reduce to 2 concurrent uploads, and move enrichment to post-processing.
+### Phase 3: UI Updates
+- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
+- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
+- ✅ **Certifications section** with `CandidateCertificationsComponent`
+- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
+- ✅ Enhanced **Education** display: education level badge
+- ✅ Certifications loaded alongside work experience and education
 
-## Changes
+## Files changed
+- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
+- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
+- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
+- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
+- `src/components/candidates/CandidateCertifications.tsx` — new component
 
-### `src/hooks/useIndependentCandidates.ts`
-- Add `options?: { skipRefresh?: boolean; silent?: boolean }` parameter to `addCandidate`
-- When `skipRefresh` is true, skip the `getCandidates()` call
-- When `silent` is true, skip the success toast
+# WhatsApp ISV Architecture — Completed
 
-### `src/hooks/useBulkCandidateUpload.ts`
-- Fix stale closure: track results in a local array within `uploadCandidates`, compute summary from that
-- Reduce `CONCURRENT_UPLOADS` from 3 to 2
-- Pass `{ skipRefresh: true, silent: true }` to `addCandidate`
-- Move `triggerBackgroundEnrichment` calls to a sequential post-processing loop with 1s delay between each
-- Call `getCandidates()` once at the end (import and expose a refresh function)
-- Add inter-batch delay (500ms) to avoid hammering the API
+## Architecture
+Per-tenant dedicated numbers under GoGio's master Twilio account. Each tenant gets their own WhatsApp number provisioned via the Twilio connector gateway.
 
-### `src/hooks/useIndependentCandidates.ts` (expose refresh)
-- Export `getCandidates` from the hook so the bulk upload can call it once at the end
+## What was implemented
 
+### Inbound Webhook
+- ✅ Created `whatsapp-inbound-webhook` edge function (public, no JWT)
+- ✅ Matches inbound `From` phone to existing conversations
+- ✅ Inserts messages as `direction: 'inbound'`, updates `unread_count`
+- ✅ Returns empty TwiML (no auto-reply)
+- ✅ Added to `supabase/config.toml` with `verify_jwt = false`
+
+### Simplified Setup Wizard
+- ✅ Reduced from 5 steps to 3: Welcome → Provision → Complete
+- ✅ Removed broken "Verify sender" and "Templates" steps
+- ✅ Provisioning = activation (no separate activate step)
+
+### Simplified Setup Status
+- ✅ Reduced from 6 states to 3: `not_started`, `active`, `error`
+- ✅ `canMessage = true` when `active` (no template-gating)
+- ✅ Removed `provisioning`, `sender_pending`, `sender_active`, `templates_required`
+
+### Integration Card Updates
+- ✅ Removed template count stats (approved/pending/draft)
+- ✅ Simplified status badges to active/not set up/error
+- ✅ Removed unused status configs (sender_pending, provisioning, etc.)
+
+### Template Library Updates
+- ✅ Removed non-functional Submit and Refresh buttons
+- ✅ Removed filter tabs (all/draft/pending/approved/rejected)
+- ✅ Added info note: "Custom templates require GoGio team approval"
+- ✅ Templates show as "Ready to use" or "Local only" status
+
+### Chat Tab Updates
+- ✅ Simplified blocking: only blocks when `not_started` or no phone number
+- ✅ Removed intermediate `canMessage` blocking state
+- ✅ Updated empty template message to reference GoGio team
+
+### Send Function Updates
+- ✅ Removed `is_active` check — if number exists, can send
+- ✅ Per-tenant `twilio_from_number` logic preserved
+
+### Global Templates Seeded
+- ✅ Interview Invitation, Application Update, Job Opportunity
+- ✅ Inserted with `tenant_id = NULL` (global)
+- ✅ No `twilio_content_sid` yet (marked as draft until GoGio team adds real SIDs)
+
+## Manual Prerequisites (for GoGio team — ONE-TIME ONLY)
+1. Get WhatsApp Business Account approved in Twilio Console
+2. Create a Messaging Service and enable WhatsApp on it
+3. Create Content templates in Twilio Console matching seeded templates
+4. UPDATE `whatsapp_templates` rows with real `twilio_content_sid` values and `approval_status = 'approved'`
+5. Store `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID` as Supabase secrets ✅ Done
+
+## Automated Per-Tenant (Zero-Touch)
+1. ✅ Buy number via gateway
+2. ✅ Configure webhook URL on number via gateway
+3. ✅ Register number as WhatsApp Sender via Messaging Service API
+4. ✅ Save config to DB

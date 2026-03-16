@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useResumeParsing } from './useResumeParsing'
 import { useIndependentCandidates } from './useIndependentCandidates'
 import { usePipelineActions } from './usePipelineActions'
@@ -29,17 +29,28 @@ interface Summary {
   total: number
 }
 
+interface EnrichmentTask {
+  candidateId: string
+  resumeText: string
+  candidateName: string
+}
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
 export function useBulkCandidateUpload() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [fileResults, setFileResults] = useState<FileProcessingResult[]>([])
+  // Mirror of fileResults for synchronous reads (avoids stale closure)
+  const localResultsRef = useRef<FileProcessingResult[]>([])
   
   const { parseResumeCoreFields } = useResumeParsing()
-  const { addCandidate, updateCandidate } = useIndependentCandidates()
+  const { addCandidate, updateCandidate, getCandidates } = useIndependentCandidates()
   const { createAssociationAndMove } = usePipelineActions()
   const { user } = useAuth()
 
   const resetUploadState = () => {
     setFileResults([])
+    localResultsRef.current = []
     setIsProcessing(false)
   }
 
@@ -61,21 +72,26 @@ export function useBulkCandidateUpload() {
       }
       return newResults
     })
+    // Keep local mirror in sync
+    localResultsRef.current[fileIndex] = {
+      ...localResultsRef.current[fileIndex],
+      status,
+      progress,
+      candidate,
+      error
+    }
   }
 
   const uploadResumeFile = async (candidateId: string, file: File) => {
-    // Generate unique storage path
     const ext = file.name.split('.').pop()
     const storagePath = `${candidateId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
     
-    // Upload to storage
     const { error: storageError } = await supabase.storage
       .from('candidate-attachments')
       .upload(storagePath, file)
     
     if (storageError) throw storageError
     
-    // Create database record
     const { error: dbError } = await supabase
       .from('candidate_attachments')
       .insert({
@@ -89,7 +105,6 @@ export function useBulkCandidateUpload() {
       })
     
     if (dbError) {
-      // Cleanup storage if DB insert fails
       await supabase.storage.from('candidate-attachments').remove([storagePath])
       throw dbError
     }
@@ -98,10 +113,11 @@ export function useBulkCandidateUpload() {
   const processFile = async (
     file: File,
     fileIndex: number,
-    options: BulkUploadOptions
+    options: BulkUploadOptions,
+    enrichmentQueue: EnrichmentTask[]
   ) => {
     try {
-      // 1. AI Core Fields Parse (fast, ~3-5 seconds)
+      // 1. AI Core Fields Parse
       updateFileStatus(fileIndex, 'parsing', 30)
       
       const result = await parseResumeCoreFields(file)
@@ -116,20 +132,20 @@ export function useBulkCandidateUpload() {
       // 2. Parse location
       const locationParts = parsed.location?.split(',').map(s => s.trim()) || []
       
-      // 3. Create candidate data (without AI-generated skills/summary - will be added by background enrichment)
+      // 3. Create candidate data
       const candidateData = {
         candidate_name: parsed.name || file.name.replace(/\.[^/.]+$/, ''),
         email: parsed.email,
         phone: parsed.phone ? sanitizeToE164(parsed.phone) : undefined,
         linkedin_url: parsed.linkedinUrl,
-        // No profile_summary or skills - will be added by background enrichment
         location_city: locationParts[0],
         location_state: locationParts[1],
         location_country: locationParts[2] || locationParts[1],
         enrichment_status: options.autoGenerateSkills ? 'pending' : undefined,
       }
 
-      const createResult = await addCandidate(candidateData)
+      // Pass skipRefresh + silent to avoid per-candidate DB saturation and toast spam
+      const createResult = await addCandidate(candidateData, { skipRefresh: true, silent: true })
 
       // 4. Handle duplicate detection
       if (createResult && 'isDuplicate' in createResult) {
@@ -142,9 +158,13 @@ export function useBulkCandidateUpload() {
           console.warn('Resume upload failed for merged candidate:', uploadError)
         }
         
-        // Trigger background enrichment for merged candidate (generates skills + profile summary)
+        // Queue enrichment instead of firing immediately
         if (options.autoGenerateSkills && resumeText) {
-          triggerBackgroundEnrichment(createResult.existingCandidate.id, resumeText, parsed.name)
+          enrichmentQueue.push({
+            candidateId: createResult.existingCandidate.id,
+            resumeText,
+            candidateName: parsed.name || ''
+          })
         }
         
         updateFileStatus(fileIndex, 'duplicate', 100, createResult.existingCandidate)
@@ -156,9 +176,13 @@ export function useBulkCandidateUpload() {
           console.warn('Resume upload failed, but candidate was created:', uploadError)
         }
         
-        // Trigger background enrichment for new candidate (generates skills + profile summary)
+        // Queue enrichment instead of firing immediately
         if (options.autoGenerateSkills && resumeText) {
-          triggerBackgroundEnrichment(createResult.id, resumeText, parsed.name)
+          enrichmentQueue.push({
+            candidateId: createResult.id,
+            resumeText,
+            candidateName: parsed.name || ''
+          })
         }
         
         updateFileStatus(fileIndex, 'success', 100, createResult)
@@ -187,29 +211,56 @@ export function useBulkCandidateUpload() {
     options: BulkUploadOptions
   ) => {
     setIsProcessing(true)
-    setFileResults(files.map(file => ({
+    const initialResults = files.map(file => ({
       file,
-      status: 'pending',
+      status: 'pending' as const,
       progress: 0
-    })))
+    }))
+    setFileResults(initialResults)
+    localResultsRef.current = [...initialResults]
+
+    // Collect enrichment tasks to run sequentially after all uploads
+    const enrichmentQueue: EnrichmentTask[] = []
 
     try {
-      // Process files with concurrency control (3 at a time)
-      const CONCURRENT_UPLOADS = 3
+      // Process files with concurrency control (2 at a time to avoid AI rate limits)
+      const CONCURRENT_UPLOADS = 2
       
       for (let i = 0; i < files.length; i += CONCURRENT_UPLOADS) {
         const chunk = files.slice(i, i + CONCURRENT_UPLOADS)
         const promises = chunk.map((file, chunkIndex) => 
-          processFile(file, i + chunkIndex, options)
+          processFile(file, i + chunkIndex, options, enrichmentQueue)
         )
         await Promise.all(promises)
+
+        // Inter-batch delay to avoid hammering the API
+        if (i + CONCURRENT_UPLOADS < files.length) {
+          await delay(500)
+        }
       }
 
-      const summary = calculateSummary(fileResults)
+      // Compute summary from local mirror (not stale state)
+      const summary = calculateSummary(localResultsRef.current)
       toast({
         title: 'Upload Complete',
         description: `${summary.created} created, ${summary.merged} merged, ${summary.failed} failed`
       })
+
+      // Single refresh after all candidates are created
+      try {
+        await getCandidates()
+      } catch (err) {
+        console.warn('Post-bulk-upload refresh failed:', err)
+      }
+
+      // Sequential enrichment with throttling (1s between calls)
+      if (enrichmentQueue.length > 0) {
+        console.log(`🔄 Starting sequential enrichment for ${enrichmentQueue.length} candidates`)
+        for (const task of enrichmentQueue) {
+          triggerBackgroundEnrichment(task.candidateId, task.resumeText, task.candidateName)
+          await delay(1000)
+        }
+      }
     } catch (error) {
       console.error('Bulk upload error:', error)
       toast({
