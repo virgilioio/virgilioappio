@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { BulkUploadDropzone } from "./BulkUploadDropzone";
 import { useJobs } from "@/hooks/useJobs";
 import { useJobHiringPlan } from "@/hooks/useJobHiringPlan";
+import { useCandidateSources } from "@/hooks/useCandidateSources";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { SearchableSelect } from "@/components/ui/searchable-select";
