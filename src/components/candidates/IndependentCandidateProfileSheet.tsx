@@ -605,6 +605,11 @@ export function IndependentCandidateProfileSheet({
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-0.5 flex-shrink-0">
+                                      {whatsAppEnabled && buildWhatsAppUrl(phoneValue) && (
+                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-[#25D366] hover:text-[#128C7E]" onClick={() => window.open(buildWhatsAppUrl(phoneValue)!, '_blank')}>
+                                          <WhatsAppIcon size={14} />
+                                        </Button>
+                                      )}
                                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => copyToClipboard(phoneValue, 'Phone number copied to clipboard')}>
                                         <Copy className="h-3.5 w-3.5" />
                                       </Button>
