@@ -311,7 +311,7 @@ export default function CandidateProfile() {
                   linkedinUrl={candidate.linkedin_url}
                   badgeText={job?.title || undefined}
                   tabs={[
-                    { value: 'job', label: 'Job Application', Icon: Briefcase },
+                    { value: 'job', label: 'Job Overview', Icon: Briefcase },
                     { value: 'resume', label: 'Resume', Icon: FileText },
                     { value: 'overview', label: 'Overview', Icon: FileText },
                     
