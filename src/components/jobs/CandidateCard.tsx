@@ -43,14 +43,8 @@ export default function CandidateCard(props: CandidateCardProps) {
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null)
   const [localSentAt, setLocalSentAt] = useState<string | null>(initialSentAt ?? null)
 
-  // Keep local state in sync if prop changes (e.g. after pipeline reload)
-  if ((initialSentAt ?? null) !== localSentAt && initialSentAt !== undefined) {
-    if (initialSentAt !== null && localSentAt === null) {
-      // prop updated externally
-    } else if (initialSentAt !== localSentAt) {
-      setLocalSentAt(initialSentAt ?? null)
-    }
-  }
+  // Keep local state in sync with prop changes (e.g. after pipeline reload)
+  const effectiveSentAt = localSentAt ?? initialSentAt ?? null
 
   const { data: nextInterview } = useQuery({
     queryKey: ['next-interview', candidateId],
