@@ -48,6 +48,11 @@ function useChromeConnected() {
   return false
 }
 
+function useWhatsAppConnected() {
+  const { automation, isLoading } = useWorkspaceAutomation('whatsapp_integration')
+  if (isLoading) return false
+  return automation?.is_active ?? false
+}
 
 const INTEGRATIONS: IntegrationEntry[] = [
   {
