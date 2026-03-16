@@ -97,6 +97,9 @@ export function CandidateFormSheet({
   const { jobs: availableJobs, isLoading: isLoadingJobs } = useJobsForCandidateAssignment()
   const { loadHiringPlanInstances } = useJobHiringPlan()
   const [jobStages, setJobStages] = useState<Array<{ jhsId: string; stage: any; position: number }>>([])
+  
+  // Candidate sources
+  const { sources: candidateSources, isLoading: isLoadingSources } = useCandidateSources('organization')
   const [isLoadingStages, setIsLoadingStages] = useState(false)
   
   useEffect(() => {
