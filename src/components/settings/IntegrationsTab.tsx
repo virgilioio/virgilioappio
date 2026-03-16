@@ -23,6 +23,7 @@ import gogioAvatar from '@/assets/gogio-avatar.png'
 // Hooks for connection status
 import { useMailIdentities } from '@/hooks/useMailIdentities'
 import { useCalendarIdentities } from '@/hooks/useCalendarIdentities'
+import { useWorkspaceAutomation } from '@/hooks/useWorkspaceAutomation'
 
 
 interface IntegrationEntry {
