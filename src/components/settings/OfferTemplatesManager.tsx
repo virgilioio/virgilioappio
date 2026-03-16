@@ -501,6 +501,10 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
         <TabsContent value="rejection-templates" className="mt-4">
           <RejectionEmailTemplatesManager context={context} />
         </TabsContent>
+
+        <TabsContent value="candidate-sources" className="mt-4">
+          <CandidateSourcesManager context={context} />
+        </TabsContent>
       </Tabs>
 
       {/* Offer Letter Sheet */}

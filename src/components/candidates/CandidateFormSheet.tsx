@@ -130,7 +130,8 @@ export function CandidateFormSheet({
       notes: '',
       linkedin_url: '',
       email: '',
-      phone: ''
+      phone: '',
+      source: ''
     }
   })
 
