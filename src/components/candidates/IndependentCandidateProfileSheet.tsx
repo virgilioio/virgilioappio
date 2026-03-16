@@ -81,6 +81,7 @@ export function IndependentCandidateProfileSheet({
   }
 
   const { attachments, uploadAttachment: uploadResume, isUploading: isResumeUploading, deleteAttachment } = useCandidateAttachments(candidateId || '')
+  const { isEnabled: whatsAppEnabled } = useWhatsAppEnabled()
 
   const resumeAttachment = attachments.find((a) => a.is_resume)
   const replaceResumeInputRef = useRef<HTMLInputElement>(null)
