@@ -140,6 +140,21 @@ export function MinimizableBulkUploadDialog({
               />
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="source" className="text-sm font-medium">
+                Source <span className="text-destructive">*</span>
+              </Label>
+              <SearchableSelect
+                options={candidateSources.map(s => ({ value: s.name, label: s.name }))}
+                value={source}
+                onValueChange={setSource}
+                placeholder="Select source..."
+                searchPlaceholder="Search sources..."
+                emptyMessage="No sources found"
+                required
+              />
+            </div>
+
             {assignToJob && stageOptions.length > 0 && (
               <div className="space-y-2">
                 <Label htmlFor="assign-stage" className="text-sm font-medium">
