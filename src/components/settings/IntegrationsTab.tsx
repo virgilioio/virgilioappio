@@ -16,6 +16,7 @@ import { WhatsAppIntegrationDetail } from './WhatsAppIntegrationDetail'
 
 // Logos
 import { GoogleLogo } from '@/components/icons/GoogleLogo'
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 
 import gogioAvatar from '@/assets/gogio-avatar.png'
 
