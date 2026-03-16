@@ -5,17 +5,22 @@ import { format, parseISO, formatDistanceToNowStrict } from 'date-fns'
 import { Card } from '@/components/ui/card'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Calendar, ExternalLink, Clock, FileText, CheckCircle, Send } from 'lucide-react'
+import { Calendar, Clock, FileText, CheckCircle, Send, Phone } from 'lucide-react'
 import { JobStage } from '@/hooks/useJobHiringPlan'
 import { Checkbox } from '@/components/ui/checkbox'
 import { supabase } from '@/lib/supabaseClient'
 import { BookingDetailsDialog } from '@/components/booking/BookingDetailsDialog'
+import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import { useWhatsAppEnabled } from '@/hooks/useWhatsAppEnabled'
+import { buildWhatsAppUrl, formatE164Display } from '@/utils/phoneUtils'
 
 interface CandidateCardProps {
   candidateId?: string
   associationId?: string
   candidateName: string
   linkedinUrl?: string | null
+  phone?: string | null
   stageOptions: { jhsId: string; stage: JobStage }[]
   currentStageJhsId?: string | null
   timeInStageLabel?: string
@@ -28,7 +33,8 @@ interface CandidateCardProps {
 }
 
 export default function CandidateCard(props: CandidateCardProps) {
-  const { candidateId, associationId, candidateName, linkedinUrl, timeInStageLabel, timeBadgeVariant, onClick, currentStageJhsId } = props
+  const { candidateId, associationId, candidateName, linkedinUrl, phone, timeInStageLabel, timeBadgeVariant, onClick, currentStageJhsId } = props
+  const { isEnabled: whatsAppEnabled } = useWhatsAppEnabled()
   const [bookingDialogOpen, setBookingDialogOpen] = useState(false)
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null)
 
@@ -177,19 +183,44 @@ export default function CandidateCard(props: CandidateCardProps) {
             <div className="flex items-center gap-2 min-w-0">
               <div className="font-medium text-sm text-text-primary truncate">{candidateName}</div>
             </div>
-            {linkedinUrl ? (
-              <a
-                href={linkedinUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-primary mt-1 hover:underline"
-                title="Open LinkedIn"
-              >
-                <ExternalLink className="w-3.5 h-3.5" /> LinkedIn
-              </a>
-            ) : (
-              <div className="text-xs text-text-tertiary mt-1">No LinkedIn</div>
-            )}
+            <div className="flex flex-col gap-0.5 mt-1">
+              {linkedinUrl ? (
+                <a
+                  href={linkedinUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-[#0A66C2] hover:underline"
+                  title="Open LinkedIn"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <LinkedInFilled className="w-3.5 h-3.5" /> LinkedIn
+                </a>
+              ) : (
+                <div className="text-xs text-text-tertiary">No LinkedIn</div>
+              )}
+              {phone && (
+                <div className="inline-flex items-center gap-1 text-xs text-text-secondary">
+                  {whatsAppEnabled && buildWhatsAppUrl(phone) ? (
+                    <a
+                      href={buildWhatsAppUrl(phone)!}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-[#25D366] hover:text-[#128C7E] hover:underline"
+                      title="Open WhatsApp"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <WhatsAppIcon size={14} />
+                      <span className="text-text-secondary">{formatE164Display(phone)}</span>
+                    </a>
+                  ) : (
+                    <>
+                      <Phone className="w-3 h-3" />
+                      <span>{formatE164Display(phone)}</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

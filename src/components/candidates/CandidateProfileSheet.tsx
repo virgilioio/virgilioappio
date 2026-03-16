@@ -68,6 +68,7 @@ import { OfferStatusBanner } from './OfferStatusBanner'
 import { MinimizableOfferComposer } from './MinimizableOfferComposer'
 import { CandidateReminders } from './CandidateReminders'
 import { CandidateInsightsTab } from './insights/CandidateInsightsTab'
+import { CandidateDetailsCollapsible } from './CandidateDetailsCollapsible'
 import { CandidateOfferDetails } from './CandidateOfferDetails'
 import { CandidateOfferApprovals } from './CandidateOfferApprovals'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
@@ -123,7 +124,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [jobCandidateId, setJobCandidateId] = useState<string | null>(null)
   const [job, setJob] = useState<any | null>(null)
   const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'overview' | 'offer'>('job')
-  const [rightActiveTab, setRightActiveTab] = useState<'chat' | 'feed' | 'notes' | 'emails' | 'reminders' | 'insights'>('feed')
+  const [rightActiveTab, setRightActiveTab] = useState<'chat' | 'feed' | 'notes' | 'emails' | 'reminders' | 'insights'>('insights')
   
   const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
   const [education, setEducation] = useState<CandidateEducation[]>([])
@@ -1084,7 +1085,7 @@ const stageHasAutomation = useMemo(() => {
                           ...((associationStatus === 'offer' || associationStatus === 'hired')
                             ? [{ value: 'offer', label: 'Offer', Icon: FileText }]
                             : []),
-                          { value: 'job', label: 'Job Application', Icon: FileText },
+                          { value: 'job', label: 'Job Overview', Icon: FileText },
                           ...(!isRestrictedViewer ? [{ value: 'application', label: 'Application Details', Icon: FileText }] : []),
                           { value: 'resume', label: 'Resume', Icon: FileText },
                           ...(!isRestrictedViewer ? [{ value: 'overview', label: 'Overview', Icon: FileText }] : []),
@@ -1093,11 +1094,18 @@ const stageHasAutomation = useMemo(() => {
                        onTabChange={(v) => setActiveTab(v as 'job' | 'application' | 'resume' | 'overview' | 'offer')}
                      />
 
-                    {/* Job Application Tab */}
+                    {/* Job Overview Tab */}
                     {activeTab === 'job' && (
+                      <>
+                      {/* Collapsible Candidate Details */}
+                      <CandidateDetailsCollapsible
+                        candidate={candidate}
+                        whatsAppEnabled={whatsAppEnabled}
+                        handleWhatsAppClick={handleWhatsAppClick}
+                      />
                       <Card className="bg-surface-primary border-border">
                         <CardHeader>
-                          <CardTitle>Job Application</CardTitle>
+                          <CardTitle>Job Overview</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2">
                           {planStages.length ? (
@@ -1274,6 +1282,7 @@ const stageHasAutomation = useMemo(() => {
                           )}
                         </CardContent>
                       </Card>
+                      </>
                     )}
 
                     {/* Application Details Tab */}
@@ -1350,205 +1359,7 @@ const stageHasAutomation = useMemo(() => {
                     )}
 
                     {activeTab === 'overview' ? (
-                      <Accordion type="multiple" defaultValue={['contact', 'summary']} className="space-y-4">
-                        {/* Contact Information */}
-                        <AccordionItem value="contact" className="border-0">
-                          <Card className="bg-surface-primary border-border">
-                            <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                              <CardTitle>Candidate Details</CardTitle>
-                            </AccordionTrigger>
-                            <AccordionContent>
-                              <CardContent className="space-y-4 pt-0">
-                                    {/* Emails Section */}
-                                    <div className="space-y-2">
-                                      {/* Primary email or contact_emails */}
-                                      {(candidate as any)?.contact_emails && (candidate as any).contact_emails.length > 0 ? (
-                                        (candidate as any).contact_emails.map((ce: any, idx: number) => {
-                                          // Parse JSON string or use object/string directly
-                                          const { email: emailValue, type: emailType } = getEmailFromEntry(ce);
-                                          
-                                          if (!emailValue) return null;
-                                          
-                                          return (
-                                            <div key={`email-${idx}`} className="flex items-start justify-between gap-2">
-                                              <div className="flex items-start gap-2 flex-1 min-w-0">
-                                                <Mail className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                                                <div className="flex flex-col min-w-0">
-                                                  <a
-                                                    href={`mailto:${emailValue}`}
-                                                    className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all"
-                                                  >
-                                                    {emailValue}
-                                                  </a>
-                                                  <span className="text-xs text-text-tertiary capitalize">{emailType}</span>
-                                                </div>
-                                              </div>
-                                              <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-6 w-6 p-0 flex-shrink-0"
-                                                onClick={() => copyToClipboard(emailValue, 'Email copied to clipboard')}
-                                              >
-                                                <Copy className="h-3.5 w-3.5" />
-                                              </Button>
-                                            </div>
-                                          );
-                                        })
-                                      ) : candidate?.email ? (
-                                        <div className="flex items-start justify-between gap-2">
-                                          <div className="flex items-start gap-2 flex-1 min-w-0">
-                                            <Mail className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                                            <a
-                                              href={`mailto:${candidate.email}`}
-                                              className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all"
-                                            >
-                                              {candidate.email}
-                                            </a>
-                                          </div>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-6 w-6 p-0 flex-shrink-0"
-                                            onClick={() => copyToClipboard(candidate.email, 'Email copied to clipboard')}
-                                          >
-                                            <Copy className="h-3.5 w-3.5" />
-                                          </Button>
-                                        </div>
-                                      ) : null}
-                                    </div>
-
-                                    {/* Phones Section */}
-                                    <div className="space-y-2">
-                                      {(candidate as any)?.contact_phones && (candidate as any).contact_phones.length > 0 ? (
-                                        (candidate as any).contact_phones.map((cp: any, idx: number) => {
-                                          // Parse JSON string or use object/string directly
-                                          const { phone: phoneValue, type: phoneType } = getPhoneFromEntry(cp);
-                                          
-                                          if (!phoneValue) return null;
-                                          
-                                          return (
-                                            <div key={`phone-${idx}`} className="flex items-start justify-between gap-2">
-                                              <div className="flex items-start gap-2 flex-1 min-w-0">
-                                                <Phone className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                                                <div className="flex flex-col min-w-0">
-                                                  <a
-                                                    href={`tel:${phoneValue}`}
-                                                    className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all"
-                                                  >
-                                                    {formatE164Display(phoneValue)}
-                                                  </a>
-                                                  <span className="text-xs text-text-tertiary capitalize">{phoneType}</span>
-                                                </div>
-                                              </div>
-                                              <div className="flex items-center gap-0.5">
-                                                {whatsAppEnabled && buildWhatsAppUrl(phoneValue) && (
-                                                  <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-6 w-6 p-0 flex-shrink-0 text-[#25D366] hover:text-[#128C7E]"
-                                                    onClick={() => handleWhatsAppClick(phoneValue)}
-                                                  >
-                                                    <WhatsAppIcon size={14} />
-                                                  </Button>
-                                                )}
-                                                <Button
-                                                  variant="ghost"
-                                                  size="sm"
-                                                  className="h-6 w-6 p-0 flex-shrink-0"
-                                                  onClick={() => copyToClipboard(phoneValue, 'Phone number copied to clipboard')}
-                                                >
-                                                  <Copy className="h-3.5 w-3.5" />
-                                                </Button>
-                                              </div>
-                                            </div>
-                                          );
-                                        })
-                                      ) : (
-                                        <div className="flex items-start justify-between gap-2">
-                                          <div className="flex items-start gap-2 flex-1 min-w-0">
-                                            <Phone className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                                            {candidate?.phone ? (
-                                              <a
-                                                href={`tel:${candidate.phone}`}
-                                                className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all"
-                                              >
-                                                {formatE164Display(candidate.phone)}
-                                              </a>
-                                            ) : (
-                                              <span className="text-sm text-text-tertiary italic">
-                                                Phone not available
-                                              </span>
-                                            )}
-                                          </div>
-                                          {candidate?.phone && (
-                                            <div className="flex items-center gap-0.5">
-                                              {whatsAppEnabled && buildWhatsAppUrl(candidate.phone) && (
-                                                <Button
-                                                  variant="ghost"
-                                                  size="sm"
-                                                  className="h-6 w-6 p-0 flex-shrink-0 text-[#25D366] hover:text-[#128C7E]"
-                                                  onClick={() => handleWhatsAppClick(candidate.phone)}
-                                                >
-                                                  <WhatsAppIcon size={14} />
-                                                </Button>
-                                              )}
-                                              <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-6 w-6 p-0 flex-shrink-0"
-                                                onClick={() => copyToClipboard(candidate.phone, 'Phone number copied to clipboard')}
-                                              >
-                                                <Copy className="h-3.5 w-3.5" />
-                                              </Button>
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-
-                                     {/* LinkedIn */}
-                                    {candidate?.linkedin_url && (
-                                      <div className="flex items-start justify-between gap-2">
-                                        <div className="flex items-start gap-2 flex-1 min-w-0">
-                                          <LinkedInFilled className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                                          <a
-                                            href={candidate.linkedin_url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all"
-                                          >
-                                            LinkedIn Profile
-                                          </a>
-                                        </div>
-                                        <ExternalLink className="h-3.5 w-3.5 text-text-tertiary flex-shrink-0 mt-0.5" />
-                                      </div>
-                                    )}
-
-                                    {/* Location */}
-                                    {(candidate?.location_city || candidate?.location_state || candidate?.location_country) && (
-                                      <div className="flex items-start gap-2">
-                                        <MapPin className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                                        <span className="text-sm text-text-primary">
-                                          {[candidate.location_city, candidate.location_state, candidate.location_country]
-                                            .filter(Boolean).join(', ')}
-                                        </span>
-                                      </div>
-                                    )}
-
-                                    {/* Salary Expectations */}
-                                    {candidate?.salary_amount && (
-                                      <div className="flex items-start gap-2">
-                                        <DollarSign className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                                        <span className="text-sm text-text-primary">
-                                          {candidate.salary_currency || 'USD'} {candidate.salary_amount.toLocaleString()} / {candidate.salary_period || 'annually'}
-                                        </span>
-                                      </div>
-                                    )}
-                              </CardContent>
-                            </AccordionContent>
-                          </Card>
-                        </AccordionItem>
-
+                      <Accordion type="multiple" defaultValue={['summary']} className="space-y-4">
                         {/* URLs - hidden on mobile */}
                         <div className="hidden md:block">
                           <AccordionItem value="urls" className="border-0">
@@ -1769,13 +1580,13 @@ const stageHasAutomation = useMemo(() => {
                      <CandidateNameCard
                        email={candidate.email}
                        phone={candidate.phone}
-                         tabs={[
-                           { value: 'feed', label: 'Feed', Icon: Activity },
-                           { value: 'notes', label: 'Notes', Icon: StickyNote },
-                           ...(!isRestrictedViewer ? [{ value: 'emails', label: 'Emails', Icon: Mail }] : []),
-                           ...(!isRestrictedViewer ? [{ value: 'reminders', label: 'Reminders', Icon: Bell }] : []),
-                           ...(!isRestrictedViewer ? [{ value: 'insights', label: 'Insights', Icon: Sparkles }] : []),
-                         ]}
+                          tabs={[
+                            ...(!isRestrictedViewer ? [{ value: 'insights', label: 'Insights', Icon: Sparkles }] : []),
+                            ...(!isRestrictedViewer ? [{ value: 'emails', label: 'Emails', Icon: Mail }] : []),
+                            { value: 'notes', label: 'Notes', Icon: StickyNote },
+                            ...(!isRestrictedViewer ? [{ value: 'reminders', label: 'Reminders', Icon: Bell }] : []),
+                            { value: 'feed', label: 'Feed', Icon: Activity },
+                          ]}
                          activeTab={rightActiveTab}
                          onTabChange={(v) => setRightActiveTab(v as 'feed' | 'notes' | 'emails' | 'reminders' | 'insights')}
                       />

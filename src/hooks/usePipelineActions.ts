@@ -10,6 +10,7 @@ export interface PipelineAssociation {
   pipeline_position: number | null
   candidate_name: string
   linkedin_url?: string | null
+  phone?: string | null
   created_at: string
   entered_stage_at: string | null
   status: 'active' | 'rejected' | 'hired' | 'offer' | string
@@ -48,7 +49,7 @@ export function usePipelineActions() {
     // 2) Load candidate names/links from independent candidates table
     const { data: candidates, error: candError } = await supabase
       .from('candidates')
-      .select('id, candidate_name, linkedin_url')
+      .select('id, candidate_name, linkedin_url, phone')
       .in('id', candidateIds as string[])
 
     if (candError) {
@@ -72,6 +73,7 @@ export function usePipelineActions() {
         pipeline_position: a.pipeline_position,
         candidate_name: c?.candidate_name || 'Unnamed Candidate',
         linkedin_url: c?.linkedin_url ?? null,
+        phone: c?.phone ?? null,
         created_at: a.created_at,
         entered_stage_at: a.entered_stage_at ?? null,
         status: (a as any).status ?? 'active',

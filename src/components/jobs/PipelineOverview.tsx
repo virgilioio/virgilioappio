@@ -636,6 +636,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                                 associationId={assoc.id}
                                 candidateName={assoc.candidate_name}
                                 linkedinUrl={assoc.linkedin_url}
+                                phone={assoc.phone}
                                 stageOptions={stageOptions}
                                 currentStageJhsId={opt.jhsId}
                                 timeInStageLabel={t.label}
@@ -697,6 +698,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                           associationId={assoc.id}
                           candidateName={assoc.candidate_name}
                           linkedinUrl={assoc.linkedin_url}
+                          phone={assoc.phone}
                           stageOptions={stageOptions}
                           currentStageJhsId={stageJhsId}
                           timeInStageLabel={t.label}
