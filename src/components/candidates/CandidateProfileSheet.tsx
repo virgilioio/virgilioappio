@@ -1093,11 +1093,18 @@ const stageHasAutomation = useMemo(() => {
                        onTabChange={(v) => setActiveTab(v as 'job' | 'application' | 'resume' | 'overview' | 'offer')}
                      />
 
-                    {/* Job Application Tab */}
+                    {/* Job Overview Tab */}
                     {activeTab === 'job' && (
+                      <>
+                      {/* Collapsible Candidate Details */}
+                      <CandidateDetailsCollapsible
+                        candidate={candidate}
+                        whatsAppEnabled={whatsAppEnabled}
+                        handleWhatsAppClick={handleWhatsAppClick}
+                      />
                       <Card className="bg-surface-primary border-border">
                         <CardHeader>
-                          <CardTitle>Job Application</CardTitle>
+                          <CardTitle>Job Overview</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2">
                           {planStages.length ? (
