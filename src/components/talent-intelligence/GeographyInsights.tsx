@@ -166,7 +166,6 @@ export function GeographyInsights({ countryCounts, cityCounts, totalCandidates, 
                       </div>
                       <span className="text-xs font-poppins font-semibold text-muted-foreground">{country.count} ({pct}%)</span>
                     </div>
-                    </div>
                     <Progress value={pct} className="h-2" />
                   </div>
                 )
