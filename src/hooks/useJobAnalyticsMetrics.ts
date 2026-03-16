@@ -103,6 +103,7 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
         .from('job_candidate_associations')
         .select(`
           id,
+          candidate_id,
           status,
           created_at,
           updated_at,
