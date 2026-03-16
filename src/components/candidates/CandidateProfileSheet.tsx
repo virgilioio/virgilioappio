@@ -1281,6 +1281,7 @@ const stageHasAutomation = useMemo(() => {
                           )}
                         </CardContent>
                       </Card>
+                      </>
                     )}
 
                     {/* Application Details Tab */}
