@@ -788,6 +788,26 @@ export function CandidateFormSheet({
                   placeholder="https://linkedin.com/in/username"
                 />
               </FormField>
+
+              <FormField
+                label="Source"
+                required
+                error={form.formState.errors.source?.message}
+                htmlFor="source"
+              >
+                <SearchableSelect
+                  options={candidateSources.map(s => ({ value: s.name, label: s.name }))}
+                  value={form.watch('source')}
+                  onValueChange={(val) => form.setValue('source', val, { shouldValidate: true, shouldDirty: true })}
+                  placeholder={isLoadingSources ? "Loading sources..." : "Select source..."}
+                  searchPlaceholder="Search sources..."
+                  emptyMessage="No sources found"
+                  disabled={isLoadingSources}
+                  error={form.formState.errors.source?.message}
+                  required
+                />
+                <input type="hidden" {...form.register('source', { required: 'Source is required' })} />
+              </FormField>
             </div>
 
             {/* Job Assignment - Only show for new candidates */}
