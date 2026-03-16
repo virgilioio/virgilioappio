@@ -1,0 +1,2 @@
+ALTER TABLE public.job_candidate_associations
+ADD COLUMN whatsapp_template_sent_at timestamptz DEFAULT NULL;
