@@ -157,7 +157,10 @@ export function useIndependentCandidates() {
     }
   }
 
-  const addCandidate = async (candidateData: CreateIndependentCandidateData): Promise<IndependentCandidate | DuplicateResult | null> => {
+  const addCandidate = async (
+    candidateData: CreateIndependentCandidateData,
+    options?: { skipRefresh?: boolean; silent?: boolean }
+  ): Promise<IndependentCandidate | DuplicateResult | null> => {
     if (!user || !organizationId) throw new Error('User not authenticated or no organization context')
 
     setIsLoading(true)
@@ -189,12 +192,16 @@ export function useIndependentCandidates() {
         source: candidateData.source || 'direct'
       })
 
-      toast({
-        title: 'Success',
-        description: 'Candidate added successfully'
-      })
+      if (!options?.silent) {
+        toast({
+          title: 'Success',
+          description: 'Candidate added successfully'
+        })
+      }
 
-      await getCandidates()
+      if (!options?.skipRefresh) {
+        await getCandidates()
+      }
       return {
         ...newCandidate,
         auto_generated_skills: (newCandidate.auto_generated_skills as any) || null
@@ -203,11 +210,13 @@ export function useIndependentCandidates() {
       const errorMessage = extractErrorMessage(err)
       log.error('Independent candidate creation error:', err)
       setError(errorMessage)
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive'
-      })
+      if (!options?.silent) {
+        toast({
+          title: 'Error',
+          description: errorMessage,
+          variant: 'destructive'
+        })
+      }
       throw err
     } finally {
       setIsLoading(false)
