@@ -178,7 +178,8 @@ export function useCandidates(jobId: string) {
           first_viewed_by: null, // Legacy field
           // Backward compatibility fields
           notes: assoc.notes,
-          job_id: jobId
+          job_id: jobId,
+          source: candidate.source || null
         }
       })
       
