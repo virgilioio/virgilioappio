@@ -14,6 +14,7 @@ export interface PipelineAssociation {
   created_at: string
   entered_stage_at: string | null
   status: 'active' | 'rejected' | 'hired' | 'offer' | string
+  whatsapp_template_sent_at: string | null
 }
 
 /**
@@ -27,7 +28,7 @@ export function usePipelineActions() {
     // 1) Load associations for job
     const { data: associations, error: assocError } = await supabase
       .from('job_candidate_associations')
-      .select('id, job_id, candidate_id, current_stage_id, pipeline_position, created_at, entered_stage_at, status')
+      .select('id, job_id, candidate_id, current_stage_id, pipeline_position, created_at, entered_stage_at, status, whatsapp_template_sent_at')
       .eq('job_id', jobId)
       .order('pipeline_position', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false })
@@ -77,6 +78,7 @@ export function usePipelineActions() {
         created_at: a.created_at,
         entered_stage_at: a.entered_stage_at ?? null,
         status: (a as any).status ?? 'active',
+        whatsapp_template_sent_at: (a as any).whatsapp_template_sent_at ?? null,
       }
     })
 
