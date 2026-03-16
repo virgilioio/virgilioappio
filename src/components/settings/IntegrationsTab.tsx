@@ -212,7 +212,7 @@ export function IntegrationsTab() {
             key={entry.id}
             entry={entry}
             isActive={activeId === entry.id}
-            onConfigure={() => setActiveId(activeId === entry.id ? null : entry.id)}
+          onConfigure={() => setActiveId(entry.id)}
           />
         ))}
       </div>
@@ -223,24 +223,26 @@ export function IntegrationsTab() {
         </div>
       )}
 
-      {/* Expanded detail panel */}
-      <Collapsible open={!!activeEntry}>
-        <CollapsibleContent className="pt-2">
+      {/* Configuration sheet */}
+      <Sheet open={!!activeEntry} onOpenChange={(open) => { if (!open) setActiveId(null) }}>
+        <SheetContent side="right" className="sm:max-w-lg overflow-y-auto">
           {activeEntry && (
-            <div className="relative rounded-lg border border-border bg-surface-primary p-6">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="absolute top-3 right-3 h-7 w-7 p-0"
-                onClick={() => setActiveId(null)}
-              >
-                <ChevronUp className="h-4 w-4" />
-              </Button>
-              <activeEntry.DetailComponent />
-            </div>
+            <>
+              <SheetHeader>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted/60">
+                    {activeEntry.logo}
+                  </div>
+                  <SheetTitle className="text-base font-poppins">{activeEntry.name}</SheetTitle>
+                </div>
+              </SheetHeader>
+              <div className="mt-6">
+                <activeEntry.DetailComponent />
+              </div>
+            </>
           )}
-        </CollapsibleContent>
-      </Collapsible>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }
