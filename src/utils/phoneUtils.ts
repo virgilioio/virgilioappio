@@ -67,3 +67,14 @@ export function formatE164Display(phone: string): string {
 
   return sanitized
 }
+
+/**
+ * Builds a WhatsApp wa.me URL from a phone number.
+ * Strips everything except digits.
+ * Returns null if the number is too short or missing.
+ */
+export function buildWhatsAppUrl(phone: string): string | null {
+  if (!phone) return null
+  const digits = phone.replace(/[^\d]/g, '')
+  return digits.length >= 7 ? `https://wa.me/${digits}` : null
+}
