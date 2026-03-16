@@ -14,6 +14,7 @@ export interface PipelineAssociation {
   created_at: string
   entered_stage_at: string | null
   status: 'active' | 'rejected' | 'hired' | 'offer' | string
+  whatsapp_template_sent_at: string | null
 }
 
 /**
