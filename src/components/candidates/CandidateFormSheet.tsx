@@ -61,6 +61,7 @@ interface FormData {
   linkedin_url: string
   email: string
   phone: string
+  source: string
 }
 
 export function CandidateFormSheet({ 
