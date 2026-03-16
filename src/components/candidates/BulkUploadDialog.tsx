@@ -183,6 +183,19 @@ export function BulkUploadDialog({
                     </Select>
                   </div>
                 )}
+
+                <div className="space-y-2">
+                  <Label>Source <span className="text-destructive">*</span></Label>
+                  <SearchableSelect
+                    options={candidateSources.map(s => ({ value: s.name, label: s.name }))}
+                    value={source}
+                    onValueChange={setSource}
+                    placeholder="Select source..."
+                    searchPlaceholder="Search sources..."
+                    emptyMessage="No sources found"
+                    required
+                  />
+                </div>
               </div>
             </div>
           )}
