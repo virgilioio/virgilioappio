@@ -45,7 +45,7 @@ export function BulkUploadDialog({
   const { jobs } = useJobs()
   const { loadHiringPlanInstances } = useJobHiringPlan()
   const [stageOptions, setStageOptions] = useState<Array<{ id: string; name: string }>>([])
-
+  const { sources: candidateSources } = useCandidateSources('organization')
   const activeJobs = jobs?.filter(j => j.status !== 'archived') || []
   
   useEffect(() => {
