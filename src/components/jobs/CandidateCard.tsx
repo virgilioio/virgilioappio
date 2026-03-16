@@ -5,11 +5,15 @@ import { format, parseISO, formatDistanceToNowStrict } from 'date-fns'
 import { Card } from '@/components/ui/card'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Calendar, ExternalLink, Clock, FileText, CheckCircle, Send } from 'lucide-react'
+import { Calendar, Clock, FileText, CheckCircle, Send, Phone } from 'lucide-react'
 import { JobStage } from '@/hooks/useJobHiringPlan'
 import { Checkbox } from '@/components/ui/checkbox'
 import { supabase } from '@/lib/supabaseClient'
 import { BookingDetailsDialog } from '@/components/booking/BookingDetailsDialog'
+import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import { useWhatsAppEnabled } from '@/hooks/useWhatsAppEnabled'
+import { buildWhatsAppUrl, formatE164Display } from '@/utils/phoneUtils'
 
 interface CandidateCardProps {
   candidateId?: string
