@@ -1577,13 +1577,13 @@ const stageHasAutomation = useMemo(() => {
                      <CandidateNameCard
                        email={candidate.email}
                        phone={candidate.phone}
-                         tabs={[
-                           { value: 'feed', label: 'Feed', Icon: Activity },
-                           { value: 'notes', label: 'Notes', Icon: StickyNote },
-                           ...(!isRestrictedViewer ? [{ value: 'emails', label: 'Emails', Icon: Mail }] : []),
-                           ...(!isRestrictedViewer ? [{ value: 'reminders', label: 'Reminders', Icon: Bell }] : []),
-                           ...(!isRestrictedViewer ? [{ value: 'insights', label: 'Insights', Icon: Sparkles }] : []),
-                         ]}
+                          tabs={[
+                            ...(!isRestrictedViewer ? [{ value: 'insights', label: 'Insights', Icon: Sparkles }] : []),
+                            ...(!isRestrictedViewer ? [{ value: 'emails', label: 'Emails', Icon: Mail }] : []),
+                            { value: 'notes', label: 'Notes', Icon: StickyNote },
+                            ...(!isRestrictedViewer ? [{ value: 'reminders', label: 'Reminders', Icon: Bell }] : []),
+                            { value: 'feed', label: 'Feed', Icon: Activity },
+                          ]}
                          activeTab={rightActiveTab}
                          onTabChange={(v) => setRightActiveTab(v as 'feed' | 'notes' | 'emails' | 'reminders' | 'insights')}
                       />
