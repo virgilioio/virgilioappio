@@ -1,6 +1,6 @@
 import { AnalyticsSection } from '@/components/analytics/shared/AnalyticsSection'
 import { AnalyticsTableCard } from '@/components/analytics/shared/AnalyticsTableCard'
-import { SourceBarChart } from '@/components/analytics/charts/SourceBarChart'
+import { SourceDonutChart } from '@/components/analytics/charts/SourceDonutChart'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Globe } from 'lucide-react'
 import type { SourcePerformanceData } from '@/hooks/analytics/useSourcePerformanceMetrics'
@@ -10,6 +10,8 @@ interface SourcePerformanceSectionProps {
 }
 
 export function SourcePerformanceSection({ data }: SourcePerformanceSectionProps) {
+  const donutData = data.rows.map(r => ({ source: r.source, total: r.total }))
+
   return (
     <AnalyticsSection
       title="Source Performance"
@@ -17,7 +19,7 @@ export function SourcePerformanceSection({ data }: SourcePerformanceSectionProps
       icon={Globe}
     >
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <SourceBarChart data={data.rows} isLoading={data.isLoading} />
+        <SourceDonutChart data={donutData} isLoading={data.isLoading} />
 
         <AnalyticsTableCard
           title="Source Breakdown"

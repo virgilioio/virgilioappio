@@ -37,6 +37,7 @@ export interface JobAnalyticsMetrics {
   statusDistribution: { name: string; value: number; color: string }[]
   stageDistribution: { name: string; count: number }[]
   trendData: { date: string; applications: number; active: number; hires: number; interviewsScheduled: number; offers: number; rejected: number; interviewsCompleted: number }[]
+  sourceDistribution: { source: string; total: number }[]
   // New recruiting insight metrics
   interviewsByStage: InterviewsByStage[]
   stageConversions: StageConversion[]
@@ -102,6 +103,7 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
         .from('job_candidate_associations')
         .select(`
           id,
+          candidate_id,
           status,
           created_at,
           updated_at,
@@ -445,6 +447,28 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
         }
       })
 
+      // === Source Distribution ===
+      const candidateIds = [...new Set(allAssociations.map((a: any) => a.candidate_id).filter(Boolean))]
+      const allCandidateSources: { id: string; source: string | null }[] = []
+      for (let i = 0; i < candidateIds.length; i += 500) {
+        const batch = candidateIds.slice(i, i + 500)
+        const { data: cands } = await supabase
+          .from('candidates')
+          .select('id, source')
+          .in('id', batch)
+        if (cands) allCandidateSources.push(...cands)
+      }
+      const candidateSourceMap = new Map(allCandidateSources.map(c => [c.id, c.source || 'Unknown']))
+      const sourceCountMap = new Map<string, number>()
+      allAssociations.forEach((a: any) => {
+        let src = candidateSourceMap.get(a.candidate_id) || 'Unknown'
+        src = normalizeSource(src)
+        sourceCountMap.set(src, (sourceCountMap.get(src) || 0) + 1)
+      })
+      const sourceDistribution = Array.from(sourceCountMap.entries())
+        .map(([source, total]) => ({ source, total }))
+        .sort((a, b) => b.total - a.total)
+
       return {
         applications,
         activeCandidates,
@@ -457,6 +481,7 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
         statusDistribution,
         stageDistribution,
         trendData,
+        sourceDistribution,
         interviewsByStage,
         stageConversions: stageConversions.map(({ fromStage, toStage, count, rate }) => ({ fromStage, toStage, count, rate })),
         avgTimePerStage
@@ -478,10 +503,23 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
     statusDistribution: data?.statusDistribution ?? [],
     stageDistribution: data?.stageDistribution ?? [],
     trendData: data?.trendData ?? [],
+    sourceDistribution: data?.sourceDistribution ?? [],
     interviewsByStage: data?.interviewsByStage ?? [],
     stageConversions: data?.stageConversions ?? [],
     avgTimePerStage: data?.avgTimePerStage ?? [],
     isLoading,
     error: error as Error | null
   }
+}
+
+function normalizeSource(source: string): string {
+  const lower = source.toLowerCase().trim()
+  if (lower === 'applied' || lower === 'application' || lower === 'career_page' || lower === 'careers_page') return 'Applied'
+  if (lower.includes('linkedin')) return 'LinkedIn'
+  if (lower.includes('referral') || lower === 'referred') return 'Referral'
+  if (lower.includes('sourced') || lower === 'sourcing') return 'Sourced'
+  if (lower.includes('indeed')) return 'Indeed'
+  if (lower === 'manual' || lower === 'manual_add') return 'Manual Add'
+  if (lower === 'unknown' || lower === '' || lower === 'null') return 'Unknown'
+  return source.charAt(0).toUpperCase() + source.slice(1)
 }
