@@ -33,7 +33,8 @@ interface CandidateCardProps {
 }
 
 export default function CandidateCard(props: CandidateCardProps) {
-  const { candidateId, associationId, candidateName, linkedinUrl, timeInStageLabel, timeBadgeVariant, onClick, currentStageJhsId } = props
+  const { candidateId, associationId, candidateName, linkedinUrl, phone, timeInStageLabel, timeBadgeVariant, onClick, currentStageJhsId } = props
+  const { isEnabled: whatsAppEnabled } = useWhatsAppEnabled()
   const [bookingDialogOpen, setBookingDialogOpen] = useState(false)
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null)
 
