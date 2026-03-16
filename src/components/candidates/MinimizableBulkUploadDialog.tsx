@@ -26,11 +26,13 @@ export function MinimizableBulkUploadDialog({
   const [autoGenerateSkills, setAutoGenerateSkills] = useState(true);
   const [assignToJob, setAssignToJob] = useState<string>("");
   const [assignToStage, setAssignToStage] = useState<string>("");
+  const [source, setSource] = useState<string>("");
   const [stageOptions, setStageOptions] = useState<{ value: string; label: string }[]>([]);
 
   const { startUpload } = useBulkUploadContext();
   const { jobs } = useJobs();
   const { loadHiringPlan } = useJobHiringPlan();
+  const { sources: candidateSources } = useCandidateSources('organization');
 
   // Load stage options when job changes
   useEffect(() => {
