@@ -73,6 +73,7 @@ export function usePipelineActions() {
         pipeline_position: a.pipeline_position,
         candidate_name: c?.candidate_name || 'Unnamed Candidate',
         linkedin_url: c?.linkedin_url ?? null,
+        phone: c?.phone ?? null,
         created_at: a.created_at,
         entered_stage_at: a.entered_stage_at ?? null,
         status: (a as any).status ?? 'active',

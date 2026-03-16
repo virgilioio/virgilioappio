@@ -183,19 +183,44 @@ export default function CandidateCard(props: CandidateCardProps) {
             <div className="flex items-center gap-2 min-w-0">
               <div className="font-medium text-sm text-text-primary truncate">{candidateName}</div>
             </div>
-            {linkedinUrl ? (
-              <a
-                href={linkedinUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-primary mt-1 hover:underline"
-                title="Open LinkedIn"
-              >
-                <ExternalLink className="w-3.5 h-3.5" /> LinkedIn
-              </a>
-            ) : (
-              <div className="text-xs text-text-tertiary mt-1">No LinkedIn</div>
-            )}
+            <div className="flex flex-col gap-0.5 mt-1">
+              {linkedinUrl ? (
+                <a
+                  href={linkedinUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-[#0A66C2] hover:underline"
+                  title="Open LinkedIn"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <LinkedInFilled className="w-3.5 h-3.5" /> LinkedIn
+                </a>
+              ) : (
+                <div className="text-xs text-text-tertiary">No LinkedIn</div>
+              )}
+              {phone && (
+                <div className="inline-flex items-center gap-1 text-xs text-text-secondary">
+                  {whatsAppEnabled && buildWhatsAppUrl(phone) ? (
+                    <a
+                      href={buildWhatsAppUrl(phone)!}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-[#25D366] hover:text-[#128C7E] hover:underline"
+                      title="Open WhatsApp"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <WhatsAppIcon size={14} />
+                      <span className="text-text-secondary">{formatE164Display(phone)}</span>
+                    </a>
+                  ) : (
+                    <>
+                      <Phone className="w-3 h-3" />
+                      <span>{formatE164Display(phone)}</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
