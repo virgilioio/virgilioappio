@@ -87,7 +87,7 @@ export function WhatsAppIntegrationDetail() {
               <button
                 key={p.key}
                 type="button"
-                className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                className="inline-flex items-center rounded-full border border-purple-500/40 bg-purple-500/15 px-2 py-0.5 text-xs font-medium text-purple-600 transition-colors hover:bg-purple-500/25 hover:border-purple-500/60 dark:bg-purple-500/20 dark:text-purple-400 dark:border-purple-500/50"
                 onClick={() => {
                   setTemplateText((prev) => prev + `{{${p.key}}}`)
                   setDirty(true)
