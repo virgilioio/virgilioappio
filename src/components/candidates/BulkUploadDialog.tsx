@@ -69,6 +69,7 @@ export function BulkUploadDialog({
       setAutoGenerateSkills(false)
       setAssignToJob(undefined)
       setAssignToStage(undefined)
+      setSource('')
     }
   }, [isOpen])
 
