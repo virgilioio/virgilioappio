@@ -1084,7 +1084,7 @@ const stageHasAutomation = useMemo(() => {
                           ...((associationStatus === 'offer' || associationStatus === 'hired')
                             ? [{ value: 'offer', label: 'Offer', Icon: FileText }]
                             : []),
-                          { value: 'job', label: 'Job Application', Icon: FileText },
+                          { value: 'job', label: 'Job Overview', Icon: FileText },
                           ...(!isRestrictedViewer ? [{ value: 'application', label: 'Application Details', Icon: FileText }] : []),
                           { value: 'resume', label: 'Resume', Icon: FileText },
                           ...(!isRestrictedViewer ? [{ value: 'overview', label: 'Overview', Icon: FileText }] : []),
