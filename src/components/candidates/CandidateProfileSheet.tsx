@@ -159,7 +159,8 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   // Use the candidate resolver to get the correct ID for attachments
   const { independentCandidateId } = useCandidateResolver(candidateId)
   const { attachments, uploadAttachment: uploadResume, isUploading: isResumeUploading, deleteAttachment } = useCandidateAttachments(independentCandidateId || '')
-  const { isEnabled: whatsAppEnabled } = useWhatsAppEnabled()
+  const { isEnabled: whatsAppEnabled, messageTemplate: whatsAppTemplate } = useWhatsAppEnabled()
+  const [whatsAppTemplateSentAt, setWhatsAppTemplateSentAt] = useState<string | null>(null)
 
 // Hiring plan stages for vertical accordion
 const { loadHiringPlanInstances } = useJobHiringPlan()
