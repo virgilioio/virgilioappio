@@ -367,7 +367,8 @@ const stageHasAutomation = useMemo(() => {
             rejection_email_scheduled_for,
             rejection_reason:rejection_reasons(id, name, category),
             offered_at,
-            offered_by
+            offered_by,
+            whatsapp_template_sent_at
           `)
           .eq('job_id', jobId)
           .eq('candidate_id', candidateId)
