@@ -12,6 +12,7 @@ export interface BulkUploadOptions {
   autoGenerateSkills: boolean
   assignToJob?: string
   assignToStage?: string
+  source?: string
 }
 
 export interface FileProcessingResult {
