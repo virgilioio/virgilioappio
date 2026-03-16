@@ -85,6 +85,7 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
           <TabsTrigger value="contract-templates">Contracts</TabsTrigger>
           <TabsTrigger value="rejection-reasons">Rejection Reasons</TabsTrigger>
           <TabsTrigger value="rejection-templates">Rejection Templates</TabsTrigger>
+          <TabsTrigger value="candidate-sources">Candidate Sources</TabsTrigger>
         </TabsList>
 
         <TabsContent value="offer-forms" className="mt-4">
