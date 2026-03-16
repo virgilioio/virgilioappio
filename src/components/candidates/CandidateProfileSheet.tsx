@@ -251,6 +251,65 @@ const stageHasAutomation = useMemo(() => {
     await deleteAttachment(resumeAttachment.id, resumeAttachment.file_url)
   }
 
+  // WhatsApp template handler — first click per association resolves the template
+  const handleWhatsAppClick = async (phone: string) => {
+    // If no template, no association, or already sent — open plain URL
+    if (!whatsAppTemplate || !associationId || whatsAppTemplateSentAt) {
+      const url = buildWhatsAppUrl(phone)
+      if (url) window.open(url, '_blank')
+      return
+    }
+
+    // Resolve placeholders
+    const senderProfile = user?.id
+      ? await supabase
+          .from('profiles')
+          .select('first_name, last_name, email, title, phone, linkedin_url')
+          .eq('user_id', user.id)
+          .maybeSingle()
+          .then((r) => r.data)
+      : null
+
+    // Get org name from the job's organization
+    const orgName = job?.organization?.name ?? ''
+
+    const placeholderData = buildPlaceholderData({
+      candidate: candidate
+        ? {
+            candidate_name: candidate.candidate_name,
+            email: candidate.email,
+            phone: candidate.phone,
+            location_city: candidate.location_city,
+            location_state: candidate.location_state,
+            location_country: candidate.location_country,
+          }
+        : undefined,
+      job: job ? { title: job.title, department: job.department, location: job.location } : undefined,
+      sender: senderProfile
+        ? {
+            first_name: senderProfile.first_name ?? undefined,
+            last_name: senderProfile.last_name ?? undefined,
+            email: senderProfile.email ?? user?.email ?? undefined,
+            title: senderProfile.title ?? undefined,
+            phone: senderProfile.phone ?? undefined,
+            linkedin_url: senderProfile.linkedin_url ?? undefined,
+          }
+        : undefined,
+      organizationName: orgName,
+    })
+
+    const resolvedText = renderTemplate(whatsAppTemplate, placeholderData)
+    const url = buildWhatsAppUrl(phone, resolvedText)
+    if (url) window.open(url, '_blank')
+
+    // Mark as sent
+    await supabase
+      .from('job_candidate_associations' as any)
+      .update({ whatsapp_template_sent_at: new Date().toISOString() })
+      .eq('id', associationId)
+    setWhatsAppTemplateSentAt(new Date().toISOString())
+  }
+
   useEffect(() => {
     if (open) setActiveTab('job')
     
