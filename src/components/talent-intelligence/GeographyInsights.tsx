@@ -160,8 +160,12 @@ export function GeographyInsights({ countryCounts, cityCounts, totalCandidates, 
                     onClick={() => onCountryClick?.(country.name)}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-poppins text-foreground">{displayName(country.name)}</span>
+                      <div className="flex items-center gap-2">
+                        <CountryFlag name={country.name} />
+                        <span className="text-sm font-poppins text-foreground">{displayName(country.name)}</span>
+                      </div>
                       <span className="text-xs font-poppins font-semibold text-muted-foreground">{country.count} ({pct}%)</span>
+                    </div>
                     </div>
                     <Progress value={pct} className="h-2" />
                   </div>
