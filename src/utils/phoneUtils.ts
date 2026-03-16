@@ -73,8 +73,10 @@ export function formatE164Display(phone: string): string {
  * Strips everything except digits.
  * Returns null if the number is too short or missing.
  */
-export function buildWhatsAppUrl(phone: string): string | null {
+export function buildWhatsAppUrl(phone: string, text?: string): string | null {
   if (!phone) return null
   const digits = phone.replace(/[^\d]/g, '')
-  return digits.length >= 7 ? `https://wa.me/${digits}` : null
+  if (digits.length < 7) return null
+  const url = `https://wa.me/${digits}`
+  return text ? `${url}?text=${encodeURIComponent(text)}` : url
 }

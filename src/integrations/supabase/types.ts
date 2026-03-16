@@ -2011,6 +2011,7 @@ export type Database = {
           rejection_reason_id: string | null
           status: string | null
           updated_at: string
+          whatsapp_template_sent_at: string | null
         }
         Insert: {
           added_by?: string | null
@@ -2040,6 +2041,7 @@ export type Database = {
           rejection_reason_id?: string | null
           status?: string | null
           updated_at?: string
+          whatsapp_template_sent_at?: string | null
         }
         Update: {
           added_by?: string | null
@@ -2069,6 +2071,7 @@ export type Database = {
           rejection_reason_id?: string | null
           status?: string | null
           updated_at?: string
+          whatsapp_template_sent_at?: string | null
         }
         Relationships: [
           {

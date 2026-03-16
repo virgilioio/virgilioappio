@@ -42,6 +42,7 @@ import { getEmailFromEntry, getPhoneFromEntry } from '@/utils/parseContactEntry'
 import { formatE164Display, buildWhatsAppUrl } from '@/utils/phoneUtils'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { useWhatsAppEnabled } from '@/hooks/useWhatsAppEnabled'
+import { renderTemplate, buildPlaceholderData } from '@/utils/templateUtils'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { useCandidateResolver } from '@/hooks/useCandidateResolver'
@@ -158,7 +159,8 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   // Use the candidate resolver to get the correct ID for attachments
   const { independentCandidateId } = useCandidateResolver(candidateId)
   const { attachments, uploadAttachment: uploadResume, isUploading: isResumeUploading, deleteAttachment } = useCandidateAttachments(independentCandidateId || '')
-  const { isEnabled: whatsAppEnabled } = useWhatsAppEnabled()
+  const { isEnabled: whatsAppEnabled, messageTemplate: whatsAppTemplate } = useWhatsAppEnabled()
+  const [whatsAppTemplateSentAt, setWhatsAppTemplateSentAt] = useState<string | null>(null)
 
 // Hiring plan stages for vertical accordion
 const { loadHiringPlanInstances } = useJobHiringPlan()
@@ -249,6 +251,65 @@ const stageHasAutomation = useMemo(() => {
     await deleteAttachment(resumeAttachment.id, resumeAttachment.file_url)
   }
 
+  // WhatsApp template handler — first click per association resolves the template
+  const handleWhatsAppClick = async (phone: string) => {
+    // If no template, no association, or already sent — open plain URL
+    if (!whatsAppTemplate || !associationId || whatsAppTemplateSentAt) {
+      const url = buildWhatsAppUrl(phone)
+      if (url) window.open(url, '_blank')
+      return
+    }
+
+    // Resolve placeholders
+    const senderProfile = user?.id
+      ? await supabase
+          .from('profiles')
+          .select('first_name, last_name, email, title, phone, linkedin_url')
+          .eq('user_id', user.id)
+          .maybeSingle()
+          .then((r) => r.data)
+      : null
+
+    // Get org name from the job's organization
+    const orgName = job?.organization?.name ?? ''
+
+    const placeholderData = buildPlaceholderData({
+      candidate: candidate
+        ? {
+            candidate_name: candidate.candidate_name,
+            email: candidate.email,
+            phone: candidate.phone,
+            location_city: candidate.location_city,
+            location_state: candidate.location_state,
+            location_country: candidate.location_country,
+          }
+        : undefined,
+      job: job ? { title: job.title, department: job.department, location: job.location } : undefined,
+      sender: senderProfile
+        ? {
+            first_name: senderProfile.first_name ?? undefined,
+            last_name: senderProfile.last_name ?? undefined,
+            email: senderProfile.email ?? user?.email ?? undefined,
+            title: senderProfile.title ?? undefined,
+            phone: senderProfile.phone ?? undefined,
+            linkedin_url: senderProfile.linkedin_url ?? undefined,
+          }
+        : undefined,
+      organizationName: orgName,
+    })
+
+    const resolvedText = renderTemplate(whatsAppTemplate, placeholderData)
+    const url = buildWhatsAppUrl(phone, resolvedText)
+    if (url) window.open(url, '_blank')
+
+    // Mark as sent
+    await supabase
+      .from('job_candidate_associations' as any)
+      .update({ whatsapp_template_sent_at: new Date().toISOString() })
+      .eq('id', associationId)
+    setWhatsAppTemplateSentAt(new Date().toISOString())
+  }
+
   useEffect(() => {
     if (open) setActiveTab('job')
     
@@ -262,6 +323,7 @@ const stageHasAutomation = useMemo(() => {
     setOfferDetails(null)
     setJobCandidate(null)
     setJobCandidateId(null)
+    setWhatsAppTemplateSentAt(null)
     
     const load = async () => {
       if (!open || !candidateId) return
@@ -365,7 +427,8 @@ const stageHasAutomation = useMemo(() => {
             rejection_email_scheduled_for,
             rejection_reason:rejection_reasons(id, name, category),
             offered_at,
-            offered_by
+            offered_by,
+            whatsapp_template_sent_at
           `)
           .eq('job_id', jobId)
           .eq('candidate_id', candidateId)
@@ -373,6 +436,7 @@ const stageHasAutomation = useMemo(() => {
         setAssociationId(assoc?.id ?? null)
         setAssociationStatus((assoc?.status as any) ?? null)
         setCurrentStageId((assoc as any)?.current_stage_id ?? null)
+        setWhatsAppTemplateSentAt((assoc as any)?.whatsapp_template_sent_at ?? null)
         
         // Set rejection details if rejected
         if (assoc?.status === 'rejected' && assoc?.rejected_at) {
@@ -1382,7 +1446,7 @@ const stageHasAutomation = useMemo(() => {
                                                     variant="ghost"
                                                     size="sm"
                                                     className="h-6 w-6 p-0 flex-shrink-0 text-[#25D366] hover:text-[#128C7E]"
-                                                    onClick={() => window.open(buildWhatsAppUrl(phoneValue)!, '_blank')}
+                                                    onClick={() => handleWhatsAppClick(phoneValue)}
                                                   >
                                                     <WhatsAppIcon size={14} />
                                                   </Button>
@@ -1423,7 +1487,7 @@ const stageHasAutomation = useMemo(() => {
                                                   variant="ghost"
                                                   size="sm"
                                                   className="h-6 w-6 p-0 flex-shrink-0 text-[#25D366] hover:text-[#128C7E]"
-                                                  onClick={() => window.open(buildWhatsAppUrl(candidate.phone)!, '_blank')}
+                                                  onClick={() => handleWhatsAppClick(candidate.phone)}
                                                 >
                                                   <WhatsAppIcon size={14} />
                                                 </Button>
