@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { format, parseISO, formatDistanceToNowStrict } from 'date-fns'
@@ -14,6 +13,8 @@ import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { useWhatsAppEnabled } from '@/hooks/useWhatsAppEnabled'
 import { buildWhatsAppUrl, formatE164Display } from '@/utils/phoneUtils'
+import { renderTemplate, buildPlaceholderData } from '@/utils/templateUtils'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface CandidateCardProps {
   candidateId?: string
@@ -30,13 +31,26 @@ interface CandidateCardProps {
   showCheckbox?: boolean
   checked?: boolean
   onCheckedChange?: (checked: boolean) => void
+  jobId?: string
+  whatsappTemplateSentAt?: string | null
 }
 
 export default function CandidateCard(props: CandidateCardProps) {
-  const { candidateId, associationId, candidateName, linkedinUrl, phone, timeInStageLabel, timeBadgeVariant, onClick, currentStageJhsId } = props
-  const { isEnabled: whatsAppEnabled } = useWhatsAppEnabled()
+  const { candidateId, associationId, candidateName, linkedinUrl, phone, timeInStageLabel, timeBadgeVariant, onClick, currentStageJhsId, jobId, whatsappTemplateSentAt: initialSentAt } = props
+  const { isEnabled: whatsAppEnabled, template: whatsAppTemplate } = useWhatsAppEnabled()
+  const { user } = useAuth()
   const [bookingDialogOpen, setBookingDialogOpen] = useState(false)
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null)
+  const [localSentAt, setLocalSentAt] = useState<string | null>(initialSentAt ?? null)
+
+  // Keep local state in sync if prop changes (e.g. after pipeline reload)
+  if ((initialSentAt ?? null) !== localSentAt && initialSentAt !== undefined) {
+    if (initialSentAt !== null && localSentAt === null) {
+      // prop updated externally
+    } else if (initialSentAt !== localSentAt) {
+      setLocalSentAt(initialSentAt ?? null)
+    }
+  }
 
   const { data: nextInterview } = useQuery({
     queryKey: ['next-interview', candidateId],
@@ -116,6 +130,87 @@ export default function CandidateCard(props: CandidateCardProps) {
     },
     enabled: !!candidateId && !!associationId && !!currentStageJhsId,
   })
+
+  // WhatsApp first-click template handler
+  const handleWhatsAppClick = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!phone) return
+
+    // If no template, no association, or already sent — open plain URL
+    if (!whatsAppTemplate || !associationId || localSentAt) {
+      const url = buildWhatsAppUrl(phone)
+      if (url) window.open(url, '_blank')
+      return
+    }
+
+    // Resolve placeholders
+    const senderProfile = user?.id
+      ? await supabase
+          .from('profiles')
+          .select('first_name, last_name, email, title, phone, linkedin_url')
+          .eq('user_id', user.id)
+          .maybeSingle()
+          .then((r) => r.data)
+      : null
+
+    // Fetch candidate details for placeholders
+    const candidateData = candidateId
+      ? await supabase
+          .from('candidates')
+          .select('candidate_name, email, phone, location_city, location_state, location_country')
+          .eq('id', candidateId)
+          .maybeSingle()
+          .then((r) => r.data)
+      : null
+
+    // Fetch job details
+    const jobData = jobId
+      ? await supabase
+          .from('jobs')
+          .select('title, department, location, organization:organizations(name)')
+          .eq('id', jobId)
+          .maybeSingle()
+          .then((r) => r.data)
+      : null
+
+    const orgName = (jobData as any)?.organization?.name ?? ''
+
+    const placeholderData = buildPlaceholderData({
+      candidate: candidateData
+        ? {
+            candidate_name: candidateData.candidate_name,
+            email: candidateData.email,
+            phone: candidateData.phone,
+            location_city: candidateData.location_city,
+            location_state: candidateData.location_state,
+            location_country: candidateData.location_country,
+          }
+        : undefined,
+      job: jobData ? { title: jobData.title, department: jobData.department, location: jobData.location } : undefined,
+      sender: senderProfile
+        ? {
+            first_name: senderProfile.first_name ?? undefined,
+            last_name: senderProfile.last_name ?? undefined,
+            email: senderProfile.email ?? user?.email ?? undefined,
+            title: senderProfile.title ?? undefined,
+            phone: senderProfile.phone ?? undefined,
+            linkedin_url: senderProfile.linkedin_url ?? undefined,
+          }
+        : undefined,
+      organizationName: orgName,
+    })
+
+    const resolvedText = renderTemplate(whatsAppTemplate, placeholderData)
+    const url = buildWhatsAppUrl(phone, resolvedText)
+    if (url) window.open(url, '_blank')
+
+    // Mark as sent
+    await supabase
+      .from('job_candidate_associations' as any)
+      .update({ whatsapp_template_sent_at: new Date().toISOString() })
+      .eq('id', associationId)
+    setLocalSentAt(new Date().toISOString())
+  }
 
   // Get status badge based on priority
   const getStatusBadge = () => {
@@ -201,17 +296,15 @@ export default function CandidateCard(props: CandidateCardProps) {
               {phone && (
                 <div className="inline-flex items-center gap-1 text-xs text-text-secondary">
                   {whatsAppEnabled && buildWhatsAppUrl(phone) ? (
-                    <a
-                      href={buildWhatsAppUrl(phone)!}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-[#25D366] hover:text-[#128C7E] hover:underline"
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 text-[#25D366] hover:text-[#128C7E] hover:underline bg-transparent border-none p-0 cursor-pointer"
                       title="Open WhatsApp"
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={handleWhatsAppClick}
                     >
                       <WhatsAppIcon size={14} />
                       <span className="text-text-secondary">{formatE164Display(phone)}</span>
-                    </a>
+                    </button>
                   ) : (
                     <>
                       <Phone className="w-3 h-3" />

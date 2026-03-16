@@ -644,7 +644,6 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                                 onMove={(toId) => handleMove(assoc.id, toId)}
                                 onClick={() => { 
                                   if (onCandidateClick) {
-                                    // Pass current visual order snapshot for navigation
                                     const currentOrder = navigationSnapshotRef.current.length > 0 
                                       ? navigationSnapshotRef.current 
                                       : orderedCandidateIds
@@ -656,6 +655,8 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                                 showCheckbox={selectionMode}
                                 checked={isSelected(assoc.id)}
                                 onCheckedChange={(v) => toggleSelect(assoc.id, !!v)}
+                                jobId={jobId}
+                                whatsappTemplateSentAt={assoc.whatsapp_template_sent_at}
                               />
                             </DraggableCandidateCard>
                           )
