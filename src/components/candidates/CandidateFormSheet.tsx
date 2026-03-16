@@ -504,6 +504,7 @@ export function CandidateFormSheet({
       profile_summary: sanitizeHtmlForEditor(profileSummary),
       notes: notes,
       skills: skills.length > 0 ? skills : null,
+      source: data.source || null,
       job_id: jobId,
       // Job assignment data for new candidates
       ...(!candidate && {
