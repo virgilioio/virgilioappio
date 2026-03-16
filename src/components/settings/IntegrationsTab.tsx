@@ -1,12 +1,11 @@
 import { useState, useMemo } from 'react'
-import { Search, X, ChevronUp } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
 import { FilterChipPopover, type FilterChipOption } from '@/components/ui/filter-chip-popover'
 import { IntegrationCard } from './IntegrationCard'
 import { CATEGORY_OPTIONS, STATUS_OPTIONS, type IntegrationCategory } from './integrationRegistry'
-import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 
 // Detail components
 import { ChromeExtensionTokenCard } from './ChromeExtensionTokenCard'
