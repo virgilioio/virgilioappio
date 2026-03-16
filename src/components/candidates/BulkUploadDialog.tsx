@@ -39,6 +39,7 @@ export function BulkUploadDialog({
   const [autoGenerateSkills, setAutoGenerateSkills] = useState(false)
   const [assignToJob, setAssignToJob] = useState<string>()
   const [assignToStage, setAssignToStage] = useState<string>()
+  const [source, setSource] = useState<string>('')
 
   const { uploadCandidates, isProcessing, fileResults, progress } = useBulkCandidateUpload()
   const { jobs } = useJobs()
