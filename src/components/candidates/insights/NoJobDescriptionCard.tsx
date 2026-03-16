@@ -9,18 +9,18 @@ interface NoJobDescriptionCardProps {
 
 export function NoJobDescriptionCard({ jobId }: NoJobDescriptionCardProps) {
   return (
-    <Card className="bg-surface-primary border-border">
+    <Card className="border-virgilio-border rounded-2xl shadow-md hover:shadow-xl transition-all duration-200">
       <CardContent className="flex flex-col items-center text-center py-10 px-6 space-y-4">
-        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-          <Sparkles className="h-6 w-6 text-primary" />
+        <div className="h-12 w-12 rounded-full bg-virgilio-purple/10 flex items-center justify-center">
+          <Sparkles className="h-6 w-6 text-virgilio-purple" />
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-text-primary">Add a Job Description for AI Insights</h3>
-          <p className="text-sm text-text-secondary mt-1">
+          <h3 className="text-sm font-poppins font-semibold text-virgilio-text">Add a Job Description for AI Insights</h3>
+          <p className="text-sm text-virgilio-muted font-poppins mt-1">
             For accurate candidate matching, add a detailed job description in Job Setup with requirements, skills, and expectations.
           </p>
         </div>
-        <Button variant="outline" size="sm" asChild>
+        <Button variant="outline" size="sm" asChild className="font-poppins">
           <Link to={`/jobs/${jobId}/setup`}>Go to Job Setup</Link>
         </Button>
       </CardContent>

@@ -6,9 +6,11 @@ import { ValidationChecklist } from './ValidationChecklist'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { RefreshCw, Sparkles, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { RefreshCw, Sparkles, Loader2, CheckCircle2, AlertCircle, Database } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useEffect, useRef } from 'react'
+
+const cardClass = 'border-virgilio-border rounded-2xl shadow-md hover:shadow-xl transition-all duration-200'
 
 interface CandidateInsightsTabProps {
   candidateId: string
@@ -36,9 +38,9 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription }: Can
 
   if (isLoading) {
     return (
-      <Card className="bg-surface-primary border-border">
+      <Card className={cardClass}>
         <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-text-tertiary" />
+          <Loader2 className="h-6 w-6 animate-spin text-virgilio-purple" />
         </CardContent>
       </Card>
     )
@@ -47,11 +49,11 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription }: Can
   // Show generating state
   if (isRefreshing && !insights?.analysis) {
     return (
-      <Card className="bg-surface-primary border-border">
+      <Card className={cardClass}>
         <CardContent className="flex flex-col items-center justify-center py-12 space-y-3">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm text-text-secondary">Analyzing candidate fit...</p>
-          <p className="text-xs text-text-tertiary">This may take a few seconds</p>
+          <Loader2 className="h-8 w-8 animate-spin text-virgilio-purple" />
+          <p className="text-sm text-virgilio-muted font-poppins">Analyzing candidate fit...</p>
+          <p className="text-xs text-virgilio-muted/70 font-poppins">This may take a few seconds</p>
         </CardContent>
       </Card>
     )
@@ -59,11 +61,11 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription }: Can
 
   if (!insights?.analysis) {
     return (
-      <Card className="bg-surface-primary border-border">
+      <Card className={cardClass}>
         <CardContent className="flex flex-col items-center justify-center py-12 space-y-3">
-          <Sparkles className="h-8 w-8 text-text-tertiary" />
-          <p className="text-sm text-text-secondary">No analysis yet</p>
-          <Button variant="outline" size="sm" onClick={refreshInsights} disabled={isRefreshing}>
+          <Sparkles className="h-8 w-8 text-virgilio-muted" />
+          <p className="text-sm text-virgilio-muted font-poppins">No analysis yet</p>
+          <Button variant="outline" size="sm" onClick={refreshInsights} disabled={isRefreshing} className="font-poppins">
             {isRefreshing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
             Generate Insights
           </Button>
@@ -78,7 +80,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription }: Can
     <ScrollArea className="h-[600px]">
       <div className="space-y-4 pr-3">
         {/* Score Header */}
-        <Card className="bg-surface-primary border-border">
+        <Card className={cardClass}>
           <CardContent className="pt-5 pb-4">
             <div className="flex items-start justify-between">
               <FitScoreRadial
@@ -87,7 +89,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription }: Can
                 confidenceReason={analysis.confidence_reason}
                 generatedAt={insights.generatedAt}
               />
-              <Button variant="ghost" size="sm" onClick={refreshInsights} disabled={isRefreshing} className="gap-1.5">
+              <Button variant="ghost" size="sm" onClick={refreshInsights} disabled={isRefreshing} className="gap-1.5 font-poppins">
                 {isRefreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
                 Refresh
               </Button>
@@ -96,16 +98,23 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription }: Can
         </Card>
 
         {/* Executive Summary */}
-        <Card className="bg-surface-primary border-border">
+        <Card className={cardClass}>
           <CardContent className="pt-4 pb-3">
-            <p className="text-sm text-text-primary leading-relaxed">{analysis.executive_summary}</p>
+            <p className="text-sm text-virgilio-text font-poppins leading-relaxed">{analysis.executive_summary}</p>
           </CardContent>
         </Card>
 
         {/* Dimensions */}
-        <Card className="bg-surface-primary border-border">
+        <Card className={cardClass}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Fit Dimensions</CardTitle>
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-md bg-virgilio-purple/10">
+                <Sparkles className="h-4 w-4 text-virgilio-purple" />
+              </div>
+              <CardTitle className="text-sm font-poppins font-semibold text-virgilio-text" withPeriod={false}>
+                Fit Dimensions
+              </CardTitle>
+            </div>
           </CardHeader>
           <CardContent className="space-y-2 pt-0">
             {analysis.dimensions.map((dim) => (
@@ -116,9 +125,16 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription }: Can
 
         {/* Validation Checklist */}
         {analysis.validation_points.length > 0 && (
-          <Card className="bg-surface-primary border-border">
+          <Card className={cardClass}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Points to Validate</CardTitle>
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-md bg-virgilio-purple/10">
+                  <CheckCircle2 className="h-4 w-4 text-virgilio-purple" />
+                </div>
+                <CardTitle className="text-sm font-poppins font-semibold text-virgilio-text" withPeriod={false}>
+                  Points to Validate
+                </CardTitle>
+              </div>
             </CardHeader>
             <CardContent className="pt-0">
               <ValidationChecklist points={analysis.validation_points} />
@@ -127,17 +143,24 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription }: Can
         )}
 
         {/* Data Completeness */}
-        <Card className="bg-surface-primary border-border">
+        <Card className={cardClass}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Data Completeness</CardTitle>
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-md bg-virgilio-purple/10">
+                <Database className="h-4 w-4 text-virgilio-purple" />
+              </div>
+              <CardTitle className="text-sm font-poppins font-semibold text-virgilio-text" withPeriod={false}>
+                Data Completeness
+              </CardTitle>
+            </div>
           </CardHeader>
           <CardContent className="pt-0">
             <div className="space-y-2">
               {analysis.data_sources_used.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {analysis.data_sources_used.map((s) => (
-                    <Badge key={s} variant="secondary" className="text-xs gap-1">
-                      <CheckCircle2 className="h-3 w-3 text-green-600" />
+                    <Badge key={s} variant="secondary" className="text-xs font-poppins gap-1 bg-virgilio-purple/10 text-virgilio-purple">
+                      <CheckCircle2 className="h-3 w-3" />
                       {s.replace(/_/g, ' ')}
                     </Badge>
                   ))}
@@ -146,7 +169,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription }: Can
               {analysis.data_sources_missing.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {analysis.data_sources_missing.map((s) => (
-                    <Badge key={s} variant="outline" className="text-xs gap-1 text-text-tertiary">
+                    <Badge key={s} variant="outline" className="text-xs font-poppins gap-1 text-virgilio-muted">
                       <AlertCircle className="h-3 w-3" />
                       {s.replace(/_/g, ' ')}
                     </Badge>
