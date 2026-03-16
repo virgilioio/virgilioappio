@@ -6,6 +6,7 @@ import { ApplicationsTrendChart } from '@/components/analytics/ApplicationsTrend
 import { CandidateStatusPieChart } from '@/components/analytics/CandidateStatusPieChart'
 import { StageDistributionChart } from '@/components/analytics/StageDistributionChart'
 import { RecruitmentFunnelChart } from '@/components/analytics/RecruitmentFunnelChart'
+import { SourceDonutChart } from '@/components/analytics/charts/SourceDonutChart'
 import { useJobAnalyticsMetrics } from '@/hooks/useJobAnalyticsMetrics'
 import { SalaryInsightsCard } from '@/components/jobs/SalaryInsightsCard'
 import { Button } from '@/components/ui/button'
