@@ -11,16 +11,19 @@ import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
 // Detail components
 import { ChromeExtensionTokenCard } from './ChromeExtensionTokenCard'
 import { GoogleWorkspaceIntegrationSection } from './GoogleWorkspaceIntegrationSection'
+import { WhatsAppIntegrationDetail } from './WhatsAppIntegrationDetail'
 
 
 // Logos
 import { GoogleLogo } from '@/components/icons/GoogleLogo'
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 
 import gogioAvatar from '@/assets/gogio-avatar.png'
 
 // Hooks for connection status
 import { useMailIdentities } from '@/hooks/useMailIdentities'
 import { useCalendarIdentities } from '@/hooks/useCalendarIdentities'
+import { useWorkspaceAutomation } from '@/hooks/useWorkspaceAutomation'
 
 
 interface IntegrationEntry {
@@ -45,6 +48,11 @@ function useChromeConnected() {
   return false
 }
 
+function useWhatsAppConnected() {
+  const { automation, isLoading } = useWorkspaceAutomation('whatsapp_integration')
+  if (isLoading) return false
+  return automation?.is_active ?? false
+}
 
 const INTEGRATIONS: IntegrationEntry[] = [
   {
@@ -64,6 +72,15 @@ const INTEGRATIONS: IntegrationEntry[] = [
     logo: <GoogleLogo size={24} />,
     useIsConnected: useGoogleConnected,
     DetailComponent: GoogleWorkspaceIntegrationSection,
+  },
+  {
+    id: 'whatsapp',
+    name: 'WhatsApp',
+    description: 'Open candidate phone numbers directly in WhatsApp with one click.',
+    category: 'communication',
+    logo: <WhatsAppIcon size={20} className="text-[#25D366]" />,
+    useIsConnected: useWhatsAppConnected,
+    DetailComponent: WhatsAppIntegrationDetail,
   },
 ]
 
@@ -95,9 +112,11 @@ function IntegrationCardWrapper({
 function useIntegrationStatuses() {
   const googleConnected = useGoogleConnected()
   const chromeConnected = useChromeConnected()
+  const whatsappConnected = useWhatsAppConnected()
   return {
     'chrome-extension': chromeConnected,
     'google-workspace': googleConnected,
+    'whatsapp': whatsappConnected,
   } as Record<string, boolean>
 }
 

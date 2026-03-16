@@ -31,7 +31,9 @@ import { toast } from '@/hooks/use-toast'
 import CandidateNameCard from '@/components/candidates/CandidateNameCard'
 import { copyToClipboard } from '@/utils/clipboard'
 import { getEmailFromEntry, getPhoneFromEntry } from '@/utils/parseContactEntry'
-import { formatE164Display } from '@/utils/phoneUtils'
+import { formatE164Display, buildWhatsAppUrl } from '@/utils/phoneUtils'
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import { useWhatsAppEnabled } from '@/hooks/useWhatsAppEnabled'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 
 import AddToJobPipelineDialog from './AddToJobPipelineDialog'
@@ -79,6 +81,7 @@ export function IndependentCandidateProfileSheet({
   }
 
   const { attachments, uploadAttachment: uploadResume, isUploading: isResumeUploading, deleteAttachment } = useCandidateAttachments(candidateId || '')
+  const { isEnabled: whatsAppEnabled } = useWhatsAppEnabled()
 
   const resumeAttachment = attachments.find((a) => a.is_resume)
   const replaceResumeInputRef = useRef<HTMLInputElement>(null)
@@ -602,6 +605,11 @@ export function IndependentCandidateProfileSheet({
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-0.5 flex-shrink-0">
+                                      {whatsAppEnabled && buildWhatsAppUrl(phoneValue) && (
+                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-[#25D366] hover:text-[#128C7E]" onClick={() => window.open(buildWhatsAppUrl(phoneValue)!, '_blank')}>
+                                          <WhatsAppIcon size={14} />
+                                        </Button>
+                                      )}
                                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => copyToClipboard(phoneValue, 'Phone number copied to clipboard')}>
                                         <Copy className="h-3.5 w-3.5" />
                                       </Button>
@@ -623,6 +631,11 @@ export function IndependentCandidateProfileSheet({
                                 </div>
                                 {candidate?.phone && (
                                   <div className="flex items-center gap-0.5 flex-shrink-0">
+                                    {whatsAppEnabled && buildWhatsAppUrl(candidate.phone) && (
+                                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-[#25D366] hover:text-[#128C7E]" onClick={() => window.open(buildWhatsAppUrl(candidate.phone)!, '_blank')}>
+                                        <WhatsAppIcon size={14} />
+                                      </Button>
+                                    )}
                                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => copyToClipboard(candidate.phone, 'Phone number copied to clipboard')}>
                                       <Copy className="h-3.5 w-3.5" />
                                     </Button>

@@ -39,7 +39,9 @@ import { toast } from '@/hooks/use-toast'
 import CandidateNameCard from '@/components/candidates/CandidateNameCard'
 import { copyToClipboard } from '@/utils/clipboard'
 import { getEmailFromEntry, getPhoneFromEntry } from '@/utils/parseContactEntry'
-import { formatE164Display } from '@/utils/phoneUtils'
+import { formatE164Display, buildWhatsAppUrl } from '@/utils/phoneUtils'
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import { useWhatsAppEnabled } from '@/hooks/useWhatsAppEnabled'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { useCandidateResolver } from '@/hooks/useCandidateResolver'
@@ -156,6 +158,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   // Use the candidate resolver to get the correct ID for attachments
   const { independentCandidateId } = useCandidateResolver(candidateId)
   const { attachments, uploadAttachment: uploadResume, isUploading: isResumeUploading, deleteAttachment } = useCandidateAttachments(independentCandidateId || '')
+  const { isEnabled: whatsAppEnabled } = useWhatsAppEnabled()
 
 // Hiring plan stages for vertical accordion
 const { loadHiringPlanInstances } = useJobHiringPlan()
@@ -1374,6 +1377,16 @@ const stageHasAutomation = useMemo(() => {
                                                 </div>
                                               </div>
                                               <div className="flex items-center gap-0.5">
+                                                {whatsAppEnabled && buildWhatsAppUrl(phoneValue) && (
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-6 w-6 p-0 flex-shrink-0 text-[#25D366] hover:text-[#128C7E]"
+                                                    onClick={() => window.open(buildWhatsAppUrl(phoneValue)!, '_blank')}
+                                                  >
+                                                    <WhatsAppIcon size={14} />
+                                                  </Button>
+                                                )}
                                                 <Button
                                                   variant="ghost"
                                                   size="sm"
@@ -1405,6 +1418,16 @@ const stageHasAutomation = useMemo(() => {
                                           </div>
                                           {candidate?.phone && (
                                             <div className="flex items-center gap-0.5">
+                                              {whatsAppEnabled && buildWhatsAppUrl(candidate.phone) && (
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  className="h-6 w-6 p-0 flex-shrink-0 text-[#25D366] hover:text-[#128C7E]"
+                                                  onClick={() => window.open(buildWhatsAppUrl(candidate.phone)!, '_blank')}
+                                                >
+                                                  <WhatsAppIcon size={14} />
+                                                </Button>
+                                              )}
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
