@@ -11,6 +11,7 @@ import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
 // Detail components
 import { ChromeExtensionTokenCard } from './ChromeExtensionTokenCard'
 import { GoogleWorkspaceIntegrationSection } from './GoogleWorkspaceIntegrationSection'
+import { WhatsAppIntegrationDetail } from './WhatsAppIntegrationDetail'
 
 
 // Logos
