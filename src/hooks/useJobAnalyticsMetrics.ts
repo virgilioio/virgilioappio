@@ -514,7 +514,7 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
 
 function normalizeSource(source: string): string {
   const lower = source.toLowerCase().trim()
-  if (lower === 'applied' || lower === 'application' || lower === 'career_page' || lower === 'careers_page') return 'Applied'
+  if (lower === 'applied' || lower === 'application' || lower === 'career_page' || lower === 'careers_page' || lower === 'job_application' || lower === 'public_posting') return 'Applied'
   if (lower.includes('linkedin')) return 'LinkedIn'
   if (lower.includes('referral') || lower === 'referred') return 'Referral'
   if (lower.includes('sourced') || lower === 'sourcing') return 'Sourced'

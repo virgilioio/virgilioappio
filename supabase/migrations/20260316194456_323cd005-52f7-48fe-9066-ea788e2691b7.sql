@@ -1,0 +1,1 @@
+UPDATE candidates SET source = 'public_posting' WHERE source = 'job_application';
