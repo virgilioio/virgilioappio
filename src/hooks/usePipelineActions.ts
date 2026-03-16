@@ -49,7 +49,7 @@ export function usePipelineActions() {
     // 2) Load candidate names/links from independent candidates table
     const { data: candidates, error: candError } = await supabase
       .from('candidates')
-      .select('id, candidate_name, linkedin_url')
+      .select('id, candidate_name, linkedin_url, phone')
       .in('id', candidateIds as string[])
 
     if (candError) {
