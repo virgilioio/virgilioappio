@@ -17,8 +17,9 @@ import { OfferTemplateFieldsManager } from './OfferTemplateFieldsManager'
 import { RejectionReasonsManager } from './RejectionReasonsManager'
 import { RejectionEmailTemplatesManager } from './RejectionEmailTemplatesManager'
 import { OfferFormsManager } from './OfferFormsManager'
+import { CandidateSourcesManager } from './CandidateSourcesManager'
 
-type TemplateType = 'offer-letters' | 'email-templates' | 'contract-templates' | 'rejection-reasons' | 'rejection-templates'
+type TemplateType = 'offer-letters' | 'email-templates' | 'contract-templates' | 'rejection-reasons' | 'rejection-templates' | 'candidate-sources'
 
 interface OfferTemplatesManagerProps {
   context?: 'platform-defaults' | 'organization'
