@@ -131,7 +131,7 @@ export default function CandidateCard(props: CandidateCardProps) {
     if (!phone) return
 
     // If no template, no association, or already sent — open plain URL
-    if (!whatsAppTemplate || !associationId || localSentAt) {
+    if (!whatsAppTemplate || !associationId || effectiveSentAt) {
       const url = buildWhatsAppUrl(phone)
       if (url) window.open(url, '_blank')
       return
