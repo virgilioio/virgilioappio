@@ -1359,6 +1359,8 @@ const stageHasAutomation = useMemo(() => {
 
                     {activeTab === 'overview' ? (
                       <Accordion type="multiple" defaultValue={['summary']} className="space-y-4">
+                        {/* URLs - hidden on mobile */}
+                        <div className="hidden md:block">
                           <AccordionItem value="urls" className="border-0">
                             {independentCandidateId || candidateId ? (
                               <CandidateUrls candidateId={independentCandidateId || candidateId!} />
