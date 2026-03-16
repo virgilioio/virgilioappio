@@ -20,6 +20,7 @@ interface CandidateCardProps {
   associationId?: string
   candidateName: string
   linkedinUrl?: string | null
+  phone?: string | null
   stageOptions: { jhsId: string; stage: JobStage }[]
   currentStageJhsId?: string | null
   timeInStageLabel?: string
