@@ -288,7 +288,8 @@ export function CandidateFormSheet({
           notes: '',
           linkedin_url: '',
           email: '',
-          phone: ''
+          phone: '',
+          source: ''
         })
         
         // Reset rich text editor values only for new candidates
