@@ -5,5 +5,6 @@ export function useWhatsAppEnabled() {
   return {
     isEnabled: !isLoading && (automation?.is_active ?? false),
     isLoading,
+    messageTemplate: automation?.body ?? null,
   }
 }
