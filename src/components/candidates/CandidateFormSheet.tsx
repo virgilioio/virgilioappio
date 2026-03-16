@@ -31,6 +31,7 @@ import { useSkillsGeneration } from '@/hooks/useSkillsGeneration'
 import { EnhancedResumeDropzone, ParsedResumeData } from './EnhancedResumeDropzone'
 import { useJobsForCandidateAssignment } from '@/hooks/useJobsForCandidateAssignment'
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
+import { useCandidateSources } from '@/hooks/useCandidateSources'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { CandidateMergeDialog } from './CandidateMergeDialog'
 import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment'
@@ -60,6 +61,7 @@ interface FormData {
   linkedin_url: string
   email: string
   phone: string
+  source: string
 }
 
 export function CandidateFormSheet({ 
@@ -95,6 +97,9 @@ export function CandidateFormSheet({
   const { jobs: availableJobs, isLoading: isLoadingJobs } = useJobsForCandidateAssignment()
   const { loadHiringPlanInstances } = useJobHiringPlan()
   const [jobStages, setJobStages] = useState<Array<{ jhsId: string; stage: any; position: number }>>([])
+  
+  // Candidate sources
+  const { sources: candidateSources, isLoading: isLoadingSources } = useCandidateSources('organization')
   const [isLoadingStages, setIsLoadingStages] = useState(false)
   
   useEffect(() => {
@@ -125,7 +130,8 @@ export function CandidateFormSheet({
       notes: '',
       linkedin_url: '',
       email: '',
-      phone: ''
+      phone: '',
+      source: ''
     }
   })
 
@@ -171,7 +177,8 @@ export function CandidateFormSheet({
           notes: candidate.notes || '',
           linkedin_url: candidate.linkedin_url || '',
           email: candidate.email || '',
-          phone: candidate.phone || ''
+          phone: candidate.phone || '',
+          source: candidate.source || ''
         }
         
         form.reset(candidateData)
@@ -281,7 +288,8 @@ export function CandidateFormSheet({
           notes: '',
           linkedin_url: '',
           email: '',
-          phone: ''
+          phone: '',
+          source: ''
         })
         
         // Reset rich text editor values only for new candidates
@@ -496,6 +504,7 @@ export function CandidateFormSheet({
       profile_summary: sanitizeHtmlForEditor(profileSummary),
       notes: notes,
       skills: skills.length > 0 ? skills : null,
+      source: data.source || null,
       job_id: jobId,
       // Job assignment data for new candidates
       ...(!candidate && {
@@ -579,7 +588,8 @@ export function CandidateFormSheet({
       notes: '',
       linkedin_url: '',
       email: '',
-      phone: ''
+      phone: '',
+      source: ''
     })
     
     // Reset rich text editor values
@@ -777,6 +787,26 @@ export function CandidateFormSheet({
                   {...form.register('linkedin_url', { validate: validateLinkedInUrl })}
                   placeholder="https://linkedin.com/in/username"
                 />
+              </FormField>
+
+              <FormField
+                label="Source"
+                required
+                error={form.formState.errors.source?.message}
+                htmlFor="source"
+              >
+                <SearchableSelect
+                  options={candidateSources.map(s => ({ value: s.name, label: s.name }))}
+                  value={form.watch('source')}
+                  onValueChange={(val) => form.setValue('source', val, { shouldValidate: true, shouldDirty: true })}
+                  placeholder={isLoadingSources ? "Loading sources..." : "Select source..."}
+                  searchPlaceholder="Search sources..."
+                  emptyMessage="No sources found"
+                  disabled={isLoadingSources}
+                  error={form.formState.errors.source?.message}
+                  required
+                />
+                <input type="hidden" {...form.register('source', { required: 'Source is required' })} />
               </FormField>
             </div>
 

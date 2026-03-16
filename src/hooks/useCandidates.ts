@@ -51,6 +51,7 @@ export interface Candidate {
   // Backward compatibility fields (computed from association data)
   notes: string | null // Maps to association_notes
   job_id: string // Required for backward compatibility
+  source: string | null
 }
 
 export interface CreateCandidateData {
@@ -127,7 +128,8 @@ export function useCandidates(jobId: string) {
               skills,
               auto_generated_skills,
               created_at,
-              updated_at
+              updated_at,
+              source
             )
           `)
           .eq('job_id', jobId)
@@ -177,7 +179,8 @@ export function useCandidates(jobId: string) {
           first_viewed_by: null, // Legacy field
           // Backward compatibility fields
           notes: assoc.notes,
-          job_id: jobId
+          job_id: jobId,
+          source: candidate.source || null
         }
       })
       

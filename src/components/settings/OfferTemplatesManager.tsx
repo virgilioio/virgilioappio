@@ -17,8 +17,9 @@ import { OfferTemplateFieldsManager } from './OfferTemplateFieldsManager'
 import { RejectionReasonsManager } from './RejectionReasonsManager'
 import { RejectionEmailTemplatesManager } from './RejectionEmailTemplatesManager'
 import { OfferFormsManager } from './OfferFormsManager'
+import { CandidateSourcesManager } from './CandidateSourcesManager'
 
-type TemplateType = 'offer-letters' | 'email-templates' | 'contract-templates' | 'rejection-reasons' | 'rejection-templates'
+type TemplateType = 'offer-letters' | 'email-templates' | 'contract-templates' | 'rejection-reasons' | 'rejection-templates' | 'candidate-sources'
 
 interface OfferTemplatesManagerProps {
   context?: 'platform-defaults' | 'organization'
@@ -84,6 +85,7 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
           <TabsTrigger value="contract-templates">Contracts</TabsTrigger>
           <TabsTrigger value="rejection-reasons">Rejection Reasons</TabsTrigger>
           <TabsTrigger value="rejection-templates">Rejection Templates</TabsTrigger>
+          <TabsTrigger value="candidate-sources">Candidate Sources</TabsTrigger>
         </TabsList>
 
         <TabsContent value="offer-forms" className="mt-4">
@@ -498,6 +500,10 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
 
         <TabsContent value="rejection-templates" className="mt-4">
           <RejectionEmailTemplatesManager context={context} />
+        </TabsContent>
+
+        <TabsContent value="candidate-sources" className="mt-4">
+          <CandidateSourcesManager context={context} />
         </TabsContent>
       </Tabs>
 

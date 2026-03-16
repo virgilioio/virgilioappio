@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { BulkUploadDropzone } from "./BulkUploadDropzone";
 import { useJobs } from "@/hooks/useJobs";
 import { useJobHiringPlan } from "@/hooks/useJobHiringPlan";
+import { useCandidateSources } from "@/hooks/useCandidateSources";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -25,11 +26,13 @@ export function MinimizableBulkUploadDialog({
   const [autoGenerateSkills, setAutoGenerateSkills] = useState(true);
   const [assignToJob, setAssignToJob] = useState<string>("");
   const [assignToStage, setAssignToStage] = useState<string>("");
+  const [source, setSource] = useState<string>("");
   const [stageOptions, setStageOptions] = useState<{ value: string; label: string }[]>([]);
 
   const { startUpload } = useBulkUploadContext();
   const { jobs } = useJobs();
   const { loadHiringPlan } = useJobHiringPlan();
+  const { sources: candidateSources } = useCandidateSources('organization');
 
   // Load stage options when job changes
   useEffect(() => {
@@ -59,6 +62,7 @@ export function MinimizableBulkUploadDialog({
       setAutoGenerateSkills(true);
       setAssignToJob("");
       setAssignToStage("");
+      setSource("");
     }
   }, [isOpen]);
 
@@ -67,6 +71,7 @@ export function MinimizableBulkUploadDialog({
       autoGenerateSkills,
       assignToJob: assignToJob || undefined,
       assignToStage: assignToStage || undefined,
+      source: source || undefined,
     });
     onClose();
     if (onComplete) {
@@ -135,6 +140,21 @@ export function MinimizableBulkUploadDialog({
               />
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="source" className="text-sm font-medium">
+                Source <span className="text-destructive">*</span>
+              </Label>
+              <SearchableSelect
+                options={candidateSources.map(s => ({ value: s.name, label: s.name }))}
+                value={source}
+                onValueChange={setSource}
+                placeholder="Select source..."
+                searchPlaceholder="Search sources..."
+                emptyMessage="No sources found"
+                required
+              />
+            </div>
+
             {assignToJob && stageOptions.length > 0 && (
               <div className="space-y-2">
                 <Label htmlFor="assign-stage" className="text-sm font-medium">
@@ -159,7 +179,7 @@ export function MinimizableBulkUploadDialog({
         </Button>
         <Button
           onClick={handleStartUpload}
-          disabled={files.length === 0}
+          disabled={files.length === 0 || !source}
         >
           Upload {files.length} {files.length === 1 ? "Resume" : "Resumes"}
         </Button>

@@ -18,6 +18,8 @@ import { BulkUploadSummary } from './BulkUploadSummary'
 import { useBulkCandidateUpload } from '@/hooks/useBulkCandidateUpload'
 import { useJobs } from '@/hooks/useJobs'
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
+import { useCandidateSources } from '@/hooks/useCandidateSources'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 
 interface BulkUploadDialogProps {
   isOpen: boolean
@@ -37,12 +39,13 @@ export function BulkUploadDialog({
   const [autoGenerateSkills, setAutoGenerateSkills] = useState(false)
   const [assignToJob, setAssignToJob] = useState<string>()
   const [assignToStage, setAssignToStage] = useState<string>()
+  const [source, setSource] = useState<string>('')
 
   const { uploadCandidates, isProcessing, fileResults, progress } = useBulkCandidateUpload()
   const { jobs } = useJobs()
   const { loadHiringPlanInstances } = useJobHiringPlan()
   const [stageOptions, setStageOptions] = useState<Array<{ id: string; name: string }>>([])
-
+  const { sources: candidateSources } = useCandidateSources('organization')
   const activeJobs = jobs?.filter(j => j.status !== 'archived') || []
   
   useEffect(() => {
@@ -66,6 +69,7 @@ export function BulkUploadDialog({
       setAutoGenerateSkills(false)
       setAssignToJob(undefined)
       setAssignToStage(undefined)
+      setSource('')
     }
   }, [isOpen])
 
@@ -88,7 +92,8 @@ export function BulkUploadDialog({
     await uploadCandidates(files, {
       autoGenerateSkills,
       assignToJob,
-      assignToStage
+      assignToStage,
+      source: source || undefined
     })
   }
 
@@ -178,6 +183,19 @@ export function BulkUploadDialog({
                     </Select>
                   </div>
                 )}
+
+                <div className="space-y-2">
+                  <Label>Source <span className="text-destructive">*</span></Label>
+                  <SearchableSelect
+                    options={candidateSources.map(s => ({ value: s.name, label: s.name }))}
+                    value={source}
+                    onValueChange={setSource}
+                    placeholder="Select source..."
+                    searchPlaceholder="Search sources..."
+                    emptyMessage="No sources found"
+                    required
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -222,7 +240,7 @@ export function BulkUploadDialog({
             </Button>
             <Button
               onClick={handleStartUpload}
-              disabled={files.length === 0}
+              disabled={files.length === 0 || !source}
               className="bg-virgilio-purple hover:bg-virgilio-purple/90 shadow-calendly"
             >
               Start Upload ({files.length})

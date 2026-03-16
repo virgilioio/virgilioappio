@@ -12,6 +12,7 @@ export interface BulkUploadOptions {
   autoGenerateSkills: boolean
   assignToJob?: string
   assignToStage?: string
+  source?: string
 }
 
 export interface FileProcessingResult {
@@ -142,6 +143,7 @@ export function useBulkCandidateUpload() {
         location_state: locationParts[1],
         location_country: locationParts[2] || locationParts[1],
         enrichment_status: options.autoGenerateSkills ? 'pending' : undefined,
+        source: options.source || undefined,
       }
 
       // Pass skipRefresh + silent to avoid per-candidate DB saturation and toast spam
