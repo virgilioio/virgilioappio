@@ -18,6 +18,8 @@ import { BulkUploadSummary } from './BulkUploadSummary'
 import { useBulkCandidateUpload } from '@/hooks/useBulkCandidateUpload'
 import { useJobs } from '@/hooks/useJobs'
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
+import { useCandidateSources } from '@/hooks/useCandidateSources'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 
 interface BulkUploadDialogProps {
   isOpen: boolean
