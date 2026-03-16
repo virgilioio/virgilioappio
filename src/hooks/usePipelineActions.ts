@@ -10,6 +10,7 @@ export interface PipelineAssociation {
   pipeline_position: number | null
   candidate_name: string
   linkedin_url?: string | null
+  phone?: string | null
   created_at: string
   entered_stage_at: string | null
   status: 'active' | 'rejected' | 'hired' | 'offer' | string
