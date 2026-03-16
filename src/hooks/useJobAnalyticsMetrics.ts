@@ -503,10 +503,23 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
     statusDistribution: data?.statusDistribution ?? [],
     stageDistribution: data?.stageDistribution ?? [],
     trendData: data?.trendData ?? [],
+    sourceDistribution: data?.sourceDistribution ?? [],
     interviewsByStage: data?.interviewsByStage ?? [],
     stageConversions: data?.stageConversions ?? [],
     avgTimePerStage: data?.avgTimePerStage ?? [],
     isLoading,
     error: error as Error | null
   }
+}
+
+function normalizeSource(source: string): string {
+  const lower = source.toLowerCase().trim()
+  if (lower === 'applied' || lower === 'application' || lower === 'career_page' || lower === 'careers_page') return 'Applied'
+  if (lower.includes('linkedin')) return 'LinkedIn'
+  if (lower.includes('referral') || lower === 'referred') return 'Referral'
+  if (lower.includes('sourced') || lower === 'sourcing') return 'Sourced'
+  if (lower.includes('indeed')) return 'Indeed'
+  if (lower === 'manual' || lower === 'manual_add') return 'Manual Add'
+  if (lower === 'unknown' || lower === '' || lower === 'null') return 'Unknown'
+  return source.charAt(0).toUpperCase() + source.slice(1)
 }

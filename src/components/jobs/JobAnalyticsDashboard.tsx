@@ -189,6 +189,12 @@ export function JobAnalyticsDashboard({ jobId, jobTitle, candidates = [], jobCur
           data={stageDistribution}
           isLoading={isLoading}
         />
+
+        {/* Source Distribution */}
+        <SourceDonutChart
+          data={sourceDistribution}
+          isLoading={isLoading}
+        />
       </div>
     </div>
   )
