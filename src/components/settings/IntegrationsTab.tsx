@@ -73,6 +73,15 @@ const INTEGRATIONS: IntegrationEntry[] = [
     useIsConnected: useGoogleConnected,
     DetailComponent: GoogleWorkspaceIntegrationSection,
   },
+  {
+    id: 'whatsapp',
+    name: 'WhatsApp',
+    description: 'Open candidate phone numbers directly in WhatsApp with one click.',
+    category: 'communication',
+    logo: <WhatsAppIcon size={20} className="text-[#25D366]" />,
+    useIsConnected: useWhatsAppConnected,
+    DetailComponent: WhatsAppIntegrationDetail,
+  },
 ]
 
 // Wrapper component that calls the hook for each integration
