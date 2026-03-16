@@ -40,6 +40,7 @@ export function JobAnalyticsDashboard({ jobId, jobTitle, candidates = [], jobCur
     statusDistribution,
     stageDistribution,
     trendData,
+    sourceDistribution,
     interviewsByStage,
     stageConversions,
     avgTimePerStage,
