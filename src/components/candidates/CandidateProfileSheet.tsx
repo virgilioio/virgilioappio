@@ -264,6 +264,7 @@ const stageHasAutomation = useMemo(() => {
     setOfferDetails(null)
     setJobCandidate(null)
     setJobCandidateId(null)
+    setWhatsAppTemplateSentAt(null)
     
     const load = async () => {
       if (!open || !candidateId) return
