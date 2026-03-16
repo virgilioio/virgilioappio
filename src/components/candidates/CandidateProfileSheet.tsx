@@ -1446,7 +1446,7 @@ const stageHasAutomation = useMemo(() => {
                                                     variant="ghost"
                                                     size="sm"
                                                     className="h-6 w-6 p-0 flex-shrink-0 text-[#25D366] hover:text-[#128C7E]"
-                                                    onClick={() => window.open(buildWhatsAppUrl(phoneValue)!, '_blank')}
+                                                    onClick={() => handleWhatsAppClick(phoneValue)}
                                                   >
                                                     <WhatsAppIcon size={14} />
                                                   </Button>
