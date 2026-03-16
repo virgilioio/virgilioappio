@@ -376,6 +376,7 @@ const stageHasAutomation = useMemo(() => {
         setAssociationId(assoc?.id ?? null)
         setAssociationStatus((assoc?.status as any) ?? null)
         setCurrentStageId((assoc as any)?.current_stage_id ?? null)
+        setWhatsAppTemplateSentAt((assoc as any)?.whatsapp_template_sent_at ?? null)
         
         // Set rejection details if rejected
         if (assoc?.status === 'rejected' && assoc?.rejected_at) {
