@@ -57,6 +57,22 @@ export function CandidateFiltersPanel({ filterOptions }: CandidateFiltersPanelPr
     <>
       {/* Horizontal chip bar — renders as inline fragment for parent flex layout */}
         <FilterChipPopover
+          label="Job"
+          options={filterOptions.jobOptions}
+          selectedValues={filters.jobs}
+          onSelectionChange={(v) => setArrayFilter('jobs', v)}
+          searchable
+        />
+
+        <FilterChipPopover
+          label="Stage"
+          options={filterOptions.stageOptions}
+          selectedValues={filters.stages}
+          onSelectionChange={(v) => setArrayFilter('stages', v)}
+          searchable
+        />
+
+        <FilterChipPopover
           label="Status"
           options={filterOptions.statusOptions}
           selectedValues={filters.statuses}
