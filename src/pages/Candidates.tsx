@@ -239,14 +239,6 @@ export default function Candidates() {
             }}
           />
 
-          {/* Profile Sheet for newly created candidate */}
-          <UniversalCandidateProfileSheet
-            open={showNewCandidateSheet}
-            onOpenChange={setShowNewCandidateSheet}
-            candidateId={newCandidateId}
-            jobId={newCandidateJobId}
-            context={newCandidateJobId ? 'job' : 'independent'}
-          />
         </div>
         </CandidateFilterProvider>
       </PermissionGate>

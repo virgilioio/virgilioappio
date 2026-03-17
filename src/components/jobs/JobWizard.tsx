@@ -105,6 +105,9 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
       title: 'Job Created Successfully!',
       description: 'Your job has been created and is ready for candidates.'
     })
+    if (wizardState.createdJobId && wizardState.createdJobId !== 'created') {
+      window.open(`/jobs/${wizardState.createdJobId}`, '_blank')
+    }
     onClose()
   }
 
