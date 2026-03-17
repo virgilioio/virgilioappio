@@ -49,7 +49,7 @@ export function StaleCandidates() {
   const displayedCandidates = showAll ? candidates : candidates.slice(0, 5);
   const hasMore = candidates.length > 5;
 
-  // Determine urgency level based on days in stage
+  // Determine urgency level based on days since last activity
   const getUrgencyLevel = (days: number): 'warning' | 'critical' => {
     return days >= 14 ? 'critical' : 'warning';
   };
@@ -75,13 +75,13 @@ export function StaleCandidates() {
               Pipeline is moving<span className="text-purple-period">.</span>
             </h3>
             <p className="text-sm text-virgilio-muted mt-2">
-              No candidates stuck in stages for over 7 days
+              No candidates without activity for over 7 days
             </p>
           </div>
         ) : (
           <div className="space-y-2">
             {displayedCandidates.map((candidate) => {
-              const urgency = getUrgencyLevel(candidate.daysInStage);
+              const urgency = getUrgencyLevel(candidate.daysSinceLastActivity);
               const isCritical = urgency === 'critical';
 
               return (
@@ -114,7 +114,7 @@ export function StaleCandidates() {
                         isCritical ? "text-destructive" : "text-warning"
                       )}>
                         <Clock className="h-3 w-3" />
-                        <span>{candidate.daysInStage} days in stage</span>
+                        <span>{candidate.daysSinceLastActivity} days since last activity</span>
                       </div>
                     </div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />

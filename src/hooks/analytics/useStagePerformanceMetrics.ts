@@ -109,44 +109,87 @@ export function useStagePerformanceMetrics(
           return aPos - bPos
         })
 
-      // === Stuck Candidates ===
+      // === Stuck Candidates (activity-aware) ===
       const now = new Date()
       const stuckThreshold = now.getTime() - STUCK_THRESHOLD_DAYS * 24 * 60 * 60 * 1000
-      const stuckAssociations = (associations || []).filter(a => {
+      const potentiallyStuck = (associations || []).filter(a => {
         if (a.status !== 'active') return false
         if (!a.entered_stage_at) return false
         return new Date(a.entered_stage_at).getTime() < stuckThreshold
       })
 
       let stuckCandidates: StuckCandidate[] = []
-      if (stuckAssociations.length > 0) {
-        const candidateIds = [...new Set(stuckAssociations.map(a => a.candidate_id))]
-        const jobIdsForStuck = [...new Set(stuckAssociations.map(a => a.job_id))]
+      if (potentiallyStuck.length > 0) {
+        const candidateIds = [...new Set(potentiallyStuck.map(a => a.candidate_id))]
+        const jobIdsForStuck = [...new Set(potentiallyStuck.map(a => a.job_id))]
+        const stuckAssocIds = potentiallyStuck.map(a => a.id)
 
-        const [candidatesRes, jobsRes] = await Promise.all([
+        // Fetch activity signals + candidate/job names in parallel
+        const [candidatesRes, jobsRes, scorecardsRes, emailsRes, bookingsRes] = await Promise.all([
           supabase.from('candidates').select('id, candidate_name').in('id', candidateIds),
           supabase.from('jobs').select('id, title').in('id', jobIdsForStuck),
+          supabase.from('job_stage_scorecards').select('association_id, created_at').in('association_id', stuckAssocIds).order('created_at', { ascending: false }),
+          supabase.from('email_logs').select('candidate_id, job_id, sent_at, received_at').in('candidate_id', candidateIds).in('job_id', jobIdsForStuck).order('created_at', { ascending: false }),
+          supabase.from('scheduled_bookings').select('candidate_id, job_id, created_at').in('candidate_id', candidateIds).in('job_id', jobIdsForStuck).order('created_at', { ascending: false }),
         ])
 
         const candMap = new Map((candidatesRes.data || []).map(c => [c.id, c.candidate_name]))
         const jobMap = new Map((jobsRes.data || []).map(j => [j.id, j.title]))
 
-        stuckCandidates = stuckAssociations.map(a => {
-          const daysIn = Math.round((now.getTime() - new Date(a.entered_stage_at!).getTime()) / (1000 * 60 * 60 * 24))
-          const stageName = a.current_stage_id && stageIdToInfo[a.current_stage_id]
-            ? stageIdToInfo[a.current_stage_id].name
-            : 'Unknown'
-          return {
-            associationId: a.id,
-            candidateId: a.candidate_id,
-            candidateName: candMap.get(a.candidate_id) || 'Unknown',
-            jobTitle: jobMap.get(a.job_id) || 'Unknown',
-            jobId: a.job_id,
-            stageName,
-            daysInStage: daysIn,
+        // Latest scorecard per association
+        const latestScorecard = new Map<string, string>()
+        for (const sc of scorecardsRes.data || []) {
+          if (!latestScorecard.has(sc.association_id)) latestScorecard.set(sc.association_id, sc.created_at)
+        }
+        // Latest email per candidate+job
+        const latestEmail = new Map<string, string>()
+        for (const e of emailsRes.data || []) {
+          if (!e.candidate_id || !e.job_id) continue
+          const key = `${e.candidate_id}-${e.job_id}`
+          if (!latestEmail.has(key)) {
+            const d = [e.sent_at, e.received_at].filter(Boolean).sort().pop()
+            if (d) latestEmail.set(key, d)
           }
-        }).sort((a, b) => b.daysInStage - a.daysInStage)
-        .slice(0, 20) // Top 20
+        }
+        // Latest booking per candidate+job
+        const latestBooking = new Map<string, string>()
+        for (const b of bookingsRes.data || []) {
+          if (!b.candidate_id || !b.job_id) continue
+          const key = `${b.candidate_id}-${b.job_id}`
+          if (!latestBooking.has(key)) latestBooking.set(key, b.created_at)
+        }
+
+        stuckCandidates = potentiallyStuck
+          .map(a => {
+            const key = `${a.candidate_id}-${a.job_id}`
+            const activityDates = [
+              a.entered_stage_at,
+              latestScorecard.get(a.id),
+              latestEmail.get(key),
+              latestBooking.get(key),
+            ].filter(Boolean).map(d => new Date(d!).getTime())
+            const lastActivity = Math.max(...activityDates)
+
+            // If recent activity exists within threshold, not stuck
+            if (lastActivity > stuckThreshold) return null
+
+            const daysIn = Math.round((now.getTime() - lastActivity) / (1000 * 60 * 60 * 24))
+            const stageName = a.current_stage_id && stageIdToInfo[a.current_stage_id]
+              ? stageIdToInfo[a.current_stage_id].name
+              : 'Unknown'
+            return {
+              associationId: a.id,
+              candidateId: a.candidate_id,
+              candidateName: candMap.get(a.candidate_id) || 'Unknown',
+              jobTitle: jobMap.get(a.job_id) || 'Unknown',
+              jobId: a.job_id,
+              stageName,
+              daysInStage: daysIn,
+            }
+          })
+          .filter((c): c is StuckCandidate => c !== null)
+          .sort((a, b) => b.daysInStage - a.daysInStage)
+          .slice(0, 20)
       }
 
       // === Stage Entry Volume (in date range) ===
