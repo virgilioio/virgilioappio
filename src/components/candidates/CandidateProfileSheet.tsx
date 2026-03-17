@@ -300,7 +300,7 @@ const stageHasAutomation = useMemo(() => {
       organizationName: orgName,
     })
 
-    const resolvedText = renderTemplate(whatsAppTemplate, placeholderData)
+    const resolvedText = stripHtmlToPlainText(renderTemplate(whatsAppTemplate, placeholderData))
     const url = buildWhatsAppUrl(phone, resolvedText)
     if (url) window.open(url, '_blank')
 
