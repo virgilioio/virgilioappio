@@ -27,7 +27,7 @@ export function StagePerformanceSection({ metrics, stageData }: StagePerformance
         <AnalyticsInsightCallout
           variant="warning"
           title={`${stuckCount} candidate${stuckCount > 1 ? 's' : ''} stuck in pipeline`}
-          description="These candidates have been in their current stage for more than 14 days"
+          description="These candidates have had no activity in their current stage for more than 14 days"
         />
       )}
 
