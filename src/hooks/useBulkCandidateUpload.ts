@@ -49,11 +49,11 @@ export function useBulkCandidateUpload() {
   const { createAssociationAndMove } = usePipelineActions()
   const { user } = useAuth()
 
-  const resetUploadState = () => {
+  const resetUploadState = useCallback(() => {
     setFileResults([])
     localResultsRef.current = []
     setIsProcessing(false)
-  }
+  }, [])
 
   const updateFileStatus = (
     fileIndex: number,
