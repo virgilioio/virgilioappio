@@ -131,66 +131,68 @@ export function IntegrationDetailDialog({
           </div>
         </DialogHeader>
 
-        {/* Body: 2:3:1 ratio → 33% carousel | 67% content+actions */}
+        {/* Body: 3:3:1 ratio → 43% carousel | 43% content | 14% actions */}
         <div className="flex flex-col sm:flex-row min-h-[440px]">
-          {/* Left — Carousel (2 parts) */}
-          <div className="sm:w-[33%] p-5">
+          {/* Left — Carousel (3 parts) */}
+          <div className="sm:w-[43%] p-5">
             <ImageCarousel images={images} logo={logo} />
           </div>
 
-          {/* Right — Description + Actions (3+1 parts) */}
-          <div className="sm:w-[67%] p-5 sm:pl-0 flex flex-col">
-            <div className="flex-1 overflow-y-auto pr-2 mb-4">
-              {detailContent ? (
-                <div className="text-sm text-muted-foreground leading-relaxed space-y-4">
-                  {detailContent}
-                </div>
-              ) : (
-                <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
-                  {description}
-                </DialogDescription>
-              )}
-            </div>
+          {/* Center — Description (3 parts) */}
+          <div className="sm:w-[43%] p-5 sm:pl-0 overflow-y-auto">
+            {detailContent ? (
+              <div className="text-sm text-muted-foreground leading-relaxed space-y-4">
+                {detailContent}
+              </div>
+            ) : (
+              <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
+                {description}
+              </DialogDescription>
+            )}
+          </div>
 
-            <div className="flex flex-col gap-2 pt-4 border-t border-border">
-              {isConnected ? (
-                <>
-                  <Button
-                    className="w-full gap-2 bg-virgilio-rejected hover:bg-virgilio-rejected/90 text-white border-0"
-                    onClick={() => {
-                      onUninstall()
-                      onOpenChange(false)
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Uninstall
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2 border-virgilio-purple text-virgilio-purple hover:bg-virgilio-purple/10"
-                    onClick={() => {
-                      onOpenChange(false)
-                      onConfigure()
-                    }}
-                  >
-                    <Settings className="h-4 w-4" />
-                    Configure
-                  </Button>
-                </>
-              ) : (
+          {/* Right — Actions (1 part) */}
+          <div className="sm:w-[14%] p-4 sm:border-l border-border flex flex-col items-center justify-center gap-2">
+            {isConnected ? (
+              <>
                 <Button
-                  className="w-full gap-2 bg-virgilio-purple hover:bg-virgilio-purple/90 text-white border-0"
+                  size="sm"
+                  className="w-full gap-1.5 bg-virgilio-rejected hover:bg-virgilio-rejected/90 text-white border-0 text-xs"
                   onClick={() => {
-                    onInstall()
+                    onUninstall()
                     onOpenChange(false)
                   }}
-                  disabled={isInstalling}
                 >
-                  <Download className="h-4 w-4" />
-                  {isInstalling ? 'Installing...' : 'Install'}
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Uninstall
                 </Button>
-              )}
-            </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-1.5 border-virgilio-purple text-virgilio-purple hover:bg-virgilio-purple/10 text-xs"
+                  onClick={() => {
+                    onOpenChange(false)
+                    onConfigure()
+                  }}
+                >
+                  <Settings className="h-3.5 w-3.5" />
+                  Configure
+                </Button>
+              </>
+            ) : (
+              <Button
+                size="sm"
+                className="w-full gap-1.5 bg-virgilio-purple hover:bg-virgilio-purple/90 text-white border-0 text-xs"
+                onClick={() => {
+                  onInstall()
+                  onOpenChange(false)
+                }}
+                disabled={isInstalling}
+              >
+                <Download className="h-3.5 w-3.5" />
+                {isInstalling ? 'Installing...' : 'Install'}
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>
