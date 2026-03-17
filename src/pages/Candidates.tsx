@@ -35,10 +35,6 @@ export default function Candidates() {
     merged: any
   } | null>(null)
   
-  // State for opening profile sheet after candidate creation
-  const [newCandidateId, setNewCandidateId] = useState<string | null>(null)
-  const [newCandidateJobId, setNewCandidateJobId] = useState<string | null>(null)
-  const [showNewCandidateSheet, setShowNewCandidateSheet] = useState(false)
   
   const {
     candidates,
