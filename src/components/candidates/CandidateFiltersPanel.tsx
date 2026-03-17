@@ -156,9 +156,9 @@ export function CandidateFiltersPanel({ filterOptions }: CandidateFiltersPanelPr
       {/* Active filter chips */}
       {activeTags.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
-          {activeTags.slice(0, 12).map(({ key, value }) => (
+          {activeTags.slice(0, 12).map(({ key, value, label }) => (
             <Badge key={`${key}-${value}`} variant="purple" className="gap-1 pr-1 text-xs h-6 pl-2 font-poppins">
-              {value}
+              {label ?? value}
               <button
                 onClick={() => removeArrayFilterValue(key, value)}
                 className="ml-0.5 rounded-full p-0.5 hover:bg-foreground/10 transition-colors"
