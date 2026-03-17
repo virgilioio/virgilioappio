@@ -77,7 +77,7 @@ export function IndependentCandidateTable({
   
   // Job associations for all candidates
   const candidateIds = useMemo(() => candidates.map(c => c.id), [candidates])
-  const { associationsMap, associations: allAssociations } = useCandidateJobAssociationsMap(candidateIds)
+  const { associationsMap, associations: allAssociations, isLoading: associationsLoading } = useCandidateJobAssociationsMap(candidateIds)
 
   // Sheet state
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
