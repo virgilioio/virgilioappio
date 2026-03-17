@@ -927,7 +927,7 @@ export default function JobDetail() {
                                <span className="flex items-center gap-1 truncate">
                                  <Sparkles className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
                                  <span className="truncate">Suggested</span>
-                                 <Badge variant="secondary" className="text-xs flex-shrink-0">{suggestedCount}</Badge>
+                                  <Badge variant="secondary" className="text-xs flex-shrink-0">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : suggestedCount}</Badge>
                                </span>
                              </TabsTrigger>
                              <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-pastel-purple/20 text-text-primary data-[state=active]:bg-pastel-purple" value="application">
