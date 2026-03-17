@@ -214,7 +214,7 @@ export default function Pipeline() {
 
               {/* Job List */}
               {jobsLoading || isFilteringUsers ? (
-                <div className="text-center py-8 text-muted-foreground">Loading jobs...</div>
+                <TableSkeleton rows={5} />
               ) : filteredJobs.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   No jobs found matching your filters.

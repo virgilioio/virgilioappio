@@ -957,7 +957,7 @@ export default function JobDetail() {
                              <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-destructive/20 text-text-primary data-[state=active]:bg-destructive" value="rejected">
                                <span className="flex items-center gap-1 truncate">
                                  <span className="truncate">Rejected Candidates</span>
-                                 <Badge variant="destructive" className="text-xs flex-shrink-0">{rejectedCount}</Badge>
+                                  <Badge variant="destructive" className="text-xs flex-shrink-0">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : rejectedCount}</Badge>
                                </span>
                              </TabsTrigger>
                            </TabsList>
