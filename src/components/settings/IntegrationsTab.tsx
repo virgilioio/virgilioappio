@@ -59,6 +59,7 @@ export const INTEGRATIONS: IntegrationEntry[] = [
     category: 'communication',
     logo: <WhatsAppIcon size={20} className="text-[#25D366]" />,
     DetailComponent: WhatsAppIntegrationDetail,
+    images: [whatsappHero],
   },
 ]
 
