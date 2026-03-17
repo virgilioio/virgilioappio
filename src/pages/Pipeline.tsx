@@ -20,6 +20,7 @@ import { useSavedViews } from '@/hooks/useSavedViews';
 import { jobMatchesUsers } from '@/utils/jobInvolvement';
 import { Briefcase, FileText, Clock, Users } from 'lucide-react';
 import { Accordion } from '@/components/ui/accordion';
+import { TableSkeleton } from '@/components/ui/skeleton';
 
 interface PipelinePageFilters {
   selectedUsers: string[]
