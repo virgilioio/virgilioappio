@@ -120,6 +120,14 @@ export function CandidateFiltersPanel({ filterOptions }: CandidateFiltersPanelPr
           searchable={false}
         />
 
+        <FilterChipPopover
+          label="Rejected at Stage"
+          options={filterOptions.rejectedAtStageOptions}
+          selectedValues={filters.rejectedAtStages}
+          onSelectionChange={(v) => setArrayFilter('rejectedAtStages', v)}
+          searchable
+        />
+
         <Button
           variant="outline"
           size="sm"

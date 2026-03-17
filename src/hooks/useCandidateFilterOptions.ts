@@ -54,6 +54,9 @@ export function useCandidateFilterOptions(candidates: IndependentCandidate[], as
         skillOptions: [],
         enrichmentStatusOptions: [],
         pipelineStatusOptions: [],
+        jobOptions: [],
+        stageOptions: [],
+        rejectedAtStageOptions: [],
         experienceRange: null as { min: number; max: number } | null,
         salaryRange: null as { min: number; max: number } | null,
       }
