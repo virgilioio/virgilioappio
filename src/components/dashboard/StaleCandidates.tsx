@@ -49,7 +49,7 @@ export function StaleCandidates() {
   const displayedCandidates = showAll ? candidates : candidates.slice(0, 5);
   const hasMore = candidates.length > 5;
 
-  // Determine urgency level based on days in stage
+  // Determine urgency level based on days since last activity
   const getUrgencyLevel = (days: number): 'warning' | 'critical' => {
     return days >= 14 ? 'critical' : 'warning';
   };
