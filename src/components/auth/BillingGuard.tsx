@@ -7,6 +7,7 @@ import { useBillingStatus } from '@/hooks/useBillingStatus'
 import { useCreateCheckout } from '@/hooks/useBillingPortal'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { GioLoader } from '@/components/ui/GioLoader'
 
 interface BillingGuardProps {
   children?: ReactNode
