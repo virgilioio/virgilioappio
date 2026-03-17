@@ -8,6 +8,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ChevronDown } from 'lucide-react'
 import { useState } from 'react'
+import { useIntegrationStatuses } from '@/hooks/useIntegrationStatuses'
+import { INTEGRATIONS } from './IntegrationsTab'
 
 interface SettingsNavItem {
   id: string
@@ -26,11 +28,13 @@ interface SettingsSidebarProps {
 export function SettingsSidebar({ currentTab, onTabChange, className }: SettingsSidebarProps) {
   const permissions = usePermissions()
   const { organizationId, userType } = useAuth()
+  const integrationStatuses = useIntegrationStatuses()
+  const installedIntegrations = INTEGRATIONS.filter((i) => integrationStatuses[i.id])
   const [platformOpen, setPlatformOpen] = useState(
     ['platform-dashboard', 'platform-settings', 'platform-job-settings', 'platform-customers', 'platform-saas-customers'].includes(currentTab)
   )
   const [workspaceOpen, setWorkspaceOpen] = useState(
-    ['workspace-job-settings', 'organization', 'members', 'integrations'].includes(currentTab)
+    ['workspace-job-settings', 'organization', 'members', 'integrations'].includes(currentTab) || currentTab.startsWith('integration-')
   )
 
   const isWorkspaceOwnerOfSaaSOrg = () => {
@@ -163,21 +167,50 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
                       const isActive = currentTab === subItem.id
                       
                       return (
-                        <Button
-                          key={subItem.id}
-                          variant="ghost"
-                          className={cn(
-                            "w-full justify-start h-9 px-3 py-2 rounded-lg",
-                            "text-sm font-medium transition-all duration-200",
-                            isActive 
-                              ? "bg-gradient-to-r from-virgilio-purple to-virgilio-purple/90 text-white shadow-sm font-semibold" 
-                              : "text-virgilio-muted hover:text-virgilio-text hover:bg-muted hover:shadow-sm hover:-translate-y-0.5"
+                        <div key={subItem.id}>
+                          <Button
+                            variant="ghost"
+                            className={cn(
+                              "w-full justify-start h-9 px-3 py-2 rounded-lg",
+                              "text-sm font-medium transition-all duration-200",
+                              isActive 
+                                ? "bg-gradient-to-r from-virgilio-purple to-virgilio-purple/90 text-white shadow-sm font-semibold" 
+                                : "text-virgilio-muted hover:text-virgilio-text hover:bg-muted hover:shadow-sm hover:-translate-y-0.5"
+                            )}
+                            onClick={() => onTabChange(subItem.id)}
+                          >
+                            <SubIcon className="h-3.5 w-3.5 mr-2 shrink-0" />
+                            <span className="truncate">{subItem.label}</span>
+                          </Button>
+                          {/* Show installed integration sub-items under Integrations */}
+                          {subItem.id === 'integrations' && installedIntegrations.length > 0 && (
+                            <div className="space-y-0.5 mt-0.5 pl-5">
+                              {installedIntegrations.map((integration) => {
+                                const integrationTabId = `integration-${integration.id}`
+                                const isIntegrationActive = currentTab === integrationTabId
+                                return (
+                                  <Button
+                                    key={integrationTabId}
+                                    variant="ghost"
+                                    className={cn(
+                                      "w-full justify-start h-8 px-2 py-1 rounded-md",
+                                      "text-xs font-medium transition-all duration-200",
+                                      isIntegrationActive
+                                        ? "bg-virgilio-purple/15 text-virgilio-purple font-semibold"
+                                        : "text-virgilio-muted hover:text-virgilio-text hover:bg-muted"
+                                    )}
+                                    onClick={() => onTabChange(integrationTabId)}
+                                  >
+                                    <span className="flex h-4 w-4 items-center justify-center mr-2 shrink-0">
+                                      {integration.logo}
+                                    </span>
+                                    <span className="truncate">{integration.name}</span>
+                                  </Button>
+                                )
+                              })}
+                            </div>
                           )}
-                          onClick={() => onTabChange(subItem.id)}
-                        >
-                          <SubIcon className="h-3.5 w-3.5 mr-2 shrink-0" />
-                          <span className="truncate">{subItem.label}</span>
-                        </Button>
+                        </div>
                       )
                     })}
                   </CollapsibleContent>
