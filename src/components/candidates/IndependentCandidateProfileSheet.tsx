@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { CandidateProfileSkeleton } from './CandidateProfileSkeleton'
 import { useNavigate } from 'react-router-dom'
 import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet'
 import { Tabs } from '@/components/ui/tabs'
