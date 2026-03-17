@@ -8,6 +8,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ChevronDown } from 'lucide-react'
 import { useState } from 'react'
+import { useIntegrationStatuses } from '@/hooks/useIntegrationStatuses'
+import { INTEGRATIONS } from './IntegrationsTab'
 
 interface SettingsNavItem {
   id: string
