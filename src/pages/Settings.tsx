@@ -124,6 +124,13 @@ export default function Settings() {
                 <TabsContent value="integrations">
                   <IntegrationsTab />
                 </TabsContent>
+
+                {/* Dynamic integration configure tabs */}
+                {currentTab.startsWith('integration-') && (
+                  <TabsContent value={currentTab} forceMount>
+                    <IntegrationsTab initialConfigureId={currentTab.replace('integration-', '')} />
+                  </TabsContent>
+                )}
                 
                 <TabsContent value="organization">
                   <OrganizationTab />
