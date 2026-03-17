@@ -28,11 +28,13 @@ interface SettingsSidebarProps {
 export function SettingsSidebar({ currentTab, onTabChange, className }: SettingsSidebarProps) {
   const permissions = usePermissions()
   const { organizationId, userType } = useAuth()
+  const integrationStatuses = useIntegrationStatuses()
+  const installedIntegrations = INTEGRATIONS.filter((i) => integrationStatuses[i.id])
   const [platformOpen, setPlatformOpen] = useState(
     ['platform-dashboard', 'platform-settings', 'platform-job-settings', 'platform-customers', 'platform-saas-customers'].includes(currentTab)
   )
   const [workspaceOpen, setWorkspaceOpen] = useState(
-    ['workspace-job-settings', 'organization', 'members', 'integrations'].includes(currentTab)
+    ['workspace-job-settings', 'organization', 'members', 'integrations'].includes(currentTab) || currentTab.startsWith('integration-')
   )
 
   const isWorkspaceOwnerOfSaaSOrg = () => {
