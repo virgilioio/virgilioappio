@@ -12,6 +12,9 @@ export interface CandidateFilters {
   skills: string[]
   enrichmentStatuses: string[]
   pipelineStatuses: string[]
+  jobs: string[]
+  stages: string[]
+  rejectedAtStages: string[]
   experienceMin: number | null
   experienceMax: number | null
   salaryMin: number | null
