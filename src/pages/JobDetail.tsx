@@ -951,7 +951,7 @@ export default function JobDetail() {
                              <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-success/20 text-text-primary data-[state=active]:bg-success" value="hired">
                                <span className="flex items-center gap-1 truncate">
                                  <span className="truncate">Hired Candidates</span>
-                                 <Badge variant="success" className="text-xs flex-shrink-0">{hiredCount}</Badge>
+                                  <Badge variant="success" className="text-xs flex-shrink-0">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : hiredCount}</Badge>
                                </span>
                              </TabsTrigger>
                              <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-destructive/20 text-text-primary data-[state=active]:bg-destructive" value="rejected">
