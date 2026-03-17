@@ -46,7 +46,7 @@ function ImageCarousel({ images, logo }: { images?: string[]; logo: React.ReactN
         <img
           src={images[current]}
           alt={`Screenshot ${current + 1}`}
-          className="w-full h-full object-cover rounded-xl"
+          className="w-full h-full object-contain rounded-xl"
         />
         {images.length > 1 && (
           <>
