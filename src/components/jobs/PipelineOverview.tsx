@@ -190,7 +190,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     setActiveId(String(event.active.id))
   }, [])
 
-  // getTimeInfo moved below statusMap declaration
+  
 
   const getHeaderBgClass = (type: string) => {
     switch (type) {
