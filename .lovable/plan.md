@@ -1,151 +1,83 @@
-# System Roles Migration — Completed Phases 1-5
 
-## Architecture Change
-- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
-- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
+# Fix Stale Candidate Detection: Consider Recent Activity
 
-## Completed
+## Problem
 
-### Phase 1 — Database
-- ✅ Created `system_role` enum (`admin`, `member`)
-- ✅ Added `system_role` column to `members` table
-- ✅ Migrated data: `admin` → `admin`, all others → `member`
-- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
-- ✅ Updated `check_tenant_member_role` to use `system_role`
-- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
-- ✅ Updated `audit_member_role_change` trigger
+The stale candidate logic only looks at `entered_stage_at` (when the candidate entered their current stage). A candidate in a stage for 10+ days is flagged as stale even if there was a scorecard submitted yesterday, an email sent 2 days ago, or a booking completed last week. The current exclusions only check for **future** bookings and **pending** reminders — they ignore past activity entirely.
 
-### Phase 2 — Frontend Permissions
-- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
-- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
-- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
-- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
+## Available Activity Signals
 
-### Phase 3 — UI Updates
-- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
-- ✅ Updated `Dashboard` — sourcing panel for admin+ only
-- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
-- ✅ Updated `BillingGuard` — members (non-admin) never blocked
-- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
-- ✅ Updated `Find` page RoleGate
-- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
+These tables have `candidate_id` + `job_id` (or `association_id`) and timestamps we can use:
 
-### Phase 4 — Runtime Hotfixes
-- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
-- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
-- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
-- ✅ Updated `validate_invite_token` — returns `system_role`
-- ✅ Updated `accept_invitation` — uses `system_role`
+| Signal | Table | Timestamp Column |
+|--------|-------|-----------------|
+| Booking link sent | `job_candidate_associations` | `booking_link_sent_at` |
+| WhatsApp template sent | `job_candidate_associations` | `whatsapp_template_sent_at` |
+| Scorecard submitted | `job_stage_scorecards` | `created_at` (has `association_id`, `candidate_id`, `job_id`) |
+| Email sent/received | `email_logs` | `sent_at` / `received_at` (has `candidate_id`, `job_id`) |
+| Booking (past, any status) | `scheduled_bookings` | `created_at` / `scheduled_start` (has `candidate_id`, `job_id`) |
 
-### Phase 5 — Complete Cleanup
-- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
-- ✅ Updated `admin_manage_member` — updates `system_role` column
-- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
-- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
-- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
-- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
-- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
-- ✅ Updated `diagnose_user_auth` — reports `system_role`
-- ✅ Updated `audit_platform_admin_access` — returns `system_role`
-- ✅ Updated `debug_user_permissions` — returns `system_role`
-- ✅ Renamed `invitations.member_role` → `invitations.system_role`
-- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
+## Approach: Compute "Last Activity Date" Per Association
 
-## Phase 6 — Future (Optional)
-- Drop `member_role` column from `members` table (already dropped)
-- Drop old `member_role` enum type
-- Update `MemberInviteSheet` role picker to only offer Admin/Member
+Instead of comparing only `entered_stage_at` against the threshold, we compute a **last activity date** as the most recent of:
 
-# Deep Resume Parsing + Data Standardization — Completed
+- `entered_stage_at`
+- `booking_link_sent_at` (already on the association row)
+- `whatsapp_template_sent_at` (already on the association row)
+- Most recent scorecard `created_at` for that association
+- Most recent email `sent_at` or `received_at` for that candidate+job
+- Most recent booking `created_at` for that candidate+job
 
-## What was implemented
+A candidate is only stale if **all** of these are older than the threshold.
 
-### Phase 1: Schema Expansion
-- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
-- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
-- ✅ Added to `candidate_education`: `education_level`
-- ✅ Created `candidate_certifications` table with RLS policies
+## Changes
 
-### Phase 2: Enrichment Rewrite
-- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
-- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
-- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
-- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
-- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
+### 1. `useStaleCandidates.ts` — Add activity lookups
 
-### Phase 3: UI Updates
-- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
-- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
-- ✅ **Certifications section** with `CandidateCertificationsComponent`
-- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
-- ✅ Enhanced **Education** display: education level badge
-- ✅ Certifications loaded alongside work experience and education
+After fetching potential stale candidates (Step 1), add two more batch queries:
 
-## Files changed
-- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
-- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
-- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
-- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
-- `src/components/candidates/CandidateCertifications.tsx` — new component
+- **Scorecards**: Query `job_stage_scorecards` for associations in the potential stale set, get `MAX(created_at)` grouped by `association_id`
+- **Emails**: Query `email_logs` for candidate+job pairs, get `MAX(GREATEST(sent_at, received_at))` grouped by `candidate_id, job_id`
 
-# WhatsApp ISV Architecture — Completed
+Already on the association row (no extra query needed):
+- `booking_link_sent_at`
+- `whatsapp_template_sent_at`
 
-## Architecture
-Per-tenant dedicated numbers under GoGio's master Twilio account. Each tenant gets their own WhatsApp number provisioned via the Twilio connector gateway.
+In the Step 4 filter loop, compute `lastActivityDate = MAX(entered_stage_at, booking_link_sent_at, whatsapp_template_sent_at, latestScorecard, latestEmail)`. Skip the candidate if `lastActivityDate` is within the threshold.
 
-## What was implemented
+Also update `daysInStage` display to show days since last activity instead of days since stage entry — or keep both and show "days since last activity" as the staleness metric.
 
-### Inbound Webhook
-- ✅ Created `whatsapp-inbound-webhook` edge function (public, no JWT)
-- ✅ Matches inbound `From` phone to existing conversations
-- ✅ Inserts messages as `direction: 'inbound'`, updates `unread_count`
-- ✅ Returns empty TwiML (no auto-reply)
-- ✅ Added to `supabase/config.toml` with `verify_jwt = false`
+### 2. `useStagePerformanceMetrics.ts` — Same logic for analytics stuck detection
 
-### Simplified Setup Wizard
-- ✅ Reduced from 5 steps to 3: Welcome → Provision → Complete
-- ✅ Removed broken "Verify sender" and "Templates" steps
-- ✅ Provisioning = activation (no separate activate step)
+Apply the same activity-aware logic so the analytics "stuck candidates" list is also accurate.
 
-### Simplified Setup Status
-- ✅ Reduced from 6 states to 3: `not_started`, `active`, `error`
-- ✅ `canMessage = true` when `active` (no template-gating)
-- ✅ Removed `provisioning`, `sender_pending`, `sender_active`, `templates_required`
+### 3. `PipelineOverview.tsx` — Update time badge
 
-### Integration Card Updates
-- ✅ Removed template count stats (approved/pending/draft)
-- ✅ Simplified status badges to active/not set up/error
-- ✅ Removed unused status configs (sender_pending, provisioning, etc.)
+The time badge in the pipeline view currently shows time since `entered_stage_at`. This should continue showing time-in-stage (that's useful info), but the **color/urgency indicator** should be based on last activity date instead. A candidate 14 days in a stage but with activity 2 days ago should not show as critical.
 
-### Template Library Updates
-- ✅ Removed non-functional Submit and Refresh buttons
-- ✅ Removed filter tabs (all/draft/pending/approved/rejected)
-- ✅ Added info note: "Custom templates require GoGio team approval"
-- ✅ Templates show as "Ready to use" or "Local only" status
+### 4. Update `StaleCandidates.tsx` display (minor)
 
-### Chat Tab Updates
-- ✅ Simplified blocking: only blocks when `not_started` or no phone number
-- ✅ Removed intermediate `canMessage` blocking state
-- ✅ Updated empty template message to reference GoGio team
+Show "X days since last activity" instead of "X days in stage" so the metric is meaningful and accurate.
 
-### Send Function Updates
-- ✅ Removed `is_active` check — if number exists, can send
-- ✅ Per-tenant `twilio_from_number` logic preserved
+## Technical Details
 
-### Global Templates Seeded
-- ✅ Interview Invitation, Application Update, Job Opportunity
-- ✅ Inserted with `tenant_id = NULL` (global)
-- ✅ No `twilio_content_sid` yet (marked as draft until GoGio team adds real SIDs)
+The additional queries are lightweight — they use indexed columns (`association_id`, `candidate_id`, `job_id`) and are batched with `IN` clauses against the already-filtered potential stale set (max 100 rows). This adds two small queries to the existing four.
 
-## Manual Prerequisites (for GoGio team — ONE-TIME ONLY)
-1. Get WhatsApp Business Account approved in Twilio Console
-2. Create a Messaging Service and enable WhatsApp on it
-3. Create Content templates in Twilio Console matching seeded templates
-4. UPDATE `whatsapp_templates` rows with real `twilio_content_sid` values and `approval_status = 'approved'`
-5. Store `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID` as Supabase secrets ✅ Done
+### Select fields to add to Step 1 query
+Already available on association rows: `booking_link_sent_at`, `whatsapp_template_sent_at` — just add these to the select.
 
-## Automated Per-Tenant (Zero-Touch)
-1. ✅ Buy number via gateway
-2. ✅ Configure webhook URL on number via gateway
-3. ✅ Register number as WhatsApp Sender via Messaging Service API
-4. ✅ Save config to DB
+### New Step 2b: Recent scorecards
+```sql
+SELECT association_id, MAX(created_at) as latest
+FROM job_stage_scorecards
+WHERE association_id IN (...)
+GROUP BY association_id
+```
+
+### New Step 2c: Recent emails
+```sql
+SELECT candidate_id, job_id, MAX(GREATEST(sent_at, received_at)) as latest
+FROM email_logs
+WHERE candidate_id IN (...) AND job_id IN (...)
+GROUP BY candidate_id, job_id
+```
