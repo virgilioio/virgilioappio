@@ -24,6 +24,9 @@ interface CandidateFiltersPanelProps {
     skillOptions: FilterOption[]
     enrichmentStatusOptions: FilterOption[]
     pipelineStatusOptions: FilterOption[]
+    jobOptions: FilterOption[]
+    stageOptions: FilterOption[]
+    rejectedAtStageOptions: FilterOption[]
     experienceRange: { min: number; max: number } | null
     salaryRange: { min: number; max: number } | null
   }
