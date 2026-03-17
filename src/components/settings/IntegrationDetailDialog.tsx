@@ -132,14 +132,14 @@ export function IntegrationDetailDialog({
         </DialogHeader>
 
         {/* Body: 3:3:1 ratio → 43% carousel | 43% content | 14% actions */}
-        <div className="flex flex-col sm:flex-row min-h-[440px]">
-          {/* Left — Carousel (3 parts) */}
-          <div className="sm:w-[43%] p-5">
+        <div className="flex flex-col sm:flex-row min-h-[340px] max-h-[70vh]">
+          {/* Left — Carousel (4 parts) */}
+          <div className="sm:w-[50%] p-5">
             <ImageCarousel images={images} logo={logo} />
           </div>
 
           {/* Center — Description (3 parts) */}
-          <div className="sm:w-[43%] p-5 sm:pl-0 overflow-y-auto">
+          <div className="sm:w-[37.5%] p-5 sm:pl-0 overflow-y-auto">
             {detailContent ? (
               <div className="text-sm text-muted-foreground leading-relaxed space-y-4">
                 {detailContent}
@@ -152,7 +152,7 @@ export function IntegrationDetailDialog({
           </div>
 
           {/* Right — Actions (1 part) */}
-          <div className="sm:w-[14%] p-4 sm:border-l border-border flex flex-col items-center justify-center gap-2">
+          <div className="sm:w-[12.5%] p-4 sm:border-l border-border flex flex-col items-center justify-start gap-2">
             {isConnected ? (
               <>
                 <Button
