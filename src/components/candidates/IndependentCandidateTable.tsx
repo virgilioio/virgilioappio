@@ -49,6 +49,7 @@ export function IndependentCandidateTable({
   onAddNew,
   onRefresh,
 }: IndependentCandidateTableProps) {
+  const { isEnabled: whatsAppEnabled } = useWhatsAppEnabled()
   
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
