@@ -45,7 +45,9 @@ export function CandidateFiltersPanel({ filterOptions }: CandidateFiltersPanelPr
   const arrayKeys = ['statuses', 'sources', 'countries', 'states', 'cities', 'seniorityLevels', 'functionalAreas', 'specializations', 'skills', 'enrichmentStatuses', 'pipelineStatuses', 'jobs', 'stages', 'rejectedAtStages'] as const
   for (const k of arrayKeys) {
     for (const v of filters[k]) {
-      activeTags.push({ key: k, value: v })
+      // For jobs filter, show job title instead of job ID
+      const label = k === 'jobs' ? filterOptions.jobOptions.find(o => o.value === v)?.label ?? v : v
+      activeTags.push({ key: k, value: v, label })
     }
   }
 
