@@ -132,7 +132,7 @@ export function IntegrationDetailDialog({
         </DialogHeader>
 
         {/* Body: 3:3:1 ratio → 43% carousel | 43% content | 14% actions */}
-        <div className="flex flex-col sm:flex-row min-h-[340px] max-h-[70vh]">
+        <div className="flex flex-col sm:flex-row h-[420px]">
           {/* Left — Carousel (4 parts) */}
           <div className="sm:w-[50%] p-5">
             <ImageCarousel images={images} logo={logo} />
