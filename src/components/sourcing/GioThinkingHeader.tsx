@@ -1,13 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
-import { cn } from '@/lib/utils'
-import gioAvatar from '@/assets/gio-avatar.png'
-import gioFaceYellow from '@/assets/gio-face-yellow.png'
-import gioFaceEmpty from '@/assets/gio-face-empty.png'
-import gioFacePurple from '@/assets/gio-face-purple.png'
-import gioFacePink from '@/assets/gio-face-pink.png'
-import gioFaceGreen from '@/assets/gio-face-green.png'
-
-const GIO_AVATARS = [gioAvatar, gioFaceYellow, gioFacePurple, gioFacePink, gioFaceGreen]
+import { useState, useEffect } from 'react'
+import { GioLoader } from '@/components/ui/GioLoader'
 
 const THINKING_MESSAGES = [
   "Analyzing your prompt",
@@ -20,36 +12,8 @@ const THINKING_MESSAGES = [
 ]
 
 export function GioThinkingHeader() {
-  const [avatarIndex, setAvatarIndex] = useState(0)
-  const [isFlipping, setIsFlipping] = useState(false)
-  const [isMirrored, setIsMirrored] = useState(false)
   const [messageIndex, setMessageIndex] = useState(0)
 
-  // Handle flip animation and avatar swap
-  const triggerFlip = useCallback(() => {
-    setIsFlipping(true)
-    
-    // Swap avatar at 35% (when edge-on at 90deg, ~175ms into 500ms animation)
-    setTimeout(() => {
-      setAvatarIndex((prev) => (prev + 1) % GIO_AVATARS.length)
-    }, 175)
-    
-    // Reset flip state and toggle mirrored state after animation completes
-    setTimeout(() => {
-      setIsFlipping(false)
-      setIsMirrored((prev) => !prev)
-    }, 500)
-  }, [])
-
-  // Trigger flip every 2 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      triggerFlip()
-    }, 2000)
-    return () => clearInterval(interval)
-  }, [triggerFlip])
-
-  // Cycle through messages every 2.5 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       setMessageIndex((prev) => (prev + 1) % THINKING_MESSAGES.length)
@@ -59,18 +23,7 @@ export function GioThinkingHeader() {
 
   return (
     <div className="flex flex-col items-center justify-center space-y-8 animate-fade-in">
-      {/* Simple 2D Flipping Avatar */}
-      <div className="relative w-20 h-20">
-        <img 
-          src={GIO_AVATARS[avatarIndex]} 
-          alt="Gio"
-          className={cn(
-            "w-full h-full rounded-full object-cover will-change-transform",
-            isFlipping && (isMirrored ? "animate-coin-flip-2d-reverse" : "animate-coin-flip-2d")
-          )}
-          style={{ transform: isMirrored ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
-        />
-      </div>
+      <GioLoader size="md" />
 
       {/* Simple Shimmer Beam Bar - Solid Color */}
       <div className="w-48 h-1.5 bg-muted rounded-full overflow-hidden">

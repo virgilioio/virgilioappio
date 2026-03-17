@@ -49,10 +49,7 @@ export default function TrialActivation() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#d7c5fb' }}>
-        <div className="text-center space-y-4">
-          <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin mx-auto" />
-          <p className="text-foreground/70">Loading...</p>
-        </div>
+        <GioLoader message="Loading..." />
       </div>
     )
   }

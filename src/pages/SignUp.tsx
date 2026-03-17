@@ -58,11 +58,8 @@ export default function SignUp() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-accent/20 to-warning/10 flex items-center justify-center">
-        <div className="text-center space-y-token-md">
-          <div className="h-8 w-8 rounded-full bg-primary animate-spin mx-auto"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <GioLoader message="Loading..." />
       </div>
     )
   }
