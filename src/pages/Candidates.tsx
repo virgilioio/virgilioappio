@@ -93,11 +93,9 @@ export default function Candidates() {
           return null // Don't close the form yet
         }
         
-        // Success - capture candidate info and open profile sheet
+        // Success - open candidate profile in new tab
         if (result?.id) {
-          setNewCandidateId(result.id)
-          setNewCandidateJobId(assignedJobId || null)
-          setShowNewCandidateSheet(true)
+          window.open(`/candidates?openCandidate=${result.id}`, '_blank')
         }
         
         handleFormClose()
