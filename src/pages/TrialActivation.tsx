@@ -8,6 +8,7 @@ import { useCreateCheckout } from '@/hooks/useBillingPortal'
 import { Check, CreditCard, Sparkles, Users, Calendar, Mail, AlertCircle } from 'lucide-react'
 import authGraphic from '@/assets/auth-graphic.png'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { GioLoader } from '@/components/ui/GioLoader'
 
 const TRIAL_BENEFITS = [
   { icon: Users, text: 'Unlimited jobs & candidates' },
