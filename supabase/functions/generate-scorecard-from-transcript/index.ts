@@ -152,6 +152,7 @@ Guidelines:
 - Use professional language appropriate for HR documentation
 - Structure notes clearly with headers and bullet points
 - Suggest an overall rating based on the evidence (strong_yes, yes, no, definitely_no)
+- CRITICAL: If a scorecard question topic was NOT discussed during the interview, explicitly state that rather than inferring or fabricating an answer. Honesty about information gaps is far more valuable than completeness. Never guess or extrapolate answers for topics not covered in the transcript.
 
 Your general_overview should follow this format:
 1. OVERALL IMPRESSION (2-3 sentences)
