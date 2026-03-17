@@ -518,17 +518,31 @@ const getPageNumbers = () => {
                               <h4 className="font-medium text-text-primary">
                                 {candidate.candidate_name}
                               </h4>
-                              {candidate.linkedin_url && (
-                                <a 
-                                  href={candidate.linkedin_url} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-sm text-primary hover:underline inline-flex items-center gap-1"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  LinkedIn <ExternalLink className="h-3 w-3" />
-                                </a>
-                              )}
+                              <div className="flex items-center gap-2 mt-0.5">
+                                {candidate.linkedin_url && (
+                                  <a 
+                                    href={candidate.linkedin_url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-[#0A66C2] hover:text-[#004182] inline-flex items-center gap-1 transition-colors"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <LinkedInFilled className="w-3.5 h-3.5" /> LinkedIn
+                                  </a>
+                                )}
+                                {candidate.phone && whatsAppEnabled && buildWhatsAppUrl(candidate.phone) && (
+                                  <a
+                                    href={buildWhatsAppUrl(candidate.phone) || '#'}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-[#25D366] hover:text-[#128C7E] inline-flex items-center gap-1 transition-colors"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <WhatsAppIcon size={14} />
+                                    <span className="text-text-secondary">{formatE164Display(candidate.phone)}</span>
+                                  </a>
+                                )}
+                              </div>
                             </div>
                             <PermissionGate permission="canDeleteCandidates">
                               <Button 
