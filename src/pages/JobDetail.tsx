@@ -896,7 +896,7 @@ export default function JobDetail() {
                                  <SelectItem value="recruiting" className="py-3">
                                    <span className="flex items-center gap-2">
                                      <span>Recruiting Process</span>
-                                     <Badge variant="pastel-yellow" className="text-xs">{recruitingCount}</Badge>
+                                     <Badge variant="pastel-yellow" className="text-xs">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : recruitingCount}</Badge>
                                    </span>
                                  </SelectItem>
                                  <SelectItem value="offers" className="py-3">
