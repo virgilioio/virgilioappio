@@ -864,14 +864,18 @@ export default function JobDetail() {
                                        {pipelineSectionTab === 'hired' && 'Hired Candidates'}
                                        {pipelineSectionTab === 'rejected' && 'Rejected Candidates'}
                                      </span>
-                                     <Badge variant="secondary" className="text-xs">
-                                       {pipelineSectionTab === 'suggested' && suggestedCount}
-                                       {pipelineSectionTab === 'application' && applicationCount}
-                                       {pipelineSectionTab === 'recruiting' && recruitingCount}
-                                       {pipelineSectionTab === 'offers' && offerCount}
-                                       {pipelineSectionTab === 'hired' && hiredCount}
-                                       {pipelineSectionTab === 'rejected' && rejectedCount}
-                                     </Badge>
+                                      <Badge variant="secondary" className="text-xs">
+                                        {statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : (
+                                          <>
+                                            {pipelineSectionTab === 'suggested' && suggestedCount}
+                                            {pipelineSectionTab === 'application' && applicationCount}
+                                            {pipelineSectionTab === 'recruiting' && recruitingCount}
+                                            {pipelineSectionTab === 'offers' && offerCount}
+                                            {pipelineSectionTab === 'hired' && hiredCount}
+                                            {pipelineSectionTab === 'rejected' && rejectedCount}
+                                          </>
+                                        )}
+                                      </Badge>
                                    </span>
                                  </SelectValue>
                                </SelectTrigger>
