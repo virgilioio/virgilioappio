@@ -29,6 +29,7 @@ export interface IntegrationEntry {
   id: string
   name: string
   description: string
+  detailContent?: React.ReactNode
   category: IntegrationCategory
   logo: React.ReactNode
   DetailComponent: React.ComponentType
