@@ -31,6 +31,7 @@ export interface IntegrationEntry {
   category: IntegrationCategory
   logo: React.ReactNode
   DetailComponent: React.ComponentType
+  images?: string[]
 }
 
 export const INTEGRATIONS: IntegrationEntry[] = [
