@@ -884,7 +884,7 @@ export default function JobDetail() {
                                    <span className="flex items-center gap-2">
                                      <Sparkles className="h-4 w-4 text-blue-600" />
                                      <span>Suggested</span>
-                                     <Badge variant="secondary" className="text-xs">{suggestedCount}</Badge>
+                                     <Badge variant="secondary" className="text-xs">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : suggestedCount}</Badge>
                                    </span>
                                  </SelectItem>
                                  <SelectItem value="application" className="py-3">
