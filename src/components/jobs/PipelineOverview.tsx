@@ -571,7 +571,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
           <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
             <div className={`flex gap-4 ${externalScroll ? '' : 'overflow-x-auto'} pb-2`}>
 
-              {!isLoadingPlan && stageOptions.length === 0 && (
+              {stageOptions.length === 0 && (
                 <Card className="min-w-[280px]">
                   <CardContent className="py-8 text-center text-text-secondary text-sm">
                     No hiring plan defined yet.
