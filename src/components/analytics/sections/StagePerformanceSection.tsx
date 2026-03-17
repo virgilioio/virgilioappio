@@ -39,7 +39,7 @@ export function StagePerformanceSection({ metrics, stageData }: StagePerformance
       {stuckCount > 0 && (
         <AnalyticsTableCard
           title="Stuck Candidates"
-          subtitle="Active candidates in the same stage for 14+ days"
+          subtitle="Active candidates with no activity for 14+ days"
           icon={AlertTriangle}
           maxHeight="max-h-[300px]"
         >
