@@ -15,6 +15,8 @@ export interface IntegrationDefinition {
   logoComponent?: ComponentType<{ className?: string; size?: number }>
   /** The detail/config component rendered when user clicks Configure */
   detailComponent: ComponentType
+  /** Images for the detail dialog carousel */
+  images?: string[]
 }
 
 export const CATEGORY_LABELS: Record<IntegrationCategory, string> = {

@@ -111,6 +111,7 @@ export default {
 				'virgilio-border': '#E7E8EE',
 				'virgilio-success': '#12B886',
 				'virgilio-error': '#FA5252',
+				'virgilio-rejected': 'hsl(var(--virgilio-rejected))',
 			},
 			borderRadius: {
 				xs: '4px',

@@ -20,7 +20,7 @@ export function RejectionStatusBanner({
   if (!rejectedAt) return null;
 
   return (
-    <div className="rounded-lg p-4 flex items-center justify-between" style={{ backgroundColor: '#ff4040' }}>
+    <div className="rounded-lg p-4 flex items-center justify-between bg-virgilio-rejected">
       <div className="space-y-0.5">
         <p className="text-sm font-medium text-white">Candidate Rejected</p>
         <p className="text-xs text-white/80">
