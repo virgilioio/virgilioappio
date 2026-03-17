@@ -508,7 +508,7 @@ function buildToolDefinition(questions: any[]) {
           },
           question_responses: {
             type: 'array',
-            description: 'Structured responses to each scorecard question',
+            description: 'Structured responses to each scorecard question. Include ALL questions — for questions not discussed in the interview, set answer_text to "[Not discussed during this interview]" and answer_options to [].',
             items: {
               type: 'object',
               properties: {
