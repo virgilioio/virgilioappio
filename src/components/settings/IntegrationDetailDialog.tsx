@@ -89,6 +89,7 @@ export function IntegrationDetailDialog({
   onOpenChange,
   name,
   description,
+  detailContent,
   category,
   logo,
   images,
@@ -100,7 +101,7 @@ export function IntegrationDetailDialog({
 }: IntegrationDetailDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl p-0 gap-0 overflow-hidden">
+      <DialogContent className="sm:max-w-5xl p-0 gap-0 overflow-hidden">
         {/* Header */}
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border">
           <div className="flex items-center gap-4">
@@ -130,20 +131,28 @@ export function IntegrationDetailDialog({
           </div>
         </DialogHeader>
 
-        {/* Body: two columns */}
-        <div className="flex flex-col sm:flex-row min-h-[320px]">
-          {/* Left — Carousel */}
-          <div className="sm:w-[58%] p-5">
+        {/* Body: 2:3:1 ratio → 33% carousel | 67% content+actions */}
+        <div className="flex flex-col sm:flex-row min-h-[440px]">
+          {/* Left — Carousel (2 parts) */}
+          <div className="sm:w-[33%] p-5">
             <ImageCarousel images={images} logo={logo} />
           </div>
 
-          {/* Right — Description + Actions */}
-          <div className="sm:w-[42%] p-5 sm:pl-0 flex flex-col">
-            <DialogDescription className="text-sm text-muted-foreground leading-relaxed flex-1">
-              {description}
-            </DialogDescription>
+          {/* Right — Description + Actions (3+1 parts) */}
+          <div className="sm:w-[67%] p-5 sm:pl-0 flex flex-col">
+            <div className="flex-1 overflow-y-auto pr-2 mb-4">
+              {detailContent ? (
+                <div className="text-sm text-muted-foreground leading-relaxed space-y-4">
+                  {detailContent}
+                </div>
+              ) : (
+                <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
+                  {description}
+                </DialogDescription>
+              )}
+            </div>
 
-            <div className="flex flex-col gap-2 pt-6">
+            <div className="flex flex-col gap-2 pt-4 border-t border-border">
               {isConnected ? (
                 <>
                   <Button
