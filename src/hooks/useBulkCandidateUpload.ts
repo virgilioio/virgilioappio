@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useResumeParsing } from './useResumeParsing'
 import { useIndependentCandidates } from './useIndependentCandidates'
 import { usePipelineActions } from './usePipelineActions'
