@@ -81,7 +81,19 @@ export function WhatsAppIntegrationDetail() {
 
   const handleInput = useCallback(() => {
     if (editorRef.current) {
-      const plain = convertHtmlToPlaceholders(editorRef.current.innerHTML)
+      // First convert badge spans back to {{placeholder}} tokens
+      let plain = convertHtmlToPlaceholders(editorRef.current.innerHTML)
+      // Strip any remaining HTML tags the browser injected (font, span style, etc.)
+      // but preserve line breaks from <br>, <div>, <p>
+      plain = plain
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/?(div|p)>/gi, '\n')
+        .replace(/<[^>]+>/g, '')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim()
       setTemplateText(plain)
       setDirty(true)
     }
