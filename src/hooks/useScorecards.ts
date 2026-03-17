@@ -74,7 +74,8 @@ export function useMyScorecards(associationId?: string | null) {
         .update({ rating, general_overview })
         .eq("id", existing.id)
         .select("*")
-        .single();
+        .maybeSingle();
+      if (!data) throw new Error("Failed to update scorecard — you may not have permission to edit it.");
       if (error) throw error;
       setRows((prev) => prev.map((r) => (r.id === existing.id ? ((data as unknown) as ScorecardRow) : r)));
       
