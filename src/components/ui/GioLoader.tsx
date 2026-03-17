@@ -32,7 +32,7 @@ export function GioLoader({ size = 'md', message, className }: GioLoaderProps) {
   }, [])
 
   useEffect(() => {
-    const interval = setInterval(triggerFlip, 2000)
+    const interval = setInterval(triggerFlip, 1200)
     return () => clearInterval(interval)
   }, [triggerFlip])
 
