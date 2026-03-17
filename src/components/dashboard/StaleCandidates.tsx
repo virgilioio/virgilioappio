@@ -75,7 +75,7 @@ export function StaleCandidates() {
               Pipeline is moving<span className="text-purple-period">.</span>
             </h3>
             <p className="text-sm text-virgilio-muted mt-2">
-              No candidates stuck in stages for over 7 days
+              No candidates without activity for over 7 days
             </p>
           </div>
         ) : (
