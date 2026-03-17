@@ -864,14 +864,18 @@ export default function JobDetail() {
                                        {pipelineSectionTab === 'hired' && 'Hired Candidates'}
                                        {pipelineSectionTab === 'rejected' && 'Rejected Candidates'}
                                      </span>
-                                     <Badge variant="secondary" className="text-xs">
-                                       {pipelineSectionTab === 'suggested' && suggestedCount}
-                                       {pipelineSectionTab === 'application' && applicationCount}
-                                       {pipelineSectionTab === 'recruiting' && recruitingCount}
-                                       {pipelineSectionTab === 'offers' && offerCount}
-                                       {pipelineSectionTab === 'hired' && hiredCount}
-                                       {pipelineSectionTab === 'rejected' && rejectedCount}
-                                     </Badge>
+                                      <Badge variant="secondary" className="text-xs">
+                                        {statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : (
+                                          <>
+                                            {pipelineSectionTab === 'suggested' && suggestedCount}
+                                            {pipelineSectionTab === 'application' && applicationCount}
+                                            {pipelineSectionTab === 'recruiting' && recruitingCount}
+                                            {pipelineSectionTab === 'offers' && offerCount}
+                                            {pipelineSectionTab === 'hired' && hiredCount}
+                                            {pipelineSectionTab === 'rejected' && rejectedCount}
+                                          </>
+                                        )}
+                                      </Badge>
                                    </span>
                                  </SelectValue>
                                </SelectTrigger>
@@ -880,37 +884,37 @@ export default function JobDetail() {
                                    <span className="flex items-center gap-2">
                                      <Sparkles className="h-4 w-4 text-blue-600" />
                                      <span>Suggested</span>
-                                     <Badge variant="secondary" className="text-xs">{suggestedCount}</Badge>
+                                     <Badge variant="secondary" className="text-xs">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : suggestedCount}</Badge>
                                    </span>
                                  </SelectItem>
                                  <SelectItem value="application" className="py-3">
                                    <span className="flex items-center gap-2">
                                      <span>Application Review</span>
-                                     <Badge variant="pastel-purple" className="text-xs">{applicationCount}</Badge>
+                                     <Badge variant="pastel-purple" className="text-xs">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : applicationCount}</Badge>
                                    </span>
                                  </SelectItem>
                                  <SelectItem value="recruiting" className="py-3">
                                    <span className="flex items-center gap-2">
                                      <span>Recruiting Process</span>
-                                     <Badge variant="pastel-yellow" className="text-xs">{recruitingCount}</Badge>
+                                     <Badge variant="pastel-yellow" className="text-xs">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : recruitingCount}</Badge>
                                    </span>
                                  </SelectItem>
                                  <SelectItem value="offers" className="py-3">
                                    <span className="flex items-center gap-2">
                                      <span>Job Offers</span>
-                                     <Badge variant="pastel-blue" className="text-xs">{offerCount}</Badge>
+                                     <Badge variant="pastel-blue" className="text-xs">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : offerCount}</Badge>
                                    </span>
                                  </SelectItem>
                                  <SelectItem value="hired" className="py-3">
                                    <span className="flex items-center gap-2">
                                      <span>Hired Candidates</span>
-                                     <Badge variant="success" className="text-xs">{hiredCount}</Badge>
+                                     <Badge variant="success" className="text-xs">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : hiredCount}</Badge>
                                    </span>
                                  </SelectItem>
                                  <SelectItem value="rejected" className="py-3">
                                    <span className="flex items-center gap-2">
                                      <span>Rejected Candidates</span>
-                                     <Badge variant="destructive" className="text-xs">{rejectedCount}</Badge>
+                                     <Badge variant="destructive" className="text-xs">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : rejectedCount}</Badge>
                                    </span>
                                  </SelectItem>
                                </SelectContent>
@@ -923,37 +927,37 @@ export default function JobDetail() {
                                <span className="flex items-center gap-1 truncate">
                                  <Sparkles className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
                                  <span className="truncate">Suggested</span>
-                                 <Badge variant="secondary" className="text-xs flex-shrink-0">{suggestedCount}</Badge>
+                                  <Badge variant="secondary" className="text-xs flex-shrink-0">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : suggestedCount}</Badge>
                                </span>
                              </TabsTrigger>
                              <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-pastel-purple/20 text-text-primary data-[state=active]:bg-pastel-purple" value="application">
                                <span className="flex items-center gap-1 truncate">
                                  <span className="truncate">Application Review</span>
-                                 <Badge variant="pastel-purple" className="text-xs flex-shrink-0">{applicationCount}</Badge>
+                                  <Badge variant="pastel-purple" className="text-xs flex-shrink-0">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : applicationCount}</Badge>
                                </span>
                              </TabsTrigger>
                              <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-pastel-yellow/20 text-text-primary data-[state=active]:bg-pastel-yellow" value="recruiting">
                                <span className="flex items-center gap-1 truncate">
                                  <span className="text-text-primary truncate">Recruiting Process</span>
-                                 <Badge variant="pastel-yellow" className="text-xs flex-shrink-0">{recruitingCount}</Badge>
+                                  <Badge variant="pastel-yellow" className="text-xs flex-shrink-0">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : recruitingCount}</Badge>
                                </span>
                              </TabsTrigger>
                              <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-pastel-blue/20 text-text-primary data-[state=active]:bg-pastel-blue" value="offers">
                                <span className="flex items-center gap-1 truncate">
                                  <span className="truncate">Job Offers</span>
-                                 <Badge variant="pastel-blue" className="text-xs flex-shrink-0">{offerCount}</Badge>
+                                  <Badge variant="pastel-blue" className="text-xs flex-shrink-0">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : offerCount}</Badge>
                                </span>
                              </TabsTrigger>
                              <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-success/20 text-text-primary data-[state=active]:bg-success" value="hired">
                                <span className="flex items-center gap-1 truncate">
                                  <span className="truncate">Hired Candidates</span>
-                                 <Badge variant="success" className="text-xs flex-shrink-0">{hiredCount}</Badge>
+                                  <Badge variant="success" className="text-xs flex-shrink-0">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : hiredCount}</Badge>
                                </span>
                              </TabsTrigger>
                              <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-destructive/20 text-text-primary data-[state=active]:bg-destructive" value="rejected">
                                <span className="flex items-center gap-1 truncate">
                                  <span className="truncate">Rejected Candidates</span>
-                                 <Badge variant="destructive" className="text-xs flex-shrink-0">{rejectedCount}</Badge>
+                                  <Badge variant="destructive" className="text-xs flex-shrink-0">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : rejectedCount}</Badge>
                                </span>
                              </TabsTrigger>
                            </TabsList>

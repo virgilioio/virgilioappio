@@ -180,7 +180,7 @@ export function JobsTable({
     return pages
   }
 
-  if (isLoading) {
+  if (isLoading || membersLoading) {
     return (
       <Card className="bg-surface-primary">
         <CardContent className="pt-6">

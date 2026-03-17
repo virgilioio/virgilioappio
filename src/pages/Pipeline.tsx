@@ -20,6 +20,7 @@ import { useSavedViews } from '@/hooks/useSavedViews';
 import { jobMatchesUsers } from '@/utils/jobInvolvement';
 import { Briefcase, FileText, Clock, Users } from 'lucide-react';
 import { Accordion } from '@/components/ui/accordion';
+import { TableSkeleton } from '@/components/ui/skeleton';
 
 interface PipelinePageFilters {
   selectedUsers: string[]
@@ -213,7 +214,7 @@ export default function Pipeline() {
 
               {/* Job List */}
               {jobsLoading || isFilteringUsers ? (
-                <div className="text-center py-8 text-muted-foreground">Loading jobs...</div>
+                <TableSkeleton rows={5} />
               ) : filteredJobs.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   No jobs found matching your filters.
