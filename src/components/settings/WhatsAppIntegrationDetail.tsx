@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { useWorkspaceAutomation } from '@/hooks/useWorkspaceAutomation'
 import { Loader2, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { PLACEHOLDER_OPTIONS } from '@/utils/templateUtils'
+import { convertPlaceholdersToHtml, convertHtmlToPlaceholders } from '@/utils/placeholderUtils'
+import { cn } from '@/lib/utils'
 
 const WHATSAPP_PLACEHOLDERS = PLACEHOLDER_OPTIONS.filter((p) =>
   ['candidate.first_name', 'candidate.name', 'sender.first_name', 'sender.name', 'organization.name', 'job.title'].includes(p.key)
@@ -17,6 +18,8 @@ export function WhatsAppIntegrationDetail() {
 
   const [templateText, setTemplateText] = useState('')
   const [dirty, setDirty] = useState(false)
+  const editorRef = useRef<HTMLDivElement>(null)
+  const savedRangeRef = useRef<Range | null>(null)
 
   useEffect(() => {
     if (automation?.body != null) {
@@ -24,6 +27,113 @@ export function WhatsAppIntegrationDetail() {
       setDirty(false)
     }
   }, [automation?.body])
+
+  // Sync templateText → contentEditable HTML
+  useEffect(() => {
+    if (editorRef.current) {
+      const currentPlain = convertHtmlToPlaceholders(editorRef.current.innerHTML)
+      if (currentPlain !== templateText) {
+        editorRef.current.innerHTML = convertPlaceholdersToHtml(templateText)
+      }
+    }
+  }, [templateText])
+
+  // Inject placeholder-badge styles if not already present
+  useEffect(() => {
+    if (!document.getElementById('placeholder-badge-styles')) {
+      const styleEl = document.createElement('style')
+      styleEl.id = 'placeholder-badge-styles'
+      styleEl.textContent = `
+        .placeholder-badge {
+          background-color: rgb(168 85 247 / 0.15);
+          color: rgb(147 51 234);
+          border: 1px solid rgb(168 85 247 / 0.4);
+          border-radius: 9999px;
+          padding: 1px 8px;
+          font-size: 0.75rem;
+          font-weight: 500;
+          display: inline-block;
+          line-height: 1.4;
+          white-space: nowrap;
+          user-select: all;
+          vertical-align: baseline;
+        }
+        .dark .placeholder-badge {
+          background-color: rgb(168 85 247 / 0.2);
+          color: rgb(192 132 252);
+          border-color: rgb(168 85 247 / 0.5);
+        }
+        .placeholder-badge:hover {
+          background-color: rgb(168 85 247 / 0.25);
+          border-color: rgb(168 85 247 / 0.6);
+        }
+      `
+      document.head.appendChild(styleEl)
+    }
+  }, [])
+
+  const saveCursorPosition = useCallback(() => {
+    const selection = window.getSelection()
+    if (selection && selection.rangeCount > 0 && editorRef.current?.contains(selection.anchorNode)) {
+      savedRangeRef.current = selection.getRangeAt(0).cloneRange()
+    }
+  }, [])
+
+  const handleInput = useCallback(() => {
+    if (editorRef.current) {
+      const plain = convertHtmlToPlaceholders(editorRef.current.innerHTML)
+      setTemplateText(plain)
+      setDirty(true)
+    }
+  }, [])
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    const selection = window.getSelection()
+    if (!selection || !selection.anchorNode) return
+
+    const anchorElement = selection.anchorNode.parentElement
+    const isBadge = anchorElement?.classList.contains('placeholder-badge')
+    const nextSibling = selection.anchorNode.nextSibling as HTMLElement
+    const prevSibling = selection.anchorNode.previousSibling as HTMLElement
+
+    if (e.key === 'Backspace' && prevSibling?.classList?.contains('placeholder-badge')) {
+      e.preventDefault()
+      prevSibling.remove()
+      handleInput()
+    } else if (e.key === 'Delete' && nextSibling?.classList?.contains('placeholder-badge')) {
+      e.preventDefault()
+      nextSibling.remove()
+      handleInput()
+    } else if (isBadge) {
+      e.preventDefault()
+    }
+  }, [handleInput])
+
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    const text = e.clipboardData.getData('text/plain')
+    document.execCommand('insertText', false, text)
+  }, [])
+
+  const insertPlaceholder = useCallback((key: string) => {
+    if (!editorRef.current) return
+
+    const badgeHtml = `<span class="placeholder-badge" contenteditable="false" data-placeholder="${key}">{{${key}}}</span>\u00A0`
+
+    editorRef.current.focus()
+
+    // Restore saved cursor position if available
+    if (savedRangeRef.current && editorRef.current.contains(savedRangeRef.current.startContainer)) {
+      const selection = window.getSelection()
+      if (selection) {
+        selection.removeAllRanges()
+        selection.addRange(savedRangeRef.current)
+      }
+    }
+
+    document.execCommand('insertHTML', false, badgeHtml)
+    handleInput()
+  }, [handleInput])
 
   const handleSaveTemplate = async () => {
     try {
@@ -71,15 +181,26 @@ export function WhatsAppIntegrationDetail() {
             </p>
           </div>
 
-          <Textarea
-            value={templateText}
-            onChange={(e) => {
-              setTemplateText(e.target.value)
-              setDirty(true)
-            }}
-            placeholder="Hi {{candidate.first_name}}, this is {{sender.first_name}} from {{organization.name}}. I'd like to discuss the {{job.title}} position with you."
-            className="min-h-[100px] text-sm"
-            disabled={isSaving}
+          <div
+            ref={editorRef}
+            contentEditable={!isSaving}
+            onInput={handleInput}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            onBlur={saveCursorPosition}
+            onMouseUp={saveCursorPosition}
+            onKeyUp={saveCursorPosition}
+            data-placeholder="Hi {{candidate.first_name}}, this is {{sender.first_name}} from {{organization.name}}. I'd like to discuss the {{job.title}} position with you."
+            suppressContentEditableWarning
+            className={cn(
+              "min-h-[100px] w-full rounded-lg border bg-surface-primary px-3 py-2 text-sm ring-offset-background transition-all duration-200 ease-out shadow-[var(--shadow-xs)]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple focus-visible:ring-offset-2 focus-visible:border-virgilio-purple hover:shadow-[var(--shadow-button)] hover:-translate-y-0.5",
+              "disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-secondary",
+              "border-virgilio-border hover:border-virgilio-purple/50",
+              "whitespace-pre-wrap break-words",
+              "[&:empty]:before:content-[attr(data-placeholder)] [&:empty]:before:text-text-tertiary [&:empty]:before:pointer-events-none [&:empty]:before:block",
+              isSaving && "opacity-50 pointer-events-none"
+            )}
           />
 
           <div className="flex flex-wrap gap-1.5">
@@ -88,10 +209,8 @@ export function WhatsAppIntegrationDetail() {
                 key={p.key}
                 type="button"
                 className="inline-flex items-center rounded-full border border-purple-500/40 bg-purple-500/15 px-2 py-0.5 text-xs font-medium text-purple-600 transition-colors hover:bg-purple-500/25 hover:border-purple-500/60 dark:bg-purple-500/20 dark:text-purple-400 dark:border-purple-500/50"
-                onClick={() => {
-                  setTemplateText((prev) => prev + `{{${p.key}}}`)
-                  setDirty(true)
-                }}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => insertPlaceholder(p.key)}
               >
                 {`{{${p.key}}}`}
               </button>
