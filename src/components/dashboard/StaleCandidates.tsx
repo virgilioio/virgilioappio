@@ -114,7 +114,7 @@ export function StaleCandidates() {
                         isCritical ? "text-destructive" : "text-warning"
                       )}>
                         <Clock className="h-3 w-3" />
-                        <span>{candidate.daysInStage} days in stage</span>
+                        <span>{candidate.daysSinceLastActivity} days since last activity</span>
                       </div>
                     </div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
