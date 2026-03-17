@@ -9,6 +9,7 @@ import { GoGioLogo } from '@/components/GoGioLogo'
 import { GoogleLogo } from '@/components/icons/GoogleLogo'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabaseClient'
+import { GioLoader } from '@/components/ui/GioLoader'
 
 export default function Login() {
   const { login, isAuthenticated, isLoading } = useAuth()
