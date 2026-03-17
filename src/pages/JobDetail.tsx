@@ -933,7 +933,7 @@ export default function JobDetail() {
                              <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-pastel-purple/20 text-text-primary data-[state=active]:bg-pastel-purple" value="application">
                                <span className="flex items-center gap-1 truncate">
                                  <span className="truncate">Application Review</span>
-                                 <Badge variant="pastel-purple" className="text-xs flex-shrink-0">{applicationCount}</Badge>
+                                  <Badge variant="pastel-purple" className="text-xs flex-shrink-0">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : applicationCount}</Badge>
                                </span>
                              </TabsTrigger>
                              <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-pastel-yellow/20 text-text-primary data-[state=active]:bg-pastel-yellow" value="recruiting">
