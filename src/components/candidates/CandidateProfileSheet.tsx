@@ -43,7 +43,7 @@ import { getEmailFromEntry, getPhoneFromEntry } from '@/utils/parseContactEntry'
 import { formatE164Display, buildWhatsAppUrl } from '@/utils/phoneUtils'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { useWhatsAppEnabled } from '@/hooks/useWhatsAppEnabled'
-import { renderTemplate, buildPlaceholderData } from '@/utils/templateUtils'
+import { renderTemplate, buildPlaceholderData, stripHtmlToPlainText } from '@/utils/templateUtils'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { useCandidateResolver } from '@/hooks/useCandidateResolver'
@@ -300,7 +300,7 @@ const stageHasAutomation = useMemo(() => {
       organizationName: orgName,
     })
 
-    const resolvedText = renderTemplate(whatsAppTemplate, placeholderData)
+    const resolvedText = stripHtmlToPlainText(renderTemplate(whatsAppTemplate, placeholderData))
     const url = buildWhatsAppUrl(phone, resolvedText)
     if (url) window.open(url, '_blank')
 

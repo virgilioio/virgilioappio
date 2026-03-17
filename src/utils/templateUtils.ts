@@ -133,6 +133,31 @@ export function renderTemplate(template: string, data: PlaceholderData): string 
 }
 
 /**
+ * Strips all HTML tags from a string, converting block elements to newlines.
+ * Used to sanitize WhatsApp messages that may contain residual HTML from contentEditable.
+ */
+export function stripHtmlToPlainText(html: string): string {
+  if (!html) return '';
+  // Convert <br> to newlines
+  let result = html.replace(/<br\s*\/?>/gi, '\n');
+  // Convert block-level closing tags to newlines
+  result = result.replace(/<\/?(div|p|h[1-6]|li|blockquote)>/gi, '\n');
+  // Strip all remaining HTML tags
+  result = result.replace(/<[^>]+>/g, '');
+  // Decode common HTML entities
+  result = result
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+  // Normalize whitespace
+  result = result.replace(/\n{3,}/g, '\n\n').trim();
+  return result;
+}
+
+/**
  * List of available placeholders with normalized keys (no braces)
  * Use this for placeholder pickers - keys should NOT include braces
  */

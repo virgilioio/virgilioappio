@@ -13,7 +13,7 @@ import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { useWhatsAppEnabled } from '@/hooks/useWhatsAppEnabled'
 import { buildWhatsAppUrl, formatE164Display } from '@/utils/phoneUtils'
-import { renderTemplate, buildPlaceholderData } from '@/utils/templateUtils'
+import { renderTemplate, buildPlaceholderData, stripHtmlToPlainText } from '@/utils/templateUtils'
 import { useAuth } from '@/contexts/AuthContext'
 
 interface CandidateCardProps {
@@ -194,7 +194,7 @@ export default function CandidateCard(props: CandidateCardProps) {
       organizationName: orgName,
     })
 
-    const resolvedText = renderTemplate(whatsAppTemplate, placeholderData)
+    const resolvedText = stripHtmlToPlainText(renderTemplate(whatsAppTemplate, placeholderData))
     const url = buildWhatsAppUrl(phone, resolvedText)
     if (url) window.open(url, '_blank')
 
