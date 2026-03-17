@@ -81,7 +81,7 @@ export function StaleCandidates() {
         ) : (
           <div className="space-y-2">
             {displayedCandidates.map((candidate) => {
-              const urgency = getUrgencyLevel(candidate.daysInStage);
+              const urgency = getUrgencyLevel(candidate.daysSinceLastActivity);
               const isCritical = urgency === 'critical';
 
               return (
