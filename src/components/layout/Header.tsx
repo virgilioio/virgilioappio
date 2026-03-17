@@ -152,16 +152,16 @@ export function Header() {
       show: canViewJobs,
     },
     {
-      href: '/pipeline',
-      icon: TrendingUp,
-      label: 'Pipeline',
-      show: canViewJobs,
-    },
-    {
       href: '/candidates',
       icon: Users,
       label: 'Candidates',
       show: canSeeRecruiterTools && canViewCandidatesNavigation,
+    },
+    {
+      href: '/pipeline',
+      icon: TrendingUp,
+      label: 'Pipeline',
+      show: canViewJobs,
     },
     {
       href: '/analytics',
