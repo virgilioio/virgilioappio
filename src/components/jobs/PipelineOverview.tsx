@@ -196,6 +196,10 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     const startedMs = base ? new Date(base).getTime() : nowMs
     let diffSec = Math.max(0, Math.floor((nowMs - startedMs) / 1000))
 
+    // Check if the candidate has recent activity (priority 1-3 means scorecard/interview activity)
+    const status = statusMap.get(a.id)
+    const hasRecentActivity = status && status.priority <= 3
+
     if (diffSec < 60) {
       return { label: `${diffSec}s`, variant: 'success' as const }
     }
@@ -209,16 +213,17 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     }
     const diffD = Math.floor(diffH / 24)
     if (diffD < 7) {
-      return { label: `${diffD}d`, variant: 'warning' as const }
+      // If candidate has recent activity (scorecard/interview), keep green
+      return { label: `${diffD}d`, variant: hasRecentActivity ? 'success' as const : 'warning' as const }
     }
-    // Weeks and months -> red
+    // Weeks and months -> red unless there's recent activity (then warning)
     if (diffD >= 28) {
       const months = Math.max(1, Math.floor(diffD / 30))
-      return { label: `${months}mo`, variant: 'destructive' as const }
+      return { label: `${months}mo`, variant: hasRecentActivity ? 'warning' as const : 'destructive' as const }
     }
     const diffW = Math.floor(diffD / 7)
-    return { label: `${diffW}w`, variant: 'destructive' as const }
-  }, [])
+    return { label: `${diffW}w`, variant: hasRecentActivity ? 'warning' as const : 'destructive' as const }
+  }, [statusMap])
 
   const getHeaderBgClass = (type: string) => {
     switch (type) {
