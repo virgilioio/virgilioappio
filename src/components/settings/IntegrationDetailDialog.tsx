@@ -16,6 +16,7 @@ interface IntegrationDetailDialogProps {
   onOpenChange: (open: boolean) => void
   name: string
   description: string
+  detailContent?: React.ReactNode
   category: IntegrationCategory
   logo: React.ReactNode
   images?: string[]
