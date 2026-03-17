@@ -52,6 +52,45 @@ export const INTEGRATIONS: IntegrationEntry[] = [
     category: 'productivity',
     logo: <GoogleLogo size={24} />,
     DetailComponent: GoogleWorkspaceIntegrationSection,
+    images: [googleWorkspaceImg],
+    detailContent: (
+      <>
+        <p>The Google Workspace integration in GoGio enables seamless communication and scheduling by connecting your Gmail and Google Calendar directly to the platform. This allows recruiters to manage candidate outreach and coordinate interviews without leaving GoGio.</p>
+
+        <h4 className="text-sm font-semibold text-foreground pt-2">Key Functionality</h4>
+        <p>Users can send and receive emails with candidates directly from GoGio, ensuring all communication is centralized and easily accessible within each candidate profile.</p>
+        <p>The integration also powers GoGio's scheduling capabilities, allowing users to coordinate interviews quickly by leveraging their Google Calendar availability. This reduces back-and-forth and simplifies the interview setup process.</p>
+
+        <h4 className="text-sm font-semibold text-foreground pt-2">Email Communication</h4>
+        <p>Once connected, users can:</p>
+        <ul className="list-disc list-inside space-y-1">
+          <li>Send emails to candidates directly from GoGio</li>
+          <li>View email history within the candidate profile</li>
+          <li>Use templates to standardize and speed up outreach</li>
+          <li>Maintain a centralized communication record tied to each candidate</li>
+        </ul>
+
+        <h4 className="text-sm font-semibold text-foreground pt-2">Scheduling</h4>
+        <p>GoGio integrates with Google Calendar to enable:</p>
+        <ul className="list-disc list-inside space-y-1">
+          <li>Real-time visibility into user availability</li>
+          <li>Quick scheduling of interviews with candidates</li>
+          <li>Calendar event creation and synchronization</li>
+          <li>Streamlined coordination with internal team members and candidates</li>
+        </ul>
+
+        <h4 className="text-sm font-semibold text-foreground pt-2">How It Works</h4>
+        <ol className="list-decimal list-inside space-y-1">
+          <li>The user connects their Google Workspace account through GoGio settings.</li>
+          <li>Gmail and Calendar permissions are granted securely.</li>
+          <li>Users can immediately start sending emails and scheduling interviews within the platform.</li>
+          <li>All activity is synced with the user's Google Workspace account in real time.</li>
+        </ol>
+
+        <h4 className="text-sm font-semibold text-foreground pt-2">Requirements</h4>
+        <p>A valid Google Workspace (Gmail) account is required to enable this integration. Users must grant the necessary permissions for email and calendar access during setup.</p>
+      </>
+    ),
   },
   {
     id: 'whatsapp',
