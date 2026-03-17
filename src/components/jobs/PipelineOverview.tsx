@@ -559,15 +559,19 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
         </div>
       )}
 
-      {currentView === 'board' ? (
+      {/* Unified loading gate: show skeleton until stages, candidates, AND statuses are all ready */}
+      {(isLoadingPlan || isLoadingCandidates || isStatusLoading) ? (
+        <Card className="bg-surface-primary border-border">
+          <CardContent className="pt-6">
+            <TableSkeleton rows={6} />
+          </CardContent>
+        </Card>
+      ) : currentView === 'board' ? (
         <>
           <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
             <div className={`flex gap-4 ${externalScroll ? '' : 'overflow-x-auto'} pb-2`}>
-              {isLoadingPlan && (
-                <div className="text-sm text-text-secondary">Loading pipeline...</div>
-              )}
 
-              {!isLoadingPlan && stageOptions.length === 0 && (
+              {stageOptions.length === 0 && (
                 <Card className="min-w-[280px]">
                   <CardContent className="py-8 text-center text-text-secondary text-sm">
                     No hiring plan defined yet.
@@ -576,7 +580,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
               )}
 
               {/* Render columns with candidate cards */}
-              {!isLoadingPlan && stageOptions.map((opt) => (
+              {stageOptions.map((opt) => (
                 <Card key={opt.jhsId} className="w-72 flex-shrink-0 h-full flex flex-col">
                   <CardHeader className={`pb-2 rounded-t-md shrink-0 ${getHeaderBgClass(opt.stage.stage_type)}`}>
                     <div className="flex items-center justify-between gap-2 flex-wrap">
