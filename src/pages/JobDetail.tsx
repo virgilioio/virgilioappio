@@ -908,7 +908,7 @@ export default function JobDetail() {
                                  <SelectItem value="hired" className="py-3">
                                    <span className="flex items-center gap-2">
                                      <span>Hired Candidates</span>
-                                     <Badge variant="success" className="text-xs">{hiredCount}</Badge>
+                                     <Badge variant="success" className="text-xs">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : hiredCount}</Badge>
                                    </span>
                                  </SelectItem>
                                  <SelectItem value="rejected" className="py-3">
