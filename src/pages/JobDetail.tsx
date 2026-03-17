@@ -914,7 +914,7 @@ export default function JobDetail() {
                                  <SelectItem value="rejected" className="py-3">
                                    <span className="flex items-center gap-2">
                                      <span>Rejected Candidates</span>
-                                     <Badge variant="destructive" className="text-xs">{rejectedCount}</Badge>
+                                     <Badge variant="destructive" className="text-xs">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : rejectedCount}</Badge>
                                    </span>
                                  </SelectItem>
                                </SelectContent>
