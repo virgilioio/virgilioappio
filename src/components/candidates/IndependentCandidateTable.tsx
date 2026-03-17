@@ -10,6 +10,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { Trash2, UserPlus, MapPin, DollarSign, FileText, Search, ChevronLeft, ChevronRight, MoreHorizontal, Mail, Phone, ExternalLink, ListChecks, Archive } from 'lucide-react'
 import { PermissionGate } from '@/components/auth/PermissionGate'
+import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import { useWhatsAppEnabled } from '@/hooks/useWhatsAppEnabled'
+import { buildWhatsAppUrl, formatE164Display } from '@/utils/phoneUtils'
 
 import { IndependentCandidate } from '@/hooks/useIndependentCandidates'
 import BulkAddToJobPipelineDialog from '@/components/candidates/BulkAddToJobPipelineDialog'
