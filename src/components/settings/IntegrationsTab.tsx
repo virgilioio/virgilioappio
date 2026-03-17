@@ -19,6 +19,7 @@ import { GoogleLogo } from '@/components/icons/GoogleLogo'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import gogioAvatar from '@/assets/gogio-avatar.png'
 import whatsappHero from '@/assets/integrations/whatsapp-hero.png'
+import googleWorkspaceImg from '@/assets/integrations/google-workspace.png'
 
 // Hooks
 import { useMailIdentities } from '@/hooks/useMailIdentities'
