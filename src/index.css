@@ -34,8 +34,8 @@
     --success: 120 100% 88%; /* #d2ffc2 */
     --success-foreground: 120 100% 15%;
 
-    --destructive: 0 100% 88%; /* #ffc2c2 */
-    --destructive-foreground: 0 100% 30%;
+    --destructive: 0 100% 63%; /* #ff4040 — Virgilio Rejected */
+    --destructive-foreground: 0 0% 100%;
 
     --warning: 48 100% 60%; /* #ffd93d */
     --warning-foreground: 48 100% 15%;

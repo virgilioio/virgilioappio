@@ -22,8 +22,9 @@ const semanticColors: ColorSwatch[] = [
   { name: 'Success Foreground', variable: '--success-foreground', hsl: '120 100% 15%', description: 'Text on success backgrounds' },
   { name: 'Warning', variable: '--warning', hsl: '48 100% 60%', hex: '#ffd93d', description: 'Caution and pending states' },
   { name: 'Warning Foreground', variable: '--warning-foreground', hsl: '48 100% 15%', description: 'Text on warning backgrounds' },
-  { name: 'Destructive', variable: '--destructive', hsl: '0 100% 88%', hex: '#ffc2c2', description: 'Errors and destructive actions' },
-  { name: 'Destructive Foreground', variable: '--destructive-foreground', hsl: '0 100% 30%', description: 'Text on destructive backgrounds' },
+  { name: 'Rejected (Virgilio Red)', variable: '--virgilio-rejected', hsl: '0 100% 63%', hex: '#ff4040', description: 'Candidate rejection and critical destructive states' },
+  { name: 'Destructive', variable: '--destructive', hsl: '0 100% 63%', hex: '#ff4040', description: 'Errors and destructive actions' },
+  { name: 'Destructive Foreground', variable: '--destructive-foreground', hsl: '0 0% 100%', description: 'Text on destructive backgrounds' },
   { name: 'Info', variable: '--info', hsl: '180 100% 88%', hex: '#c5f5fb', description: 'Informational messages' },
   { name: 'Info Foreground', variable: '--info-foreground', hsl: '180 100% 20%', description: 'Text on info backgrounds' },
 ]
