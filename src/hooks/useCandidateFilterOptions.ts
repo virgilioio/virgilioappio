@@ -54,6 +54,9 @@ export function useCandidateFilterOptions(candidates: IndependentCandidate[], as
         skillOptions: [],
         enrichmentStatusOptions: [],
         pipelineStatusOptions: [],
+        jobOptions: [],
+        stageOptions: [],
+        rejectedAtStageOptions: [],
         experienceRange: null as { min: number; max: number } | null,
         salaryRange: null as { min: number; max: number } | null,
       }
@@ -75,6 +78,10 @@ export function useCandidateFilterOptions(candidates: IndependentCandidate[], as
 
     // Derive pipeline status options from associations
     const pipelineStatusMap = new Map<string, { label: string; count: number }>()
+    const jobMap = new Map<string, { label: string; count: Set<string> }>()
+    const stageMap = new Map<string, { label: string; count: Set<string> }>()
+    const rejectedAtStageMap = new Map<string, { label: string; count: Set<string> }>()
+
     if (associations) {
       for (const a of associations) {
         const s = a.pipelineStatus?.trim()
@@ -83,11 +90,45 @@ export function useCandidateFilterOptions(candidates: IndependentCandidate[], as
           if (existing) existing.count++
           else pipelineStatusMap.set(s, { label: capitalizeStatus(s), count: 1 })
         }
+
+        // Job options
+        if (a.jobId && a.jobTitle) {
+          const existing = jobMap.get(a.jobId)
+          if (existing) existing.count.add(a.candidateId)
+          else jobMap.set(a.jobId, { label: a.jobTitle, count: new Set([a.candidateId]) })
+        }
+
+        // Stage options
+        const stageName = a.stageName?.trim()
+        if (stageName) {
+          const existing = stageMap.get(stageName)
+          if (existing) existing.count.add(a.candidateId)
+          else stageMap.set(stageName, { label: stageName, count: new Set([a.candidateId]) })
+        }
+
+        // Rejected at stage options
+        if (s?.toLowerCase() === 'rejected' && stageName) {
+          const existing = rejectedAtStageMap.get(stageName)
+          if (existing) existing.count.add(a.candidateId)
+          else rejectedAtStageMap.set(stageName, { label: stageName, count: new Set([a.candidateId]) })
+        }
       }
     }
     const pipelineStatusOptions = Array.from(pipelineStatusMap.entries())
       .sort((a, b) => b[1].count - a[1].count)
       .map(([value, { label, count }]) => ({ value, label, count }))
+
+    const jobOptions = Array.from(jobMap.entries())
+      .sort((a, b) => b[1].count.size - a[1].count.size)
+      .map(([value, { label, count }]) => ({ value, label, count: count.size }))
+
+    const stageOptions = Array.from(stageMap.entries())
+      .sort((a, b) => b[1].count.size - a[1].count.size)
+      .map(([value, { label, count }]) => ({ value, label, count: count.size }))
+
+    const rejectedAtStageOptions = Array.from(rejectedAtStageMap.entries())
+      .sort((a, b) => b[1].count.size - a[1].count.size)
+      .map(([value, { label, count }]) => ({ value, label, count: count.size }))
 
     return {
       statusOptions: deriveOptions(candidates, c => c.status),
@@ -101,6 +142,9 @@ export function useCandidateFilterOptions(candidates: IndependentCandidate[], as
       skillOptions: deriveSkillOptions(candidates),
       enrichmentStatusOptions: deriveOptions(candidates, c => c.enrichment_status),
       pipelineStatusOptions,
+      jobOptions,
+      stageOptions,
+      rejectedAtStageOptions,
       experienceRange: expValues.length > 0
         ? { min: Math.min(...expValues), max: Math.max(...expValues) }
         : null,

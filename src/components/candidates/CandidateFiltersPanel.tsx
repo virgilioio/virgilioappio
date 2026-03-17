@@ -24,6 +24,9 @@ interface CandidateFiltersPanelProps {
     skillOptions: FilterOption[]
     enrichmentStatusOptions: FilterOption[]
     pipelineStatusOptions: FilterOption[]
+    jobOptions: FilterOption[]
+    stageOptions: FilterOption[]
+    rejectedAtStageOptions: FilterOption[]
     experienceRange: { min: number; max: number } | null
     salaryRange: { min: number; max: number } | null
   }
@@ -38,11 +41,13 @@ export function CandidateFiltersPanel({ filterOptions }: CandidateFiltersPanelPr
   const [sheetOpen, setSheetOpen] = useState(false)
 
   // Collect active filter tags for display below
-  const activeTags: { key: 'statuses' | 'sources' | 'countries' | 'states' | 'cities' | 'seniorityLevels' | 'functionalAreas' | 'specializations' | 'skills' | 'enrichmentStatuses' | 'pipelineStatuses'; value: string }[] = []
-  const arrayKeys = ['statuses', 'sources', 'countries', 'states', 'cities', 'seniorityLevels', 'functionalAreas', 'specializations', 'skills', 'enrichmentStatuses', 'pipelineStatuses'] as const
+  const activeTags: { key: 'statuses' | 'sources' | 'countries' | 'states' | 'cities' | 'seniorityLevels' | 'functionalAreas' | 'specializations' | 'skills' | 'enrichmentStatuses' | 'pipelineStatuses' | 'jobs' | 'stages' | 'rejectedAtStages'; value: string; label?: string }[] = []
+  const arrayKeys = ['statuses', 'sources', 'countries', 'states', 'cities', 'seniorityLevels', 'functionalAreas', 'specializations', 'skills', 'enrichmentStatuses', 'pipelineStatuses', 'jobs', 'stages', 'rejectedAtStages'] as const
   for (const k of arrayKeys) {
     for (const v of filters[k]) {
-      activeTags.push({ key: k, value: v })
+      // For jobs filter, show job title instead of job ID
+      const label = k === 'jobs' ? filterOptions.jobOptions.find(o => o.value === v)?.label ?? v : v
+      activeTags.push({ key: k, value: v, label })
     }
   }
 
@@ -51,6 +56,22 @@ export function CandidateFiltersPanel({ filterOptions }: CandidateFiltersPanelPr
   return (
     <>
       {/* Horizontal chip bar — renders as inline fragment for parent flex layout */}
+        <FilterChipPopover
+          label="Job"
+          options={filterOptions.jobOptions}
+          selectedValues={filters.jobs}
+          onSelectionChange={(v) => setArrayFilter('jobs', v)}
+          searchable
+        />
+
+        <FilterChipPopover
+          label="Stage"
+          options={filterOptions.stageOptions}
+          selectedValues={filters.stages}
+          onSelectionChange={(v) => setArrayFilter('stages', v)}
+          searchable
+        />
+
         <FilterChipPopover
           label="Status"
           options={filterOptions.statusOptions}
@@ -99,6 +120,14 @@ export function CandidateFiltersPanel({ filterOptions }: CandidateFiltersPanelPr
           searchable={false}
         />
 
+        <FilterChipPopover
+          label="Rejected at Stage"
+          options={filterOptions.rejectedAtStageOptions}
+          selectedValues={filters.rejectedAtStages}
+          onSelectionChange={(v) => setArrayFilter('rejectedAtStages', v)}
+          searchable
+        />
+
         <Button
           variant="outline"
           size="sm"
@@ -127,9 +156,9 @@ export function CandidateFiltersPanel({ filterOptions }: CandidateFiltersPanelPr
       {/* Active filter chips */}
       {activeTags.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
-          {activeTags.slice(0, 12).map(({ key, value }) => (
+          {activeTags.slice(0, 12).map(({ key, value, label }) => (
             <Badge key={`${key}-${value}`} variant="purple" className="gap-1 pr-1 text-xs h-6 pl-2 font-poppins">
-              {value}
+              {label ?? value}
               <button
                 onClick={() => removeArrayFilterValue(key, value)}
                 className="ml-0.5 rounded-full p-0.5 hover:bg-foreground/10 transition-colors"
