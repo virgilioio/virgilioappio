@@ -41,8 +41,8 @@ export function CandidateFiltersPanel({ filterOptions }: CandidateFiltersPanelPr
   const [sheetOpen, setSheetOpen] = useState(false)
 
   // Collect active filter tags for display below
-  const activeTags: { key: 'statuses' | 'sources' | 'countries' | 'states' | 'cities' | 'seniorityLevels' | 'functionalAreas' | 'specializations' | 'skills' | 'enrichmentStatuses' | 'pipelineStatuses'; value: string }[] = []
-  const arrayKeys = ['statuses', 'sources', 'countries', 'states', 'cities', 'seniorityLevels', 'functionalAreas', 'specializations', 'skills', 'enrichmentStatuses', 'pipelineStatuses'] as const
+  const activeTags: { key: 'statuses' | 'sources' | 'countries' | 'states' | 'cities' | 'seniorityLevels' | 'functionalAreas' | 'specializations' | 'skills' | 'enrichmentStatuses' | 'pipelineStatuses' | 'jobs' | 'stages' | 'rejectedAtStages'; value: string; label?: string }[] = []
+  const arrayKeys = ['statuses', 'sources', 'countries', 'states', 'cities', 'seniorityLevels', 'functionalAreas', 'specializations', 'skills', 'enrichmentStatuses', 'pipelineStatuses', 'jobs', 'stages', 'rejectedAtStages'] as const
   for (const k of arrayKeys) {
     for (const v of filters[k]) {
       activeTags.push({ key: k, value: v })

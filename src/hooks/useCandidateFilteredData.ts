@@ -47,6 +47,24 @@ export function useCandidateFilteredData(
         if (!assocs || !assocs.some(a => a.pipelineStatus && filters.pipelineStatuses.includes(a.pipelineStatus))) return false
       }
 
+      // Job filter — candidate must have at least one association with selected job
+      if (filters.jobs.length > 0) {
+        const assocs = associationsMap?.get(c.id)
+        if (!assocs || !assocs.some(a => filters.jobs.includes(a.jobId))) return false
+      }
+
+      // Stage filter — candidate must have at least one association at selected stage
+      if (filters.stages.length > 0) {
+        const assocs = associationsMap?.get(c.id)
+        if (!assocs || !assocs.some(a => a.stageName && filters.stages.includes(a.stageName))) return false
+      }
+
+      // Rejected at stage filter
+      if (filters.rejectedAtStages.length > 0) {
+        const assocs = associationsMap?.get(c.id)
+        if (!assocs || !assocs.some(a => a.pipelineStatus === 'rejected' && a.stageName && filters.rejectedAtStages.includes(a.stageName))) return false
+      }
+
       // Skills filter (match any)
       if (filters.skills.length > 0) {
         const candidateSkills = c.standardized_skills?.length ? c.standardized_skills : c.skills
