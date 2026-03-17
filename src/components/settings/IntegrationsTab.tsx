@@ -29,6 +29,7 @@ export interface IntegrationEntry {
   id: string
   name: string
   description: string
+  detailContent?: React.ReactNode
   category: IntegrationCategory
   logo: React.ReactNode
   DetailComponent: React.ComponentType
@@ -56,6 +57,34 @@ export const INTEGRATIONS: IntegrationEntry[] = [
     id: 'whatsapp',
     name: 'WhatsApp',
     description: 'Open candidate phone numbers directly in WhatsApp with one click.',
+    detailContent: (
+      <>
+        <p>The WhatsApp integration in GoGio enables recruiters to quickly connect with candidates directly from the platform, streamlining outbound communication and reducing friction in the outreach process.</p>
+
+        <h4 className="text-sm font-semibold text-foreground pt-2">Key Functionality</h4>
+        <p>Users can access a candidate's WhatsApp conversation directly from their profile or pipeline view. With a single click, GoGio opens a WhatsApp chat window pre-filled with the candidate's phone number, allowing immediate contact.</p>
+        <p>A <strong>First-Click Template</strong> feature is included to accelerate initial outreach. The first time a user opens a WhatsApp conversation with a candidate from GoGio, a pre-configured message template is automatically inserted into the chat. This ensures consistency, speed, and quality in first-touch communication.</p>
+
+        <h4 className="text-sm font-semibold text-foreground pt-2">Template Configuration</h4>
+        <p>The First-Click Template is fully customizable within the integration settings. Users can define and update their default outreach message to match their tone, role, or hiring context.</p>
+
+        <h4 className="text-sm font-semibold text-foreground pt-2">How It Works</h4>
+        <ol className="list-decimal list-inside space-y-1">
+          <li>The user clicks the WhatsApp icon from a candidate profile or pipeline view.</li>
+          <li>GoGio opens a WhatsApp chat with the candidate's number.</li>
+          <li>If it is the first interaction, the configured template is automatically populated in the message field.</li>
+          <li>The user can edit or send the message directly.</li>
+        </ol>
+
+        <h4 className="text-sm font-semibold text-foreground pt-2">Requirements</h4>
+        <p>For the best experience, it is recommended to have WhatsApp Desktop installed:{' '}
+          <a href="https://www.whatsapp.com/download" target="_blank" rel="noopener noreferrer" className="text-virgilio-purple underline hover:text-virgilio-purple/80">
+            https://www.whatsapp.com/download
+          </a>
+        </p>
+        <p>The integration leverages WhatsApp's native behavior, so users must have an active WhatsApp account linked to their device.</p>
+      </>
+    ),
     category: 'communication',
     logo: <WhatsAppIcon size={20} className="text-[#25D366]" />,
     DetailComponent: WhatsAppIntegrationDetail,
@@ -247,6 +276,7 @@ export function IntegrationsTab({ initialConfigureId }: IntegrationsTabProps) {
           onOpenChange={(open) => { if (!open) setDialogId(null) }}
           name={dialogEntry.name}
           description={dialogEntry.description}
+          detailContent={dialogEntry.detailContent}
           category={dialogEntry.category}
           logo={dialogEntry.logo}
           images={dialogEntry.images}
