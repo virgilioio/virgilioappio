@@ -103,21 +103,44 @@ export function WhatsAppIntegrationDetail() {
     const selection = window.getSelection()
     if (!selection || !selection.anchorNode) return
 
-    const anchorElement = selection.anchorNode.parentElement
+    const anchorNode = selection.anchorNode
+    const anchorElement = anchorNode.parentElement
     const isBadge = anchorElement?.classList.contains('placeholder-badge')
-    const nextSibling = selection.anchorNode.nextSibling as HTMLElement
-    const prevSibling = selection.anchorNode.previousSibling as HTMLElement
 
+    // If cursor is inside a badge, only allow Backspace/Delete to remove it entirely
+    if (isBadge) {
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault()
+        anchorElement.remove()
+        handleInput()
+      } else {
+        e.preventDefault()
+      }
+      return
+    }
+
+    const offset = selection.anchorOffset
+    const nextSibling = anchorNode.nextSibling as HTMLElement
+    const prevSibling = anchorNode.previousSibling as HTMLElement
+
+    // Only delete the badge if cursor is at the very edge of the text node next to it
     if (e.key === 'Backspace' && prevSibling?.classList?.contains('placeholder-badge')) {
-      e.preventDefault()
-      prevSibling.remove()
-      handleInput()
+      const isAtStart = offset === 0
+      if (isAtStart) {
+        e.preventDefault()
+        prevSibling.remove()
+        handleInput()
+      }
+      // Otherwise let the browser handle normal character deletion
     } else if (e.key === 'Delete' && nextSibling?.classList?.contains('placeholder-badge')) {
-      e.preventDefault()
-      nextSibling.remove()
-      handleInput()
-    } else if (isBadge) {
-      e.preventDefault()
+      const textLen = anchorNode.textContent?.length ?? 0
+      const isAtEnd = offset >= textLen
+      if (isAtEnd) {
+        e.preventDefault()
+        nextSibling.remove()
+        handleInput()
+      }
+      // Otherwise let the browser handle normal character deletion
     }
   }, [handleInput])
 
