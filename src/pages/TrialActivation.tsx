@@ -8,6 +8,7 @@ import { useCreateCheckout } from '@/hooks/useBillingPortal'
 import { Check, CreditCard, Sparkles, Users, Calendar, Mail, AlertCircle } from 'lucide-react'
 import authGraphic from '@/assets/auth-graphic.png'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { GioLoader } from '@/components/ui/GioLoader'
 
 const TRIAL_BENEFITS = [
   { icon: Users, text: 'Unlimited jobs & candidates' },
@@ -48,10 +49,7 @@ export default function TrialActivation() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#d7c5fb' }}>
-        <div className="text-center space-y-4">
-          <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin mx-auto" />
-          <p className="text-foreground/70">Loading...</p>
-        </div>
+        <GioLoader message="Loading..." />
       </div>
     )
   }

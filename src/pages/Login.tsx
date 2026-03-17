@@ -9,6 +9,7 @@ import { GoGioLogo } from '@/components/GoGioLogo'
 import { GoogleLogo } from '@/components/icons/GoogleLogo'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabaseClient'
+import { GioLoader } from '@/components/ui/GioLoader'
 
 export default function Login() {
   const { login, isAuthenticated, isLoading } = useAuth()
@@ -52,11 +53,8 @@ export default function Login() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-accent/20 to-warning/10 flex items-center justify-center">
-        <div className="text-center space-y-token-md">
-          <div className="h-8 w-8 rounded-full bg-primary animate-spin mx-auto"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <GioLoader message="Loading..." />
       </div>
     )
   }

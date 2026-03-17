@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2 } from 'lucide-react';
+import { GioLoader } from '@/components/ui/GioLoader';
 
 export default function MailOAuthCallback() {
   const [msg, setMsg] = useState('Connecting your account...');
@@ -77,10 +77,7 @@ export default function MailOAuthCallback() {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
-      <div className="text-center space-y-4 p-8">
-        <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-        <p className="text-muted-foreground">{msg}</p>
-      </div>
+      <GioLoader message={msg} />
     </div>
   );
 }

@@ -16,6 +16,7 @@ import { BillingGuard } from './components/auth/BillingGuard'
 import { useAuth } from './contexts/AuthContext'
 import { useOrgContext } from './contexts/OrgContext'
 import { lazy, Suspense, useRef, useEffect } from 'react'
+import { GioLoader } from '@/components/ui/GioLoader'
 import { useFavicon } from './hooks/useFavicon'
 import { useBrowserTitle } from './hooks/useBrowserTitle'
 import { Toaster } from '@/components/ui/toaster'
@@ -73,10 +74,7 @@ function AppContent() {
     <div className="min-h-screen bg-background text-foreground">
       <Suspense fallback={
         <div className="min-h-screen bg-background flex items-center justify-center">
-          <div className="text-center space-y-4">
-            <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin mx-auto" />
-            <p className="text-muted-foreground">Loading...</p>
-          </div>
+          <GioLoader message="Loading..." />
         </div>
       }>
       <Routes>
@@ -148,10 +146,7 @@ function AppBootstrap({ children }: { children: React.ReactNode }) {
   if (!ready) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin mx-auto"></div>
-          <p className="text-muted-foreground">Initializing authentication...</p>
-        </div>
+        <GioLoader message="Initializing authentication..." />
       </div>
     );
   }
@@ -211,12 +206,7 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   if (!sessionReady) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin mx-auto"></div>
-          <p className="text-muted-foreground">
-            {isLoggingOut ? 'Signing out...' : 'Authenticating...'}
-          </p>
-        </div>
+        <GioLoader message={isLoggingOut ? 'Signing out...' : 'Authenticating...'} />
       </div>
     )
   }
@@ -230,10 +220,7 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   if (!orgContextReady && !isPlatformAdmin) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin mx-auto"></div>
-          <p className="text-muted-foreground">Loading workspace...</p>
-        </div>
+        <GioLoader message="Loading workspace..." />
       </div>
     )
   }
