@@ -461,15 +461,22 @@ function buildQuestionsContext(questions: any[]): string {
   if (lines.length === 0) return '';
 
   return `
-SCORECARD QUESTIONS (you MUST respond to each with evidence from the transcript):
+SCORECARD QUESTIONS — respond to each, but ONLY with evidence actually found in the transcript:
 ${lines.join('\n')}
 
-For each question, populate the question_responses array in your tool call:
-- For "text" questions: set answer_text with your response
+IMPORTANT: If a question's topic was NOT discussed or covered during the interview, do NOT fabricate or infer an answer. Instead:
+- For "text" questions: set answer_text to exactly: "[Not discussed during this interview]"
+- For "yes_no" questions: set answer_text to "[Not discussed during this interview]" and set answer_options to an empty array []
+- For "single_select" questions: set answer_text to "[Not discussed during this interview]" and set answer_options to an empty array []
+- For "multi_select" questions: set answer_text to "[Not discussed during this interview]" and set answer_options to an empty array []
+
+When a question WAS discussed, populate the response normally:
+- For "text" questions: set answer_text with your evidence-based response
 - For "yes_no" questions: set answer_options to ["yes"] or ["no"]
 - For "single_select" questions: set answer_options to an array with exactly one of the provided options
 - For "multi_select" questions: set answer_options to an array with one or more of the provided options
-- Always use the exact question id provided in brackets`;
+- Always use the exact question id provided in brackets
+- Only provide substantive answers when you can cite specific evidence from the transcript`;
 }
 
 function formatOptions(selectOptions: any): string {
