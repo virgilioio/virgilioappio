@@ -18,6 +18,7 @@ import { WhatsAppIntegrationDetail } from './WhatsAppIntegrationDetail'
 import { GoogleLogo } from '@/components/icons/GoogleLogo'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import gogioAvatar from '@/assets/gogio-avatar.png'
+import whatsappHero from '@/assets/integrations/whatsapp-hero.png'
 
 // Hooks
 import { useMailIdentities } from '@/hooks/useMailIdentities'
@@ -31,6 +32,7 @@ export interface IntegrationEntry {
   category: IntegrationCategory
   logo: React.ReactNode
   DetailComponent: React.ComponentType
+  images?: string[]
 }
 
 export const INTEGRATIONS: IntegrationEntry[] = [
@@ -57,6 +59,7 @@ export const INTEGRATIONS: IntegrationEntry[] = [
     category: 'communication',
     logo: <WhatsAppIcon size={20} className="text-[#25D366]" />,
     DetailComponent: WhatsAppIntegrationDetail,
+    images: [whatsappHero],
   },
 ]
 
@@ -246,6 +249,7 @@ export function IntegrationsTab({ initialConfigureId }: IntegrationsTabProps) {
           description={dialogEntry.description}
           category={dialogEntry.category}
           logo={dialogEntry.logo}
+          images={dialogEntry.images}
           isConnected={statuses[dialogEntry.id] ?? false}
           onInstall={install}
           onUninstall={uninstall}
