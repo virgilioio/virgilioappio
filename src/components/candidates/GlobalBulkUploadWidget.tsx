@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { X, Minimize2, Maximize2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -14,15 +14,24 @@ export function GlobalBulkUploadWidget() {
   const { uploadCandidates, isProcessing, fileResults, progress, resetUploadState } = useBulkCandidateUpload()
   const [step, setStep] = useState<"processing" | "summary">("processing")
   const [hasManuallyInteracted, setHasManuallyInteracted] = useState(false)
+  const hasStartedRef = useRef(false)
   const navigate = useNavigate()
 
-  // Start upload when context is activated
+  // Start upload when context is activated (guarded to fire only once per session)
   useEffect(() => {
-    if (isUploadActive && files.length > 0 && options && step === "processing") {
+    if (isUploadActive && files.length > 0 && options && step === "processing" && !hasStartedRef.current) {
+      hasStartedRef.current = true
       resetUploadState()
       uploadCandidates(files, options)
     }
   }, [isUploadActive, files, options, step, resetUploadState, uploadCandidates])
+
+  // Reset guard when upload becomes inactive
+  useEffect(() => {
+    if (!isUploadActive) {
+      hasStartedRef.current = false
+    }
+  }, [isUploadActive])
 
   // Auto-minimize 2 seconds after processing starts (only if user hasn't manually interacted)
   useEffect(() => {
