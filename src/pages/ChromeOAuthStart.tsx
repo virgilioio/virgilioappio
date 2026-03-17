@@ -5,6 +5,7 @@ import { GoGioLogo } from '@/components/GoGioLogo';
 import { supabase } from '@/integrations/supabase/client';
 import { getChromeExtensionRedirectUrl, validateChromeRedirectUri } from '@/constants/chromeExtension';
 import { Chrome, LogIn } from 'lucide-react';
+import { GioLoader } from '@/components/ui/GioLoader';
 
 /**
  * Chrome OAuth Start Page
