@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
+import { CandidateProfileSkeleton } from './CandidateProfileSkeleton'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -962,7 +963,7 @@ const stageHasAutomation = useMemo(() => {
                   </div>
                 )}
             {loading ? (
-              <div className="text-text-secondary text-sm">Loading profile…</div>
+              <CandidateProfileSkeleton />
             ) : !candidate ? (
               <div className="text-text-secondary text-sm">No data available.</div>
             ) : (

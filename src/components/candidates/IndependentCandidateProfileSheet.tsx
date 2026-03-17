@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { CandidateProfileSkeleton } from './CandidateProfileSkeleton'
 import { useNavigate } from 'react-router-dom'
 import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet'
 import { Tabs } from '@/components/ui/tabs'
@@ -323,7 +324,7 @@ export function IndependentCandidateProfileSheet({
 
             <div className="flex-1 overflow-y-auto p-6">
                {loading ? (
-                <div className="text-text-secondary text-sm">Loading profile…</div>
+                <CandidateProfileSkeleton />
               ) : !candidate ? (
                 <div className="text-text-secondary text-sm">No data available.</div>
               ) : (
