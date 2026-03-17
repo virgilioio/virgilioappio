@@ -559,11 +559,18 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
         </div>
       )}
 
-      {currentView === 'board' ? (
+      {/* Unified loading gate: show skeleton until stages, candidates, AND statuses are all ready */}
+      {(isLoadingPlan || isLoadingCandidates || isStatusLoading) ? (
+        <Card className="bg-surface-primary border-border">
+          <CardContent className="pt-6">
+            <TableSkeleton rows={6} />
+          </CardContent>
+        </Card>
+      ) : currentView === 'board' ? (
         <>
           <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
             <div className={`flex gap-4 ${externalScroll ? '' : 'overflow-x-auto'} pb-2`}>
-              {isLoadingPlan && (
+              {false && (
                 <div className="text-sm text-text-secondary">Loading pipeline...</div>
               )}
 

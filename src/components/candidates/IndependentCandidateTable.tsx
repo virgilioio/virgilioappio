@@ -318,7 +318,10 @@ const getPageNumbers = () => {
   return pages
 }
 
-  if (isLoading) {
+  // Unified loading gate: show skeleton until ALL data (candidates + associations) is ready
+  const isFullyLoaded = !isLoading && !associationsLoading
+
+  if (!isFullyLoaded) {
     return (
       <Card className="bg-surface-primary border-border">
         <CardContent className="pt-6">
@@ -326,8 +329,9 @@ const getPageNumbers = () => {
             <Skeleton className="h-8 w-56" />
             <Skeleton className="h-8 w-24" />
             <Skeleton className="h-8 w-24" />
+            <Skeleton className="h-8 w-24" />
           </div>
-          <TableSkeleton rows={5} />
+          <TableSkeleton rows={8} />
         </CardContent>
       </Card>
     )
