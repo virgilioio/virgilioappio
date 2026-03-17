@@ -2,65 +2,44 @@ import { useState, useMemo } from 'react'
 import { Search, X } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Input } from '@/components/ui/input'
-import { FilterChipPopover, type FilterChipOption } from '@/components/ui/filter-chip-popover'
+import { FilterChipPopover } from '@/components/ui/filter-chip-popover'
 import { IntegrationCard } from './IntegrationCard'
+import { IntegrationDetailDialog } from './IntegrationDetailDialog'
 import { CATEGORY_OPTIONS, STATUS_OPTIONS, type IntegrationCategory } from './integrationRegistry'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { useIntegrationStatuses } from '@/hooks/useIntegrationStatuses'
 
 // Detail components
 import { ChromeExtensionTokenCard } from './ChromeExtensionTokenCard'
 import { GoogleWorkspaceIntegrationSection } from './GoogleWorkspaceIntegrationSection'
 import { WhatsAppIntegrationDetail } from './WhatsAppIntegrationDetail'
 
-
 // Logos
 import { GoogleLogo } from '@/components/icons/GoogleLogo'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
-
 import gogioAvatar from '@/assets/gogio-avatar.png'
 
-// Hooks for connection status
+// Hooks
 import { useMailIdentities } from '@/hooks/useMailIdentities'
 import { useCalendarIdentities } from '@/hooks/useCalendarIdentities'
 import { useWorkspaceAutomation } from '@/hooks/useWorkspaceAutomation'
 
-
-interface IntegrationEntry {
+export interface IntegrationEntry {
   id: string
   name: string
   description: string
   category: IntegrationCategory
   logo: React.ReactNode
-  useIsConnected: () => boolean
   DetailComponent: React.ComponentType
 }
 
-function useGoogleConnected() {
-  const { identities: mail, isLoading: lm } = useMailIdentities()
-  const { identities: cal, isLoading: lc } = useCalendarIdentities()
-  if (lm || lc) return false
-  return (mail && mail.length > 0) || (cal && cal.length > 0)
-}
-
-function useChromeConnected() {
-  // Chrome extension doesn't have a persistent "connected" state in the DB
-  return false
-}
-
-function useWhatsAppConnected() {
-  const { automation, isLoading } = useWorkspaceAutomation('whatsapp_integration')
-  if (isLoading) return false
-  return automation?.is_active ?? false
-}
-
-const INTEGRATIONS: IntegrationEntry[] = [
+export const INTEGRATIONS: IntegrationEntry[] = [
   {
     id: 'chrome-extension',
     name: 'GoGio - LinkedIn Companion',
     description: 'Add candidates directly from LinkedIn with one click using our browser extension.',
     category: 'sourcing',
     logo: <img src={gogioAvatar} alt="GoGio" className="h-6 w-6 rounded-full" />,
-    useIsConnected: useChromeConnected,
     DetailComponent: ChromeExtensionTokenCard,
   },
   {
@@ -69,7 +48,6 @@ const INTEGRATIONS: IntegrationEntry[] = [
     description: 'Connect Gmail and Google Calendar for email sending and interview scheduling.',
     category: 'productivity',
     logo: <GoogleLogo size={24} />,
-    useIsConnected: useGoogleConnected,
     DetailComponent: GoogleWorkspaceIntegrationSection,
   },
   {
@@ -78,7 +56,6 @@ const INTEGRATIONS: IntegrationEntry[] = [
     description: 'Open candidate phone numbers directly in WhatsApp with one click.',
     category: 'communication',
     logo: <WhatsAppIcon size={20} className="text-[#25D366]" />,
-    useIsConnected: useWhatsAppConnected,
     DetailComponent: WhatsAppIntegrationDetail,
   },
 ]
@@ -86,14 +63,13 @@ const INTEGRATIONS: IntegrationEntry[] = [
 // Wrapper component that calls the hook for each integration
 function IntegrationCardWrapper({
   entry,
-  isActive,
-  onConfigure,
+  onClickCard,
 }: {
   entry: IntegrationEntry
-  isActive: boolean
-  onConfigure: () => void
+  onClickCard: () => void
 }) {
-  const isConnected = entry.useIsConnected()
+  const statuses = useIntegrationStatuses()
+  const isConnected = statuses[entry.id] ?? false
   return (
     <IntegrationCard
       name={entry.name}
@@ -101,59 +77,98 @@ function IntegrationCardWrapper({
       category={entry.category}
       isConnected={isConnected}
       logo={entry.logo}
-      isActive={isActive}
-      onConfigure={onConfigure}
+      isActive={false}
+      onConfigure={onClickCard}
     />
   )
 }
 
-// Wrapper to get connection status for filtering
-function useIntegrationStatuses() {
-  const googleConnected = useGoogleConnected()
-  const chromeConnected = useChromeConnected()
-  const whatsappConnected = useWhatsAppConnected()
-  return {
-    'chrome-extension': chromeConnected,
-    'google-workspace': googleConnected,
-    'whatsapp': whatsappConnected,
-  } as Record<string, boolean>
+// Hook to get install/uninstall actions for a specific integration
+function useIntegrationActions(integrationId: string | null) {
+  const { toggle: toggleWhatsApp, isSaving: whatsAppSaving } = useWorkspaceAutomation('whatsapp_integration')
+  const { connectGmail } = useMailIdentities()
+  const { disconnectCalendar } = useCalendarIdentities()
+  const { identities: mailIdentities, disconnectIdentity: disconnectMail } = useMailIdentities()
+  const { identities: calendarIdentities } = useCalendarIdentities()
+
+  const install = () => {
+    switch (integrationId) {
+      case 'whatsapp':
+        toggleWhatsApp(true)
+        break
+      case 'google-workspace':
+        connectGmail.mutate()
+        break
+      case 'chrome-extension':
+        window.open('https://chromewebstore.google.com/detail/gogio-linkedin-extension/nhkooggcjgdckjlpbogeanhohjkndhcj', '_blank')
+        break
+    }
+  }
+
+  const uninstall = async () => {
+    switch (integrationId) {
+      case 'whatsapp':
+        toggleWhatsApp(false)
+        break
+      case 'google-workspace':
+        if (mailIdentities) {
+          for (const identity of mailIdentities) {
+            await disconnectMail.mutateAsync(identity.id)
+          }
+        }
+        if (calendarIdentities) {
+          for (const identity of calendarIdentities) {
+            await disconnectCalendar(identity.id)
+          }
+        }
+        break
+      case 'chrome-extension':
+        // No server-side uninstall needed
+        break
+    }
+  }
+
+  return { install, uninstall, isInstalling: whatsAppSaving || connectGmail.isPending }
 }
 
-export function IntegrationsTab() {
+interface IntegrationsTabProps {
+  initialConfigureId?: string | null
+}
+
+export function IntegrationsTab({ initialConfigureId }: IntegrationsTabProps) {
   const [search, setSearch] = useState('')
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([])
-  const [activeId, setActiveId] = useState<string | null>(null)
+  const [dialogId, setDialogId] = useState<string | null>(null)
+  const [configureId, setConfigureId] = useState<string | null>(initialConfigureId ?? null)
 
   const statuses = useIntegrationStatuses()
+  const { install, uninstall, isInstalling } = useIntegrationActions(dialogId)
 
   const hasActiveFilters = search.length > 0 || selectedCategories.length > 0 || selectedStatuses.length > 0
 
   const filteredIntegrations = useMemo(() => {
     return INTEGRATIONS.filter((entry) => {
-      // Search filter
       if (search) {
         const q = search.toLowerCase()
         if (!entry.name.toLowerCase().includes(q) && !entry.description.toLowerCase().includes(q)) {
           return false
         }
       }
-      // Category filter
       if (selectedCategories.length > 0 && !selectedCategories.includes(entry.category)) {
         return false
       }
-      // Status filter
       if (selectedStatuses.length > 0) {
         const isConn = statuses[entry.id]
         if (selectedStatuses.includes('connected') && !isConn) return false
         if (selectedStatuses.includes('not_connected') && isConn) return false
-        // If both selected, show all (effectively no filter)
       }
       return true
     })
   }, [search, selectedCategories, selectedStatuses, statuses])
 
-  const activeEntry = activeId ? INTEGRATIONS.find((e) => e.id === activeId) : null
+  const dialogEntry = dialogId ? INTEGRATIONS.find((e) => e.id === dialogId) : null
+  const configEntry = configureId ? INTEGRATIONS.find((e) => e.id === configureId) : null
 
   const clearAll = () => {
     setSearch('')
@@ -211,8 +226,7 @@ export function IntegrationsTab() {
           <IntegrationCardWrapper
             key={entry.id}
             entry={entry}
-            isActive={activeId === entry.id}
-          onConfigure={() => setActiveId(entry.id)}
+            onClickCard={() => setDialogId(entry.id)}
           />
         ))}
       </div>
@@ -223,21 +237,38 @@ export function IntegrationsTab() {
         </div>
       )}
 
+      {/* Detail dialog */}
+      {dialogEntry && (
+        <IntegrationDetailDialog
+          open={!!dialogEntry}
+          onOpenChange={(open) => { if (!open) setDialogId(null) }}
+          name={dialogEntry.name}
+          description={dialogEntry.description}
+          category={dialogEntry.category}
+          logo={dialogEntry.logo}
+          isConnected={statuses[dialogEntry.id] ?? false}
+          onInstall={install}
+          onUninstall={uninstall}
+          onConfigure={() => setConfigureId(dialogEntry.id)}
+          isInstalling={isInstalling}
+        />
+      )}
+
       {/* Configuration sheet */}
-      <Sheet open={!!activeEntry} onOpenChange={(open) => { if (!open) setActiveId(null) }}>
+      <Sheet open={!!configEntry} onOpenChange={(open) => { if (!open) setConfigureId(null) }}>
         <SheetContent side="right" className="sm:max-w-lg overflow-y-auto">
-          {activeEntry && (
+          {configEntry && (
             <>
               <SheetHeader>
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted/60">
-                    {activeEntry.logo}
+                    {configEntry.logo}
                   </div>
-                  <SheetTitle className="text-base font-poppins">{activeEntry.name}</SheetTitle>
+                  <SheetTitle className="text-base font-poppins">{configEntry.name}</SheetTitle>
                 </div>
               </SheetHeader>
               <div className="mt-6">
-                <activeEntry.DetailComponent />
+                <configEntry.DetailComponent />
               </div>
             </>
           )}
