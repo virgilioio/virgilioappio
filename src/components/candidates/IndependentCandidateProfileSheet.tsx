@@ -323,7 +323,7 @@ export function IndependentCandidateProfileSheet({
 
             <div className="flex-1 overflow-y-auto p-6">
                {loading ? (
-                <div className="text-text-secondary text-sm">Loading profile…</div>
+                <CandidateProfileSkeleton />
               ) : !candidate ? (
                 <div className="text-text-secondary text-sm">No data available.</div>
               ) : (

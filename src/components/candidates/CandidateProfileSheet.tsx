@@ -962,7 +962,7 @@ const stageHasAutomation = useMemo(() => {
                   </div>
                 )}
             {loading ? (
-              <div className="text-text-secondary text-sm">Loading profile…</div>
+              <CandidateProfileSkeleton />
             ) : !candidate ? (
               <div className="text-text-secondary text-sm">No data available.</div>
             ) : (
