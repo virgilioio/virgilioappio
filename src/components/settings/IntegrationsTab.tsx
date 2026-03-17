@@ -249,6 +249,7 @@ export function IntegrationsTab({ initialConfigureId }: IntegrationsTabProps) {
           description={dialogEntry.description}
           category={dialogEntry.category}
           logo={dialogEntry.logo}
+          images={dialogEntry.images}
           isConnected={statuses[dialogEntry.id] ?? false}
           onInstall={install}
           onUninstall={uninstall}
