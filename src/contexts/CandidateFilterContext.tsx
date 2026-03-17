@@ -105,7 +105,7 @@ export function CandidateFilterProvider({ children }: { children: ReactNode }) {
 
   const activeFilterCount = useMemo(() => {
     let count = 0
-    const arrayKeys: ArrayFilterKey[] = ['statuses', 'sources', 'countries', 'states', 'cities', 'seniorityLevels', 'functionalAreas', 'specializations', 'skills', 'enrichmentStatuses', 'pipelineStatuses']
+    const arrayKeys: ArrayFilterKey[] = ['statuses', 'sources', 'countries', 'states', 'cities', 'seniorityLevels', 'functionalAreas', 'specializations', 'skills', 'enrichmentStatuses', 'pipelineStatuses', 'jobs', 'stages', 'rejectedAtStages']
     for (const k of arrayKeys) count += filters[k].length
     if (filters.experienceMin !== null) count++
     if (filters.experienceMax !== null) count++
