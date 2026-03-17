@@ -1,56 +1,151 @@
+# System Roles Migration — Completed Phases 1-5
 
-Goal: fix the WhatsApp template editor so normal typing no longer teleports the caret to the beginning, while keeping placeholder badges and plain-text WhatsApp output working.
+## Architecture Change
+- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
+- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-What’s causing it
-- In `src/components/settings/WhatsAppIntegrationDetail.tsx`, every keystroke updates `templateText`.
-- A `useEffect` then re-syncs `templateText` back into the `contentEditable` via `innerHTML = convertPlaceholdersToHtml(templateText)`.
-- Replacing `innerHTML` recreates the DOM and resets the browser selection, which is why the cursor jumps to the start.
+## Completed
 
-Implementation plan
+### Phase 1 — Database
+- ✅ Created `system_role` enum (`admin`, `member`)
+- ✅ Added `system_role` column to `members` table
+- ✅ Migrated data: `admin` → `admin`, all others → `member`
+- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
+- ✅ Updated `check_tenant_member_role` to use `system_role`
+- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
+- ✅ Updated `audit_member_role_change` trigger
 
-1. Make the WhatsApp editor follow the same “do not re-sync while focused” pattern already used in `src/components/ui/placeholder-input.tsx`
-- Add focus/update guards (`isFocusedRef`, `isUpdatingRef`) to `WhatsAppIntegrationDetail`.
-- Only push external state into `editorRef.current.innerHTML` when:
-  - the editor is not focused, or
-  - the value came from initial load / save / remote refresh.
-- This removes the per-keystroke DOM rewrite that is breaking the caret.
+### Phase 2 — Frontend Permissions
+- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
+- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
+- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
+- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
 
-2. Keep DOM changes minimal during typing
-- `handleInput` should keep converting current editor HTML into clean plain text for state/storage.
-- It should only rebuild badge HTML when the user has actually typed a raw `{{placeholder}}` token or pasted content that needs badge conversion.
-- For normal typing, do not touch `innerHTML`; only update `templateText`.
+### Phase 3 — UI Updates
+- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
+- ✅ Updated `Dashboard` — sourcing panel for admin+ only
+- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
+- ✅ Updated `BillingGuard` — members (non-admin) never blocked
+- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
+- ✅ Updated `Find` page RoleGate
+- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
 
-3. Preserve cursor correctly when a raw placeholder is transformed into a badge
-- Before converting typed `{{...}}` into badge HTML, capture the current selection.
-- After the DOM rewrite, restore the cursor immediately after the inserted badge/space, not at the start or end of the whole editor.
-- Keep the existing explicit insertion flow for placeholder chips, but align it with the same guarded update logic.
+### Phase 4 — Runtime Hotfixes
+- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
+- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
+- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
+- ✅ Updated `validate_invite_token` — returns `system_role`
+- ✅ Updated `accept_invitation` — uses `system_role`
 
-4. Centralize sanitization to avoid editor/output drift
-- Reuse `stripHtmlToPlainText` from `src/utils/templateUtils.ts` inside the WhatsApp editor input pipeline instead of maintaining a separate inline sanitizer.
-- This keeps the editor, saved template, and final sent message on the same plain-text rules.
+### Phase 5 — Complete Cleanup
+- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
+- ✅ Updated `admin_manage_member` — updates `system_role` column
+- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
+- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
+- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
+- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
+- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
+- ✅ Updated `diagnose_user_auth` — reports `system_role`
+- ✅ Updated `audit_platform_admin_access` — returns `system_role`
+- ✅ Updated `debug_user_permissions` — returns `system_role`
+- ✅ Renamed `invitations.member_role` → `invitations.system_role`
+- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
 
-Files to update
-- `src/components/settings/WhatsAppIntegrationDetail.tsx`
-  - Add focus/update guards
-  - Stop unconditional `innerHTML` re-sync during typing
-  - Limit DOM rewrites to true placeholder conversions
-  - Restore selection after badge conversion
-  - Reuse shared HTML-to-plain-text sanitization
-- `src/utils/templateUtils.ts`
-  - Possibly make the sanitizer slightly more reusable/export-friendly if needed, but no behavior change unless required for the editor pipeline
+## Phase 6 — Future (Optional)
+- Drop `member_role` column from `members` table (already dropped)
+- Drop old `member_role` enum type
+- Update `MemberInviteSheet` role picker to only offer Admin/Member
 
-Expected result
-- Typing anywhere in the WhatsApp template keeps the caret in place
-- Placeholder chips still insert correctly
-- Backspace/Delete near badges still works without deleting random content
-- Pasted/rich-text content is normalized to plain text
-- Final WhatsApp message remains free of raw HTML tags/entities
+# Deep Resume Parsing + Data Standardization — Completed
 
-Regression checks after implementation
-- Type in the beginning, middle, and end of an existing template
-- Insert a placeholder chip between words and continue typing
-- Backspace a normal character next to a badge without deleting the badge
-- Delete a badge only when the caret is actually at its boundary
-- Paste multiline plain text and formatted text from another source
-- Save, reload settings, and verify the editor content stays stable
-- Trigger the first-click WhatsApp flow and confirm the sent message is plain text only
+## What was implemented
+
+### Phase 1: Schema Expansion
+- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
+- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
+- ✅ Added to `candidate_education`: `education_level`
+- ✅ Created `candidate_certifications` table with RLS policies
+
+### Phase 2: Enrichment Rewrite
+- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
+- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
+- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
+- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
+- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
+
+### Phase 3: UI Updates
+- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
+- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
+- ✅ **Certifications section** with `CandidateCertificationsComponent`
+- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
+- ✅ Enhanced **Education** display: education level badge
+- ✅ Certifications loaded alongside work experience and education
+
+## Files changed
+- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
+- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
+- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
+- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
+- `src/components/candidates/CandidateCertifications.tsx` — new component
+
+# WhatsApp ISV Architecture — Completed
+
+## Architecture
+Per-tenant dedicated numbers under GoGio's master Twilio account. Each tenant gets their own WhatsApp number provisioned via the Twilio connector gateway.
+
+## What was implemented
+
+### Inbound Webhook
+- ✅ Created `whatsapp-inbound-webhook` edge function (public, no JWT)
+- ✅ Matches inbound `From` phone to existing conversations
+- ✅ Inserts messages as `direction: 'inbound'`, updates `unread_count`
+- ✅ Returns empty TwiML (no auto-reply)
+- ✅ Added to `supabase/config.toml` with `verify_jwt = false`
+
+### Simplified Setup Wizard
+- ✅ Reduced from 5 steps to 3: Welcome → Provision → Complete
+- ✅ Removed broken "Verify sender" and "Templates" steps
+- ✅ Provisioning = activation (no separate activate step)
+
+### Simplified Setup Status
+- ✅ Reduced from 6 states to 3: `not_started`, `active`, `error`
+- ✅ `canMessage = true` when `active` (no template-gating)
+- ✅ Removed `provisioning`, `sender_pending`, `sender_active`, `templates_required`
+
+### Integration Card Updates
+- ✅ Removed template count stats (approved/pending/draft)
+- ✅ Simplified status badges to active/not set up/error
+- ✅ Removed unused status configs (sender_pending, provisioning, etc.)
+
+### Template Library Updates
+- ✅ Removed non-functional Submit and Refresh buttons
+- ✅ Removed filter tabs (all/draft/pending/approved/rejected)
+- ✅ Added info note: "Custom templates require GoGio team approval"
+- ✅ Templates show as "Ready to use" or "Local only" status
+
+### Chat Tab Updates
+- ✅ Simplified blocking: only blocks when `not_started` or no phone number
+- ✅ Removed intermediate `canMessage` blocking state
+- ✅ Updated empty template message to reference GoGio team
+
+### Send Function Updates
+- ✅ Removed `is_active` check — if number exists, can send
+- ✅ Per-tenant `twilio_from_number` logic preserved
+
+### Global Templates Seeded
+- ✅ Interview Invitation, Application Update, Job Opportunity
+- ✅ Inserted with `tenant_id = NULL` (global)
+- ✅ No `twilio_content_sid` yet (marked as draft until GoGio team adds real SIDs)
+
+## Manual Prerequisites (for GoGio team — ONE-TIME ONLY)
+1. Get WhatsApp Business Account approved in Twilio Console
+2. Create a Messaging Service and enable WhatsApp on it
+3. Create Content templates in Twilio Console matching seeded templates
+4. UPDATE `whatsapp_templates` rows with real `twilio_content_sid` values and `approval_status = 'approved'`
+5. Store `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID` as Supabase secrets ✅ Done
+
+## Automated Per-Tenant (Zero-Touch)
+1. ✅ Buy number via gateway
+2. ✅ Configure webhook URL on number via gateway
+3. ✅ Register number as WhatsApp Sender via Messaging Service API
+4. ✅ Save config to DB
