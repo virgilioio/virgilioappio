@@ -276,6 +276,7 @@ export function IntegrationsTab({ initialConfigureId }: IntegrationsTabProps) {
           onOpenChange={(open) => { if (!open) setDialogId(null) }}
           name={dialogEntry.name}
           description={dialogEntry.description}
+          detailContent={dialogEntry.detailContent}
           category={dialogEntry.category}
           logo={dialogEntry.logo}
           images={dialogEntry.images}
