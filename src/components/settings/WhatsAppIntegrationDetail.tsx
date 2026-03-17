@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { useWorkspaceAutomation } from '@/hooks/useWorkspaceAutomation'
 import { Loader2, Save } from 'lucide-react'
 import { toast } from 'sonner'
-import { PLACEHOLDER_OPTIONS } from '@/utils/templateUtils'
+import { PLACEHOLDER_OPTIONS, stripHtmlToPlainText } from '@/utils/templateUtils'
 import { convertPlaceholdersToHtml, convertHtmlToPlaceholders } from '@/utils/placeholderUtils'
 import { cn } from '@/lib/utils'
 
@@ -20,6 +20,8 @@ export function WhatsAppIntegrationDetail() {
   const [dirty, setDirty] = useState(false)
   const editorRef = useRef<HTMLDivElement>(null)
   const savedRangeRef = useRef<Range | null>(null)
+  const isFocusedRef = useRef(false)
+  const isUpdatingRef = useRef(false)
 
   useEffect(() => {
     if (automation?.body != null) {
@@ -28,13 +30,18 @@ export function WhatsAppIntegrationDetail() {
     }
   }, [automation?.body])
 
-  // Sync templateText → contentEditable HTML
+  // Sync templateText → contentEditable HTML only when NOT focused
   useEffect(() => {
-    if (editorRef.current) {
-      const currentPlain = convertHtmlToPlaceholders(editorRef.current.innerHTML)
-      if (currentPlain !== templateText) {
-        editorRef.current.innerHTML = convertPlaceholdersToHtml(templateText)
-      }
+    if (!editorRef.current || isUpdatingRef.current) return
+    if (isFocusedRef.current) return
+
+    const currentPlain = convertHtmlToPlaceholders(editorRef.current.innerHTML)
+    if (currentPlain !== templateText) {
+      isUpdatingRef.current = true
+      editorRef.current.innerHTML = convertPlaceholdersToHtml(templateText)
+      requestAnimationFrame(() => {
+        isUpdatingRef.current = false
+      })
     }
   }, [templateText])
 
@@ -80,24 +87,31 @@ export function WhatsAppIntegrationDetail() {
   }, [])
 
   const handleInput = useCallback(() => {
-    if (editorRef.current) {
-      // First convert badge spans back to {{placeholder}} tokens
-      let plain = convertHtmlToPlaceholders(editorRef.current.innerHTML)
-      // Strip any remaining HTML tags the browser injected (font, span style, etc.)
-      // but preserve line breaks from <br>, <div>, <p>
-      plain = plain
-        .replace(/<br\s*\/?>/gi, '\n')
-        .replace(/<\/?(div|p)>/gi, '\n')
-        .replace(/<[^>]+>/g, '')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&amp;/g, '&')
-        .replace(/\n{3,}/g, '\n\n')
-        .trim()
-      setTemplateText(plain)
-      setDirty(true)
-    }
+    if (!editorRef.current || isUpdatingRef.current) return
+
+    // Convert badge spans back to {{placeholder}} tokens
+    let plain = convertHtmlToPlaceholders(editorRef.current.innerHTML)
+    // Strip any remaining HTML tags the browser injected
+    plain = stripHtmlToPlainText(plain)
+
+    setTemplateText(plain)
+    setDirty(true)
   }, [])
+
+  const handleFocus = useCallback(() => {
+    isFocusedRef.current = true
+  }, [])
+
+  const handleBlur = useCallback(() => {
+    isFocusedRef.current = false
+    saveCursorPosition()
+    // Final sync on blur
+    if (editorRef.current) {
+      let plain = convertHtmlToPlaceholders(editorRef.current.innerHTML)
+      plain = stripHtmlToPlainText(plain)
+      setTemplateText(plain)
+    }
+  }, [saveCursorPosition])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
     const selection = window.getSelection()
@@ -131,7 +145,6 @@ export function WhatsAppIntegrationDetail() {
         prevSibling.remove()
         handleInput()
       }
-      // Otherwise let the browser handle normal character deletion
     } else if (e.key === 'Delete' && nextSibling?.classList?.contains('placeholder-badge')) {
       const textLen = anchorNode.textContent?.length ?? 0
       const isAtEnd = offset >= textLen
@@ -140,7 +153,6 @@ export function WhatsAppIntegrationDetail() {
         nextSibling.remove()
         handleInput()
       }
-      // Otherwise let the browser handle normal character deletion
     }
   }, [handleInput])
 
@@ -222,7 +234,8 @@ export function WhatsAppIntegrationDetail() {
             onInput={handleInput}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            onBlur={saveCursorPosition}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
             onMouseUp={saveCursorPosition}
             onKeyUp={saveCursorPosition}
             data-placeholder="Hi {{candidate.first_name}}, this is {{sender.first_name}} from {{organization.name}}. I'd like to discuss the {{job.title}} position with you."
