@@ -206,12 +206,7 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   if (!sessionReady) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin mx-auto"></div>
-          <p className="text-muted-foreground">
-            {isLoggingOut ? 'Signing out...' : 'Authenticating...'}
-          </p>
-        </div>
+        <GioLoader message={isLoggingOut ? 'Signing out...' : 'Authenticating...'} />
       </div>
     )
   }
