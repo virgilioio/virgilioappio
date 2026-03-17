@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2 } from 'lucide-react';
+import { GioLoader } from '@/components/ui/GioLoader';
 
 export default function MailOAuthCallback() {
   const [msg, setMsg] = useState('Connecting your account...');
