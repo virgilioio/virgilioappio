@@ -7,6 +7,7 @@ import type { FilterOption } from '@/hooks/useTalentIntelligenceFilterOptions'
 import { ActiveFilterChips } from './ActiveFilterChips'
 import { TalentIntelligenceFilterSheet } from './TalentIntelligenceFilterSheet'
 import { FilterChipPopover } from '@/components/ui/filter-chip-popover'
+import { MobileFilterDrawer } from '@/components/ui/mobile-filter-drawer'
 
 interface TalentIntelligenceFilterBarProps {
   roleOptions: FilterOption[]
