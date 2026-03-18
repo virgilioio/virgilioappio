@@ -217,8 +217,10 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
 
   const loadStages = useCallback(async () => {
     const plan = await loadHiringPlanInstances(jobId)
-    // Exclude application_review stages from the pipeline board/list (it has its own dedicated tab)
-    const filtered = plan.filter(opt => opt.stage.stage_type !== 'application_review')
+    // Exclude application_review stages unless includeApplicationReview is true
+    const filtered = includeApplicationReview
+      ? plan
+      : plan.filter(opt => opt.stage.stage_type !== 'application_review')
     setStageOptions(filtered.length > 0 ? filtered : [])
   }, [jobId, loadHiringPlanInstances])
 
