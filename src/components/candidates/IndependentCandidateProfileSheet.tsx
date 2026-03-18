@@ -777,6 +777,8 @@ export function IndependentCandidateProfileSheet({
                   </div>
                 </Tabs>
                 </div>
+              </div>
+              </>
               )}
               <CandidateFormSheet
                 isOpen={editOpen}
@@ -786,7 +788,6 @@ export function IndependentCandidateProfileSheet({
                 isLoading={editLoading}
               />
             </div>
-          </div>
         </div>
 
           {/* Simple Schedule Interview Sheet */}

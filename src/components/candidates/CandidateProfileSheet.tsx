@@ -1677,8 +1677,9 @@ const stageHasAutomation = useMemo(() => {
                   </div>
                 </div>
               </Tabs>
+            </div>
+            </>
             )}
-          <CandidateFormSheet
             isOpen={editOpen}
             onClose={() => setEditOpen(false)}
             onSubmit={handleUpdateCandidate}
