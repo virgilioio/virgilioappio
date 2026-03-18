@@ -222,7 +222,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
       ? plan
       : plan.filter(opt => opt.stage.stage_type !== 'application_review')
     setStageOptions(filtered.length > 0 ? filtered : [])
-  }, [jobId, loadHiringPlanInstances])
+  }, [jobId, loadHiringPlanInstances, includeApplicationReview])
 
   const loadPipeline = useCallback(async () => {
     if (!jobId) return
