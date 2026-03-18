@@ -131,6 +131,7 @@ export function MobileBottomNav() {
       <SearchResultsDialog
         open={isSearchOpen}
         onOpenChange={setIsSearchOpen}
+        initialQuery=""
       />
     </>
   )
