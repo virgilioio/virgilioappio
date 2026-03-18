@@ -258,19 +258,25 @@ export function Header() {
 
         {/* User Menu and Mobile Navigation */}
         <div className="flex items-center gap-md">
-          {/* Global Search Bar */}
-          <GlobalSearchBar />
+          {/* Global Search Bar - hidden on mobile */}
+          <div className="hidden sm:block">
+            <GlobalSearchBar />
+          </div>
           
           {/* Global Create Button - hidden on mobile */}
           <div className="hidden sm:block">
             <GlobalCreateButton />
           </div>
           
-          {/* Sourcing Credit Indicator */}
-          <SourcingCreditIndicator />
+          {/* Sourcing Credit Indicator - hidden on mobile */}
+          <div className="hidden sm:block">
+            <SourcingCreditIndicator />
+          </div>
           
-          {/* Notification Center */}
-          <NotificationCenter />
+          {/* Notification Center - hidden on mobile */}
+          <div className="hidden sm:block">
+            <NotificationCenter />
+          </div>
           
           {/* Workspace Switcher */}
           {isPlatformAdmin && uniqueOrgs.length > 1 && (
