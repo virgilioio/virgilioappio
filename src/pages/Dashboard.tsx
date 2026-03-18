@@ -52,8 +52,8 @@ export default function Dashboard() {
             {/* Left Column - Jobs & Searches */}
             <div className="space-y-6 min-w-0">
               <OnboardingChecklist isDeemphasized={!hasSeenValue} />
-              {showSourcingPanel && <RecentSourcingProjects />}
-              {hasJobContent && <JobsOverview permissions={permissions} />}
+              {showSourcingPanel && <div className="hidden sm:block"><RecentSourcingProjects /></div>}
+              {hasJobContent && <div className="hidden sm:block"><JobsOverview permissions={permissions} /></div>}
             </div>
             
             {/* Right Column - Tasks */}
