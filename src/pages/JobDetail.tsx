@@ -1468,7 +1468,8 @@ export default function JobDetail() {
                         </div>
                       </CardHeader>
                       <CardContent className="p-0 h-0 flex-1">
-                        <ScrollArea className="h-full w-full scrollbar-black">
+                        {/* Desktop: ScrollArea for smooth scroll; Mobile: native overflow for snap */}
+                        <ScrollArea className="h-full w-full scrollbar-black hidden sm:block">
                           {pipelineSectionTab === 'recruiting' ? (
                             <div className={pipelineView === 'list' ? 'w-full p-layout-md' : 'w-fit p-layout-md'}>
                               <PipelineOverview
