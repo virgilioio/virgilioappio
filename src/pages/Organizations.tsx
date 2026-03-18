@@ -58,7 +58,7 @@ export default function Organizations() {
           <Section variant="default" banded container className="animate-fade-in">
             <PageHeader
               title="Organizations"
-              subtitle="Manage your organizations and departments"
+             
             />
           </Section>
 

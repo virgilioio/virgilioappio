@@ -72,7 +72,7 @@ export function JobBoardsTab() {
     <div className="space-y-6">
       <PageHeader 
         title="Job Boards" 
-        subtitle="Connect to external job boards to expand your candidate reach"
+       
       />
 
       {/* Talent.com Integration Card */}

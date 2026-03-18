@@ -59,7 +59,7 @@ export function OrganizationsTab() {
     <div className="space-y-6">
       <PageHeader 
         title="Departments" 
-        subtitle="Manage your departments"
+       
       />
 
       <div data-onboarding-target="organization">

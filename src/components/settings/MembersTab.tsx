@@ -117,7 +117,7 @@ export function MembersTab() {
     <div className="space-y-6">
       <PageHeader 
         title="Team Members" 
-        subtitle="Manage your team members and collaborators"
+       
       />
       
       <Tabs value={tab} onValueChange={(v) => setTab(v as 'members' | 'collaborators')} className="w-full">

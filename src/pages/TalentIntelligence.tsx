@@ -125,7 +125,7 @@ function TalentIntelligenceContent() {
       <Section variant="default" banded container className="animate-fade-in">
         <PageHeader
           title="Talent Intelligence"
-          subtitle="Understand your candidate pool — geography, experience, skills, compensation, and composition."
+         
         />
       </Section>
 
