@@ -1485,13 +1485,31 @@ export default function JobDetail() {
                         </div>
                       </CardHeader>
                       <CardContent className="p-0 h-0 flex-1">
-                        {/* Desktop: ScrollArea for smooth scroll; Mobile: native overflow for snap */}
-                        <ScrollArea className="h-full w-full scrollbar-black sm:[&>div]:!block [&>div]:!overflow-visible sm:[&>div]:!overflow-scroll">
+                        {/* Mobile board view: native scroll with snap */}
+                        {pipelineSectionTab === 'recruiting' && pipelineView === 'board' && (
+                          <div className="h-full w-full overflow-y-auto sm:hidden p-layout-md">
+                            <PipelineOverview
+                              jobId={id!}
+                              showHeader={false}
+                              viewMode={pipelineView}
+                              onViewModeChange={setPipelineView}
+                              selectionMode={selectionMode}
+                              onSelectionModeChange={setSelectionMode}
+                              onSelectedIdsChange={setSelectedCandidateIds}
+                              refreshToken={pipelineRefresh}
+                              onStageChanged={() => setPipelineRefresh((v) => v + 1)}
+                              onCandidateClick={openPipelineProfile}
+                            />
+                          </div>
+                        )}
+                        {/* Desktop board view + all other tabs: ScrollArea */}
+                        <ScrollArea className={`h-full w-full scrollbar-black ${pipelineSectionTab === 'recruiting' && pipelineView === 'board' ? 'hidden sm:block' : ''}`}>
                           {pipelineSectionTab === 'recruiting' ? (
-                            <div className={pipelineView === 'list' ? 'w-full p-layout-md' : 'w-full sm:w-fit p-layout-md'}>
+                            <div className={pipelineView === 'list' ? 'w-full p-layout-md' : 'w-fit p-layout-md'}>
                               <PipelineOverview
                                 jobId={id!}
                                 showHeader={false}
+                                externalScroll
                                 viewMode={pipelineView}
                                 onViewModeChange={setPipelineView}
                                 selectionMode={selectionMode}
