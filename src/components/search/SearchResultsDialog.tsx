@@ -125,7 +125,7 @@ export function SearchResultsDialog({ open, onOpenChange, initialQuery }: Search
           </div>
 
           {/* Results */}
-          <div className="max-h-[400px] overflow-y-auto">
+          <div className="flex-1 overflow-y-auto">
             {isLoading ? (
               <div className="p-4">
                 <SearchResultsSkeleton count={5} />
