@@ -68,7 +68,7 @@ export function Layout() {
         <BulkUploadProvider>
           <div className="bg-background">
             <Header />
-            <main className="pt-12 sm:pt-14 pb-16 sm:pb-0 min-h-[calc(100vh-6rem)] sm:min-h-[calc(100vh-7rem)]">
+            <main className="pt-0 sm:pt-14 pb-16 sm:pb-0 min-h-screen sm:min-h-[calc(100vh-3.5rem)]">
               <Outlet />
             </main>
           </div>
