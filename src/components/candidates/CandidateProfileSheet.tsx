@@ -1752,9 +1752,8 @@ const stageHasAutomation = useMemo(() => {
             />
           )}
 
-              </div>
-            </div>
           </div>
+        </div>
 
       {/* Minimizable Email Composer (portal to body) */}
       <MinimizableEmailComposer
