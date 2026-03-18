@@ -84,13 +84,13 @@ export function JobRow({ job, metrics }: JobRowProps) {
       <AccordionContent>
         {/* Job metrics strip above Kanban */}
         {metrics && (
-          <div className="flex items-center gap-6 py-3 px-2 border-b text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 py-3 px-2 border-b text-sm text-muted-foreground">
             <div>
-              <span className="font-medium">Active Candidates:</span> {metrics.active_candidates}
+              <span className="font-medium">Active:</span> {metrics.active_candidates}
             </div>
             {stageConversions.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="font-medium">Stage Conversion:</span>
+              <div className="flex flex-wrap items-center gap-1">
+                <span className="font-medium">Conversion:</span>
                 {stageConversions.map((conv, idx) => (
                   <span key={idx}>
                     {conv.from.substring(0, 10)}→{conv.to.substring(0, 10)}: {conv.fromCount}→{conv.toCount}
@@ -100,7 +100,7 @@ export function JobRow({ job, metrics }: JobRowProps) {
               </div>
             )}
             <div>
-              <span className="font-medium">Overall Conversion:</span> Start→Hired: {metrics.overall_start_count}→{metrics.overall_hired_count}
+              <span className="font-medium">Overall:</span> {metrics.overall_start_count}→{metrics.overall_hired_count}
             </div>
           </div>
         )}
