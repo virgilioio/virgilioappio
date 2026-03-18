@@ -68,9 +68,9 @@ export function JobRow({ job, metrics }: JobRowProps) {
                 <span>Last activity {lastActivity}</span>
               </div>
               {metrics && metrics.stages && metrics.stages.length > 0 && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1 overflow-x-auto max-w-full scrollbar-hide">
                   {metrics.stages.map((stage, idx) => (
-                    <span key={stage.stage_id}>
+                    <span key={stage.stage_id} className="whitespace-nowrap">
                       {stage.stage_name.substring(0, 12)} {stage.count_in_stage}
                       {idx < metrics.stages.length - 1 && <ChevronRight className="inline h-3 w-3 mx-1" />}
                     </span>
