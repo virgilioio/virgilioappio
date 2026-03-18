@@ -88,7 +88,7 @@ export default function Settings() {
       <AppContainer variant="default">
           <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
             {/* Mobile header with sheet for sidebar */}
-            <div className="lg:hidden mb-6">
+            <div className="lg:hidden">
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SettingsMobileHeader 
                   onMenuToggle={handleMenuToggle}
