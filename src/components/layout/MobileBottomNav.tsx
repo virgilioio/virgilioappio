@@ -78,7 +78,7 @@ export function MobileBottomNav() {
               'h-[50px] w-[50px] rounded-full ring-2 ring-offset-2 ring-offset-surface-primary overflow-hidden transition-all',
               isActive('/dashboard') ? 'ring-virgilio-purple shadow-md' : 'ring-virgilio-border'
             )}>
-              <img src={gioFacePurple} alt="Home" className="h-full w-full object-cover" />
+              <img src={gioAvatar} alt="Home" className="h-full w-full object-cover" />
             </div>
           </Link>
 
