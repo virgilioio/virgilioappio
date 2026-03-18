@@ -107,7 +107,7 @@ export function JobRow({ job, metrics }: JobRowProps) {
         
         {/* Embedded Kanban */}
         <div className="mt-4 overflow-x-auto -mx-4 px-4 touch-pan-x">
-          <PipelineOverview jobId={job.id} showHeader={false} externalScroll={false} />
+          <PipelineOverview jobId={job.id} showHeader={false} externalScroll={false} includeApplicationReview={true} />
         </div>
       </AccordionContent>
     </AccordionItem>
