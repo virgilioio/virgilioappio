@@ -16,7 +16,7 @@ import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeVi
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign, MessageSquare } from 'lucide-react'
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign, MessageSquare, UserRound } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -25,7 +25,7 @@ import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import gioFaceEmpty from '@/assets/gio-face-empty.png'
 
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMarkdown'
 import { getSkillColor } from '@/utils/skillColors'
@@ -74,6 +74,7 @@ import { CandidateOfferDetails } from './CandidateOfferDetails'
 import { CandidateOfferApprovals } from './CandidateOfferApprovals'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { useQuery } from '@tanstack/react-query'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 
 interface StageScorecardProps {
   stageInstanceId: string;
@@ -115,6 +116,7 @@ interface CandidateProfileSheetProps {
 
 export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, autoOpenScorecardStageId, onScorecardOpened }: CandidateProfileSheetProps) {
   const { canEditCandidates, isAdmin, isWorkspaceOwner, isPlatformAdmin } = usePermissions()
+  const navigate = useNavigate()
   
   const { organizationId, user } = useAuth()
   const { isHiringManagerOnJob, isInterviewerOnJob } = useJobRole(jobId)
@@ -913,6 +915,22 @@ const stageHasAutomation = useMemo(() => {
                     {candidate.candidate_name}
                     <span className="text-purple-period">.</span>
                   </h2>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="h-8 w-8 p-0"
+                        onClick={() => {
+                          navigate(`/candidates?openCandidate=${candidate.id}`)
+                          onOpenChange?.(false)
+                        }}
+                        aria-label="View full candidate profile"
+                      >
+                        <UserRound className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>View full candidate profile</TooltipContent>
+                  </Tooltip>
                   {candidate.linkedin_url && (
                     <Button
                       variant="outline"
