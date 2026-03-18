@@ -68,7 +68,7 @@ export function SearchResultsDialog({ open, onOpenChange, initialQuery }: Search
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden">
+        <DialogContent className="w-full h-full max-h-full sm:max-w-2xl sm:h-auto sm:max-h-[85vh] p-0 gap-0 overflow-hidden rounded-none sm:rounded-lg flex flex-col">
           <DialogTitle className="sr-only">Search Results</DialogTitle>
           
           {/* Search Input */}
@@ -125,7 +125,7 @@ export function SearchResultsDialog({ open, onOpenChange, initialQuery }: Search
           </div>
 
           {/* Results */}
-          <div className="max-h-[400px] overflow-y-auto">
+          <div className="flex-1 overflow-y-auto">
             {isLoading ? (
               <div className="p-4">
                 <SearchResultsSkeleton count={5} />
