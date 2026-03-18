@@ -162,20 +162,25 @@ export default function Analytics() {
 
   return (
     <div className="space-y-6 p-6 max-w-[1600px] mx-auto animate-fade-in">
-      <PageHeader title="Analytics">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            onClick={handleExportReport}
-            disabled={isExporting || metrics.isLoading}
-            className="gap-2"
-          >
-            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            Export Report
-          </Button>
+      <div className="space-y-3">
+        <PageHeader title="Analytics">
+          <div className="hidden sm:flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={handleExportReport}
+              disabled={isExporting || metrics.isLoading}
+              className="gap-2"
+            >
+              {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Export Report
+            </Button>
+            <AnalyticsTimeFilter onDateRangeChange={handleDateRangeChange} />
+          </div>
+        </PageHeader>
+        <div className="sm:hidden">
           <AnalyticsTimeFilter onDateRangeChange={handleDateRangeChange} />
         </div>
-      </PageHeader>
+      </div>
 
       {/* Filter Chips + Saved Views */}
       <div className="flex flex-wrap items-center gap-2">
