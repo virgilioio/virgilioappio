@@ -1092,31 +1092,13 @@ export default function JobDetail() {
                           </div>
                         </CardHeader>
                       <CardContent className="p-0 h-0 flex-1">
-                        {/* Mobile board view: native scroll with snap */}
-                        {pipelineSectionTab === 'recruiting' && pipelineView === 'board' && (
-                          <div className="h-full w-full overflow-y-auto sm:hidden p-layout-md">
-                            <PipelineOverview
-                              jobId={id!}
-                              showHeader={false}
-                              viewMode={pipelineView}
-                              onViewModeChange={setPipelineView}
-                              selectionMode={selectionMode}
-                              onSelectionModeChange={setSelectionMode}
-                              onSelectedIdsChange={setSelectedCandidateIds}
-                              refreshToken={pipelineRefresh}
-                              onStageChanged={() => setPipelineRefresh((v) => v + 1)}
-                              onCandidateClick={openPipelineProfile}
-                            />
-                          </div>
-                        )}
-                        {/* Desktop board view + all other tabs: ScrollArea */}
-                        <ScrollArea className={`h-full w-full scrollbar-black ${pipelineSectionTab === 'recruiting' && pipelineView === 'board' ? 'hidden sm:block' : ''}`}>
-                          {pipelineSectionTab === 'recruiting' ? (
-                            <div className={pipelineView === 'list' ? 'w-full p-layout-md' : 'w-fit p-layout-md'}>
+                        {pipelineSectionTab === 'recruiting' && pipelineView === 'board' ? (
+                          <>
+                            {/* Mobile: native scroll with snap */}
+                            <div className="h-full w-full overflow-y-auto sm:hidden p-layout-md">
                               <PipelineOverview
                                 jobId={id!}
                                 showHeader={false}
-                                externalScroll
                                 viewMode={pipelineView}
                                 onViewModeChange={setPipelineView}
                                 selectionMode={selectionMode}
@@ -1127,6 +1109,43 @@ export default function JobDetail() {
                                 onCandidateClick={openPipelineProfile}
                               />
                             </div>
+                            {/* Desktop: ScrollArea */}
+                            <ScrollArea className="h-full w-full scrollbar-black hidden sm:block">
+                              <div className="w-fit p-layout-md">
+                                <PipelineOverview
+                                  jobId={id!}
+                                  showHeader={false}
+                                  externalScroll
+                                  viewMode={pipelineView}
+                                  onViewModeChange={setPipelineView}
+                                  selectionMode={selectionMode}
+                                  onSelectionModeChange={setSelectionMode}
+                                  onSelectedIdsChange={setSelectedCandidateIds}
+                                  refreshToken={pipelineRefresh}
+                                  onStageChanged={() => setPipelineRefresh((v) => v + 1)}
+                                  onCandidateClick={openPipelineProfile}
+                                />
+                              </div>
+                            </ScrollArea>
+                          </>
+                        ) : (
+                          <ScrollArea className="h-full w-full scrollbar-black">
+                            {pipelineSectionTab === 'recruiting' ? (
+                              <div className="w-full p-layout-md">
+                                <PipelineOverview
+                                  jobId={id!}
+                                  showHeader={false}
+                                  externalScroll
+                                  viewMode={pipelineView}
+                                  onViewModeChange={setPipelineView}
+                                  selectionMode={selectionMode}
+                                  onSelectionModeChange={setSelectionMode}
+                                  onSelectedIdsChange={setSelectedCandidateIds}
+                                  refreshToken={pipelineRefresh}
+                                  onStageChanged={() => setPipelineRefresh((v) => v + 1)}
+                                  onCandidateClick={openPipelineProfile}
+                                />
+                              </div>
                             ) : pipelineSectionTab === 'suggested' ? (
                               <div className="w-full p-layout-md">
                                 <div className="space-y-4">
@@ -1141,26 +1160,25 @@ export default function JobDetail() {
                                       </Badge>
                                     )}
                                   </div>
-                                  
                                   {isLoadingMatches ? (
                                     <div className="text-center py-8">
                                       <div className="text-text-tertiary text-sm">
                                         Finding the best matching candidates...
                                       </div>
                                     </div>
-                                   ) : matchingCandidates && matchingCandidates.length > 0 ? (
-                                     <CandidateTable
-                                       candidates={matchingCandidates as any}
-                                       isLoading={false}
-                                       onEdit={() => {}}
-                                       onDelete={() => {}}
-                                       markCandidateAsViewed={() => {}}
-                                       isCandidateNewForUser={() => false}
-                                       onRowClick={openSuggestedProfile}
-                                       hideActions={true}
-                                        showMatchScore={true}
-                                        hideSkills={true}
-                                     />
+                                  ) : matchingCandidates && matchingCandidates.length > 0 ? (
+                                    <CandidateTable
+                                      candidates={matchingCandidates as any}
+                                      isLoading={false}
+                                      onEdit={() => {}}
+                                      onDelete={() => {}}
+                                      markCandidateAsViewed={() => {}}
+                                      isCandidateNewForUser={() => false}
+                                      onRowClick={openSuggestedProfile}
+                                      hideActions={true}
+                                      showMatchScore={true}
+                                      hideSkills={true}
+                                    />
                                   ) : (
                                     <div className="text-center py-8">
                                       <div className="text-text-tertiary text-sm">
@@ -1170,89 +1188,90 @@ export default function JobDetail() {
                                   )}
                                 </div>
                               </div>
-                           ) : pipelineSectionTab === 'application' ? (
-                             <div className="w-full p-layout-md">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <Card>
-                          <CardHeader className="pb-2">
-                            <div className="text-sm text-text-secondary">Active Candidates</div>
-                            <div className="text-3xl font-semibold text-text-primary">{activeCount}</div>
-                          </CardHeader>
-                        </Card>
-                        <Card>
-                          <CardHeader className="pb-2">
-                            <div className="text-sm text-text-secondary">Offers</div>
-                            <div className="text-3xl font-semibold text-text-primary">{offerCount}</div>
-                          </CardHeader>
-                        </Card>
-                        <Card>
-                          <CardHeader className="pb-2">
-                            <div className="text-sm text-text-secondary">Hired</div>
-                            <div className="text-3xl font-semibold text-text-primary">{hiredCount}</div>
-                          </CardHeader>
-                        </Card>
-                        <Card>
-                          <CardHeader className="pb-2">
-                            <div className="text-sm text-text-secondary">Rejected</div>
-                            <div className="text-3xl font-semibold text-text-primary">{rejectedCount}</div>
-                          </CardHeader>
-                        </Card>
-                      </div>
-                             </div>
+                            ) : pipelineSectionTab === 'application' ? (
+                              <div className="w-full p-layout-md">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                  <Card>
+                                    <CardHeader className="pb-2">
+                                      <div className="text-sm text-text-secondary">Active Candidates</div>
+                                      <div className="text-3xl font-semibold text-text-primary">{activeCount}</div>
+                                    </CardHeader>
+                                  </Card>
+                                  <Card>
+                                    <CardHeader className="pb-2">
+                                      <div className="text-sm text-text-secondary">Offers</div>
+                                      <div className="text-3xl font-semibold text-text-primary">{offerCount}</div>
+                                    </CardHeader>
+                                  </Card>
+                                  <Card>
+                                    <CardHeader className="pb-2">
+                                      <div className="text-sm text-text-secondary">Hired</div>
+                                      <div className="text-3xl font-semibold text-text-primary">{hiredCount}</div>
+                                    </CardHeader>
+                                  </Card>
+                                  <Card>
+                                    <CardHeader className="pb-2">
+                                      <div className="text-sm text-text-secondary">Rejected</div>
+                                      <div className="text-3xl font-semibold text-text-primary">{rejectedCount}</div>
+                                    </CardHeader>
+                                  </Card>
+                                </div>
+                              </div>
                             ) : pipelineSectionTab === 'offers' ? (
-                             <div className="w-full p-layout-md">
-                               <CandidateTable
-                                 candidates={offersCandidates}
-                                 isLoading={statusListsLoading}
-                                 onEdit={handleEditCandidate}
-                                 onDelete={handleDeleteCandidate}
-                                 markCandidateAsViewed={() => {}}
-                                 isCandidateNewForUser={() => false}
-                                 onRowClick={openOffersProfile}
-                                 selectionMode={selectionMode}
-                                 onSelectionModeChange={setSelectionMode}
-                                 selectedIds={selectedCandidateIds}
+                              <div className="w-full p-layout-md">
+                                <CandidateTable
+                                  candidates={offersCandidates}
+                                  isLoading={statusListsLoading}
+                                  onEdit={handleEditCandidate}
+                                  onDelete={handleDeleteCandidate}
+                                  markCandidateAsViewed={() => {}}
+                                  isCandidateNewForUser={() => false}
+                                  onRowClick={openOffersProfile}
+                                  selectionMode={selectionMode}
+                                  onSelectionModeChange={setSelectionMode}
+                                  selectedIds={selectedCandidateIds}
                                   onSelectedIdsChange={setSelectedCandidateIds}
                                   hideSkills={true}
                                 />
-                             </div>
-                           ) : pipelineSectionTab === 'hired' ? (
-                             <div className="w-full p-layout-md">
-                               <CandidateTable
-                                 candidates={hiredCandidates}
-                                 isLoading={statusListsLoading}
-                                 onEdit={handleEditCandidate}
-                                 onDelete={handleDeleteCandidate}
-                                 markCandidateAsViewed={() => {}}
-                                 isCandidateNewForUser={() => false}
-                                 onRowClick={openHiredProfile}
-                                 selectionMode={selectionMode}
-                                 onSelectionModeChange={setSelectionMode}
-                                 selectedIds={selectedCandidateIds}
+                              </div>
+                            ) : pipelineSectionTab === 'hired' ? (
+                              <div className="w-full p-layout-md">
+                                <CandidateTable
+                                  candidates={hiredCandidates}
+                                  isLoading={statusListsLoading}
+                                  onEdit={handleEditCandidate}
+                                  onDelete={handleDeleteCandidate}
+                                  markCandidateAsViewed={() => {}}
+                                  isCandidateNewForUser={() => false}
+                                  onRowClick={openHiredProfile}
+                                  selectionMode={selectionMode}
+                                  onSelectionModeChange={setSelectionMode}
+                                  selectedIds={selectedCandidateIds}
                                   onSelectedIdsChange={setSelectedCandidateIds}
                                   hideSkills={true}
                                 />
-                             </div>
-                           ) : (
-                             <div className="w-full p-layout-md">
-                               <CandidateTable
-                                 candidates={rejectedCandidates}
-                                 isLoading={statusListsLoading}
-                                 onEdit={handleEditCandidate}
-                                 onDelete={handleDeleteCandidate}
-                                 markCandidateAsViewed={() => {}}
-                                 isCandidateNewForUser={() => false}
-                                 onRowClick={openRejectedProfile}
-                                 selectionMode={selectionMode}
-                                 onSelectionModeChange={setSelectionMode}
-                                 selectedIds={selectedCandidateIds}
+                              </div>
+                            ) : (
+                              <div className="w-full p-layout-md">
+                                <CandidateTable
+                                  candidates={rejectedCandidates}
+                                  isLoading={statusListsLoading}
+                                  onEdit={handleEditCandidate}
+                                  onDelete={handleDeleteCandidate}
+                                  markCandidateAsViewed={() => {}}
+                                  isCandidateNewForUser={() => false}
+                                  onRowClick={openRejectedProfile}
+                                  selectionMode={selectionMode}
+                                  onSelectionModeChange={setSelectionMode}
+                                  selectedIds={selectedCandidateIds}
                                   onSelectedIdsChange={setSelectedCandidateIds}
                                   hideSkills={true}
                                 />
-                             </div>
-                           )}
-                        </ScrollArea>
-                    </CardContent>
+                              </div>
+                            )}
+                          </ScrollArea>
+                        )}
+                      </CardContent>
                   </Card>
                 </div>
               </TabsContent>
@@ -1485,31 +1504,13 @@ export default function JobDetail() {
                         </div>
                       </CardHeader>
                       <CardContent className="p-0 h-0 flex-1">
-                        {/* Mobile board view: native scroll with snap */}
-                        {pipelineSectionTab === 'recruiting' && pipelineView === 'board' && (
-                          <div className="h-full w-full overflow-y-auto sm:hidden p-layout-md">
-                            <PipelineOverview
-                              jobId={id!}
-                              showHeader={false}
-                              viewMode={pipelineView}
-                              onViewModeChange={setPipelineView}
-                              selectionMode={selectionMode}
-                              onSelectionModeChange={setSelectionMode}
-                              onSelectedIdsChange={setSelectedCandidateIds}
-                              refreshToken={pipelineRefresh}
-                              onStageChanged={() => setPipelineRefresh((v) => v + 1)}
-                              onCandidateClick={openPipelineProfile}
-                            />
-                          </div>
-                        )}
-                        {/* Desktop board view + all other tabs: ScrollArea */}
-                        <ScrollArea className={`h-full w-full scrollbar-black ${pipelineSectionTab === 'recruiting' && pipelineView === 'board' ? 'hidden sm:block' : ''}`}>
-                          {pipelineSectionTab === 'recruiting' ? (
-                            <div className={pipelineView === 'list' ? 'w-full p-layout-md' : 'w-fit p-layout-md'}>
+                        {pipelineSectionTab === 'recruiting' && pipelineView === 'board' ? (
+                          <>
+                            {/* Mobile: native scroll with snap */}
+                            <div className="h-full w-full overflow-y-auto sm:hidden p-layout-md">
                               <PipelineOverview
                                 jobId={id!}
                                 showHeader={false}
-                                externalScroll
                                 viewMode={pipelineView}
                                 onViewModeChange={setPipelineView}
                                 selectionMode={selectionMode}
@@ -1520,119 +1521,156 @@ export default function JobDetail() {
                                 onCandidateClick={openPipelineProfile}
                               />
                             </div>
-                          ) : pipelineSectionTab === 'suggested' ? (
-                            <div className="w-full p-layout-md">
-                              <div className="space-y-4">
-                                <div className="flex items-center gap-2">
-                                  <Sparkles className="h-4 w-4 text-primary" />
-                                  <span className="text-sm font-medium text-text-primary">
-                                    AI-Matched Candidates
-                                  </span>
-                                  {matchingCandidates && matchingCandidates.length > 0 && (
-                                    <Badge variant="secondary" className="text-xs">
-                                      {matchingCandidates.length} matches
-                                    </Badge>
+                            {/* Desktop: ScrollArea */}
+                            <ScrollArea className="h-full w-full scrollbar-black hidden sm:block">
+                              <div className="w-fit p-layout-md">
+                                <PipelineOverview
+                                  jobId={id!}
+                                  showHeader={false}
+                                  externalScroll
+                                  viewMode={pipelineView}
+                                  onViewModeChange={setPipelineView}
+                                  selectionMode={selectionMode}
+                                  onSelectionModeChange={setSelectionMode}
+                                  onSelectedIdsChange={setSelectedCandidateIds}
+                                  refreshToken={pipelineRefresh}
+                                  onStageChanged={() => setPipelineRefresh((v) => v + 1)}
+                                  onCandidateClick={openPipelineProfile}
+                                />
+                              </div>
+                            </ScrollArea>
+                          </>
+                        ) : (
+                          <ScrollArea className="h-full w-full scrollbar-black">
+                            {pipelineSectionTab === 'recruiting' ? (
+                              <div className="w-full p-layout-md">
+                                <PipelineOverview
+                                  jobId={id!}
+                                  showHeader={false}
+                                  externalScroll
+                                  viewMode={pipelineView}
+                                  onViewModeChange={setPipelineView}
+                                  selectionMode={selectionMode}
+                                  onSelectionModeChange={setSelectionMode}
+                                  onSelectedIdsChange={setSelectedCandidateIds}
+                                  refreshToken={pipelineRefresh}
+                                  onStageChanged={() => setPipelineRefresh((v) => v + 1)}
+                                  onCandidateClick={openPipelineProfile}
+                                />
+                              </div>
+                            ) : pipelineSectionTab === 'suggested' ? (
+                              <div className="w-full p-layout-md">
+                                <div className="space-y-4">
+                                  <div className="flex items-center gap-2">
+                                    <Sparkles className="h-4 w-4 text-primary" />
+                                    <span className="text-sm font-medium text-text-primary">
+                                      AI-Matched Candidates
+                                    </span>
+                                    {matchingCandidates && matchingCandidates.length > 0 && (
+                                      <Badge variant="secondary" className="text-xs">
+                                        {matchingCandidates.length} matches
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  {isLoadingMatches ? (
+                                    <div className="text-center py-8">
+                                      <div className="text-text-tertiary text-sm">
+                                        Finding the best matching candidates...
+                                      </div>
+                                    </div>
+                                  ) : matchingCandidates && matchingCandidates.length > 0 ? (
+                                    <CandidateTable
+                                      candidates={matchingCandidates as any}
+                                      isLoading={false}
+                                      onEdit={() => {}}
+                                      onDelete={() => {}}
+                                      markCandidateAsViewed={() => {}}
+                                      isCandidateNewForUser={() => false}
+                                      onRowClick={openSuggestedProfile}
+                                      hideActions={true}
+                                      showMatchScore={true}
+                                      hideSkills={true}
+                                    />
+                                  ) : (
+                                    <div className="text-center py-8">
+                                      <div className="text-text-tertiary text-sm">
+                                        No matching candidates found. Try adjusting the job requirements or add more skills.
+                                      </div>
+                                    </div>
                                   )}
                                 </div>
-                                
-                                {isLoadingMatches ? (
-                                  <div className="text-center py-8">
-                                    <div className="text-text-tertiary text-sm">
-                                      Finding the best matching candidates...
-                                    </div>
-                                  </div>
-                                ) : matchingCandidates && matchingCandidates.length > 0 ? (
-                                  <CandidateTable
-                                    candidates={matchingCandidates as any}
-                                    isLoading={false}
-                                    onEdit={() => {}}
-                                    onDelete={() => {}}
-                                    markCandidateAsViewed={() => {}}
-                                    isCandidateNewForUser={() => false}
-                                    onRowClick={openSuggestedProfile}
-                                    hideActions={true}
-                                     showMatchScore={true}
-                                     hideSkills={true}
-                                  />
-                                ) : (
-                                  <div className="text-center py-8">
-                                    <div className="text-text-tertiary text-sm">
-                                      No matching candidates found. Try adjusting the job requirements or add more skills.
-                                    </div>
-                                  </div>
-                                )}
                               </div>
-                            </div>
-                          ) : pipelineSectionTab === 'application' ? (
-                            <div className="w-full p-layout-md">
-                              <CandidateTable
-                                candidates={applicationReviewCandidates}
-                                isLoading={statusListsLoading}
-                                onEdit={handleEditCandidate}
-                                onDelete={handleDeleteCandidate}
-                                markCandidateAsViewed={markCandidateAsViewed}
-                                isCandidateNewForUser={isCandidateNewForUser}
-                                onRowClick={(candidateId) => openProfileInPlace(candidateId, 'application', applicationReviewCandidates)}
-                                selectionMode={selectionMode}
-                                onSelectionModeChange={setSelectionMode}
-                                selectedIds={selectedCandidateIds}
-                                 onSelectedIdsChange={setSelectedCandidateIds}
-                                 hideSkills={true}
-                               />
-                            </div>
-                          ) : pipelineSectionTab === 'offers' ? (
-                            <div className="w-full p-layout-md">
-                              <CandidateTable
-                                candidates={offersCandidates}
-                                isLoading={statusListsLoading}
-                                onEdit={handleEditCandidate}
-                                onDelete={handleDeleteCandidate}
-                                markCandidateAsViewed={() => {}}
-                                isCandidateNewForUser={() => false}
-                                onRowClick={openOffersProfile}
-                                selectionMode={selectionMode}
-                                onSelectionModeChange={setSelectionMode}
-                                selectedIds={selectedCandidateIds}
-                                 onSelectedIdsChange={setSelectedCandidateIds}
-                                 hideSkills={true}
-                               />
-                            </div>
-                          ) : pipelineSectionTab === 'hired' ? (
-                            <div className="w-full p-layout-md">
-                              <CandidateTable
-                                candidates={hiredCandidates}
-                                isLoading={statusListsLoading}
-                                onEdit={handleEditCandidate}
-                                onDelete={handleDeleteCandidate}
-                                markCandidateAsViewed={() => {}}
-                                isCandidateNewForUser={() => false}
-                                onRowClick={openHiredProfile}
-                                selectionMode={selectionMode}
-                                onSelectionModeChange={setSelectionMode}
-                                selectedIds={selectedCandidateIds}
-                                 onSelectedIdsChange={setSelectedCandidateIds}
-                                 hideSkills={true}
-                               />
-                            </div>
-                          ) : (
-                            <div className="w-full p-layout-md">
-                              <CandidateTable
-                                candidates={rejectedCandidates}
-                                isLoading={statusListsLoading}
-                                onEdit={handleEditCandidate}
-                                onDelete={handleDeleteCandidate}
-                                markCandidateAsViewed={() => {}}
-                                isCandidateNewForUser={() => false}
-                                onRowClick={openRejectedProfile}
-                                selectionMode={selectionMode}
-                                onSelectionModeChange={setSelectionMode}
-                                selectedIds={selectedCandidateIds}
-                                 onSelectedIdsChange={setSelectedCandidateIds}
-                                 hideSkills={true}
-                               />
-                            </div>
-                          )}
-                        </ScrollArea>
+                            ) : pipelineSectionTab === 'application' ? (
+                              <div className="w-full p-layout-md">
+                                <CandidateTable
+                                  candidates={applicationReviewCandidates}
+                                  isLoading={statusListsLoading}
+                                  onEdit={handleEditCandidate}
+                                  onDelete={handleDeleteCandidate}
+                                  markCandidateAsViewed={markCandidateAsViewed}
+                                  isCandidateNewForUser={isCandidateNewForUser}
+                                  onRowClick={(candidateId) => openProfileInPlace(candidateId, 'application', applicationReviewCandidates)}
+                                  selectionMode={selectionMode}
+                                  onSelectionModeChange={setSelectionMode}
+                                  selectedIds={selectedCandidateIds}
+                                  onSelectedIdsChange={setSelectedCandidateIds}
+                                  hideSkills={true}
+                                />
+                              </div>
+                            ) : pipelineSectionTab === 'offers' ? (
+                              <div className="w-full p-layout-md">
+                                <CandidateTable
+                                  candidates={offersCandidates}
+                                  isLoading={statusListsLoading}
+                                  onEdit={handleEditCandidate}
+                                  onDelete={handleDeleteCandidate}
+                                  markCandidateAsViewed={() => {}}
+                                  isCandidateNewForUser={() => false}
+                                  onRowClick={openOffersProfile}
+                                  selectionMode={selectionMode}
+                                  onSelectionModeChange={setSelectionMode}
+                                  selectedIds={selectedCandidateIds}
+                                  onSelectedIdsChange={setSelectedCandidateIds}
+                                  hideSkills={true}
+                                />
+                              </div>
+                            ) : pipelineSectionTab === 'hired' ? (
+                              <div className="w-full p-layout-md">
+                                <CandidateTable
+                                  candidates={hiredCandidates}
+                                  isLoading={statusListsLoading}
+                                  onEdit={handleEditCandidate}
+                                  onDelete={handleDeleteCandidate}
+                                  markCandidateAsViewed={() => {}}
+                                  isCandidateNewForUser={() => false}
+                                  onRowClick={openHiredProfile}
+                                  selectionMode={selectionMode}
+                                  onSelectionModeChange={setSelectionMode}
+                                  selectedIds={selectedCandidateIds}
+                                  onSelectedIdsChange={setSelectedCandidateIds}
+                                  hideSkills={true}
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-full p-layout-md">
+                                <CandidateTable
+                                  candidates={rejectedCandidates}
+                                  isLoading={statusListsLoading}
+                                  onEdit={handleEditCandidate}
+                                  onDelete={handleDeleteCandidate}
+                                  markCandidateAsViewed={() => {}}
+                                  isCandidateNewForUser={() => false}
+                                  onRowClick={openRejectedProfile}
+                                  selectionMode={selectionMode}
+                                  onSelectionModeChange={setSelectionMode}
+                                  selectedIds={selectedCandidateIds}
+                                  onSelectedIdsChange={setSelectedCandidateIds}
+                                  hideSkills={true}
+                                />
+                              </div>
+                            )}
+                          </ScrollArea>
+                        )}
                       </CardContent>
                     </Card>
                   </div>
