@@ -8,7 +8,7 @@ export function CandidateProfileSkeleton() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Name card / tabs skeleton */}
-      <div className="rounded-xl border border-border bg-surface-primary p-5 space-y-4">
+      <div className="space-y-4">
         <div className="flex items-center gap-3">
           <Skeleton className="h-10 w-10 rounded-full flex-shrink-0" />
           <div className="flex-1 space-y-2">
@@ -29,7 +29,7 @@ export function CandidateProfileSkeleton() {
         {/* Left column */}
         <div className="space-y-6">
           {/* Details card */}
-          <div className="rounded-xl border border-border bg-surface-primary p-5 space-y-4">
+          <div className="space-y-4">
             <Skeleton className="h-5 w-28" />
             <div className="space-y-3">
               {[1, 2, 3, 4].map((i) => (
@@ -42,7 +42,7 @@ export function CandidateProfileSkeleton() {
           </div>
 
           {/* Skills card */}
-          <div className="rounded-xl border border-border bg-surface-primary p-5 space-y-4">
+          <div className="space-y-4">
             <Skeleton className="h-5 w-16" />
             <div className="flex flex-wrap gap-2">
               {[1, 2, 3, 4, 5].map((i) => (
@@ -52,7 +52,7 @@ export function CandidateProfileSkeleton() {
           </div>
 
           {/* Summary card */}
-          <div className="rounded-xl border border-border bg-surface-primary p-5 space-y-3">
+          <div className="space-y-3">
             <Skeleton className="h-5 w-32" />
             <Skeleton className="h-3.5 w-full" />
             <Skeleton className="h-3.5 w-5/6" />
@@ -63,7 +63,7 @@ export function CandidateProfileSkeleton() {
         {/* Right column */}
         <div className="space-y-6">
           {/* Activity / comments card */}
-          <div className="rounded-xl border border-border bg-surface-primary p-5 space-y-4">
+          <div className="space-y-4">
             <Skeleton className="h-5 w-24" />
             {[1, 2, 3].map((i) => (
               <div key={i} className="flex items-start gap-3">
@@ -77,7 +77,7 @@ export function CandidateProfileSkeleton() {
           </div>
 
           {/* Work experience card */}
-          <div className="rounded-xl border border-border bg-surface-primary p-5 space-y-4">
+          <div className="space-y-4">
             <Skeleton className="h-5 w-36" />
             {[1, 2].map((i) => (
               <div key={i} className="flex items-start gap-3">
