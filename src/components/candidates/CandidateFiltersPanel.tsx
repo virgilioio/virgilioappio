@@ -57,6 +57,7 @@ export function CandidateFiltersPanel({ filterOptions }: CandidateFiltersPanelPr
   return (
     <>
       {/* Horizontal chip bar — renders as inline fragment for parent flex layout */}
+      <MobileFilterDrawer activeFilterCount={activeFilterCount} onClearAll={clearAll}>
         <FilterChipPopover
           label="Job"
           options={filterOptions.jobOptions}
@@ -147,12 +148,13 @@ export function CandidateFiltersPanel({ filterOptions }: CandidateFiltersPanelPr
             variant="ghost"
             size="sm"
             onClick={clearAll}
-            className="gap-1 h-8 text-xs text-muted-foreground hover:text-foreground font-poppins"
+            className="gap-1 h-8 text-xs text-muted-foreground hover:text-foreground font-poppins sm:inline-flex hidden"
           >
             <X className="h-3 w-3" />
             Clear filters
           </Button>
         )}
+      </MobileFilterDrawer>
 
       {/* Active filter chips */}
       {activeTags.length > 0 && (

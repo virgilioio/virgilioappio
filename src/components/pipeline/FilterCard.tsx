@@ -65,50 +65,62 @@ export function FilterCard({
         />
       </div>
 
-      <FilterChipPopover
-        label="Status"
-        options={STATUS_OPTIONS}
-        selectedValues={statusSelected}
-        onSelectionChange={(vals) => onJobStatusChange(vals.length === 0 ? 'all' : vals[vals.length - 1])}
-        searchable={false}
-      />
-
-      {showUserFilter && userChipOptions.length > 0 && (
+      <MobileFilterDrawer
+        activeFilterCount={
+          (jobStatus !== 'open' ? 1 : 0) + selectedUsers.length + selectedDepartments.length
+        }
+        onClearAll={() => {
+          onSearchChange('')
+          onJobStatusChange('open')
+          onSelectedUsersChange([])
+          onSelectedDepartmentsChange([])
+        }}
+      >
         <FilterChipPopover
-          label="User"
-          options={userChipOptions}
-          selectedValues={selectedUsers}
-          onSelectionChange={onSelectedUsersChange}
-          searchable
+          label="Status"
+          options={STATUS_OPTIONS}
+          selectedValues={statusSelected}
+          onSelectionChange={(vals) => onJobStatusChange(vals.length === 0 ? 'all' : vals[vals.length - 1])}
+          searchable={false}
         />
-      )}
 
-      {deptChipOptions.length > 0 && (
-        <FilterChipPopover
-          label="Department"
-          options={deptChipOptions}
-          selectedValues={selectedDepartments}
-          onSelectionChange={onSelectedDepartmentsChange}
-          searchable
-        />
-      )}
+        {showUserFilter && userChipOptions.length > 0 && (
+          <FilterChipPopover
+            label="User"
+            options={userChipOptions}
+            selectedValues={selectedUsers}
+            onSelectionChange={onSelectedUsersChange}
+            searchable
+          />
+        )}
 
-      {hasActiveFilters && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            onSearchChange('')
-            onJobStatusChange('open')
-            onSelectedUsersChange([])
-            onSelectedDepartmentsChange([])
-          }}
-          className="gap-1 h-8 text-xs text-muted-foreground hover:text-foreground font-poppins"
-        >
-          <X className="h-3 w-3" />
-          Clear filters
-        </Button>
-      )}
+        {deptChipOptions.length > 0 && (
+          <FilterChipPopover
+            label="Department"
+            options={deptChipOptions}
+            selectedValues={selectedDepartments}
+            onSelectionChange={onSelectedDepartmentsChange}
+            searchable
+          />
+        )}
+
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              onSearchChange('')
+              onJobStatusChange('open')
+              onSelectedUsersChange([])
+              onSelectedDepartmentsChange([])
+            }}
+            className="gap-1 h-8 text-xs text-muted-foreground hover:text-foreground font-poppins sm:inline-flex hidden"
+          >
+            <X className="h-3 w-3" />
+            Clear filters
+          </Button>
+        )}
+      </MobileFilterDrawer>
     </>
   )
 }
