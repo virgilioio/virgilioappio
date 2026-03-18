@@ -83,10 +83,22 @@ export function useJobs() {
 
     console.log('Fetching jobs with optimized query for user:', user.id, 'userType:', userType, 'organizationId:', organizationId)
 
+    // Fetch tenant_id for current org to scope jobs to the active tenant
+    // This prevents platform admins with multi-tenant memberships from seeing cross-tenant jobs
+    let tenantId: string | null = null
+    if (organizationId) {
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('tenant_id')
+        .eq('id', organizationId)
+        .single()
+      tenantId = orgData?.tenant_id || null
+    }
+
     // Build the main query with all JOINs to eliminate N+1 queries
     let baseQuery = `
       *,
-      organizations!inner(id, name)
+      organizations!inner(id, name, tenant_id)
     `
 
     let query = supabase
@@ -94,10 +106,10 @@ export function useJobs() {
       .select(baseQuery)
       .order('created_at', { ascending: false })
 
-    // RLS policies handle organization filtering:
-    // - Virgilio staff: see all jobs in hierarchy (excluding SaaS)
-    // - Other users: see only their org jobs
-    // Guest/recruiter filtering applied below
+    // Explicit tenant scoping — defense-in-depth on top of RLS
+    if (tenantId) {
+      query = query.eq('organizations.tenant_id', tenantId)
+    }
 
     const { data: jobsData, error: fetchError } = await query
 
