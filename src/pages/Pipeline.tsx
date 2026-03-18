@@ -137,7 +137,7 @@ export default function Pipeline() {
       <PermissionGate permission="canViewJobs">
         <div>
           <Section variant="default" banded container className="animate-fade-in">
-            <PageHeader title="Pipeline" subtitle="Aggregate hiring pipeline across all jobs" />
+            <PageHeader title="Pipeline" />
           </Section>
 
           <Section container className="animate-fade-in">

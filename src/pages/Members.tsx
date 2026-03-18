@@ -87,7 +87,7 @@ export default function Members() {
           <Section variant="default" banded container className="animate-fade-in">
             <PageHeader
               title="Team Members"
-              subtitle="Manage team members and their roles within your organization"
+             
             />
           </Section>
 

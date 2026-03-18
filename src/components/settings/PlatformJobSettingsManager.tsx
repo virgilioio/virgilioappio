@@ -10,7 +10,7 @@ export function PlatformJobSettingsManager() {
     <div className="space-y-6">
       <PageHeader 
         title="Platform Job Settings" 
-        subtitle="Manage platform-wide default settings that organizations can inherit"
+       
       />
 
       <Tabs defaultValue="stages" className="w-full">

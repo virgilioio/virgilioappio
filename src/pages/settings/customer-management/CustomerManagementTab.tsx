@@ -15,7 +15,7 @@ export function CustomerManagementTab() {
     <div className="space-y-6">
       <PageHeader 
         title="Customer Management" 
-        subtitle="Overview of SaaS customers and platform metrics"
+       
       />
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

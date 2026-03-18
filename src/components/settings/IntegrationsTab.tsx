@@ -253,7 +253,7 @@ export function IntegrationsTab({ initialConfigureId }: IntegrationsTabProps) {
     <div className="space-y-md">
       <PageHeader
         title="Integrations"
-        subtitle="Connect external services to enhance your workflow"
+       
       />
 
       {/* Toolbar */}

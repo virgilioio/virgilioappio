@@ -159,9 +159,8 @@ export default function Candidates() {
           <Section variant="default" banded container className="animate-fade-in">
             <PageHeader
               title="All Candidates"
-              subtitle="Manage all candidates in your talent database. Use sync to import existing job candidates."
             >
-              <div className="flex gap-2">
+              <div className="hidden sm:flex gap-2">
                 <Button
                   onClick={() => setIsCSVImportOpen(true)}
                   variant="outline"

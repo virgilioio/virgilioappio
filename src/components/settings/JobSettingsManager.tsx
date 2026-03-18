@@ -16,10 +16,6 @@ export function JobSettingsManager({ context = 'organization' }: JobSettingsMana
     <div className="space-y-6">
       <PageHeader 
         title={context === 'platform-defaults' ? 'Platform Job Settings' : 'Job Settings'}
-        subtitle={context === 'platform-defaults' 
-          ? 'Configure platform-wide default job settings that organizations can inherit'
-          : 'Configure job-related settings for your organization'
-        }
       />
 
       <Tabs defaultValue="stages" className="w-full">

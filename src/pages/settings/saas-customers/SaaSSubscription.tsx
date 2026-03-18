@@ -52,7 +52,7 @@ export function SaaSSubscription() {
     <div className="space-y-6">
       <PageHeader 
         title="Subscription" 
-        subtitle="Manage your SaaS subscription and billing"
+       
       />
 
       {/* Status Banners */}

@@ -88,7 +88,7 @@ export function ProfileTab() {
     <div className="space-y-md">
       <PageHeader 
         title="Profile" 
-        subtitle="Manage your personal information and preferences"
+       
       />
       
       {/* Profile Information Card */}

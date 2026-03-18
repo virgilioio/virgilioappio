@@ -123,7 +123,7 @@ export default function OrganizationTab() {
       <div className="space-y-md">
         <PageHeader
           title="Company Profile"
-          subtitle="View and manage your company information"
+         
         />
         <Card>
           <CardContent className="pt-6">
@@ -142,7 +142,7 @@ export default function OrganizationTab() {
       <div className="space-y-md">
         <PageHeader
           title="Company Profile"
-          subtitle="View and manage your company information"
+         
         />
         <Card>
           <CardContent className="pt-6">
@@ -161,7 +161,7 @@ export default function OrganizationTab() {
       <div className="space-y-md">
         <PageHeader
           title="Company Profile"
-          subtitle="View and manage your company information"
+         
         />
         <Card>
           <CardContent className="pt-6">
@@ -184,7 +184,7 @@ export default function OrganizationTab() {
       <div className="space-y-md">
         <PageHeader
           title="Company Profile"
-          subtitle="View and manage your company information"
+         
         />
         <Card>
           <CardContent className="pt-6">
@@ -199,7 +199,7 @@ export default function OrganizationTab() {
     <div className="space-y-md">
       <PageHeader
         title="Company Profile"
-        subtitle="View and manage your company information"
+       
       >
         {!isEditMode && (
           <Button

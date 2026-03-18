@@ -65,7 +65,7 @@ export function SaaSCustomersList() {
     <div className="space-y-6">
       <PageHeader 
         title="SaaS Customers" 
-        subtitle="Manage SaaS paying customers and their subscriptions"
+       
       />
 
       <Card>

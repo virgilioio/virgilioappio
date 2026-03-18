@@ -67,7 +67,7 @@ export default function Jobs() {
       <PermissionGate permission="canViewJobs">
         <div>
           <Section variant="default" banded container className="animate-fade-in">
-            <PageHeader title="Jobs" subtitle="Manage job postings and track hiring progress" />
+            <PageHeader title="Jobs" />
           </Section>
 
           <Section container className="animate-fade-in">
