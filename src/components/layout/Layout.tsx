@@ -8,6 +8,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { BulkUploadProvider } from '@/contexts/BulkUploadContext'
 import { GlobalBulkUploadWidget } from '@/components/candidates/GlobalBulkUploadWidget'
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav'
 
 export function Layout() {
   const location = useLocation()
