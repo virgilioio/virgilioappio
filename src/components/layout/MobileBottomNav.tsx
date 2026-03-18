@@ -75,7 +75,7 @@ export function MobileBottomNav() {
             className="flex flex-col items-center justify-center flex-1 -mt-6 relative"
           >
             <div className={cn(
-              'h-11 w-11 rounded-full ring-2 ring-offset-2 ring-offset-surface-primary overflow-hidden transition-all',
+              'h-[50px] w-[50px] rounded-full ring-2 ring-offset-2 ring-offset-surface-primary overflow-hidden transition-all',
               isActive('/dashboard') ? 'ring-virgilio-purple shadow-md' : 'ring-virgilio-border'
             )}>
               <img src={gioFacePurple} alt="Home" className="h-full w-full object-cover" />
