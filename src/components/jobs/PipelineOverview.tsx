@@ -64,7 +64,7 @@ const isLastPriorityStage = (stage: JobStage) => {
   return p === 'last' || p === 99 || p === '99' || p === 999 || p === '999'
 }
 
-export function PipelineOverview({ jobId, showHeader = true, externalScroll = false, viewMode: controlledView, onViewModeChange, selectionMode: controlledSelectionMode, onSelectionModeChange, onSelectedIdsChange, refreshToken, onStageChanged, onCandidateClick }: PipelineOverviewProps) {
+export function PipelineOverview({ jobId, showHeader = true, externalScroll = false, viewMode: controlledView, onViewModeChange, selectionMode: controlledSelectionMode, onSelectionModeChange, onSelectedIdsChange, refreshToken, onStageChanged, includeApplicationReview = false, onCandidateClick }: PipelineOverviewProps) {
   const { loadHiringPlanInstances, isLoadingPlan } = useJobHiringPlan()
   const { fetchAssociationsForJob, moveAssociationToStage, updateAssociationStatus } = usePipelineActions()
 
