@@ -258,19 +258,25 @@ export function Header() {
 
         {/* User Menu and Mobile Navigation */}
         <div className="flex items-center gap-md">
-          {/* Global Search Bar */}
-          <GlobalSearchBar />
+          {/* Global Search Bar - hidden on mobile */}
+          <div className="hidden sm:block">
+            <GlobalSearchBar />
+          </div>
           
           {/* Global Create Button - hidden on mobile */}
           <div className="hidden sm:block">
             <GlobalCreateButton />
           </div>
           
-          {/* Sourcing Credit Indicator */}
-          <SourcingCreditIndicator />
+          {/* Sourcing Credit Indicator - hidden on mobile */}
+          <div className="hidden sm:block">
+            <SourcingCreditIndicator />
+          </div>
           
-          {/* Notification Center */}
-          <NotificationCenter />
+          {/* Notification Center - hidden on mobile */}
+          <div className="hidden sm:block">
+            <NotificationCenter />
+          </div>
           
           {/* Workspace Switcher */}
           {isPlatformAdmin && uniqueOrgs.length > 1 && (
@@ -299,50 +305,39 @@ export function Header() {
           )}
 
 
-          {/* User Menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:ring-2 hover:ring-virgilio-purple/20 transition-all">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={profile?.avatar_url} alt={userDisplayName} />
-                  <AvatarFallback className="text-sm bg-virgilio-purple text-white font-poppins font-semibold">{userInitials}</AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-52 shadow-calendly border-virgilio-border" align="end" forceMount>
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-poppins font-semibold text-virgilio-text leading-none">{userDisplayName}</p>
-                  <p className="text-xs font-poppins leading-none text-virgilio-muted">{user?.email}</p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-virgilio-border" />
-              <DropdownMenuItem asChild className="hover:bg-virgilio-purple/5 hover:text-virgilio-text transition-colors cursor-pointer">
-                <Link to="/settings" className="flex items-center gap-2 w-full">
-                  <Settings className="h-3.5 w-3.5" />
-                  <span className="font-poppins">Settings</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-virgilio-border" />
-              <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut} className="text-virgilio-error hover:bg-virgilio-error/10 hover:text-virgilio-error transition-colors cursor-pointer">
-                <LogOut className="h-3.5 w-3.5 mr-2" />
-                <span className="font-poppins">{isLoggingOut ? 'Logging out...' : 'Log out'}</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Mobile Navigation */}
-          <Popover open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" className="lg:hidden h-7 w-7">
-                <Menu className="h-4 w-4" />
-                <span className="sr-only">Toggle navigation menu</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-52 p-2 lg:hidden">
-              <NavigationContent />
-            </PopoverContent>
-          </Popover>
+          {/* User Menu - hidden on mobile (moved to bottom nav) */}
+          <div className="hidden sm:block">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:ring-2 hover:ring-virgilio-purple/20 transition-all">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={profile?.avatar_url} alt={userDisplayName} />
+                    <AvatarFallback className="text-sm bg-virgilio-purple text-white font-poppins font-semibold">{userInitials}</AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-52 shadow-calendly border-virgilio-border" align="end" forceMount>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-poppins font-semibold text-virgilio-text leading-none">{userDisplayName}</p>
+                    <p className="text-xs font-poppins leading-none text-virgilio-muted">{user?.email}</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-virgilio-border" />
+                <DropdownMenuItem asChild className="hover:bg-virgilio-purple/5 hover:text-virgilio-text transition-colors cursor-pointer">
+                  <Link to="/settings" className="flex items-center gap-2 w-full">
+                    <Settings className="h-3.5 w-3.5" />
+                    <span className="font-poppins">Settings</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-virgilio-border" />
+                <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut} className="text-virgilio-error hover:bg-virgilio-error/10 hover:text-virgilio-error transition-colors cursor-pointer">
+                  <LogOut className="h-3.5 w-3.5 mr-2" />
+                  <span className="font-poppins">{isLoggingOut ? 'Logging out...' : 'Log out'}</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
     </header>

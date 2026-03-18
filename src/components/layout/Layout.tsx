@@ -8,6 +8,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { BulkUploadProvider } from '@/contexts/BulkUploadContext'
 import { GlobalBulkUploadWidget } from '@/components/candidates/GlobalBulkUploadWidget'
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav'
 
 export function Layout() {
   const location = useLocation()
@@ -67,11 +68,12 @@ export function Layout() {
         <BulkUploadProvider>
           <div className="bg-background">
             <Header />
-            <main className="pt-12 sm:pt-14 min-h-[calc(100vh-6rem)] sm:min-h-[calc(100vh-7rem)]">
+            <main className="pt-12 sm:pt-14 pb-16 sm:pb-0 min-h-[calc(100vh-6rem)] sm:min-h-[calc(100vh-7rem)]">
               <Outlet />
             </main>
           </div>
           <GlobalBulkUploadWidget />
+          <MobileBottomNav />
         </BulkUploadProvider>
       </OrgGate>
     </AuthGate>
