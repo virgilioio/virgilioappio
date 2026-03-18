@@ -74,7 +74,7 @@ import { CandidateOfferDetails } from './CandidateOfferDetails'
 import { CandidateOfferApprovals } from './CandidateOfferApprovals'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { useQuery } from '@tanstack/react-query'
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
 
 interface StageScorecardProps {
   stageInstanceId: string;
@@ -915,22 +915,23 @@ const stageHasAutomation = useMemo(() => {
                     {candidate.candidate_name}
                     <span className="text-purple-period">.</span>
                   </h2>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="h-8 w-8 p-0"
-                        onClick={() => {
-                          navigate(`/candidates?openCandidate=${candidate.id}`)
-                          onOpenChange?.(false)
-                        }}
-                        aria-label="View full candidate profile"
-                      >
-                        <UserRound className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>View full candidate profile</TooltipContent>
-                  </Tooltip>
+                   <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => {
+                            navigate(`/candidates?openCandidate=${candidate.id}`);
+                            onOpenChange?.(false);
+                          }}
+                        >
+                          <UserRound className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>View full candidate profile</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   {candidate.linkedin_url && (
                     <Button
                       variant="outline"
