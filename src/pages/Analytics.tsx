@@ -162,21 +162,7 @@ export default function Analytics() {
 
   return (
     <div className="space-y-6 p-6 max-w-[1600px] mx-auto animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-virgilio-purple/10">
-            <BarChart3 className="h-6 w-6 text-virgilio-purple" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-poppins font-semibold text-virgilio-text">
-              Analytics<span className="text-[hsl(var(--purple-period))]">.</span>
-            </h1>
-            <p className="text-sm text-virgilio-muted font-poppins">
-              Recruiting operations dashboard
-            </p>
-          </div>
-        </div>
+      <PageHeader title="Analytics">
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
@@ -189,7 +175,7 @@ export default function Analytics() {
           </Button>
           <AnalyticsTimeFilter onDateRangeChange={handleDateRangeChange} />
         </div>
-      </div>
+      </PageHeader>
 
       {/* Filter Chips + Saved Views */}
       <div className="flex flex-wrap items-center gap-2">
