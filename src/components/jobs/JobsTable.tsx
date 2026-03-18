@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton, TableSkeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Plus, Search, FileText, Building, ChevronLeft, ChevronRight, MoreHorizontal, Eye, Edit, Archive, X } from 'lucide-react'
+import { MobileFilterDrawer } from '@/components/ui/mobile-filter-drawer'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PermissionGate } from '@/components/auth/PermissionGate'
@@ -210,50 +211,62 @@ export function JobsTable({
             />
           </div>
 
-          <FilterChipPopover
-            label="Status"
-            options={statusChipOptions}
-            selectedValues={statusFilter === 'all' ? [] : [statusFilter]}
-            onSelectionChange={(vals) => setStatusFilter(vals.length === 0 ? 'all' : vals[vals.length - 1])}
-            searchable={false}
-          />
-
-          {(permissions.canViewOrganizations || permissions.isPlatformAdmin) && orgChipOptions.length > 0 && (
+          <MobileFilterDrawer
+            activeFilterCount={
+              (statusFilter !== 'open' ? 1 : 0) + selectedOrganizations.length + selectedUsers.length
+            }
+            onClearAll={() => {
+              setSearchTerm('')
+              setStatusFilter('open')
+              setSelectedOrganizations([])
+              setSelectedUsers([])
+            }}
+          >
             <FilterChipPopover
-              label="Organization"
-              options={orgChipOptions}
-              selectedValues={selectedOrganizations}
-              onSelectionChange={setSelectedOrganizations}
-              searchable
+              label="Status"
+              options={statusChipOptions}
+              selectedValues={statusFilter === 'all' ? [] : [statusFilter]}
+              onSelectionChange={(vals) => setStatusFilter(vals.length === 0 ? 'all' : vals[vals.length - 1])}
+              searchable={false}
             />
-          )}
 
-          {!membersLoading && userChipOptions.length > 0 && (
-            <FilterChipPopover
-              label="User"
-              options={userChipOptions}
-              selectedValues={selectedUsers}
-              onSelectionChange={setSelectedUsers}
-              searchable
-            />
-          )}
+            {(permissions.canViewOrganizations || permissions.isPlatformAdmin) && orgChipOptions.length > 0 && (
+              <FilterChipPopover
+                label="Organization"
+                options={orgChipOptions}
+                selectedValues={selectedOrganizations}
+                onSelectionChange={setSelectedOrganizations}
+                searchable
+              />
+            )}
 
-          {hasActiveFilters && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSearchTerm('')
-                setStatusFilter('open')
-                setSelectedOrganizations([])
-                setSelectedUsers([])
-              }}
-              className="gap-1 h-8 text-xs text-muted-foreground hover:text-foreground font-poppins"
-            >
-              <X className="h-3 w-3" />
-              Clear filters
-            </Button>
-          )}
+            {!membersLoading && userChipOptions.length > 0 && (
+              <FilterChipPopover
+                label="User"
+                options={userChipOptions}
+                selectedValues={selectedUsers}
+                onSelectionChange={setSelectedUsers}
+                searchable
+              />
+            )}
+
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchTerm('')
+                  setStatusFilter('open')
+                  setSelectedOrganizations([])
+                  setSelectedUsers([])
+                }}
+                className="gap-1 h-8 text-xs text-muted-foreground hover:text-foreground font-poppins sm:inline-flex hidden"
+              >
+                <X className="h-3 w-3" />
+                Clear filters
+              </Button>
+            )}
+          </MobileFilterDrawer>
 
           <div className="ml-auto">
             <PermissionGate permission="canCreateJobs">

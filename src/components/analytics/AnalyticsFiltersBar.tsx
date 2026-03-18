@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { FilterChipPopover, type FilterChipOption } from '@/components/ui/filter-chip-popover'
 import { useAnalyticsFilterOptions } from '@/hooks/useAnalyticsFilterOptions'
 import { X } from 'lucide-react'
+import { MobileFilterDrawer } from '@/components/ui/mobile-filter-drawer'
 
 export interface AnalyticsFilters {
   recruiterIds: string[]
@@ -54,8 +55,10 @@ export function AnalyticsFiltersBar({ onFiltersChange }: AnalyticsFiltersBarProp
     })
   }, [selectedRecruiters, selectedJobs, selectedOrgs, selectedStatuses, onFiltersChange])
 
+  const activeCount = selectedStatuses.length + selectedRecruiters.length + selectedJobs.length + selectedOrgs.length
+
   return (
-    <>
+    <MobileFilterDrawer activeFilterCount={activeCount} onClearAll={clearAll}>
       <FilterChipPopover
         label="Status"
         options={JOB_STATUS_OPTIONS}
@@ -90,12 +93,12 @@ export function AnalyticsFiltersBar({ onFiltersChange }: AnalyticsFiltersBarProp
       {hasActiveFilters && (
         <button
           onClick={clearAll}
-          className="inline-flex items-center gap-1 text-xs font-poppins text-muted-foreground hover:text-foreground transition-colors ml-1"
+          className="inline-flex items-center gap-1 text-xs font-poppins text-muted-foreground hover:text-foreground transition-colors ml-1 sm:inline-flex hidden"
         >
           <X className="h-3 w-3" />
           Clear filters
         </button>
       )}
-    </>
+    </MobileFilterDrawer>
   )
 }

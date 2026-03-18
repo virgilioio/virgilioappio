@@ -3,6 +3,7 @@ import { Search, X } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Input } from '@/components/ui/input'
 import { FilterChipPopover } from '@/components/ui/filter-chip-popover'
+import { MobileFilterDrawer } from '@/components/ui/mobile-filter-drawer'
 import { IntegrationCard } from './IntegrationCard'
 import { IntegrationDetailDialog } from './IntegrationDetailDialog'
 import { CATEGORY_OPTIONS, STATUS_OPTIONS, type IntegrationCategory } from './integrationRegistry'
@@ -267,29 +268,34 @@ export function IntegrationsTab({ initialConfigureId }: IntegrationsTabProps) {
           />
         </div>
 
-        <FilterChipPopover
-          label="Category"
-          options={CATEGORY_OPTIONS}
-          selectedValues={selectedCategories}
-          onSelectionChange={setSelectedCategories}
-        />
+        <MobileFilterDrawer
+          activeFilterCount={selectedCategories.length + selectedStatuses.length}
+          onClearAll={clearAll}
+        >
+          <FilterChipPopover
+            label="Category"
+            options={CATEGORY_OPTIONS}
+            selectedValues={selectedCategories}
+            onSelectionChange={setSelectedCategories}
+          />
 
-        <FilterChipPopover
-          label="Status"
-          options={STATUS_OPTIONS}
-          selectedValues={selectedStatuses}
-          onSelectionChange={setSelectedStatuses}
-        />
+          <FilterChipPopover
+            label="Status"
+            options={STATUS_OPTIONS}
+            selectedValues={selectedStatuses}
+            onSelectionChange={setSelectedStatuses}
+          />
 
-        {hasActiveFilters && (
-          <button
-            onClick={clearAll}
-            className="inline-flex items-center gap-1 text-xs font-poppins text-muted-foreground hover:text-foreground transition-colors ml-1"
-          >
-            <X className="h-3 w-3" />
-            Clear filters
-          </button>
-        )}
+          {hasActiveFilters && (
+            <button
+              onClick={clearAll}
+              className="inline-flex items-center gap-1 text-xs font-poppins text-muted-foreground hover:text-foreground transition-colors ml-1 sm:inline-flex hidden"
+            >
+              <X className="h-3 w-3" />
+              Clear filters
+            </button>
+          )}
+        </MobileFilterDrawer>
       </div>
 
       {/* Card grid */}
