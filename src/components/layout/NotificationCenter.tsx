@@ -1,14 +1,37 @@
 import { useState } from 'react'
-import { Bell, Mail, BellOff, ClipboardCheck, MessageSquare } from 'lucide-react'
+import { Bell, BellOff } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { formatDistanceToNow } from 'date-fns'
+import { formatDistanceToNow, isToday, isYesterday } from 'date-fns'
 import { usePendingActivities, PendingActivity } from '@/hooks/usePendingActivities'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
+}
 
-import { Separator } from '@/components/ui/separator'
+function groupByDate(items: PendingActivity[]): { label: string; items: PendingActivity[] }[] {
+  const today: PendingActivity[] = []
+  const yesterday: PendingActivity[] = []
+  const earlier: PendingActivity[] = []
+
+  for (const item of items) {
+    const date = new Date(item.timestamp)
+    if (isToday(date)) today.push(item)
+    else if (isYesterday(date)) yesterday.push(item)
+    else earlier.push(item)
+  }
+
+  return [
+    { label: 'Today', items: today },
+    { label: 'Yesterday', items: yesterday },
+    { label: 'Earlier', items: earlier },
+  ].filter((g) => g.items.length > 0)
+}
 
 export function NotificationCenter() {
   const [open, setOpen] = useState(false)
@@ -41,6 +64,8 @@ export function NotificationCenter() {
     })
   }
 
+  const groups = groupByDate(notifications)
+
   return (
     <Popover modal={true} open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -58,17 +83,27 @@ export function NotificationCenter() {
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="w-96 p-0 shadow-calendly border-virgilio-border"
+        className="w-[440px] p-0 shadow-calendly border-virgilio-border"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-virgilio-border">
-          <h3 className="font-poppins font-semibold text-sm text-virgilio-text">
-            Notifications
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-poppins font-semibold text-sm text-virgilio-text">
+              Notifications
+            </h3>
+            {unreadCount > 0 && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                {unreadCount}
+              </Badge>
+            )}
+          </div>
           {unreadCount > 0 && (
-            <Badge variant="secondary" className="text-xs">
-              {unreadCount} new
-            </Badge>
+            <button
+              onClick={handleMarkAllAsRead}
+              className="text-xs font-poppins text-virgilio-purple hover:text-virgilio-purple/80 transition-colors font-medium"
+            >
+              Mark all read
+            </button>
           )}
         </div>
 
@@ -84,67 +119,75 @@ export function NotificationCenter() {
             </p>
           </div>
         ) : (
-          <>
-            <div className="overflow-y-auto max-h-80">
-              <div className="divide-y divide-virgilio-border">
-                {notifications.map((notification) => (
-                  <button
-                    key={notification.id}
-                    onClick={() => handleNotificationClick(notification)}
-                    className="w-full text-left px-4 py-3 hover:bg-virgilio-purple/10 transition-colors duration-150 focus:outline-none focus:bg-virgilio-purple/10"
-                  >
-                    <div className="flex gap-3 items-start">
-                      <div className="mt-0.5 shrink-0">
-                        {notification.type === 'offer_approval' ? (
-                          <ClipboardCheck className="h-3.5 w-3.5 text-virgilio-purple" />
-                        ) : (
-                          <Mail className="h-3.5 w-3.5 text-virgilio-muted" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-poppins font-semibold text-virgilio-text truncate">
-                            {notification.type === 'offer_approval'
-                              ? `Offer approval needed`
-                              : notification.candidateName}
-                          </span>
-                          <span className="text-[11px] text-virgilio-muted whitespace-nowrap shrink-0">
-                            {formatDistanceToNow(new Date(notification.timestamp), { addSuffix: true })}
-                          </span>
+          <div className="overflow-y-auto max-h-[420px]">
+            {groups.map((group) => (
+              <div key={group.label}>
+                <div className="sticky top-0 z-10 bg-popover px-4 py-2">
+                  <span className="text-[11px] font-poppins font-semibold uppercase tracking-wider text-virgilio-muted">
+                    {group.label}
+                  </span>
+                </div>
+                <div className="divide-y divide-virgilio-border">
+                  {group.items.map((notification) => (
+                    <button
+                      key={notification.id}
+                      onClick={() => handleNotificationClick(notification)}
+                      className="w-full text-left px-4 py-4 hover:bg-virgilio-purple/10 transition-colors duration-150 focus:outline-none focus:bg-virgilio-purple/10"
+                    >
+                      <div className="flex gap-3 items-start">
+                        {/* Unread dot */}
+                        <div className="flex items-center pt-3.5 shrink-0">
+                          <div className="h-2 w-2 rounded-full bg-virgilio-purple" />
                         </div>
-                        <p className="text-xs text-virgilio-text truncate">
-                          {notification.type === 'offer_approval'
-                            ? `Approve offer for ${notification.candidateName}`
-                            : notification.emailSubject || 'No subject'}
-                        </p>
-                        {notification.type === 'email' && notification.emailSnippet && (
-                          <p className="text-xs text-virgilio-muted truncate">
-                            {notification.emailSnippet}
+
+                        {/* Avatar */}
+                        <Avatar className="h-9 w-9 shrink-0 mt-0.5">
+                          <AvatarFallback
+                            className={
+                              notification.type === 'offer_approval'
+                                ? 'bg-accent text-accent-foreground text-xs font-semibold'
+                                : 'bg-virgilio-purple text-white text-xs font-semibold'
+                            }
+                          >
+                            {getInitials(notification.candidateName)}
+                          </AvatarFallback>
+                        </Avatar>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-poppins font-semibold text-virgilio-text truncate">
+                              {notification.type === 'offer_approval'
+                                ? 'Offer approval needed'
+                                : notification.candidateName}
+                            </span>
+                            <span className="text-[11px] text-virgilio-muted whitespace-nowrap shrink-0">
+                              {formatDistanceToNow(new Date(notification.timestamp), { addSuffix: true })}
+                            </span>
+                          </div>
+                          <p className="text-xs text-virgilio-text truncate">
+                            {notification.type === 'offer_approval'
+                              ? `Approve offer for ${notification.candidateName}`
+                              : notification.emailSubject || 'No subject'}
                           </p>
-                        )}
-                        {notification.jobTitle && (
-                          <Badge variant="outline" className="text-[10px] mt-1 px-1.5 py-0">
-                            {notification.jobTitle}
-                          </Badge>
-                        )}
+                          {notification.type === 'email' && notification.emailSnippet && (
+                            <p className="text-xs text-virgilio-muted truncate">
+                              {notification.emailSnippet}
+                            </p>
+                          )}
+                          {notification.jobTitle && (
+                            <Badge variant="outline" className="text-[10px] mt-1 px-1.5 py-0">
+                              {notification.jobTitle}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-            <Separator />
-            <div className="p-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full text-xs font-poppins text-virgilio-muted hover:text-virgilio-text"
-                onClick={handleMarkAllAsRead}
-              >
-                Mark all as read
-              </Button>
-            </div>
-          </>
+            ))}
+          </div>
         )}
       </PopoverContent>
     </Popover>
