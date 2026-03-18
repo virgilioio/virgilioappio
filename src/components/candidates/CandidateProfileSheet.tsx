@@ -923,7 +923,6 @@ const stageHasAutomation = useMemo(() => {
                           className="h-8 w-8 p-0"
                           onClick={() => {
                             navigate(`/candidates?openCandidate=${candidate.id}`);
-                            onOpenChange?.(false);
                           }}
                         >
                           <UserRound className="h-4 w-4" />
