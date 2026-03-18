@@ -39,7 +39,7 @@ export function JobRow({ job, metrics }: JobRowProps) {
     : [];
 
   return (
-    <AccordionItem value={job.id} className="border rounded-lg px-4">
+    <AccordionItem value={job.id} className="border rounded-lg px-4 overflow-hidden">
       <AccordionTrigger className="hover:no-underline group">
         <div className="flex items-center justify-between w-full pr-2 overflow-hidden">
           <div className="flex items-center gap-3 min-w-0">
