@@ -73,6 +73,7 @@ export function Layout() {
             </main>
           </div>
           <GlobalBulkUploadWidget />
+          <MobileBottomNav />
         </BulkUploadProvider>
       </OrgGate>
     </AuthGate>
