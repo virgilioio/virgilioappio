@@ -1,151 +1,38 @@
-# System Roles Migration — Completed Phases 1-5
 
-## Architecture Change
-- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
-- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-## Completed
+# Hide Mobile Header & Make Settings Responsive
 
-### Phase 1 — Database
-- ✅ Created `system_role` enum (`admin`, `member`)
-- ✅ Added `system_role` column to `members` table
-- ✅ Migrated data: `admin` → `admin`, all others → `member`
-- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
-- ✅ Updated `check_tenant_member_role` to use `system_role`
-- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
-- ✅ Updated `audit_member_role_change` trigger
+## 1. Hide Header on Mobile
 
-### Phase 2 — Frontend Permissions
-- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
-- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
-- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
-- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
+**File: `src/components/layout/Header.tsx`**
+- Add `hidden sm:block` to the outermost `<header>` element so the entire header is hidden on mobile.
 
-### Phase 3 — UI Updates
-- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
-- ✅ Updated `Dashboard` — sourcing panel for admin+ only
-- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
-- ✅ Updated `BillingGuard` — members (non-admin) never blocked
-- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
-- ✅ Updated `Find` page RoleGate
-- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
+**File: `src/components/layout/Layout.tsx`**
+- Remove the `pt-12` mobile top padding from `<main>` since there's no header. Keep `sm:pt-14` for desktop.
 
-### Phase 4 — Runtime Hotfixes
-- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
-- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
-- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
-- ✅ Updated `validate_invite_token` — returns `system_role`
-- ✅ Updated `accept_invitation` — uses `system_role`
+## 2. Make Settings Page Responsive
 
-### Phase 5 — Complete Cleanup
-- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
-- ✅ Updated `admin_manage_member` — updates `system_role` column
-- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
-- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
-- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
-- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
-- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
-- ✅ Updated `diagnose_user_auth` — reports `system_role`
-- ✅ Updated `audit_platform_admin_access` — returns `system_role`
-- ✅ Updated `debug_user_permissions` — returns `system_role`
-- ✅ Renamed `invitations.member_role` → `invitations.system_role`
-- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
+**File: `src/pages/Settings.tsx`**
+- The settings page currently uses a `lg:hidden` mobile header with a Sheet for the sidebar, and a `hidden lg:block` desktop sidebar. The sidebar card is fixed at `w-64` which doesn't work on small screens.
+- Replace the mobile Sheet approach: on mobile, show the `SettingsSidebar` directly (full-width, no card wrapper) at the top of the page instead of inside a Sheet drawer. When a tab is selected, show the content below.
+- Alternatively (simpler): keep the current Sheet approach but fix the `SettingsMobileHeader` to work without the top header — remove the logout button (already in bottom nav), keep just the menu toggle and a "Settings" title.
 
-## Phase 6 — Future (Optional)
-- Drop `member_role` column from `members` table (already dropped)
-- Drop old `member_role` enum type
-- Update `MemberInviteSheet` role picker to only offer Admin/Member
+**File: `src/components/settings/SettingsSidebar.tsx`**
+- Make the card responsive: on mobile remove the fixed `w-64` and card wrapper, render as a simple full-width nav list.
 
-# Deep Resume Parsing + Data Standardization — Completed
+### Recommended approach for Settings mobile:
+- Keep the existing Sheet-based sidebar approach (hamburger menu opens sidebar in a drawer)
+- Update `SettingsMobileHeader`: remove logout button (redundant with bottom nav), show "Settings" as title, keep hamburger to open sidebar sheet
+- Change the sidebar `Card` to be `w-full` on mobile inside the sheet (it already gets `w-80` sheet width)
+- Ensure content area has proper padding on mobile
 
-## What was implemented
+## Files to Edit
 
-### Phase 1: Schema Expansion
-- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
-- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
-- ✅ Added to `candidate_education`: `education_level`
-- ✅ Created `candidate_certifications` table with RLS policies
+| File | Change |
+|---|---|
+| `src/components/layout/Header.tsx` | Add `hidden sm:block` to `<header>` |
+| `src/components/layout/Layout.tsx` | Adjust mobile top padding to `pt-0 sm:pt-14` |
+| `src/components/settings/SettingsMobileHeader.tsx` | Remove logout button, simplify to hamburger + "Settings" title |
+| `src/components/settings/SettingsSidebar.tsx` | Accept responsive width via className prop (already supported) |
+| `src/pages/Settings.tsx` | Adjust mobile padding/spacing, ensure content renders well on small screens |
 
-### Phase 2: Enrichment Rewrite
-- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
-- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
-- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
-- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
-- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
-
-### Phase 3: UI Updates
-- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
-- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
-- ✅ **Certifications section** with `CandidateCertificationsComponent`
-- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
-- ✅ Enhanced **Education** display: education level badge
-- ✅ Certifications loaded alongside work experience and education
-
-## Files changed
-- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
-- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
-- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
-- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
-- `src/components/candidates/CandidateCertifications.tsx` — new component
-
-# WhatsApp ISV Architecture — Completed
-
-## Architecture
-Per-tenant dedicated numbers under GoGio's master Twilio account. Each tenant gets their own WhatsApp number provisioned via the Twilio connector gateway.
-
-## What was implemented
-
-### Inbound Webhook
-- ✅ Created `whatsapp-inbound-webhook` edge function (public, no JWT)
-- ✅ Matches inbound `From` phone to existing conversations
-- ✅ Inserts messages as `direction: 'inbound'`, updates `unread_count`
-- ✅ Returns empty TwiML (no auto-reply)
-- ✅ Added to `supabase/config.toml` with `verify_jwt = false`
-
-### Simplified Setup Wizard
-- ✅ Reduced from 5 steps to 3: Welcome → Provision → Complete
-- ✅ Removed broken "Verify sender" and "Templates" steps
-- ✅ Provisioning = activation (no separate activate step)
-
-### Simplified Setup Status
-- ✅ Reduced from 6 states to 3: `not_started`, `active`, `error`
-- ✅ `canMessage = true` when `active` (no template-gating)
-- ✅ Removed `provisioning`, `sender_pending`, `sender_active`, `templates_required`
-
-### Integration Card Updates
-- ✅ Removed template count stats (approved/pending/draft)
-- ✅ Simplified status badges to active/not set up/error
-- ✅ Removed unused status configs (sender_pending, provisioning, etc.)
-
-### Template Library Updates
-- ✅ Removed non-functional Submit and Refresh buttons
-- ✅ Removed filter tabs (all/draft/pending/approved/rejected)
-- ✅ Added info note: "Custom templates require GoGio team approval"
-- ✅ Templates show as "Ready to use" or "Local only" status
-
-### Chat Tab Updates
-- ✅ Simplified blocking: only blocks when `not_started` or no phone number
-- ✅ Removed intermediate `canMessage` blocking state
-- ✅ Updated empty template message to reference GoGio team
-
-### Send Function Updates
-- ✅ Removed `is_active` check — if number exists, can send
-- ✅ Per-tenant `twilio_from_number` logic preserved
-
-### Global Templates Seeded
-- ✅ Interview Invitation, Application Update, Job Opportunity
-- ✅ Inserted with `tenant_id = NULL` (global)
-- ✅ No `twilio_content_sid` yet (marked as draft until GoGio team adds real SIDs)
-
-## Manual Prerequisites (for GoGio team — ONE-TIME ONLY)
-1. Get WhatsApp Business Account approved in Twilio Console
-2. Create a Messaging Service and enable WhatsApp on it
-3. Create Content templates in Twilio Console matching seeded templates
-4. UPDATE `whatsapp_templates` rows with real `twilio_content_sid` values and `approval_status = 'approved'`
-5. Store `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID` as Supabase secrets ✅ Done
-
-## Automated Per-Tenant (Zero-Touch)
-1. ✅ Buy number via gateway
-2. ✅ Configure webhook URL on number via gateway
-3. ✅ Register number as WhatsApp Sender via Messaging Service API
-4. ✅ Save config to DB
