@@ -364,7 +364,7 @@ const getPageNumbers = () => {
           <PermissionGate permission="canManageCandidates">
             <div className="ml-auto flex items-center gap-2">
               {!selectionMode && (
-                <Button onClick={onAddNew} size="sm" className="gap-1.5 h-8">
+                <Button onClick={onAddNew} size="sm" className="hidden sm:inline-flex gap-1.5 h-8">
                   <UserPlus className="h-3.5 w-3.5" />
                   Add Candidate
                 </Button>

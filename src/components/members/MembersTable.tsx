@@ -201,7 +201,7 @@ export function MembersTable({
         <div className="flex justify-between items-center">
           <CardTitle>Team Members</CardTitle>
           {onAddNew && (
-            <Button onClick={onAddNew} className="gap-2">
+            <Button onClick={onAddNew} className="hidden sm:inline-flex gap-2">
               <Plus className="h-4 w-4" />
               Add Member
             </Button>
