@@ -261,8 +261,10 @@ export function Header() {
           {/* Global Search Bar */}
           <GlobalSearchBar />
           
-          {/* Global Create Button */}
-          <GlobalCreateButton />
+          {/* Global Create Button - hidden on mobile */}
+          <div className="hidden sm:block">
+            <GlobalCreateButton />
+          </div>
           
           {/* Sourcing Credit Indicator */}
           <SourcingCreditIndicator />

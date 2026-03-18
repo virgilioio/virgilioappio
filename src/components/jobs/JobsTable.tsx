@@ -268,7 +268,7 @@ export function JobsTable({
             )}
           </MobileFilterDrawer>
 
-          <div className="ml-auto">
+          <div className="ml-auto hidden sm:block">
             <PermissionGate permission="canCreateJobs">
               <Button onClick={onCreateNew} size="sm" className="gap-1.5 h-8 whitespace-nowrap">
                 <Plus className="h-3.5 w-3.5" />

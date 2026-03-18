@@ -36,7 +36,7 @@ export function QuickAccess({ permissions }: QuickAccessProps) {
   }
 
   return (
-    <Card>
+    <Card className="hidden sm:block">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Zap className="h-5 w-5" />
