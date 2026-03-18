@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { FilterChipPopover, type FilterChipOption } from '@/components/ui/filter-chip-popover'
 import { useAnalyticsFilterOptions } from '@/hooks/useAnalyticsFilterOptions'
 import { X } from 'lucide-react'
+import { MobileFilterDrawer } from '@/components/ui/mobile-filter-drawer'
 
 export interface AnalyticsFilters {
   recruiterIds: string[]
