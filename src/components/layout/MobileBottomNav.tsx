@@ -72,7 +72,7 @@ export function MobileBottomNav() {
           {/* Home — Center with larger Gio avatar */}
           <Link
             to="/dashboard"
-            className="flex flex-col items-center justify-center flex-1 -mt-4 relative"
+            className="flex flex-col items-center justify-center flex-1 -mt-6 relative"
           >
             <div className={cn(
               'h-11 w-11 rounded-full ring-2 ring-offset-2 ring-offset-surface-primary overflow-hidden transition-all',
