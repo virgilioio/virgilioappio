@@ -573,7 +573,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
       ) : currentView === 'board' ? (
         <>
           <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-            <div className={`flex gap-4 ${externalScroll ? '' : 'overflow-x-auto'} pb-2`}>
+            <div className={`flex gap-4 ${externalScroll ? '' : 'overflow-x-auto snap-x snap-mandatory sm:snap-none'} pb-2`}>
 
               {stageOptions.length === 0 && (
                 <Card className="min-w-[280px]">
