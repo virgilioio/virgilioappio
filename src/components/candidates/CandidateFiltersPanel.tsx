@@ -9,6 +9,7 @@ import { useCandidateFilters } from '@/contexts/CandidateFilterContext'
 import { FilterChipPopover } from '@/components/ui/filter-chip-popover'
 import { FilterSheet } from '@/components/ui/filter-sheet'
 import { FilterCheckboxGroup } from '@/components/ui/filter-checkbox-group'
+import { MobileFilterDrawer } from '@/components/ui/mobile-filter-drawer'
 import type { FilterOption } from '@/hooks/useCandidateFilterOptions'
 
 interface CandidateFiltersPanelProps {
