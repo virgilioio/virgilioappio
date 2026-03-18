@@ -24,8 +24,9 @@ import { SourcePerformanceSection } from '@/components/analytics/sections/Source
 import { InterviewHealthSection } from '@/components/analytics/sections/InterviewHealthSection'
 import { OfferAnalyticsSection } from '@/components/analytics/sections/OfferAnalyticsSection'
 import { TalentInsightsSection } from '@/components/analytics/sections/TalentInsightsSection'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
-import { BarChart3, Download, Loader2 } from 'lucide-react'
+import { Download, Loader2 } from 'lucide-react'
 import { subDays } from 'date-fns'
 import { generateAnalyticsReport } from '@/utils/analyticsReportGenerator'
 
