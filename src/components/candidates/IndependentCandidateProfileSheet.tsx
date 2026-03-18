@@ -238,21 +238,27 @@ export function IndependentCandidateProfileSheet({
 
           {/* Main Profile Content */}
           <div className="flex-1 flex flex-col min-w-0">
+            {loading || !candidate ? (
+              <div className="flex-1 overflow-y-auto p-6">
+                <CandidateProfileSkeleton />
+              </div>
+            ) : (
+              <>
             <SheetHeader className="p-6 border-b">
               <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
                     <h2 className="font-poppins font-bold tracking-page-title text-text-primary text-4xl">
-                      {candidate?.candidate_name || 'Loading...'}
+                      {candidate.candidate_name}
                       <span className="text-purple-period">.</span>
                     </h2>
-                    {candidate?.enrichment_status === 'processing' && (
+                    {candidate.enrichment_status === 'processing' && (
                       <Badge variant="secondary" className="gap-1 animate-pulse">
                         <Loader2 className="h-3 w-3 animate-spin" />
                         AI Enriching...
                       </Badge>
                     )}
-                    {candidate?.linkedin_url && (
+                    {candidate.linkedin_url && (
                       <Button
                         variant="outline"
                         className="h-8 w-8 p-0"
@@ -264,20 +270,20 @@ export function IndependentCandidateProfileSheet({
                     )}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    {candidate?.job_board_source && (
+                    {candidate.job_board_source && (
                       <Badge variant="secondary" className="gap-1">
                         <Globe className="h-3 w-3" />
                         Applied via {candidate.job_board_source}
                       </Badge>
                     )}
-                    {candidate && canEditCandidates && (
+                    {canEditCandidates && (
                       <Button variant="outline" size="sm" onClick={() => setEditOpen(true)} className="gap-1.5">
                         <Edit className="h-4 w-4" />
                         Edit
                       </Button>
                     )}
-                    {candidate && <AddToJobPipelineDialog candidateId={candidate.id} />}
-                    {candidate && candidate.enrichment_status !== 'processing' && (
+                    <AddToJobPipelineDialog candidateId={candidate.id} />
+                    {candidate.enrichment_status !== 'processing' && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -323,11 +329,6 @@ export function IndependentCandidateProfileSheet({
             </SheetHeader>
 
             <div className="flex-1 overflow-y-auto p-6">
-               {loading ? (
-                <CandidateProfileSkeleton />
-              ) : !candidate ? (
-                <div className="text-text-secondary text-sm">No data available.</div>
-              ) : (
                 <div>
                   {/* Mobile Job Selector - show on small screens */}
                   {candidateId && (

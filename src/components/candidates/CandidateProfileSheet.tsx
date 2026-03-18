@@ -899,15 +899,21 @@ const stageHasAutomation = useMemo(() => {
 
           {/* Main Profile Content */}
           <div className="flex-1 flex flex-col min-w-0">
+            {loading || !candidate ? (
+              <div className="flex-1 overflow-y-auto p-6">
+                <CandidateProfileSkeleton />
+              </div>
+            ) : (
+              <>
             <SheetHeader className="p-6 border-b">
               <div className="flex items-center justify-between flex-1">
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
                   <h2 className="font-poppins font-bold tracking-page-title text-text-primary text-4xl">
-                    {candidate?.candidate_name || 'Loading...'}
+                    {candidate.candidate_name}
                     <span className="text-purple-period">.</span>
                   </h2>
-                  {candidate?.linkedin_url && (
+                  {candidate.linkedin_url && (
                     <Button
                       variant="outline"
                       className="h-8 w-8 p-0"
@@ -951,7 +957,7 @@ const stageHasAutomation = useMemo(() => {
                 </div>
               </SheetHeader>
 
-              <div className="flex-1 overflow-y-auto p-6">
+               <div className="flex-1 overflow-y-auto p-6">
                 {/* Mobile Job Selector - at top of content area */}
                 {candidateId && !isRestrictedViewer && (
                   <div className="lg:hidden mb-6">
@@ -962,11 +968,6 @@ const stageHasAutomation = useMemo(() => {
                     />
                   </div>
                 )}
-            {loading ? (
-              <CandidateProfileSkeleton />
-            ) : !candidate ? (
-              <div className="text-text-secondary text-sm">No data available.</div>
-            ) : (
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'job' | 'application' | 'resume' | 'overview')}>
                   {/* Rejection Status Banner - Full width above both columns */}
                   {associationStatus === 'rejected' && rejectionDetails && (
