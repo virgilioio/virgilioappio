@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   Menu,
   Home,
@@ -330,22 +330,17 @@ export function Header() {
           </DropdownMenu>
 
           {/* Mobile Navigation */}
-          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-            <SheetTrigger asChild>
+          <Popover open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+            <PopoverTrigger asChild>
               <Button variant="ghost" size="icon" className="lg:hidden h-7 w-7">
                 <Menu className="h-4 w-4" />
                 <span className="sr-only">Toggle navigation menu</span>
               </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-64 shadow-calendly">
-              <div className="flex flex-col gap-md">
-                <Link to="/dashboard" className="flex items-center gap-sm" onClick={() => setIsSheetOpen(false)}>
-                  <GoGioLogo className="h-6 w-auto" />
-                </Link>
-                <NavigationContent />
-              </div>
-            </SheetContent>
-          </Sheet>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-52 p-2 lg:hidden">
+              <NavigationContent />
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
     </header>

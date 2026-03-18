@@ -52,7 +52,7 @@ export function JobRow({ job, metrics }: JobRowProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:inline-flex"
                   onClick={(e) => {
                     e.stopPropagation();
                     window.open(`/jobs/${job.id}`, '_blank');
@@ -68,9 +68,9 @@ export function JobRow({ job, metrics }: JobRowProps) {
                 <span>Last activity {lastActivity}</span>
               </div>
               {metrics && metrics.stages && metrics.stages.length > 0 && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1 overflow-x-auto max-w-full scrollbar-hide">
                   {metrics.stages.map((stage, idx) => (
-                    <span key={stage.stage_id}>
+                    <span key={stage.stage_id} className="whitespace-nowrap">
                       {stage.stage_name.substring(0, 12)} {stage.count_in_stage}
                       {idx < metrics.stages.length - 1 && <ChevronRight className="inline h-3 w-3 mx-1" />}
                     </span>
@@ -84,13 +84,13 @@ export function JobRow({ job, metrics }: JobRowProps) {
       <AccordionContent>
         {/* Job metrics strip above Kanban */}
         {metrics && (
-          <div className="flex items-center gap-6 py-3 px-2 border-b text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 py-3 px-2 border-b text-sm text-muted-foreground">
             <div>
-              <span className="font-medium">Active Candidates:</span> {metrics.active_candidates}
+              <span className="font-medium">Active:</span> {metrics.active_candidates}
             </div>
             {stageConversions.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="font-medium">Stage Conversion:</span>
+              <div className="flex flex-wrap items-center gap-1">
+                <span className="font-medium">Conversion:</span>
                 {stageConversions.map((conv, idx) => (
                   <span key={idx}>
                     {conv.from.substring(0, 10)}→{conv.to.substring(0, 10)}: {conv.fromCount}→{conv.toCount}
@@ -100,14 +100,14 @@ export function JobRow({ job, metrics }: JobRowProps) {
               </div>
             )}
             <div>
-              <span className="font-medium">Overall Conversion:</span> Start→Hired: {metrics.overall_start_count}→{metrics.overall_hired_count}
+              <span className="font-medium">Overall:</span> {metrics.overall_start_count}→{metrics.overall_hired_count}
             </div>
           </div>
         )}
         
         {/* Embedded Kanban */}
         <div className="mt-4 overflow-x-auto -mx-4 px-4 touch-pan-x">
-          <PipelineOverview jobId={job.id} showHeader={false} externalScroll={false} />
+          <PipelineOverview jobId={job.id} showHeader={false} externalScroll={false} includeApplicationReview={true} />
         </div>
       </AccordionContent>
     </AccordionItem>

@@ -39,6 +39,8 @@ interface PipelineOverviewProps {
   onSelectedIdsChange?: (ids: string[]) => void
   refreshToken?: number
   onStageChanged?: () => void
+  /** When true, includes the application_review stage in the board (used in Pipeline page) */
+  includeApplicationReview?: boolean
   /** Called when a candidate is clicked. Second arg is the visual navigation order snapshot */
   onCandidateClick?: (candidateId: string, navigationOrder: string[]) => void
 }
@@ -62,7 +64,7 @@ const isLastPriorityStage = (stage: JobStage) => {
   return p === 'last' || p === 99 || p === '99' || p === 999 || p === '999'
 }
 
-export function PipelineOverview({ jobId, showHeader = true, externalScroll = false, viewMode: controlledView, onViewModeChange, selectionMode: controlledSelectionMode, onSelectionModeChange, onSelectedIdsChange, refreshToken, onStageChanged, onCandidateClick }: PipelineOverviewProps) {
+export function PipelineOverview({ jobId, showHeader = true, externalScroll = false, viewMode: controlledView, onViewModeChange, selectionMode: controlledSelectionMode, onSelectionModeChange, onSelectedIdsChange, refreshToken, onStageChanged, includeApplicationReview = false, onCandidateClick }: PipelineOverviewProps) {
   const { loadHiringPlanInstances, isLoadingPlan } = useJobHiringPlan()
   const { fetchAssociationsForJob, moveAssociationToStage, updateAssociationStatus } = usePipelineActions()
 
@@ -215,10 +217,12 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
 
   const loadStages = useCallback(async () => {
     const plan = await loadHiringPlanInstances(jobId)
-    // Exclude application_review stages from the pipeline board/list (it has its own dedicated tab)
-    const filtered = plan.filter(opt => opt.stage.stage_type !== 'application_review')
+    // Exclude application_review stages unless includeApplicationReview is true
+    const filtered = includeApplicationReview
+      ? plan
+      : plan.filter(opt => opt.stage.stage_type !== 'application_review')
     setStageOptions(filtered.length > 0 ? filtered : [])
-  }, [jobId, loadHiringPlanInstances])
+  }, [jobId, loadHiringPlanInstances, includeApplicationReview])
 
   const loadPipeline = useCallback(async () => {
     if (!jobId) return
@@ -569,7 +573,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
       ) : currentView === 'board' ? (
         <>
           <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-            <div className={`flex gap-4 ${externalScroll ? '' : 'overflow-x-auto'} pb-2`}>
+            <div className={`flex gap-4 ${externalScroll ? '' : 'overflow-x-auto snap-x snap-mandatory sm:snap-none'} pb-2`}>
 
               {stageOptions.length === 0 && (
                 <Card className="min-w-[280px]">
@@ -581,7 +585,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
 
               {/* Render columns with candidate cards */}
               {stageOptions.map((opt) => (
-                <Card key={opt.jhsId} className="w-72 flex-shrink-0 h-full flex flex-col">
+                <Card key={opt.jhsId} className="w-[85vw] sm:w-72 flex-shrink-0 h-full flex flex-col snap-center sm:snap-align-none">
                   <CardHeader className={`pb-2 rounded-t-md shrink-0 ${getHeaderBgClass(opt.stage.stage_type)}`}>
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2 min-w-0">
