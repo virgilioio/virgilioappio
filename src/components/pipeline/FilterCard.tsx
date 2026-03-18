@@ -3,6 +3,7 @@ import { Search, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { FilterChipPopover, type FilterChipOption } from '@/components/ui/filter-chip-popover'
+import { MobileFilterDrawer } from '@/components/ui/mobile-filter-drawer'
 
 interface FilterCardProps {
   searchTerm: string
