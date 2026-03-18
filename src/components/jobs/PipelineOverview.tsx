@@ -39,6 +39,8 @@ interface PipelineOverviewProps {
   onSelectedIdsChange?: (ids: string[]) => void
   refreshToken?: number
   onStageChanged?: () => void
+  /** When true, includes the application_review stage in the board (used in Pipeline page) */
+  includeApplicationReview?: boolean
   /** Called when a candidate is clicked. Second arg is the visual navigation order snapshot */
   onCandidateClick?: (candidateId: string, navigationOrder: string[]) => void
 }
