@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { cn } from '@/lib/utils'
 import { SearchResultsDialog } from '@/components/search/SearchResultsDialog'
-import gioFacePurple from '@/assets/gio-face-purple.png'
+import gioAvatar from '@/assets/gio-avatar.png'
 
 export function MobileBottomNav() {
   const { user, logout, isLoggingOut } = useAuth()
