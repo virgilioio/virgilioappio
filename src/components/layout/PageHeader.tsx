@@ -10,7 +10,6 @@ interface MetricCardProps {
 
 interface PageHeaderProps {
   title: string;
-  subtitle?: string;
   children?: React.ReactNode;
   className?: string;
   compact?: boolean;
@@ -19,7 +18,6 @@ interface PageHeaderProps {
 
 export function PageHeader({ 
   title, 
-  subtitle, 
   children, 
   className, 
   compact = false,
@@ -35,11 +33,6 @@ export function PageHeader({
           <PageTitle>
             {title}
           </PageTitle>
-          {subtitle && (
-            <p className="text-sm text-virgilio-muted mt-xs leading-relaxed">
-              {subtitle}
-            </p>
-          )}
         </div>
         
         {metrics && metrics.length > 0 && (
