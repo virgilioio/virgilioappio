@@ -326,7 +326,7 @@ export function RoleInterpretationDrawer({
                           </Badge>
                         ))}
                         {spec.research_metadata.researched_companies.length > 12 && (
-                          <Badge variant="outline" className="text-xs text-muted-foreground">
+                          <Badge variant="category" className="text-xs">
                             +{spec.research_metadata.researched_companies.length - 12} more
                           </Badge>
                         )}
