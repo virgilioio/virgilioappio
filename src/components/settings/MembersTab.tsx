@@ -146,7 +146,7 @@ export function MembersTab() {
               <div className="rounded-brand border border-pastel-blue/50 bg-pastel-blue/40 p-4 shadow-[var(--shadow-xs)]">
                 <div className="text-sm text-pastel-blue-foreground/80">Collaborators</div>
                 <div className="text-3xl font-semibold text-pastel-blue-foreground mt-1">{collaboratorMembers.length}</div>
-                
+                <div className="text-xs text-pastel-blue-foreground/60 mt-1">Hiring Managers & Interviewers</div>
               </div>
             </div>
           </CardContent>
