@@ -306,13 +306,15 @@ export function MembersTable({
                       </TableCell>
                       <TableCell>
                         <Badge className={getRoleColor(member.effectiveRole)}>
-                          {member.effectiveRole}
+                          {member.effectiveRole || (member.system_role === 'admin' ? 'Admin' : 'Member')}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge className={getSeatBadgeStyle(member.seatType)}>
-                          {member.seatType === 'paid' ? 'Paid' : 'Free'}
-                        </Badge>
+                        {member.seatType && (
+                          <Badge className={getSeatBadgeStyle(member.seatType)}>
+                            {member.seatType === 'paid' ? 'Paid' : 'Free'}
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
