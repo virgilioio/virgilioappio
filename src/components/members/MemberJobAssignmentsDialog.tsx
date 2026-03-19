@@ -121,7 +121,24 @@ export function MemberJobAssignmentsDialog({
 
   const hasChanges = pendingChanges.add.length > 0 || pendingChanges.remove.length > 0
 
-  const handleSave = async () => {
+  const handleSaveClick = () => {
+    if (!member?.user_id || !member?.organization_id) return
+    
+    // Check if this save would convert a free user to paid
+    // The member currently has no recruiter assignments and is a 'member' system_role
+    // Adding job assignments defaults them as recruiter
+    const isCurrentlyFree = wouldUpgrade(member.user_id, member.system_role, member.user_type)
+    const isAddingJobs = pendingChanges.add.length > 0
+    
+    if (isCurrentlyFree && isAddingJobs) {
+      setShowSeatConfirm(true)
+      return
+    }
+    
+    executeSave()
+  }
+
+  const executeSave = async () => {
     if (!member?.user_id || !member?.organization_id) return
     
     setIsSaving(true)
