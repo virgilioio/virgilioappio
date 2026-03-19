@@ -90,13 +90,13 @@ export function SourcingCandidateCard({ candidate, jobId }: SourcingCandidateCar
     }
   }
   
-  const getMatchTierColor = (tier: string) => {
+  const getMatchTierVariant = (tier: string) => {
     switch (tier) {
-      case 'excellent': return 'bg-success/20 text-success-foreground border-success/30'
-      case 'good': return 'bg-info/20 text-info-foreground border-info/30'
-      case 'fair': return 'bg-muted text-muted-foreground border-border'
-      case 'minimal': return 'bg-muted text-muted-foreground border-border'
-      default: return 'bg-muted text-muted-foreground border-border'
+      case 'excellent': return 'match-excellent' as const
+      case 'good': return 'match-good' as const
+      case 'fair': return 'match-fair' as const
+      case 'minimal': return 'match-fair' as const
+      default: return 'match-fair' as const
     }
   }
   
