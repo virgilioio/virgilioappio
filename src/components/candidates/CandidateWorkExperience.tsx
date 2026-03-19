@@ -123,7 +123,7 @@ export const CandidateWorkExperienceComponent = ({ experiences }: CandidateWorkE
                     </div>
                   </div>
                   {exp.is_current && (
-                    <Badge variant="secondary" className="bg-green-100 text-green-800">
+                    <Badge variant="status-active">
                       Current
                     </Badge>
                   )}
