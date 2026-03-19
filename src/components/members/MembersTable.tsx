@@ -53,13 +53,13 @@ export function MembersTable({
     setSeatFilter('all')
   }
 
-  const getSeatBadgeStyle = (seatType: 'paid' | 'free') => {
+  const getSeatBadgeStyle = (seatType?: 'paid' | 'free') => {
     return seatType === 'paid'
       ? 'bg-primary/10 text-primary'
       : 'bg-success/10 text-success'
   }
 
-  const getRoleColor = (role: EnrichedMember['effectiveRole']) => {
+  const getRoleColor = (role?: EnrichedMember['effectiveRole']) => {
     switch (role) {
       case 'Owner':
         return 'bg-destructive/10 text-destructive'
