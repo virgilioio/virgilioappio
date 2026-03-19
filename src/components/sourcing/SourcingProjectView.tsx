@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Loader2, Sparkles, Users, UserCheck, Archive } from 'lucide-react'
 import { SourcingProjectHeader } from './SourcingProjectHeader'
 import { CandidatesTab } from './CandidatesTab'
@@ -19,9 +19,23 @@ import { useQueryClient } from '@tanstack/react-query'
 
 interface SourcingProjectViewProps {
   projectId: string
+  filters: SourcingProjectFilters
+  onFiltersChange: (filters: SourcingProjectFilters) => void
+  isRefreshing: boolean
+  setIsRefreshing: (v: boolean) => void
+  onProjectLoaded?: (project: any) => void
+  onUpdateSearchCriteria?: (fn: ((criteria: SearchCriteria) => Promise<void>) | null) => void
 }
 
-export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
+export function SourcingProjectView({ 
+  projectId, 
+  filters, 
+  onFiltersChange,
+  isRefreshing,
+  setIsRefreshing,
+  onProjectLoaded,
+  onUpdateSearchCriteria: exposeUpdateSearchCriteria
+}: SourcingProjectViewProps) {
   const queryClient = useQueryClient()
   const { data: project, isLoading: projectLoading, refetch: refetchProject } = useSourcingProject(projectId)
   const { 
@@ -45,13 +59,6 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
     status: 'archived'
   })
   
-  const [filters, setFilters] = useState<SourcingProjectFilters>({
-    matchTiers: [],
-    minExperience: 0,
-    maxExperience: 30,
-    source: 'all'
-  })
-  const [isRefreshing, setIsRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState('candidates')
   
   // State for add-to-pipeline dialog when linking to job
@@ -59,50 +66,93 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
   const [pendingJobId, setPendingJobId] = useState<string | null>(null)
   
   const { createAssociationAndMove } = usePipelineActions()
+
+  // Expose project data to parent
+  useEffect(() => {
+    if (project && onProjectLoaded) {
+      onProjectLoaded(project)
+    }
+  }, [project, onProjectLoaded])
+
+  // Build and expose the update search criteria handler
+  const handleUpdateSearchCriteria = async (newCriteria: SearchCriteria) => {
+    if (!project) return
+    setIsRefreshing(true)
+
+    queryClient.setQueryData(['sourcing-project', projectId], (old: any) =>
+      old ? { 
+        ...old, 
+        search_criteria: newCriteria, 
+        updated_at: new Date().toISOString() 
+      } : old
+    )
+
+    try {
+      const { data, error } = await supabase
+        .from('sourcing_projects')
+        .update({
+          search_criteria: newCriteria as any,
+          updated_at: new Date().toISOString(),
+          sourcing_cache_expires_at: null,
+          sourcing_candidate_count: 0,
+        })
+        .eq('id', projectId)
+        .select('id, search_criteria, updated_at, sourcing_cache_expires_at, sourcing_candidate_count')
+        .single()
+
+      if (error) throw error
+
+      queryClient.setQueryData(['sourcing-project', projectId], (old: any) =>
+        old ? { ...old, ...(data as object) } : data
+      )
+
+      await refetchCandidates()
+
+      toast.success('Search Updated', { description: 'Candidates refreshed with updated criteria.' })
+    } catch (error: any) {
+      console.error('Error updating search criteria:', error)
+      toast.error('Failed to Update Search', { description: error.message })
+      await queryClient.refetchQueries({ queryKey: ['sourcing-project', projectId] })
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  // Expose the handler to parent
+  useEffect(() => {
+    if (exposeUpdateSearchCriteria) {
+      exposeUpdateSearchCriteria(project ? handleUpdateSearchCriteria : null)
+    }
+  }, [project, projectId])
   
   // Apply filters locally
   const filteredCandidates = useMemo(() => {
     if (!candidates) return []
     
     return candidates.filter(candidate => {
-      // Match tier filter
       if (filters.matchTiers && filters.matchTiers.length > 0) {
         if (!filters.matchTiers.includes(candidate.match_tier as any)) {
           return false
         }
       }
       
-      // Experience filter
       const totalExp = candidate.experience_years || 0
       if (totalExp < (filters.minExperience || 0) || totalExp > (filters.maxExperience || 30)) {
         return false
       }
 
-      // Source filter
       if (filters.source && filters.source !== 'all') {
-        if (filters.source === 'local' && candidate.source !== 'local') {
-          return false
-        }
-        if (filters.source === 'apollo' && candidate.source !== 'apollo') {
-          return false
-        }
+        if (filters.source === 'local' && candidate.source !== 'local') return false
+        if (filters.source === 'apollo' && candidate.source !== 'apollo') return false
       }
 
-      // Email availability filter
-      if (filters.hasEmail === true && !candidate.has_email) {
-        return false
-      }
-
-      // Phone availability filter
-      if (filters.hasPhone === true && !candidate.has_phone) {
-        return false
-      }
+      if (filters.hasEmail === true && !candidate.has_email) return false
+      if (filters.hasPhone === true && !candidate.has_phone) return false
       
       return true
     })
   }, [candidates, filters])
   
-  // Group by match tier for breakdown
   const breakdown = useMemo(() => {
     return {
       excellent: filteredCandidates.filter(c => c.match_tier === 'excellent').length,
@@ -161,55 +211,6 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
     }
   }
 
-  const handleUpdateSearchCriteria = async (newCriteria: SearchCriteria) => {
-    if (!project) return
-    setIsRefreshing(true)
-
-    // 1. Optimistically update cache IMMEDIATELY (no stale window)
-    queryClient.setQueryData(['sourcing-project', projectId], (old: any) =>
-      old ? { 
-        ...old, 
-        search_criteria: newCriteria, 
-        updated_at: new Date().toISOString() 
-      } : old
-    )
-
-    try {
-      // 2. Persist to DB and RETURN the updated row (critical for reconciliation)
-      const { data, error } = await supabase
-        .from('sourcing_projects')
-        .update({
-          search_criteria: newCriteria as any,
-          updated_at: new Date().toISOString(),
-          sourcing_cache_expires_at: null,
-          sourcing_candidate_count: 0,
-        })
-        .eq('id', projectId)
-        .select('id, search_criteria, updated_at, sourcing_cache_expires_at, sourcing_candidate_count')
-        .single()
-
-      if (error) throw error
-
-      // 3. Reconcile cache with authoritative server result
-      queryClient.setQueryData(['sourcing-project', projectId], (old: any) =>
-        old ? { ...old, ...(data as object) } : data
-      )
-
-      // 4. Now refresh dependent data (candidates) after cache is consistent
-      await refetchCandidates()
-
-      toast.success('Search Updated', { description: 'Candidates refreshed with updated criteria.' })
-    } catch (error: any) {
-      console.error('Error updating search criteria:', error)
-      toast.error('Failed to Update Search', { description: error.message })
-      
-      // Rollback: refetch to get server truth
-      await queryClient.refetchQueries({ queryKey: ['sourcing-project', projectId] })
-    } finally {
-      setIsRefreshing(false)
-    }
-  }
-
   const handleRefresh = async () => {
     setIsRefreshing(true)
     await refetchCandidates()
@@ -236,7 +237,6 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
     }
   }
 
-  // Helper function to just link the project to a job
   const linkProjectToJob = async (jobId: string) => {
     const { error } = await supabase
       .from('sourcing_projects')
@@ -255,23 +255,18 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
   const handleLinkToJob = async (jobId: string) => {
     if (!project) return
     
-    // Check if there are saved candidates
     if (savedCandidates && savedCandidates.length > 0) {
-      // Store the jobId and show the dialog
       setPendingJobId(jobId)
       setShowAddToPipelineDialog(true)
-      return // Don't link yet - wait for dialog response
+      return
     }
     
-    // No candidates, link directly
     await linkProjectToJob(jobId)
   }
 
-  // Handle adding candidates to pipeline after linking
   const handleAddToPipelineConfirm = async (stageId: string) => {
     if (!pendingJobId) return
     
-    // 1. First link the project to the job
     const linked = await linkProjectToJob(pendingJobId)
     if (!linked) {
       setShowAddToPipelineDialog(false)
@@ -279,7 +274,6 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
       return
     }
     
-    // 2. Then move all saved candidates to the pipeline
     let successCount = 0
     let failCount = 0
     
@@ -307,7 +301,6 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
   const handleAddToPipelineSkip = async () => {
     if (!pendingJobId) return
     
-    // Just link the project, don't move candidates
     await linkProjectToJob(pendingJobId)
     setShowAddToPipelineDialog(false)
     setPendingJobId(null)
@@ -399,10 +392,6 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
           <CandidatesTab 
             project={project}
             candidates={filteredCandidates}
-            filters={filters}
-            onFiltersChange={setFilters}
-            onUpdateSearchCriteria={handleUpdateSearchCriteria}
-            isRefreshing={isRefreshing}
             isLoading={candidatesLoading}
           />
         </TabsContent>
@@ -416,7 +405,6 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
         </TabsContent>
       </Tabs>
 
-      {/* Dialog for adding candidates to pipeline when linking to job */}
       {pendingJobId && (
         <AddCollectedToPipelineDialog
           open={showAddToPipelineDialog}
