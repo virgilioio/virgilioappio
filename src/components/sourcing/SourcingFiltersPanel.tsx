@@ -183,7 +183,7 @@ export function SourcingFiltersPanel({
                   <span className="text-xs font-medium text-virgilio-muted">Target Companies:</span>
                   <div className="flex flex-wrap gap-1.5">
                     {project.search_criteria.company_names.map(name => (
-                      <Badge key={name} variant="outline" className="text-xs rounded-md">{name}</Badge>
+                      <Badge key={name} variant="pastel-orange" className="text-xs rounded-md">{name}</Badge>
                     ))}
                   </div>
                 </div>
