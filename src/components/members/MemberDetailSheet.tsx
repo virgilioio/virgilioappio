@@ -17,6 +17,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { useMemberJobAssignments } from '@/hooks/useMemberJobAssignments'
+import { useWouldUpgradeSeat } from '@/hooks/useWouldUpgradeSeat'
+import { SeatUpgradeConfirmDialog } from '@/components/billing/SeatUpgradeConfirmDialog'
 import { EnrichedMember } from '@/components/members/MembersTable'
 import { Briefcase, Calendar, Mail, Trash2, Plus } from 'lucide-react'
 import { format } from 'date-fns'
