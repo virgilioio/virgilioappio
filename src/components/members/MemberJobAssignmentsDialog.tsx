@@ -32,11 +32,13 @@ export function MemberJobAssignmentsDialog({
   member 
 }: MemberJobAssignmentsDialogProps) {
   const queryClient = useQueryClient()
+  const { wouldUpgrade, paidSeatCount } = useWouldUpgradeSeat()
   const [jobs, setJobs] = useState<Job[]>([])
   const [assignedJobIds, setAssignedJobIds] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [pendingChanges, setPendingChanges] = useState<{ add: string[], remove: string[] }>({ add: [], remove: [] })
+  const [showSeatConfirm, setShowSeatConfirm] = useState(false)
 
   useEffect(() => {
     if (isOpen && member?.user_id && member?.organization_id) {
