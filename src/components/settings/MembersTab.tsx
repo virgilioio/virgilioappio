@@ -48,16 +48,21 @@ export function MembersTab() {
   )
 
   const enrichedMembers: EnrichedMember[] = useMemo(() =>
-    orgMembers.map(m => ({
-      ...m,
-      seatType: isBillableMember(m) ? 'paid' as const : 'free' as const,
-      effectiveRole: getEffectiveRole(m),
-    })),
+    orgMembers.map(m => {
+      const isInactive = m.user_status === 'inactive'
+      return {
+        ...m,
+        seatType: isInactive ? undefined : (isBillableMember(m) ? 'paid' as const : 'free' as const),
+        effectiveRole: getEffectiveRole(m),
+      }
+    }),
     [orgMembers, recruiterUserIds]
   )
 
-  const paidCount = enrichedMembers.filter(m => m.seatType === 'paid').length
-  const freeCount = enrichedMembers.filter(m => m.seatType === 'free').length
+  const activeMembers = enrichedMembers.filter(m => m.user_status !== 'inactive')
+  const paidCount = activeMembers.filter(m => m.seatType === 'paid').length
+  const freeCount = activeMembers.filter(m => m.seatType === 'free').length
+  const deactivatedCount = enrichedMembers.filter(m => m.user_status === 'inactive').length
 
   // Tenant subscription functionality removed
   const subscription = null as any
