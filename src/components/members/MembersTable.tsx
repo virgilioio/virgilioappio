@@ -135,7 +135,7 @@ export function MembersTable({
       const email = (m.user_email || m.invited_email || '').toLowerCase()
       const term = searchTerm.toLowerCase()
       const matchesSearch = !searchTerm || name.includes(term) || email.includes(term)
-      const matchesRole = roleFilter === 'all' || m.effectiveRole === roleFilter
+      const matchesRole = roleFilter === 'all' || m.effectiveRole === roleFilter || (!m.effectiveRole && roleFilter === (m.system_role === 'admin' ? 'Admin' : 'Hiring Manager'))
       const matchesStatus = statusFilter === 'all' || m.user_status === statusFilter
       const matchesSeat = seatFilter === 'all' || m.seatType === seatFilter
       return matchesSearch && matchesRole && matchesStatus && matchesSeat
