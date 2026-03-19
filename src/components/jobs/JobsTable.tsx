@@ -185,10 +185,20 @@ export function JobsTable({
     return (
       <Card className="bg-surface-primary">
         <CardContent className="pt-6">
-          <div className="flex gap-4 mb-4">
+          {/* Row 1: Search + filter chips skeleton */}
+          <div className="flex items-center gap-2 mb-3">
             <Skeleton className="h-8 w-56" />
             <Skeleton className="h-8 w-24" />
             <Skeleton className="h-8 w-24" />
+            <Skeleton className="h-8 w-24" />
+          </div>
+          {/* Row 2: Action button skeleton */}
+          <div className="flex items-center gap-2 mb-3">
+            <Skeleton className="h-8 w-28" />
+          </div>
+          {/* Row 3: Count skeleton */}
+          <div className="mb-4">
+            <Skeleton className="h-3 w-32" />
           </div>
           <TableSkeleton rows={5} />
         </CardContent>
@@ -199,8 +209,8 @@ export function JobsTable({
   return (
     <Card className="bg-surface-primary">
       <CardContent className="pt-6">
-        {/* Unified filter toolbar */}
-        <div className="flex flex-wrap items-center gap-2 mb-4">
+        {/* Row 1: Search + filter chips */}
+        <div className="flex flex-wrap items-center gap-2 mb-3">
           <div className="relative w-56">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
@@ -267,8 +277,11 @@ export function JobsTable({
               </Button>
             )}
           </MobileFilterDrawer>
+        </div>
 
-          <div className="ml-auto hidden sm:block">
+        {/* Row 2: Action buttons — left-aligned */}
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <div className="hidden sm:block">
             <PermissionGate permission="canCreateJobs">
               <Button onClick={onCreateNew} size="sm" className="gap-1.5 h-8 whitespace-nowrap">
                 <Plus className="h-3.5 w-3.5" />
@@ -276,6 +289,11 @@ export function JobsTable({
               </Button>
             </PermissionGate>
           </div>
+        </div>
+
+        {/* Row 3: Count */}
+        <div className="text-xs text-muted-foreground mb-4">
+          <span>{filteredJobs.length} of {jobs.length} jobs</span>
         </div>
         
         {filteredJobs.length === 0 ? (

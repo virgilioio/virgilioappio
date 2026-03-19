@@ -1,7 +1,7 @@
 // cache-bust: 8F42B1C3
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Upload, FileSpreadsheet } from 'lucide-react'
+
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Section } from '@/components/layout/Section'
@@ -159,28 +159,7 @@ export default function Candidates() {
           <Section variant="default" banded container className="animate-fade-in">
             <PageHeader
               title="All Candidates"
-            >
-              <div className="hidden sm:flex gap-2">
-                <Button
-                  onClick={() => setIsCSVImportOpen(true)}
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                >
-                  <FileSpreadsheet className="h-4 w-4" />
-                  Import CSV
-                </Button>
-                <Button
-                  onClick={() => setIsBulkUploadOpen(true)}
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                >
-                  <Upload className="h-4 w-4" />
-                  Bulk Upload
-                </Button>
-              </div>
-            </PageHeader>
+            />
           </Section>
 
           <Section container className="animate-fade-in">
@@ -191,6 +170,8 @@ export default function Candidates() {
               onDelete={handleDelete}
               onAddNew={handleAddNew}
               onRefresh={getCandidates}
+              onImportCSV={() => setIsCSVImportOpen(true)}
+              onBulkUpload={() => setIsBulkUploadOpen(true)}
             />
           </Section>
 

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Upload, FileSpreadsheet } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton, TableSkeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -38,6 +39,8 @@ interface IndependentCandidateTableProps {
   onDelete: (candidateId: string) => void
   onAddNew: () => void
   onRefresh?: () => void
+  onImportCSV?: () => void
+  onBulkUpload?: () => void
 }
 
 
@@ -48,6 +51,8 @@ export function IndependentCandidateTable({
   onDelete, 
   onAddNew,
   onRefresh,
+  onImportCSV,
+  onBulkUpload,
 }: IndependentCandidateTableProps) {
   const { isEnabled: whatsAppEnabled } = useWhatsAppEnabled()
   
@@ -325,11 +330,27 @@ const getPageNumbers = () => {
     return (
       <Card className="bg-surface-primary border-border">
         <CardContent className="pt-6">
-          <div className="flex gap-4 mb-4">
+          {/* Row 1: View selector skeleton */}
+          <div className="mb-3">
+            <Skeleton className="h-8 w-40" />
+          </div>
+          {/* Row 2: Search + filter chips skeleton */}
+          <div className="flex items-center gap-2 mb-3">
             <Skeleton className="h-8 w-56" />
             <Skeleton className="h-8 w-24" />
             <Skeleton className="h-8 w-24" />
             <Skeleton className="h-8 w-24" />
+          </div>
+          {/* Row 3: Action buttons skeleton */}
+          <div className="flex items-center gap-2 mb-3">
+            <Skeleton className="h-8 w-28" />
+            <Skeleton className="h-8 w-20" />
+            <Skeleton className="h-8 w-24" />
+            <Skeleton className="h-8 w-28" />
+          </div>
+          {/* Row 4: Count skeleton */}
+          <div className="mb-4">
+            <Skeleton className="h-3 w-32" />
           </div>
           <TableSkeleton rows={8} />
         </CardContent>
@@ -340,8 +361,8 @@ const getPageNumbers = () => {
   return (
     <Card className="bg-surface-primary border-border">
       <CardContent className="pt-6">
-        {/* Unified toolbar: search + filter chips + actions */}
-        <div className="flex flex-wrap items-center gap-2 mb-4">
+        {/* Row 1: Saved View Selector */}
+        <div className="mb-3">
           <SavedViewSelector
             pageContext="candidates"
             currentFilters={filters as unknown as Record<string, unknown>}
@@ -349,6 +370,10 @@ const getPageNumbers = () => {
             activeViewId={activeViewId}
             onActiveViewChange={handleActiveViewChange}
           />
+        </div>
+
+        {/* Row 2: Search + filter chips */}
+        <div className="flex flex-wrap items-center gap-2 mb-3">
           <div className="relative w-56">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
@@ -358,27 +383,39 @@ const getPageNumbers = () => {
               className="pl-9 h-8 text-sm rounded-full"
             />
           </div>
-
           <CandidateFiltersPanel filterOptions={filterOptions} />
-
-          <PermissionGate permission="canManageCandidates">
-            <div className="ml-auto flex items-center gap-2">
-              {!selectionMode && (
-                <Button onClick={onAddNew} size="sm" className="hidden sm:inline-flex gap-1.5 h-8">
-                  <UserPlus className="h-3.5 w-3.5" />
-                  Add Candidate
-                </Button>
-              )}
-              <Button onClick={toggleSelectionMode} variant={selectionMode ? 'secondary' : 'outline'} size="sm" className="gap-1.5 h-8">
-                <ListChecks className="h-3.5 w-3.5" />
-                {selectionMode ? 'Done' : 'Select'}
-              </Button>
-            </div>
-          </PermissionGate>
         </div>
 
-        {/* Filter results count */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
+        {/* Row 3: Action buttons — left-aligned */}
+        <PermissionGate permission="canManageCandidates">
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            {!selectionMode && (
+              <Button onClick={onAddNew} size="sm" className="hidden sm:inline-flex gap-1.5 h-8">
+                <UserPlus className="h-3.5 w-3.5" />
+                Add Candidate
+              </Button>
+            )}
+            <Button onClick={toggleSelectionMode} variant={selectionMode ? 'secondary' : 'outline'} size="sm" className="gap-1.5 h-8">
+              <ListChecks className="h-3.5 w-3.5" />
+              {selectionMode ? 'Done' : 'Select'}
+            </Button>
+            {onImportCSV && !selectionMode && (
+              <Button onClick={onImportCSV} variant="outline" size="sm" className="hidden sm:inline-flex gap-1.5 h-8">
+                <FileSpreadsheet className="h-3.5 w-3.5" />
+                Import CSV
+              </Button>
+            )}
+            {onBulkUpload && !selectionMode && (
+              <Button onClick={onBulkUpload} variant="outline" size="sm" className="hidden sm:inline-flex gap-1.5 h-8">
+                <Upload className="h-3.5 w-3.5" />
+                Bulk Upload
+              </Button>
+            )}
+          </div>
+        </PermissionGate>
+
+        {/* Row 4: Filter results count */}
+        <div className="text-xs text-muted-foreground mb-4">
           <span>{filteredCandidates.length} of {candidates.length} candidates</span>
         </div>
 
