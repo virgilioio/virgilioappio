@@ -121,87 +121,81 @@ export default function Find() {
       />
       
       <div className="min-h-screen flex flex-col overflow-hidden">
-        {/* Banded header with divider */}
-        <Section variant="default" banded>
-          <div className="px-6">
-            <PageHeader title="Find" compact />
-          </div>
+        <Section variant="default" banded container className="animate-fade-in">
+          <PageHeader title="Find" compact />
         </Section>
         
-        {/* Main content area */}
-        <div className="flex-1 flex gap-6 p-6 overflow-hidden">
-          {/* Floating filter sidebar card */}
-          <FindFilterPanel
-            criteria={editableCriteria}
-            onCriteriaChange={handleCriteriaChange}
-            resultFilters={filters}
-            onResultFiltersChange={setFilters}
-          />
-          
-          {/* Main content card */}
-          <Card className="flex-1 flex flex-col overflow-hidden">
-            {/* Toolbar row */}
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
-              <SavedSearchSelector
-                selectedProjectId={projectId}
-                currentProject={currentProject}
-                onSelectProject={handleSelectProject}
-                onNewSearch={handleNewSearch}
-              />
-            </div>
+        <Section container className="flex-1 overflow-hidden !py-0">
+          <div className="flex gap-6 py-6 h-full overflow-hidden">
+            <FindFilterPanel
+              criteria={editableCriteria}
+              onCriteriaChange={handleCriteriaChange}
+              resultFilters={filters}
+              onResultFiltersChange={setFilters}
+            />
             
-            {/* Content body */}
-            <div className="flex-1 overflow-hidden">
-              {mode === 'new' && (
-                <div className="flex-1 flex flex-col items-center justify-center px-4 py-12 h-full">
-                  <div className={`w-full max-w-3xl mx-auto transition-all duration-500 ease-out ${isGenerating ? 'space-y-0' : 'space-y-8'}`}>
-                    <div className={`text-center transition-all duration-500 ease-out ${isGenerating ? 'py-8' : 'space-y-3'}`}>
-                      {isGenerating ? (
-                        <GioThinkingHeader />
-                      ) : (
-                        <div className="animate-fade-in">
-                          <div className="inline-flex items-center justify-center mb-4">
-                            <img 
-                              src={gioAvatar} 
-                              alt="Gio AI Assistant"
-                              className="h-16 w-16 rounded-full transition-all duration-500"
-                            />
+            <Card className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+                <SavedSearchSelector
+                  selectedProjectId={projectId}
+                  currentProject={currentProject}
+                  onSelectProject={handleSelectProject}
+                  onNewSearch={handleNewSearch}
+                />
+              </div>
+              
+              <div className="flex-1 overflow-hidden">
+                {mode === 'new' && (
+                  <div className="flex-1 flex flex-col items-center justify-center px-4 py-12 h-full">
+                    <div className={`w-full max-w-3xl mx-auto transition-all duration-500 ease-out ${isGenerating ? 'space-y-0' : 'space-y-8'}`}>
+                      <div className={`text-center transition-all duration-500 ease-out ${isGenerating ? 'py-8' : 'space-y-3'}`}>
+                        {isGenerating ? (
+                          <GioThinkingHeader />
+                        ) : (
+                          <div className="animate-fade-in">
+                            <div className="inline-flex items-center justify-center mb-4">
+                              <img 
+                                src={gioAvatar} 
+                                alt="Gio AI Assistant"
+                                className="h-16 w-16 rounded-full transition-all duration-500"
+                              />
+                            </div>
+                            <h1 className="text-xl md:text-2xl font-poppins font-bold text-foreground" style={{ letterSpacing: '-0.06em' }}>
+                              What role are you hiring right now<span className="text-primary">?</span>
+                            </h1>
                           </div>
-                          <h1 className="text-xl md:text-2xl font-poppins font-bold text-foreground" style={{ letterSpacing: '-0.06em' }}>
-                            What role are you hiring right now<span className="text-primary">?</span>
-                          </h1>
-                        </div>
-                      )}
-                    </div>
+                        )}
+                      </div>
 
-                    <div className={`transition-all duration-500 ease-out ${
-                      isGenerating 
-                        ? 'opacity-0 scale-95 max-h-0 overflow-hidden pointer-events-none' 
-                        : 'opacity-100 scale-100 max-h-[1000px]'
-                    }`}>
-                      <AIJobAssistant 
-                        onProjectCreated={(newProjectId) => navigate(`/find/${newProjectId}`)}
-                        onGeneratingChange={setIsGenerating}
-                      />
+                      <div className={`transition-all duration-500 ease-out ${
+                        isGenerating 
+                          ? 'opacity-0 scale-95 max-h-0 overflow-hidden pointer-events-none' 
+                          : 'opacity-100 scale-100 max-h-[1000px]'
+                      }`}>
+                        <AIJobAssistant 
+                          onProjectCreated={(newProjectId) => navigate(`/find/${newProjectId}`)}
+                          onGeneratingChange={setIsGenerating}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-              
-              {mode === 'project' && projectId && (
-                <SourcingProjectView 
-                  projectId={projectId}
-                  filters={filters}
-                  onFiltersChange={setFilters}
-                  isRefreshing={isRefreshing}
-                  setIsRefreshing={setIsRefreshing}
-                  onProjectLoaded={handleProjectLoaded}
-                  onUpdateSearchCriteria={handleExposeUpdateSearchCriteria}
-                />
-              )}
-            </div>
-          </Card>
-        </div>
+                )}
+                
+                {mode === 'project' && projectId && (
+                  <SourcingProjectView 
+                    projectId={projectId}
+                    filters={filters}
+                    onFiltersChange={setFilters}
+                    isRefreshing={isRefreshing}
+                    setIsRefreshing={setIsRefreshing}
+                    onProjectLoaded={handleProjectLoaded}
+                    onUpdateSearchCriteria={handleExposeUpdateSearchCriteria}
+                  />
+                )}
+              </div>
+            </Card>
+          </div>
+        </Section>
       </div>
     </RoleGate>
   )
