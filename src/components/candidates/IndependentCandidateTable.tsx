@@ -51,6 +51,8 @@ export function IndependentCandidateTable({
   onDelete, 
   onAddNew,
   onRefresh,
+  onImportCSV,
+  onBulkUpload,
 }: IndependentCandidateTableProps) {
   const { isEnabled: whatsAppEnabled } = useWhatsAppEnabled()
   
