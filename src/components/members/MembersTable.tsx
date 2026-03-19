@@ -13,8 +13,8 @@ import { Member } from '@/hooks/useMembers'
 import { MoreVertical, Plus, Send, UserCheck, UserX, Trash2, Copy, Briefcase, Mail, MailX, Clock, Search, X } from 'lucide-react'
 
 export interface EnrichedMember extends Member {
-  seatType: 'paid' | 'free'
-  effectiveRole: 'Owner' | 'Admin' | 'Recruiter' | 'Hiring Manager'
+  seatType?: 'paid' | 'free'
+  effectiveRole?: 'Owner' | 'Admin' | 'Recruiter' | 'Hiring Manager'
 }
 
 interface MembersTableProps {
