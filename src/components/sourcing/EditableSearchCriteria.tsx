@@ -397,7 +397,7 @@ export function EditableSearchCriteria({
         {criteria.industries && criteria.industries.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {criteria.industries.map(industry => (
-              <Badge key={industry} variant="outline" className="gap-1">
+              <Badge key={industry} variant="pastel-blue" className="gap-1">
                 {getIndustryLabel(industry)}
                 <button
                   onClick={() => handleRemoveIndustry(industry)}
