@@ -40,10 +40,11 @@ export function MembersTab() {
     || m.user_type === 'workspace_owner'
     || (m.user_id && recruiterUserIds.has(m.user_id))
 
-  const paidMembers = members.filter(
-    (m) => isBillableMember(m) && (!parentOrgId || m.organization_id === parentOrgId)
+  const orgMembers = members.filter(
+    (m) => !parentOrgId || m.organization_id === parentOrgId
   )
-  const collaboratorMembers = members.filter((m) => !isBillableMember(m))
+  const paidMembers = orgMembers.filter((m) => isBillableMember(m))
+  const collaboratorMembers = orgMembers.filter((m) => !isBillableMember(m))
 
   // Tenant subscription functionality removed
   const subscriptionData = null
@@ -122,7 +123,7 @@ export function MembersTab() {
       
       <Tabs value={tab} onValueChange={(v) => setTab(v as 'members' | 'collaborators')} className="w-full">
         <TabsList>
-          <TabsTrigger value="members">Members</TabsTrigger>
+          <TabsTrigger value="members">Paid Seats</TabsTrigger>
           <TabsTrigger value="collaborators">Collaborators</TabsTrigger>
         </TabsList>
 
@@ -139,13 +140,13 @@ export function MembersTab() {
               <div className="rounded-brand border border-pastel-purple/50 bg-pastel-purple/40 p-4 shadow-[var(--shadow-xs)]">
                 <div className="text-sm text-pastel-purple-foreground/80">Paid Seats</div>
                 <div className="text-3xl font-semibold text-pastel-purple-foreground mt-1">{paidMembers.length}</div>
-                
+                <div className="text-xs text-pastel-purple-foreground/60 mt-1">Admins & Recruiters</div>
               </div>
               {/* Collaborators - Blue */}
               <div className="rounded-brand border border-pastel-blue/50 bg-pastel-blue/40 p-4 shadow-[var(--shadow-xs)]">
                 <div className="text-sm text-pastel-blue-foreground/80">Collaborators</div>
                 <div className="text-3xl font-semibold text-pastel-blue-foreground mt-1">{collaboratorMembers.length}</div>
-                
+                <div className="text-xs text-pastel-blue-foreground/60 mt-1">Hiring Managers & Interviewers</div>
               </div>
             </div>
           </CardContent>
