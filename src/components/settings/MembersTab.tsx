@@ -152,6 +152,14 @@ export function MembersTab() {
               <div className="text-3xl font-semibold text-pastel-blue-foreground mt-1">{freeCount}</div>
               <div className="text-xs text-pastel-blue-foreground/60 mt-1">Hiring Managers & Interviewers</div>
             </div>
+            {/* Deactivated */}
+            {deactivatedCount > 0 && (
+              <div className="rounded-brand border border-border bg-muted/40 p-4 shadow-[var(--shadow-xs)]">
+                <div className="text-sm text-muted-foreground/80">Deactivated</div>
+                <div className="text-3xl font-semibold text-muted-foreground mt-1">{deactivatedCount}</div>
+                <div className="text-xs text-muted-foreground/60 mt-1">Not counted toward seats</div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
