@@ -81,7 +81,8 @@ export function MemberDetailSheet({ member, open, onOpenChange }: MemberDetailSh
         <SheetHeader className="pb-4">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
-              <AvatarFallback className="bg-primary/15 text-primary text-lg font-semibold">
+              {member.user_avatar_url && <AvatarImage src={member.user_avatar_url} alt={getDisplayName(member)} />}
+              <AvatarFallback className={`${getAvatarColor(member)} text-lg font-semibold`}>
                 {getInitials(member)}
               </AvatarFallback>
             </Avatar>
