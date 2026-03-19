@@ -88,9 +88,7 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
     }
   }).filter(Boolean)
 
-  const handleAssignUser = async () => {
-    if (!selectedUserId) return
-
+  const executeAssign = async () => {
     const member = members.find(m => m.user_id === selectedUserId)
     if (!member) return
 
@@ -106,6 +104,20 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
     } catch (error) {
       console.error('Failed to assign user:', error)
     }
+  }
+
+  const handleAssignUser = async () => {
+    if (!selectedUserId) return
+    const member = members.find(m => m.user_id === selectedUserId)
+    if (!member) return
+
+    if (selectedRole === 'recruiter' && wouldUpgrade(member.user_id, member.system_role, member.user_type)) {
+      const name = `${member.user_first_name || ''} ${member.user_last_name || ''}`.trim() || member.user_email || 'this user'
+      setSeatConfirm({ action: executeAssign, memberName: name })
+      return
+    }
+
+    await executeAssign()
   }
 
   const handleUnassignUser = async (userId: string) => {
