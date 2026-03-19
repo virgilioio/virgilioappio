@@ -1,15 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { SidebarProvider } from '@/components/ui/sidebar'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { AIJobAssistant } from '@/components/dashboard/AIJobAssistant'
-import { SourcingSidebar } from '@/components/sourcing/SourcingSidebar'
+import { FindFilterPanel } from '@/components/sourcing/FindFilterPanel'
+import { SavedSearchSelector } from '@/components/sourcing/SavedSearchSelector'
 import { SourcingProjectView } from '@/components/sourcing/SourcingProjectView'
 import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
-import { useSourcingProjects } from '@/hooks/useSourcingProjects'
 import { RoleGate } from '@/components/auth/RoleGate'
 import { useUserJobRoles } from '@/hooks/useUserJobRoles'
 import { GioThinkingHeader } from '@/components/sourcing/GioThinkingHeader'
 import { FirstRunOrientationDialog } from '@/components/onboarding/FirstRunOrientationDialog'
+import { useSourcingProjects } from '@/hooks/useSourcingProjects'
 import { SourcingProjectFilters, SearchCriteria, SourcingProject } from '@/types/sourcing'
 import gioAvatar from '@/assets/gio-avatar.png'
 
@@ -28,7 +29,12 @@ export default function Find() {
   })
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [currentProject, setCurrentProject] = useState<SourcingProject | null>(null)
+  
+  // Editable criteria state — lifted here for auto-search
+  const [editableCriteria, setEditableCriteria] = useState<SearchCriteria | null>(null)
   const updateSearchCriteriaRef = useRef<((criteria: SearchCriteria) => Promise<void>) | null>(null)
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const isInitialSyncRef = useRef(true)
   
   // Reset filters when project changes
   useEffect(() => {
@@ -38,8 +44,37 @@ export default function Find() {
       maxExperience: 30,
       source: 'all'
     })
+    setEditableCriteria(null)
+    isInitialSyncRef.current = true
   }, [projectId])
   
+  // Sync criteria from project
+  useEffect(() => {
+    if (currentProject?.search_criteria) {
+      setEditableCriteria(currentProject.search_criteria)
+      isInitialSyncRef.current = true
+    }
+  }, [currentProject?.id, currentProject?.search_criteria])
+  
+  // Auto-search: debounce criteria changes and trigger search
+  useEffect(() => {
+    if (!editableCriteria || !updateSearchCriteriaRef.current) return
+    // Skip the initial sync from project load
+    if (isInitialSyncRef.current) {
+      isInitialSyncRef.current = false
+      return
+    }
+    // Must have at least one title keyword
+    if (!editableCriteria.title_keywords || editableCriteria.title_keywords.length === 0) return
+    
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+    debounceTimerRef.current = setTimeout(() => {
+      updateSearchCriteriaRef.current?.(editableCriteria)
+    }, 800)
+    
+    return () => { if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current) }
+  }, [editableCriteria])
+
   const mode = projectId ? 'project' : 'new'
   
   const { data: sourcingProjects, isLoading: isLoadingProjects } = useSourcingProjects()
@@ -64,28 +99,13 @@ export default function Find() {
 
   useEffect(() => {
     if (isLoadingProjects) return
-    
     const firstRunFlag = sessionStorage.getItem('virgilio_first_run')
-    
     if (sourcingProjects && sourcingProjects.length > 0) {
-      if (firstRunFlag) {
-        sessionStorage.removeItem('virgilio_first_run')
-      }
+      if (firstRunFlag) sessionStorage.removeItem('virgilio_first_run')
       return
     }
-    
-    if (firstRunFlag === 'true') {
-      setShowFirstRunDialog(true)
-    }
+    if (firstRunFlag === 'true') setShowFirstRunDialog(true)
   }, [isLoadingProjects, sourcingProjects])
-
-  const handleFirstRunComplete = () => {
-    setShowFirstRunDialog(false)
-  }
-
-  const isFirstRunTenantFlow = !isLoadingProjects && 
-    sessionStorage.getItem('virgilio_first_run') === 'true' && 
-    (!sourcingProjects || sourcingProjects.length === 0)
 
   const handleProjectLoaded = useCallback((project: SourcingProject) => {
     setCurrentProject(project)
@@ -95,10 +115,8 @@ export default function Find() {
     updateSearchCriteriaRef.current = fn
   }, [])
 
-  const handleUpdateSearchCriteria = useCallback(async (criteria: SearchCriteria) => {
-    if (updateSearchCriteriaRef.current) {
-      await updateSearchCriteriaRef.current(criteria)
-    }
+  const handleCriteriaChange = useCallback((updates: Partial<SearchCriteria>) => {
+    setEditableCriteria(prev => prev ? { ...prev, ...updates } : null)
   }, [])
 
   return (
@@ -109,33 +127,32 @@ export default function Find() {
     >
       <FirstRunOrientationDialog 
         open={showFirstRunDialog} 
-        onComplete={handleFirstRunComplete} 
+        onComplete={() => setShowFirstRunDialog(false)} 
       />
       
-      <SidebarProvider defaultOpen={!isFirstRunTenantFlow}>
-        <div className="min-h-screen flex w-full overflow-hidden">
-          <SourcingSidebar 
-            selectedProjectId={projectId || null}
-            onSelectProject={handleSelectProject}
-            onNewSearch={handleNewSearch}
-            project={currentProject}
-            filters={filters}
-            onFiltersChange={setFilters}
-            onUpdateSearchCriteria={handleUpdateSearchCriteria}
-            isRefreshing={isRefreshing}
+      <div className="min-h-screen flex flex-col overflow-hidden">
+        {/* Page Header */}
+        <div className="px-6 pt-6">
+          <PageHeader title="Find" compact />
+        </div>
+        
+        {/* Main layout: filter panel + content */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Filter Panel — always visible */}
+          <FindFilterPanel
+            criteria={editableCriteria}
+            onCriteriaChange={handleCriteriaChange}
+            resultFilters={filters}
+            onResultFiltersChange={setFilters}
+            disabled={!projectId}
           />
           
-          <main className="flex-1 bg-white overflow-hidden">
+          {/* Main Content */}
+          <main className="flex-1 bg-background overflow-hidden flex flex-col">
             {mode === 'new' && (
-              <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-4 py-12">
-                <div 
-                  className={`w-full max-w-3xl mx-auto transition-all duration-500 ease-out ${
-                    isGenerating ? 'space-y-0' : 'space-y-8'
-                  }`}
-                >
-                  <div className={`text-center transition-all duration-500 ease-out ${
-                    isGenerating ? 'py-8' : 'space-y-3'
-                  }`}>
+              <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
+                <div className={`w-full max-w-3xl mx-auto transition-all duration-500 ease-out ${isGenerating ? 'space-y-0' : 'space-y-8'}`}>
+                  <div className={`text-center transition-all duration-500 ease-out ${isGenerating ? 'py-8' : 'space-y-3'}`}>
                     {isGenerating ? (
                       <GioThinkingHeader />
                     ) : (
@@ -147,8 +164,8 @@ export default function Find() {
                             className="h-16 w-16 rounded-full transition-all duration-500"
                           />
                         </div>
-                        <h1 className="text-xl md:text-2xl font-poppins font-bold text-virgilio-text" style={{ letterSpacing: '-0.06em' }}>
-                          What role are you hiring right now<span className="text-virgilio-purple">?</span>
+                        <h1 className="text-xl md:text-2xl font-poppins font-bold text-foreground" style={{ letterSpacing: '-0.06em' }}>
+                          What role are you hiring right now<span className="text-primary">?</span>
                         </h1>
                       </div>
                     )}
@@ -160,9 +177,7 @@ export default function Find() {
                       : 'opacity-100 scale-100 max-h-[1000px]'
                   }`}>
                     <AIJobAssistant 
-                      onProjectCreated={(newProjectId) => {
-                        navigate(`/find/${newProjectId}`)
-                      }}
+                      onProjectCreated={(newProjectId) => navigate(`/find/${newProjectId}`)}
                       onGeneratingChange={setIsGenerating}
                     />
                   </div>
@@ -171,19 +186,31 @@ export default function Find() {
             )}
             
             {mode === 'project' && projectId && (
-              <SourcingProjectView 
-                projectId={projectId}
-                filters={filters}
-                onFiltersChange={setFilters}
-                isRefreshing={isRefreshing}
-                setIsRefreshing={setIsRefreshing}
-                onProjectLoaded={handleProjectLoaded}
-                onUpdateSearchCriteria={handleExposeUpdateSearchCriteria}
-              />
+              <>
+                {/* Saved Search Selector */}
+                <div className="px-4 py-3 border-b bg-background flex items-center gap-3">
+                  <SavedSearchSelector
+                    selectedProjectId={projectId}
+                    currentProject={currentProject}
+                    onSelectProject={handleSelectProject}
+                    onNewSearch={handleNewSearch}
+                  />
+                </div>
+                
+                <SourcingProjectView 
+                  projectId={projectId}
+                  filters={filters}
+                  onFiltersChange={setFilters}
+                  isRefreshing={isRefreshing}
+                  setIsRefreshing={setIsRefreshing}
+                  onProjectLoaded={handleProjectLoaded}
+                  onUpdateSearchCriteria={handleExposeUpdateSearchCriteria}
+                />
+              </>
             )}
           </main>
         </div>
-      </SidebarProvider>
+      </div>
     </RoleGate>
   )
 }
