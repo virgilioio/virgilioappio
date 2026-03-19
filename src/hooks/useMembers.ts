@@ -24,6 +24,7 @@ export interface Member {
   user_first_name?: string
   user_last_name?: string
   organization_name?: string
+  user_avatar_url?: string | null
   // Email delivery tracking (P1)
   invitation_email_sent_at?: string | null
   invitation_email_status?: string | null
