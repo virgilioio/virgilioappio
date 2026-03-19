@@ -10,6 +10,8 @@ import { toast } from '@/hooks/use-toast'
 import { Briefcase, Loader2 } from 'lucide-react'
 import { Member } from '@/hooks/useMembers'
 import { useQueryClient } from '@tanstack/react-query'
+import { useWouldUpgradeSeat } from '@/hooks/useWouldUpgradeSeat'
+import { SeatUpgradeConfirmDialog } from '@/components/billing/SeatUpgradeConfirmDialog'
 
 interface MemberJobAssignmentsDialogProps {
   isOpen: boolean
@@ -30,11 +32,13 @@ export function MemberJobAssignmentsDialog({
   member 
 }: MemberJobAssignmentsDialogProps) {
   const queryClient = useQueryClient()
+  const { wouldUpgrade, paidSeatCount } = useWouldUpgradeSeat()
   const [jobs, setJobs] = useState<Job[]>([])
   const [assignedJobIds, setAssignedJobIds] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [pendingChanges, setPendingChanges] = useState<{ add: string[], remove: string[] }>({ add: [], remove: [] })
+  const [showSeatConfirm, setShowSeatConfirm] = useState(false)
 
   useEffect(() => {
     if (isOpen && member?.user_id && member?.organization_id) {
@@ -117,7 +121,24 @@ export function MemberJobAssignmentsDialog({
 
   const hasChanges = pendingChanges.add.length > 0 || pendingChanges.remove.length > 0
 
-  const handleSave = async () => {
+  const handleSaveClick = () => {
+    if (!member?.user_id || !member?.organization_id) return
+    
+    // Check if this save would convert a free user to paid
+    // The member currently has no recruiter assignments and is a 'member' system_role
+    // Adding job assignments defaults them as recruiter
+    const isCurrentlyFree = wouldUpgrade(member.user_id, member.system_role, member.user_type)
+    const isAddingJobs = pendingChanges.add.length > 0
+    
+    if (isCurrentlyFree && isAddingJobs) {
+      setShowSeatConfirm(true)
+      return
+    }
+    
+    executeSave()
+  }
+
+  const executeSave = async () => {
     if (!member?.user_id || !member?.organization_id) return
     
     setIsSaving(true)
@@ -247,13 +268,24 @@ export function MemberJobAssignmentsDialog({
             <Button variant="outline" onClick={onClose} disabled={isSaving}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={!hasChanges || isSaving}>
+            <Button onClick={handleSaveClick} disabled={!hasChanges || isSaving}>
               {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Save Changes
             </Button>
           </div>
         </div>
       </DialogContent>
+
+      <SeatUpgradeConfirmDialog
+        open={showSeatConfirm}
+        memberName={memberName}
+        currentPaidSeats={paidSeatCount}
+        onConfirm={() => {
+          setShowSeatConfirm(false)
+          executeSave()
+        }}
+        onCancel={() => setShowSeatConfirm(false)}
+      />
     </Dialog>
   )
 }

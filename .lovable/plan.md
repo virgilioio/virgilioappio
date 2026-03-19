@@ -1,62 +1,151 @@
+# System Roles Migration — Completed Phases 1-5
 
+## Architecture Change
+- **System level**: Users are `Workspace Owner`, `Admin`, or `Member` (stored in `members.system_role`)
+- **Job level**: Roles (`recruiter`, `hiring_manager`, `interviewer`) come from `job_assignments.role`
 
-# Billing Confirmation Dialog for Recruiter Assignments
+## Completed
 
-## Context
-In platforms like Greenhouse and Ashby, assigning a user as a recruiter (a billable role) triggers a confirmation step warning the admin that this will add a paid seat. This prevents accidental billing changes.
+### Phase 1 — Database
+- ✅ Created `system_role` enum (`admin`, `member`)
+- ✅ Added `system_role` column to `members` table
+- ✅ Migrated data: `admin` → `admin`, all others → `member`
+- ✅ Updated `resolve_org_context`, `get_member_role`, `get_user_member_data` to return `system_role`
+- ✅ Updated `check_tenant_member_role` to use `system_role`
+- ✅ Updated `auto_assign_job_creator_to_assignments` trigger
+- ✅ Updated `audit_member_role_change` trigger
 
-Currently, the app has three surfaces where a user can be assigned as a recruiter:
-1. **JobAssignmentsPanel** — role selector when assigning a user to a job
-2. **MemberJobAssignmentsDialog** — bulk toggle of job access from members page
-3. **MemberDetailSheet** — inline role dropdown on existing assignments
+### Phase 2 — Frontend Permissions
+- ✅ Removed `isRecruiter`, `isHiringManager`, `isInterviewer` from `usePermissions`
+- ✅ Created `useJobRole(jobId)` hook for job-level role lookups
+- ✅ Updated `jobScoping.ts` — `isRestrictedRole` no longer checks `isRecruiter`
+- ✅ Updated `JobAssignmentGuard` — guards all non-admin members
 
-None of these warn the admin when the action will convert a free user into a paid seat.
+### Phase 3 — UI Updates
+- ✅ Updated `Header` nav — uses `isMember` instead of `isRecruiter`
+- ✅ Updated `Dashboard` — sourcing panel for admin+ only
+- ✅ Updated `JobSetupPanel` — readOnly for non-admin members
+- ✅ Updated `BillingGuard` — members (non-admin) never blocked
+- ✅ Updated `MembersTab` — paid seats = admins, collaborators = members
+- ✅ Updated `Find` page RoleGate
+- ✅ Updated `useScheduledBookings`, `useJobsForCandidateAssignment`, `useJobs`
 
-## Approach
-Create a reusable **`SeatUpgradeConfirmDialog`** component that intercepts recruiter assignments for users who are currently on a free seat.
+### Phase 4 — Runtime Hotfixes
+- ✅ Updated `is_org_owner` — `m.system_role = 'admin'` (was `m.member_role`)
+- ✅ Updated `check_org_hierarchy_role_access` — `m.system_role`
+- ✅ Updated `reconcile_pending_invitation` — returns `system_role`
+- ✅ Updated `validate_invite_token` — returns `system_role`
+- ✅ Updated `accept_invitation` — uses `system_role`
 
-## Changes
+### Phase 5 — Complete Cleanup
+- ✅ Updated `admin_insert_first_member` — inserts `system_role` instead of `member_role`
+- ✅ Updated `admin_manage_member` — updates `system_role` column
+- ✅ Updated `audit_member_role_change` trigger — only tracks `system_role`
+- ✅ Updated `log_member_activation` trigger — metadata uses `system_role`
+- ✅ Updated `get_tenant_billable_seat_count` — counts by `system_role`
+- ✅ Updated `duplicate_job_posting` — permission check uses `system_role`
+- ✅ Updated `user_can_manage_org_members` — checks `system_role = 'admin'`
+- ✅ Updated `diagnose_user_auth` — reports `system_role`
+- ✅ Updated `audit_platform_admin_access` — returns `system_role`
+- ✅ Updated `debug_user_permissions` — returns `system_role`
+- ✅ Renamed `invitations.member_role` → `invitations.system_role`
+- ✅ Cleaned up frontend: `invitationReconciliation.ts`, `AcceptInvite.tsx`, `TeamTab.tsx`, `audit.ts`
 
-### 1. New component: `SeatUpgradeConfirmDialog`
-**File: `src/components/billing/SeatUpgradeConfirmDialog.tsx`**
-- AlertDialog with clear messaging: "Assigning [Name] as a Recruiter will convert them from a free collaborator to a paid seat."
-- Shows current paid seat count and the new count after confirmation
-- Uses `useStripePricing` to display the per-seat cost impact (e.g., "+$XX/mo")
-- Props: `open`, `onConfirm`, `onCancel`, `memberName`, `currentPaidSeats`
+## Phase 6 — Future (Optional)
+- Drop `member_role` column from `members` table (already dropped)
+- Drop old `member_role` enum type
+- Update `MemberInviteSheet` role picker to only offer Admin/Member
 
-### 2. Integrate into `JobAssignmentsPanel`
-**File: `src/components/jobs/JobAssignmentsPanel.tsx`**
-- When "Assign User" is clicked with role = `recruiter`, check if the selected user is currently a free seat (not admin, has no existing recruiter assignments via `useRecruiterUserIds`)
-- If free → show `SeatUpgradeConfirmDialog` before proceeding
-- If already paid → assign directly
+# Deep Resume Parsing + Data Standardization — Completed
 
-### 3. Integrate into `MemberJobAssignmentsDialog`
-**File: `src/components/members/MemberJobAssignmentsDialog.tsx`**
-- On "Save Changes", if the member is currently free (system_role = `member`, not in `recruiterUserIds`) and new assignments are being added (default role is recruiter), show the confirmation dialog
-- Only triggers when it's their **first** job assignment (which defaults to recruiter role)
+## What was implemented
 
-### 4. Integrate into `MemberDetailSheet`
-**File: `src/components/members/MemberDetailSheet.tsx`**
-- When changing an assignment's role **to** `recruiter` via the inline dropdown, check if the user currently has no other recruiter assignments
-- If this would be their first recruiter role → show confirmation dialog
-- If they already have recruiter on another job → change directly (already paid)
+### Phase 1: Schema Expansion
+- ✅ Added to `candidates`: `current_job_title`, `standardized_title`, `seniority_level`, `functional_area`, `specialization`, `years_in_specialization`, `years_in_leadership`, `company_count`, `avg_tenure_months`
+- ✅ Added to `candidate_work_experience`: `standardized_title`, `company_industry`, `company_size_category`, `duration_months`
+- ✅ Added to `candidate_education`: `education_level`
+- ✅ Created `candidate_certifications` table with RLS policies
 
-### 5. Integrate into `JobAssignmentsPanel` role change
-**File: `src/components/jobs/JobAssignmentsPanel.tsx`**
-- Same logic for the role change dropdown on existing assignments
+### Phase 2: Enrichment Rewrite
+- ✅ Rewrote `enrich-candidate-profile` edge function to use OpenAI tool calling for structured extraction
+- ✅ Single AI call extracts: profile summary, work experience, education, certifications, skills (with categories + primary flags), seniority, functional area, specialization
+- ✅ Standardization pass: maps titles via `standard_job_titles`, skills via `standard_skills`
+- ✅ Computes derived metrics: `company_count`, `avg_tenure_months`, `duration_months`
+- ✅ Upserts into `candidate_work_experience`, `candidate_education`, `candidate_certifications`
 
-## Detection Logic
-A user is "currently free" when:
-- `system_role === 'member'` (not admin/owner)
-- They have zero recruiter assignments (not in `recruiterUserIds` set)
+### Phase 3: UI Updates
+- ✅ New **Career Summary** accordion section in `IndependentCandidateProfileSheet` showing standardized title, seniority, functional area, metrics
+- ✅ **Enrichment status indicator** in header ("AI Enriching..." badge)
+- ✅ **Certifications section** with `CandidateCertificationsComponent`
+- ✅ Enhanced **Work Experience** display: standardized title badge, company industry/size
+- ✅ Enhanced **Education** display: education level badge
+- ✅ Certifications loaded alongside work experience and education
 
-Assigning them as recruiter on any job converts them to a paid seat.
+## Files changed
+- `supabase/functions/enrich-candidate-profile/index.ts` — full rewrite
+- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — career summary, certifications, enrichment indicator
+- `src/components/candidates/CandidateWorkExperience.tsx` — standardized title, industry, size badges
+- `src/components/candidates/CandidateEducationComponent.tsx` — education level badge
+- `src/components/candidates/CandidateCertifications.tsx` — new component
 
-## Files Summary
-| File | Action |
-|------|--------|
-| `src/components/billing/SeatUpgradeConfirmDialog.tsx` | New — reusable confirmation dialog |
-| `src/components/jobs/JobAssignmentsPanel.tsx` | Add confirmation before recruiter assign/role-change |
-| `src/components/members/MemberJobAssignmentsDialog.tsx` | Add confirmation on save when free user gets first assignment |
-| `src/components/members/MemberDetailSheet.tsx` | Add confirmation on inline role change to recruiter |
+# WhatsApp ISV Architecture — Completed
 
+## Architecture
+Per-tenant dedicated numbers under GoGio's master Twilio account. Each tenant gets their own WhatsApp number provisioned via the Twilio connector gateway.
+
+## What was implemented
+
+### Inbound Webhook
+- ✅ Created `whatsapp-inbound-webhook` edge function (public, no JWT)
+- ✅ Matches inbound `From` phone to existing conversations
+- ✅ Inserts messages as `direction: 'inbound'`, updates `unread_count`
+- ✅ Returns empty TwiML (no auto-reply)
+- ✅ Added to `supabase/config.toml` with `verify_jwt = false`
+
+### Simplified Setup Wizard
+- ✅ Reduced from 5 steps to 3: Welcome → Provision → Complete
+- ✅ Removed broken "Verify sender" and "Templates" steps
+- ✅ Provisioning = activation (no separate activate step)
+
+### Simplified Setup Status
+- ✅ Reduced from 6 states to 3: `not_started`, `active`, `error`
+- ✅ `canMessage = true` when `active` (no template-gating)
+- ✅ Removed `provisioning`, `sender_pending`, `sender_active`, `templates_required`
+
+### Integration Card Updates
+- ✅ Removed template count stats (approved/pending/draft)
+- ✅ Simplified status badges to active/not set up/error
+- ✅ Removed unused status configs (sender_pending, provisioning, etc.)
+
+### Template Library Updates
+- ✅ Removed non-functional Submit and Refresh buttons
+- ✅ Removed filter tabs (all/draft/pending/approved/rejected)
+- ✅ Added info note: "Custom templates require GoGio team approval"
+- ✅ Templates show as "Ready to use" or "Local only" status
+
+### Chat Tab Updates
+- ✅ Simplified blocking: only blocks when `not_started` or no phone number
+- ✅ Removed intermediate `canMessage` blocking state
+- ✅ Updated empty template message to reference GoGio team
+
+### Send Function Updates
+- ✅ Removed `is_active` check — if number exists, can send
+- ✅ Per-tenant `twilio_from_number` logic preserved
+
+### Global Templates Seeded
+- ✅ Interview Invitation, Application Update, Job Opportunity
+- ✅ Inserted with `tenant_id = NULL` (global)
+- ✅ No `twilio_content_sid` yet (marked as draft until GoGio team adds real SIDs)
+
+## Manual Prerequisites (for GoGio team — ONE-TIME ONLY)
+1. Get WhatsApp Business Account approved in Twilio Console
+2. Create a Messaging Service and enable WhatsApp on it
+3. Create Content templates in Twilio Console matching seeded templates
+4. UPDATE `whatsapp_templates` rows with real `twilio_content_sid` values and `approval_status = 'approved'`
+5. Store `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID` as Supabase secrets ✅ Done
+
+## Automated Per-Tenant (Zero-Touch)
+1. ✅ Buy number via gateway
+2. ✅ Configure webhook URL on number via gateway
+3. ✅ Register number as WhatsApp Sender via Messaging Service API
+4. ✅ Save config to DB

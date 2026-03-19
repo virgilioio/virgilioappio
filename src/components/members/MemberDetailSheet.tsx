@@ -17,6 +17,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { useMemberJobAssignments } from '@/hooks/useMemberJobAssignments'
+import { useWouldUpgradeSeat } from '@/hooks/useWouldUpgradeSeat'
+import { SeatUpgradeConfirmDialog } from '@/components/billing/SeatUpgradeConfirmDialog'
 import { EnrichedMember } from '@/components/members/MembersTable'
 import { Briefcase, Calendar, Mail, Trash2, Plus } from 'lucide-react'
 import { format } from 'date-fns'
@@ -92,12 +94,14 @@ const ROLE_OPTIONS = [
 export function MemberDetailSheet({ member, open, onOpenChange, onManageJobs }: MemberDetailSheetProps) {
   const { data: assignments, isLoading: assignmentsLoading } = useMemberJobAssignments(member?.user_id)
   const queryClient = useQueryClient()
+  const { wouldUpgrade, paidSeatCount } = useWouldUpgradeSeat()
   const [removeTarget, setRemoveTarget] = useState<{ id: string; jobTitle: string } | null>(null)
   const [isUpdating, setIsUpdating] = useState<string | null>(null)
+  const [seatConfirm, setSeatConfirm] = useState<{ assignmentId: string; newRole: string } | null>(null)
 
   if (!member) return null
 
-  const handleRoleChange = async (assignmentId: string, newRole: string) => {
+  const executeRoleChange = async (assignmentId: string, newRole: string) => {
     setIsUpdating(assignmentId)
     try {
       const { error } = await supabase
@@ -111,7 +115,6 @@ export function MemberDetailSheet({ member, open, onOpenChange, onManageJobs }: 
       queryClient.invalidateQueries({ queryKey: ['recruiter-user-ids'] })
       toast({ title: 'Role updated', description: `Assignment role changed to ${ROLE_OPTIONS.find(r => r.value === newRole)?.label}` })
 
-      // Sync seats since recruiter changes affect billing
       try {
         await supabase.functions.invoke('update-seat-quantity')
         queryClient.invalidateQueries({ queryKey: ['billing-status'] })
@@ -124,6 +127,14 @@ export function MemberDetailSheet({ member, open, onOpenChange, onManageJobs }: 
     } finally {
       setIsUpdating(null)
     }
+  }
+
+  const handleRoleChange = async (assignmentId: string, newRole: string) => {
+    if (newRole === 'recruiter' && wouldUpgrade(member.user_id, member.system_role, member.user_type)) {
+      setSeatConfirm({ assignmentId, newRole })
+      return
+    }
+    await executeRoleChange(assignmentId, newRole)
   }
 
   const handleRemove = async () => {
@@ -303,6 +314,19 @@ export function MemberDetailSheet({ member, open, onOpenChange, onManageJobs }: 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Seat upgrade confirmation */}
+      <SeatUpgradeConfirmDialog
+        open={!!seatConfirm}
+        memberName={getDisplayName(member)}
+        currentPaidSeats={paidSeatCount}
+        onConfirm={async () => {
+          const { assignmentId, newRole } = seatConfirm!
+          setSeatConfirm(null)
+          await executeRoleChange(assignmentId, newRole)
+        }}
+        onCancel={() => setSeatConfirm(null)}
+      />
     </>
   )
 }
