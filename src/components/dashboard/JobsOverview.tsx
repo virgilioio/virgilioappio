@@ -111,8 +111,7 @@ export function JobsOverview({ permissions }: JobsOverviewProps) {
                         {job.title}
                       </span>
                       <Badge 
-                        variant="outline" 
-                        className={`text-xs ${getStatusColor(job.status)}`}
+                        variant={getJobStatusVariant(job.status)}
                       >
                         {job.status}
                       </Badge>
