@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 export interface FilterCheckboxOption {
   value: string
   label: string
-  count: number
+  count?: number
 }
 
 interface FilterCheckboxGroupProps {
