@@ -6,14 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { EmptyState } from '@/components/ui/empty-state'
+import { FilterChipPopover } from '@/components/ui/filter-chip-popover'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton, TableSkeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from '@/hooks/use-toast'
 import { Member } from '@/hooks/useMembers'
 import { MemberDetailSheet } from '@/components/members/MemberDetailSheet'
-import { MoreVertical, Plus, Send, UserCheck, UserX, Trash2, Copy, Briefcase, Mail, MailX, Clock, Search, X } from 'lucide-react'
+import { MoreVertical, Plus, Send, UserCheck, UserX, Trash2, Copy, Briefcase, Mail, MailX, Clock, Search } from 'lucide-react'
 
 export interface EnrichedMember extends Member {
   seatType?: 'paid' | 'free'
@@ -88,20 +88,36 @@ export function MembersTable({
 }: MembersTableProps) {
   const [copyingInvite, setCopyingInvite] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [roleFilter, setRoleFilter] = useState<string>('all')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [seatFilter, setSeatFilter] = useState<string>('all')
+  const [roleFilter, setRoleFilter] = useState<string[]>([])
+  const [statusFilter, setStatusFilter] = useState<string[]>([])
+  const [seatFilter, setSeatFilter] = useState<string[]>([])
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [detailMember, setDetailMember] = useState<EnrichedMember | null>(null)
 
-  const hasActiveFilters = searchTerm || roleFilter !== 'all' || statusFilter !== 'all' || seatFilter !== 'all'
+  const hasActiveFilters = searchTerm || roleFilter.length > 0 || statusFilter.length > 0 || seatFilter.length > 0
 
   const clearFilters = () => {
     setSearchTerm('')
-    setRoleFilter('all')
-    setStatusFilter('all')
-    setSeatFilter('all')
+    setRoleFilter([])
+    setStatusFilter([])
+    setSeatFilter([])
   }
+
+  const seatOptions = useMemo(() => [
+    { value: 'paid', label: 'Paid', count: members.filter(m => m.seatType === 'paid').length },
+    { value: 'free', label: 'Free', count: members.filter(m => m.seatType === 'free').length },
+  ], [members])
+
+  const roleOptions = useMemo(() => {
+    const roles: EnrichedMember['effectiveRole'][] = ['Owner', 'Admin', 'Recruiter', 'Hiring Manager', 'Interviewer']
+    return roles.map(r => ({ value: r!, label: r!, count: members.filter(m => m.effectiveRole === r).length })).filter(o => o.count > 0)
+  }, [members])
+
+  const statusOptions = useMemo(() => [
+    { value: 'active', label: 'Active', count: members.filter(m => m.user_status === 'active').length },
+    { value: 'invited', label: 'Invited', count: members.filter(m => m.user_status === 'invited').length },
+    { value: 'inactive', label: 'Inactive', count: members.filter(m => m.user_status === 'inactive').length },
+  ].filter(o => o.count > 0), [members])
 
   const getDisplayName = (member: EnrichedMember) => {
     if (member.user_first_name && member.user_last_name)
@@ -135,9 +151,9 @@ export function MembersTable({
       const email = (m.user_email || m.invited_email || '').toLowerCase()
       const term = searchTerm.toLowerCase()
       const matchesSearch = !searchTerm || name.includes(term) || email.includes(term)
-      const matchesRole = roleFilter === 'all' || m.effectiveRole === roleFilter || (!m.effectiveRole && roleFilter === (m.system_role === 'admin' ? 'Admin' : 'Hiring Manager'))
-      const matchesStatus = statusFilter === 'all' || m.user_status === statusFilter
-      const matchesSeat = seatFilter === 'all' || m.seatType === seatFilter
+      const matchesRole = roleFilter.length === 0 || roleFilter.includes(m.effectiveRole || (m.system_role === 'admin' ? 'Admin' : 'Hiring Manager'))
+      const matchesStatus = statusFilter.length === 0 || statusFilter.includes(m.user_status)
+      const matchesSeat = seatFilter.length === 0 || (m.seatType && seatFilter.includes(m.seatType))
       return matchesSearch && matchesRole && matchesStatus && matchesSeat
     })
   }, [members, searchTerm, roleFilter, statusFilter, seatFilter])
@@ -245,51 +261,44 @@ export function MembersTable({
               )}
 
               {/* Toolbar */}
-              <div className="flex flex-col sm:flex-row gap-3 mb-4">
-                <div className="relative flex-1">
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                <div className="relative w-[200px]">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search by name or email..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9"
+                    className="h-9 pl-9"
                   />
                 </div>
-                <div className="flex gap-2 flex-wrap">
-                  <Select value={seatFilter} onValueChange={setSeatFilter}>
-                    <SelectTrigger className="w-[130px]"><SelectValue placeholder="Seat" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Seats</SelectItem>
-                      <SelectItem value="paid">Paid</SelectItem>
-                      <SelectItem value="free">Free</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={roleFilter} onValueChange={setRoleFilter}>
-                    <SelectTrigger className="w-[160px]"><SelectValue placeholder="Role" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Roles</SelectItem>
-                      <SelectItem value="Owner">Owner</SelectItem>
-                      <SelectItem value="Admin">Admin</SelectItem>
-                      <SelectItem value="Recruiter">Recruiter</SelectItem>
-                      <SelectItem value="Hiring Manager">Hiring Manager</SelectItem>
-                      <SelectItem value="Interviewer">Interviewer</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="invited">Invited</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {hasActiveFilters && (
-                    <Button variant="ghost" size="icon" onClick={clearFilters} title="Clear filters">
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
+
+                <FilterChipPopover
+                  label="Seat"
+                  options={seatOptions}
+                  selectedValues={seatFilter}
+                  onSelectionChange={setSeatFilter}
+                />
+                <FilterChipPopover
+                  label="Role"
+                  options={roleOptions}
+                  selectedValues={roleFilter}
+                  onSelectionChange={setRoleFilter}
+                />
+                <FilterChipPopover
+                  label="Status"
+                  options={statusOptions}
+                  selectedValues={statusFilter}
+                  onSelectionChange={setStatusFilter}
+                />
+
+                {hasActiveFilters && (
+                  <button
+                    onClick={clearFilters}
+                    className="text-xs text-muted-foreground hover:text-foreground font-poppins font-medium transition-colors"
+                  >
+                    Clear filters
+                  </button>
+                )}
               </div>
 
               <p className="text-xs text-muted-foreground mb-3">
