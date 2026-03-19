@@ -1,92 +1,66 @@
 
 
-# Redesign Find Page: Standard Layout + Real-Time Apollo Search
+# Redesign Find Page: Standard Layout + Table-First Content Area
 
-## New Layout
+## Overview
+
+Align the Find page with the Jobs/Candidates page structure: banded header section with divider, floating card filter sidebar, and a table-like main content area that starts as the Gio prompt input and transforms into the actual candidate table when results load.
+
+## Layout Structure
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│  PageHeader: "Find."                                        │
-├──────────────┬──────────────────────────────────────────────┤
-│  FILTER PANEL│  Saved Searches selector (dropdown/popover)  │
-│  (fixed left │  Tabs: Chat | Candidates | Saved | Archived  │
-│   w-72,      │  ┌──────────────────────────────────────────┐│
-│   scrollable)│  │                                          ││
-│              │  │  Candidate Table (full width)            ││
-│  ▼ Job Titles│  │                                          ││
-│  ▼ Keywords  │  └──────────────────────────────────────────┘│
-│  ▼ Locations │                                              │
-│  ▼ Seniority │                                              │
-│  ▼ Comp Size │                                              │
-│  ▼ Industry  │                                              │
-│  ▼ Companies │                                              │
-│  ▼ Experience│                                              │
-│  ─────────── │                                              │
-│  ▼ Has Email │                                              │
-│  ▼ Has Phone │                                              │
-└──────────────┴──────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│  Section(banded): PageHeader "Find"                          │
+│─────────────────────────────────── border-y (the divider) ───│
+├──────────────────────────────────────────────────────────────┤
+│  p-6 content area                                            │
+│  ┌─────────────┐  ┌────────────────────────────────────────┐ │
+│  │ Filter Panel │  │ SavedSearchSelector + action buttons   │ │
+│  │ (Card,       │  │────────────────────────────────────────│ │
+│  │  rounded-lg, │  │                                        │ │
+│  │  floating,   │  │  [No project]: Gio avatar + prompt     │ │
+│  │  shadow)     │  │  [Generating]: GioThinkingHeader       │ │
+│  │              │  │  [Has project]: Candidate table + tabs  │ │
+│  │ ▼ Job Titles │  │                                        │ │
+│  │ ▼ Keywords   │  └────────────────────────────────────────┘ │
+│  │ ▼ Seniority  │                                            │
+│  │ ...          │                                            │
+│  └─────────────┘                                             │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-- **No Shadcn Sidebar** — replace with a plain `div` (fixed width, non-collapsible, no overlay)
-- Standard `PageHeader` with "Find" title at the top, like Jobs/Candidates pages
-- Filter panel is a scrollable left column, always visible (even without a project selected — just empty/disabled)
-- Each filter section is a `Collapsible` (vertically collapsible with chevron toggle)
-- Saved Searches moves from sidebar to a popover/dropdown in the main content header area
+## Changes
 
-## Real-Time Apollo Search
+### 1. `src/pages/Find.tsx` — Restructure layout
 
-Every filter change immediately triggers a search:
-1. `updateCriteria()` updates local state AND immediately calls `onUpdateSearchCriteria(newCriteria)`
-2. No more "Save & Refresh" button — remove it
-3. The edge function `get-job-matching-candidates` is called on every change (it already handles the full search flow)
-4. A small loading spinner appears on the candidate table during refresh
-5. To prevent hammering Apollo on rapid changes, add a **minimal debounce (800ms)** at the hook level in `useSourcingProjectCandidates` — the user said "immediate" but we need at least a small guard against rapid-fire API calls from multiple checkbox toggles
+- Wrap header in `<Section variant="default" banded container>` with `<PageHeader title="Find" />` — this gives the divider line matching Jobs/Candidates
+- Main content area uses `<Section container>` for consistent padding
+- Layout: `flex gap-6` with filter panel (left) + main content card (right)
+- Main content is a `Card` component containing:
+  - **Toolbar row** (top, inside card): `SavedSearchSelector` popover (left) + action buttons (right) — same pattern as the filter toolbar in Jobs/Candidates tables
+  - **Body**: When no project selected OR generating → show Gio avatar + prompt input (AIJobAssistant) centered inside the card. When project loaded → show `SourcingProjectView` tabs + candidate table
+- The transition from prompt → table happens naturally inside the same card
+- Remove the `disabled` prop gating on filters — filters are always visible/editable even without a project
 
-## Changes by File
+### 2. `src/components/sourcing/FindFilterPanel.tsx` — Floating card style
 
-### 1. `src/pages/Find.tsx` — Major restructure
-- Remove `SidebarProvider` and `SourcingSidebar` entirely
-- Add standard `PageHeader` with title "Find"
-- New layout: `flex` row with filter panel (`w-72 shrink-0`) + main content area
-- Filter panel is a new component `FindFilterPanel` rendered directly (no Sidebar primitives)
-- Saved Searches becomes a compact selector/popover in the project header area
-- When no project selected: show the AIJobAssistant in the main area, filter panel shows "Select or create a search to see filters"
-- When project selected: filter panel populated, main area shows `SourcingProjectView`
-- Lift `editableCriteria` state here — on every change, debounce and auto-save + refetch
+- Wrap the entire panel in a `Card` component instead of a plain `div` with `border-r`
+- Use `rounded-lg shadow-sm` for the floating card look
+- Remove `border-r`, use card's built-in border + shadow
+- Fixed width `w-72`, `overflow-y-auto`, full height of the content area
+- Remove the `disabled` state and the "Select or create a search" empty message — filters are always shown with their default/empty state
+- When no criteria exists, initialize with empty defaults so the collapsible sections still render
 
-### 2. New: `src/components/sourcing/FindFilterPanel.tsx`
-- Plain `div` with `w-72 border-r overflow-y-auto h-full`
-- Each filter section wrapped in `Collapsible` with `CollapsibleTrigger` showing section label + chevron
-- Sections: Job Titles, Keywords, Locations, Seniority, Company Size, Industry, Target Companies, Experience
-- Below separator: Result Filters (Has Email, Has Phone)
-- Uses same `FilterCheckboxGroup` for checkbox-based filters, compact `Input + Plus + badges` for text-based
-- Props: `criteria`, `onCriteriaChange`, `resultFilters`, `onResultFiltersChange`, `disabled` (when no project)
+### 3. `src/components/sourcing/SourcingProjectView.tsx` — Remove redundant header
 
-### 3. `src/components/sourcing/SourcingProjectView.tsx` — Simplify
-- Remove the `SourcingProjectHeader` from here — the header info (project name, status, actions) moves to a compact bar below the page header
-- The saved searches selector (project switcher) replaces the old sidebar project list
+- Remove the `SourcingProjectHeader` wrapper and its `border-b` container — project actions (archive, delete, visibility, link-to-job) move to the `SavedSearchSelector` area or become dropdown menu items
+- The tabs (Chat, Candidates, Saved, Archived) remain but render directly without the extra header chrome
 
-### 4. `src/components/sourcing/SavedSearchSelector.tsx` — New
-- A popover/dropdown that lists saved searches (like `SavedViewSelector` pattern)
-- Shows current project name as trigger, dropdown lists all projects with search/filter
-- "New Search" button inside
-
-### 5. Delete `src/components/sourcing/SourcingSidebar.tsx`
-- All its content moves to `FindFilterPanel` and `SavedSearchSelector`
-
-### 6. Auto-search mechanism
-- In `Find.tsx`: when `editableCriteria` changes, use a `useEffect` with an 800ms debounce timer that calls `handleUpdateSearchCriteria(editableCriteria)`
-- This saves to DB and triggers `refetchCandidates` (calls the Apollo edge function)
-- Show a subtle loading state (spinner overlay on the table) during refresh
-- Remove the `hasChanges` / "Save & Refresh" pattern entirely
-
-## Files Summary
+### Files Summary
 
 | File | Action |
 |------|--------|
-| `src/pages/Find.tsx` | Major rewrite — standard page layout, no Sidebar |
-| `src/components/sourcing/FindFilterPanel.tsx` | New — vertical collapsible filter panel |
-| `src/components/sourcing/SavedSearchSelector.tsx` | New — popover for switching between saved searches |
-| `src/components/sourcing/SourcingProjectView.tsx` | Simplify — remove header duplication |
-| `src/components/sourcing/SourcingSidebar.tsx` | Delete |
+| `src/pages/Find.tsx` | Use Section+PageHeader for banded header; Card-based main content with toolbar; filters always enabled |
+| `src/components/sourcing/FindFilterPanel.tsx` | Card wrapper instead of border-r div; always show filter sections (no disabled state) |
+| `src/components/sourcing/SourcingProjectView.tsx` | Remove SourcingProjectHeader container, keep tabs + table |
 
