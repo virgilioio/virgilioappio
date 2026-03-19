@@ -320,31 +320,14 @@ export function SourcingProjectView({
   
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Compact project info bar */}
-      <div className="flex-shrink-0 border-b bg-background">
-        <div className="container mx-auto p-4">
-          <SourcingProjectHeader 
-            project={project}
-            breakdown={breakdown}
-            searchMetadata={matchingResult?.search_metadata}
-            onRefresh={handleRefresh}
-            onArchive={handleArchive}
-            onDelete={handleDelete}
-            onNameUpdate={handleSaveName}
-            onVisibilityToggle={handleVisibilityToggle}
-            onLinkToJob={handleLinkToJob}
-          />
-        </div>
-      </div>
-      
-      {/* Tabs Section */}
+      {/* Tabs Section — renders directly, no extra header chrome */}
       <Tabs 
         value={activeTab} 
         onValueChange={setActiveTab}
         className="flex-1 flex flex-col overflow-hidden"
       >
         <div className="border-b bg-background">
-          <div className="container mx-auto px-4">
+          <div className="px-4">
             <TabsList className="grid w-full max-w-2xl grid-cols-4">
               <TabsTrigger value="conversation" className="gap-2">
                 <Sparkles className="h-4 w-4" />

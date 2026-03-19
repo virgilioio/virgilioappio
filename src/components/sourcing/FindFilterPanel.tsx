@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { Plus, X, ChevronDown, ChevronRight, Search as SearchIcon } from 'lucide-react'
+import { Plus, X, ChevronDown, ChevronRight } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
+import { Card } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { FilterCheckboxGroup } from '@/components/ui/filter-checkbox-group'
 import { LocationSelector } from './LocationSelector'
@@ -70,7 +70,6 @@ interface FindFilterPanelProps {
   onCriteriaChange: (updates: Partial<SearchCriteria>) => void
   resultFilters: SourcingProjectFilters
   onResultFiltersChange: (filters: SourcingProjectFilters) => void
-  disabled?: boolean
 }
 
 function CollapsibleSection({ 
@@ -108,14 +107,12 @@ function TagInput({
   onAdd, 
   onRemove, 
   badgeVariant = 'secondary',
-  disabled 
 }: {
   placeholder: string
   tags: string[]
   onAdd: (tag: string) => void
   onRemove: (tag: string) => void
   badgeVariant?: 'secondary' | 'pastel-purple' | 'keyword-match' | 'pastel-orange'
-  disabled?: boolean
 }) {
   const [value, setValue] = useState('')
   const handleAdd = () => {
@@ -134,9 +131,8 @@ function TagInput({
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdd() } }}
           className="h-7 text-xs flex-1"
-          disabled={disabled}
         />
-        <Button size="sm" variant="ghost" onClick={handleAdd} className="h-7 w-7 p-0 hover:bg-primary/10" disabled={disabled}>
+        <Button size="sm" variant="ghost" onClick={handleAdd} className="h-7 w-7 p-0 hover:bg-primary/10">
           <Plus className="h-3.5 w-3.5" />
         </Button>
       </div>
@@ -145,7 +141,7 @@ function TagInput({
           {tags.map(tag => (
             <Badge key={tag} variant={badgeVariant} className="text-[10px] h-5 gap-0.5 pr-1">
               {tag}
-              <button onClick={() => onRemove(tag)} className="hover:bg-destructive/10 rounded-sm" disabled={disabled}>
+              <button onClick={() => onRemove(tag)} className="hover:bg-destructive/10 rounded-sm">
                 <X className="h-2.5 w-2.5" />
               </button>
             </Badge>
@@ -156,28 +152,28 @@ function TagInput({
   )
 }
 
+const EMPTY_CRITERIA: SearchCriteria = {
+  title_keywords: [],
+  keywords: [],
+  locations: [],
+  seniorities: [],
+  company_sizes: [],
+  industries: [],
+  company_names: [],
+  experience_years: {},
+}
+
 export function FindFilterPanel({
   criteria,
   onCriteriaChange,
   resultFilters,
   onResultFiltersChange,
-  disabled = false
 }: FindFilterPanelProps) {
-  if (!criteria) {
-    return (
-      <div className="w-72 shrink-0 border-r border-border bg-background overflow-y-auto h-full">
-        <div className="p-4">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Search Criteria</span>
-          <p className="text-xs text-muted-foreground mt-4">
-            Select or create a search to configure filters.
-          </p>
-        </div>
-      </div>
-    )
-  }
+  const c = criteria || EMPTY_CRITERIA
+  const isDisabled = !criteria
 
   const toggleArrayValue = (key: keyof SearchCriteria, value: string) => {
-    const current = (criteria[key] as string[] | undefined) || []
+    const current = (c[key] as string[] | undefined) || []
     const updated = current.includes(value) 
       ? current.filter(v => v !== value) 
       : [...current, value]
@@ -185,72 +181,64 @@ export function FindFilterPanel({
   }
 
   return (
-    <div className="w-72 shrink-0 border-r border-border bg-background overflow-y-auto h-full">
+    <Card className="w-72 shrink-0 overflow-y-auto">
       <div className="p-4 space-y-3">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Search Criteria</span>
 
-        {/* Job Titles */}
         <CollapsibleSection label="Job Titles">
           <TagInput
             placeholder="Add title..."
-            tags={criteria.title_keywords || []}
-            onAdd={(tag) => onCriteriaChange({ title_keywords: [...(criteria.title_keywords || []), tag] })}
-            onRemove={(tag) => onCriteriaChange({ title_keywords: (criteria.title_keywords || []).filter(t => t !== tag) })}
+            tags={c.title_keywords || []}
+            onAdd={(tag) => onCriteriaChange({ title_keywords: [...(c.title_keywords || []), tag] })}
+            onRemove={(tag) => onCriteriaChange({ title_keywords: (c.title_keywords || []).filter(t => t !== tag) })}
             badgeVariant="pastel-purple"
-            disabled={disabled}
           />
         </CollapsibleSection>
 
-        {/* Keywords */}
         <CollapsibleSection label="Keywords">
           <TagInput
             placeholder="Add keyword..."
-            tags={criteria.keywords || []}
-            onAdd={(tag) => onCriteriaChange({ keywords: [...(criteria.keywords || []), tag] })}
-            onRemove={(tag) => onCriteriaChange({ keywords: (criteria.keywords || []).filter(t => t !== tag) })}
+            tags={c.keywords || []}
+            onAdd={(tag) => onCriteriaChange({ keywords: [...(c.keywords || []), tag] })}
+            onRemove={(tag) => onCriteriaChange({ keywords: (c.keywords || []).filter(t => t !== tag) })}
             badgeVariant="keyword-match"
-            disabled={disabled}
           />
         </CollapsibleSection>
 
-        {/* Locations */}
         <CollapsibleSection label="Locations">
           <LocationSelector
-            selectedLocations={criteria.locations || []}
+            selectedLocations={c.locations || []}
             onLocationsChange={(locations) => onCriteriaChange({ locations })}
           />
         </CollapsibleSection>
 
-        {/* Seniority */}
         <CollapsibleSection label="Seniority">
           <FilterCheckboxGroup
             label="Seniority"
             options={SENIORITY_OPTIONS}
-            selectedValues={criteria.seniorities || []}
+            selectedValues={c.seniorities || []}
             onToggle={(value) => toggleArrayValue('seniorities', value)}
             onClear={() => onCriteriaChange({ seniorities: [] })}
             maxVisible={6}
           />
         </CollapsibleSection>
 
-        {/* Company Size */}
         <CollapsibleSection label="Company Size">
           <FilterCheckboxGroup
             label="Company Size"
             options={COMPANY_SIZE_OPTIONS}
-            selectedValues={criteria.company_sizes || []}
+            selectedValues={c.company_sizes || []}
             onToggle={(value) => toggleArrayValue('company_sizes', value)}
             onClear={() => onCriteriaChange({ company_sizes: [] })}
             maxVisible={6}
           />
         </CollapsibleSection>
 
-        {/* Industry */}
         <CollapsibleSection label="Industry">
           <FilterCheckboxGroup
             label="Industry"
             options={INDUSTRY_OPTIONS}
-            selectedValues={criteria.industries || []}
+            selectedValues={c.industries || []}
             onToggle={(value) => toggleArrayValue('industries', value)}
             onClear={() => onCriteriaChange({ industries: [] })}
             searchable
@@ -259,56 +247,50 @@ export function FindFilterPanel({
           />
         </CollapsibleSection>
 
-        {/* Target Companies */}
         <CollapsibleSection label="Target Companies">
           <TagInput
             placeholder="Add company..."
-            tags={criteria.company_names || []}
-            onAdd={(tag) => onCriteriaChange({ company_names: [...(criteria.company_names || []), tag] })}
-            onRemove={(tag) => onCriteriaChange({ company_names: (criteria.company_names || []).filter(t => t !== tag) })}
+            tags={c.company_names || []}
+            onAdd={(tag) => onCriteriaChange({ company_names: [...(c.company_names || []), tag] })}
+            onRemove={(tag) => onCriteriaChange({ company_names: (c.company_names || []).filter(t => t !== tag) })}
             badgeVariant="pastel-orange"
-            disabled={disabled}
           />
         </CollapsibleSection>
 
-        {/* Experience */}
         <CollapsibleSection label="Experience (years)">
           <div className="flex items-center gap-2">
             <Input
               type="number"
               placeholder="Min"
-              value={criteria.experience_years?.min ?? ''}
+              value={c.experience_years?.min ?? ''}
               onChange={(e) => onCriteriaChange({
                 experience_years: {
-                  ...criteria.experience_years,
+                  ...c.experience_years,
                   min: e.target.value ? parseInt(e.target.value) : undefined
                 }
               })}
               min={0} max={30}
               className="h-7 text-xs w-16"
-              disabled={disabled}
             />
             <span className="text-[10px] text-muted-foreground">to</span>
             <Input
               type="number"
               placeholder="Max"
-              value={criteria.experience_years?.max ?? ''}
+              value={c.experience_years?.max ?? ''}
               onChange={(e) => onCriteriaChange({
                 experience_years: {
-                  ...criteria.experience_years,
+                  ...c.experience_years,
                   max: e.target.value ? parseInt(e.target.value) : undefined
                 }
               })}
               min={0} max={30}
               className="h-7 text-xs w-16"
-              disabled={disabled}
             />
           </div>
         </CollapsibleSection>
 
         <Separator />
 
-        {/* Result Filters */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Result Filters</span>
@@ -355,6 +337,6 @@ export function FindFilterPanel({
           </CollapsibleSection>
         </div>
       </div>
-    </div>
+    </Card>
   )
 }

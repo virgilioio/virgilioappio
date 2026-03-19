@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { Section } from '@/components/layout/Section'
+import { Card } from '@/components/ui/card'
 import { AIJobAssistant } from '@/components/dashboard/AIJobAssistant'
 import { FindFilterPanel } from '@/components/sourcing/FindFilterPanel'
 import { SavedSearchSelector } from '@/components/sourcing/SavedSearchSelector'
@@ -20,7 +22,6 @@ export default function Find() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [showFirstRunDialog, setShowFirstRunDialog] = useState(false)
   
-  // Lifted filter state
   const [filters, setFilters] = useState<SourcingProjectFilters>({
     matchTiers: [],
     minExperience: 0,
@@ -30,13 +31,11 @@ export default function Find() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [currentProject, setCurrentProject] = useState<SourcingProject | null>(null)
   
-  // Editable criteria state — lifted here for auto-search
   const [editableCriteria, setEditableCriteria] = useState<SearchCriteria | null>(null)
   const updateSearchCriteriaRef = useRef<((criteria: SearchCriteria) => Promise<void>) | null>(null)
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
   const isInitialSyncRef = useRef(true)
   
-  // Reset filters when project changes
   useEffect(() => {
     setFilters({
       matchTiers: [],
@@ -48,7 +47,6 @@ export default function Find() {
     isInitialSyncRef.current = true
   }, [projectId])
   
-  // Sync criteria from project
   useEffect(() => {
     if (currentProject?.search_criteria) {
       setEditableCriteria(currentProject.search_criteria)
@@ -56,15 +54,12 @@ export default function Find() {
     }
   }, [currentProject?.id, currentProject?.search_criteria])
   
-  // Auto-search: debounce criteria changes and trigger search
   useEffect(() => {
     if (!editableCriteria || !updateSearchCriteriaRef.current) return
-    // Skip the initial sync from project load
     if (isInitialSyncRef.current) {
       isInitialSyncRef.current = false
       return
     }
-    // Must have at least one title keyword
     if (!editableCriteria.title_keywords || editableCriteria.title_keywords.length === 0) return
     
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
@@ -89,13 +84,8 @@ export default function Find() {
     }
   }, [rolesLoading, isPrivileged, hasRecruiterRole, navigate])
 
-  const handleSelectProject = (id: string) => {
-    navigate(`/find/${id}`)
-  }
-  
-  const handleNewSearch = () => {
-    navigate('/find')
-  }
+  const handleSelectProject = (id: string) => navigate(`/find/${id}`)
+  const handleNewSearch = () => navigate('/find')
 
   useEffect(() => {
     if (isLoadingProjects) return
@@ -131,72 +121,74 @@ export default function Find() {
       />
       
       <div className="min-h-screen flex flex-col overflow-hidden">
-        {/* Page Header */}
-        <div className="px-6 pt-6">
-          <PageHeader title="Find" compact />
-        </div>
+        {/* Banded header with divider */}
+        <Section variant="default" banded>
+          <div className="px-6">
+            <PageHeader title="Find" compact />
+          </div>
+        </Section>
         
-        {/* Main layout: filter panel + content */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Filter Panel — always visible */}
+        {/* Main content area */}
+        <div className="flex-1 flex gap-6 p-6 overflow-hidden">
+          {/* Floating filter sidebar card */}
           <FindFilterPanel
             criteria={editableCriteria}
             onCriteriaChange={handleCriteriaChange}
             resultFilters={filters}
             onResultFiltersChange={setFilters}
-            disabled={!projectId}
           />
           
-          {/* Main Content */}
-          <main className="flex-1 bg-background overflow-hidden flex flex-col">
-            {mode === 'new' && (
-              <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
-                <div className={`w-full max-w-3xl mx-auto transition-all duration-500 ease-out ${isGenerating ? 'space-y-0' : 'space-y-8'}`}>
-                  <div className={`text-center transition-all duration-500 ease-out ${isGenerating ? 'py-8' : 'space-y-3'}`}>
-                    {isGenerating ? (
-                      <GioThinkingHeader />
-                    ) : (
-                      <div className="animate-fade-in">
-                        <div className="inline-flex items-center justify-center mb-4">
-                          <img 
-                            src={gioAvatar} 
-                            alt="Gio AI Assistant"
-                            className="h-16 w-16 rounded-full transition-all duration-500"
-                          />
-                        </div>
-                        <h1 className="text-xl md:text-2xl font-poppins font-bold text-foreground" style={{ letterSpacing: '-0.06em' }}>
-                          What role are you hiring right now<span className="text-primary">?</span>
-                        </h1>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className={`transition-all duration-500 ease-out ${
-                    isGenerating 
-                      ? 'opacity-0 scale-95 max-h-0 overflow-hidden pointer-events-none' 
-                      : 'opacity-100 scale-100 max-h-[1000px]'
-                  }`}>
-                    <AIJobAssistant 
-                      onProjectCreated={(newProjectId) => navigate(`/find/${newProjectId}`)}
-                      onGeneratingChange={setIsGenerating}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
+          {/* Main content card */}
+          <Card className="flex-1 flex flex-col overflow-hidden">
+            {/* Toolbar row */}
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+              <SavedSearchSelector
+                selectedProjectId={projectId}
+                currentProject={currentProject}
+                onSelectProject={handleSelectProject}
+                onNewSearch={handleNewSearch}
+              />
+            </div>
             
-            {mode === 'project' && projectId && (
-              <>
-                {/* Saved Search Selector */}
-                <div className="px-4 py-3 border-b bg-background flex items-center gap-3">
-                  <SavedSearchSelector
-                    selectedProjectId={projectId}
-                    currentProject={currentProject}
-                    onSelectProject={handleSelectProject}
-                    onNewSearch={handleNewSearch}
-                  />
+            {/* Content body */}
+            <div className="flex-1 overflow-hidden">
+              {mode === 'new' && (
+                <div className="flex-1 flex flex-col items-center justify-center px-4 py-12 h-full">
+                  <div className={`w-full max-w-3xl mx-auto transition-all duration-500 ease-out ${isGenerating ? 'space-y-0' : 'space-y-8'}`}>
+                    <div className={`text-center transition-all duration-500 ease-out ${isGenerating ? 'py-8' : 'space-y-3'}`}>
+                      {isGenerating ? (
+                        <GioThinkingHeader />
+                      ) : (
+                        <div className="animate-fade-in">
+                          <div className="inline-flex items-center justify-center mb-4">
+                            <img 
+                              src={gioAvatar} 
+                              alt="Gio AI Assistant"
+                              className="h-16 w-16 rounded-full transition-all duration-500"
+                            />
+                          </div>
+                          <h1 className="text-xl md:text-2xl font-poppins font-bold text-foreground" style={{ letterSpacing: '-0.06em' }}>
+                            What role are you hiring right now<span className="text-primary">?</span>
+                          </h1>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className={`transition-all duration-500 ease-out ${
+                      isGenerating 
+                        ? 'opacity-0 scale-95 max-h-0 overflow-hidden pointer-events-none' 
+                        : 'opacity-100 scale-100 max-h-[1000px]'
+                    }`}>
+                      <AIJobAssistant 
+                        onProjectCreated={(newProjectId) => navigate(`/find/${newProjectId}`)}
+                        onGeneratingChange={setIsGenerating}
+                      />
+                    </div>
+                  </div>
                 </div>
-                
+              )}
+              
+              {mode === 'project' && projectId && (
                 <SourcingProjectView 
                   projectId={projectId}
                   filters={filters}
@@ -206,9 +198,9 @@ export default function Find() {
                   onProjectLoaded={handleProjectLoaded}
                   onUpdateSearchCriteria={handleExposeUpdateSearchCriteria}
                 />
-              </>
-            )}
-          </main>
+              )}
+            </div>
+          </Card>
         </div>
       </div>
     </RoleGate>
