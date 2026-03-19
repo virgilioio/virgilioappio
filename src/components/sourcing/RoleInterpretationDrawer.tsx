@@ -343,7 +343,7 @@ export function RoleInterpretationDrawer({
                       </Label>
                       <div className="flex flex-wrap gap-1">
                         {spec.research_metadata.researched_industries.map((industry, i) => (
-                          <Badge key={i} variant="outline" className="text-xs border-primary/30 text-primary">
+                          <Badge key={i} variant="pastel-blue" className="text-xs">
                             {industry}
                           </Badge>
                         ))}
