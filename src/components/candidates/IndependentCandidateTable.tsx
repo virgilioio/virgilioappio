@@ -39,6 +39,8 @@ interface IndependentCandidateTableProps {
   onDelete: (candidateId: string) => void
   onAddNew: () => void
   onRefresh?: () => void
+  onImportCSV?: () => void
+  onBulkUpload?: () => void
 }
 
 
