@@ -105,8 +105,8 @@ export const CandidateWorkExperienceComponent = ({ experiences }: CandidateWorkE
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-lg">{exp.job_title}</h3>
-                      {exp.standardized_title && exp.standardized_title !== exp.job_title && (
-                        <Badge variant="outline" className="text-xs gap-1">
+                        {exp.standardized_title && exp.standardized_title !== exp.job_title && (
+                        <Badge variant="category" className="text-xs gap-1">
                           <Sparkles className="h-3 w-3" />
                           {exp.standardized_title}
                         </Badge>
