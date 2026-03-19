@@ -118,7 +118,7 @@ export const CandidateWorkExperienceComponent = ({ experiences }: CandidateWorkE
                         <Badge variant="pastel-blue" className="text-xs">{exp.company_industry}</Badge>
                       )}
                       {exp.company_size_category && (
-                        <Badge variant="outline" className="text-xs capitalize">{exp.company_size_category}</Badge>
+                        <Badge variant="category" className="text-xs capitalize">{exp.company_size_category}</Badge>
                       )}
                     </div>
                   </div>
