@@ -420,7 +420,7 @@ export function MembersTable({
                           </DropdownMenu>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    )})}
                   </TableBody>
 
                 </Table>
