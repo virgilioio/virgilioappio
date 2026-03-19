@@ -115,7 +115,7 @@ export function SourcingFiltersPanel({
                   <span className="text-xs font-medium text-virgilio-muted">Job Titles:</span>
                   <div className="flex flex-wrap gap-1.5">
                     {project.search_criteria.title_keywords.map(title => (
-                      <Badge key={title} variant="secondary" className="text-xs rounded-md">{title}</Badge>
+                      <Badge key={title} variant="pastel-purple" className="text-xs rounded-md">{title}</Badge>
                     ))}
                   </div>
                 </div>
