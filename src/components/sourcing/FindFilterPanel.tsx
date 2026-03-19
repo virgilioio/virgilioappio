@@ -236,6 +236,7 @@ export function FindFilterPanel({
         {/* Company Size */}
         <CollapsibleSection label="Company Size">
           <FilterCheckboxGroup
+            label="Company Size"
             options={COMPANY_SIZE_OPTIONS}
             selectedValues={criteria.company_sizes || []}
             onToggle={(value) => toggleArrayValue('company_sizes', value)}
