@@ -431,6 +431,7 @@ export function MembersTable({
         member={detailMember}
         open={!!detailMember}
         onOpenChange={(open) => { if (!open) setDetailMember(null) }}
+        onManageJobs={detailMember && onManageJobAssignments ? () => onManageJobAssignments(detailMember) : undefined}
       />
     </>
   )
