@@ -307,9 +307,9 @@ export function OfferTemplateFieldsManager({ templateId }: OfferTemplateFieldsMa
                       </TableCell>
                       <TableCell>
                         {field.is_required ? (
-                          <Badge variant="destructive">Required</Badge>
+                          <Badge variant="required">Required</Badge>
                         ) : (
-                          <Badge variant="outline">Optional</Badge>
+                          <Badge variant="optional">Optional</Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-right">

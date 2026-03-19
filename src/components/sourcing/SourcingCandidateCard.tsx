@@ -166,7 +166,7 @@ export function SourcingCandidateCard({ candidate, jobId }: SourcingCandidateCar
               <Badge 
                 key={skill} 
                 variant="secondary" 
-                className="text-xs px-2 py-0.5 bg-accent/10 text-accent-foreground border-accent/20"
+                className="text-xs px-2 py-0.5"
               >
                 {skill}
               </Badge>
