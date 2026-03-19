@@ -152,8 +152,8 @@ export function SourcingCandidateCard({ candidate, jobId }: SourcingCandidateCar
         {/* Match Score Badge */}
         <div>
           <Badge 
-            variant="outline" 
-            className={cn("text-xs", getMatchTierColor(candidate.match_tier))}
+            variant={getMatchTierVariant(candidate.match_tier)}
+            className="text-xs"
           >
             {candidate.match_score}% Match • {candidate.match_tier}
           </Badge>
