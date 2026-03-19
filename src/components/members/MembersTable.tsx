@@ -12,14 +12,19 @@ import { toast } from '@/hooks/use-toast'
 import { Member } from '@/hooks/useMembers'
 import { MoreVertical, Plus, Send, UserCheck, UserX, Trash2, Copy, Briefcase, Mail, MailX, Clock, Search, X } from 'lucide-react'
 
+export interface EnrichedMember extends Member {
+  seatType: 'paid' | 'free'
+  effectiveRole: 'Owner' | 'Admin' | 'Recruiter' | 'Hiring Manager'
+}
+
 interface MembersTableProps {
-  members: Member[]
+  members: EnrichedMember[]
   isLoading: boolean
-  onEdit: (member: Member) => void
+  onEdit: (member: EnrichedMember) => void
   onDeactivate: (id: string) => void
   onResendInvitation: (memberId: string, email: string) => void
-  onDeleteUser: (member: Member) => void
-  onManageJobAssignments?: (member: Member) => void
+  onDeleteUser: (member: EnrichedMember) => void
+  onManageJobAssignments?: (member: EnrichedMember) => void
   onAddNew?: () => void
 }
 
@@ -37,20 +42,33 @@ export function MembersTable({
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [seatFilter, setSeatFilter] = useState<string>('all')
 
-  const hasActiveFilters = searchTerm || roleFilter !== 'all' || statusFilter !== 'all'
+  const hasActiveFilters = searchTerm || roleFilter !== 'all' || statusFilter !== 'all' || seatFilter !== 'all'
 
   const clearFilters = () => {
     setSearchTerm('')
     setRoleFilter('all')
     setStatusFilter('all')
+    setSeatFilter('all')
   }
-  const getRoleColor = (role: string) => {
+
+  const getSeatBadgeStyle = (seatType: 'paid' | 'free') => {
+    return seatType === 'paid'
+      ? 'bg-primary/10 text-primary'
+      : 'bg-success/10 text-success'
+  }
+
+  const getRoleColor = (role: EnrichedMember['effectiveRole']) => {
     switch (role) {
-      case 'admin':
+      case 'Owner':
         return 'bg-destructive/10 text-destructive'
-      case 'member':
+      case 'Admin':
+        return 'bg-destructive/10 text-destructive'
+      case 'Recruiter':
         return 'bg-primary/10 text-primary'
+      case 'Hiring Manager':
+        return 'bg-muted/10 text-muted-foreground'
       default:
         return 'bg-muted/10 text-muted-foreground'
     }
@@ -69,8 +87,7 @@ export function MembersTable({
     }
   }
 
-  // P1: Get email delivery status icon for invited members
-  const getEmailStatusIndicator = (member: Member) => {
+  const getEmailStatusIndicator = (member: EnrichedMember) => {
     if (member.user_status !== 'invited') return null;
     
     switch (member.invitation_email_status) {
@@ -98,7 +115,7 @@ export function MembersTable({
     }
   }
 
-  const getDisplayName = (member: Member) => {
+  const getDisplayName = (member: EnrichedMember) => {
     if (member.user_first_name && member.user_last_name) {
       return `${member.user_first_name} ${member.user_last_name}`
     }
@@ -108,70 +125,49 @@ export function MembersTable({
     return member.user_email || member.invited_email || 'Unknown User'
   }
 
+  const getDisplayEmail = (member: EnrichedMember) => {
+    return member.user_email || member.invited_email || 'No email available'
+  }
+
   const filteredMembers = useMemo(() => {
     return members.filter(m => {
       const name = getDisplayName(m).toLowerCase()
       const email = (m.user_email || m.invited_email || '').toLowerCase()
       const term = searchTerm.toLowerCase()
       const matchesSearch = !searchTerm || name.includes(term) || email.includes(term)
-      const matchesRole = roleFilter === 'all' || m.system_role === roleFilter
+      const matchesRole = roleFilter === 'all' || m.effectiveRole === roleFilter
       const matchesStatus = statusFilter === 'all' || m.user_status === statusFilter
-      return matchesSearch && matchesRole && matchesStatus
+      const matchesSeat = seatFilter === 'all' || m.seatType === seatFilter
+      return matchesSearch && matchesRole && matchesStatus && matchesSeat
     })
-  }, [members, searchTerm, roleFilter, statusFilter])
+  }, [members, searchTerm, roleFilter, statusFilter, seatFilter])
 
-  const getDisplayEmail = (member: Member) => {
-    // Show email even for active users now (since we preserve invited_email)
-    return member.user_email || member.invited_email || 'No email available'
-  }
-
-  const copyInviteLink = async (member: Member) => {
+  const copyInviteLink = async (member: EnrichedMember) => {
     if (!window.location) return
-    
-    // Validate that the member has a valid invite token
     if (!member.invite_token) {
-      toast({
-        title: 'Error',
-        description: 'No invitation token found. Please resend the invitation first.',
-        variant: 'destructive'
-      })
+      toast({ title: 'Error', description: 'No invitation token found. Please resend the invitation first.', variant: 'destructive' })
       return
     }
-    
     setCopyingInvite(member.id)
     try {
-      // Generate invite URL using the INVITE TOKEN (not member ID)
       const baseUrl = window.location.origin
       const inviteUrl = `${baseUrl}/accept-invite/${member.invite_token}`
-      
       await navigator.clipboard.writeText(inviteUrl)
-      toast({
-        title: 'Success',
-        description: 'Invitation link copied to clipboard'
-      })
+      toast({ title: 'Success', description: 'Invitation link copied to clipboard' })
     } catch (error) {
       console.error('Failed to copy invite link:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to copy invitation link',
-        variant: 'destructive'
-      })
+      toast({ title: 'Error', description: 'Failed to copy invitation link', variant: 'destructive' })
     } finally {
       setCopyingInvite(null)
     }
   }
 
-  const handleResendInvitation = async (member: Member) => {
+  const handleResendInvitation = async (member: EnrichedMember) => {
     const email = member.user_email || member.invited_email
     if (!email) {
-      toast({
-        title: 'Error',
-        description: 'No email address found for this member',
-        variant: 'destructive'
-      })
+      toast({ title: 'Error', description: 'No email address found for this member', variant: 'destructive' })
       return
     }
-    
     try {
       await onResendInvitation(member.id, email)
     } catch (error) {
@@ -215,14 +211,11 @@ export function MembersTable({
             title="No team members yet"
             description="Invite your first team member to start collaborating"
             fallbackIcon={UserCheck}
-            action={onAddNew ? {
-              label: "Add Member",
-              onClick: onAddNew
-            } : undefined}
+            action={onAddNew ? { label: "Add Member", onClick: onAddNew } : undefined}
           />
         ) : (
           <>
-            {/* Toolbar: Search + Filters */}
+            {/* Toolbar */}
             <div className="flex flex-col sm:flex-row gap-3 mb-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -233,15 +226,27 @@ export function MembersTable({
                   className="pl-9"
                 />
               </div>
-              <div className="flex gap-2">
-                <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <div className="flex gap-2 flex-wrap">
+                <Select value={seatFilter} onValueChange={setSeatFilter}>
                   <SelectTrigger className="w-[130px]">
+                    <SelectValue placeholder="Seat" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Seats</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="free">Free</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={roleFilter} onValueChange={setRoleFilter}>
+                  <SelectTrigger className="w-[160px]">
                     <SelectValue placeholder="Role" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Roles</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="member">Member</SelectItem>
+                    <SelectItem value="Owner">Owner</SelectItem>
+                    <SelectItem value="Admin">Admin</SelectItem>
+                    <SelectItem value="Recruiter">Recruiter</SelectItem>
+                    <SelectItem value="Hiring Manager">Hiring Manager</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -263,148 +268,126 @@ export function MembersTable({
               </div>
             </div>
 
-            {/* Result count */}
             <p className="text-xs text-muted-foreground mb-3">
               Showing {filteredMembers.length} of {members.length} members
             </p>
 
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Organization</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredMembers.length === 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      No members match your filters
-                    </TableCell>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Seat</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
-                ) : filteredMembers.map((member) => (
-                  <TableRow key={member.id}>
-                    <TableCell className="font-medium">
-                      {getDisplayName(member)}
-                    </TableCell>
-                    <TableCell>
-                      <span className={member.user_status === 'invited' ? 'text-muted-foreground italic' : ''}>
-                        {getDisplayEmail(member)}
-                        {member.user_status === 'invited' && (
-                          <span className="ml-2 text-xs text-muted-foreground">(pending)</span>
-                        )}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getRoleColor(member.system_role)}>
-                        {member.system_role === 'admin' ? 'Admin' : 'Member'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Badge className={getStatusColor(member.user_status)}>
-                          {member.user_status}
-                        </Badge>
-                        {getEmailStatusIndicator(member)}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-muted-foreground">
-                        {member.organization_name || 'Unknown'}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => onEdit(member)}>
-                            Edit Member
-                          </DropdownMenuItem>
-                          
-                          {/* Job Assignments - any active member can have job assignments */}
-                          {onManageJobAssignments && 
-                           member.user_status === 'active' && (
-                            <DropdownMenuItem 
-                              onClick={() => onManageJobAssignments(member)}
-                              className="gap-2"
-                            >
-                              <Briefcase className="h-4 w-4" />
-                              Manage Job Access
-                            </DropdownMenuItem>
-                          )}
-                          
+                </TableHeader>
+                <TableBody>
+                  {filteredMembers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        No members match your filters
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredMembers.map((member) => (
+                    <TableRow key={member.id}>
+                      <TableCell className="font-medium">
+                        {getDisplayName(member)}
+                      </TableCell>
+                      <TableCell>
+                        <span className={member.user_status === 'invited' ? 'text-muted-foreground italic' : ''}>
+                          {getDisplayEmail(member)}
                           {member.user_status === 'invited' && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                onClick={() => handleResendInvitation(member)}
-                                className="gap-2"
-                              >
-                                <Send className="h-4 w-4" />
-                                Resend Invitation
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => copyInviteLink(member)}
-                                disabled={copyingInvite === member.id}
-                                className="gap-2"
-                              >
-                                <Copy className="h-4 w-4" />
-                                {copyingInvite === member.id ? 'Copying...' : 'Copy Invite Link'}
-                              </DropdownMenuItem>
-                            </>
+                            <span className="ml-2 text-xs text-muted-foreground">(pending)</span>
                           )}
-                          
-                          {member.user_status === 'active' && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                onClick={() => onDeactivate(member.id)}
-                                className="gap-2"
-                              >
-                                <UserX className="h-4 w-4" />
-                                Deactivate Member
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getRoleColor(member.effectiveRole)}>
+                          {member.effectiveRole}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getSeatBadgeStyle(member.seatType)}>
+                          {member.seatType === 'paid' ? 'Paid' : 'Free'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Badge className={getStatusColor(member.user_status)}>
+                            {member.user_status}
+                          </Badge>
+                          {getEmailStatusIndicator(member)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => onEdit(member)}>
+                              Edit Member
+                            </DropdownMenuItem>
+                            
+                            {onManageJobAssignments && member.user_status === 'active' && (
+                              <DropdownMenuItem onClick={() => onManageJobAssignments(member)} className="gap-2">
+                                <Briefcase className="h-4 w-4" />
+                                Manage Job Access
                               </DropdownMenuItem>
-                            </>
-                          )}
-                          
-                          {member.user_status === 'inactive' && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                onClick={() => onEdit(member)}
-                                className="gap-2"
-                              >
-                                <UserCheck className="h-4 w-4" />
-                                Reactivate Member
-                              </DropdownMenuItem>
-                            </>
-                          )}
+                            )}
+                            
+                            {member.user_status === 'invited' && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleResendInvitation(member)} className="gap-2">
+                                  <Send className="h-4 w-4" />
+                                  Resend Invitation
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => copyInviteLink(member)} disabled={copyingInvite === member.id} className="gap-2">
+                                  <Copy className="h-4 w-4" />
+                                  {copyingInvite === member.id ? 'Copying...' : 'Copy Invite Link'}
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            
+                            {member.user_status === 'active' && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => onDeactivate(member.id)} className="gap-2">
+                                  <UserX className="h-4 w-4" />
+                                  Deactivate Member
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            
+                            {member.user_status === 'inactive' && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => onEdit(member)} className="gap-2">
+                                  <UserCheck className="h-4 w-4" />
+                                  Reactivate Member
+                                </DropdownMenuItem>
+                              </>
+                            )}
 
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            onClick={() => onDeleteUser(member)}
-                            className="gap-2 text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Delete User
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => onDeleteUser(member)} className="gap-2 text-destructive">
+                              <Trash2 className="h-4 w-4" />
+                              Delete User
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </>
         )}
       </CardContent>
