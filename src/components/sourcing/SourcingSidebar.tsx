@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Plus, FileSearch, Clock, PanelLeftClose, PanelLeftOpen, Search, Globe, Lock } from 'lucide-react'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatDistanceToNow } from 'date-fns'
 import {
   Sidebar,
