@@ -153,7 +153,7 @@ export function SourcingFiltersPanel({
                   <span className="text-xs font-medium text-virgilio-muted">Seniority:</span>
                   <div className="flex flex-wrap gap-1.5">
                     {project.search_criteria.seniorities.map(level => (
-                      <Badge key={level} variant="outline" className="text-xs rounded-md capitalize">{level.replace('_', ' ')}</Badge>
+                      <Badge key={level} variant="category" className="text-xs rounded-md capitalize">{level.replace('_', ' ')}</Badge>
                     ))}
                   </div>
                 </div>
