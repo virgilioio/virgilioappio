@@ -301,7 +301,7 @@ export function OfferTemplateFieldsManager({ templateId }: OfferTemplateFieldsMa
                       </TableCell>
                       <TableCell className="font-medium">{field.field_label}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary">
+                        <Badge variant="category">
                           {fieldTypes.find(t => t.value === field.field_type)?.label || field.field_type}
                         </Badge>
                       </TableCell>
