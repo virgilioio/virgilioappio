@@ -118,7 +118,7 @@ export function JobStagesTable({ stages, isLoading, onEdit, onDelete, onCopy, co
               </TableCell>
               {context === 'organization' && (
                 <TableCell>
-                  <Badge variant={stage.source === 'platform' ? 'secondary' : 'default'}>
+                  <Badge variant={stage.source === 'platform' ? 'source-inherited' : 'source-custom'}>
                     {stage.source === 'platform' ? 'Inherited' : 'Custom'}
                   </Badge>
                 </TableCell>
