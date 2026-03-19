@@ -337,7 +337,8 @@ export function MembersTable({
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8">
-                              <AvatarFallback className="bg-primary/15 text-primary text-xs font-semibold">
+                              {member.user_avatar_url && <AvatarImage src={member.user_avatar_url} alt={getDisplayName(member)} />}
+                              <AvatarFallback className={`${getAvatarColor(member)} text-xs font-semibold`}>
                                 {getInitials(member)}
                               </AvatarFallback>
                             </Avatar>
