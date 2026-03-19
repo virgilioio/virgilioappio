@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { FilterCheckboxGroup } from '@/components/ui/filter-checkbox-group'
 import { LocationSelector } from './LocationSelector'
+import { AutocompleteTagInput } from './AutocompleteTagInput'
 import { SearchCriteria, SourcingProjectFilters } from '@/types/sourcing'
 import type { LucideIcon } from 'lucide-react'
 
