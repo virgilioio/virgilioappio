@@ -322,10 +322,12 @@ export function MembersTable({
                           No members match your filters
                         </TableCell>
                       </TableRow>
-                    ) : filteredMembers.map((member) => (
+                    ) : filteredMembers.map((member) => {
+                      const isInactive = member.user_status === 'inactive'
+                      return (
                       <TableRow
                         key={member.id}
-                        className="cursor-pointer hover:bg-muted/50"
+                        className={`cursor-pointer hover:bg-muted/50 ${isInactive ? 'opacity-50' : ''}`}
                         onClick={() => setDetailMember(member)}
                       >
                         <TableCell onClick={(e) => e.stopPropagation()}>
@@ -336,9 +338,9 @@ export function MembersTable({
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
+                            <Avatar className={`h-8 w-8 ${isInactive ? 'grayscale' : ''}`}>
                               {member.user_avatar_url && <AvatarImage src={member.user_avatar_url} alt={getDisplayName(member)} />}
-                              <AvatarFallback className={`${getAvatarColor(member)} text-xs font-semibold`}>
+                              <AvatarFallback className={`${isInactive ? 'bg-muted text-muted-foreground' : getAvatarColor(member)} text-xs font-semibold`}>
                                 {getInitials(member)}
                               </AvatarFallback>
                             </Avatar>
@@ -352,12 +354,12 @@ export function MembersTable({
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={getRoleBadgeVariant(member.effectiveRole)}>
+                          <Badge variant={isInactive ? 'secondary' : getRoleBadgeVariant(member.effectiveRole)}>
                             {member.effectiveRole || (member.system_role === 'admin' ? 'Admin' : 'Member')}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {member.seatType && (
+                          {!isInactive && member.seatType && (
                             <Badge variant={member.seatType === 'paid' ? 'seat-paid' : 'seat-free'}>
                               {member.seatType === 'paid' ? 'Paid' : 'Free'}
                             </Badge>
