@@ -191,7 +191,7 @@ export function SourcingFiltersPanel({
               {project.search_criteria.experience_years && (project.search_criteria.experience_years.min || project.search_criteria.experience_years.max) && (
                 <div className="space-y-1.5">
                   <span className="text-xs font-medium text-virgilio-muted">Experience:</span>
-                  <Badge variant="outline" className="text-xs rounded-md">
+                  <Badge variant="category" className="text-xs rounded-md">
                     {project.search_criteria.experience_years.min || 0} - {project.search_criteria.experience_years.max || 30} years
                   </Badge>
                 </div>

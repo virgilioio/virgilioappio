@@ -124,8 +124,8 @@ export function SourcingProjectHeader({
               </div>
             )}
             <div className="flex items-center gap-2 mt-2">
-              <Badge variant={project.status === 'active' ? 'default' : 'secondary'}>
-                {project.status}
+              <Badge variant={project.status === 'active' ? 'status-active' : 'status-inactive'}>
+                {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
               </Badge>
               {project.job_spec_data && (
                 <Button

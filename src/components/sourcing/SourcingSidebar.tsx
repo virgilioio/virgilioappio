@@ -83,39 +83,14 @@ export function SourcingSidebar({
               New Search
             </Button>
             
-            {/* Status Filter Pills */}
-            <div className="flex gap-1.5 p-1 bg-virgilio-purple/5 rounded-lg">
-              <button 
-                onClick={() => setStatusFilter('active')}
-                className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${
-                  statusFilter === 'active' 
-                    ? 'bg-white text-virgilio-purple shadow-sm' 
-                    : 'text-virgilio-muted hover:text-virgilio-text'
-                }`}
-              >
-                Active
-              </button>
-              <button 
-                onClick={() => setStatusFilter('archived')}
-                className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${
-                  statusFilter === 'archived' 
-                    ? 'bg-white text-virgilio-purple shadow-sm' 
-                    : 'text-virgilio-muted hover:text-virgilio-text'
-                }`}
-              >
-                Archived
-              </button>
-              <button 
-                onClick={() => setStatusFilter('all')}
-                className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${
-                  statusFilter === 'all' 
-                    ? 'bg-white text-virgilio-purple shadow-sm' 
-                    : 'text-virgilio-muted hover:text-virgilio-text'
-                }`}
-              >
-                All
-              </button>
-            </div>
+            {/* Status Filter Tabs */}
+            <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as 'active' | 'archived' | 'all')}>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="active">Active</TabsTrigger>
+                <TabsTrigger value="archived">Archived</TabsTrigger>
+                <TabsTrigger value="all">All</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </>
         )}
       </SidebarHeader>

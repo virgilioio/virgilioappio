@@ -470,7 +470,7 @@ export function EditableSearchCriteria({
         {criteria.company_names && criteria.company_names.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {criteria.company_names.map(name => (
-              <Badge key={name} variant="outline" className="gap-1">
+              <Badge key={name} variant="pastel-orange" className="gap-1">
                 {name}
                 <button
                   onClick={() => onChange({

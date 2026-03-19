@@ -360,7 +360,7 @@ export function RoleInterpretationDrawer({
                       </Label>
                       <div className="flex flex-wrap gap-1">
                         {spec.research_metadata.researched_keywords.map((keyword, i) => (
-                          <Badge key={i} variant="outline" className="text-xs bg-muted/50">
+                          <Badge key={i} variant="keyword-match" className="text-xs">
                             {keyword}
                           </Badge>
                         ))}
