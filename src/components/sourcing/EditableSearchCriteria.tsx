@@ -365,7 +365,7 @@ export function EditableSearchCriteria({
         {criteria.company_sizes && criteria.company_sizes.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {criteria.company_sizes.map(size => (
-              <Badge key={size} variant="outline" className="gap-1">
+              <Badge key={size} variant="category" className="gap-1">
                 {getCompanySizeLabel(size)}
                 <button
                   onClick={() => handleRemoveCompanySize(size)}
