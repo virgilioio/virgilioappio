@@ -123,7 +123,7 @@ export function MembersTab() {
       
       <Tabs value={tab} onValueChange={(v) => setTab(v as 'members' | 'collaborators')} className="w-full">
         <TabsList>
-          <TabsTrigger value="members">Members</TabsTrigger>
+          <TabsTrigger value="members">Paid Seats</TabsTrigger>
           <TabsTrigger value="collaborators">Collaborators</TabsTrigger>
         </TabsList>
 
