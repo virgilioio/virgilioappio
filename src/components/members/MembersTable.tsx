@@ -261,51 +261,44 @@ export function MembersTable({
               )}
 
               {/* Toolbar */}
-              <div className="flex flex-col sm:flex-row gap-3 mb-4">
-                <div className="relative flex-1">
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                <div className="relative w-[200px]">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search by name or email..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9"
+                    className="h-9 pl-9"
                   />
                 </div>
-                <div className="flex gap-2 flex-wrap">
-                  <Select value={seatFilter} onValueChange={setSeatFilter}>
-                    <SelectTrigger className="w-[130px]"><SelectValue placeholder="Seat" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Seats</SelectItem>
-                      <SelectItem value="paid">Paid</SelectItem>
-                      <SelectItem value="free">Free</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={roleFilter} onValueChange={setRoleFilter}>
-                    <SelectTrigger className="w-[160px]"><SelectValue placeholder="Role" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Roles</SelectItem>
-                      <SelectItem value="Owner">Owner</SelectItem>
-                      <SelectItem value="Admin">Admin</SelectItem>
-                      <SelectItem value="Recruiter">Recruiter</SelectItem>
-                      <SelectItem value="Hiring Manager">Hiring Manager</SelectItem>
-                      <SelectItem value="Interviewer">Interviewer</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="invited">Invited</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {hasActiveFilters && (
-                    <Button variant="ghost" size="icon" onClick={clearFilters} title="Clear filters">
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
+
+                <FilterChipPopover
+                  label="Seat"
+                  options={seatOptions}
+                  selectedValues={seatFilter}
+                  onSelectionChange={setSeatFilter}
+                />
+                <FilterChipPopover
+                  label="Role"
+                  options={roleOptions}
+                  selectedValues={roleFilter}
+                  onSelectionChange={setRoleFilter}
+                />
+                <FilterChipPopover
+                  label="Status"
+                  options={statusOptions}
+                  selectedValues={statusFilter}
+                  onSelectionChange={setStatusFilter}
+                />
+
+                {hasActiveFilters && (
+                  <button
+                    onClick={clearFilters}
+                    className="text-xs text-muted-foreground hover:text-foreground font-poppins font-medium transition-colors"
+                  >
+                    Clear filters
+                  </button>
+                )}
               </div>
 
               <p className="text-xs text-muted-foreground mb-3">

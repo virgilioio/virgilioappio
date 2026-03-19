@@ -143,34 +143,41 @@ export function OrganizationsTable({
     <>
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search departments..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="h-9 pl-9"
               />
             </div>
-            
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[150px]">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent className="bg-background border z-50">
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
 
-            {permissions.canCreateOrganizations && onCreateNew && (
-              <Button onClick={onCreateNew} className="gap-2 whitespace-nowrap">
-                <Plus className="h-4 w-4" />
-                Create Department
-              </Button>
+            <FilterChipPopover
+              label="Status"
+              options={statusOptions}
+              selectedValues={statusFilter}
+              onSelectionChange={setStatusFilter}
+            />
+
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="text-xs text-muted-foreground hover:text-foreground font-poppins font-medium transition-colors"
+              >
+                Clear filters
+              </button>
             )}
+
+            <div className="ml-auto">
+              {permissions.canCreateOrganizations && onCreateNew && (
+                <Button onClick={onCreateNew} className="gap-2 whitespace-nowrap">
+                  <Plus className="h-4 w-4" />
+                  Create Department
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         
