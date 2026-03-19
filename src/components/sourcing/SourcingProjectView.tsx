@@ -320,7 +320,7 @@ export function SourcingProjectView({
   
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Fixed Header Section */}
+      {/* Compact project info bar */}
       <div className="flex-shrink-0 border-b bg-background">
         <div className="container mx-auto p-4">
           <SourcingProjectHeader 
