@@ -141,7 +141,7 @@ export function SourcingFiltersPanel({
                   <span className="text-xs font-medium text-virgilio-muted">Locations:</span>
                   <div className="flex flex-wrap gap-1.5">
                     {project.search_criteria.locations.map(loc => (
-                      <Badge key={loc} variant="outline" className="text-xs rounded-md">
+                      <Badge key={loc} variant="pastel-blue" className="text-xs rounded-md">
                         {loc}
                       </Badge>
                     ))}
