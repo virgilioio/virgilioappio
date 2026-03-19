@@ -268,7 +268,7 @@ export function MemberJobAssignmentsDialog({
             <Button variant="outline" onClick={onClose} disabled={isSaving}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={!hasChanges || isSaving}>
+            <Button onClick={handleSaveClick} disabled={!hasChanges || isSaving}>
               {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Save Changes
             </Button>
