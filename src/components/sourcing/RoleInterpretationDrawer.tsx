@@ -304,7 +304,7 @@ export function RoleInterpretationDrawer({
                       </Label>
                       <div className="flex flex-wrap gap-1">
                         {spec.research_metadata.researched_titles.slice(0, 8).map((title, i) => (
-                          <Badge key={i} variant="outline" className="text-xs bg-surface-secondary/50">
+                          <Badge key={i} variant="category" className="text-xs">
                             {title}
                           </Badge>
                         ))}
