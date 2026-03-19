@@ -215,7 +215,7 @@ export function EditableSearchCriteria({
         {criteria.title_keywords && criteria.title_keywords.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {criteria.title_keywords.map(keyword => (
-              <Badge key={keyword} variant="secondary" className="gap-1">
+              <Badge key={keyword} variant="pastel-purple" className="gap-1">
                 {keyword}
                 <button
                   onClick={() => handleRemoveTitleKeyword(keyword)}
