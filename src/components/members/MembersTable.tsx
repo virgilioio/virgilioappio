@@ -88,20 +88,36 @@ export function MembersTable({
 }: MembersTableProps) {
   const [copyingInvite, setCopyingInvite] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [roleFilter, setRoleFilter] = useState<string>('all')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [seatFilter, setSeatFilter] = useState<string>('all')
+  const [roleFilter, setRoleFilter] = useState<string[]>([])
+  const [statusFilter, setStatusFilter] = useState<string[]>([])
+  const [seatFilter, setSeatFilter] = useState<string[]>([])
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [detailMember, setDetailMember] = useState<EnrichedMember | null>(null)
 
-  const hasActiveFilters = searchTerm || roleFilter !== 'all' || statusFilter !== 'all' || seatFilter !== 'all'
+  const hasActiveFilters = searchTerm || roleFilter.length > 0 || statusFilter.length > 0 || seatFilter.length > 0
 
   const clearFilters = () => {
     setSearchTerm('')
-    setRoleFilter('all')
-    setStatusFilter('all')
-    setSeatFilter('all')
+    setRoleFilter([])
+    setStatusFilter([])
+    setSeatFilter([])
   }
+
+  const seatOptions = useMemo(() => [
+    { value: 'paid', label: 'Paid', count: members.filter(m => m.seatType === 'paid').length },
+    { value: 'free', label: 'Free', count: members.filter(m => m.seatType === 'free').length },
+  ], [members])
+
+  const roleOptions = useMemo(() => {
+    const roles: EnrichedMember['effectiveRole'][] = ['Owner', 'Admin', 'Recruiter', 'Hiring Manager', 'Interviewer']
+    return roles.map(r => ({ value: r!, label: r!, count: members.filter(m => m.effectiveRole === r).length })).filter(o => o.count > 0)
+  }, [members])
+
+  const statusOptions = useMemo(() => [
+    { value: 'active', label: 'Active', count: members.filter(m => m.user_status === 'active').length },
+    { value: 'invited', label: 'Invited', count: members.filter(m => m.user_status === 'invited').length },
+    { value: 'inactive', label: 'Inactive', count: members.filter(m => m.user_status === 'inactive').length },
+  ].filter(o => o.count > 0), [members])
 
   const getDisplayName = (member: EnrichedMember) => {
     if (member.user_first_name && member.user_last_name)
