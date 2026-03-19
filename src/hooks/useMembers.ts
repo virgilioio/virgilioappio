@@ -24,6 +24,7 @@ export interface Member {
   user_first_name?: string
   user_last_name?: string
   organization_name?: string
+  user_avatar_url?: string | null
   // Email delivery tracking (P1)
   invitation_email_sent_at?: string | null
   invitation_email_status?: string | null
@@ -116,7 +117,7 @@ export function useMembers(includeHierarchy: boolean = false) {
       if (userIds.length > 0) {
         const { data: profilesData } = await supabase
           .from('profiles')
-          .select('user_id, first_name, last_name, email')
+          .select('user_id, first_name, last_name, email, avatar_url')
           .in('user_id', userIds)
         
         if (profilesData) {
@@ -163,6 +164,7 @@ export function useMembers(includeHierarchy: boolean = false) {
           organization_name: organizationsMap[member.organization_id] || null,
           user_first_name: profile?.first_name || null,
           user_last_name: profile?.last_name || null,
+          user_avatar_url: profile?.avatar_url || null,
           user_email: user_email
         }
         
