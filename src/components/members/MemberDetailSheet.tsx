@@ -101,7 +101,7 @@ export function MemberDetailSheet({ member, open, onOpenChange, onManageJobs }: 
 
   if (!member) return null
 
-  const handleRoleChange = async (assignmentId: string, newRole: string) => {
+  const executeRoleChange = async (assignmentId: string, newRole: string) => {
     setIsUpdating(assignmentId)
     try {
       const { error } = await supabase
@@ -115,7 +115,6 @@ export function MemberDetailSheet({ member, open, onOpenChange, onManageJobs }: 
       queryClient.invalidateQueries({ queryKey: ['recruiter-user-ids'] })
       toast({ title: 'Role updated', description: `Assignment role changed to ${ROLE_OPTIONS.find(r => r.value === newRole)?.label}` })
 
-      // Sync seats since recruiter changes affect billing
       try {
         await supabase.functions.invoke('update-seat-quantity')
         queryClient.invalidateQueries({ queryKey: ['billing-status'] })
@@ -128,6 +127,14 @@ export function MemberDetailSheet({ member, open, onOpenChange, onManageJobs }: 
     } finally {
       setIsUpdating(null)
     }
+  }
+
+  const handleRoleChange = async (assignmentId: string, newRole: string) => {
+    if (newRole === 'recruiter' && wouldUpgrade(member.user_id, member.system_role, member.user_type)) {
+      setSeatConfirm({ assignmentId, newRole })
+      return
+    }
+    await executeRoleChange(assignmentId, newRole)
   }
 
   const handleRemove = async () => {
