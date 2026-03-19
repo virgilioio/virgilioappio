@@ -163,7 +163,7 @@ export function SourcingFiltersPanel({
                   <span className="text-xs font-medium text-virgilio-muted">Company Size:</span>
                   <div className="flex flex-wrap gap-1.5">
                     {project.search_criteria.company_sizes.map(size => (
-                      <Badge key={size} variant="outline" className="text-xs rounded-md">{size}</Badge>
+                      <Badge key={size} variant="category" className="text-xs rounded-md">{size}</Badge>
                     ))}
                   </div>
                 </div>
