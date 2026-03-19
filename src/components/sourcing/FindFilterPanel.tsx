@@ -193,12 +193,13 @@ export function FindFilterPanel({
 
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
         <CollapsibleSection label="Job Titles" icon={Briefcase}>
-          <TagInput
+          <AutocompleteTagInput
             placeholder="Add title..."
             tags={c.title_keywords || []}
             onAdd={(tag) => onCriteriaChange({ title_keywords: [...(c.title_keywords || []), tag] })}
             onRemove={(tag) => onCriteriaChange({ title_keywords: (c.title_keywords || []).filter(t => t !== tag) })}
             badgeVariant="pastel-purple"
+            table="standard_job_titles"
           />
         </CollapsibleSection>
 
