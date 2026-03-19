@@ -2,6 +2,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useOrgContext } from '@/contexts/OrgContext'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AlertTriangle, Mail } from 'lucide-react'
+import { DeactivatedWall } from './DeactivatedWall'
 
 interface OrgGateProps {
   children: React.ReactNode
