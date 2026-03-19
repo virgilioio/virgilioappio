@@ -2,6 +2,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useOrgContext } from '@/contexts/OrgContext'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AlertTriangle, Mail } from 'lucide-react'
+import { DeactivatedWall } from './DeactivatedWall'
 
 interface OrgGateProps {
   children: React.ReactNode
@@ -27,6 +28,11 @@ export function OrgGate({ children, fallback }: OrgGateProps) {
   // ✅ Platform admins bypass org context requirement
   if (isPlatformAdmin) {
     return <>{children}</>
+  }
+
+  // 🚫 Deactivated users see a clear wall
+  if (userType === 'deactivated') {
+    return <DeactivatedWall />
   }
 
   if (!hasOrganizationContext) {

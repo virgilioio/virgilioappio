@@ -17,6 +17,7 @@ import { useAuth } from './contexts/AuthContext'
 import { useOrgContext } from './contexts/OrgContext'
 import { lazy, Suspense, useRef, useEffect } from 'react'
 import { GioLoader } from '@/components/ui/GioLoader'
+import { DeactivatedWall } from '@/components/auth/DeactivatedWall'
 import { useFavicon } from './hooks/useFavicon'
 import { useBrowserTitle } from './hooks/useBrowserTitle'
 import { Toaster } from '@/components/ui/toaster'
@@ -228,6 +229,11 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   // 4. ONE GATE DECISION: Only RequireAuth redirects to /onboarding
   if (isPlatformAdmin) {
     return children
+  }
+
+  // 🚫 Deactivated users see a clear wall instead of onboarding
+  if (userType === 'deactivated') {
+    return <DeactivatedWall />
   }
 
   if (hasOrganizationContext) {
