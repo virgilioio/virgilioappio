@@ -5856,6 +5856,14 @@ export type Database = {
           success: boolean
         }[]
       }
+      search_standard_terms: {
+        Args: { p_limit?: number; p_query: string; p_table: string }
+        Returns: {
+          canonical: string
+          category: string
+          match_type: string
+        }[]
+      }
       should_stop_automation: {
         Args: { p_jca_id: string; p_job_id: string }
         Returns: boolean
