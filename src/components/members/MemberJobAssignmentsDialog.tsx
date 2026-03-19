@@ -10,6 +10,8 @@ import { toast } from '@/hooks/use-toast'
 import { Briefcase, Loader2 } from 'lucide-react'
 import { Member } from '@/hooks/useMembers'
 import { useQueryClient } from '@tanstack/react-query'
+import { useWouldUpgradeSeat } from '@/hooks/useWouldUpgradeSeat'
+import { SeatUpgradeConfirmDialog } from '@/components/billing/SeatUpgradeConfirmDialog'
 
 interface MemberJobAssignmentsDialogProps {
   isOpen: boolean
