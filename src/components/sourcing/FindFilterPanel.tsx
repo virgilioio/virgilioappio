@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { FilterCheckboxGroup } from '@/components/ui/filter-checkbox-group'
 import { LocationSelector } from './LocationSelector'
+import { AutocompleteTagInput } from './AutocompleteTagInput'
 import { SearchCriteria, SourcingProjectFilters } from '@/types/sourcing'
 import type { LucideIcon } from 'lucide-react'
 
@@ -192,22 +193,24 @@ export function FindFilterPanel({
 
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
         <CollapsibleSection label="Job Titles" icon={Briefcase}>
-          <TagInput
+          <AutocompleteTagInput
             placeholder="Add title..."
             tags={c.title_keywords || []}
             onAdd={(tag) => onCriteriaChange({ title_keywords: [...(c.title_keywords || []), tag] })}
             onRemove={(tag) => onCriteriaChange({ title_keywords: (c.title_keywords || []).filter(t => t !== tag) })}
             badgeVariant="pastel-purple"
+            table="standard_job_titles"
           />
         </CollapsibleSection>
 
         <CollapsibleSection label="Keywords" icon={Tag}>
-          <TagInput
+          <AutocompleteTagInput
             placeholder="Add keyword..."
             tags={c.keywords || []}
             onAdd={(tag) => onCriteriaChange({ keywords: [...(c.keywords || []), tag] })}
             onRemove={(tag) => onCriteriaChange({ keywords: (c.keywords || []).filter(t => t !== tag) })}
             badgeVariant="keyword-match"
+            table="standard_skills"
           />
         </CollapsibleSection>
 
