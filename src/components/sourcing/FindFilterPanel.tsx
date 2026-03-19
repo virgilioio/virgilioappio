@@ -153,6 +153,7 @@ function TagInput({
 }
 
 const EMPTY_CRITERIA: SearchCriteria = {
+  skills: [],
   title_keywords: [],
   keywords: [],
   locations: [],
