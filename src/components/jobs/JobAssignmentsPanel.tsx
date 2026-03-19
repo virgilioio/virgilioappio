@@ -134,6 +134,21 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
   }
 
   const handleRoleChange = async (assignmentId: string, newRole: JobAssignmentRole) => {
+    if (newRole === 'recruiter') {
+      const assignment = assignments.find(a => a.id === assignmentId)
+      if (assignment) {
+        const member = members.find(m => m.user_id === assignment.user_id)
+        if (member && wouldUpgrade(member.user_id, member.system_role, member.user_type)) {
+          const name = `${member.user_first_name || ''} ${member.user_last_name || ''}`.trim() || member.user_email || 'this user'
+          setSeatConfirm({
+            action: async () => { await updateAssignmentRole(assignmentId, newRole) },
+            memberName: name
+          })
+          return
+        }
+      }
+    }
+
     try {
       await updateAssignmentRole(assignmentId, newRole)
     } catch (error) {
