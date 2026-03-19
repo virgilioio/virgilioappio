@@ -321,7 +321,7 @@ export function RoleInterpretationDrawer({
                       </Label>
                       <div className="flex flex-wrap gap-1">
                         {spec.research_metadata.researched_companies.slice(0, 12).map((company, i) => (
-                          <Badge key={i} variant="secondary" className="text-xs">
+                          <Badge key={i} variant="pastel-orange" className="text-xs">
                             {company}
                           </Badge>
                         ))}
