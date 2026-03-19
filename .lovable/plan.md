@@ -1,80 +1,109 @@
 
 
-# Find Page: Tabs, Badges & Filter Standardization
+# Find Page Layout: Unified Sidebar with Saved Searches + Vertical Filters
 
-## 1. Sidebar Status Tabs (Active | Archived | All)
+## New Layout
 
-**File: `src/components/sourcing/SourcingSidebar.tsx`** (lines 86-117)
+```text
+┌────────────────────────┬──────────────────────────────────────────┐
+│  SIDEBAR (w-80)        │  Header: Project Name + Status           │
+│                        │  Tabs: Chat | Candidates | Saved | Arch  │
+│  ┌──────────────────┐  │  ┌──────────────────────────────────────┐│
+│  │ Saved Searches   │  │  │                                      ││
+│  │ (popover/list    │  │  │  Candidate Table (full width)        ││
+│  │  like SavedView) │  │  │                                      ││
+│  └──────────────────┘  │  └──────────────────────────────────────┘│
+│                        │                                          │
+│  Search Criteria       │                                          │
+│  ─────────────────     │                                          │
+│  Job Titles:           │                                          │
+│  [badge] [badge]       │                                          │
+│  Keywords:             │                                          │
+│  [badge] [badge]       │                                          │
+│  Locations:            │                                          │
+│  [badge]               │                                          │
+│  ... (vertically)      │                                          │
+│  [Edit] [Save&Refresh] │                                          │
+│                        │                                          │
+│  ─────────────────     │                                          │
+│  Result Filters        │                                          │
+│  ☐ Has Email           │                                          │
+│  ☐ Has Phone           │                                          │
+│  [Reset]               │                                          │
+│                        │                                          │
+│  [Collapse]            │                                          │
+└────────────────────────┴──────────────────────────────────────────┘
+```
 
-The three status filter buttons are custom `<button>` elements with inline Tailwind. Replace with the standard `Tabs`/`TabsList`/`TabsTrigger` components from `@/components/ui/tabs`, which already implement the app's tab style guide (rounded-xl container, `bg-[#d7c5fb]` active state, poppins font).
+The sidebar stays but is **repurposed** into one panel with two sections:
+1. **Saved Searches** at the top — styled like the `SavedViewSelector` popover pattern (project list with search, status tabs, new search button, three-dot menus)
+2. **Search Criteria + Result Filters** below — same content as current `SourcingFiltersPanel` but **without the cards/rounded containers** — just clean vertical labels + badge chips
 
-- Import `Tabs, TabsList, TabsTrigger` from `@/components/ui/tabs`
-- Replace the manual `<div className="flex gap-1.5 ...">` + 3 `<button>` elements with `<Tabs value={statusFilter} onValueChange={setStatusFilter}><TabsList><TabsTrigger value="active">Active</TabsTrigger>...`
-- Remove the custom active/inactive styling logic
+## Changes
 
-## 2. Search Criteria Badges (Read-Only View)
+### 1. Refactor `SourcingSidebar.tsx` → unified sidebar
 
-**File: `src/components/sourcing/SourcingFiltersPanel.tsx`** (lines 111-199)
+Keep the Sidebar component but restructure its content into two sections:
 
-All read-only badges use generic `variant="secondary"` or `variant="outline"`. Map each to a semantic Smart Field variant:
+**Top section — Saved Searches:**
+- Keep the search input, status tabs (Active/Archived/All), and project list exactly as they are now
+- Add a collapsible section header "Saved Searches" so this section can be collapsed to give more room to filters
+- Keep the "New Search" button
 
-| Criteria | Current | New Variant |
-|----------|---------|-------------|
-| Job Titles | `secondary` | `pastel-purple` |
-| Keywords | `outline` | `keyword-match` |
-| Locations | `outline` | `pastel-blue` |
-| Seniority | `outline` | `category` |
-| Company Size | `outline` | `category` |
-| Company Domains | `outline` | `category` |
-| Target Companies | `outline` | `pastel-orange` |
-| Experience | `outline` | `category` |
+**Bottom section — Search & Filters (moved from `SourcingFiltersPanel`):**
+- Move ALL filter content from `SourcingFiltersPanel` into this sidebar
+- **Remove the card containers** (`rounded-xl bg-gradient-to-b ... border ... shadow-sm`) — render filter groups directly as vertical label + badges
+- Keep the read-only/edit toggle for search criteria
+- Keep the result filters (Has Email, Has Phone checkboxes)
+- Keep Edit/Save & Refresh/Cancel/Reset buttons
 
-## 3. Search Criteria Badges (Editable/Removable)
+New props needed: `project`, `filters`, `onFiltersChange`, `onUpdateSearchCriteria`, `isRefreshing` (passed down from `SourcingProjectView`)
 
-**File: `src/components/sourcing/EditableSearchCriteria.tsx`**
+### 2. Update `CandidatesTab.tsx`
 
-Same mapping as above, applied to the removable badge pills:
+- Remove `SourcingFiltersPanel` — filters are now in the sidebar
+- Render only the `SourcingCandidateTable` at full width
+- Remove filter-related props (`filters`, `onFiltersChange`, `onUpdateSearchCriteria`, `isRefreshing`) — these move to the sidebar
 
-| Field | Current | New Variant |
-|-------|---------|-------------|
-| Title Keywords (line 218) | `secondary` | `pastel-purple` |
-| Keywords (line 291) | `secondary` | `keyword-match` |
-| Seniority (line 336) | `outline` | `category` |
-| Company Size (line 368) | `outline` | `category` |
-| Industry (line 400) | `outline` | `pastel-blue` |
-| Target Companies (line 473) | `outline` | `pastel-orange` |
+### 3. Update `SourcingProjectView.tsx`
 
-## 4. Role Interpretation Drawer Badges
+- Pass filter props (`project`, `filters`, `onFiltersChange`, `onUpdateSearchCriteria`, `isRefreshing`) up to the parent `Find.tsx` so they can reach the sidebar
+- Alternatively, expose them via a callback/context pattern
 
-**File: `src/components/sourcing/RoleInterpretationDrawer.tsx`**
+### 4. Update `Find.tsx`
 
-| Badge | Current | New Variant |
-|-------|---------|-------------|
-| Alt titles (line 142) | `outline` | `category` |
-| Skills (line 252) | `secondary` | `pastel-purple` |
-| Researched titles (line 307) | `outline` + inline class | `category` |
-| Researched companies (line 324) | `secondary` | `pastel-orange` |
-| Overflow "+N more" (line 329) | `outline` | `category` |
-| Researched industries (line 346) | `outline` + inline color | `pastel-blue` |
-| Researched keywords (line 363) | `outline` + inline class | `keyword-match` |
+- Keep `SidebarProvider` (sidebar is NOT being removed, just repurposed)
+- Pass the filter and project props to the refactored `SourcingSidebar`
+- The sidebar now shows Saved Searches + Filters when a project is selected, and just Saved Searches + New Search prompt when no project is selected
 
-## 5. Project Status Badge Below Title
+### 5. Delete `SourcingFiltersPanel.tsx`
 
-**File: `src/components/sourcing/SourcingProjectHeader.tsx`** (line 127)
+Redundant — its content moves into the sidebar.
 
-Currently `variant={project.status === 'active' ? 'default' : 'secondary'}`. Change to:
-- `active` → `variant="status-active"` 
-- `archived` → `variant="status-inactive"` (slate tones)
+## Prop Flow
 
-Also capitalize the label text.
+```text
+Find.tsx
+├── SourcingSidebar (project list + filters)
+│   props: selectedProjectId, onSelectProject, onNewSearch,
+│          project?, filters?, onFiltersChange?, onUpdateSearchCriteria?, isRefreshing?
+└── SourcingProjectView
+    └── CandidatesTab (table only, no filter panel)
+```
+
+The challenge: `filters` state and `project` data live in `SourcingProjectView`. Two options:
+- **Option A**: Lift filter state to `Find.tsx` — cleanest, since both sidebar and project view need it
+- **Option B**: Pass filters via context — more complex, not needed here
+
+**Going with Option A**: Lift `filters`, `isRefreshing`, and `onUpdateSearchCriteria` to `Find.tsx`. `SourcingProjectView` continues to own project data but exposes what the sidebar needs via the existing `useSourcingProject` hook (which `Find.tsx` can also call since it has `projectId`).
 
 ## Files Summary
 
-| File | Changes |
-|------|---------|
-| `SourcingSidebar.tsx` | Replace custom tab buttons with `Tabs`/`TabsList`/`TabsTrigger` |
-| `SourcingFiltersPanel.tsx` | Update ~8 badge variants to Smart Field style |
-| `EditableSearchCriteria.tsx` | Update ~6 removable badge variants |
-| `RoleInterpretationDrawer.tsx` | Update ~7 badge variants |
-| `SourcingProjectHeader.tsx` | Update 1 status badge to semantic variant |
+| File | Action |
+|------|--------|
+| `src/components/sourcing/SourcingSidebar.tsx` | Refactor — add filter sections below project list, remove cards |
+| `src/components/sourcing/CandidatesTab.tsx` | Simplify — table only, remove filter panel |
+| `src/components/sourcing/SourcingProjectView.tsx` | Remove filter panel props from CandidatesTab, expose filter state upward |
+| `src/pages/Find.tsx` | Pass filter + project props to sidebar |
+| `src/components/sourcing/SourcingFiltersPanel.tsx` | Delete |
 
