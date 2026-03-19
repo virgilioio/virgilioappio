@@ -117,7 +117,7 @@ export function useMembers(includeHierarchy: boolean = false) {
       if (userIds.length > 0) {
         const { data: profilesData } = await supabase
           .from('profiles')
-          .select('user_id, first_name, last_name, email')
+          .select('user_id, first_name, last_name, email, avatar_url')
           .in('user_id', userIds)
         
         if (profilesData) {
