@@ -1,109 +1,63 @@
 
 
-# Find Page Layout: Unified Sidebar with Saved Searches + Vertical Filters
+# Replace Read-Only/Edit Toggle with Always-Editable Vertical Filters
 
-## New Layout
+## What Changes
 
-```text
-┌────────────────────────┬──────────────────────────────────────────┐
-│  SIDEBAR (w-80)        │  Header: Project Name + Status           │
-│                        │  Tabs: Chat | Candidates | Saved | Arch  │
-│  ┌──────────────────┐  │  ┌──────────────────────────────────────┐│
-│  │ Saved Searches   │  │  │                                      ││
-│  │ (popover/list    │  │  │  Candidate Table (full width)        ││
-│  │  like SavedView) │  │  │                                      ││
-│  └──────────────────┘  │  └──────────────────────────────────────┘│
-│                        │                                          │
-│  Search Criteria       │                                          │
-│  ─────────────────     │                                          │
-│  Job Titles:           │                                          │
-│  [badge] [badge]       │                                          │
-│  Keywords:             │                                          │
-│  [badge] [badge]       │                                          │
-│  Locations:            │                                          │
-│  [badge]               │                                          │
-│  ... (vertically)      │                                          │
-│  [Edit] [Save&Refresh] │                                          │
-│                        │                                          │
-│  ─────────────────     │                                          │
-│  Result Filters        │                                          │
-│  ☐ Has Email           │                                          │
-│  ☐ Has Phone           │                                          │
-│  [Reset]               │                                          │
-│                        │                                          │
-│  [Collapse]            │                                          │
-└────────────────────────┴──────────────────────────────────────────┘
-```
+The sidebar's "Search Criteria" section currently has two modes: a read-only badge display and an "Edit" mode that shows `EditableSearchCriteria`. We remove this toggle entirely and make the filters **always editable inline**, using `FilterCheckboxGroup` for list-based filters and compact text inputs for free-text fields — matching the vertical filter pattern from Candidates/Jobs sidebars.
 
-The sidebar stays but is **repurposed** into one panel with two sections:
-1. **Saved Searches** at the top — styled like the `SavedViewSelector` popover pattern (project list with search, status tabs, new search button, three-dot menus)
-2. **Search Criteria + Result Filters** below — same content as current `SourcingFiltersPanel` but **without the cards/rounded containers** — just clean vertical labels + badge chips
-
-## Changes
-
-### 1. Refactor `SourcingSidebar.tsx` → unified sidebar
-
-Keep the Sidebar component but restructure its content into two sections:
-
-**Top section — Saved Searches:**
-- Keep the search input, status tabs (Active/Archived/All), and project list exactly as they are now
-- Add a collapsible section header "Saved Searches" so this section can be collapsed to give more room to filters
-- Keep the "New Search" button
-
-**Bottom section — Search & Filters (moved from `SourcingFiltersPanel`):**
-- Move ALL filter content from `SourcingFiltersPanel` into this sidebar
-- **Remove the card containers** (`rounded-xl bg-gradient-to-b ... border ... shadow-sm`) — render filter groups directly as vertical label + badges
-- Keep the read-only/edit toggle for search criteria
-- Keep the result filters (Has Email, Has Phone checkboxes)
-- Keep Edit/Save & Refresh/Cancel/Reset buttons
-
-New props needed: `project`, `filters`, `onFiltersChange`, `onUpdateSearchCriteria`, `isRefreshing` (passed down from `SourcingProjectView`)
-
-### 2. Update `CandidatesTab.tsx`
-
-- Remove `SourcingFiltersPanel` — filters are now in the sidebar
-- Render only the `SourcingCandidateTable` at full width
-- Remove filter-related props (`filters`, `onFiltersChange`, `onUpdateSearchCriteria`, `isRefreshing`) — these move to the sidebar
-
-### 3. Update `SourcingProjectView.tsx`
-
-- Pass filter props (`project`, `filters`, `onFiltersChange`, `onUpdateSearchCriteria`, `isRefreshing`) up to the parent `Find.tsx` so they can reach the sidebar
-- Alternatively, expose them via a callback/context pattern
-
-### 4. Update `Find.tsx`
-
-- Keep `SidebarProvider` (sidebar is NOT being removed, just repurposed)
-- Pass the filter and project props to the refactored `SourcingSidebar`
-- The sidebar now shows Saved Searches + Filters when a project is selected, and just Saved Searches + New Search prompt when no project is selected
-
-### 5. Delete `SourcingFiltersPanel.tsx`
-
-Redundant — its content moves into the sidebar.
-
-## Prop Flow
+## Layout After Changes
 
 ```text
-Find.tsx
-├── SourcingSidebar (project list + filters)
-│   props: selectedProjectId, onSelectProject, onNewSearch,
-│          project?, filters?, onFiltersChange?, onUpdateSearchCriteria?, isRefreshing?
-└── SourcingProjectView
-    └── CandidatesTab (table only, no filter panel)
+SIDEBAR
+├── Saved Searches (collapsible, unchanged)
+├── ── separator ──
+├── SEARCH CRITERIA (always editable)
+│   ├── Job Titles: [compact input + add] + badge chips
+│   ├── Keywords: [compact input + add] + badge chips  
+│   ├── Locations: LocationSelector (unchanged)
+│   ├── Seniority: FilterCheckboxGroup (all 11 options, checkboxes)
+│   ├── Company Size: FilterCheckboxGroup (8 options, checkboxes)
+│   ├── Industry: FilterCheckboxGroup (searchable, 24 options)
+│   ├── Target Companies: [compact input + add] + badge chips
+│   ├── Experience: min/max inputs
+│   └── [Save & Refresh] button
+├── ── separator ──
+└── RESULT FILTERS (unchanged — Has Email / Has Phone checkboxes)
 ```
 
-The challenge: `filters` state and `project` data live in `SourcingProjectView`. Two options:
-- **Option A**: Lift filter state to `Find.tsx` — cleanest, since both sidebar and project view need it
-- **Option B**: Pass filters via context — more complex, not needed here
+## Changes by File
 
-**Going with Option A**: Lift `filters`, `isRefreshing`, and `onUpdateSearchCriteria` to `Find.tsx`. `SourcingProjectView` continues to own project data but exposes what the sidebar needs via the existing `useSourcingProject` hook (which `Find.tsx` can also call since it has `projectId`).
+### `src/components/sourcing/SourcingSidebar.tsx`
+
+- Remove `isEditingCriteria` and `editableCriteria` state, and all edit/cancel/save toggle logic
+- Always render an inline editable criteria section (no more conditional read-only vs edit view)
+- For **Seniority**, **Company Size**, and **Industry**: use `FilterCheckboxGroup` with the existing option constants (from `EditableSearchCriteria`). These become vertical checkbox lists with search (for Industry). No counts needed — pass `count: 0` or omit (the component handles it).
+- For **Job Titles**, **Keywords**, **Target Companies**: keep compact `Input` + `Plus` button + removable badges (same as `EditableSearchCriteria` but styled smaller to fit sidebar)
+- For **Locations**: keep `LocationSelector` as-is
+- For **Experience**: keep the min/max number inputs
+- The criteria state is derived directly from `project.search_criteria` — edits call `onUpdateSearchCriteria` via a single "Save & Refresh" button at the bottom
+- Keep a local `editableCriteria` state initialized from `project.search_criteria`, but it's always visible/editable (no toggle)
+
+### `src/components/sourcing/EditableSearchCriteria.tsx`
+
+- No changes needed — but it will no longer be imported by `SourcingSidebar`. It may still be used by `RoleInterpretationDrawer` or other places. If it's only used by the sidebar, it becomes dead code (can be cleaned up later).
+
+### `src/components/ui/filter-checkbox-group.tsx`
+
+- Minor: make `count` optional in `FilterCheckboxOption` (default to hiding the count span when 0 or undefined) so sourcing filters can use it without fabricating counts.
+
+## Technical Notes
+
+- The `FilterCheckboxGroup` expects `{ value, label, count }` options. We'll map `SENIORITY_OPTIONS`, `COMPANY_SIZE_OPTIONS`, `INDUSTRY_OPTIONS` into this shape with `count: 0`.
+- When count is 0, hide the count span to avoid showing "0" next to every option.
+- The `onToggle` callback will update the local `editableCriteria` state for the corresponding array field.
+- "Save & Refresh" button persists at the bottom and calls `onUpdateSearchCriteria(editableCriteria)`.
 
 ## Files Summary
 
 | File | Action |
 |------|--------|
-| `src/components/sourcing/SourcingSidebar.tsx` | Refactor — add filter sections below project list, remove cards |
-| `src/components/sourcing/CandidatesTab.tsx` | Simplify — table only, remove filter panel |
-| `src/components/sourcing/SourcingProjectView.tsx` | Remove filter panel props from CandidatesTab, expose filter state upward |
-| `src/pages/Find.tsx` | Pass filter + project props to sidebar |
-| `src/components/sourcing/SourcingFiltersPanel.tsx` | Delete |
+| `SourcingSidebar.tsx` | Rewrite criteria section: remove read-only view, always show editable filters using `FilterCheckboxGroup` for lists and compact inputs for free-text |
+| `filter-checkbox-group.tsx` | Make `count` optional, hide count span when falsy |
 
