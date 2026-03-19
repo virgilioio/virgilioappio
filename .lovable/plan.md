@@ -1,58 +1,80 @@
 
 
-# Two Issues: Profile Badge Standardization + Application Review Bug
+# Find Page: Tabs, Badges & Filter Standardization
 
-## Issue 1: Candidate Profile Badges Are Plain
+## 1. Sidebar Status Tabs (Active | Archived | All)
 
-The `CandidateWorkExperience`, `CandidateEducationComponent`, and `CandidateCertifications` components all use generic `variant="secondary"` or `variant="outline"` badges instead of the standardized Smart Field variants. The `IndependentCandidateProfileSheet` Career Summary section also has a plain `variant="outline"` badge for the standardized title.
+**File: `src/components/sourcing/SourcingSidebar.tsx`** (lines 86-117)
 
-### Changes
+The three status filter buttons are custom `<button>` elements with inline Tailwind. Replace with the standard `Tabs`/`TabsList`/`TabsTrigger` components from `@/components/ui/tabs`, which already implement the app's tab style guide (rounded-xl container, `bg-[#d7c5fb]` active state, poppins font).
 
-**`src/components/candidates/CandidateWorkExperience.tsx`**
-- Standardized title badge: `variant="outline"` → `variant="category"` with Sparkles icon
-- Company industry badge: `variant="secondary"` → `variant="pastel-blue"` 
-- Company size badge: `variant="outline"` → `variant="category"`
-- Current badge: remove inline `bg-green-100 text-green-800` → `variant="status-active"`
-- Skills badges: `variant="outline"` → `variant="pastel-purple"`
+- Import `Tabs, TabsList, TabsTrigger` from `@/components/ui/tabs`
+- Replace the manual `<div className="flex gap-1.5 ...">` + 3 `<button>` elements with `<Tabs value={statusFilter} onValueChange={setStatusFilter}><TabsList><TabsTrigger value="active">Active</TabsTrigger>...`
+- Remove the custom active/inactive styling logic
 
-**`src/components/candidates/CandidateEducationComponent.tsx`**
-- Education level badge: `variant="secondary"` → `variant="pastel-blue"`
-- Grade badge: `variant="outline"` → `variant="category"`
+## 2. Search Criteria Badges (Read-Only View)
 
-**`src/components/candidates/CandidateCertifications.tsx`**
-- Bootcamp badge: `variant="secondary"` → `variant="pastel-orange"`
+**File: `src/components/sourcing/SourcingFiltersPanel.tsx`** (lines 111-199)
 
-**`src/components/candidates/IndependentCandidateProfileSheet.tsx`**
-- Career Summary standardized title badge: `variant="outline"` → `variant="category"` with Sparkles icon
+All read-only badges use generic `variant="secondary"` or `variant="outline"`. Map each to a semantic Smart Field variant:
 
----
+| Criteria | Current | New Variant |
+|----------|---------|-------------|
+| Job Titles | `secondary` | `pastel-purple` |
+| Keywords | `outline` | `keyword-match` |
+| Locations | `outline` | `pastel-blue` |
+| Seniority | `outline` | `category` |
+| Company Size | `outline` | `category` |
+| Company Domains | `outline` | `category` |
+| Target Companies | `outline` | `pastel-orange` |
+| Experience | `outline` | `category` |
 
-## Issue 2: Public Applicants Don't Appear in Application Review (Critical Bug)
+## 3. Search Criteria Badges (Editable/Removable)
 
-**Root cause**: The `public-submit-application` edge function creates the `job_candidate_associations` record with `current_stage_id: null` (line 383). However, the Application Review system was formalized as a concrete stage (`stage_type = 'application_review'`). The `useApplicationReview` hook queries for `.eq('current_stage_id', arStageId)` — so candidates with `null` stage never match.
+**File: `src/components/sourcing/EditableSearchCriteria.tsx`**
 
-**Fix**: In `public-submit-application/index.ts`, before inserting the association, look up the `application_review` `job_hiring_stages` ID for that job and set it as `current_stage_id`.
+Same mapping as above, applied to the removable badge pills:
 
-### Changes
+| Field | Current | New Variant |
+|-------|---------|-------------|
+| Title Keywords (line 218) | `secondary` | `pastel-purple` |
+| Keywords (line 291) | `secondary` | `keyword-match` |
+| Seniority (line 336) | `outline` | `category` |
+| Company Size (line 368) | `outline` | `category` |
+| Industry (line 400) | `outline` | `pastel-blue` |
+| Target Companies (line 473) | `outline` | `pastel-orange` |
 
-**`supabase/functions/public-submit-application/index.ts`** (~lines 367-384)
-- Before the association insert, query:
-  ```sql
-  SELECT jhs.id FROM job_hiring_stages jhs
-  JOIN job_stages js ON jhs.stage_id = js.id
-  WHERE jhs.job_id = posting.job_id AND js.stage_type = 'application_review'
-  LIMIT 1
-  ```
-- Use the returned ID as `current_stage_id` in the insert (fall back to `null` if not found for backward compat)
-- Also set `entered_stage_at: new Date().toISOString()` for proper time tracking
+## 4. Role Interpretation Drawer Badges
 
-### Files Summary
+**File: `src/components/sourcing/RoleInterpretationDrawer.tsx`**
 
-| File | Action |
-|------|--------|
-| `src/components/candidates/CandidateWorkExperience.tsx` | Update 5 badge variants to Smart Field style |
-| `src/components/candidates/CandidateEducationComponent.tsx` | Update 2 badge variants |
-| `src/components/candidates/CandidateCertifications.tsx` | Update 1 badge variant |
-| `src/components/candidates/IndependentCandidateProfileSheet.tsx` | Update 1 badge variant |
-| `supabase/functions/public-submit-application/index.ts` | Fix: look up application_review stage ID and set it on association insert |
+| Badge | Current | New Variant |
+|-------|---------|-------------|
+| Alt titles (line 142) | `outline` | `category` |
+| Skills (line 252) | `secondary` | `pastel-purple` |
+| Researched titles (line 307) | `outline` + inline class | `category` |
+| Researched companies (line 324) | `secondary` | `pastel-orange` |
+| Overflow "+N more" (line 329) | `outline` | `category` |
+| Researched industries (line 346) | `outline` + inline color | `pastel-blue` |
+| Researched keywords (line 363) | `outline` + inline class | `keyword-match` |
+
+## 5. Project Status Badge Below Title
+
+**File: `src/components/sourcing/SourcingProjectHeader.tsx`** (line 127)
+
+Currently `variant={project.status === 'active' ? 'default' : 'secondary'}`. Change to:
+- `active` → `variant="status-active"` 
+- `archived` → `variant="status-inactive"` (slate tones)
+
+Also capitalize the label text.
+
+## Files Summary
+
+| File | Changes |
+|------|---------|
+| `SourcingSidebar.tsx` | Replace custom tab buttons with `Tabs`/`TabsList`/`TabsTrigger` |
+| `SourcingFiltersPanel.tsx` | Update ~8 badge variants to Smart Field style |
+| `EditableSearchCriteria.tsx` | Update ~6 removable badge variants |
+| `RoleInterpretationDrawer.tsx` | Update ~7 badge variants |
+| `SourcingProjectHeader.tsx` | Update 1 status badge to semantic variant |
 
