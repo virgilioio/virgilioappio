@@ -231,6 +231,11 @@ function RequireAuth({ children }: { children: JSX.Element }) {
     return children
   }
 
+  // 🚫 Deactivated users see a clear wall instead of onboarding
+  if (userType === 'deactivated') {
+    return <DeactivatedWall />
+  }
+
   if (hasOrganizationContext) {
     return children
   }

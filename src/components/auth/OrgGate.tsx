@@ -30,6 +30,11 @@ export function OrgGate({ children, fallback }: OrgGateProps) {
     return <>{children}</>
   }
 
+  // 🚫 Deactivated users see a clear wall
+  if (userType === 'deactivated') {
+    return <DeactivatedWall />
+  }
+
   if (!hasOrganizationContext) {
     if (fallback) {
       return <>{fallback}</>
