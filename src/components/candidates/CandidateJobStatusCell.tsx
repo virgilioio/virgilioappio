@@ -23,11 +23,11 @@ function formatShortDate(dateStr: string | null): string {
 function getPipelineBadge(status: string | null) {
   switch (status?.toLowerCase()) {
     case 'rejected':
-      return { label: 'Rejected', variant: 'destructive' as const }
+      return { label: 'Rejected', variant: 'pipeline-rejected' as const }
     case 'offer':
-      return { label: 'Offer', variant: 'default' as const }
+      return { label: 'Offer', variant: 'pipeline-offer' as const }
     case 'hired':
-      return { label: 'Hired', variant: 'default' as const }
+      return { label: 'Hired', variant: 'pipeline-hired' as const }
     default:
       return null
   }
