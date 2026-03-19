@@ -98,7 +98,9 @@ export function FilterCheckboxGroup({
                   className="h-3.5 w-3.5"
                 />
                 <span className="flex-1 text-xs font-inter text-foreground truncate">{opt.label}</span>
-                <span className="text-[10px] text-muted-foreground tabular-nums">{opt.count}</span>
+                {opt.count != null && opt.count > 0 && (
+                  <span className="text-[10px] text-muted-foreground tabular-nums">{opt.count}</span>
+                )}
               </label>
             )
           })
