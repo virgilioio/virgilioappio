@@ -129,9 +129,9 @@ export function SourcingFiltersPanel({
                   <div className="flex flex-wrap gap-1.5">
                     {Array.isArray(project.search_criteria.keywords) 
                       ? project.search_criteria.keywords.map(kw => (
-                          <Badge key={kw} variant="outline" className="text-xs rounded-md">{kw}</Badge>
+                          <Badge key={kw} variant="keyword-match" className="text-xs rounded-md">{kw}</Badge>
                         ))
-                      : <Badge variant="outline" className="text-xs rounded-md">{project.search_criteria.keywords}</Badge>
+                      : <Badge variant="keyword-match" className="text-xs rounded-md">{project.search_criteria.keywords}</Badge>
                     }
                   </div>
                 </div>
