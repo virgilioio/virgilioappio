@@ -158,7 +158,7 @@ export const CandidateWorkExperienceComponent = ({ experiences }: CandidateWorkE
                 {exp.skills_used && exp.skills_used.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {exp.skills_used.map((skill, skillIndex) => (
-                      <Badge key={skillIndex} variant="outline" className="text-xs">
+                      <Badge key={skillIndex} variant="pastel-purple" className="text-xs">
                         {skill}
                       </Badge>
                     ))}

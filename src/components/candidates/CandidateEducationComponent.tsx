@@ -91,7 +91,7 @@ export const CandidateEducationComponent = ({ education }: CandidateEducationPro
                   )}
                   
                   {edu.grade && (
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="category" className="text-xs">
                       {edu.grade}
                     </Badge>
                   )}
