@@ -151,9 +151,9 @@ export function MembersTable({
       const email = (m.user_email || m.invited_email || '').toLowerCase()
       const term = searchTerm.toLowerCase()
       const matchesSearch = !searchTerm || name.includes(term) || email.includes(term)
-      const matchesRole = roleFilter === 'all' || m.effectiveRole === roleFilter || (!m.effectiveRole && roleFilter === (m.system_role === 'admin' ? 'Admin' : 'Hiring Manager'))
-      const matchesStatus = statusFilter === 'all' || m.user_status === statusFilter
-      const matchesSeat = seatFilter === 'all' || m.seatType === seatFilter
+      const matchesRole = roleFilter.length === 0 || roleFilter.includes(m.effectiveRole || (m.system_role === 'admin' ? 'Admin' : 'Hiring Manager'))
+      const matchesStatus = statusFilter.length === 0 || statusFilter.includes(m.user_status)
+      const matchesSeat = seatFilter.length === 0 || (m.seatType && seatFilter.includes(m.seatType))
       return matchesSearch && matchesRole && matchesStatus && matchesSeat
     })
   }, [members, searchTerm, roleFilter, statusFilter, seatFilter])
