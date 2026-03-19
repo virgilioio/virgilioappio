@@ -185,10 +185,20 @@ export function JobsTable({
     return (
       <Card className="bg-surface-primary">
         <CardContent className="pt-6">
-          <div className="flex gap-4 mb-4">
+          {/* Row 1: Search + filter chips skeleton */}
+          <div className="flex items-center gap-2 mb-3">
             <Skeleton className="h-8 w-56" />
             <Skeleton className="h-8 w-24" />
             <Skeleton className="h-8 w-24" />
+            <Skeleton className="h-8 w-24" />
+          </div>
+          {/* Row 2: Action button skeleton */}
+          <div className="flex items-center gap-2 mb-3">
+            <Skeleton className="h-8 w-28" />
+          </div>
+          {/* Row 3: Count skeleton */}
+          <div className="mb-4">
+            <Skeleton className="h-3 w-32" />
           </div>
           <TableSkeleton rows={5} />
         </CardContent>
