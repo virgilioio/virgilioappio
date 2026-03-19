@@ -33,7 +33,7 @@ export function OrganizationsTable({
   const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null)
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('active')
+  const [statusFilter, setStatusFilter] = useState<string[]>(['active'])
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
