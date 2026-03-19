@@ -173,7 +173,7 @@ export function SourcingFiltersPanel({
                   <span className="text-xs font-medium text-virgilio-muted">Company Domains:</span>
                   <div className="flex flex-wrap gap-1.5">
                     {project.search_criteria.company_domains.map(domain => (
-                      <Badge key={domain} variant="outline" className="text-xs rounded-md">{domain}</Badge>
+                      <Badge key={domain} variant="category" className="text-xs rounded-md">{domain}</Badge>
                     ))}
                   </div>
                 </div>
