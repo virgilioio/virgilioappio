@@ -223,6 +223,7 @@ export function FindFilterPanel({
 
         {/* Seniority */}
         <CollapsibleSection label="Seniority">
+          {/* @ts-expect-error label provided by CollapsibleSection */}
           <FilterCheckboxGroup
             options={SENIORITY_OPTIONS}
             selectedValues={criteria.seniorities || []}
