@@ -330,11 +330,27 @@ const getPageNumbers = () => {
     return (
       <Card className="bg-surface-primary border-border">
         <CardContent className="pt-6">
-          <div className="flex gap-4 mb-4">
+          {/* Row 1: View selector skeleton */}
+          <div className="mb-3">
+            <Skeleton className="h-8 w-40" />
+          </div>
+          {/* Row 2: Search + filter chips skeleton */}
+          <div className="flex items-center gap-2 mb-3">
             <Skeleton className="h-8 w-56" />
             <Skeleton className="h-8 w-24" />
             <Skeleton className="h-8 w-24" />
             <Skeleton className="h-8 w-24" />
+          </div>
+          {/* Row 3: Action buttons skeleton */}
+          <div className="flex items-center gap-2 mb-3">
+            <Skeleton className="h-8 w-28" />
+            <Skeleton className="h-8 w-20" />
+            <Skeleton className="h-8 w-24" />
+            <Skeleton className="h-8 w-28" />
+          </div>
+          {/* Row 4: Count skeleton */}
+          <div className="mb-4">
+            <Skeleton className="h-3 w-32" />
           </div>
           <TableSkeleton rows={8} />
         </CardContent>
