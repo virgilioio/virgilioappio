@@ -333,7 +333,7 @@ export function EditableSearchCriteria({
         {criteria.seniorities && criteria.seniorities.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {criteria.seniorities.map(seniority => (
-              <Badge key={seniority} variant="outline" className="gap-1">
+              <Badge key={seniority} variant="category" className="gap-1">
                 {getSeniorityLabel(seniority)}
                 <button
                   onClick={() => handleRemoveSeniority(seniority)}
