@@ -249,7 +249,7 @@ export function RoleInterpretationDrawer({
               ) : (
                 <div className="flex flex-wrap gap-1">
                   {(spec.skills || []).map((skill, i) => (
-                    <Badge key={i} variant="secondary">
+                    <Badge key={i} variant="pastel-purple">
                       {skill}
                     </Badge>
                   ))}
