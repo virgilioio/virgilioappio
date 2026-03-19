@@ -204,12 +204,13 @@ export function FindFilterPanel({
         </CollapsibleSection>
 
         <CollapsibleSection label="Keywords" icon={Tag}>
-          <TagInput
+          <AutocompleteTagInput
             placeholder="Add keyword..."
             tags={c.keywords || []}
             onAdd={(tag) => onCriteriaChange({ keywords: [...(c.keywords || []), tag] })}
             onRemove={(tag) => onCriteriaChange({ keywords: (c.keywords || []).filter(t => t !== tag) })}
             badgeVariant="keyword-match"
+            table="standard_skills"
           />
         </CollapsibleSection>
 
