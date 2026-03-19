@@ -40,10 +40,11 @@ export function MembersTab() {
     || m.user_type === 'workspace_owner'
     || (m.user_id && recruiterUserIds.has(m.user_id))
 
-  const paidMembers = members.filter(
-    (m) => isBillableMember(m) && (!parentOrgId || m.organization_id === parentOrgId)
+  const orgMembers = members.filter(
+    (m) => !parentOrgId || m.organization_id === parentOrgId
   )
-  const collaboratorMembers = members.filter((m) => !isBillableMember(m))
+  const paidMembers = orgMembers.filter((m) => isBillableMember(m))
+  const collaboratorMembers = orgMembers.filter((m) => !isBillableMember(m))
 
   // Tenant subscription functionality removed
   const subscriptionData = null
