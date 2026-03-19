@@ -94,8 +94,10 @@ const ROLE_OPTIONS = [
 export function MemberDetailSheet({ member, open, onOpenChange, onManageJobs }: MemberDetailSheetProps) {
   const { data: assignments, isLoading: assignmentsLoading } = useMemberJobAssignments(member?.user_id)
   const queryClient = useQueryClient()
+  const { wouldUpgrade, paidSeatCount } = useWouldUpgradeSeat()
   const [removeTarget, setRemoveTarget] = useState<{ id: string; jobTitle: string } | null>(null)
   const [isUpdating, setIsUpdating] = useState<string | null>(null)
+  const [seatConfirm, setSeatConfirm] = useState<{ assignmentId: string; newRole: string } | null>(null)
 
   if (!member) return null
 
