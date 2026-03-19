@@ -50,10 +50,26 @@ export function OrganizationsTable({
   }
 
 
+  const hasActiveFilters = searchTerm || statusFilter.length > 0
+
+  const statusOptions = useMemo(() => {
+    const activeCount = organizations.filter(o => o.status === 'active').length
+    const inactiveCount = organizations.filter(o => o.status === 'inactive').length
+    return [
+      { value: 'active', label: 'Active', count: activeCount },
+      { value: 'inactive', label: 'Inactive', count: inactiveCount },
+    ]
+  }, [organizations])
+
+  const clearFilters = () => {
+    setSearchTerm('')
+    setStatusFilter([])
+  }
+
   // Filter organizations
   const filteredOrganizations = organizations.filter(org => {
     const matchesSearch = org.name.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === 'all' || org.status === statusFilter
+    const matchesStatus = statusFilter.length === 0 || statusFilter.includes(org.status)
     
     return matchesSearch && matchesStatus
   })
