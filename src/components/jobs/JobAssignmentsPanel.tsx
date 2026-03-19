@@ -38,9 +38,11 @@ const getRoleLabel = (role: JobAssignmentRole) => {
 export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProps) {
   const [selectedUserId, setSelectedUserId] = useState('')
   const [selectedRole, setSelectedRole] = useState<JobAssignmentRole>('recruiter')
+  const [seatConfirm, setSeatConfirm] = useState<{ action: () => Promise<void>; memberName: string } | null>(null)
   const { assignments, assignUserToJob, removeUserFromJob, updateAssignmentRole, isLoading: assignmentsLoading } = useJobAssignments(jobId)
   const { members, isLoading: membersLoading } = useMembers(true)
   const permissions = usePermissions()
+  const { wouldUpgrade, paidSeatCount } = useWouldUpgradeSeat()
 
   // Security check - only users who can manage job assignments can access
   if (!permissions.canManageJobAssignments) {
