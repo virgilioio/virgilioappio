@@ -920,9 +920,9 @@ const stageHasAutomation = useMemo(() => {
                       <TooltipTrigger asChild>
                         <Button
                           variant="outline"
-                          className="h-8 w-8 p-0"
-                          onClick={() => {
-                            navigate(`/candidates?openCandidate=${candidate.id}`);
+                           className="h-8 w-8 p-0 min-h-0"
+                           onClick={() => {
+                             navigate(`/candidates?openCandidate=${candidate.id}`);
                           }}
                         >
                           <UserRound className="h-4 w-4" />
