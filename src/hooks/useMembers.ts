@@ -164,6 +164,7 @@ export function useMembers(includeHierarchy: boolean = false) {
           organization_name: organizationsMap[member.organization_id] || null,
           user_first_name: profile?.first_name || null,
           user_last_name: profile?.last_name || null,
+          user_avatar_url: profile?.avatar_url || null,
           user_email: user_email
         }
         
