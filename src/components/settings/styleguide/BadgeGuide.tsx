@@ -54,6 +54,62 @@ export function BadgeGuide() {
           </div>
         </div>
 
+        {/* Role Badges */}
+        <div className="space-y-3">
+          <h4 className="text-sm font-medium text-muted-foreground">Role Badges</h4>
+          <p className="text-xs text-muted-foreground">Used in Team Members table to identify member roles</p>
+          <div className="flex flex-wrap gap-3">
+            <div className="space-y-2 text-center">
+              <Badge variant="role-owner">Owner</Badge>
+              <p className="text-xs text-muted-foreground">role-owner</p>
+            </div>
+            <div className="space-y-2 text-center">
+              <Badge variant="role-admin">Admin</Badge>
+              <p className="text-xs text-muted-foreground">role-admin</p>
+            </div>
+            <div className="space-y-2 text-center">
+              <Badge variant="role-recruiter">Recruiter</Badge>
+              <p className="text-xs text-muted-foreground">role-recruiter</p>
+            </div>
+            <div className="space-y-2 text-center">
+              <Badge variant="role-hiring-manager">Hiring Manager</Badge>
+              <p className="text-xs text-muted-foreground">role-hiring-manager</p>
+            </div>
+            <div className="space-y-2 text-center">
+              <Badge variant="role-interviewer">Interviewer</Badge>
+              <p className="text-xs text-muted-foreground">role-interviewer</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Seat & Status Badges */}
+        <div className="space-y-3">
+          <h4 className="text-sm font-medium text-muted-foreground">Seat & Status Badges</h4>
+          <p className="text-xs text-muted-foreground">Used for billing seat types and member activity status</p>
+          <div className="flex flex-wrap gap-3">
+            <div className="space-y-2 text-center">
+              <Badge variant="seat-paid">Paid Seat</Badge>
+              <p className="text-xs text-muted-foreground">seat-paid</p>
+            </div>
+            <div className="space-y-2 text-center">
+              <Badge variant="seat-free">Free Seat</Badge>
+              <p className="text-xs text-muted-foreground">seat-free</p>
+            </div>
+            <div className="space-y-2 text-center">
+              <Badge variant="status-active">Active</Badge>
+              <p className="text-xs text-muted-foreground">status-active</p>
+            </div>
+            <div className="space-y-2 text-center">
+              <Badge variant="status-invited">Invited</Badge>
+              <p className="text-xs text-muted-foreground">status-invited</p>
+            </div>
+            <div className="space-y-2 text-center">
+              <Badge variant="status-inactive">Inactive</Badge>
+              <p className="text-xs text-muted-foreground">status-inactive</p>
+            </div>
+          </div>
+        </div>
+
         {/* Pastel Variants */}
         <div className="space-y-3">
           <h4 className="text-sm font-medium text-muted-foreground">Pastel Variants</h4>
@@ -105,20 +161,28 @@ export function BadgeGuide() {
           <h4 className="text-sm font-medium text-muted-foreground">Common Usage</h4>
           <div className="p-4 rounded-lg border bg-card space-y-4">
             <div className="flex items-center gap-2">
+              <span className="text-sm">Team Roles:</span>
+              <Badge variant="role-owner">Owner</Badge>
+              <Badge variant="role-admin">Admin</Badge>
+              <Badge variant="role-recruiter">Recruiter</Badge>
+              <Badge variant="role-hiring-manager">Hiring Manager</Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm">Seats:</span>
+              <Badge variant="seat-paid">Paid</Badge>
+              <Badge variant="seat-free">Free</Badge>
+            </div>
+            <div className="flex items-center gap-2">
               <span className="text-sm">Status:</span>
-              <Badge variant="success">Active</Badge>
-              <Badge variant="warning">Pending</Badge>
-              <Badge variant="destructive">Rejected</Badge>
+              <Badge variant="status-active">Active</Badge>
+              <Badge variant="status-invited">Invited</Badge>
+              <Badge variant="status-inactive">Inactive</Badge>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-sm">Skills:</span>
               <Badge variant="pastel-blue">React</Badge>
               <Badge variant="pastel-purple">TypeScript</Badge>
               <Badge variant="pastel-green">Node.js</Badge>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm">Count:</span>
-              <Badge variant="secondary">5 items</Badge>
             </div>
           </div>
         </div>
