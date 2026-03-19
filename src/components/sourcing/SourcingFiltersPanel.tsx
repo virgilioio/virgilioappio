@@ -115,7 +115,7 @@ export function SourcingFiltersPanel({
                   <span className="text-xs font-medium text-virgilio-muted">Job Titles:</span>
                   <div className="flex flex-wrap gap-1.5">
                     {project.search_criteria.title_keywords.map(title => (
-                      <Badge key={title} variant="secondary" className="text-xs rounded-md">{title}</Badge>
+                      <Badge key={title} variant="pastel-purple" className="text-xs rounded-md">{title}</Badge>
                     ))}
                   </div>
                 </div>
@@ -129,9 +129,9 @@ export function SourcingFiltersPanel({
                   <div className="flex flex-wrap gap-1.5">
                     {Array.isArray(project.search_criteria.keywords) 
                       ? project.search_criteria.keywords.map(kw => (
-                          <Badge key={kw} variant="outline" className="text-xs rounded-md">{kw}</Badge>
+                          <Badge key={kw} variant="keyword-match" className="text-xs rounded-md">{kw}</Badge>
                         ))
-                      : <Badge variant="outline" className="text-xs rounded-md">{project.search_criteria.keywords}</Badge>
+                      : <Badge variant="keyword-match" className="text-xs rounded-md">{project.search_criteria.keywords}</Badge>
                     }
                   </div>
                 </div>
@@ -141,7 +141,7 @@ export function SourcingFiltersPanel({
                   <span className="text-xs font-medium text-virgilio-muted">Locations:</span>
                   <div className="flex flex-wrap gap-1.5">
                     {project.search_criteria.locations.map(loc => (
-                      <Badge key={loc} variant="outline" className="text-xs rounded-md">
+                      <Badge key={loc} variant="pastel-blue" className="text-xs rounded-md">
                         {loc}
                       </Badge>
                     ))}
@@ -153,7 +153,7 @@ export function SourcingFiltersPanel({
                   <span className="text-xs font-medium text-virgilio-muted">Seniority:</span>
                   <div className="flex flex-wrap gap-1.5">
                     {project.search_criteria.seniorities.map(level => (
-                      <Badge key={level} variant="outline" className="text-xs rounded-md capitalize">{level.replace('_', ' ')}</Badge>
+                      <Badge key={level} variant="category" className="text-xs rounded-md capitalize">{level.replace('_', ' ')}</Badge>
                     ))}
                   </div>
                 </div>
@@ -163,7 +163,7 @@ export function SourcingFiltersPanel({
                   <span className="text-xs font-medium text-virgilio-muted">Company Size:</span>
                   <div className="flex flex-wrap gap-1.5">
                     {project.search_criteria.company_sizes.map(size => (
-                      <Badge key={size} variant="outline" className="text-xs rounded-md">{size}</Badge>
+                      <Badge key={size} variant="category" className="text-xs rounded-md">{size}</Badge>
                     ))}
                   </div>
                 </div>
@@ -173,7 +173,7 @@ export function SourcingFiltersPanel({
                   <span className="text-xs font-medium text-virgilio-muted">Company Domains:</span>
                   <div className="flex flex-wrap gap-1.5">
                     {project.search_criteria.company_domains.map(domain => (
-                      <Badge key={domain} variant="outline" className="text-xs rounded-md">{domain}</Badge>
+                      <Badge key={domain} variant="category" className="text-xs rounded-md">{domain}</Badge>
                     ))}
                   </div>
                 </div>
@@ -183,7 +183,7 @@ export function SourcingFiltersPanel({
                   <span className="text-xs font-medium text-virgilio-muted">Target Companies:</span>
                   <div className="flex flex-wrap gap-1.5">
                     {project.search_criteria.company_names.map(name => (
-                      <Badge key={name} variant="outline" className="text-xs rounded-md">{name}</Badge>
+                      <Badge key={name} variant="pastel-orange" className="text-xs rounded-md">{name}</Badge>
                     ))}
                   </div>
                 </div>
@@ -191,7 +191,7 @@ export function SourcingFiltersPanel({
               {project.search_criteria.experience_years && (project.search_criteria.experience_years.min || project.search_criteria.experience_years.max) && (
                 <div className="space-y-1.5">
                   <span className="text-xs font-medium text-virgilio-muted">Experience:</span>
-                  <Badge variant="outline" className="text-xs rounded-md">
+                  <Badge variant="category" className="text-xs rounded-md">
                     {project.search_criteria.experience_years.min || 0} - {project.search_criteria.experience_years.max || 30} years
                   </Badge>
                 </div>

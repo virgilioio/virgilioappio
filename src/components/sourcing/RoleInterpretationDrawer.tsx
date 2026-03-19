@@ -139,7 +139,7 @@ export function RoleInterpretationDrawer({
               {spec.alt_titles && spec.alt_titles.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1">
                   {spec.alt_titles.map((title, i) => (
-                    <Badge key={i} variant="outline" className="text-xs">
+                    <Badge key={i} variant="category" className="text-xs">
                       {title}
                     </Badge>
                   ))}
@@ -249,7 +249,7 @@ export function RoleInterpretationDrawer({
               ) : (
                 <div className="flex flex-wrap gap-1">
                   {(spec.skills || []).map((skill, i) => (
-                    <Badge key={i} variant="secondary">
+                    <Badge key={i} variant="pastel-purple">
                       {skill}
                     </Badge>
                   ))}
@@ -304,7 +304,7 @@ export function RoleInterpretationDrawer({
                       </Label>
                       <div className="flex flex-wrap gap-1">
                         {spec.research_metadata.researched_titles.slice(0, 8).map((title, i) => (
-                          <Badge key={i} variant="outline" className="text-xs bg-surface-secondary/50">
+                          <Badge key={i} variant="category" className="text-xs">
                             {title}
                           </Badge>
                         ))}
@@ -321,12 +321,12 @@ export function RoleInterpretationDrawer({
                       </Label>
                       <div className="flex flex-wrap gap-1">
                         {spec.research_metadata.researched_companies.slice(0, 12).map((company, i) => (
-                          <Badge key={i} variant="secondary" className="text-xs">
+                          <Badge key={i} variant="pastel-orange" className="text-xs">
                             {company}
                           </Badge>
                         ))}
                         {spec.research_metadata.researched_companies.length > 12 && (
-                          <Badge variant="outline" className="text-xs text-muted-foreground">
+                          <Badge variant="category" className="text-xs">
                             +{spec.research_metadata.researched_companies.length - 12} more
                           </Badge>
                         )}
@@ -343,7 +343,7 @@ export function RoleInterpretationDrawer({
                       </Label>
                       <div className="flex flex-wrap gap-1">
                         {spec.research_metadata.researched_industries.map((industry, i) => (
-                          <Badge key={i} variant="outline" className="text-xs border-primary/30 text-primary">
+                          <Badge key={i} variant="pastel-blue" className="text-xs">
                             {industry}
                           </Badge>
                         ))}
@@ -360,7 +360,7 @@ export function RoleInterpretationDrawer({
                       </Label>
                       <div className="flex flex-wrap gap-1">
                         {spec.research_metadata.researched_keywords.map((keyword, i) => (
-                          <Badge key={i} variant="outline" className="text-xs bg-muted/50">
+                          <Badge key={i} variant="keyword-match" className="text-xs">
                             {keyword}
                           </Badge>
                         ))}

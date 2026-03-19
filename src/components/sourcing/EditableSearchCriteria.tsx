@@ -215,7 +215,7 @@ export function EditableSearchCriteria({
         {criteria.title_keywords && criteria.title_keywords.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {criteria.title_keywords.map(keyword => (
-              <Badge key={keyword} variant="secondary" className="gap-1">
+              <Badge key={keyword} variant="pastel-purple" className="gap-1">
                 {keyword}
                 <button
                   onClick={() => handleRemoveTitleKeyword(keyword)}
@@ -288,7 +288,7 @@ export function EditableSearchCriteria({
         {criteria.keywords && criteria.keywords.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {criteria.keywords.map(keyword => (
-              <Badge key={keyword} variant="secondary" className="gap-1">
+              <Badge key={keyword} variant="keyword-match" className="gap-1">
                 {keyword}
                 <button
                   onClick={() => onChange({
@@ -333,7 +333,7 @@ export function EditableSearchCriteria({
         {criteria.seniorities && criteria.seniorities.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {criteria.seniorities.map(seniority => (
-              <Badge key={seniority} variant="outline" className="gap-1">
+              <Badge key={seniority} variant="category" className="gap-1">
                 {getSeniorityLabel(seniority)}
                 <button
                   onClick={() => handleRemoveSeniority(seniority)}
@@ -365,7 +365,7 @@ export function EditableSearchCriteria({
         {criteria.company_sizes && criteria.company_sizes.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {criteria.company_sizes.map(size => (
-              <Badge key={size} variant="outline" className="gap-1">
+              <Badge key={size} variant="category" className="gap-1">
                 {getCompanySizeLabel(size)}
                 <button
                   onClick={() => handleRemoveCompanySize(size)}
@@ -397,7 +397,7 @@ export function EditableSearchCriteria({
         {criteria.industries && criteria.industries.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {criteria.industries.map(industry => (
-              <Badge key={industry} variant="outline" className="gap-1">
+              <Badge key={industry} variant="pastel-blue" className="gap-1">
                 {getIndustryLabel(industry)}
                 <button
                   onClick={() => handleRemoveIndustry(industry)}
@@ -470,7 +470,7 @@ export function EditableSearchCriteria({
         {criteria.company_names && criteria.company_names.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {criteria.company_names.map(name => (
-              <Badge key={name} variant="outline" className="gap-1">
+              <Badge key={name} variant="pastel-orange" className="gap-1">
                 {name}
                 <button
                   onClick={() => onChange({
