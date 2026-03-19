@@ -314,6 +314,19 @@ export function MemberDetailSheet({ member, open, onOpenChange, onManageJobs }: 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Seat upgrade confirmation */}
+      <SeatUpgradeConfirmDialog
+        open={!!seatConfirm}
+        memberName={getDisplayName(member)}
+        currentPaidSeats={paidSeatCount}
+        onConfirm={async () => {
+          const { assignmentId, newRole } = seatConfirm!
+          setSeatConfirm(null)
+          await executeRoleChange(assignmentId, newRole)
+        }}
+        onCancel={() => setSeatConfirm(null)}
+      />
     </>
   )
 }

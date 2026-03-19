@@ -275,6 +275,17 @@ export function MemberJobAssignmentsDialog({
           </div>
         </div>
       </DialogContent>
+
+      <SeatUpgradeConfirmDialog
+        open={showSeatConfirm}
+        memberName={memberName}
+        currentPaidSeats={paidSeatCount}
+        onConfirm={() => {
+          setShowSeatConfirm(false)
+          executeSave()
+        }}
+        onCancel={() => setShowSeatConfirm(false)}
+      />
     </Dialog>
   )
 }

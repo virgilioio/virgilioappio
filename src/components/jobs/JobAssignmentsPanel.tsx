@@ -294,6 +294,18 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
           </span>
         </div>
       </div>
+
+      <SeatUpgradeConfirmDialog
+        open={!!seatConfirm}
+        memberName={seatConfirm?.memberName || ''}
+        currentPaidSeats={paidSeatCount}
+        onConfirm={async () => {
+          const action = seatConfirm?.action
+          setSeatConfirm(null)
+          if (action) await action()
+        }}
+        onCancel={() => setSeatConfirm(null)}
+      />
     </div>
   )
 }
