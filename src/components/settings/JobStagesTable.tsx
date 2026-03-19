@@ -104,7 +104,7 @@ export function JobStagesTable({ stages, isLoading, onEdit, onDelete, onCopy, co
               </TableCell>
               <TableCell>
                 {stage.is_default ? (
-                  <Badge variant="default">Default</Badge>
+                  <Badge variant="status-active">Default</Badge>
                 ) : (
                   <span className="text-text-tertiary">-</span>
                 )}
@@ -118,7 +118,7 @@ export function JobStagesTable({ stages, isLoading, onEdit, onDelete, onCopy, co
               </TableCell>
               {context === 'organization' && (
                 <TableCell>
-                  <Badge variant={stage.source === 'platform' ? 'secondary' : 'default'}>
+                  <Badge variant={stage.source === 'platform' ? 'source-inherited' : 'source-custom'}>
                     {stage.source === 'platform' ? 'Inherited' : 'Custom'}
                   </Badge>
                 </TableCell>

@@ -57,31 +57,31 @@ export function OrganizationDetailsDialog({
   }
 
   const getStatusBadge = (status: string) => {
-    const variants = {
-      active: 'default',
-      inactive: 'secondary',
-      invited: 'outline'
-    } as const
+    const variants: Record<string, string> = {
+      active: 'status-active',
+      inactive: 'status-inactive',
+      invited: 'status-invited'
+    }
 
     return (
-      <Badge variant={variants[status as keyof typeof variants] || 'secondary'}>
+      <Badge variant={(variants[status] || 'category') as any}>
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </Badge>
     )
   }
 
   const getRoleBadge = (role: string) => {
-    const roleColors = {
-      admin: 'destructive',
-      recruiter: 'default',
-      customer_success: 'secondary',
-      billing: 'outline',
-      sales: 'outline',
-      client: 'outline'
-    } as const
+    const roleVariants: Record<string, string> = {
+      admin: 'role-admin',
+      recruiter: 'role-recruiter',
+      customer_success: 'category',
+      billing: 'category',
+      sales: 'category',
+      client: 'category'
+    }
 
     return (
-      <Badge variant={roleColors[role as keyof typeof roleColors] || 'outline'}>
+      <Badge variant={(roleVariants[role] || 'category') as any}>
         {role.replace('_', ' ').charAt(0).toUpperCase() + role.replace('_', ' ').slice(1)}
       </Badge>
     )

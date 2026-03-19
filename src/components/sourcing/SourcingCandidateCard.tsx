@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabaseClient'
-import { cn } from '@/lib/utils'
+
 
 interface MatchedCandidate {
   id: string
@@ -90,13 +90,13 @@ export function SourcingCandidateCard({ candidate, jobId }: SourcingCandidateCar
     }
   }
   
-  const getMatchTierColor = (tier: string) => {
+  const getMatchTierVariant = (tier: string) => {
     switch (tier) {
-      case 'excellent': return 'bg-success/20 text-success-foreground border-success/30'
-      case 'good': return 'bg-info/20 text-info-foreground border-info/30'
-      case 'fair': return 'bg-muted text-muted-foreground border-border'
-      case 'minimal': return 'bg-muted text-muted-foreground border-border'
-      default: return 'bg-muted text-muted-foreground border-border'
+      case 'excellent': return 'match-excellent' as const
+      case 'good': return 'match-good' as const
+      case 'fair': return 'match-fair' as const
+      case 'minimal': return 'match-fair' as const
+      default: return 'match-fair' as const
     }
   }
   
@@ -152,8 +152,8 @@ export function SourcingCandidateCard({ candidate, jobId }: SourcingCandidateCar
         {/* Match Score Badge */}
         <div>
           <Badge 
-            variant="outline" 
-            className={cn("text-xs", getMatchTierColor(candidate.match_tier))}
+            variant={getMatchTierVariant(candidate.match_tier)}
+            className="text-xs"
           >
             {candidate.match_score}% Match • {candidate.match_tier}
           </Badge>
@@ -166,7 +166,7 @@ export function SourcingCandidateCard({ candidate, jobId }: SourcingCandidateCar
               <Badge 
                 key={skill} 
                 variant="secondary" 
-                className="text-xs px-2 py-0.5 bg-accent/10 text-accent-foreground border-accent/20"
+                className="text-xs px-2 py-0.5"
               >
                 {skill}
               </Badge>

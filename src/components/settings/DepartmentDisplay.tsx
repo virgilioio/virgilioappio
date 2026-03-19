@@ -33,7 +33,7 @@ export function DepartmentDisplay({ organization }: DepartmentDisplayProps) {
 
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Badge variant="outline">{organization.status}</Badge>
+            <Badge variant={organization.status === 'active' ? 'status-active' : organization.status === 'inactive' ? 'status-inactive' : 'category'}>{organization.status}</Badge>
           </div>
         </div>
 

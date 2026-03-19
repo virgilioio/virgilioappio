@@ -55,15 +55,15 @@ export function JobsTable({
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
       case 'open':
-        return 'default'
+        return 'job-open' as const
       case 'draft':
-        return 'secondary'
+        return 'job-draft' as const
       case 'closed':
-        return 'destructive'
+        return 'job-closed' as const
       case 'archived':
-        return 'outline'
+        return 'job-archived' as const
       default:
-        return 'secondary'
+        return 'job-draft' as const
     }
   }
 

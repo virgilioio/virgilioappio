@@ -64,7 +64,7 @@ export function PlatformApplicationFieldsManager() {
                   <TableCell className="font-mono text-sm">{field.field_name}</TableCell>
                   <TableCell>{field.field_type}</TableCell>
                   <TableCell>
-                    {field.is_default && <Badge variant="secondary">Default</Badge>}
+                    {field.is_default && <Badge variant="status-active">Default</Badge>}
                   </TableCell>
                   <TableCell>{field.display_order}</TableCell>
                   <TableCell>

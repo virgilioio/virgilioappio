@@ -132,17 +132,17 @@ export function BookingDetailsDialog({
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
       case 'confirmed':
-        return 'default'
+        return 'booking-confirmed' as const
       case 'rescheduled':
-        return 'secondary'
+        return 'booking-rescheduled' as const
       case 'completed':
-        return 'outline'
+        return 'booking-completed' as const
       case 'cancelled':
-        return 'destructive'
+        return 'booking-cancelled' as const
       case 'no_show':
-        return 'outline'
+        return 'booking-no-show' as const
       default:
-        return 'outline'
+        return 'category' as const
     }
   }
 

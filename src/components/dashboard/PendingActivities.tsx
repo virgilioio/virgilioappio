@@ -60,13 +60,13 @@ export function PendingActivities() {
   const getBadgeVariant = (type: PendingActivity['type']) => {
     switch (type) {
       case 'scorecard':
-        return 'secondary';
+        return 'activity-scorecard' as const;
       case 'decision':
-        return 'purple';
+        return 'activity-decision' as const;
       case 'email':
-        return 'default';
+        return 'activity-email' as const;
       case 'offer_approval':
-        return 'purple';
+        return 'activity-offer' as const;
     }
   };
 

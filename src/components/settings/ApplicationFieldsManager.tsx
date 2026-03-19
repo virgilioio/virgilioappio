@@ -61,7 +61,7 @@ export function ApplicationFieldsManager({ context = 'organization' }: Applicati
                         <TableCell className="font-medium">{f.field_label}</TableCell>
                         <TableCell>{f.field_name}</TableCell>
                         <TableCell>
-                          <Badge variant="secondary" className="capitalize text-xs">{f.field_type}</Badge>
+                          <Badge variant="category" className="capitalize text-xs">{f.field_type}</Badge>
                         </TableCell>
                         <TableCell>{f.is_default ? 'Yes' : 'No'}</TableCell>
                         <TableCell>{f.display_order}</TableCell>
@@ -131,7 +131,7 @@ export function ApplicationFieldsManager({ context = 'organization' }: Applicati
                       <TableCell className="font-medium">{f.field_label}</TableCell>
                       <TableCell>{f.field_name}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="capitalize text-xs">{f.field_type}</Badge>
+                        <Badge variant="category" className="capitalize text-xs">{f.field_type}</Badge>
                       </TableCell>
                       <TableCell>{f.is_default ? 'Yes' : 'No'}</TableCell>
                       <TableCell>{f.display_order}</TableCell>

@@ -199,7 +199,7 @@ export function PlatformDashboard() {
               <span className="text-sm font-medium">Database</span>
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
-                <Badge variant="default" className="bg-green-100 text-green-800">
+                <Badge variant="integration-connected">
                   Online
                 </Badge>
               </div>
@@ -209,7 +209,7 @@ export function PlatformDashboard() {
               <span className="text-sm font-medium">Edge Functions</span>
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
-                <Badge variant="default" className="bg-green-100 text-green-800">
+                <Badge variant="integration-connected">
                   Operational
                 </Badge>
               </div>

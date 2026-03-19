@@ -301,15 +301,15 @@ export function OfferTemplateFieldsManager({ templateId }: OfferTemplateFieldsMa
                       </TableCell>
                       <TableCell className="font-medium">{field.field_label}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary">
+                        <Badge variant="category">
                           {fieldTypes.find(t => t.value === field.field_type)?.label || field.field_type}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         {field.is_required ? (
-                          <Badge variant="destructive">Required</Badge>
+                          <Badge variant="required">Required</Badge>
                         ) : (
-                          <Badge variant="outline">Optional</Badge>
+                          <Badge variant="optional">Optional</Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-right">

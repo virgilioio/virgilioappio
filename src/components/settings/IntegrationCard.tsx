@@ -37,12 +37,12 @@ export function IntegrationCard({
           {logo}
         </div>
         {isConnected ? (
-          <Badge variant="outline" className="border-emerald-500/30 text-emerald-600 gap-1 text-[11px] font-medium">
+          <Badge variant="integration-connected" className="gap-1 text-[11px] font-medium">
             <Check className="h-3 w-3" />
             Installed
           </Badge>
         ) : (
-          <Badge variant="outline" className="border-border text-muted-foreground text-[11px] font-medium">
+          <Badge variant="integration-disconnected" className="text-[11px] font-medium">
             Not Installed
           </Badge>
         )}
@@ -56,7 +56,7 @@ export function IntegrationCard({
 
       {/* Footer: category */}
       <div className="flex items-center pt-1">
-        <Badge variant="secondary" className="text-[10px] font-medium uppercase tracking-wider">
+        <Badge variant="category" className="text-[10px] font-medium uppercase tracking-wider">
           {CATEGORY_LABELS[category]}
         </Badge>
       </div>

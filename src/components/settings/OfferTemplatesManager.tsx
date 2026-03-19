@@ -295,7 +295,7 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
                           </TableCell>
                           {context === 'organization' && (
                             <TableCell>
-                              <Badge variant={template.source === 'platform' ? 'secondary' : 'default'}>
+                              <Badge variant={template.source === 'platform' ? 'source-inherited' : 'source-custom'}>
                                 {template.source === 'platform' ? 'Inherited' : 'Custom'}
                               </Badge>
                             </TableCell>
