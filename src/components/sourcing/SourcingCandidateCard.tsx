@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabaseClient'
-import { cn } from '@/lib/utils'
+
 
 interface MatchedCandidate {
   id: string
