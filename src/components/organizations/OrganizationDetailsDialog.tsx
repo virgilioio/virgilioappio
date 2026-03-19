@@ -57,14 +57,14 @@ export function OrganizationDetailsDialog({
   }
 
   const getStatusBadge = (status: string) => {
-    const variants = {
-      active: 'default',
-      inactive: 'secondary',
-      invited: 'outline'
-    } as const
+    const variants: Record<string, string> = {
+      active: 'status-active',
+      inactive: 'status-inactive',
+      invited: 'status-invited'
+    }
 
     return (
-      <Badge variant={variants[status as keyof typeof variants] || 'secondary'}>
+      <Badge variant={(variants[status] || 'category') as any}>
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </Badge>
     )
