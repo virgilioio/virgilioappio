@@ -140,7 +140,7 @@ export function MembersTab() {
               <div className="rounded-brand border border-pastel-purple/50 bg-pastel-purple/40 p-4 shadow-[var(--shadow-xs)]">
                 <div className="text-sm text-pastel-purple-foreground/80">Paid Seats</div>
                 <div className="text-3xl font-semibold text-pastel-purple-foreground mt-1">{paidMembers.length}</div>
-                
+                <div className="text-xs text-pastel-purple-foreground/60 mt-1">Admins & Recruiters</div>
               </div>
               {/* Collaborators - Blue */}
               <div className="rounded-brand border border-pastel-blue/50 bg-pastel-blue/40 p-4 shadow-[var(--shadow-xs)]">
