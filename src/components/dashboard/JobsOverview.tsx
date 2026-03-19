@@ -61,18 +61,18 @@ export function JobsOverview({ permissions }: JobsOverviewProps) {
   // Get the 5 most recent open jobs
   const recentJobs = jobs?.filter(job => job.status === 'open').slice(0, 5) || []
 
-  const getStatusColor = (status: string) => {
+  const getJobStatusVariant = (status: string) => {
     switch (status) {
       case 'open':
-        return 'bg-green-100 text-green-800 border-green-200'
+        return 'job-open' as const
       case 'draft':
-        return 'bg-gray-100 text-gray-800 border-gray-200'
+        return 'job-draft' as const
       case 'closed':
-        return 'bg-blue-100 text-blue-800 border-blue-200'
+        return 'job-closed' as const
       case 'archived':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+        return 'job-archived' as const
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200'
+        return 'job-draft' as const
     }
   }
 
