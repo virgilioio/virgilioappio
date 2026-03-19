@@ -704,7 +704,7 @@ export function IndependentCandidateProfileSheet({
                                 <div className="flex items-center justify-between py-2.5">
                                   <dt className="text-sm text-muted-foreground">Standardized Title</dt>
                                   <dd>
-                                    <Badge variant="outline" className="text-xs gap-1">
+                                    <Badge variant="category" className="text-xs gap-1">
                                       <Sparkles className="h-3 w-3" />
                                       {candidate.standardized_title}
                                     </Badge>

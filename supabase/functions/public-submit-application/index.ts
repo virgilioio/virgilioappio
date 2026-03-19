@@ -364,7 +364,27 @@ serve(async (req) => {
     // No longer creating job-specific candidate records
     // All candidate data is now stored in the global candidates table only
 
-    // Create association in Application Review (NULL stage) using the GLOBAL candidate id
+    // Look up the application_review stage for this job
+    let applicationReviewStageId: string | null = null;
+    try {
+      const { data: arStage } = await supabase
+        .from("job_hiring_stages")
+        .select("id, job_stages!inner(stage_type)")
+        .eq("job_id", posting.job_id)
+        .eq("job_stages.stage_type", "application_review")
+        .limit(1)
+        .maybeSingle();
+      if (arStage) {
+        applicationReviewStageId = arStage.id;
+        console.log("✅ Found application_review stage:", applicationReviewStageId);
+      } else {
+        console.warn("⚠️ No application_review stage found for job, falling back to null");
+      }
+    } catch (stageErr) {
+      console.error("⚠️ Error looking up application_review stage:", stageErr);
+    }
+
+    // Create association in Application Review stage using the GLOBAL candidate id
     // Check for existing association first to avoid unique constraint crash
     const { data: existingAssoc } = await supabase
       .from("job_candidate_associations")
@@ -380,7 +400,8 @@ serve(async (req) => {
           job_id: posting.job_id,
           candidate_id: globalCandidateId,
           status: "active",
-          current_stage_id: null,
+          current_stage_id: applicationReviewStageId,
+          entered_stage_at: new Date().toISOString(),
         });
 
       if (assocErr) {

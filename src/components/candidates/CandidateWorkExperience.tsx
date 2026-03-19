@@ -105,8 +105,8 @@ export const CandidateWorkExperienceComponent = ({ experiences }: CandidateWorkE
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-lg">{exp.job_title}</h3>
-                      {exp.standardized_title && exp.standardized_title !== exp.job_title && (
-                        <Badge variant="outline" className="text-xs gap-1">
+                        {exp.standardized_title && exp.standardized_title !== exp.job_title && (
+                        <Badge variant="category" className="text-xs gap-1">
                           <Sparkles className="h-3 w-3" />
                           {exp.standardized_title}
                         </Badge>
@@ -115,15 +115,15 @@ export const CandidateWorkExperienceComponent = ({ experiences }: CandidateWorkE
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-muted-foreground font-medium">{exp.company_name}</p>
                       {exp.company_industry && (
-                        <Badge variant="secondary" className="text-xs">{exp.company_industry}</Badge>
+                        <Badge variant="pastel-blue" className="text-xs">{exp.company_industry}</Badge>
                       )}
                       {exp.company_size_category && (
-                        <Badge variant="outline" className="text-xs capitalize">{exp.company_size_category}</Badge>
+                        <Badge variant="category" className="text-xs capitalize">{exp.company_size_category}</Badge>
                       )}
                     </div>
                   </div>
                   {exp.is_current && (
-                    <Badge variant="secondary" className="bg-green-100 text-green-800">
+                    <Badge variant="status-active">
                       Current
                     </Badge>
                   )}
@@ -158,7 +158,7 @@ export const CandidateWorkExperienceComponent = ({ experiences }: CandidateWorkE
                 {exp.skills_used && exp.skills_used.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {exp.skills_used.map((skill, skillIndex) => (
-                      <Badge key={skillIndex} variant="outline" className="text-xs">
+                      <Badge key={skillIndex} variant="pastel-purple" className="text-xs">
                         {skill}
                       </Badge>
                     ))}

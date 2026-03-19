@@ -67,7 +67,7 @@ export const CandidateEducationComponent = ({ education }: CandidateEducationPro
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-semibold text-lg">{edu.institution_name}</h3>
                     {edu.education_level && (
-                      <Badge variant="secondary" className="text-xs capitalize">
+                      <Badge variant="pastel-blue" className="text-xs capitalize">
                         {edu.education_level.replace('_', ' ')}
                       </Badge>
                     )}
@@ -91,7 +91,7 @@ export const CandidateEducationComponent = ({ education }: CandidateEducationPro
                   )}
                   
                   {edu.grade && (
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="category" className="text-xs">
                       {edu.grade}
                     </Badge>
                   )}

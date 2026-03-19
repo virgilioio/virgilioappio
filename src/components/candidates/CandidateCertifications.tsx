@@ -49,7 +49,7 @@ export const CandidateCertificationsComponent = ({ certifications }: CandidateCe
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-medium text-sm">{cert.certification_name}</h3>
                 {cert.is_bootcamp && (
-                  <Badge variant="secondary" className="text-xs">Bootcamp</Badge>
+                  <Badge variant="pastel-orange" className="text-xs">Bootcamp</Badge>
                 )}
               </div>
               {cert.issuing_organization && (
