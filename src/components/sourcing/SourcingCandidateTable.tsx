@@ -644,13 +644,13 @@ export function SourcingCandidateTable({
                             <span className="font-medium text-sm">{candidate.candidate_name}</span>
                             {/* Collected indicator badge */}
                             {(candidate.candidate_id || collectedApolloIds.has(candidate.apollo_id || '')) && (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-green-500 text-green-600 bg-green-50">
+                              <Badge variant="collected" className="text-[10px] px-1.5 py-0 h-4">
                                 Collected
                               </Badge>
                             )}
                             {/* Keyword match indicator - shows which keywords matched */}
                             {candidate.matched_keywords && candidate.matched_keywords.length > 0 && (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-purple-400 text-purple-600 bg-purple-50">
+                              <Badge variant="keyword-match" className="text-[10px] px-1.5 py-0 h-4">
                                 {candidate.matched_keywords.slice(0, 2).join(', ')}
                                 {candidate.matched_keywords.length > 2 && ` +${candidate.matched_keywords.length - 2}`}
                               </Badge>

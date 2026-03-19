@@ -56,7 +56,7 @@ export function IntegrationCard({
 
       {/* Footer: category */}
       <div className="flex items-center pt-1">
-        <Badge variant="secondary" className="text-[10px] font-medium uppercase tracking-wider">
+        <Badge variant="category" className="text-[10px] font-medium uppercase tracking-wider">
           {CATEGORY_LABELS[category]}
         </Badge>
       </div>

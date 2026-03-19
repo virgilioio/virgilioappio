@@ -38,13 +38,13 @@ export function CalendarIntegrationSection() {
   const getSyncStatusBadge = (status: string) => {
     switch (status) {
       case 'healthy':
-        return <Badge variant="default" className="gap-1"><CheckCircle className="h-3 w-3" /> Connected</Badge>
+        return <Badge variant="integration-connected" className="gap-1"><CheckCircle className="h-3 w-3" /> Connected</Badge>
       case 'error':
-        return <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> Error</Badge>
+        return <Badge variant="integration-error" className="gap-1"><XCircle className="h-3 w-3" /> Error</Badge>
       case 'expired':
-        return <Badge variant="secondary" className="gap-1"><AlertCircle className="h-3 w-3" /> Expired</Badge>
+        return <Badge variant="integration-expired" className="gap-1"><AlertCircle className="h-3 w-3" /> Expired</Badge>
       default:
-        return <Badge variant="secondary">{status}</Badge>
+        return <Badge variant="category">{status}</Badge>
     }
   }
 

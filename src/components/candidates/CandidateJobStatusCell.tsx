@@ -81,13 +81,7 @@ export function CandidateJobStatusCell({ associations }: CandidateJobStatusCellP
         <div className="flex items-center gap-1.5 text-xs">
           <Badge
             variant={pipelineBadge.variant}
-            className={`text-[10px] h-4 px-1.5 ${
-              primary.pipelineStatus?.toLowerCase() === 'hired'
-                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
-                : primary.pipelineStatus?.toLowerCase() === 'offer'
-                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800'
-                : ''
-            }`}
+            className="text-[10px] h-4 px-1.5"
           >
             {pipelineBadge.label}
           </Badge>
