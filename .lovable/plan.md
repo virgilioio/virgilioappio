@@ -1,66 +1,45 @@
 
 
-# Redesign Find Page: Standard Layout + Table-First Content Area
+# Fix Find Page Width Consistency, Add Icons, Collapse by Default + Scroll
 
-## Overview
+## 3 Issues
 
-Align the Find page with the Jobs/Candidates page structure: banded header section with divider, floating card filter sidebar, and a table-like main content area that starts as the Gio prompt input and transforms into the actual candidate table when results load.
-
-## Layout Structure
-
-```text
-┌──────────────────────────────────────────────────────────────┐
-│  Section(banded): PageHeader "Find"                          │
-│─────────────────────────────────── border-y (the divider) ───│
-├──────────────────────────────────────────────────────────────┤
-│  p-6 content area                                            │
-│  ┌─────────────┐  ┌────────────────────────────────────────┐ │
-│  │ Filter Panel │  │ SavedSearchSelector + action buttons   │ │
-│  │ (Card,       │  │────────────────────────────────────────│ │
-│  │  rounded-lg, │  │                                        │ │
-│  │  floating,   │  │  [No project]: Gio avatar + prompt     │ │
-│  │  shadow)     │  │  [Generating]: GioThinkingHeader       │ │
-│  │              │  │  [Has project]: Candidate table + tabs  │ │
-│  │ ▼ Job Titles │  │                                        │ │
-│  │ ▼ Keywords   │  └────────────────────────────────────────┘ │
-│  │ ▼ Seniority  │                                            │
-│  │ ...          │                                            │
-│  └─────────────┘                                             │
-└──────────────────────────────────────────────────────────────┘
-```
+1. **Width mismatch**: Other pages use `<Section banded container>` + `<Section container>` which wraps content in `AppContainer`. Find page uses raw `p-6` padding — no container constraint.
+2. **No icons** on filter categories.
+3. **Sections default open** and expanding the sidebar vertically instead of scrolling internally.
 
 ## Changes
 
-### 1. `src/pages/Find.tsx` — Restructure layout
+### 1. `src/pages/Find.tsx` — Match page width
 
-- Wrap header in `<Section variant="default" banded container>` with `<PageHeader title="Find" />` — this gives the divider line matching Jobs/Candidates
-- Main content area uses `<Section container>` for consistent padding
-- Layout: `flex gap-6` with filter panel (left) + main content card (right)
-- Main content is a `Card` component containing:
-  - **Toolbar row** (top, inside card): `SavedSearchSelector` popover (left) + action buttons (right) — same pattern as the filter toolbar in Jobs/Candidates tables
-  - **Body**: When no project selected OR generating → show Gio avatar + prompt input (AIJobAssistant) centered inside the card. When project loaded → show `SourcingProjectView` tabs + candidate table
-- The transition from prompt → table happens naturally inside the same card
-- Remove the `disabled` prop gating on filters — filters are always visible/editable even without a project
+- Change header to `<Section variant="default" banded container className="animate-fade-in">` with `<PageHeader title="Find" compact />` inside (no extra `px-6` div)
+- Wrap the main content area in `<Section container>` instead of raw `<div className="flex-1 flex gap-6 p-6 overflow-hidden">`
+- The flex layout with filter panel + card stays inside the `Section container`, but now constrained to the same `AppContainer` max-width as Jobs/Candidates
+- Add `overflow-hidden` and proper height calc so sidebar doesn't push page height
 
-### 2. `src/components/sourcing/FindFilterPanel.tsx` — Floating card style
+### 2. `src/components/sourcing/FindFilterPanel.tsx` — Icons + collapsed default + internal scroll
 
-- Wrap the entire panel in a `Card` component instead of a plain `div` with `border-r`
-- Use `rounded-lg shadow-sm` for the floating card look
-- Remove `border-r`, use card's built-in border + shadow
-- Fixed width `w-72`, `overflow-y-auto`, full height of the content area
-- Remove the `disabled` state and the "Select or create a search" empty message — filters are always shown with their default/empty state
-- When no criteria exists, initialize with empty defaults so the collapsible sections still render
+**Icons per section** — add a small icon next to each category label in `CollapsibleSection`:
+- Job Titles → `Briefcase`
+- Keywords → `Tag`
+- Locations → `MapPin`
+- Seniority → `TrendingUp`
+- Company Size → `Users`
+- Industry → `Factory`
+- Target Companies → `Building2`
+- Experience → `Clock`
+- Contact Info → `Mail`
 
-### 3. `src/components/sourcing/SourcingProjectView.tsx` — Remove redundant header
+**Collapsed by default**: Change `CollapsibleSection` `defaultOpen` from `true` to `false`.
 
-- Remove the `SourcingProjectHeader` wrapper and its `border-b` container — project actions (archive, delete, visibility, link-to-job) move to the `SavedSearchSelector` area or become dropdown menu items
-- The tabs (Chat, Candidates, Saved, Archived) remain but render directly without the extra header chrome
+**Internal scroll**: The `Card` wrapper should have a fixed height (`h-full` or calc-based) with `overflow-y-auto` on an inner scrollable div. The "Search Criteria" header stays pinned at top. The card itself must not grow — filter content scrolls within.
 
-### Files Summary
+Update `CollapsibleSection` to accept an `icon` prop (a Lucide component) and render it inline with the label.
 
-| File | Action |
+### Files
+
+| File | Change |
 |------|--------|
-| `src/pages/Find.tsx` | Use Section+PageHeader for banded header; Card-based main content with toolbar; filters always enabled |
-| `src/components/sourcing/FindFilterPanel.tsx` | Card wrapper instead of border-r div; always show filter sections (no disabled state) |
-| `src/components/sourcing/SourcingProjectView.tsx` | Remove SourcingProjectHeader container, keep tabs + table |
+| `src/pages/Find.tsx` | Use `Section container` for both header and body to match other pages |
+| `src/components/sourcing/FindFilterPanel.tsx` | Add icons to each section, default collapsed, internal scroll |
 
