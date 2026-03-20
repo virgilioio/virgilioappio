@@ -120,13 +120,13 @@ export default function Find() {
         onComplete={() => setShowFirstRunDialog(false)} 
       />
       
-      <div className="min-h-screen flex flex-col overflow-hidden">
-        <Section variant="default" banded container className="animate-fade-in">
+      <div className="h-screen flex flex-col overflow-hidden">
+        <Section variant="default" banded container className="animate-fade-in shrink-0">
           <PageHeader title="Find" compact />
         </Section>
         
-        <Section container className="flex-1 overflow-hidden !py-0">
-          <div className="flex gap-6 py-6 h-full overflow-hidden">
+        <Section container className="flex-1 min-h-0 !py-0">
+          <div className="flex gap-6 py-6 h-full">
             <FindFilterPanel
               criteria={editableCriteria}
               onCriteriaChange={handleCriteriaChange}
@@ -134,7 +134,7 @@ export default function Find() {
               onResultFiltersChange={setFilters}
             />
             
-            <Card className="flex-1 flex flex-col overflow-hidden">
+            <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
               <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
                 <SavedSearchSelector
                   selectedProjectId={projectId}
