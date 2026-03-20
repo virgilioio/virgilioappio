@@ -1,60 +1,50 @@
 
 
-# Standardize Table Header Layout + Skeleton Loaders
+# Fix AI Notes Displaying Raw JSON Instead of Formatted Markdown
 
-## New 4-Row Toolbar Structure
+## Problem
 
-```text
-Row 1: [SavedViewSelector]
-Row 2: [Search bar] [Chipped filters] [Clear filters]
-Row 3: [Action buttons LEFT-aligned] (Add, Select, Import, Bulk, Create, etc.)
-Row 4: X of Y candidates/jobs
-```
+The `general_overview` field in AI draft scorecards is sometimes stored as a raw JSON object string (e.g., `{ "general_overview": { "overall_impression": "...", "key_strengths": [...] } }`) instead of formatted markdown. This happens when OpenAI's tool call returns a nested object for the `general_overview` property instead of the expected markdown string.
+
+Two of three recent AI drafts have this issue (Alexis García Payán and Rafael Razo Picasso). The Luis Fernando one is fine because it came back as plain markdown.
 
 ## Changes
 
-### 1. `src/pages/Candidates.tsx`
+### 1. Edge function: `supabase/functions/generate-scorecard-from-transcript/index.ts`
 
-- Remove Import CSV and Bulk Upload buttons from the `<PageHeader>` children
-- Pass `onImportCSV` and `onBulkUpload` callbacks to `IndependentCandidateTable`
+After parsing the tool call arguments (line ~214), add a check: if `parsed.general_overview` is an object instead of a string, convert it to markdown:
 
-### 2. `src/components/candidates/IndependentCandidateTable.tsx`
+```typescript
+let rawOverview = parsed.general_overview || '';
+if (typeof rawOverview === 'object') {
+  generatedNotes = convertOverviewObjectToMarkdown(rawOverview);
+} else {
+  generatedNotes = rawOverview;
+}
+```
 
-**Props**: Add `onImportCSV?: () => void` and `onBulkUpload?: () => void`.
+Add a helper function `convertOverviewObjectToMarkdown` that handles the known structure:
+- `overall_impression` → "## Overall Impression\n{text}"
+- `key_strengths` (array) → "## Key Strengths\n- item\n- item"
+- `areas_for_development` (array) → "## Areas for Development\n- item"
+- `notable_quotes` (array) → "## Notable Quotes\n> quote"
+- `recommended_rating` + `justification` → "## Rating: {rating}\n{justification}"
 
-**Toolbar restructure** — break the single `flex-wrap` div into 4 distinct rows:
+This prevents future scorecards from being stored as JSON.
 
-- **Row 1**: `SavedViewSelector` alone
-- **Row 2**: Search input + `CandidateFiltersPanel` chips + clear filters — same row, no action buttons
-- **Row 3**: `flex items-center gap-2` with left-aligned: Add Candidate, Select, Import CSV, Bulk Upload buttons (no `ml-auto`)
-- **Row 4**: `X of Y candidates` count line
+### 2. Frontend: `src/components/candidates/ScorecardSheet.tsx`
 
-**Skeleton**: Update the loading skeleton to mirror this 4-row structure:
-- Row 1: `Skeleton h-8 w-40` (view selector)
-- Row 2: `Skeleton h-8 w-56` + 2–3 `Skeleton h-8 w-24` (search + chips)
-- Row 3: 3–4 `Skeleton h-8 w-28` left-aligned (buttons)
-- Row 4: `Skeleton h-3 w-32` (count text)
-- Then `TableSkeleton rows={8}`
+Update `normalizeAiAnalysis` to also detect and handle JSON strings. If the input starts with `{`, try to parse it and convert to markdown using the same structure mapping. This fixes display for the existing broken records without needing a data migration.
 
-### 3. `src/components/jobs/JobsTable.tsx`
+### 3. Fix existing data (one-time migration)
 
-**Toolbar restructure** — same pattern (no saved views yet, so skip Row 1):
+Run a migration that finds scorecards where `general_overview` starts with `{` and `is_ai_draft = true`, and converts them to markdown in-place. This ensures the ExpandableScoreDisplay preview text also renders correctly.
 
-- **Row 1**: Search input + Status/Org/User filter chips + clear filters
-- **Row 2**: Create Job button — left-aligned (remove `ml-auto`)
-- **Row 3**: `X of Y jobs` count line (new — currently only in pagination footer)
-
-**Skeleton**: Update to match:
-- Row 1: `Skeleton h-8 w-56` + 2–3 `Skeleton h-8 w-24`
-- Row 2: `Skeleton h-8 w-28`
-- Row 3: `Skeleton h-3 w-32`
-- Then `TableSkeleton rows={5}`
-
-### Files
+## Files
 
 | File | Change |
 |------|--------|
-| `src/pages/Candidates.tsx` | Move Import/Bulk buttons out of PageHeader, pass as props |
-| `src/components/candidates/IndependentCandidateTable.tsx` | 4-row toolbar, accept new props, updated skeleton |
-| `src/components/jobs/JobsTable.tsx` | 3-row toolbar (no views), left-align Create Job, add count row, updated skeleton |
+| `supabase/functions/generate-scorecard-from-transcript/index.ts` | Add object-to-markdown conversion after parsing |
+| `src/components/candidates/ScorecardSheet.tsx` | Update `normalizeAiAnalysis` to handle JSON input |
+| Migration SQL | Convert existing JSON `general_overview` records to markdown |
 
