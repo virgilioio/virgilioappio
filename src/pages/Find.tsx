@@ -134,7 +134,7 @@ export default function Find() {
               onResultFiltersChange={setFilters}
             />
             
-            <Card className="flex-1 flex flex-col overflow-hidden">
+            <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
               <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
                 <SavedSearchSelector
                   selectedProjectId={projectId}
