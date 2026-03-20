@@ -211,7 +211,14 @@ ${questionsContext}`;
       // Tool calling path — structured output
       try {
         const parsed = JSON.parse(toolCall.function.arguments);
-        generatedNotes = parsed.general_overview || '';
+        const rawOverview = parsed.general_overview || '';
+        // OpenAI sometimes returns an object instead of a markdown string
+        if (typeof rawOverview === 'object' && rawOverview !== null) {
+          generatedNotes = convertOverviewObjectToMarkdown(rawOverview);
+          console.log('[generate-scorecard] Converted object general_overview to markdown');
+        } else {
+          generatedNotes = rawOverview;
+        }
         suggestedRating = parsed.suggested_rating || 'yes';
         questionResponses = parsed.question_responses || [];
         console.log('[generate-scorecard] Tool call parsed successfully, questions:', questionResponses.length);
