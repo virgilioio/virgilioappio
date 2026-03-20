@@ -186,7 +186,7 @@ export function FindFilterPanel({
   }
 
   return (
-    <Card className="w-72 shrink-0 flex flex-col overflow-hidden">
+    <Card className="w-72 shrink-0 flex flex-col min-h-0 overflow-hidden">
       <div className="px-4 pt-4 pb-2 shrink-0">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Search Criteria</span>
       </div>
