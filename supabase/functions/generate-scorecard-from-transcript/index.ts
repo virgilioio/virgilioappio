@@ -211,7 +211,14 @@ ${questionsContext}`;
       // Tool calling path — structured output
       try {
         const parsed = JSON.parse(toolCall.function.arguments);
-        generatedNotes = parsed.general_overview || '';
+        const rawOverview = parsed.general_overview || '';
+        // OpenAI sometimes returns an object instead of a markdown string
+        if (typeof rawOverview === 'object' && rawOverview !== null) {
+          generatedNotes = convertOverviewObjectToMarkdown(rawOverview);
+          console.log('[generate-scorecard] Converted object general_overview to markdown');
+        } else {
+          generatedNotes = rawOverview;
+        }
         suggestedRating = parsed.suggested_rating || 'yes';
         questionResponses = parsed.question_responses || [];
         console.log('[generate-scorecard] Tool call parsed successfully, questions:', questionResponses.length);
@@ -431,6 +438,37 @@ ${questionsContext}`;
 });
 
 // --- Helper functions ---
+
+function convertOverviewObjectToMarkdown(obj: any): string {
+  const sections: string[] = [];
+
+  // Handle nested { general_overview: { ... } } wrapper
+  const data = obj.general_overview && typeof obj.general_overview === 'object' ? obj.general_overview : obj;
+
+  if (data.overall_impression) {
+    sections.push(`## Overall Impression\n\n${data.overall_impression}`);
+  }
+  if (Array.isArray(data.key_strengths) && data.key_strengths.length > 0) {
+    sections.push(`## Key Strengths\n\n${data.key_strengths.map((s: string) => `- ${s}`).join('\n')}`);
+  }
+  if (Array.isArray(data.areas_for_development) && data.areas_for_development.length > 0) {
+    sections.push(`## Areas for Development\n\n${data.areas_for_development.map((s: string) => `- ${s}`).join('\n')}`);
+  }
+  if (Array.isArray(data.notable_quotes) && data.notable_quotes.length > 0) {
+    sections.push(`## Notable Quotes\n\n${data.notable_quotes.map((q: string) => `> ${q}`).join('\n\n')}`);
+  }
+  if (data.recommended_rating || data.justification) {
+    const ratingLabel = data.recommended_rating ? data.recommended_rating.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) : '';
+    sections.push(`## Recommended Rating: ${ratingLabel}\n\n${data.justification || ''}`);
+  }
+
+  // Fallback: if no known keys matched, JSON.stringify as code block
+  if (sections.length === 0) {
+    return '```json\n' + JSON.stringify(obj, null, 2) + '\n```';
+  }
+
+  return sections.join('\n\n');
+}
 
 function buildQuestionsContext(questions: any[]): string {
   if (questions.length === 0) return '';
