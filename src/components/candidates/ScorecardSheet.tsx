@@ -23,7 +23,42 @@ import gioAiBannerIcon from "@/assets/gio-ai-banner-icon.png";
 import { SafeHtml } from "@/components/ui/safe-html";
 import { ProfileSummaryMarkdown } from "@/components/candidates/ProfileSummaryMarkdown";
 
+function convertJsonOverviewToMarkdown(obj: any): string {
+  const sections: string[] = [];
+  const data = obj.general_overview && typeof obj.general_overview === 'object' ? obj.general_overview : obj;
+
+  if (data.overall_impression) {
+    sections.push(`## Overall Impression\n\n${data.overall_impression}`);
+  }
+  if (Array.isArray(data.key_strengths) && data.key_strengths.length > 0) {
+    sections.push(`## Key Strengths\n\n${data.key_strengths.map((s: string) => `- ${s}`).join('\n')}`);
+  }
+  if (Array.isArray(data.areas_for_development) && data.areas_for_development.length > 0) {
+    sections.push(`## Areas for Development\n\n${data.areas_for_development.map((s: string) => `- ${s}`).join('\n')}`);
+  }
+  if (Array.isArray(data.notable_quotes) && data.notable_quotes.length > 0) {
+    sections.push(`## Notable Quotes\n\n${data.notable_quotes.map((q: string) => `> ${q}`).join('\n\n')}`);
+  }
+  if (data.recommended_rating || data.justification) {
+    const ratingLabel = data.recommended_rating ? data.recommended_rating.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) : '';
+    sections.push(`## Recommended Rating: ${ratingLabel}\n\n${data.justification || ''}`);
+  }
+  return sections.length > 0 ? sections.join('\n\n') : '';
+}
+
 function normalizeAiAnalysis(text: string): string {
+  // Detect JSON strings (from broken AI responses) and convert to markdown
+  const trimmed = text.trim();
+  if (trimmed.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      const converted = convertJsonOverviewToMarkdown(parsed);
+      if (converted) return converted;
+    } catch {
+      // Not valid JSON, continue with normal normalization
+    }
+  }
+
   return text
     // Pattern: "1.\nOVERALL IMPRESSION" or "1.\n OVERALL IMPRESSION" → "---\n\n## 1. OVERALL IMPRESSION"
     .replace(/(\d+)\.\s*\n\s*([A-Z][A-Z\s&/,-]+)/g, '\n---\n\n## $1. $2')
