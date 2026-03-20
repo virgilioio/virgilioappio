@@ -186,12 +186,12 @@ export function FindFilterPanel({
   }
 
   return (
-    <Card className="w-72 shrink-0 flex flex-col min-h-0 overflow-hidden">
+    <Card className="w-72 h-full shrink-0 flex flex-col min-h-0 overflow-hidden">
       <div className="px-4 pt-4 pb-2 shrink-0">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Search Criteria</span>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4 space-y-3">
         <CollapsibleSection label="Job Titles" icon={Briefcase}>
           <AutocompleteTagInput
             placeholder="Add title..."

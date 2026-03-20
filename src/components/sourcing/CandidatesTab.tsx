@@ -35,7 +35,7 @@ export function CandidatesTab({
   isLoading
 }: CandidatesTabProps) {
   return (
-    <div className="flex-1 overflow-auto h-full">
+    <div className="flex-1 min-h-0 overflow-hidden h-full">
       <SourcingCandidateTable
         candidates={candidates}
         isLoading={isLoading}

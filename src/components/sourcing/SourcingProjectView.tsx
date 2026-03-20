@@ -319,14 +319,14 @@ export function SourcingProjectView({
   }
   
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden">
       {/* Tabs Section — renders directly, no extra header chrome */}
       <Tabs 
         value={activeTab} 
         onValueChange={setActiveTab}
-        className="flex-1 flex flex-col overflow-hidden"
+        className="flex-1 flex flex-col min-h-0 overflow-hidden"
       >
-        <div className="border-b bg-background">
+        <div className="border-b bg-background shrink-0">
           <div className="px-4">
             <TabsList className="grid w-full max-w-2xl grid-cols-4">
               <TabsTrigger value="conversation" className="gap-2">
@@ -364,14 +364,14 @@ export function SourcingProjectView({
           </div>
         </div>
         
-        <TabsContent value="conversation" className="flex-1 overflow-hidden m-0">
+        <TabsContent value="conversation" className="flex-1 min-h-0 overflow-hidden m-0">
           <ConversationTab 
             projectId={projectId}
             onRefinementComplete={() => setActiveTab('candidates')}
           />
         </TabsContent>
         
-        <TabsContent value="candidates" className="flex-1 overflow-hidden m-0">
+        <TabsContent value="candidates" className="flex-1 min-h-0 overflow-hidden m-0">
           <CandidatesTab 
             project={project}
             candidates={filteredCandidates}
@@ -379,11 +379,11 @@ export function SourcingProjectView({
           />
         </TabsContent>
         
-        <TabsContent value="saved" className="flex-1 overflow-hidden m-0">
+        <TabsContent value="saved" className="flex-1 min-h-0 overflow-hidden m-0">
           <SavedCandidatesTab projectId={projectId} jobId={project.job_id} />
         </TabsContent>
         
-        <TabsContent value="archived" className="flex-1 overflow-hidden m-0">
+        <TabsContent value="archived" className="flex-1 min-h-0 overflow-hidden m-0">
           <ArchivedCandidatesTab projectId={projectId} />
         </TabsContent>
       </Tabs>
