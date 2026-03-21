@@ -405,6 +405,71 @@ function RejectionConfigPanel({
   )
 }
 
+/* Fit Insights Panel — compact version for review sheet */
+function FitInsightsPanel({ candidateId, jobId }: { candidateId: string; jobId: string }) {
+  const { insights, isLoading, isRefreshing, refreshInsights } = useCandidateFitInsights(candidateId, jobId)
+
+  // Auto-trigger if no analysis exists
+  useEffect(() => {
+    if (!isLoading && !insights?.analysis && !isRefreshing) {
+      refreshInsights()
+    }
+  }, [isLoading, insights?.analysis]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (isLoading || (isRefreshing && !insights?.analysis)) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 gap-3">
+        <Loader2 className="h-6 w-6 animate-spin text-virgilio-purple" />
+        <p className="text-sm text-text-secondary font-poppins">Generating fit analysis...</p>
+      </div>
+    )
+  }
+
+  if (!insights?.analysis) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 gap-3">
+        <Sparkles className="h-6 w-6 text-muted-foreground" />
+        <p className="text-sm text-text-secondary">No fit analysis available.</p>
+        <Button variant="outline" size="sm" onClick={refreshInsights} disabled={isRefreshing} className="gap-1.5">
+          {isRefreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          Generate
+        </Button>
+      </div>
+    )
+  }
+
+  const analysis = insights.analysis
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start justify-between">
+        <FitScoreRadial
+          score={analysis.overall_score}
+          confidence={analysis.confidence}
+          confidenceReason={analysis.confidence_reason}
+          generatedAt={insights.generatedAt}
+        />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={refreshInsights}
+          disabled={isRefreshing}
+          title="Refresh analysis"
+        >
+          {isRefreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+        </Button>
+      </div>
+      {analysis.executive_summary && (
+        <p className="text-sm text-text-secondary leading-relaxed font-poppins">
+          {analysis.executive_summary}
+        </p>
+      )}
+    </div>
+  )
+}
+
+
 /* Loading state */
 function LoadingState() {
   return (
