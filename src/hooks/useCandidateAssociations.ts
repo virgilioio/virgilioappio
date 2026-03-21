@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
+import { triggerFitAnalysis } from '@/utils/triggerFitAnalysis'
 
 export interface CandidateAssociation {
   id: string
@@ -148,6 +149,9 @@ export function useCandidateAssociations(jobId?: string) {
         title: 'Success',
         description: 'Candidate associated with job successfully'
       })
+
+      // Fire-and-forget: pre-generate AI fit insights
+      triggerFitAnalysis(associationData.candidate_id, associationData.job_id)
 
       await getAssociations() // Refresh the list
       return newAssociation

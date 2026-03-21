@@ -13,12 +13,13 @@ import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CandidateApplicationResponses } from '@/components/candidates/CandidateApplicationResponses'
 import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeViewer'
-import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMarkdown'
+import { FitScoreRadial } from '@/components/candidates/insights/FitScoreRadial'
 import { RejectionReasonSelector } from '@/components/candidates/RejectionReasonSelector'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { useApplicationReview, RejectionConfig } from '@/hooks/useApplicationReview'
 import { useRejectionEmailTemplates } from '@/hooks/useRejectionEmailTemplates'
+import { useCandidateFitInsights } from '@/hooks/useCandidateFitInsights'
 import {
   X,
   ChevronLeft,
@@ -34,6 +35,7 @@ import {
   Sparkles,
   Loader2,
   PartyPopper,
+  RefreshCw,
 } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -209,9 +211,9 @@ export function ApplicationReviewSheet({
                       <CardHeader className="flex-shrink-0">
                         <TabsList className="w-full overflow-x-auto">
                           <TabsTrigger value="responses" className="flex-1">Application Responses</TabsTrigger>
-                          <TabsTrigger value="ai-summary" className="flex-1 gap-1.5">
+                          <TabsTrigger value="ai-insights" className="flex-1 gap-1.5">
                             <Sparkles className="h-3.5 w-3.5" />
-                            AI Career Summary
+                            AI Insights
                           </TabsTrigger>
                         </TabsList>
                       </CardHeader>
@@ -225,14 +227,13 @@ export function ApplicationReviewSheet({
                           </CardContent>
                         </ScrollArea>
                       </TabsContent>
-                      <TabsContent value="ai-summary" className="flex-1 min-h-0 mt-0">
+                      <TabsContent value="ai-insights" className="flex-1 min-h-0 mt-0">
                         <ScrollArea className="h-[calc(100vh-280px)]">
                           <CardContent>
-                            {review.currentCandidate.profileSummary ? (
-                              <ProfileSummaryMarkdown content={review.currentCandidate.profileSummary} />
-                            ) : (
-                              <p className="text-sm text-text-secondary">No AI career summary available for this candidate.</p>
-                            )}
+                            <FitInsightsPanel
+                              candidateId={review.currentCandidate.candidateId}
+                              jobId={jobId}
+                            />
                           </CardContent>
                         </ScrollArea>
                       </TabsContent>
@@ -403,6 +404,71 @@ function RejectionConfigPanel({
     </div>
   )
 }
+
+/* Fit Insights Panel — compact version for review sheet */
+function FitInsightsPanel({ candidateId, jobId }: { candidateId: string; jobId: string }) {
+  const { insights, isLoading, isRefreshing, refreshInsights } = useCandidateFitInsights(candidateId, jobId)
+
+  // Auto-trigger if no analysis exists
+  useEffect(() => {
+    if (!isLoading && !insights?.analysis && !isRefreshing) {
+      refreshInsights()
+    }
+  }, [isLoading, insights?.analysis]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (isLoading || (isRefreshing && !insights?.analysis)) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 gap-3">
+        <Loader2 className="h-6 w-6 animate-spin text-virgilio-purple" />
+        <p className="text-sm text-text-secondary font-poppins">Generating fit analysis...</p>
+      </div>
+    )
+  }
+
+  if (!insights?.analysis) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 gap-3">
+        <Sparkles className="h-6 w-6 text-muted-foreground" />
+        <p className="text-sm text-text-secondary">No fit analysis available.</p>
+        <Button variant="outline" size="sm" onClick={refreshInsights} disabled={isRefreshing} className="gap-1.5">
+          {isRefreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          Generate
+        </Button>
+      </div>
+    )
+  }
+
+  const analysis = insights.analysis
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start justify-between">
+        <FitScoreRadial
+          score={analysis.overall_score}
+          confidence={analysis.confidence}
+          confidenceReason={analysis.confidence_reason}
+          generatedAt={insights.generatedAt}
+        />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={refreshInsights}
+          disabled={isRefreshing}
+          title="Refresh analysis"
+        >
+          {isRefreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+        </Button>
+      </div>
+      {analysis.executive_summary && (
+        <p className="text-sm text-text-secondary leading-relaxed font-poppins">
+          {analysis.executive_summary}
+        </p>
+      )}
+    </div>
+  )
+}
+
 
 /* Loading state */
 function LoadingState() {
