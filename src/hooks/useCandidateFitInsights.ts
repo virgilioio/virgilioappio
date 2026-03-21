@@ -20,15 +20,6 @@ export interface ValidationPoint {
   status?: 'validated' | 'flagged' | null
 }
 
-export interface KeywordAnalysis {
-  title_match: boolean
-  title_keywords_used: string[]
-  title_matched_terms: string[]
-  domain_matched: string[]
-  domain_missing: string[]
-  domain_counts: Record<string, number>
-}
-
 export interface FitAnalysis {
   overall_score: number
   confidence: 'low' | 'medium' | 'high'
@@ -38,7 +29,6 @@ export interface FitAnalysis {
   validation_points: ValidationPoint[]
   data_sources_used: string[]
   data_sources_missing: string[]
-  keyword_analysis?: KeywordAnalysis
 }
 
 export interface FitInsightsData {
