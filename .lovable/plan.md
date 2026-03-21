@@ -1,47 +1,47 @@
 
 
-# Colorful Tabs + Structured Header for Find Results Table
+# Auto-Open Filter Sections When Saved Search Has Data
 
-## 1. Colorful pipeline-style tabs
+## Problem
 
-**`src/components/sourcing/SourcingProjectView.tsx`** (lines 329-364)
+When selecting a saved search, the `editableCriteria` IS being populated correctly from `currentProject.search_criteria`. However, all `CollapsibleSection` components in `FindFilterPanel` default to collapsed (`defaultOpen = false`), so the user sees empty-looking filters even though the data is there behind closed sections.
 
-Replace the current plain `TabsList` with the colorful gradient pattern from `JobDetail.tsx` (lines 926-963). Map the 4 tabs to distinct colors:
+## Fix
 
-- **Chat with Gio** — blue-to-purple gradient (matches "Suggested" style with Sparkles icon)
-- **Candidates** — pastel-purple background
-- **Saved** — pastel-yellow background (like "Recruiting Process")
-- **Archived** — pastel-blue background
+**`src/components/sourcing/FindFilterPanel.tsx`**
 
-Each tab gets `h-10 md:h-12`, pastel inactive background, solid active background, same `data-[state=active]` patterns used in the job pipeline.
+Change `CollapsibleSection` to accept a `forceOpen` prop (or derive open state from whether the section has data). The simplest approach: make sections auto-open when their corresponding criteria array is non-empty.
 
-## 2. Restructured header rows
+For each section, pass `defaultOpen` based on whether criteria has values:
 
-**`src/pages/Find.tsx`** (lines 218-226) and **`src/components/sourcing/SourcingProjectView.tsx`**
+```tsx
+<CollapsibleSection label="Job Titles" icon={Briefcase} defaultOpen={(c.title_keywords?.length ?? 0) > 0}>
+<CollapsibleSection label="Keywords" icon={Tag} defaultOpen={(c.keywords?.length ?? 0) > 0}>
+<CollapsibleSection label="Locations" icon={MapPin} defaultOpen={(c.locations?.length ?? 0) > 0}>
+<CollapsibleSection label="Seniority" icon={TrendingUp} defaultOpen={(c.seniorities?.length ?? 0) > 0}>
+// ...etc for all sections
+```
 
-Move the `SavedSearchSelector` from `Find.tsx`'s Card header into `SourcingProjectView` as **Row 1** above the tabs. This keeps it contextual to the project view.
+But since `CollapsibleSection` uses `useState(defaultOpen)` internally, changing the prop after mount won't re-open it. So we also need to update `CollapsibleSection` to respond to `defaultOpen` changes:
 
-**Row 1: SavedSearchSelector** — sits at top of the Card in `SourcingProjectView`, with the project name selector. When selecting a new search, it navigates to that project. Clicking "New Search" navigates to `/find` (already works via `onNewSearch`).
+```tsx
+function CollapsibleSection({ label, icon: Icon, defaultOpen = false, children }) {
+  const [open, setOpen] = useState(defaultOpen)
+  
+  // Sync open state when defaultOpen changes (e.g. saved search loaded)
+  useEffect(() => {
+    if (defaultOpen) setOpen(true)
+  }, [defaultOpen])
+  
+  // ...rest unchanged
+}
+```
 
-**Row 2: Button controls** — below the tabs, inside each tab's content area (specifically the Candidates tab). Re-surface the controls from `SourcingProjectHeader` that are currently orphaned:
-- Link to Job / Change Linked Job button
-- Unlock Profiles (bulk collect)
-- Refresh Results
-- More menu (visibility toggle, archive, delete, create job from spec)
-
-These go into a horizontal toolbar row at the top of `CandidatesTab`, following the standardized table header layout pattern (left-aligned action buttons).
-
-## 3. SavedSearchSelector: clear on new search
-
-**`src/components/sourcing/SavedSearchSelector.tsx`**
-
-Already calls `onNewSearch()` which navigates to `/find` — this clears the `projectId` param and resets the view. No change needed here, it already works correctly.
+This way, when a saved search loads and populates criteria, sections with data auto-expand so the user sees the populated filters immediately.
 
 ## Files
 
 | File | Change |
 |------|--------|
-| `src/components/sourcing/SourcingProjectView.tsx` | Replace plain tabs with colorful pipeline-style tabs; add SavedSearchSelector as Row 1; pass project action handlers to CandidatesTab |
-| `src/components/sourcing/CandidatesTab.tsx` | Add button controls toolbar (link to job, refresh, unlock, more menu) as Row 2 above the table |
-| `src/pages/Find.tsx` | Remove SavedSearchSelector from Card header (it moves into SourcingProjectView); keep it visible only in `new` mode for the empty state |
+| `src/components/sourcing/FindFilterPanel.tsx` | Add `useEffect` to `CollapsibleSection` to sync open state; pass data-aware `defaultOpen` to each section |
 
