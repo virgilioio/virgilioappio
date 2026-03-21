@@ -18,8 +18,7 @@ import { FitScoreRadial } from '@/components/candidates/insights/FitScoreRadial'
 import { RejectionReasonSelector } from '@/components/candidates/RejectionReasonSelector'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { SafeHtml } from '@/components/ui/safe-html'
-import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
-import { TimePickerVirgilio } from '@/components/ui/time-picker-virgilio'
+import { ScheduleDelaySelector, ScheduleDelayValue, resolveScheduleDate } from '@/components/candidates/ScheduleDelaySelector'
 import { useApplicationReview, RejectionConfig } from '@/hooks/useApplicationReview'
 import { useRejectionEmailTemplates } from '@/hooks/useRejectionEmailTemplates'
 import { useCandidateFitInsights } from '@/hooks/useCandidateFitInsights'
@@ -417,19 +416,20 @@ function RejectionConfigPanel({
           </RadioGroup>
 
           {config.sendOption === 'later' && (
-            <div className="flex items-center gap-3 pl-6">
-              <DatePickerVirgilio
-                value={config.scheduledDate ? new Date(config.scheduledDate) : new Date()}
-                onChange={(date) => onChange({ ...config, scheduledDate: date.toISOString() })}
-                minDate={new Date()}
-                className="w-[160px]"
-              />
-              <TimePickerVirgilio
-                value={config.scheduledTime || '09:00'}
-                onChange={(time) => onChange({ ...config, scheduledTime: time })}
-                className="w-[120px]"
-              />
-            </div>
+            <ScheduleDelaySelector
+              value={{
+                preset: config.schedulePreset || '',
+                customDate: config.customScheduledDate,
+                customTime: config.customScheduledTime,
+              }}
+              onChange={(v) => onChange({
+                ...config,
+                schedulePreset: v.preset,
+                customScheduledDate: v.customDate,
+                customScheduledTime: v.customTime,
+              })}
+              className="pl-6"
+            />
           )}
         </div>
       )}

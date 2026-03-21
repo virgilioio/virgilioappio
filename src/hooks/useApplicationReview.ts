@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react'
+import { resolveScheduleDate } from '@/components/candidates/ScheduleDelaySelector'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRejectCandidate } from '@/hooks/useRejectCandidate'
@@ -31,8 +32,9 @@ export interface RejectionConfig {
   sendEmail: boolean
   rejectionNotes?: string
   sendOption?: 'now' | 'later'
-  scheduledDate?: string
-  scheduledTime?: string
+  schedulePreset?: string
+  customScheduledDate?: string
+  customScheduledTime?: string
 }
 
 export interface ReviewSessionStats {
@@ -283,13 +285,12 @@ export function useApplicationReview(jobId: string) {
       try {
         // Compose scheduleFor if user chose "later"
         let scheduleFor: Date | undefined
-        if (shouldSendEmail && rejectionConfig.sendOption === 'later' && rejectionConfig.scheduledDate) {
-          const date = new Date(rejectionConfig.scheduledDate)
-          if (rejectionConfig.scheduledTime) {
-            const [hours, minutes] = rejectionConfig.scheduledTime.split(':').map(Number)
-            date.setHours(hours, minutes, 0, 0)
-          }
-          scheduleFor = date
+        if (shouldSendEmail && rejectionConfig.sendOption === 'later' && rejectionConfig.schedulePreset) {
+          scheduleFor = resolveScheduleDate({
+            preset: rejectionConfig.schedulePreset,
+            customDate: rejectionConfig.customScheduledDate,
+            customTime: rejectionConfig.customScheduledTime,
+          })
         }
 
         const result = await rejectCandidate.mutateAsync({

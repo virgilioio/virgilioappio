@@ -4,14 +4,13 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SubjectTemplateEditor, BodyTemplateEditor } from '@/components/editors';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio';
-import { TimePickerVirgilio } from '@/components/ui/time-picker-virgilio';
+import { ScheduleDelaySelector, ScheduleDelayValue, resolveScheduleDate } from '@/components/candidates/ScheduleDelaySelector';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useMailIdentities } from '@/hooks/useMailIdentities';
 import { useRejectionEmailTemplates } from '@/hooks/useRejectionEmailTemplates';
 import { convertHtmlToPlaceholders, containsPlaceholders } from '@/utils/placeholderUtils';
-import { setHours, setMinutes } from 'date-fns';
+
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
 import { Mail } from 'lucide-react';
@@ -43,8 +42,7 @@ export function RejectionEmailComposer({
   const [bodyHtml, setBodyHtml] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [sendOption, setSendOption] = useState<'now' | 'later'>('now');
-  const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
-  const [scheduledTime, setScheduledTime] = useState('09:00');
+  const [scheduleValue, setScheduleValue] = useState<ScheduleDelayValue>({ preset: 'tomorrow' });
 
   // Set default from email when identities load
   useEffect(() => {
@@ -73,14 +71,13 @@ export function RejectionEmailComposer({
 
   // Update parent with schedule date
   useEffect(() => {
-    if (sendOption === 'later' && scheduledDate) {
-      const [hours, minutes] = scheduledTime.split(':').map(Number);
-      const scheduledDateTime = setMinutes(setHours(scheduledDate, hours), minutes);
-      onScheduleChange(scheduledDateTime);
+    if (sendOption === 'later') {
+      const resolved = resolveScheduleDate(scheduleValue);
+      onScheduleChange(resolved);
     } else {
       onScheduleChange(undefined);
     }
-  }, [sendOption, scheduledDate, scheduledTime, onScheduleChange]);
+  }, [sendOption, scheduleValue, onScheduleChange]);
 
   const handleTemplateSelect = (templateId: string) => {
     if (templateId === '__none__') {
@@ -221,19 +218,11 @@ export function RejectionEmailComposer({
         </RadioGroup>
 
         {sendOption === 'later' && (
-          <div className="flex items-center gap-3 pl-6">
-            <DatePickerVirgilio
-              value={scheduledDate}
-              onChange={setScheduledDate}
-              minDate={new Date()}
-              className="w-[200px]"
-            />
-            <TimePickerVirgilio
-              value={scheduledTime}
-              onChange={setScheduledTime}
-              className="w-[130px]"
-            />
-          </div>
+          <ScheduleDelaySelector
+            value={scheduleValue}
+            onChange={setScheduleValue}
+            className="pl-6"
+          />
         )}
       </div>
     </div>
