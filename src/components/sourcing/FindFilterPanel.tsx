@@ -259,7 +259,7 @@ export function FindFilterPanel({
           />
         </CollapsibleSection>
 
-        <CollapsibleSection label="Target Companies" icon={Building2}>
+        <CollapsibleSection label="Target Companies" icon={Building2} defaultOpen={(c.company_names?.length ?? 0) > 0}>
           <TagInput
             placeholder="Add company..."
             tags={c.company_names || []}
