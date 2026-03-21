@@ -1,54 +1,48 @@
 
 
-# Replace AI Career Summary with Fit Insights + Pre-Generate on Application
+# Fix Action Buttons + Add Send Now/Schedule to Rejection Settings
 
-## Two changes
+## Changes
 
-### 1. Application Review Sheet: Replace "AI Career Summary" tab with "AI Insights"
+### 1. `src/components/candidates/ApplicationReviewSheet.tsx`
 
-**`src/components/candidates/ApplicationReviewSheet.tsx`**
+**Action buttons (lines 254-293)**:
+- Change `flex flex-col` → `flex flex-row` for horizontal layout
+- Change `size="sm"` → `size="default"` for taller buttons
+- Remove `review.firstStageName` from Advance label — just "Advance"
 
-- Rename tab from "AI Career Summary" to "AI Insights"
-- Remove `ProfileSummaryMarkdown` usage in that tab
-- Import `useCandidateFitInsights` and `FitScoreRadial`
-- In the tab content, call `useCandidateFitInsights(candidateId, jobId)` and render:
-  - `FitScoreRadial` (score + confidence badge)
-  - Executive summary text below it
-  - A "Generate" button if no analysis exists, with loading state
-  - Auto-trigger analysis if none exists (same pattern as `CandidateInsightsTab`)
+**RejectionConfigPanel (lines 322-406)** — Add scheduling section after the email preview, before Notes:
 
-### 2. Pre-generate insights at application time
+- Import `RadioGroup`, `RadioGroupItem` from `@/components/ui/radio-group`
+- Import `DatePickerVirgilio` and `TimePickerVirgilio`
+- Import `setHours`, `setMinutes` from `date-fns`
+- When `config.sendEmail` is true, show a "When to send" `RadioGroup` with "Send immediately" and "Schedule for later" — matching the exact pattern from `RejectionEmailComposer.tsx` lines 205-237
+- When "later" is selected, show `DatePickerVirgilio` + `TimePickerVirgilio` — these are already our style guide components (Virgilio-styled with purple accents, hover animations, AM/PM format)
+- Store `sendOption` ("now" | "later") and `scheduledDate`/`scheduledTime` in the `RejectionConfig` so they persist via localStorage (the hook already persists the entire config object)
 
-The simplest approach: trigger `analyze-candidate-fit` as fire-and-forget at the end of `public-submit-application` — the same edge function, called server-to-server. By the time a recruiter opens Application Review (usually minutes/hours later), insights are already cached.
+### 2. `src/hooks/useApplicationReview.ts`
 
-**`supabase/functions/public-submit-application/index.ts`**
-
-After the association is created and enrichment is triggered (around line 456), add a fire-and-forget call:
-
+**RejectionConfig interface (lines 28-33)** — Add fields:
 ```ts
-// Fire-and-forget: pre-generate AI fit insights
-try {
-  const fitUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/analyze-candidate-fit`
-  fetch(fitUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-    },
-    body: JSON.stringify({ candidate_id: globalCandidateId, job_id: posting.job_id }),
-  }).catch(() => {}) // truly fire-and-forget
-} catch {}
+sendOption?: 'now' | 'later'
+scheduledDate?: string  // ISO date string
+scheduledTime?: string  // HH:mm
 ```
 
-This runs after enrichment has been triggered, so the fit analysis will pick up whatever candidate data is available. If enrichment finishes first (likely, since it's also fire-and-forget), the fit analysis gets richer data. If not, the Insights tab's auto-trigger on open will refresh with updated data.
+**handleReject (line 281-287)** — When `rejectionConfig.sendOption === 'later'`, pass `scheduleFor` (composed from `scheduledDate` + `scheduledTime`) to `rejectCandidate.mutateAsync()` so the email gets scheduled rather than sent immediately.
 
-Also add the same fire-and-forget call in `useCandidateAssociations.ts` `addAssociation` (for manually added candidates), so any candidate-job pairing gets pre-analyzed.
+### Persistence
+
+The existing `persistRejectionConfig` callback (line 68-73) already saves the full config to `localStorage` and restores it on mount. Adding `sendOption`, `scheduledDate`, and `scheduledTime` to the interface means they automatically persist as the user navigates between candidates — no extra work needed.
+
+### Style Guide Compliance
+
+The `DatePickerVirgilio` and `TimePickerVirgilio` components ARE the style guide components — they use `virgilio-purple` selected states, `virgilio-border` borders, `200ms ease-out` transitions, `rounded-lg` cells, and AM/PM format. The `RadioGroup` uses our standard Radix-based component. No custom styling overrides needed.
 
 ## Files
 
 | File | Change |
 |------|--------|
-| `src/components/candidates/ApplicationReviewSheet.tsx` | Replace AI Career Summary tab with Fit Insights (score radial + executive summary) |
-| `supabase/functions/public-submit-application/index.ts` | Add fire-and-forget call to `analyze-candidate-fit` after association creation |
-| `src/hooks/useCandidateAssociations.ts` | Add fire-and-forget `triggerFitAnalysis` after successful `addAssociation` |
+| `src/components/candidates/ApplicationReviewSheet.tsx` | Fix button layout; add scheduling RadioGroup + DatePicker/TimePicker to RejectionConfigPanel |
+| `src/hooks/useApplicationReview.ts` | Add `sendOption`, `scheduledDate`, `scheduledTime` to RejectionConfig; pass `scheduleFor` in handleReject |
 
