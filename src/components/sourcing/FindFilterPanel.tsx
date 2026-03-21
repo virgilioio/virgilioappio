@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, X, ChevronDown, ChevronRight, Briefcase, Tag, MapPin, TrendingUp, Users, Factory, Building2, Clock, Mail } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
