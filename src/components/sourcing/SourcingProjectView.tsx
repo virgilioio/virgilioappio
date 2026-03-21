@@ -28,39 +28,6 @@ interface SourcingProjectViewProps {
   onUpdateSearchCriteria?: (fn: ((criteria: SearchCriteria) => Promise<void>) | null) => void
 }
 
-const tabConfig = [
-  { 
-    value: 'conversation', 
-    label: 'Chat with Gio', 
-    icon: Sparkles,
-    activeClasses: 'bg-gradient-to-r from-blue-400/90 to-purple-400/90 text-white shadow-md',
-    inactiveClasses: 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/30 dark:text-blue-300 dark:hover:bg-blue-900/40',
-  },
-  { 
-    value: 'candidates', 
-    label: 'Candidates', 
-    icon: Users,
-    activeClasses: 'bg-[#d7c5fb] text-[#0d0d09] shadow-md dark:bg-purple-500/80 dark:text-white',
-    inactiveClasses: 'bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950/30 dark:text-purple-300 dark:hover:bg-purple-900/40',
-    showCount: true,
-  },
-  { 
-    value: 'saved', 
-    label: 'Saved', 
-    icon: UserCheck,
-    activeClasses: 'bg-amber-200 text-amber-900 shadow-md dark:bg-amber-500/80 dark:text-white',
-    inactiveClasses: 'bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-300 dark:hover:bg-amber-900/40',
-    showCount: true,
-  },
-  { 
-    value: 'archived', 
-    label: 'Archived', 
-    icon: Archive,
-    activeClasses: 'bg-sky-200 text-sky-900 shadow-md dark:bg-sky-500/80 dark:text-white',
-    inactiveClasses: 'bg-sky-50 text-sky-700 hover:bg-sky-100 dark:bg-sky-950/30 dark:text-sky-300 dark:hover:bg-sky-900/40',
-    showCount: true,
-  },
-]
 
 export function SourcingProjectView({ 
   projectId, 
