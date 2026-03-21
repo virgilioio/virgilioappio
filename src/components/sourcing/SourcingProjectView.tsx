@@ -326,40 +326,52 @@ export function SourcingProjectView({
         onValueChange={setActiveTab}
         className="flex-1 flex flex-col min-h-0 overflow-hidden"
       >
-        {/* Colorful pipeline-style tabs */}
-        <div className="border-b bg-background shrink-0">
-          <div className="px-4 py-3">
-            <div className="inline-flex items-center gap-1.5 rounded-xl p-1.5 bg-[#fffcf9] dark:bg-surface-secondary/50 shadow-[var(--shadow-xs)] border border-virgilio-border/20">
-              {tabConfig.map((tab) => {
-                const Icon = tab.icon
-                const isActive = activeTab === tab.value
-                const count = tab.showCount ? getTabCount(tab.value) : 0
-                
-                return (
-                  <button
-                    key={tab.value}
-                    onClick={() => setActiveTab(tab.value)}
-                    className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-poppins font-medium tracking-tight transition-all duration-200 ease-out h-10 md:h-11 ${
-                      isActive ? tab.activeClasses : tab.inactiveClasses
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span>{tab.label}</span>
-                    {tab.showCount && count > 0 && (
-                      <Badge 
-                        variant={isActive ? "outline" : "secondary"} 
-                        className={`ml-0.5 text-[10px] h-5 px-1.5 ${
-                          isActive ? 'border-current/30 bg-white/20' : ''
-                        }`}
-                      >
-                        {count}
-                      </Badge>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+        {/* Colorful pipeline-style tabs — exact match to JobDetail */}
+        <div className="border-b bg-background shrink-0 px-4 py-3">
+          <TabsList className="grid w-full h-14 p-2 gap-1 grid-cols-4">
+            <TabsTrigger 
+              value="conversation"
+              className="h-10 md:h-12 text-xs md:text-sm bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-text-primary data-[state=active]:from-blue-500 data-[state=active]:to-purple-500 data-[state=active]:text-white border border-blue-500/20 data-[state=active]:border-blue-500 data-[state=active]:shadow-[0_0_20px_rgba(59,130,246,0.5),0_0_40px_rgba(147,51,234,0.3)] data-[state=active]:animate-pulse"
+            >
+              <span className="flex items-center gap-1 truncate">
+                <Sparkles className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
+                <span className="truncate">Chat with Gio</span>
+              </span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="candidates"
+              className="h-10 md:h-12 text-xs md:text-sm bg-pastel-purple/20 text-text-primary data-[state=active]:bg-pastel-purple"
+            >
+              <span className="flex items-center gap-1 truncate">
+                <span className="truncate">Candidates</span>
+                {filteredCandidates.length > 0 && (
+                  <Badge variant="pastel-purple" className="text-xs flex-shrink-0">{filteredCandidates.length}</Badge>
+                )}
+              </span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="saved"
+              className="h-10 md:h-12 text-xs md:text-sm bg-pastel-yellow/20 text-text-primary data-[state=active]:bg-pastel-yellow"
+            >
+              <span className="flex items-center gap-1 truncate">
+                <span className="truncate">Saved</span>
+                {savedCandidates.length > 0 && (
+                  <Badge variant="pastel-yellow" className="text-xs flex-shrink-0">{savedCandidates.length}</Badge>
+                )}
+              </span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="archived"
+              className="h-10 md:h-12 text-xs md:text-sm bg-pastel-blue/20 text-text-primary data-[state=active]:bg-pastel-blue"
+            >
+              <span className="flex items-center gap-1 truncate">
+                <span className="truncate">Archived</span>
+                {archivedCandidates.length > 0 && (
+                  <Badge variant="pastel-blue" className="text-xs flex-shrink-0">{archivedCandidates.length}</Badge>
+                )}
+              </span>
+            </TabsTrigger>
+          </TabsList>
         </div>
         
         <TabsContent value="conversation" className="flex-1 min-h-0 overflow-hidden m-0">
