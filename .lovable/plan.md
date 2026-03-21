@@ -1,56 +1,43 @@
 
 
-# Standardize All Skeletons with Bordered Container Pattern
+# Fix: Search Criteria Values Lost on Add/Select
 
-## Reference Pattern (PipelineOverview)
+## Root Cause
 
-The skeleton in the Recruiting Process tab wraps each placeholder in a container with `rounded-lg border bg-card` (or `bg-background`), giving skeleton items visible structure with a thin border. This is the target pattern for all skeletons.
+**`src/pages/Find.tsx` line 109** — `handleCriteriaChange` drops updates when `editableCriteria` is null:
 
-## What Changes
+```ts
+setEditableCriteria(prev => prev ? { ...prev, ...updates } : null)
+//                                                           ^^^^
+//                                         update silently discarded
+```
 
-### 1. Base skeleton primitives — `src/components/ui/skeleton.tsx`
+This happens when `currentProject.search_criteria` is null/undefined in the DB, or during the brief window between project load and criteria sync. The filter panel renders fine (using `EMPTY_CRITERIA` fallback), but every `onAdd` call goes into a black hole.
 
-- **`Skeleton` base**: Keep as-is (it's the pulse block itself, not a container)
-- **`TableSkeleton`**: Wrap each row in `rounded-lg border bg-card p-3` container
-- **`CardSkeleton`**: Wrap in `rounded-lg border bg-card` container
-- **New export: `ListRowSkeleton`**: Reusable bordered list row with avatar + text pattern (the most common skeleton across the app). Accepts `rows` prop.
+## Fix
 
-### 2. `CandidateTableSkeleton` — already has `border` on rows, no change needed
+**`src/pages/Find.tsx`** — One line change in `handleCriteriaChange`:
 
-### 3. `CandidateProfileSkeleton` — `src/components/candidates/CandidateProfileSkeleton.tsx`
+When `prev` is null, initialize from the `EMPTY_CRITERIA` defaults instead of returning null:
 
-Wrap each section (details card, skills card, summary card, activity card, work experience card) in `rounded-lg border bg-card p-4` containers.
+```ts
+const handleCriteriaChange = useCallback((updates: Partial<SearchCriteria>) => {
+  setEditableCriteria(prev => {
+    const base = prev || {
+      skills: [], title_keywords: [], keywords: [], locations: [],
+      seniorities: [], company_sizes: [], industries: [],
+      company_names: [], experience_years: {},
+    }
+    return { ...base, ...updates }
+  })
+}, [])
+```
 
-### 4. Dashboard skeletons
-
-- **`JobsOverview.tsx`**: Wrap each list row in `rounded-lg border bg-card p-3`
-- **`UpcomingActivities.tsx`**: The `h-[72px]` bars already look like rows — add `border bg-card` to them
-- **`RecentSourcingProjects.tsx`**: Same bordered row treatment if it has inline skeletons
-
-### 5. `IndependentCandidateProfile.tsx` — wrap the large skeleton blocks in `rounded-lg border bg-card`
-
-### 6. `SavedCandidatesTab.tsx` — already has `border` on rows, no change needed
-
-### 7. Settings skeletons (`CalendarSettingsTab`, `EmailAccountsSection`) — add bordered containers
-
-### 8. `Pipeline.tsx` — uses `TableSkeleton` which will be updated in step 1
-
-### 9. Style Guide — `src/components/settings/styleguide/SkeletonGuide.tsx`
-
-- Add a new "Bordered Skeleton Pattern" section showing the standard container with border
-- Update the code example to demonstrate the bordered wrapper pattern
-- Add a note: "All skeletons use a thin border container (`rounded-lg border bg-card`) for visual structure"
+This ensures that even if `editableCriteria` starts as null, the first user interaction creates a proper criteria object with the user's input preserved.
 
 ## Files
 
 | File | Change |
 |------|--------|
-| `src/components/ui/skeleton.tsx` | Update `TableSkeleton` and `CardSkeleton` with bordered containers; add `ListRowSkeleton` |
-| `src/components/candidates/CandidateProfileSkeleton.tsx` | Wrap each section in bordered container |
-| `src/components/dashboard/JobsOverview.tsx` | Add bordered row wrappers |
-| `src/components/dashboard/UpcomingActivities.tsx` | Add border to skeleton rows |
-| `src/pages/IndependentCandidateProfile.tsx` | Add bordered containers to skeleton blocks |
-| `src/components/settings/CalendarSettingsTab.tsx` | Add bordered container |
-| `src/components/settings/EmailAccountsSection.tsx` | Add bordered container |
-| `src/components/settings/styleguide/SkeletonGuide.tsx` | Add bordered pattern section, update examples |
+| `src/pages/Find.tsx` | Fix `handleCriteriaChange` to initialize from defaults when prev is null |
 
