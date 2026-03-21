@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Section } from '@/components/layout/Section'
+import { AppContainer } from '@/components/layout/AppContainer'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { IndependentCandidateTable } from '@/components/candidates/IndependentCandidateTable'
@@ -155,24 +156,28 @@ export default function Candidates() {
     <AuthGate>
       <PermissionGate permission="canViewCandidates">
         <CandidateFilterProvider>
-        <div className="min-h-screen bg-background">
-          <Section variant="default" banded container className="animate-fade-in">
-            <PageHeader
-              title="All Candidates"
-            />
+        <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden">
+          <Section variant="default" banded className="shrink-0 animate-fade-in">
+            <AppContainer>
+              <PageHeader title="All Candidates" />
+            </AppContainer>
           </Section>
 
-          <Section container className="animate-fade-in">
-            <IndependentCandidateTable
-              candidates={candidates}
-              isLoading={isLoading}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onAddNew={handleAddNew}
-              onRefresh={getCandidates}
-              onImportCSV={() => setIsCSVImportOpen(true)}
-              onBulkUpload={() => setIsBulkUploadOpen(true)}
-            />
+          <Section className="flex-1 min-h-0 overflow-hidden !py-0 animate-fade-in">
+            <AppContainer className="h-full min-h-0">
+              <div className="py-6 h-full min-h-0 overflow-auto">
+                <IndependentCandidateTable
+                  candidates={candidates}
+                  isLoading={isLoading}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onAddNew={handleAddNew}
+                  onRefresh={getCandidates}
+                  onImportCSV={() => setIsCSVImportOpen(true)}
+                  onBulkUpload={() => setIsBulkUploadOpen(true)}
+                />
+              </div>
+            </AppContainer>
           </Section>
 
           <CandidateFormSheet
@@ -218,7 +223,6 @@ export default function Candidates() {
               getCandidates()
             }}
           />
-
         </div>
         </CandidateFilterProvider>
       </PermissionGate>

@@ -3,6 +3,7 @@ import { AuthGate } from '@/components/auth/AuthGate';
 import { PermissionGate } from '@/components/auth/PermissionGate';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Section } from '@/components/layout/Section';
+import { AppContainer } from '@/components/layout/AppContainer';
 import { MetricCard } from '@/components/ui/metric-card';
 import { MetricCardGroup } from '@/components/ui/metric-card-group';
 import { FilterCard } from '@/components/pipeline/FilterCard';
@@ -135,98 +136,104 @@ export default function Pipeline() {
   return (
     <AuthGate>
       <PermissionGate permission="canViewJobs">
-        <div>
-          <Section variant="default" banded container className="animate-fade-in">
-            <PageHeader title="Pipeline" />
+        <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden">
+          <Section variant="default" banded className="shrink-0 animate-fade-in">
+            <AppContainer>
+              <PageHeader title="Pipeline" />
+            </AppContainer>
           </Section>
 
-          <Section container className="animate-fade-in">
-            <div className="space-y-12">
-              <div className="flex flex-wrap items-center gap-2">
-                <SavedViewSelector
-                  pageContext="pipeline"
-                  currentFilters={pageFilters as unknown as Record<string, unknown>}
-                  onApplyView={handleApplyView}
-                  activeViewId={activeViewId}
-                  onActiveViewChange={handleActiveViewChange}
-                />
-                <FilterCard
-                  searchTerm={searchTerm}
-                  onSearchChange={setSearchTerm}
-                  jobStatus={jobStatus}
-                  onJobStatusChange={setJobStatus}
-                  selectedUsers={selectedUsers}
-                  onSelectedUsersChange={setSelectedUsers}
-                  userOptions={userOptions}
-                  showUserFilter={showUserFilter}
-                  selectedDepartments={selectedDepartments}
-                  onSelectedDepartmentsChange={setSelectedDepartments}
-                  departmentOptions={departmentOptions}
-                />
-              </div>
-
-              {/* Row 1: Hero KPIs */}
-              <div className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <MetricCard
-                    variant="hero"
-                    title="Active Jobs"
-                    value={metricsLoading ? 0 : globalMetrics?.active_jobs || 0}
-                    icon={Briefcase}
-                    iconColor="text-primary"
-                    tooltip="Number of open jobs"
-                    isLoading={metricsLoading}
-                  />
-                  <MetricCard
-                    variant="hero"
-                    title="In App Review"
-                    value={globalMetrics?.application_review_count || 0}
-                    icon={FileText}
-                    iconColor="text-warning"
-                    tooltip="Candidates in Application Review"
-                    isLoading={metricsLoading}
-                  />
-                  <MetricCard
-                    variant="hero"
-                    title="Active Candidates"
-                    value={globalMetrics?.active_candidates_count || 0}
-                    icon={Users}
-                    iconColor="text-virgilio-success"
-                    tooltip="Candidates in Recruiting Process stages"
-                    isLoading={metricsLoading}
-                  />
-                </div>
-
-                {/* Row 2: Grouped strip */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <MetricCardGroup title="Pipeline Health" direction="vertical">
-                    <MetricCard
-                      variant="inline"
-                      title="Avg Days in Review"
-                      value={globalMetrics?.avg_days_in_application_review !== null && globalMetrics?.avg_days_in_application_review !== undefined ? globalMetrics.avg_days_in_application_review : 'N/A'}
-                      suffix={globalMetrics?.avg_days_in_application_review != null ? 'd' : undefined}
-                      tooltip="Average time in Application Review"
-                      isLoading={metricsLoading}
+          <Section className="flex-1 min-h-0 overflow-hidden !py-0 animate-fade-in">
+            <AppContainer className="h-full min-h-0">
+              <div className="py-6 h-full min-h-0 overflow-auto">
+                <div className="space-y-12">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <SavedViewSelector
+                      pageContext="pipeline"
+                      currentFilters={pageFilters as unknown as Record<string, unknown>}
+                      onApplyView={handleApplyView}
+                      activeViewId={activeViewId}
+                      onActiveViewChange={handleActiveViewChange}
                     />
-                  </MetricCardGroup>
+                    <FilterCard
+                      searchTerm={searchTerm}
+                      onSearchChange={setSearchTerm}
+                      jobStatus={jobStatus}
+                      onJobStatusChange={setJobStatus}
+                      selectedUsers={selectedUsers}
+                      onSelectedUsersChange={setSelectedUsers}
+                      userOptions={userOptions}
+                      showUserFilter={showUserFilter}
+                      selectedDepartments={selectedDepartments}
+                      onSelectedDepartmentsChange={setSelectedDepartments}
+                      departmentOptions={departmentOptions}
+                    />
+                  </div>
+
+                  {/* Row 1: Hero KPIs */}
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <MetricCard
+                        variant="hero"
+                        title="Active Jobs"
+                        value={metricsLoading ? 0 : globalMetrics?.active_jobs || 0}
+                        icon={Briefcase}
+                        iconColor="text-primary"
+                        tooltip="Number of open jobs"
+                        isLoading={metricsLoading}
+                      />
+                      <MetricCard
+                        variant="hero"
+                        title="In App Review"
+                        value={globalMetrics?.application_review_count || 0}
+                        icon={FileText}
+                        iconColor="text-warning"
+                        tooltip="Candidates in Application Review"
+                        isLoading={metricsLoading}
+                      />
+                      <MetricCard
+                        variant="hero"
+                        title="Active Candidates"
+                        value={globalMetrics?.active_candidates_count || 0}
+                        icon={Users}
+                        iconColor="text-virgilio-success"
+                        tooltip="Candidates in Recruiting Process stages"
+                        isLoading={metricsLoading}
+                      />
+                    </div>
+
+                    {/* Row 2: Grouped strip */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <MetricCardGroup title="Pipeline Health" direction="vertical">
+                        <MetricCard
+                          variant="inline"
+                          title="Avg Days in Review"
+                          value={globalMetrics?.avg_days_in_application_review !== null && globalMetrics?.avg_days_in_application_review !== undefined ? globalMetrics.avg_days_in_application_review : 'N/A'}
+                          suffix={globalMetrics?.avg_days_in_application_review != null ? 'd' : undefined}
+                          tooltip="Average time in Application Review"
+                          isLoading={metricsLoading}
+                        />
+                      </MetricCardGroup>
+                    </div>
+                  </div>
+
+                  {/* Job List */}
+                  {jobsLoading || isFilteringUsers ? (
+                    <TableSkeleton rows={5} />
+                  ) : filteredJobs.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No jobs found matching your filters.
+                    </div>
+                  ) : (
+                    <Accordion type="multiple" defaultValue={[]} className="space-y-4">
+                      {filteredJobs.map(job => (
+                        <JobRow key={job.id} job={job} metrics={metricsMap.get(job.id)} />
+                      ))}
+                    </Accordion>
+                  )}
                 </div>
               </div>
-
-              {/* Job List */}
-              {jobsLoading || isFilteringUsers ? (
-                <TableSkeleton rows={5} />
-              ) : filteredJobs.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No jobs found matching your filters.
-                </div>
-              ) : (
-                <Accordion type="multiple" defaultValue={[]} className="space-y-4">
-                  {filteredJobs.map(job => (
-                    <JobRow key={job.id} job={job} metrics={metricsMap.get(job.id)} />
-                  ))}
-                </Accordion>
-              )}
-            </div>
+            </AppContainer>
           </Section>
         </div>
       </PermissionGate>

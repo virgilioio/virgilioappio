@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Search, Plus, Clock, Globe, Lock, ChevronDown, FileSearch, Bookmark } from 'lucide-react'
+import { Search, Plus, Clock, Globe, Lock, ChevronDown, FileSearch, Bookmark, X } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -49,6 +49,15 @@ export function SavedSearchSelector({
         >
           <Bookmark className="h-3.5 w-3.5" />
           {currentProject ? currentProject.name : 'Searches'}
+          {currentProject && (
+            <span
+              role="button"
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); onNewSearch() }}
+              className="ml-0.5 hover:bg-destructive/20 rounded-full p-0.5 transition-colors"
+            >
+              <X className="h-3 w-3" />
+            </span>
+          )}
           <ChevronDown className="h-3 w-3 opacity-60" />
         </button>
       </PopoverTrigger>
