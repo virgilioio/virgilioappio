@@ -285,13 +285,12 @@ export function useApplicationReview(jobId: string) {
       try {
         // Compose scheduleFor if user chose "later"
         let scheduleFor: Date | undefined
-        if (shouldSendEmail && rejectionConfig.sendOption === 'later' && rejectionConfig.scheduledDate) {
-          const date = new Date(rejectionConfig.scheduledDate)
-          if (rejectionConfig.scheduledTime) {
-            const [hours, minutes] = rejectionConfig.scheduledTime.split(':').map(Number)
-            date.setHours(hours, minutes, 0, 0)
-          }
-          scheduleFor = date
+        if (shouldSendEmail && rejectionConfig.sendOption === 'later' && rejectionConfig.schedulePreset) {
+          scheduleFor = resolveScheduleDate({
+            preset: rejectionConfig.schedulePreset,
+            customDate: rejectionConfig.customScheduledDate,
+            customTime: rejectionConfig.customScheduledTime,
+          })
         }
 
         const result = await rejectCandidate.mutateAsync({
