@@ -218,19 +218,11 @@ export function RejectionEmailComposer({
         </RadioGroup>
 
         {sendOption === 'later' && (
-          <div className="flex items-center gap-3 pl-6">
-            <DatePickerVirgilio
-              value={scheduledDate}
-              onChange={setScheduledDate}
-              minDate={new Date()}
-              className="w-[200px]"
-            />
-            <TimePickerVirgilio
-              value={scheduledTime}
-              onChange={setScheduledTime}
-              className="w-[130px]"
-            />
-          </div>
+          <ScheduleDelaySelector
+            value={scheduleValue}
+            onChange={setScheduleValue}
+            className="pl-6"
+          />
         )}
       </div>
     </div>

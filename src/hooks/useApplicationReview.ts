@@ -31,8 +31,9 @@ export interface RejectionConfig {
   sendEmail: boolean
   rejectionNotes?: string
   sendOption?: 'now' | 'later'
-  scheduledDate?: string
-  scheduledTime?: string
+  schedulePreset?: string
+  customScheduledDate?: string
+  customScheduledTime?: string
 }
 
 export interface ReviewSessionStats {
