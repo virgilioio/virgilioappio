@@ -713,6 +713,20 @@ serve(async (req) => {
       }).catch(err => console.error('Background enrichment call failed:', err));
       
       console.log('🧠 Triggered background enrichment for candidate:', globalCandidateId);
+
+      // Fire-and-forget: pre-generate AI fit insights
+      try {
+        const fitUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/analyze-candidate-fit`
+        fetch(fitUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          },
+          body: JSON.stringify({ candidate_id: globalCandidateId, job_id: posting.job_id }),
+        }).catch(() => {})
+        console.log('🔮 Triggered AI fit analysis for candidate:', globalCandidateId);
+      } catch {}
     }
 
     // Fire-and-forget: Send workspace confirmation email if automation is active

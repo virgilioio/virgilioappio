@@ -150,6 +150,9 @@ export function useCandidateAssociations(jobId?: string) {
         description: 'Candidate associated with job successfully'
       })
 
+      // Fire-and-forget: pre-generate AI fit insights
+      triggerFitAnalysis(associationData.candidate_id, associationData.job_id)
+
       await getAssociations() // Refresh the list
       return newAssociation
     } catch (err) {
