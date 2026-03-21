@@ -1,18 +1,19 @@
 import { useState, useMemo, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Loader2, Sparkles, Users, UserCheck, Archive } from 'lucide-react'
-import { SourcingProjectHeader } from './SourcingProjectHeader'
 import { CandidatesTab } from './CandidatesTab'
 import { ConversationTab } from './ConversationTab'
 import { SavedCandidatesTab } from './SavedCandidatesTab'
 import { ArchivedCandidatesTab } from './ArchivedCandidatesTab'
 import { AddCollectedToPipelineDialog } from './AddCollectedToPipelineDialog'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { SavedSearchSelector } from './SavedSearchSelector'
+import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { useSourcingProject } from '@/hooks/useSourcingProject'
 import { useSourcingProjectCandidates } from '@/hooks/useSourcingProjectCandidates'
 import { useSavedCandidates } from '@/hooks/useSavedCandidates'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
-import { SourcingProjectFilters, SearchCriteria } from '@/types/sourcing'
+import { SourcingProjectFilters, SearchCriteria, SourcingProject } from '@/types/sourcing'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
@@ -27,6 +28,40 @@ interface SourcingProjectViewProps {
   onUpdateSearchCriteria?: (fn: ((criteria: SearchCriteria) => Promise<void>) | null) => void
 }
 
+const tabConfig = [
+  { 
+    value: 'conversation', 
+    label: 'Chat with Gio', 
+    icon: Sparkles,
+    activeClasses: 'bg-gradient-to-r from-blue-400/90 to-purple-400/90 text-white shadow-md',
+    inactiveClasses: 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/30 dark:text-blue-300 dark:hover:bg-blue-900/40',
+  },
+  { 
+    value: 'candidates', 
+    label: 'Candidates', 
+    icon: Users,
+    activeClasses: 'bg-[#d7c5fb] text-[#0d0d09] shadow-md dark:bg-purple-500/80 dark:text-white',
+    inactiveClasses: 'bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950/30 dark:text-purple-300 dark:hover:bg-purple-900/40',
+    showCount: true,
+  },
+  { 
+    value: 'saved', 
+    label: 'Saved', 
+    icon: UserCheck,
+    activeClasses: 'bg-amber-200 text-amber-900 shadow-md dark:bg-amber-500/80 dark:text-white',
+    inactiveClasses: 'bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-300 dark:hover:bg-amber-900/40',
+    showCount: true,
+  },
+  { 
+    value: 'archived', 
+    label: 'Archived', 
+    icon: Archive,
+    activeClasses: 'bg-sky-200 text-sky-900 shadow-md dark:bg-sky-500/80 dark:text-white',
+    inactiveClasses: 'bg-sky-50 text-sky-700 hover:bg-sky-100 dark:bg-sky-950/30 dark:text-sky-300 dark:hover:bg-sky-900/40',
+    showCount: true,
+  },
+]
+
 export function SourcingProjectView({ 
   projectId, 
   filters, 
@@ -36,6 +71,7 @@ export function SourcingProjectView({
   onProjectLoaded,
   onUpdateSearchCriteria: exposeUpdateSearchCriteria
 }: SourcingProjectViewProps) {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { data: project, isLoading: projectLoading, refetch: refetchProject } = useSourcingProject(projectId)
   const { 
@@ -61,20 +97,17 @@ export function SourcingProjectView({
   
   const [activeTab, setActiveTab] = useState('candidates')
   
-  // State for add-to-pipeline dialog when linking to job
   const [showAddToPipelineDialog, setShowAddToPipelineDialog] = useState(false)
   const [pendingJobId, setPendingJobId] = useState<string | null>(null)
   
   const { createAssociationAndMove } = usePipelineActions()
 
-  // Expose project data to parent
   useEffect(() => {
     if (project && onProjectLoaded) {
       onProjectLoaded(project)
     }
   }, [project, onProjectLoaded])
 
-  // Build and expose the update search criteria handler
   const handleUpdateSearchCriteria = async (newCriteria: SearchCriteria) => {
     if (!project) return
     setIsRefreshing(true)
@@ -118,14 +151,12 @@ export function SourcingProjectView({
     }
   }
 
-  // Expose the handler to parent
   useEffect(() => {
     if (exposeUpdateSearchCriteria) {
       exposeUpdateSearchCriteria(project ? handleUpdateSearchCriteria : null)
     }
   }, [project, projectId])
   
-  // Apply filters locally
   const filteredCandidates = useMemo(() => {
     if (!candidates) return []
     
@@ -152,15 +183,6 @@ export function SourcingProjectView({
       return true
     })
   }, [candidates, filters])
-  
-  const breakdown = useMemo(() => {
-    return {
-      excellent: filteredCandidates.filter(c => c.match_tier === 'excellent').length,
-      good: filteredCandidates.filter(c => c.match_tier === 'good').length,
-      fair: filteredCandidates.filter(c => c.match_tier === 'fair').length,
-      minimal: filteredCandidates.filter(c => c.match_tier === 'minimal').length
-    }
-  }, [filteredCandidates])
   
   const handleSaveName = async (name: string) => {
     if (!project || !name.trim()) return
@@ -208,6 +230,7 @@ export function SourcingProjectView({
     } else {
       toast.success('Project deleted')
       queryClient.invalidateQueries({ queryKey: ['sourcing-projects'] })
+      navigate('/find')
     }
   }
 
@@ -305,6 +328,15 @@ export function SourcingProjectView({
     setShowAddToPipelineDialog(false)
     setPendingJobId(null)
   }
+
+  const getTabCount = (value: string) => {
+    switch (value) {
+      case 'candidates': return filteredCandidates.length
+      case 'saved': return savedCandidates.length
+      case 'archived': return archivedCandidates.length
+      default: return 0
+    }
+  }
   
   if (projectLoading) {
     return <div className="flex items-center justify-center h-96">
@@ -320,47 +352,55 @@ export function SourcingProjectView({
   
   return (
     <div className="flex flex-col h-full min-h-0 overflow-hidden">
-      {/* Tabs Section — renders directly, no extra header chrome */}
+      {/* Row 1: SavedSearchSelector */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
+        <SavedSearchSelector
+          selectedProjectId={projectId}
+          currentProject={project}
+          onSelectProject={(id) => navigate(`/find/${id}`)}
+          onNewSearch={() => navigate('/find')}
+        />
+      </div>
+
+      {/* Tabs Section */}
       <Tabs 
         value={activeTab} 
         onValueChange={setActiveTab}
         className="flex-1 flex flex-col min-h-0 overflow-hidden"
       >
+        {/* Colorful pipeline-style tabs */}
         <div className="border-b bg-background shrink-0">
-          <div className="px-4">
-            <TabsList className="grid w-full max-w-2xl grid-cols-4">
-              <TabsTrigger value="conversation" className="gap-2">
-                <Sparkles className="h-4 w-4" />
-                Chat with Gio
-              </TabsTrigger>
-              <TabsTrigger value="candidates" className="gap-2">
-                <Users className="h-4 w-4" />
-                Candidates
-                {filteredCandidates.length > 0 && (
-                  <Badge variant="secondary" className="ml-1">
-                    {filteredCandidates.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="saved" className="gap-2">
-                <UserCheck className="h-4 w-4" />
-                Saved
-                {savedCandidates.length > 0 && (
-                  <Badge variant="secondary" className="ml-1">
-                    {savedCandidates.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="archived" className="gap-2">
-                <Archive className="h-4 w-4" />
-                Archived
-                {archivedCandidates.length > 0 && (
-                  <Badge variant="outline" className="ml-1">
-                    {archivedCandidates.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-            </TabsList>
+          <div className="px-4 py-3">
+            <div className="inline-flex items-center gap-1.5 rounded-xl p-1.5 bg-[#fffcf9] dark:bg-surface-secondary/50 shadow-[var(--shadow-xs)] border border-virgilio-border/20">
+              {tabConfig.map((tab) => {
+                const Icon = tab.icon
+                const isActive = activeTab === tab.value
+                const count = tab.showCount ? getTabCount(tab.value) : 0
+                
+                return (
+                  <button
+                    key={tab.value}
+                    onClick={() => setActiveTab(tab.value)}
+                    className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-poppins font-medium tracking-tight transition-all duration-200 ease-out h-10 md:h-11 ${
+                      isActive ? tab.activeClasses : tab.inactiveClasses
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{tab.label}</span>
+                    {tab.showCount && count > 0 && (
+                      <Badge 
+                        variant={isActive ? "outline" : "secondary"} 
+                        className={`ml-0.5 text-[10px] h-5 px-1.5 ${
+                          isActive ? 'border-current/30 bg-white/20' : ''
+                        }`}
+                      >
+                        {count}
+                      </Badge>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
         
@@ -376,6 +416,12 @@ export function SourcingProjectView({
             project={project}
             candidates={filteredCandidates}
             isLoading={candidatesLoading}
+            onRefresh={handleRefresh}
+            onArchive={handleArchive}
+            onDelete={handleDelete}
+            onVisibilityToggle={handleVisibilityToggle}
+            onLinkToJob={handleLinkToJob}
+            isRefreshing={isRefreshing}
           />
         </TabsContent>
         
