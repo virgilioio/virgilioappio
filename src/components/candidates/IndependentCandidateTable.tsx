@@ -618,15 +618,6 @@ const getPageNumbers = () => {
             {totalPages > 1 && (
               <div className="mt-8 space-y-6">
                 <div className="flex justify-center">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-surface-secondary/50 border border-border/50 rounded-brand text-sm text-text-secondary backdrop-blur-sm">
-                    <FileText className="h-4 w-4 opacity-60" />
-                    <span className="font-medium">
-                      Showing {startIndex + 1}-{Math.min(endIndex, filteredCandidates.length)} of {filteredCandidates.length} candidates
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="flex justify-center">
                   <div className="inline-flex items-center bg-surface-primary border border-border/80 rounded-brand shadow-sm p-1 gap-1">
                     <button
                       onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}

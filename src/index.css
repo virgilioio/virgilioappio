@@ -123,8 +123,8 @@
     /* Layout Tokens - Compact and consistent */
     --layout-gutter: 1rem; /* 16px */
     --layout-padding-sm: 0.75rem; /* 12px */
-    --layout-padding-md: 1rem; /* 16px */
-    --layout-padding-lg: 1.5rem; /* 24px */
+    --layout-padding-md: 0.625rem; /* 10px */
+    --layout-padding-lg: 1rem; /* 16px */
 
     /* Layout Max Width */
     --layout-max-width: 1500px;

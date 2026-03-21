@@ -301,9 +301,6 @@ export function MembersTable({
                 )}
               </div>
 
-              <p className="text-xs text-muted-foreground mb-3">
-                Showing {filteredMembers.length} of {members.length} members
-              </p>
 
               <div className="overflow-x-auto">
                 <Table>
