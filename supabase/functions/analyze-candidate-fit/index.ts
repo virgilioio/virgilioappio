@@ -248,7 +248,7 @@ serve(async (req) => {
         ],
         tools: [TOOL_SCHEMA],
         tool_choice: { type: "function", function: { name: "submit_fit_analysis" } },
-        temperature: 0.3,
+        temperature: 0.2,
       }),
     });
 
