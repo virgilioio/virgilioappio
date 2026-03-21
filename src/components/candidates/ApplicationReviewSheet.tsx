@@ -416,19 +416,20 @@ function RejectionConfigPanel({
           </RadioGroup>
 
           {config.sendOption === 'later' && (
-            <div className="flex items-center gap-3 pl-6">
-              <DatePickerVirgilio
-                value={config.scheduledDate ? new Date(config.scheduledDate) : new Date()}
-                onChange={(date) => onChange({ ...config, scheduledDate: date.toISOString() })}
-                minDate={new Date()}
-                className="w-[160px]"
-              />
-              <TimePickerVirgilio
-                value={config.scheduledTime || '09:00'}
-                onChange={(time) => onChange({ ...config, scheduledTime: time })}
-                className="w-[120px]"
-              />
-            </div>
+            <ScheduleDelaySelector
+              value={{
+                preset: config.schedulePreset || '',
+                customDate: config.customScheduledDate,
+                customTime: config.customScheduledTime,
+              }}
+              onChange={(v) => onChange({
+                ...config,
+                schedulePreset: v.preset,
+                customScheduledDate: v.customDate,
+                customScheduledTime: v.customTime,
+              })}
+              className="pl-6"
+            />
           )}
         </div>
       )}

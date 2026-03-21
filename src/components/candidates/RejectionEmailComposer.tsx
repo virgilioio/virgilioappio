@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { useMailIdentities } from '@/hooks/useMailIdentities';
 import { useRejectionEmailTemplates } from '@/hooks/useRejectionEmailTemplates';
 import { convertHtmlToPlaceholders, containsPlaceholders } from '@/utils/placeholderUtils';
-import { setHours, setMinutes } from 'date-fns';
+
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
 import { Mail } from 'lucide-react';
