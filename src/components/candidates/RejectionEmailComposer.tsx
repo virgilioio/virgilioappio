@@ -42,8 +42,7 @@ export function RejectionEmailComposer({
   const [bodyHtml, setBodyHtml] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [sendOption, setSendOption] = useState<'now' | 'later'>('now');
-  const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
-  const [scheduledTime, setScheduledTime] = useState('09:00');
+  const [scheduleValue, setScheduleValue] = useState<ScheduleDelayValue>({ preset: 'tomorrow' });
 
   // Set default from email when identities load
   useEffect(() => {
