@@ -808,10 +808,7 @@ export function SourcingCandidateTable({
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-6 py-4 border-t border-border flex-shrink-0 bg-background">
-              <div className="text-sm text-muted-foreground">
-                Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, sortedData.length)} of {sortedData.length} candidates
-              </div>
+            <div className="flex items-center justify-end px-6 py-4 border-t border-border flex-shrink-0 bg-background">
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"

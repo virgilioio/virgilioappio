@@ -224,10 +224,6 @@ export function AdminAuditLog() {
             </Table>
           </ScrollArea>
         )}
-
-        <div className="text-sm text-muted-foreground">
-          Showing {filteredLogs.length} of {logs.length} audit log entries
-        </div>
       </CardContent>
     </Card>
   )
