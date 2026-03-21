@@ -23,7 +23,9 @@ import gioAvatar from '@/assets/gio-avatar.png'
 export default function Find() {
   const { projectId } = useParams<{ projectId?: string }>()
   const navigate = useNavigate()
+  const { user, organizationId } = useAuth()
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isAutoCreating, setIsAutoCreating] = useState(false)
   const [showFirstRunDialog, setShowFirstRunDialog] = useState(false)
   
   const [filters, setFilters] = useState<SourcingProjectFilters>({
