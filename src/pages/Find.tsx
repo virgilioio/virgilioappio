@@ -15,6 +15,9 @@ import { GioThinkingHeader } from '@/components/sourcing/GioThinkingHeader'
 import { FirstRunOrientationDialog } from '@/components/onboarding/FirstRunOrientationDialog'
 import { useSourcingProjects } from '@/hooks/useSourcingProjects'
 import { SourcingProjectFilters, SearchCriteria, SourcingProject } from '@/types/sourcing'
+import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/integrations/supabase/client'
+import { toast } from '@/hooks/use-toast'
 import gioAvatar from '@/assets/gio-avatar.png'
 
 export default function Find() {
