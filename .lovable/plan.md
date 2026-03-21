@@ -1,50 +1,58 @@
 
 
-# Fix AI Notes Displaying Raw JSON Instead of Formatted Markdown
+# Priority Keywords + Manual Input
 
-## Problem
+## Updated Plan
 
-The `general_overview` field in AI draft scorecards is sometimes stored as a raw JSON object string (e.g., `{ "general_overview": { "overall_impression": "...", "key_strengths": [...] } }`) instead of formatted markdown. This happens when OpenAI's tool call returns a nested object for the `general_overview` property instead of the expected markdown string.
+This is the previously approved "Priority Keywords with Merge + Flag Approach" plan, now with manual keyword/skill entry added.
 
-Two of three recent AI drafts have this issue (Alexis García Payán and Rafael Razo Picasso). The Luis Fernando one is fine because it came back as plain markdown.
+## All Changes
 
-## Changes
+### 1. Migration: Add `priority_keywords` column to `jobs`
+- `ALTER TABLE jobs ADD COLUMN priority_keywords jsonb DEFAULT NULL`
 
-### 1. Edge function: `supabase/functions/generate-scorecard-from-transcript/index.ts`
+### 2. `supabase/functions/generate-comprehensive-skills/index.ts`
+- After generating full skills list (job context), add focused prompt for 5-8 domain keywords
+- Query `standard_job_titles` for title synonyms
+- Return `priority_keywords` alongside existing `skills` and `role_level`
 
-After parsing the tool call arguments (line ~214), add a check: if `parsed.general_overview` is an object instead of a string, convert it to markdown:
+### 3. New: `supabase/functions/_shared/keywordScoring.ts`
+- Deterministic scoring: title match (40%, OR logic), domain existence (35%), domain density (25%)
+- `scoreCandidate(priorityKeywords, candidateCorpus)` → score + breakdown
 
-```typescript
-let rawOverview = parsed.general_overview || '';
-if (typeof rawOverview === 'object') {
-  generatedNotes = convertOverviewObjectToMarkdown(rawOverview);
-} else {
-  generatedNotes = rawOverview;
-}
-```
+### 4. `supabase/functions/analyze-candidate-fit/index.ts`
+- Fetch/generate `priority_keywords`, build candidate corpus, run keyword score
+- Override `overall_score` with deterministic result, include `keyword_analysis` breakdown
+- Pass to OpenAI as grounding context for qualitative insights only
 
-Add a helper function `convertOverviewObjectToMarkdown` that handles the known structure:
-- `overall_impression` → "## Overall Impression\n{text}"
-- `key_strengths` (array) → "## Key Strengths\n- item\n- item"
-- `areas_for_development` (array) → "## Areas for Development\n- item"
-- `notable_quotes` (array) → "## Notable Quotes\n> quote"
-- `recommended_rating` + `justification` → "## Rating: {rating}\n{justification}"
+### 5. `src/hooks/useCandidateFitInsights.ts`
+- Extend `FitAnalysis` type with `keyword_analysis` (title_match, domain_matched/missing, counts)
 
-This prevents future scorecards from being stored as JSON.
+### 6. `src/components/candidates/insights/CandidateInsightsTab.tsx`
+- Add keyword match breakdown card (title match badge, domain keyword badges with counts)
 
-### 2. Frontend: `src/components/candidates/ScorecardSheet.tsx`
+### 7. `src/hooks/useSkillsGeneration.ts`
+- Return `priority_keywords` from response so caller can save to job record
 
-Update `normalizeAiAnalysis` to also detect and handle JSON strings. If the input starts with `{`, try to parse it and convert to markdown using the same structure mapping. This fixes display for the existing broken records without needing a data migration.
+### 8. Manual keyword/skill input (NEW)
 
-### 3. Fix existing data (one-time migration)
+**`src/components/jobs/JobFormSheet.tsx`**: Add an `Input` + Plus button row between the skill badges and `JobSkillsGenerationPanel` in the "Required Skills" section (~line 320). Typing + Enter or click adds the keyword to `selectedSkills` (no duplicates). Same badge + X removal already works.
 
-Run a migration that finds scorecards where `general_overview` starts with `{` and `is_ai_draft = true`, and converts them to markdown in-place. This ensures the ExpandableScoreDisplay preview text also renders correctly.
+**`src/components/candidates/SkillsGenerationPanel.tsx`**: Add the same inline input + Plus button at the top of the panel, before the AI Generate button. On add, calls `onSkillsAccepted([...existingSkills, newSkill])`.
 
-## Files
+Both use the same pattern: small input with placeholder "Add keyword...", Plus icon button, Enter key support, duplicate check.
 
-| File | Change |
+## Files Summary
+
+| File | Action |
 |------|--------|
-| `supabase/functions/generate-scorecard-from-transcript/index.ts` | Add object-to-markdown conversion after parsing |
-| `src/components/candidates/ScorecardSheet.tsx` | Update `normalizeAiAnalysis` to handle JSON input |
-| Migration SQL | Convert existing JSON `general_overview` records to markdown |
+| Migration SQL | Add `priority_keywords jsonb` to `jobs` |
+| `supabase/functions/generate-comprehensive-skills/index.ts` | Add priority keyword extraction for job context |
+| `supabase/functions/_shared/keywordScoring.ts` | New — deterministic scoring engine |
+| `supabase/functions/analyze-candidate-fit/index.ts` | Use keyword scoring, pass to AI as context |
+| `src/hooks/useCandidateFitInsights.ts` | Extend `FitAnalysis` type with `keyword_analysis` |
+| `src/components/candidates/insights/CandidateInsightsTab.tsx` | Display keyword match breakdown |
+| `src/hooks/useSkillsGeneration.ts` | Return `priority_keywords` from response |
+| `src/components/jobs/JobFormSheet.tsx` | Add manual keyword input row in skills section |
+| `src/components/candidates/SkillsGenerationPanel.tsx` | Add manual skill input row |
 
