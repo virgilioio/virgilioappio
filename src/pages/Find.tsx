@@ -107,7 +107,14 @@ export default function Find() {
   }, [])
 
   const handleCriteriaChange = useCallback((updates: Partial<SearchCriteria>) => {
-    setEditableCriteria(prev => prev ? { ...prev, ...updates } : null)
+    setEditableCriteria(prev => {
+      const base = prev || {
+        skills: [], title_keywords: [], keywords: [], locations: [],
+        seniorities: [], company_sizes: [], industries: [],
+        company_names: [], experience_years: {},
+      }
+      return { ...base, ...updates }
+    })
   }, [])
 
   return (
