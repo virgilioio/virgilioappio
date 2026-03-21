@@ -93,9 +93,13 @@ export default function Find() {
   // Auto-create sourcing project when user adds title_keywords in new mode
   const autoCreateTimerRef = useRef<NodeJS.Timeout | null>(null)
   const autoCreateTriggeredRef = useRef(false)
+  const lastAttemptedFingerprintRef = useRef<string>('')
   
   useEffect(() => {
-    if (!projectId) autoCreateTriggeredRef.current = false
+    if (!projectId) {
+      autoCreateTriggeredRef.current = false
+      lastAttemptedFingerprintRef.current = ''
+    }
   }, [projectId])
   
   useEffect(() => {
@@ -105,9 +109,18 @@ export default function Find() {
     if (!user || !organizationId) return
     if (isAutoCreating) return
     
+    // Build fingerprint to avoid retrying same failed payload
+    const fingerprint = JSON.stringify({
+      t: editableCriteria.title_keywords,
+      k: editableCriteria.keywords,
+      l: editableCriteria.locations,
+    })
+    if (fingerprint === lastAttemptedFingerprintRef.current) return
+    
     if (autoCreateTimerRef.current) clearTimeout(autoCreateTimerRef.current)
     autoCreateTimerRef.current = setTimeout(async () => {
       autoCreateTriggeredRef.current = true
+      lastAttemptedFingerprintRef.current = fingerprint
       setIsAutoCreating(true)
       setIsGenerating(true)
       
@@ -131,7 +144,8 @@ export default function Find() {
       } catch (err) {
         console.error('Auto-create sourcing project failed:', err)
         toast({ title: 'Search failed', description: 'Could not start search. Please try again.', variant: 'destructive' })
-        autoCreateTriggeredRef.current = false
+        // Do NOT reset autoCreateTriggeredRef — fingerprint check prevents same-payload retry
+        // User must change criteria to trigger a new attempt
       } finally {
         setIsAutoCreating(false)
         setIsGenerating(false)
