@@ -331,6 +331,39 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
                   <p className="text-sm text-text-secondary">No skills selected yet</p>
                 )}
               </div>
+              <div className="flex items-center gap-2 mb-3">
+                <Input
+                  placeholder="Add keyword..."
+                  value={manualSkillInput}
+                  onChange={(e) => setManualSkillInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const val = manualSkillInput.trim();
+                      if (val && !selectedSkills.some(s => s.toLowerCase() === val.toLowerCase())) {
+                        setSelectedSkills([...selectedSkills, val]);
+                        setManualSkillInput('');
+                      }
+                    }
+                  }}
+                  className="flex-1 h-9"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9 px-3"
+                  onClick={() => {
+                    const val = manualSkillInput.trim();
+                    if (val && !selectedSkills.some(s => s.toLowerCase() === val.toLowerCase())) {
+                      setSelectedSkills([...selectedSkills, val]);
+                      setManualSkillInput('');
+                    }
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
               <JobSkillsGenerationPanel
                 descriptionHtml={formData.description}
                 title={formData.title}
