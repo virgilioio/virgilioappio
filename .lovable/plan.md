@@ -1,37 +1,28 @@
-# Priority Keywords + Manual Input — IMPLEMENTED
 
-## What was done
 
-### 1. Migration ✅
-- Added `priority_keywords jsonb DEFAULT NULL` to `jobs` table
+# Fix: Generate Skills CORS Failure + Skills Display Clarification
 
-### 2. Keyword Scoring Engine ✅
-- New shared module: `supabase/functions/_shared/keywordScoring.ts`
-- Deterministic scoring: title match (40%), domain existence (35%), domain density (25%)
-- `scoreCandidate()` + `buildCandidateCorpus()` functions
+## Problem 1: "Generate Skills" button fails with "Failed to fetch"
 
-### 3. Skills Generation Edge Function ✅
-- Updated `generate-comprehensive-skills` to query `standard_job_titles` for title synonyms
-- Extracts 5-8 domain keywords via focused AI prompt (tool calling)
-- Returns `priority_keywords` alongside existing `skills` and `role_level`
+The `generate-comprehensive-skills` edge function uses static CORS headers (`createSecureCorsHeaders()` at module level, line 9), which resolves to `Access-Control-Allow-Origin: https://app.gogio.io`. When called from the preview domain (`*.lovableproject.com`), the browser blocks the response due to origin mismatch.
 
-### 4. Fit Analysis Edge Function ✅
-- Updated `analyze-candidate-fit` to use keyword scoring engine
-- Auto-generates priority keywords if job doesn't have them
-- Overrides `overall_score` with deterministic keyword score
-- Includes `keyword_analysis` breakdown in stored analysis
-- Passes keyword data to OpenAI as grounding context
+All other working edge functions use the dynamic pattern: `const cors = corsHeadersFor(req.headers.get('Origin'))` inside the request handler.
 
-### 5. Frontend Types ✅
-- Extended `FitAnalysis` with `KeywordAnalysis` type in `useCandidateFitInsights.ts`
-- `useSkillsGeneration.ts` now returns `priorityKeywords` from response
+**Fix**: Update `supabase/functions/generate-comprehensive-skills/index.ts`:
+- Remove the static `const corsHeaders = createSecureCorsHeaders()` at line 9
+- Inside `serve()`, extract the request origin and compute CORS dynamically: `const origin = req.headers.get('Origin') ?? undefined; const corsHeaders = corsHeadersFor(origin);`
+- Use `handlePreflight(req)` for the OPTIONS check instead of manual handling
+- All response headers already reference `corsHeaders` so they'll pick up the dynamic value
 
-### 6. Insights UI ✅
-- New "Keyword Match" card in `CandidateInsightsTab` showing:
-  - Title match badge (green/red)
-  - Domain keyword badges with occurrence counts
-  - Missing keywords in outline style
+## Problem 2: "Existing skills not showing"
 
-### 7. Manual Keyword Input ✅
-- `JobFormSheet.tsx`: Input + Plus button for manual keyword entry
-- `SkillsGenerationPanel.tsx`: Input + Plus button for manual skill entry
+The job being edited (`Coordinación de Cuentas por Pagar`) has `skills: []` in the database — an empty array. The form correctly shows "No skills selected yet." This is expected behavior, not a bug. The skills will show once generated and saved.
+
+## Files
+
+| File | Change |
+|------|--------|
+| `supabase/functions/generate-comprehensive-skills/index.ts` | Fix CORS to use dynamic origin-based headers |
+
+Deploy the function after the fix and test with curl.
+
