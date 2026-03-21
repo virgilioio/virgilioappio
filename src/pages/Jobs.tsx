@@ -10,6 +10,7 @@ import { useJobs, Job } from '@/hooks/useJobs'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Section } from '@/components/layout/Section'
+import { AppContainer } from '@/components/layout/AppContainer'
 
 export default function Jobs() {
   const navigate = useNavigate()
