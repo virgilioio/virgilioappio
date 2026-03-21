@@ -411,6 +411,12 @@ serve(async (req) => {
         jobSkills = Array.isArray(projectCriteria?.skills) ? projectCriteria.skills : [];
       }
 
+      // If no skills but we have title_keywords, use title_keywords as proxy skills
+      if (jobSkills.length === 0 && criteria?.title_keywords?.length > 0) {
+        jobSkills = criteria.title_keywords;
+        console.log(`📋 No skills specified, using title_keywords as skills: ${jobSkills.join(', ')}`);
+      }
+
       organization_id = project.organization_id;
       tenant_id = project.organizations?.tenant_id || null;
       
@@ -613,7 +619,8 @@ serve(async (req) => {
       has_user_companies: (criteria.user_company_names?.length || 0) > 0
     };
     
-    if (!count_only && organization_id && jobSkills.length > 0) {
+    const hasSearchableTerms = jobSkills.length > 0 || criteria?.title_keywords?.length > 0;
+    if (!count_only && organization_id && hasSearchableTerms) {
       try {
         console.log(`🔍 Searching Apollo with progressive relaxation...`);
         
