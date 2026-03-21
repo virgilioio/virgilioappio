@@ -2,6 +2,7 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { EnhancedSkillBadge } from '@/components/ui/enhanced-skill-badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Sparkles, Plus, Check, X, Loader2 } from 'lucide-react';
