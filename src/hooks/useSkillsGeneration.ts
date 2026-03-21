@@ -85,6 +85,7 @@ export const useSkillsGeneration = () => {
       const skills = data.skills as CategorizedSkill[];
       const categories = data.skillsByCategory as SkillsByCategory;
       const role = (data.roleLevel || data.role_level) as RoleLevel | undefined;
+      const priorityKw = data.priority_keywords || null;
 
       setGeneratedSkills(skills);
       setSkillsByCategory(categories);
@@ -92,7 +93,7 @@ export const useSkillsGeneration = () => {
 
       toast.success(`Generated ${skills.length} skills${role?.level ? ` · detected level: ${role.level}` : ''}`);
 
-      return { skills, skillsByCategory: categories, roleLevel: role ?? null };
+      return { skills, skillsByCategory: categories, roleLevel: role ?? null, priorityKeywords: priorityKw };
 
     } catch (error) {
       console.error('Skills generation error:', error);

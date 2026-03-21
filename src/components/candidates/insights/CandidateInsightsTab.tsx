@@ -6,7 +6,7 @@ import { ValidationChecklist } from './ValidationChecklist'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { RefreshCw, Sparkles, Loader2, CheckCircle2, AlertCircle, Database } from 'lucide-react'
+import { RefreshCw, Sparkles, Loader2, CheckCircle2, AlertCircle, Database, Tag, Briefcase } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useEffect, useRef } from 'react'
 
