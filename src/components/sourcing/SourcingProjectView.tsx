@@ -296,14 +296,6 @@ export function SourcingProjectView({
     setPendingJobId(null)
   }
 
-  const getTabCount = (value: string) => {
-    switch (value) {
-      case 'candidates': return filteredCandidates.length
-      case 'saved': return savedCandidates.length
-      case 'archived': return archivedCandidates.length
-      default: return 0
-    }
-  }
   
   if (projectLoading) {
     return <div className="flex items-center justify-center h-96">
