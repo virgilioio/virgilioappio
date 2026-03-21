@@ -1,70 +1,83 @@
 
 
-# Exact Pipeline Tabs for Find Page
+# Pagination UI, Full-Height Tables, Layout Consistency & Clear Saved Search
 
-## Problem
+## 1. Pagination UI (reference image style)
 
-The Find page tabs use custom `<button>` elements with a `tabConfig` array, icons, and custom color classes. The JobDetail pipeline tabs use `TabsList` + `TabsTrigger` in a `grid w-full` layout with specific pastel design-system colors, no icons (except Sparkles on "Suggested"), and `Badge` variants from the design system.
+The image shows a clean pagination bar with: Previous/1/2/3/4/.../6/7/8/Next — pill-shaped page numbers, active page highlighted, Previous/Next with arrow icons.
 
-## Exact reference (JobDetail lines 926-964)
+**`src/components/ui/pagination.tsx`** — Restyle to match:
+- Page number buttons: `h-9 w-9 rounded-lg` with `hover:bg-muted` and active state `bg-primary text-white`
+- Previous/Next: text + chevron icon, no background, hover underline
+- Ellipsis: same sizing
+- Overall: `gap-1` horizontal layout, centered
 
+Then create a **`src/components/ui/PaginationControls.tsx`** reusable component that takes `currentPage`, `totalPages`, `onPageChange` and renders the full pagination bar with smart page range (show first/last pages, ellipsis for gaps). This can be dropped into any table.
+
+## 2. Full-height tables for Jobs, Candidates, Pipeline
+
+**Problem**: Jobs, Candidates, and Pipeline pages use `<Section container>` which renders in normal document flow — the table doesn't fill the remaining viewport height, so it doesn't scroll internally like Find does.
+
+**Solution**: Apply the same fixed-viewport pattern from Find to these pages:
+
+**`src/pages/Jobs.tsx`**:
 ```
-TabsList: "hidden md:grid w-full h-14 p-2 gap-1 grid-cols-6"
+- <div>
+-   <Section variant="default" banded container>...header...</Section>
+-   <Section container>...table...</Section>
+- </div>
++ <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden">
++   <Section variant="default" banded className="shrink-0"><AppContainer>...header...</AppContainer></Section>
++   <Section className="flex-1 min-h-0 overflow-hidden !py-0">
++     <AppContainer className="h-full min-h-0">
++       <div className="py-6 h-full min-h-0 overflow-auto">
++         <JobsTable ... />
++       </div>
++     </AppContainer>
++   </Section>
++ </div>
 ```
 
-Each trigger: `"h-10 md:h-12 text-xs md:text-sm bg-{color}/20 text-text-primary data-[state=active]:bg-{color}"`
+Same pattern for **`src/pages/Candidates.tsx`** and **`src/pages/Pipeline.tsx`**.
 
-With design-system Badge variants (`pastel-purple`, `pastel-yellow`, `pastel-blue`, `secondary`).
+The `JobsTable`, `IndependentCandidateTable`, and Pipeline's `Accordion` will then scroll within the remaining viewport space, just like Find's results table.
 
-## Changes
+## 3. Layout consistency audit
 
-### `src/components/sourcing/SourcingProjectView.tsx`
+**Answer to your question**: Yes — all pages use the same `PageHeader` inside `Section variant="default" banded container`, which wraps in `AppContainer` using `layout-container` (max-width: 1500px, centered, same horizontal padding). The headers ARE the same height.
 
-1. **Remove** the `tabConfig` array (lines 31-63)
-2. **Remove** `Users, UserCheck, Archive` from imports (no longer needed)
-3. **Add** `TabsList, TabsTrigger` to the `@/components/ui/tabs` import
-4. **Replace** the custom button rendering (lines 362-396) with exact JobDetail pattern:
+The content sections also all use `Section container` → same `AppContainer` → same max-width and padding. So content starts from the exact same horizontal location on all pages. **No discrepancy exists in width or starting position** — the difference is only that Find uses fixed viewport height while the others scroll the whole page.
+
+After applying change #2, all pages will have identical header height AND content that fills the remaining screen.
+
+## 4. Clear/deselect saved search in Find
+
+**`src/components/sourcing/SavedSearchSelector.tsx`**:
+- When a project is selected (`currentProject` exists), show an `X` button on the trigger chip to clear the selection
+- Clicking `X` calls `onNewSearch()` which navigates to `/find` and clears the project
 
 ```tsx
-<TabsList className="grid w-full h-14 p-2 gap-1 grid-cols-4">
-  <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-text-primary data-[state=active]:from-blue-500 data-[state=active]:to-purple-500 data-[state=active]:text-white border border-blue-500/20 data-[state=active]:border-blue-500 data-[state=active]:shadow-[0_0_20px_rgba(59,130,246,0.5),0_0_40px_rgba(147,51,234,0.3)] data-[state=active]:animate-pulse" value="conversation">
-    <span className="flex items-center gap-1 truncate">
-      <Sparkles className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
-      <span className="truncate">Chat with Gio</span>
+<button className="inline-flex items-center gap-1.5 rounded-full ...">
+  <Bookmark className="h-3.5 w-3.5" />
+  {currentProject ? currentProject.name : 'Searches'}
+  {currentProject && (
+    <span onClick={(e) => { e.stopPropagation(); onNewSearch() }}
+      className="ml-0.5 hover:bg-destructive/20 rounded-full p-0.5">
+      <X className="h-3 w-3" />
     </span>
-  </TabsTrigger>
-  <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-pastel-purple/20 text-text-primary data-[state=active]:bg-pastel-purple" value="candidates">
-    <span className="flex items-center gap-1 truncate">
-      <span className="truncate">Candidates</span>
-      <Badge variant="pastel-purple" className="text-xs flex-shrink-0">{candidateCount}</Badge>
-    </span>
-  </TabsTrigger>
-  <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-pastel-yellow/20 text-text-primary data-[state=active]:bg-pastel-yellow" value="saved">
-    <span className="flex items-center gap-1 truncate">
-      <span className="truncate">Saved</span>
-      <Badge variant="pastel-yellow" className="text-xs flex-shrink-0">{savedCount}</Badge>
-    </span>
-  </TabsTrigger>
-  <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-pastel-blue/20 text-text-primary data-[state=active]:bg-pastel-blue" value="archived">
-    <span className="flex items-center gap-1 truncate">
-      <span className="truncate">Archived</span>
-      <Badge variant="pastel-blue" className="text-xs flex-shrink-0">{archivedCount}</Badge>
-    </span>
-  </TabsTrigger>
-</TabsList>
+  )}
+  <ChevronDown className="h-3 w-3 opacity-60" />
+</button>
 ```
-
-Key differences from current implementation:
-- Uses `TabsList` + `TabsTrigger` (not raw buttons)
-- `grid w-full grid-cols-4` stretches tabs across full width
-- No icons except Sparkles on "Chat with Gio"
-- Design system pastel colors with `/20` inactive backgrounds
-- `data-[state=active]` for active styling (Radix handles state)
-- Design system `Badge` variants instead of custom badge styling
 
 ## Files
 
 | File | Change |
 |------|--------|
-| `src/components/sourcing/SourcingProjectView.tsx` | Remove `tabConfig`; replace custom buttons with exact `TabsList`/`TabsTrigger` grid pattern from JobDetail; remove unused icon imports |
+| `src/components/ui/pagination.tsx` | Restyle page buttons to match reference image (rounded, active highlight) |
+| `src/components/ui/PaginationControls.tsx` | New reusable pagination component with smart page range |
+| `src/pages/Jobs.tsx` | Fixed viewport height + flex layout for full-screen table |
+| `src/pages/Candidates.tsx` | Fixed viewport height + flex layout for full-screen table |
+| `src/pages/Pipeline.tsx` | Fixed viewport height + flex layout for full-screen table |
+| `src/components/sourcing/SavedSearchSelector.tsx` | Add X button to clear selected search |
 
