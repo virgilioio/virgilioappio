@@ -231,9 +231,11 @@ async function extractDomainKeywords(jobTitle: string, description: string): Pro
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const pre = handlePreflight(req);
+  if (pre) return pre;
+
+  const origin = req.headers.get('Origin') ?? undefined;
+  const corsHeaders = corsHeadersFor(origin);
 
   if (!openAIApiKey) {
     return new Response(
