@@ -352,15 +352,6 @@ export function SourcingProjectView({
   
   return (
     <div className="flex flex-col h-full min-h-0 overflow-hidden">
-      {/* Row 1: SavedSearchSelector */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
-        <SavedSearchSelector
-          selectedProjectId={projectId}
-          currentProject={project}
-          onSelectProject={(id) => navigate(`/find/${id}`)}
-          onNewSearch={() => navigate('/find')}
-        />
-      </div>
 
       {/* Tabs Section */}
       <Tabs 
