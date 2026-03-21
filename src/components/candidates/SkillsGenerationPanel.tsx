@@ -35,6 +35,7 @@ export const SkillsGenerationPanel: React.FC<SkillsGenerationPanelProps> = ({
   } = useSkillsGeneration();
 
   const [selectedSkills, setSelectedSkills] = React.useState<Set<string>>(new Set());
+  const [manualInput, setManualInput] = React.useState('');
 
   const handleGenerateSkills = async () => {
     try {
