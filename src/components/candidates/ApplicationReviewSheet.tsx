@@ -13,12 +13,13 @@ import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CandidateApplicationResponses } from '@/components/candidates/CandidateApplicationResponses'
 import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeViewer'
-import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMarkdown'
+import { FitScoreRadial } from '@/components/candidates/insights/FitScoreRadial'
 import { RejectionReasonSelector } from '@/components/candidates/RejectionReasonSelector'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { useApplicationReview, RejectionConfig } from '@/hooks/useApplicationReview'
 import { useRejectionEmailTemplates } from '@/hooks/useRejectionEmailTemplates'
+import { useCandidateFitInsights } from '@/hooks/useCandidateFitInsights'
 import {
   X,
   ChevronLeft,
@@ -34,6 +35,7 @@ import {
   Sparkles,
   Loader2,
   PartyPopper,
+  RefreshCw,
 } from 'lucide-react'
 import { format } from 'date-fns'
 
