@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Loader2, Sparkles, Users, UserCheck, Archive } from 'lucide-react'
+import { Loader2, Sparkles } from 'lucide-react'
 import { CandidatesTab } from './CandidatesTab'
 import { ConversationTab } from './ConversationTab'
 import { SavedCandidatesTab } from './SavedCandidatesTab'
