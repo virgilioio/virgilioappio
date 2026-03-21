@@ -168,13 +168,17 @@ export default function IndependentCandidateProfile() {
         <PermissionGate permission="canViewCandidates">
           <AppContainer>
             <div className="space-y-md">
-              <Skeleton className="h-[40px] w-[200px]" />
+              <Skeleton className="h-[40px] w-[200px] rounded-lg border bg-card" />
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-lg">
                 <div className="lg:col-span-2 space-y-md">
-                  <Skeleton className="h-[300px] rounded-brand" />
+                  <div className="rounded-lg border bg-card p-4">
+                    <Skeleton className="h-[280px] rounded-lg" />
+                  </div>
                 </div>
                 <div className="space-y-md">
-                  <Skeleton className="h-[200px] rounded-brand" />
+                  <div className="rounded-lg border bg-card p-4">
+                    <Skeleton className="h-[180px] rounded-lg" />
+                  </div>
                 </div>
               </div>
             </div>

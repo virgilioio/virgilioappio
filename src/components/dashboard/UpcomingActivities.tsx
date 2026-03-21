@@ -197,7 +197,7 @@ export function UpcomingActivities() {
   const LoadingState = () => (
     <div className="space-y-2">
       {[...Array(3)].map((_, i) => (
-        <Skeleton key={i} className="h-[72px] w-full rounded-lg" />
+        <Skeleton key={i} className="h-[72px] w-full rounded-lg border bg-card" />
       ))}
     </div>
   )
