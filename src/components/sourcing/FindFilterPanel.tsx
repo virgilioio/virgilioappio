@@ -269,7 +269,7 @@ export function FindFilterPanel({
           />
         </CollapsibleSection>
 
-        <CollapsibleSection label="Experience (years)" icon={Clock}>
+        <CollapsibleSection label="Experience (years)" icon={Clock} defaultOpen={c.experience_years?.min != null || c.experience_years?.max != null}>
           <div className="flex items-center gap-2">
             <Input
               type="number"
