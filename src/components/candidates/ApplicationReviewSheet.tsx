@@ -251,10 +251,10 @@ export function ApplicationReviewSheet({
                           <CardTitle>Actions</CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <div className="flex flex-col gap-2">
+                          <div className="flex flex-row gap-2">
                             <Button
                               variant="destructive"
-                              size="sm"
+                              size="default"
                               className="flex-1 gap-1.5"
                               onClick={review.handleReject}
                               disabled={review.isActioning}
@@ -268,7 +268,7 @@ export function ApplicationReviewSheet({
                             </Button>
                             <Button
                               variant="outline"
-                              size="sm"
+                              size="default"
                               className="flex-1 gap-1.5"
                               onClick={review.handlePass}
                               disabled={review.isActioning}
@@ -278,7 +278,7 @@ export function ApplicationReviewSheet({
                             </Button>
                             <Button
                               variant="default"
-                              size="sm"
+                              size="default"
                               className="flex-1 gap-1.5"
                               onClick={review.handleAdvance}
                               disabled={review.isActioning || !review.firstStageId}
@@ -288,7 +288,7 @@ export function ApplicationReviewSheet({
                               ) : (
                                 <ArrowRight className="h-3.5 w-3.5" />
                               )}
-                              Advance{review.firstStageName ? ` → ${review.firstStageName}` : ''}
+                              Advance
                             </Button>
                           </div>
                         </CardContent>
