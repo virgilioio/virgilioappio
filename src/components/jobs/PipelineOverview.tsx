@@ -566,11 +566,30 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
 
       {/* Unified loading gate: show skeleton until stages, candidates, AND statuses are all ready */}
       {(isLoadingPlan || isLoadingCandidates || isStatusLoading) ? (
-        <Card className="bg-surface-primary border-border">
-          <CardContent className="pt-6">
-            <TableSkeleton rows={6} />
-          </CardContent>
-        </Card>
+        <div className="flex gap-4 overflow-hidden pb-2">
+          {Array.from({ length: 4 }).map((_, colIdx) => (
+            <div key={colIdx} className="w-72 flex-shrink-0 rounded-lg border bg-card flex flex-col">
+              <div className="p-3 border-b">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-5 w-24" />
+                  <Skeleton className="h-5 w-8 rounded-full" />
+                </div>
+              </div>
+              <div className="p-3 space-y-2 flex-1">
+                {Array.from({ length: colIdx === 0 ? 4 : colIdx === 1 ? 3 : 2 }).map((_, cardIdx) => (
+                  <div key={cardIdx} className="rounded-lg border bg-background p-3 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                    <div className="flex items-center gap-2 pt-1">
+                      <Skeleton className="h-5 w-10 rounded-full" />
+                      <Skeleton className="h-5 w-12 rounded-full" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : currentView === 'board' ? (
         <>
           <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
