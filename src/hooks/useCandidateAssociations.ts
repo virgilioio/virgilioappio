@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
+import { triggerFitAnalysis } from '@/utils/triggerFitAnalysis'
 
 export interface CandidateAssociation {
   id: string
