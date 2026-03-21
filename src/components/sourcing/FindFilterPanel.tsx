@@ -86,6 +86,9 @@ function CollapsibleSection({
   children: React.ReactNode 
 }) {
   const [open, setOpen] = useState(defaultOpen)
+  useEffect(() => {
+    if (defaultOpen) setOpen(true)
+  }, [defaultOpen])
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger className="flex items-center justify-between w-full py-1.5 hover:text-foreground transition-colors group">
