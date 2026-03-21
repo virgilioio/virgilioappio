@@ -11,12 +11,15 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { CandidateApplicationResponses } from '@/components/candidates/CandidateApplicationResponses'
 import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeViewer'
 import { FitScoreRadial } from '@/components/candidates/insights/FitScoreRadial'
 import { RejectionReasonSelector } from '@/components/candidates/RejectionReasonSelector'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { SafeHtml } from '@/components/ui/safe-html'
+import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
+import { TimePickerVirgilio } from '@/components/ui/time-picker-virgilio'
 import { useApplicationReview, RejectionConfig } from '@/hooks/useApplicationReview'
 import { useRejectionEmailTemplates } from '@/hooks/useRejectionEmailTemplates'
 import { useCandidateFitInsights } from '@/hooks/useCandidateFitInsights'
@@ -251,10 +254,10 @@ export function ApplicationReviewSheet({
                           <CardTitle>Actions</CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <div className="flex flex-col gap-2">
+                          <div className="flex flex-row gap-2">
                             <Button
                               variant="destructive"
-                              size="sm"
+                              size="default"
                               className="flex-1 gap-1.5"
                               onClick={review.handleReject}
                               disabled={review.isActioning}
@@ -268,7 +271,7 @@ export function ApplicationReviewSheet({
                             </Button>
                             <Button
                               variant="outline"
-                              size="sm"
+                              size="default"
                               className="flex-1 gap-1.5"
                               onClick={review.handlePass}
                               disabled={review.isActioning}
@@ -278,7 +281,7 @@ export function ApplicationReviewSheet({
                             </Button>
                             <Button
                               variant="default"
-                              size="sm"
+                              size="default"
                               className="flex-1 gap-1.5"
                               onClick={review.handleAdvance}
                               disabled={review.isActioning || !review.firstStageId}
@@ -288,7 +291,7 @@ export function ApplicationReviewSheet({
                               ) : (
                                 <ArrowRight className="h-3.5 w-3.5" />
                               )}
-                              Advance{review.firstStageName ? ` → ${review.firstStageName}` : ''}
+                              Advance
                             </Button>
                           </div>
                         </CardContent>
@@ -390,6 +393,46 @@ function RejectionConfigPanel({
           </div>
         )
       })()}
+
+      {/* Send Timing (visible when email is on) */}
+      {config.sendEmail && (
+        <div className="space-y-3">
+          <Label className="text-xs">When to send</Label>
+          <RadioGroup
+            value={config.sendOption || 'now'}
+            onValueChange={(v) => onChange({ ...config, sendOption: v as 'now' | 'later' })}
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="now" id="review-send-now" />
+              <Label htmlFor="review-send-now" className="text-xs font-normal cursor-pointer">
+                Send immediately
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="later" id="review-send-later" />
+              <Label htmlFor="review-send-later" className="text-xs font-normal cursor-pointer">
+                Schedule for later
+              </Label>
+            </div>
+          </RadioGroup>
+
+          {config.sendOption === 'later' && (
+            <div className="flex items-center gap-3 pl-6">
+              <DatePickerVirgilio
+                value={config.scheduledDate ? new Date(config.scheduledDate) : new Date()}
+                onChange={(date) => onChange({ ...config, scheduledDate: date.toISOString() })}
+                minDate={new Date()}
+                className="w-[160px]"
+              />
+              <TimePickerVirgilio
+                value={config.scheduledTime || '09:00'}
+                onChange={(time) => onChange({ ...config, scheduledTime: time })}
+                className="w-[120px]"
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Notes */}
       <div className="space-y-2">

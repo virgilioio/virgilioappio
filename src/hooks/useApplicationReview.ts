@@ -30,6 +30,9 @@ export interface RejectionConfig {
   rejectionEmailTemplateId?: string
   sendEmail: boolean
   rejectionNotes?: string
+  sendOption?: 'now' | 'later'
+  scheduledDate?: string
+  scheduledTime?: string
 }
 
 export interface ReviewSessionStats {
@@ -278,12 +281,24 @@ export function useApplicationReview(jobId: string) {
       }
 
       try {
+        // Compose scheduleFor if user chose "later"
+        let scheduleFor: Date | undefined
+        if (shouldSendEmail && rejectionConfig.sendOption === 'later' && rejectionConfig.scheduledDate) {
+          const date = new Date(rejectionConfig.scheduledDate)
+          if (rejectionConfig.scheduledTime) {
+            const [hours, minutes] = rejectionConfig.scheduledTime.split(':').map(Number)
+            date.setHours(hours, minutes, 0, 0)
+          }
+          scheduleFor = date
+        }
+
         const result = await rejectCandidate.mutateAsync({
           associationId: candidateToReject.associationId,
           rejectionReasonId: rejectionConfig.rejectionReasonId,
           rejectionNotes: rejectionConfig.rejectionNotes,
           sendEmail: shouldSendEmail,
           emailData,
+          scheduleFor,
         })
 
         finalizeLocally()
