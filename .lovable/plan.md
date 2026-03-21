@@ -1,49 +1,63 @@
 
 
-# Fix Auto-Create Infinite Loop + Enable Manual Sidebar Searches
+# Rollback Keyword Scoring, Restore Pure AI Fit Analysis
 
-## Two fixes needed
+## What happened
 
-### 1. Backend: Relax `skills` validation in `create-sourcing-project`
+The deterministic keyword scoring system (`keywordScoring.ts`) was layered on top of the AI fit analysis. It overrides the AI's `overall_score` with a keyword-based score (line 382), adds a `keyword_analysis` block to the UI, and feeds keyword context into the AI prompt. This produced misleading scores (e.g., Mónica's 34%) because keyword matching is brittle across languages and title formats.
 
-**`supabase/functions/create-sourcing-project/index.ts`** (line 107-112)
+The user wants to go back to letting the AI do a natural language comparison of the full candidate profile against the full job description, returning its own confidence-based 0-100 score.
 
-Replace the strict `skills` requirement with a check for **any** meaningful criterion:
+## Changes
 
-```ts
-// Accept if ANY of these have data
-const hasCriteria = 
-  search_criteria?.skills?.length > 0 ||
-  search_criteria?.title_keywords?.length > 0 ||
-  search_criteria?.locations?.length > 0;
+### 1. `supabase/functions/analyze-candidate-fit/index.ts` — Remove keyword scoring, let AI own the score
 
-if (!hasCriteria) {
-  return 400 "At least one search criterion required (skills, title_keywords, or locations)"
-}
-```
+- Remove import of `keywordScoring.ts` (line 5)
+- Remove `generatePriorityKeywords()` function (lines 63-146)
+- Remove the keyword scoring block (lines 234-247): no more `scoreCandidate()`, `buildCandidateCorpus()`
+- Remove `keywordContext` string (lines 336-342) — stop feeding keyword data to the AI
+- **Stop overriding** `analysis.overall_score` (remove line 382)
+- **Stop adding** `analysis.keyword_analysis` (remove lines 384-392)
+- Update `SYSTEM_PROMPT` (line 148-169):
+  - Remove the instruction about grounding on keyword analysis
+  - Tell the AI: "Return an overall_score from 0-100 representing how well this candidate fits this job, considering ALL available data holistically. This is YOUR assessment, not a keyword match."
+  - Keep everything else (dimensions, validation points, data source tracking)
 
-This allows manual sidebar searches (which typically start with title keywords, not skills) while still preventing empty projects.
+### 2. `src/components/candidates/insights/CandidateInsightsTab.tsx` — Remove Keyword Match card
 
-### 2. Frontend: Stop infinite retry loop
+- Remove the entire "Keyword Match Breakdown" card (lines 107-163)
+- Remove unused imports (`Tag`, `CheckCircle2`, `AlertCircle` if no longer needed)
 
-**`src/pages/Find.tsx`** (lines 93-141)
+### 3. `src/hooks/useCandidateFitInsights.ts` — Clean up types
 
-The catch block resets `autoCreateTriggeredRef.current = false` (line 134), which allows the same failing effect to re-trigger endlessly. Fix:
+- Remove `KeywordAnalysis` interface (lines 23-34)
+- Remove `keyword_analysis?: KeywordAnalysis` from `FitAnalysis` (line 41)
 
-- **Don't reset the flag on failure** — once triggered, stay triggered until the user navigates to `/find` fresh (the reset at line 98 handles that)
-- Add a **last-attempted fingerprint** ref: store a hash of the criteria that was last attempted. Skip if criteria hasn't changed since the last attempt.
-- This way, if the backend returns an error, the effect won't retry the same payload. The user must change criteria to trigger a new attempt.
+### 4. `src/components/sourcing/SourcingProjectHeader.tsx` — Remove keyword stats display
 
-### What stays unchanged
+- Remove the "X of Y match keywords" block (lines 289-309)
 
-- The AI assistant / prompting space remains fully functional in `new` mode
-- The `AIJobAssistant` component continues to render when no project is selected
-- Both paths (AI prompt OR manual sidebar filters) converge on auto-creating a project and navigating to `/find/:id`
+### 5. Audit: Skill generation + editing workflow
+
+The `JobFormSheet` skill editing flow looks correct:
+- Line 100: `setSelectedSkills(job.skills || [])` — loads existing skills on edit
+- Lines 336-367: manual add input works
+- Lines 368-374: `JobSkillsGenerationPanel` generates and accepts skills
+- Line 145: `skills: selectedSkills` in submit data
+
+The "editing skills failing" is likely the `generate-comprehensive-skills` CORS fix we already deployed. Need to verify it's actually deployed and working. If the user means manual editing is failing, I'll check for `organization_id` in the update payload — it's included in `submitData` but not in `UpdateJobData`. Supabase client silently ignores extra fields, so this shouldn't cause failures. But to be safe, I'll ensure the submit only sends known `UpdateJobData` fields.
+
+### 6. `supabase/functions/_shared/keywordScoring.ts` — Keep file but stop importing
+
+Leave the file in place (no harm, not imported). Can be deleted later if desired.
 
 ## Files
 
 | File | Change |
 |------|--------|
-| `supabase/functions/create-sourcing-project/index.ts` | Replace skills-only validation with any-criterion validation |
-| `src/pages/Find.tsx` | Remove flag reset on failure; add criteria fingerprint to prevent retry loops |
+| `supabase/functions/analyze-candidate-fit/index.ts` | Remove keyword scoring override; let AI return its own score; clean up prompt |
+| `src/components/candidates/insights/CandidateInsightsTab.tsx` | Remove Keyword Match Breakdown card |
+| `src/hooks/useCandidateFitInsights.ts` | Remove `KeywordAnalysis` interface |
+| `src/components/sourcing/SourcingProjectHeader.tsx` | Remove keyword stats display |
+| `src/components/jobs/JobFormSheet.tsx` | Verify skill editing works; clean submit payload to only known fields |
 
