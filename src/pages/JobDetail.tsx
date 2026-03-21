@@ -1577,10 +1577,14 @@ export default function JobDetail() {
                                     )}
                                   </div>
                                   {isLoadingMatches ? (
-                                    <div className="text-center py-8">
-                                      <div className="text-text-tertiary text-sm">
-                                        Finding the best matching candidates...
-                                      </div>
+                                    <div className="space-y-3 py-4">
+                                      {Array.from({ length: 4 }).map((_, i) => (
+                                        <div key={i} className="flex items-center gap-3 h-10">
+                                          <Skeleton className="h-8 w-8 rounded-full" />
+                                          <Skeleton className="h-4 w-40" />
+                                          <Skeleton className="h-4 w-20 ml-auto" />
+                                        </div>
+                                      ))}
                                     </div>
                                   ) : matchingCandidates && matchingCandidates.length > 0 ? (
                                     <CandidateTable
