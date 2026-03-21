@@ -38,6 +38,60 @@ function countOccurrences(corpus: string, term: string): number {
   return matches ? matches.length : 0;
 }
 
+/**
+ * Common title prefixes to strip for core noun phrase matching.
+ * E.g., "Coordinación de Cuentas por Pagar" → "Cuentas por Pagar"
+ */
+const TITLE_PREFIXES = [
+  // Spanish
+  'coordinación de', 'coordinacion de', 'gerente de', 'director de', 'directora de',
+  'jefe de', 'jefa de', 'líder de', 'lider de', 'responsable de',
+  'supervisor de', 'supervisora de', 'encargado de', 'encargada de',
+  'analista de', 'especialista de', 'especialista en', 'consultor de',
+  'asistente de', 'auxiliar de', 'ejecutivo de', 'ejecutiva de',
+  // Portuguese
+  'coordenador de', 'coordenadora de', 'gerente de', 'diretor de', 'diretora de',
+  'chefe de', 'líder de', 'analista de', 'especialista de', 'especialista em',
+  'assistente de', 'auxiliar de', 'consultor de', 'executivo de',
+  // English
+  'manager of', 'head of', 'director of', 'lead of', 'coordinator of',
+  'supervisor of', 'specialist in', 'analyst of', 'executive of',
+  'senior', 'sr.', 'jr.', 'junior',
+];
+
+/**
+ * Extract core noun phrase from a title by stripping common prefixes.
+ * Returns the core phrase if shorter than original, otherwise null.
+ */
+function extractCorePhrase(title: string): string | null {
+  const lower = title.toLowerCase().trim();
+  for (const prefix of TITLE_PREFIXES) {
+    if (lower.startsWith(prefix + ' ') || lower.startsWith(prefix)) {
+      const remainder = lower.slice(prefix.length).replace(/^\s+/, '');
+      if (remainder.length >= 3 && remainder.length < lower.length) {
+        return remainder;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Check if a title keyword matches in the corpus, using both exact and core-phrase matching.
+ */
+function titleKeywordMatches(corpus: string, keyword: string): boolean {
+  const kwLower = keyword.toLowerCase();
+  // Exact substring match
+  if (corpus.includes(kwLower)) return true;
+  // Core phrase match for multi-word titles
+  const words = kwLower.split(/\s+/);
+  if (words.length >= 3) {
+    const core = extractCorePhrase(kwLower);
+    if (core && corpus.includes(core)) return true;
+  }
+  return false;
+}
+
 export function scoreCandidate(
   priorityKeywords: PriorityKeywords,
   candidateCorpus: string
@@ -47,7 +101,7 @@ export function scoreCandidate(
   // --- Title match (40%) ---
   const titleMatched: string[] = [];
   for (const kw of priorityKeywords.title_keywords) {
-    if (corpus.includes(kw.toLowerCase())) {
+    if (titleKeywordMatches(corpus, kw)) {
       titleMatched.push(kw);
     }
   }

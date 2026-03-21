@@ -245,7 +245,11 @@ async function extractDomainKeywords(jobTitle: string, description: string): Pro
         messages: [
           {
             role: 'system',
-            content: `You extract the 5-8 most important domain/methodology/industry keywords from a job description that would identify an ideal candidate. NOT job titles — focus on domain signals like: SaaS, B2B, MEDDICC, Outbound Sales, Enterprise, Fintech, Agile, etc. Return ONLY a JSON array of strings.`
+            content: `You extract the 5-8 most important domain/methodology/industry keywords from a job description that would identify an ideal candidate. NOT job titles — focus on domain signals like: SaaS, B2B, MEDDICC, Outbound Sales, Enterprise, Fintech, Agile, etc.
+
+CRITICAL: For each concept, provide BOTH the original language term AND the English equivalent as separate entries. For example, if the job is in Spanish, return both "Cuentas por Pagar" and "Accounts Payable", both "Flujo de efectivo" and "Cash Flow". If a term is already universal (e.g., "ERP", "SaaS", "Excel"), include it once.
+
+This ensures candidates with resumes in either language will match. Return ONLY a JSON array of strings. Aim for 5-8 concepts (which may result in 10-16 strings due to bilingual pairs).`
           },
           {
             role: 'user',
@@ -256,7 +260,7 @@ async function extractDomainKeywords(jobTitle: string, description: string): Pro
           type: "function",
           function: {
             name: "submit_domain_keywords",
-            description: "Submit the extracted domain keywords",
+            description: "Submit the extracted bilingual domain keywords",
             parameters: {
               type: "object",
               properties: {
@@ -264,8 +268,8 @@ async function extractDomainKeywords(jobTitle: string, description: string): Pro
                   type: "array",
                   items: { type: "string" },
                   minItems: 5,
-                  maxItems: 8,
-                  description: "5-8 domain/methodology/industry keywords"
+                  maxItems: 16,
+                  description: "5-8 domain concepts as bilingual pairs (10-16 strings total)"
                 }
               },
               required: ["keywords"],
@@ -275,7 +279,7 @@ async function extractDomainKeywords(jobTitle: string, description: string): Pro
         }],
         tool_choice: { type: "function", function: { name: "submit_domain_keywords" } },
         temperature: 0.2,
-        max_tokens: 300,
+        max_tokens: 400,
       }),
     });
 
@@ -288,7 +292,7 @@ async function extractDomainKeywords(jobTitle: string, description: string): Pro
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (toolCall?.function?.arguments) {
       const parsed = JSON.parse(toolCall.function.arguments);
-      return (parsed.keywords || []).slice(0, 8);
+      return (parsed.keywords || []).slice(0, 16);
     }
     return [];
   } catch (err) {
