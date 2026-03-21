@@ -71,14 +71,13 @@ export function RejectionEmailComposer({
 
   // Update parent with schedule date
   useEffect(() => {
-    if (sendOption === 'later' && scheduledDate) {
-      const [hours, minutes] = scheduledTime.split(':').map(Number);
-      const scheduledDateTime = setMinutes(setHours(scheduledDate, hours), minutes);
-      onScheduleChange(scheduledDateTime);
+    if (sendOption === 'later') {
+      const resolved = resolveScheduleDate(scheduleValue);
+      onScheduleChange(resolved);
     } else {
       onScheduleChange(undefined);
     }
-  }, [sendOption, scheduledDate, scheduledTime, onScheduleChange]);
+  }, [sendOption, scheduleValue, onScheduleChange]);
 
   const handleTemplateSelect = (templateId: string) => {
     if (templateId === '__none__') {
