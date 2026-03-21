@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Search, Plus, Clock, Globe, Lock, ChevronDown, FileSearch } from 'lucide-react'
+import { Search, Plus, Clock, Globe, Lock, ChevronDown, FileSearch, Bookmark } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -40,10 +40,17 @@ export function SavedSearchSelector({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="h-9 px-3 gap-2 max-w-[300px] justify-between font-medium text-sm">
-          <span className="truncate">{triggerLabel}</span>
-          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        </Button>
+        <button
+          className={`inline-flex items-center gap-1.5 rounded-full border px-3 h-8 text-sm font-poppins font-medium transition-all duration-150 whitespace-nowrap hover:bg-accent/30 ${
+            currentProject
+              ? 'bg-accent/40 border-accent-foreground/20 text-accent-foreground'
+              : 'border-border text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Bookmark className="h-3.5 w-3.5" />
+          {currentProject ? currentProject.name : 'Searches'}
+          <ChevronDown className="h-3 w-3 opacity-60" />
+        </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-80 p-0" sideOffset={8}>
         <div className="p-3 space-y-2 border-b">
