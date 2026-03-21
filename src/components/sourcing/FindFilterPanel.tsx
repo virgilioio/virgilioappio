@@ -224,7 +224,7 @@ export function FindFilterPanel({
           />
         </CollapsibleSection>
 
-        <CollapsibleSection label="Seniority" icon={TrendingUp}>
+        <CollapsibleSection label="Seniority" icon={TrendingUp} defaultOpen={(c.seniorities?.length ?? 0) > 0}>
           <FilterCheckboxGroup
             label="Seniority"
             options={SENIORITY_OPTIONS}
