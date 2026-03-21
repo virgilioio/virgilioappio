@@ -217,7 +217,7 @@ export function FindFilterPanel({
           />
         </CollapsibleSection>
 
-        <CollapsibleSection label="Locations" icon={MapPin}>
+        <CollapsibleSection label="Locations" icon={MapPin} defaultOpen={(c.locations?.length ?? 0) > 0}>
           <LocationSelector
             selectedLocations={c.locations || []}
             onLocationsChange={(locations) => onCriteriaChange({ locations })}
