@@ -286,27 +286,6 @@ export function SourcingProjectHeader({
             </>
           )}
 
-          {/* Transparent Keyword Stats - Shows local scoring results */}
-          {searchMetadata?.keyword_stats && searchMetadata.keyword_stats.keywords_searched.length > 0 && (
-            <>
-              <span className="text-muted-foreground">•</span>
-              <div className="flex items-center gap-2">
-                <Search className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">
-                    {searchMetadata.keyword_stats.keyword_match_count}
-                  </span>
-                  {' of '}
-                  {searchMetadata.keyword_stats.total_candidates}
-                  {' match keywords '}
-                  <span className="text-xs">
-                    ({searchMetadata.keyword_stats.keywords_searched.slice(0, 3).join(', ')}
-                    {searchMetadata.keyword_stats.keywords_searched.length > 3 && '...'})
-                  </span>
-                </span>
-              </div>
-            </>
-          )}
 
           {/* Credit Usage */}
           {usage && (breakdown.creditsUsed !== undefined || breakdown.collectCreditsUsed !== undefined) && (

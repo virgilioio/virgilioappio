@@ -6,7 +6,7 @@ import { ValidationChecklist } from './ValidationChecklist'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { RefreshCw, Sparkles, Loader2, CheckCircle2, AlertCircle, Database, Tag, Briefcase } from 'lucide-react'
+import { RefreshCw, Sparkles, Loader2, CheckCircle2, AlertCircle, Database } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useEffect, useRef } from 'react'
 
@@ -103,65 +103,6 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription }: Can
             <p className="text-sm text-virgilio-text font-poppins leading-relaxed">{analysis.executive_summary}</p>
           </CardContent>
         </Card>
-
-        {/* Keyword Match Breakdown */}
-        {analysis.keyword_analysis && (
-          <Card className={cardClass}>
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-md bg-virgilio-purple/10">
-                  <Tag className="h-4 w-4 text-virgilio-purple" />
-                </div>
-                <CardTitle className="text-sm font-poppins font-semibold text-virgilio-text" withPeriod={false}>
-                  Keyword Match
-                </CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0 space-y-3">
-              {/* Title Match */}
-              <div className="flex items-center gap-2">
-                <Briefcase className="h-3.5 w-3.5 text-virgilio-muted" />
-                <span className="text-xs font-poppins text-virgilio-muted">Title Match:</span>
-                {analysis.keyword_analysis.title_match ? (
-                  <Badge variant="secondary" className="text-xs font-poppins bg-green-100 text-green-800 border-green-200 gap-1">
-                    <CheckCircle2 className="h-3 w-3" />
-                    Match
-                    {analysis.keyword_analysis.title_matched_terms.length > 0 && (
-                      <span className="opacity-70">({analysis.keyword_analysis.title_matched_terms.join(', ')})</span>
-                    )}
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary" className="text-xs font-poppins bg-red-100 text-red-800 border-red-200 gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    No Title Match
-                  </Badge>
-                )}
-              </div>
-
-              {/* Domain Keywords */}
-              <div className="space-y-1.5">
-                <span className="text-xs font-poppins text-virgilio-muted">Domain Keywords:</span>
-                <div className="flex flex-wrap gap-1">
-                  {analysis.keyword_analysis.domain_matched.map((kw) => (
-                    <Badge key={kw} variant="secondary" className="text-xs font-poppins gap-1 bg-green-50 text-green-700 border-green-200">
-                      <CheckCircle2 className="h-3 w-3" />
-                      {kw}
-                      {analysis.keyword_analysis!.domain_counts[kw] > 1 && (
-                        <span className="text-green-500 font-medium">×{analysis.keyword_analysis!.domain_counts[kw]}</span>
-                      )}
-                    </Badge>
-                  ))}
-                  {analysis.keyword_analysis.domain_missing.map((kw) => (
-                    <Badge key={kw} variant="outline" className="text-xs font-poppins gap-1 text-virgilio-muted">
-                      <AlertCircle className="h-3 w-3" />
-                      {kw}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Dimensions */}
         <Card className={cardClass}>
