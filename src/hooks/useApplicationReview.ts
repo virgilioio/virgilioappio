@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react'
+import { resolveScheduleDate } from '@/components/candidates/ScheduleDelaySelector'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRejectCandidate } from '@/hooks/useRejectCandidate'
