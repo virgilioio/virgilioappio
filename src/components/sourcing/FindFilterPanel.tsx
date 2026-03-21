@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, X, ChevronDown, ChevronRight, Briefcase, Tag, MapPin, TrendingUp, Users, Factory, Building2, Clock, Mail } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -86,6 +86,9 @@ function CollapsibleSection({
   children: React.ReactNode 
 }) {
   const [open, setOpen] = useState(defaultOpen)
+  useEffect(() => {
+    if (defaultOpen) setOpen(true)
+  }, [defaultOpen])
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger className="flex items-center justify-between w-full py-1.5 hover:text-foreground transition-colors group">
@@ -192,7 +195,7 @@ export function FindFilterPanel({
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4 space-y-3">
-        <CollapsibleSection label="Job Titles" icon={Briefcase}>
+        <CollapsibleSection label="Job Titles" icon={Briefcase} defaultOpen={(c.title_keywords?.length ?? 0) > 0}>
           <AutocompleteTagInput
             placeholder="Add title..."
             tags={c.title_keywords || []}
@@ -203,7 +206,7 @@ export function FindFilterPanel({
           />
         </CollapsibleSection>
 
-        <CollapsibleSection label="Keywords" icon={Tag}>
+        <CollapsibleSection label="Keywords" icon={Tag} defaultOpen={(c.keywords?.length ?? 0) > 0}>
           <AutocompleteTagInput
             placeholder="Add keyword..."
             tags={c.keywords || []}
@@ -214,14 +217,14 @@ export function FindFilterPanel({
           />
         </CollapsibleSection>
 
-        <CollapsibleSection label="Locations" icon={MapPin}>
+        <CollapsibleSection label="Locations" icon={MapPin} defaultOpen={(c.locations?.length ?? 0) > 0}>
           <LocationSelector
             selectedLocations={c.locations || []}
             onLocationsChange={(locations) => onCriteriaChange({ locations })}
           />
         </CollapsibleSection>
 
-        <CollapsibleSection label="Seniority" icon={TrendingUp}>
+        <CollapsibleSection label="Seniority" icon={TrendingUp} defaultOpen={(c.seniorities?.length ?? 0) > 0}>
           <FilterCheckboxGroup
             label="Seniority"
             options={SENIORITY_OPTIONS}
@@ -232,7 +235,7 @@ export function FindFilterPanel({
           />
         </CollapsibleSection>
 
-        <CollapsibleSection label="Company Size" icon={Users}>
+        <CollapsibleSection label="Company Size" icon={Users} defaultOpen={(c.company_sizes?.length ?? 0) > 0}>
           <FilterCheckboxGroup
             label="Company Size"
             options={COMPANY_SIZE_OPTIONS}
@@ -243,7 +246,7 @@ export function FindFilterPanel({
           />
         </CollapsibleSection>
 
-        <CollapsibleSection label="Industry" icon={Factory}>
+        <CollapsibleSection label="Industry" icon={Factory} defaultOpen={(c.industries?.length ?? 0) > 0}>
           <FilterCheckboxGroup
             label="Industry"
             options={INDUSTRY_OPTIONS}
@@ -256,7 +259,7 @@ export function FindFilterPanel({
           />
         </CollapsibleSection>
 
-        <CollapsibleSection label="Target Companies" icon={Building2}>
+        <CollapsibleSection label="Target Companies" icon={Building2} defaultOpen={(c.company_names?.length ?? 0) > 0}>
           <TagInput
             placeholder="Add company..."
             tags={c.company_names || []}
@@ -266,7 +269,7 @@ export function FindFilterPanel({
           />
         </CollapsibleSection>
 
-        <CollapsibleSection label="Experience (years)" icon={Clock}>
+        <CollapsibleSection label="Experience (years)" icon={Clock} defaultOpen={c.experience_years?.min != null || c.experience_years?.max != null}>
           <div className="flex items-center gap-2">
             <Input
               type="number"
