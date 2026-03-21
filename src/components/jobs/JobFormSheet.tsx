@@ -6,7 +6,7 @@ import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { X } from 'lucide-react'
+import { X, Plus } from 'lucide-react'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ChevronsUpDown } from 'lucide-react'
@@ -48,6 +48,7 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
 
   const [selectedSkills, setSelectedSkills] = useState<string[]>([])
   const [autoSkills, setAutoSkills] = useState<CategorizedSkill[]>([])
+  const [manualSkillInput, setManualSkillInput] = useState('')
   const [descriptionIsExternalUpdate, setDescriptionIsExternalUpdate] = useState(false)
 
   const [hiringTeamOpen, setHiringTeamOpen] = useState(false)
@@ -330,6 +331,39 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
                 ) : (
                   <p className="text-sm text-text-secondary">No skills selected yet</p>
                 )}
+              </div>
+              <div className="flex items-center gap-2 mb-3">
+                <Input
+                  placeholder="Add keyword..."
+                  value={manualSkillInput}
+                  onChange={(e) => setManualSkillInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const val = manualSkillInput.trim();
+                      if (val && !selectedSkills.some(s => s.toLowerCase() === val.toLowerCase())) {
+                        setSelectedSkills([...selectedSkills, val]);
+                        setManualSkillInput('');
+                      }
+                    }
+                  }}
+                  className="flex-1 h-9"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9 px-3"
+                  onClick={() => {
+                    const val = manualSkillInput.trim();
+                    if (val && !selectedSkills.some(s => s.toLowerCase() === val.toLowerCase())) {
+                      setSelectedSkills([...selectedSkills, val]);
+                      setManualSkillInput('');
+                    }
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
               </div>
               <JobSkillsGenerationPanel
                 descriptionHtml={formData.description}

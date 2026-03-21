@@ -1,13 +1,16 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/cors.ts";
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const corsHeaders = createSecureCorsHeaders();
 
 interface SkillItem {
-  name: string; // localized label
-  canonical?: string; // English canonical label for matching
+  name: string;
+  canonical?: string;
   category: 'technical' | 'tools' | 'industries' | 'titles' | 'soft' | 'certifications';
   confidence: number;
   source?: 'ai_generated';
@@ -17,6 +20,12 @@ interface RoleLevel {
   level: string;
   confidence: number;
   rationale?: string;
+}
+
+interface PriorityKeywords {
+  title_keywords: string[];
+  domain_keywords: string[];
+  generated_at: string;
 }
 
 type ContextKind = 'candidate' | 'job';
@@ -117,6 +126,111 @@ function fallbackSkillsForLevel(level: string): SkillItem[] {
   ];
 }
 
+/**
+ * Query standard_job_titles for canonical title + synonyms
+ */
+async function getTitleKeywords(jobTitle: string): Promise<string[]> {
+  try {
+    const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const normalizedTitle = jobTitle.trim().toLowerCase();
+
+    // Search canonical_title ilike
+    const { data } = await sb
+      .from('standard_job_titles')
+      .select('canonical_title, synonyms')
+      .or(`canonical_title.ilike.%${normalizedTitle}%`)
+      .limit(3);
+
+    const keywords = new Set<string>();
+    // Always include the raw job title
+    keywords.add(jobTitle.trim());
+
+    if (data && data.length > 0) {
+      for (const row of data) {
+        if (row.canonical_title) keywords.add(row.canonical_title);
+        if (row.synonyms && Array.isArray(row.synonyms)) {
+          for (const syn of row.synonyms) {
+            keywords.add(syn);
+          }
+        }
+      }
+    }
+
+    return Array.from(keywords);
+  } catch (err) {
+    console.error('Error fetching title keywords:', err);
+    return [jobTitle.trim()];
+  }
+}
+
+/**
+ * Extract 5-8 domain keywords from a job description using AI
+ */
+async function extractDomainKeywords(jobTitle: string, description: string): Promise<string[]> {
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `You extract the 5-8 most important domain/methodology/industry keywords from a job description that would identify an ideal candidate. NOT job titles — focus on domain signals like: SaaS, B2B, MEDDICC, Outbound Sales, Enterprise, Fintech, Agile, etc. Return ONLY a JSON array of strings.`
+          },
+          {
+            role: 'user',
+            content: `Job Title: ${jobTitle}\n\nDescription:\n${description}`
+          }
+        ],
+        tools: [{
+          type: "function",
+          function: {
+            name: "submit_domain_keywords",
+            description: "Submit the extracted domain keywords",
+            parameters: {
+              type: "object",
+              properties: {
+                keywords: {
+                  type: "array",
+                  items: { type: "string" },
+                  minItems: 5,
+                  maxItems: 8,
+                  description: "5-8 domain/methodology/industry keywords"
+                }
+              },
+              required: ["keywords"],
+              additionalProperties: false,
+            }
+          }
+        }],
+        tool_choice: { type: "function", function: { name: "submit_domain_keywords" } },
+        temperature: 0.2,
+        max_tokens: 300,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('Domain keyword extraction failed:', response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    if (toolCall?.function?.arguments) {
+      const parsed = JSON.parse(toolCall.function.arguments);
+      return (parsed.keywords || []).slice(0, 8);
+    }
+    return [];
+  } catch (err) {
+    console.error('Error extracting domain keywords:', err);
+    return [];
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -215,6 +329,23 @@ Guidelines:
       ? `Job Title: ${jobTitle || 'Unknown'}\n\nJob Description:\n${profileSummary}`
       : `Candidate Profile: ${candidateName || 'Unknown'}\n\n${profileSummary}`;
 
+    // For job context, fetch title keywords and domain keywords in parallel with skills generation
+    let priorityKeywordsPromise: Promise<PriorityKeywords | null> | null = null;
+    if (context === 'job' && jobTitle) {
+      priorityKeywordsPromise = (async () => {
+        const plainDescription = profileSummary.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        const [titleKws, domainKws] = await Promise.all([
+          getTitleKeywords(jobTitle),
+          extractDomainKeywords(jobTitle, plainDescription),
+        ]);
+        return {
+          title_keywords: titleKws,
+          domain_keywords: domainKws,
+          generated_at: new Date().toISOString(),
+        };
+      })();
+    }
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -303,6 +434,13 @@ Guidelines:
 
     const skillsByCategory = groupByCategory(limited);
 
+    // Await priority keywords if job context
+    let priorityKeywords: PriorityKeywords | null = null;
+    if (priorityKeywordsPromise) {
+      priorityKeywords = await priorityKeywordsPromise;
+      console.log('Priority keywords generated:', JSON.stringify(priorityKeywords));
+    }
+
     return new Response(
       JSON.stringify({
         skills: limited,
@@ -310,6 +448,7 @@ Guidelines:
         totalCount: limited.length,
         generatedAt: new Date().toISOString(),
         ...(roleLevel ? { role_level: roleLevel } : {}),
+        ...(priorityKeywords ? { priority_keywords: priorityKeywords } : {}),
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

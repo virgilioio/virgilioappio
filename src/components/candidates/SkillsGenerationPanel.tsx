@@ -2,6 +2,7 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { EnhancedSkillBadge } from '@/components/ui/enhanced-skill-badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Sparkles, Plus, Check, X, Loader2 } from 'lucide-react';
@@ -34,6 +35,7 @@ export const SkillsGenerationPanel: React.FC<SkillsGenerationPanelProps> = ({
   } = useSkillsGeneration();
 
   const [selectedSkills, setSelectedSkills] = React.useState<Set<string>>(new Set());
+  const [manualInput, setManualInput] = React.useState('');
 
   const handleGenerateSkills = async () => {
     try {
@@ -173,6 +175,40 @@ export const SkillsGenerationPanel: React.FC<SkillsGenerationPanelProps> = ({
               </>
             )}
           </div>
+        </div>
+        {/* Manual skill input */}
+        <div className="flex items-center gap-2 mt-2">
+          <Input
+            placeholder="Add skill manually..."
+            value={manualInput}
+            onChange={(e) => setManualInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                const val = manualInput.trim();
+                if (val && !existingSkills.some(s => s.toLowerCase() === val.toLowerCase())) {
+                  onSkillsAccepted([val]);
+                  setManualInput('');
+                }
+              }
+            }}
+            className="flex-1 h-9"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9 px-3"
+            onClick={() => {
+              const val = manualInput.trim();
+              if (val && !existingSkills.some(s => s.toLowerCase() === val.toLowerCase())) {
+                onSkillsAccepted([val]);
+                setManualInput('');
+              }
+            }}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
         </div>
       </CardHeader>
 
