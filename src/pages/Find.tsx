@@ -121,7 +121,7 @@ export default function Find() {
         onComplete={() => setShowFirstRunDialog(false)} 
       />
       
-      <div className="h-full min-h-0 flex flex-col overflow-hidden">
+      <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden">
         <Section variant="default" banded className="animate-fade-in shrink-0">
           <AppContainer>
             <PageHeader title="Find" compact />
