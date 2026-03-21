@@ -215,14 +215,6 @@ export default function Find() {
               />
               
               <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                <div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
-                  <SavedSearchSelector
-                    selectedProjectId={projectId}
-                    currentProject={currentProject}
-                    onSelectProject={handleSelectProject}
-                    onNewSearch={handleNewSearch}
-                  />
-                </div>
                 
                 <div className="flex-1 min-h-0 overflow-hidden">
                   {mode === 'new' && (
