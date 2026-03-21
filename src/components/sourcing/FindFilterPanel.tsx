@@ -235,7 +235,7 @@ export function FindFilterPanel({
           />
         </CollapsibleSection>
 
-        <CollapsibleSection label="Company Size" icon={Users}>
+        <CollapsibleSection label="Company Size" icon={Users} defaultOpen={(c.company_sizes?.length ?? 0) > 0}>
           <FilterCheckboxGroup
             label="Company Size"
             options={COMPANY_SIZE_OPTIONS}
