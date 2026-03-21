@@ -1185,11 +1185,10 @@ export default function JobDetail() {
                                       hideSkills={true}
                                     />
                                   ) : (
-                                    <div className="text-center py-8">
-                                      <div className="text-text-tertiary text-sm">
-                                        No matching candidates found. Try adjusting the job requirements or add more skills.
-                                      </div>
-                                    </div>
+                                    <GioEmptyState
+                                      title="No matching candidates found"
+                                      description="Try adjusting the job requirements or add more skills"
+                                    />
                                   )}
                                 </div>
                               </div>
