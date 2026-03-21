@@ -803,9 +803,18 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
             </CardHeader>
             <CardContent>
               {isLoadingCandidates ? (
-                <TableSkeleton rows={6} />
+                <div className="space-y-3 py-4">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 h-10">
+                      <Skeleton className="h-8 w-8 rounded-full" />
+                      <Skeleton className="h-4 w-40" />
+                      <Skeleton className="h-4 w-20 ml-auto" />
+                      <Skeleton className="h-5 w-10 rounded-full" />
+                    </div>
+                  ))}
+                </div>
               ) : sortedData.length === 0 ? (
-                <div className="text-sm text-text-secondary py-6">No candidates match your filters.</div>
+                <GioEmptyState title="No candidates in pipeline" description="Candidates will appear here as they progress through stages" />
               ) : (
                 <div className="space-y-3">
                   <Accordion type="multiple" defaultValue={defaultOpenGroups} className="w-full">
