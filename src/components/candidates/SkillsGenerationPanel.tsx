@@ -176,6 +176,40 @@ export const SkillsGenerationPanel: React.FC<SkillsGenerationPanelProps> = ({
             )}
           </div>
         </div>
+        {/* Manual skill input */}
+        <div className="flex items-center gap-2 mt-2">
+          <Input
+            placeholder="Add skill manually..."
+            value={manualInput}
+            onChange={(e) => setManualInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                const val = manualInput.trim();
+                if (val && !existingSkills.some(s => s.toLowerCase() === val.toLowerCase())) {
+                  onSkillsAccepted([val]);
+                  setManualInput('');
+                }
+              }
+            }}
+            className="flex-1 h-9"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9 px-3"
+            onClick={() => {
+              const val = manualInput.trim();
+              if (val && !existingSkills.some(s => s.toLowerCase() === val.toLowerCase())) {
+                onSkillsAccepted([val]);
+                setManualInput('');
+              }
+            }}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
       </CardHeader>
 
       {hasGeneratedSkills && (
