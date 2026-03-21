@@ -18,7 +18,8 @@ import { useSortableTable } from '@/hooks/useSortableTable'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { TableSkeleton } from '@/components/ui/skeleton'
+import { Skeleton } from '@/components/ui/skeleton'
+import { GioEmptyState } from '@/components/ui/GioEmptyState'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ExternalLink } from 'lucide-react'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -565,11 +566,30 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
 
       {/* Unified loading gate: show skeleton until stages, candidates, AND statuses are all ready */}
       {(isLoadingPlan || isLoadingCandidates || isStatusLoading) ? (
-        <Card className="bg-surface-primary border-border">
-          <CardContent className="pt-6">
-            <TableSkeleton rows={6} />
-          </CardContent>
-        </Card>
+        <div className="flex gap-4 overflow-hidden pb-2">
+          {Array.from({ length: 4 }).map((_, colIdx) => (
+            <div key={colIdx} className="w-72 flex-shrink-0 rounded-lg border bg-card flex flex-col">
+              <div className="p-3 border-b">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-5 w-24" />
+                  <Skeleton className="h-5 w-8 rounded-full" />
+                </div>
+              </div>
+              <div className="p-3 space-y-2 flex-1">
+                {Array.from({ length: colIdx === 0 ? 4 : colIdx === 1 ? 3 : 2 }).map((_, cardIdx) => (
+                  <div key={cardIdx} className="rounded-lg border bg-background p-3 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                    <div className="flex items-center gap-2 pt-1">
+                      <Skeleton className="h-5 w-10 rounded-full" />
+                      <Skeleton className="h-5 w-12 rounded-full" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : currentView === 'board' ? (
         <>
           <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
@@ -783,9 +803,18 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
             </CardHeader>
             <CardContent>
               {isLoadingCandidates ? (
-                <TableSkeleton rows={6} />
+                <div className="space-y-3 py-4">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 h-10">
+                      <Skeleton className="h-8 w-8 rounded-full" />
+                      <Skeleton className="h-4 w-40" />
+                      <Skeleton className="h-4 w-20 ml-auto" />
+                      <Skeleton className="h-5 w-10 rounded-full" />
+                    </div>
+                  ))}
+                </div>
               ) : sortedData.length === 0 ? (
-                <div className="text-sm text-text-secondary py-6">No candidates match your filters.</div>
+                <GioEmptyState title="No candidates in pipeline" description="Candidates will appear here as they progress through stages" />
               ) : (
                 <div className="space-y-3">
                   <Accordion type="multiple" defaultValue={defaultOpenGroups} className="w-full">
