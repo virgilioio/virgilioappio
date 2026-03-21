@@ -3,6 +3,7 @@ import { AuthGate } from '@/components/auth/AuthGate';
 import { PermissionGate } from '@/components/auth/PermissionGate';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Section } from '@/components/layout/Section';
+import { AppContainer } from '@/components/layout/AppContainer';
 import { MetricCard } from '@/components/ui/metric-card';
 import { MetricCardGroup } from '@/components/ui/metric-card-group';
 import { FilterCard } from '@/components/pipeline/FilterCard';
