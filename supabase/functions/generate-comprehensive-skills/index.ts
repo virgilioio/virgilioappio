@@ -126,7 +126,8 @@ function fallbackSkillsForLevel(level: string): SkillItem[] {
 }
 
 /**
- * Query standard_job_titles for canonical title + synonyms
+ * Query standard_job_titles for canonical title + synonyms,
+ * then use AI to generate cross-language equivalents.
  */
 async function getTitleKeywords(jobTitle: string): Promise<string[]> {
   try {
@@ -155,6 +156,72 @@ async function getTitleKeywords(jobTitle: string): Promise<string[]> {
       }
     }
 
+    // AI micro-call: generate bilingual synonyms + core fragments
+    try {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: `You generate bilingual (English + Spanish/Portuguese) job title synonyms and core fragments for keyword matching.
+Given a job title, return ALL of:
+1. The full title in both English and Spanish/Portuguese
+2. Common abbreviations (e.g., AE, SDR, BDR, AP, AR)
+3. Core noun phrases extracted from compound titles (e.g., from "Coordinación de Cuentas por Pagar" extract "Cuentas por Pagar" and "Accounts Payable")
+4. Close role synonyms in both languages
+Return ONLY a JSON array of unique strings. No duplicates. Max 12 items.`
+            },
+            {
+              role: 'user',
+              content: `Job title: "${jobTitle}"\nExisting synonyms: ${JSON.stringify(Array.from(keywords))}`
+            }
+          ],
+          tools: [{
+            type: "function",
+            function: {
+              name: "submit_title_synonyms",
+              description: "Submit bilingual title synonyms",
+              parameters: {
+                type: "object",
+                properties: {
+                  synonyms: {
+                    type: "array",
+                    items: { type: "string" },
+                    maxItems: 12,
+                    description: "Bilingual title synonyms and core fragments"
+                  }
+                },
+                required: ["synonyms"],
+                additionalProperties: false,
+              }
+            }
+          }],
+          tool_choice: { type: "function", function: { name: "submit_title_synonyms" } },
+          temperature: 0.1,
+          max_tokens: 300,
+        }),
+      });
+
+      if (response.ok) {
+        const aiData = await response.json();
+        const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+        if (toolCall?.function?.arguments) {
+          const parsed = JSON.parse(toolCall.function.arguments);
+          for (const syn of (parsed.synonyms || [])) {
+            if (typeof syn === 'string' && syn.trim()) keywords.add(syn.trim());
+          }
+        }
+      }
+    } catch (aiErr) {
+      console.warn('Bilingual title synonym generation failed (non-fatal):', aiErr);
+    }
+
     return Array.from(keywords);
   } catch (err) {
     console.error('Error fetching title keywords:', err);
@@ -178,7 +245,11 @@ async function extractDomainKeywords(jobTitle: string, description: string): Pro
         messages: [
           {
             role: 'system',
-            content: `You extract the 5-8 most important domain/methodology/industry keywords from a job description that would identify an ideal candidate. NOT job titles — focus on domain signals like: SaaS, B2B, MEDDICC, Outbound Sales, Enterprise, Fintech, Agile, etc. Return ONLY a JSON array of strings.`
+            content: `You extract the 5-8 most important domain/methodology/industry keywords from a job description that would identify an ideal candidate. NOT job titles — focus on domain signals like: SaaS, B2B, MEDDICC, Outbound Sales, Enterprise, Fintech, Agile, etc.
+
+CRITICAL: For each concept, provide BOTH the original language term AND the English equivalent as separate entries. For example, if the job is in Spanish, return both "Cuentas por Pagar" and "Accounts Payable", both "Flujo de efectivo" and "Cash Flow". If a term is already universal (e.g., "ERP", "SaaS", "Excel"), include it once.
+
+This ensures candidates with resumes in either language will match. Return ONLY a JSON array of strings. Aim for 5-8 concepts (which may result in 10-16 strings due to bilingual pairs).`
           },
           {
             role: 'user',
@@ -189,7 +260,7 @@ async function extractDomainKeywords(jobTitle: string, description: string): Pro
           type: "function",
           function: {
             name: "submit_domain_keywords",
-            description: "Submit the extracted domain keywords",
+            description: "Submit the extracted bilingual domain keywords",
             parameters: {
               type: "object",
               properties: {
@@ -197,8 +268,8 @@ async function extractDomainKeywords(jobTitle: string, description: string): Pro
                   type: "array",
                   items: { type: "string" },
                   minItems: 5,
-                  maxItems: 8,
-                  description: "5-8 domain/methodology/industry keywords"
+                  maxItems: 16,
+                  description: "5-8 domain concepts as bilingual pairs (10-16 strings total)"
                 }
               },
               required: ["keywords"],
@@ -208,7 +279,7 @@ async function extractDomainKeywords(jobTitle: string, description: string): Pro
         }],
         tool_choice: { type: "function", function: { name: "submit_domain_keywords" } },
         temperature: 0.2,
-        max_tokens: 300,
+        max_tokens: 400,
       }),
     });
 
@@ -221,7 +292,7 @@ async function extractDomainKeywords(jobTitle: string, description: string): Pro
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (toolCall?.function?.arguments) {
       const parsed = JSON.parse(toolCall.function.arguments);
-      return (parsed.keywords || []).slice(0, 8);
+      return (parsed.keywords || []).slice(0, 16);
     }
     return [];
   } catch (err) {
