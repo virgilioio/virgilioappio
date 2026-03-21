@@ -1,0 +1,1 @@
+ALTER TABLE public.jobs ADD COLUMN priority_keywords jsonb DEFAULT NULL;

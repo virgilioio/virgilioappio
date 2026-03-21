@@ -2540,6 +2540,7 @@ export type Database = {
           location: string | null
           normalization_metadata: Json | null
           organization_id: string
+          priority_keywords: Json | null
           salary_max: number | null
           salary_min: number | null
           skills: string[] | null
@@ -2565,6 +2566,7 @@ export type Database = {
           location?: string | null
           normalization_metadata?: Json | null
           organization_id: string
+          priority_keywords?: Json | null
           salary_max?: number | null
           salary_min?: number | null
           skills?: string[] | null
@@ -2590,6 +2592,7 @@ export type Database = {
           location?: string | null
           normalization_metadata?: Json | null
           organization_id?: string
+          priority_keywords?: Json | null
           salary_max?: number | null
           salary_min?: number | null
           skills?: string[] | null
