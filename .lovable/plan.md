@@ -1,42 +1,56 @@
 
 
-# Fix Find Page: Sidebar and Table Must Not Grow — Internal Scroll Only
+# Standardize All Skeletons with Bordered Container Pattern
 
-## Root Cause
+## Reference Pattern (PipelineOverview)
 
-The parent `Layout.tsx` renders `<main className="min-h-screen sm:min-h-[calc(100vh-3.5rem)]">` — this is a **min-height** container, not a **fixed-height** container. When the sidebar filter sections expand, the content naturally pushes the `<main>` taller, causing the whole page to scroll.
+The skeleton in the Recruiting Process tab wraps each placeholder in a container with `rounded-lg border bg-card` (or `bg-background`), giving skeleton items visible structure with a thin border. This is the target pattern for all skeletons.
 
-The Find page tries to contain itself with `h-full min-h-0 flex flex-col overflow-hidden`, but `h-full` resolves to nothing meaningful because the parent `<main>` has no fixed height — it only has a min-height.
+## What Changes
 
-The sidebar Card already has `overflow-y-auto` on its inner div, which is correct. But it never activates because the card's height is never constrained — it just grows with the page.
+### 1. Base skeleton primitives — `src/components/ui/skeleton.tsx`
 
-## Fix
+- **`Skeleton` base**: Keep as-is (it's the pulse block itself, not a container)
+- **`TableSkeleton`**: Wrap each row in `rounded-lg border bg-card p-3` container
+- **`CardSkeleton`**: Wrap in `rounded-lg border bg-card` container
+- **New export: `ListRowSkeleton`**: Reusable bordered list row with avatar + text pattern (the most common skeleton across the app). Accepts `rows` prop.
 
-### 1. `src/pages/Find.tsx` — Use viewport-based fixed height instead of `h-full`
+### 2. `CandidateTableSkeleton` — already has `border` on rows, no change needed
 
-The outermost wrapper should use a calculated fixed height that accounts for the header (3.5rem on desktop). Replace the `h-full` approach with explicit viewport height:
+### 3. `CandidateProfileSkeleton` — `src/components/candidates/CandidateProfileSkeleton.tsx`
 
-```
-<div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden">
-```
+Wrap each section (details card, skills card, summary card, activity card, work experience card) in `rounded-lg border bg-card p-4` containers.
 
-This gives the Find page a hard pixel height that doesn't depend on the parent `<main>` having a fixed height. Everything inside is already correctly set up with `flex-1 min-h-0 overflow-hidden` chains — they just need an ancestor with an actual fixed height.
+### 4. Dashboard skeletons
 
-Also change the inner flex container from `py-6` to `pt-4 pb-4` (or keep `py-6`) — doesn't matter as long as the height is fixed. The `h-full` on the inner `<div className="flex gap-6 py-6 h-full min-h-0 overflow-hidden">` will now resolve correctly.
+- **`JobsOverview.tsx`**: Wrap each list row in `rounded-lg border bg-card p-3`
+- **`UpcomingActivities.tsx`**: The `h-[72px]` bars already look like rows — add `border bg-card` to them
+- **`RecentSourcingProjects.tsx`**: Same bordered row treatment if it has inline skeletons
 
-### 2. No changes needed to `FindFilterPanel.tsx`
+### 5. `IndependentCandidateProfile.tsx` — wrap the large skeleton blocks in `rounded-lg border bg-card`
 
-The sidebar already has `h-full shrink-0 flex flex-col min-h-0 overflow-hidden` on the Card, and `flex-1 min-h-0 overflow-y-auto` on the scrollable content div. Once the parent provides a real height constraint, internal scroll will work.
+### 6. `SavedCandidatesTab.tsx` — already has `border` on rows, no change needed
 
-### 3. No changes needed to `SourcingProjectView.tsx` or the right-side Card
+### 7. Settings skeletons (`CalendarSettingsTab`, `EmailAccountsSection`) — add bordered containers
 
-The right-side Card already has `flex-1 flex flex-col min-h-0 overflow-hidden` and inner content has `flex-1 min-h-0 overflow-hidden`. Same story — needs a real height ancestor, which fix #1 provides.
+### 8. `Pipeline.tsx` — uses `TableSkeleton` which will be updated in step 1
+
+### 9. Style Guide — `src/components/settings/styleguide/SkeletonGuide.tsx`
+
+- Add a new "Bordered Skeleton Pattern" section showing the standard container with border
+- Update the code example to demonstrate the bordered wrapper pattern
+- Add a note: "All skeletons use a thin border container (`rounded-lg border bg-card`) for visual structure"
 
 ## Files
 
 | File | Change |
 |------|--------|
-| `src/pages/Find.tsx` | Replace `h-full` with explicit viewport-based height on outermost container |
-
-One line change. The entire overflow chain is already correct — it was just missing a real height anchor at the top.
+| `src/components/ui/skeleton.tsx` | Update `TableSkeleton` and `CardSkeleton` with bordered containers; add `ListRowSkeleton` |
+| `src/components/candidates/CandidateProfileSkeleton.tsx` | Wrap each section in bordered container |
+| `src/components/dashboard/JobsOverview.tsx` | Add bordered row wrappers |
+| `src/components/dashboard/UpcomingActivities.tsx` | Add border to skeleton rows |
+| `src/pages/IndependentCandidateProfile.tsx` | Add bordered containers to skeleton blocks |
+| `src/components/settings/CalendarSettingsTab.tsx` | Add bordered container |
+| `src/components/settings/EmailAccountsSection.tsx` | Add bordered container |
+| `src/components/settings/styleguide/SkeletonGuide.tsx` | Add bordered pattern section, update examples |
 
