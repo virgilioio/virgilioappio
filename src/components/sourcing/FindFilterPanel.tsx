@@ -206,7 +206,7 @@ export function FindFilterPanel({
           />
         </CollapsibleSection>
 
-        <CollapsibleSection label="Keywords" icon={Tag}>
+        <CollapsibleSection label="Keywords" icon={Tag} defaultOpen={(c.keywords?.length ?? 0) > 0}>
           <AutocompleteTagInput
             placeholder="Add keyword..."
             tags={c.keywords || []}
