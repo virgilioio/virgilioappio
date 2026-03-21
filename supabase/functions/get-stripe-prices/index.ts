@@ -1,12 +1,13 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/cors.ts";
-
-const corsHeaders = createSecureCorsHeaders();
+import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 
 serve(async (req) => {
-  const preflightResponse = handleSecureCorsPreFlight(req, corsHeaders);
-  if (preflightResponse) return preflightResponse;
+  const pre = handlePreflight(req);
+  if (pre) return pre;
+
+  const origin = req.headers.get('Origin') ?? undefined;
+  const corsHeaders = corsHeadersFor(origin);
 
   try {
     // Authenticate user
