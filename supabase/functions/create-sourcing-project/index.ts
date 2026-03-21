@@ -104,9 +104,19 @@ serve(async (req) => {
       );
     }
 
-    if (!search_criteria || !search_criteria.skills || search_criteria.skills.length === 0) {
+    const hasMeaningfulCriteria = search_criteria && (
+      (search_criteria.skills && search_criteria.skills.length > 0) ||
+      (search_criteria.title_keywords && search_criteria.title_keywords.length > 0) ||
+      (search_criteria.locations && search_criteria.locations.length > 0) ||
+      (search_criteria.keywords && search_criteria.keywords.length > 0) ||
+      (search_criteria.company_names && search_criteria.company_names.length > 0) ||
+      (search_criteria.user_company_names && search_criteria.user_company_names.length > 0) ||
+      (search_criteria.seniorities && search_criteria.seniorities.length > 0)
+    );
+
+    if (!hasMeaningfulCriteria) {
       return new Response(
-        JSON.stringify({ error: 'Missing required field: search_criteria.skills' }),
+        JSON.stringify({ error: 'At least one search criterion is required (skills, title_keywords, or locations)' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
