@@ -195,7 +195,7 @@ export function FindFilterPanel({
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4 space-y-3">
-        <CollapsibleSection label="Job Titles" icon={Briefcase}>
+        <CollapsibleSection label="Job Titles" icon={Briefcase} defaultOpen={(c.title_keywords?.length ?? 0) > 0}>
           <AutocompleteTagInput
             placeholder="Add title..."
             tags={c.title_keywords || []}
