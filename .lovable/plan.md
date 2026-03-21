@@ -1,51 +1,50 @@
 
 
-# Replace "Schedule for Later" with Preset + Custom Dropdown
+# Fix: Manual Searches Return 0 Results When Skills Are Empty
 
-## Problem
+## Root Cause
 
-Both the Application Review sheet and the standalone Rejection Dialog currently show a raw date/time picker when "Schedule for later" is selected. The user wants quick presets (1 day, 2 days, etc.) with a "Custom" option that reveals the date picker.
+When a user manually adds title keywords (e.g., "Sales Development Representative") in the sidebar without specifying skills, the sourcing project is created with `skills: []` and `title_keywords: ["Sales Development Representative"]`.
 
-## Approach
+The entire matching pipeline gates on `skills`:
+- **Local scoring** (`candidateMatching.ts` line 253): appearance (40%) and density (35%) both score 0 when `jobSkills` is empty, so even relevant candidates score ~12 max — below the 20 threshold
+- **Apollo search** (`get-job-matching-candidates/index.ts` line 616): `jobSkills.length > 0` check skips Apollo entirely
+- Result: 0 candidates returned
 
-Create a shared `ScheduleDelaySelector` component used by both locations. When the user picks "Schedule for later", instead of immediately showing a date picker, show a `Select` dropdown with:
+## Fix
 
-- **Tomorrow morning** (next day 9:00 AM)
-- **In 2 days** (+2 days 9:00 AM)
-- **In 3 days** (+3 days 9:00 AM)
-- **Next week** (+7 days 9:00 AM)
-- **Custom** → reveals DatePickerVirgilio + TimePickerVirgilio
+### 1. `supabase/functions/get-job-matching-candidates/index.ts`
 
-The component outputs a resolved `Date` regardless of which option is picked.
+**Derive `jobSkills` from `title_keywords` when skills are empty** (after line 412):
 
-## Changes
+```ts
+// If no skills but we have title_keywords, use title_keywords as proxy skills
+if (jobSkills.length === 0 && criteria?.title_keywords?.length > 0) {
+  jobSkills = criteria.title_keywords;
+  console.log(`📋 No skills specified, using title_keywords as skills: ${jobSkills.join(', ')}`);
+}
+```
 
-### 1. New: `src/components/candidates/ScheduleDelaySelector.tsx`
+This ensures:
+- Local candidate scoring has something to match against (role titles in candidate profiles)
+- Apollo search gate passes (`jobSkills.length > 0`)
+- The `calculateEnhancedCandidateScore` function will match title keywords against candidates' `role_current` and `profile_summary` fields, which is exactly what we want for title-based searches
 
-A reusable component that:
-- Takes `value: { preset: string; customDate?: string; customTime?: string }` and `onChange`
-- Renders a `Select` with preset options + "Custom"
-- When "Custom" is selected, shows `DatePickerVirgilio` + `TimePickerVirgilio` below
-- Exposes a `getResolvedDate()` helper or computes the resolved date via a callback
+**Also update the Apollo search gate** (line 616) to be more explicit:
 
-### 2. `src/components/candidates/ApplicationReviewSheet.tsx`
+```ts
+// Allow Apollo search if we have skills OR title_keywords
+const hasSearchableTerms = jobSkills.length > 0 || criteria?.title_keywords?.length > 0;
+if (!count_only && organization_id && hasSearchableTerms) {
+```
 
-Replace the current `DatePickerVirgilio` + `TimePickerVirgilio` block (lines 419-432) with `<ScheduleDelaySelector>`. Update `RejectionConfig` fields: replace `scheduledDate`/`scheduledTime` with `schedulePreset` + `customScheduledDate`/`customScheduledTime`.
+### 2. No other files need changes
 
-### 3. `src/components/candidates/RejectionEmailComposer.tsx`
-
-Replace the date/time picker block (lines 223-236) with `<ScheduleDelaySelector>`. Replace `scheduledDate`/`scheduledTime`/`scheduledDateTime` state with the preset-based state.
-
-### 4. `src/hooks/useApplicationReview.ts`
-
-Update `RejectionConfig` interface to use `schedulePreset`, `customScheduledDate`, `customScheduledTime`. Update `handleReject` to resolve the preset into a concrete date before passing to mutation.
+The `candidateMatching.ts` scoring functions already handle title matching through `calculateRoleRelevance()` and `analyzeSkillsInCandidate()` — they just need non-empty `jobSkills` input to function. Using title keywords as the skill input is semantically correct because the scoring logic already checks for word overlap between job skills and `role_current`.
 
 ## Files
 
 | File | Change |
 |------|--------|
-| `src/components/candidates/ScheduleDelaySelector.tsx` | New shared component with preset dropdown + custom date/time |
-| `src/components/candidates/ApplicationReviewSheet.tsx` | Use `ScheduleDelaySelector` in RejectionConfigPanel |
-| `src/components/candidates/RejectionEmailComposer.tsx` | Use `ScheduleDelaySelector` in send timing section |
-| `src/hooks/useApplicationReview.ts` | Update `RejectionConfig` fields; resolve preset in `handleReject` |
+| `supabase/functions/get-job-matching-candidates/index.ts` | Derive jobSkills from title_keywords when empty; update Apollo gate |
 
