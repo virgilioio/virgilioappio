@@ -394,6 +394,46 @@ function RejectionConfigPanel({
         )
       })()}
 
+      {/* Send Timing (visible when email is on) */}
+      {config.sendEmail && (
+        <div className="space-y-3">
+          <Label className="text-xs">When to send</Label>
+          <RadioGroup
+            value={config.sendOption || 'now'}
+            onValueChange={(v) => onChange({ ...config, sendOption: v as 'now' | 'later' })}
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="now" id="review-send-now" />
+              <Label htmlFor="review-send-now" className="text-xs font-normal cursor-pointer">
+                Send immediately
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="later" id="review-send-later" />
+              <Label htmlFor="review-send-later" className="text-xs font-normal cursor-pointer">
+                Schedule for later
+              </Label>
+            </div>
+          </RadioGroup>
+
+          {config.sendOption === 'later' && (
+            <div className="flex items-center gap-3 pl-6">
+              <DatePickerVirgilio
+                value={config.scheduledDate ? new Date(config.scheduledDate) : new Date()}
+                onChange={(date) => onChange({ ...config, scheduledDate: date.toISOString() })}
+                minDate={new Date()}
+                className="w-[160px]"
+              />
+              <TimePickerVirgilio
+                value={config.scheduledTime || '09:00'}
+                onChange={(time) => onChange({ ...config, scheduledTime: time })}
+                className="w-[120px]"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Notes */}
       <div className="space-y-2">
         <Label className="text-xs">Notes (optional)</Label>
