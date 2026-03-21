@@ -284,11 +284,9 @@ export function CandidateTable({
       <CardContent>
         {/* Bulk actions are now handled in the Pipeline Overview header */}
         {filteredCandidates.length === 0 ? (
-          <EmptyState
-            assetType="empty-state-candidates"
+          <GioEmptyState
             title={candidates.length === 0 ? 'No candidates yet' : 'No candidates match your filters'}
             description={candidates.length === 0 ? 'Add your first candidate to this job' : 'Try adjusting your search or filters'}
-            fallbackIcon={FileText}
           />
         ) : (
           <>
