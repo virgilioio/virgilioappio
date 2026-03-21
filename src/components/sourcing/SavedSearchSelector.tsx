@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Search, Plus, Clock, Globe, Lock, ChevronDown, FileSearch, Bookmark } from 'lucide-react'
+import { Search, Plus, Clock, Globe, Lock, ChevronDown, FileSearch, Bookmark, X } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
