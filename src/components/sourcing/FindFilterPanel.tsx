@@ -246,7 +246,7 @@ export function FindFilterPanel({
           />
         </CollapsibleSection>
 
-        <CollapsibleSection label="Industry" icon={Factory}>
+        <CollapsibleSection label="Industry" icon={Factory} defaultOpen={(c.industries?.length ?? 0) > 0}>
           <FilterCheckboxGroup
             label="Industry"
             options={INDUSTRY_OPTIONS}
