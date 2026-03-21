@@ -1,42 +1,54 @@
 
 
-# Fix Resume Upload RLS Failure
+# Replace AI Career Summary with Fit Insights + Pre-Generate on Application
 
-## Root Cause
+## Two changes
 
-The `candidate_attachments` UPDATE policy has `WITH CHECK (uploaded_by = uploaded_by)` — a self-referencing tautology that's supposed to always pass. BUT when `uploaded_by` is NULL (which it is for this candidate's existing resume row), `NULL = NULL` evaluates to `NULL` (falsy in SQL), causing the "new row violates row-level security policy" error.
+### 1. Application Review Sheet: Replace "AI Career Summary" tab with "AI Insights"
 
-The upload flow at `CandidateFormSheet.tsx:378` first PATCHes existing resume rows to clear `is_resume = false`, then INSERTs the new attachment. The PATCH hits the NULL `uploaded_by` row and fails.
+**`src/components/candidates/ApplicationReviewSheet.tsx`**
 
-## Fix
+- Rename tab from "AI Career Summary" to "AI Insights"
+- Remove `ProfileSummaryMarkdown` usage in that tab
+- Import `useCandidateFitInsights` and `FitScoreRadial`
+- In the tab content, call `useCandidateFitInsights(candidateId, jobId)` and render:
+  - `FitScoreRadial` (score + confidence badge)
+  - Executive summary text below it
+  - A "Generate" button if no analysis exists, with loading state
+  - Auto-trigger analysis if none exists (same pattern as `CandidateInsightsTab`)
 
-### 1. Migration: Fix the UPDATE WITH CHECK policy
+### 2. Pre-generate insights at application time
 
-Replace the broken `WITH CHECK (uploaded_by = uploaded_by)` with a proper clause that handles NULLs:
+The simplest approach: trigger `analyze-candidate-fit` as fire-and-forget at the end of `public-submit-application` — the same edge function, called server-to-server. By the time a recruiter opens Application Review (usually minutes/hours later), insights are already cached.
 
-```sql
-DROP POLICY "candidate_attachments_update" ON candidate_attachments;
+**`supabase/functions/public-submit-application/index.ts`**
 
-CREATE POLICY "candidate_attachments_update" ON candidate_attachments
-  FOR UPDATE TO authenticated
-  USING (
-    (uploaded_by = auth.uid()) OR 
-    (EXISTS (SELECT 1 FROM candidates c 
-     WHERE c.id = candidate_attachments.candidate_id 
-     AND check_org_hierarchy_role_access(c.organization_id, 'recruiter')))
-  )
-  WITH CHECK (true);
+After the association is created and enrichment is triggered (around line 456), add a fire-and-forget call:
+
+```ts
+// Fire-and-forget: pre-generate AI fit insights
+try {
+  const fitUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/analyze-candidate-fit`
+  fetch(fitUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+    },
+    body: JSON.stringify({ candidate_id: globalCandidateId, job_id: posting.job_id }),
+  }).catch(() => {}) // truly fire-and-forget
+} catch {}
 ```
 
-The USING clause already gates who can update. The WITH CHECK just needs to not block on NULL `uploaded_by`.
+This runs after enrichment has been triggered, so the fit analysis will pick up whatever candidate data is available. If enrichment finishes first (likely, since it's also fire-and-forget), the fit analysis gets richer data. If not, the Insights tab's auto-trigger on open will refresh with updated data.
 
-### 2. Migration: Backfill NULL uploaded_by rows
-
-Set `uploaded_by` to the tenant's first admin for any attachment rows with NULL `uploaded_by`, preventing future edge cases.
+Also add the same fire-and-forget call in `useCandidateAssociations.ts` `addAssociation` (for manually added candidates), so any candidate-job pairing gets pre-analyzed.
 
 ## Files
 
 | File | Change |
 |------|--------|
-| SQL migration | Fix UPDATE WITH CHECK policy; backfill NULL uploaded_by |
+| `src/components/candidates/ApplicationReviewSheet.tsx` | Replace AI Career Summary tab with Fit Insights (score radial + executive summary) |
+| `supabase/functions/public-submit-application/index.ts` | Add fire-and-forget call to `analyze-candidate-fit` after association creation |
+| `src/hooks/useCandidateAssociations.ts` | Add fire-and-forget `triggerFitAnalysis` after successful `addAssociation` |
 
