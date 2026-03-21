@@ -48,6 +48,7 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
 
   const [selectedSkills, setSelectedSkills] = useState<string[]>([])
   const [autoSkills, setAutoSkills] = useState<CategorizedSkill[]>([])
+  const [manualSkillInput, setManualSkillInput] = useState('')
   const [descriptionIsExternalUpdate, setDescriptionIsExternalUpdate] = useState(false)
 
   const [hiringTeamOpen, setHiringTeamOpen] = useState(false)
