@@ -66,54 +66,60 @@ export default function Jobs() {
   return (
     <AuthGate>
       <PermissionGate permission="canViewJobs">
-        <div>
-          <Section variant="default" banded container className="animate-fade-in">
-            <PageHeader title="Jobs" />
+        <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden">
+          <Section variant="default" banded className="shrink-0 animate-fade-in">
+            <AppContainer>
+              <PageHeader title="Jobs" />
+            </AppContainer>
           </Section>
 
-          <Section container className="animate-fade-in">
-            <JobsTable
-              jobs={jobs}
-              isLoading={isLoading}
-              onView={handleView}
-              onEdit={handleEdit}
-              onArchive={handleArchive}
-              onCreateNew={handleCreateNew}
-            />
-
-            <JobWizard
-              isOpen={isWizardOpen}
-              onClose={() => setIsWizardOpen(false)}
-            />
-
-            <JobFormSheet
-              isOpen={isFormOpen}
-              onClose={() => {
-                setIsFormOpen(false)
-                setSelectedJob(null)
-              }}
-              onSubmit={handleFormSubmit}
-              job={selectedJob}
-              isLoading={isLoading}
-            />
-
-            <AlertDialog open={!!archiveJobId} onOpenChange={() => setArchiveJobId(null)}>
-              <AlertDialogContent className="mx-4 max-w-md sm:max-w-lg">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Archive Job</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to archive this job? It will be moved to archived status but can be reactivated later.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter className="flex-col sm:flex-row gap-3">
-                  <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleConfirmArchive} className="w-full sm:w-auto">
-                    Archive
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+          <Section className="flex-1 min-h-0 overflow-hidden !py-0 animate-fade-in">
+            <AppContainer className="h-full min-h-0">
+              <div className="py-6 h-full min-h-0 overflow-auto">
+                <JobsTable
+                  jobs={jobs}
+                  isLoading={isLoading}
+                  onView={handleView}
+                  onEdit={handleEdit}
+                  onArchive={handleArchive}
+                  onCreateNew={handleCreateNew}
+                />
+              </div>
+            </AppContainer>
           </Section>
+
+          <JobWizard
+            isOpen={isWizardOpen}
+            onClose={() => setIsWizardOpen(false)}
+          />
+
+          <JobFormSheet
+            isOpen={isFormOpen}
+            onClose={() => {
+              setIsFormOpen(false)
+              setSelectedJob(null)
+            }}
+            onSubmit={handleFormSubmit}
+            job={selectedJob}
+            isLoading={isLoading}
+          />
+
+          <AlertDialog open={!!archiveJobId} onOpenChange={() => setArchiveJobId(null)}>
+            <AlertDialogContent className="mx-4 max-w-md sm:max-w-lg">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Archive Job</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to archive this job? It will be moved to archived status but can be reactivated later.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="flex-col sm:flex-row gap-3">
+                <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmArchive} className="w-full sm:w-auto">
+                  Archive
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </PermissionGate>
     </AuthGate>
