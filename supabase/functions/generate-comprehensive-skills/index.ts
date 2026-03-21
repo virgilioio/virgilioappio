@@ -126,7 +126,8 @@ function fallbackSkillsForLevel(level: string): SkillItem[] {
 }
 
 /**
- * Query standard_job_titles for canonical title + synonyms
+ * Query standard_job_titles for canonical title + synonyms,
+ * then use AI to generate cross-language equivalents.
  */
 async function getTitleKeywords(jobTitle: string): Promise<string[]> {
   try {
@@ -153,6 +154,72 @@ async function getTitleKeywords(jobTitle: string): Promise<string[]> {
           }
         }
       }
+    }
+
+    // AI micro-call: generate bilingual synonyms + core fragments
+    try {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: `You generate bilingual (English + Spanish/Portuguese) job title synonyms and core fragments for keyword matching.
+Given a job title, return ALL of:
+1. The full title in both English and Spanish/Portuguese
+2. Common abbreviations (e.g., AE, SDR, BDR, AP, AR)
+3. Core noun phrases extracted from compound titles (e.g., from "Coordinación de Cuentas por Pagar" extract "Cuentas por Pagar" and "Accounts Payable")
+4. Close role synonyms in both languages
+Return ONLY a JSON array of unique strings. No duplicates. Max 12 items.`
+            },
+            {
+              role: 'user',
+              content: `Job title: "${jobTitle}"\nExisting synonyms: ${JSON.stringify(Array.from(keywords))}`
+            }
+          ],
+          tools: [{
+            type: "function",
+            function: {
+              name: "submit_title_synonyms",
+              description: "Submit bilingual title synonyms",
+              parameters: {
+                type: "object",
+                properties: {
+                  synonyms: {
+                    type: "array",
+                    items: { type: "string" },
+                    maxItems: 12,
+                    description: "Bilingual title synonyms and core fragments"
+                  }
+                },
+                required: ["synonyms"],
+                additionalProperties: false,
+              }
+            }
+          }],
+          tool_choice: { type: "function", function: { name: "submit_title_synonyms" } },
+          temperature: 0.1,
+          max_tokens: 300,
+        }),
+      });
+
+      if (response.ok) {
+        const aiData = await response.json();
+        const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+        if (toolCall?.function?.arguments) {
+          const parsed = JSON.parse(toolCall.function.arguments);
+          for (const syn of (parsed.synonyms || [])) {
+            if (typeof syn === 'string' && syn.trim()) keywords.add(syn.trim());
+          }
+        }
+      }
+    } catch (aiErr) {
+      console.warn('Bilingual title synonym generation failed (non-fatal):', aiErr);
     }
 
     return Array.from(keywords);
