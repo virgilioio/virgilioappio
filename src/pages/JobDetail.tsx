@@ -83,7 +83,7 @@ export default function JobDetail() {
   }, [pipelineView])
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([])
-  const [tableSelectionMode, setTableSelectionMode] = useState(false)
+  
   const [pipelineRefresh, setPipelineRefresh] = useState(0)
   const [showBulkRejectionDialog, setShowBulkRejectionDialog] = useState(false)
   const [showBulkEmailDialog, setShowBulkEmailDialog] = useState(false)
@@ -1082,9 +1082,9 @@ export default function JobDetail() {
                             ) : (
                               <Button
                                 size="sm"
-                                variant={tableSelectionMode ? 'secondary' : 'outline'}
-                                onClick={() => setTableSelectionMode((v) => !v)}
-                                aria-pressed={tableSelectionMode}
+                                variant={selectionMode ? 'secondary' : 'outline'}
+                                onClick={() => setSelectionMode((v) => !v)}
+                                aria-pressed={selectionMode}
                               >
                                 Select
                               </Button>
@@ -1497,9 +1497,9 @@ export default function JobDetail() {
                             ) : (
                               <Button
                                 size="sm"
-                                variant={tableSelectionMode ? 'secondary' : 'outline'}
-                                onClick={() => setTableSelectionMode((v) => !v)}
-                                aria-pressed={tableSelectionMode}
+                                variant={selectionMode ? 'secondary' : 'outline'}
+                                onClick={() => setSelectionMode((v) => !v)}
+                                aria-pressed={selectionMode}
                               >
                                 Select
                               </Button>
