@@ -781,8 +781,8 @@ export default function JobDetail() {
   )
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
-      <div className="layout-container pt-1 pb-4 sm:pt-2 sm:pb-6 lg:pt-3 lg:pb-8">
+    <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col bg-background overflow-hidden">
+      <div className="layout-container pt-1 pb-2 sm:pt-2 sm:pb-3 flex-1 min-h-0 flex flex-col overflow-hidden">
         {/* Mobile Header */}
         {isMobile && (
           <div className="mb-6">
@@ -802,7 +802,7 @@ export default function JobDetail() {
           </>
         )}
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 min-h-0 flex flex-col overflow-hidden">
           {isMobile ? (
             // Mobile: Tabs
             <>
@@ -836,7 +836,7 @@ export default function JobDetail() {
               </TabsContent>
               )}
                <TabsContent value="pipeline">
-                 <div className="h-[calc(100svh-16rem)] sm:h-[calc(100svh-14rem)] min-h-0">
+                 <div className="flex-1 min-h-0 overflow-auto">
                    {!isRestrictedViewer && (
                    <Card className="mb-4">
                       <CardHeader className="py-3">
@@ -1273,7 +1273,7 @@ export default function JobDetail() {
             </>
           ) : (
             // Desktop: Floating sidebar at same level as content
-            <div className="flex gap-6 min-h-0 min-w-0">
+            <div className="flex gap-6 flex-1 min-h-0 min-w-0">
               <JobDetailFloatingSidebar
                 currentTab={activeTab}
                 onTabChange={setActiveTab}
@@ -1323,8 +1323,8 @@ export default function JobDetail() {
                 )}
 
                 {/* Pipeline Tab */}
-                <TabsContent value="pipeline">
-                  <div className="h-[calc(100vh-12rem)] min-h-0">
+                <TabsContent value="pipeline" className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                  <div className="flex-1 min-h-0 overflow-auto">
                     {!isRestrictedViewer && (
                     <Card className="mb-4">
                        <CardHeader className="py-3">
