@@ -1273,7 +1273,7 @@ export default function JobDetail() {
             </>
           ) : (
             // Desktop: Floating sidebar at same level as content
-            <div className="flex gap-6 min-h-0 min-w-0">
+            <div className="flex gap-6 flex-1 min-h-0 min-w-0">
               <JobDetailFloatingSidebar
                 currentTab={activeTab}
                 onTabChange={setActiveTab}
