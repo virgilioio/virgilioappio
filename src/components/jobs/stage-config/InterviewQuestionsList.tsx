@@ -196,7 +196,12 @@ export function InterviewQuestionsList({
     })
   )
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(String(event.active.id))
+  }
+
   const handleDragEnd = (event: DragEndEvent) => {
+    setActiveId(null)
     const { active, over } = event
 
     if (over && active.id !== over.id) {
