@@ -287,30 +287,47 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     const assocId = String(active.id)
     const toStageId = String(over.id)
     
-    // Determine which candidates to move:
-    // - If dragged card IS selected AND there are multiple selections → move ALL selected
-    // - Otherwise → move only the dragged card
+    // Determine which candidates to move
     const idsToMove = (selectedIds.has(assocId) && selectedIds.size > 1) 
       ? Array.from(selectedIds) 
       : [assocId]
     
-    // Move all candidates (in parallel for speed, with silent toasts)
+    // Optimistic update: move cards in local state immediately
+    setByStage(prev => {
+      const next: Record<string, PipelineAssociation[]> = {}
+      for (const key of Object.keys(prev)) {
+        next[key] = [...prev[key]]
+      }
+      if (!next[toStageId]) next[toStageId] = []
+      
+      for (const id of idsToMove) {
+        const entry = assocMap.get(id)
+        if (!entry || entry.stageJhsId === toStageId) continue
+        // Remove from source
+        next[entry.stageJhsId] = (next[entry.stageJhsId] || []).filter(a => a.id !== id)
+        // Add to target
+        next[toStageId] = [...next[toStageId], { ...entry.assoc, current_stage_id: toStageId }]
+      }
+      return next
+    })
+    
+    // Clear selection after bulk move
+    if (idsToMove.length > 1) {
+      setSelectedIds(new Set())
+      emitSelectedCandidateIds(new Set())
+    }
+    
+    // Server sync in background
     try {
       await Promise.all(idsToMove.map(id => moveAssociationToStage(id, toStageId, { silent: true })))
-      
-      // Show appropriate toast
       toast({
         title: idsToMove.length > 1 ? 'Candidates moved' : 'Candidate moved',
         description: idsToMove.length > 1 
           ? `${idsToMove.length} candidates moved to the selected stage.`
           : 'Candidate moved to the selected stage.',
       })
-      
-      // Clear selection after bulk move
-      if (idsToMove.length > 1) {
-        setSelectedIds(new Set())
-        emitSelectedCandidateIds(new Set())
-      }
+      // Silently sync server state
+      loadPipeline()
     } catch (error) {
       toast({
         title: 'Error',
@@ -319,11 +336,11 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
           : 'Failed to move candidate to selected stage.',
         variant: 'destructive',
       })
+      // Revert on failure
+      loadPipeline()
     }
-    
-    await loadPipeline()
     onStageChanged?.()
-  }, [moveAssociationToStage, loadPipeline, selectedIds, emitSelectedCandidateIds, onStageChanged])
+  }, [moveAssociationToStage, loadPipeline, selectedIds, emitSelectedCandidateIds, onStageChanged, assocMap])
 
   // Get all associations for status-based sorting
   const allAssociations = useMemo(() => {

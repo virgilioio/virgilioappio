@@ -11,12 +11,14 @@ interface DraggableCandidateCardProps {
 export default function DraggableCandidateCard({ id, children, isPartOfBulkDrag }: DraggableCandidateCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id })
 
-  const style: React.CSSProperties = {
-    transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0 : (isPartOfBulkDrag ? 0.5 : 1),
-    cursor: isDragging ? 'grabbing' : 'grab',
-    transition: isDragging ? undefined : 'transform 200ms ease, opacity 150ms ease',
-  }
+  const style: React.CSSProperties = isDragging
+    ? { height: 0, overflow: 'hidden', margin: 0, padding: 0, opacity: 0 }
+    : {
+        transform: CSS.Translate.toString(transform),
+        opacity: isPartOfBulkDrag ? 0.5 : 1,
+        cursor: 'grab',
+        transition: 'transform 200ms ease, opacity 150ms ease',
+      }
 
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes}>

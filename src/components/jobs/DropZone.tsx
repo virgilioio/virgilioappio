@@ -16,9 +16,7 @@ export default function DropZone({ active, size = 'compact', isEmpty, tintClass,
   const baseHeight =
     size === 'expanded'
       ? active ? 'h-40' : 'h-0' // expanded only when dragging over empty column
-      : active
-        ? 'h-16' // space to push cards down when hovering
-        : 'h-0'  // no space when not active
+      : 'h-0'  // no height change for non-empty stages
 
   const bgClass = isEmpty
     ? (tintClass ?? 'bg-transparent') // match column tint for empty columns
