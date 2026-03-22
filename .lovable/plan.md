@@ -1,34 +1,72 @@
 
 
-# Fix JobDetail Page Scroll — Apply Fixed Viewport Layout
+# Smooth Drag-and-Drop Audit & Improvements
 
-## Problem
+## Current Issues Found
 
-The JobDetail page root uses `min-h-screen` which allows content to grow beyond the viewport, causing a full-page scroll. Other pages (Jobs, Candidates, Pipeline, Find) already use the fixed viewport pattern (`h-[100dvh] sm:h-[calc(100dvh-3.5rem)]` + `flex flex-col overflow-hidden`) so their content scrolls internally.
+Six DnD implementations across the app, all with similar problems:
 
-## Fix
+1. **No `DragOverlay` on sortable lists** — HiringPlanTab, OfferApprovalChainConfig, InterviewQuestionsList drag the actual DOM node, causing layout reflows and content jumping as the item leaves document flow
+2. **`CSS.Transform` instead of `CSS.Translate`** — Sortable items use `CSS.Transform.toString()` which includes scale transforms from the sorting algorithm, causing size flicker. Should use `CSS.Translate.toString()` for position-only movement
+3. **PipelineOverview (Kanban)** — DraggableCandidateCard applies rotation/scale on the source element AND the DragOverlay, creating redundant transforms. Source should just hide cleanly
+4. **No smooth drop animation** — Missing `dropAnimation` config on DragOverlay for a polished settle effect
+5. **Activation constraints inconsistent** — Some use PointerSensor with no distance threshold, causing accidental drags on click
 
-**`src/pages/JobDetail.tsx`** — Line 784
+## Fixes
 
-Change the outer container from document-flow to fixed viewport:
+### 1. `src/components/jobs/DraggableCandidateCard.tsx`
+- Remove rotation/scale from the source element transform — only apply `CSS.Translate.toString(transform)`
+- Source element should just go `opacity: 0` when dragging (the DragOverlay handles the visual)
+- Remove unnecessary `transition` on transform (causes lag following the cursor)
 
-```tsx
-// Before
-<div className="min-h-screen bg-background overflow-x-hidden">
-  <div className="layout-container pt-1 pb-4 sm:pt-2 sm:pb-6 lg:pt-3 lg:pb-8">
+### 2. `src/components/jobs/DraggableStageItem.tsx`
+- Switch from `CSS.Transform.toString()` to `CSS.Translate.toString()` to avoid scale flicker
+- When `isDragging`, set `opacity: 0` (placeholder stays in flow, overlay shows the visual)
 
-// After
-<div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col bg-background overflow-hidden">
-  <div className="layout-container pt-1 pb-2 sm:pt-2 sm:pb-3 flex-1 min-h-0 flex flex-col overflow-hidden">
+### 3. `src/components/jobs/HiringPlanTab.tsx`
+- Add `DragOverlay` with a rendered clone of the active stage item
+- Track `activeId` on `onDragStart` (already done), render overlay content
+- Add `dropAnimation` with `{ duration: 200, easing: 'ease' }`
+
+### 4. `src/components/jobs/OfferApprovalChainConfig.tsx`
+- Same pattern: add `DragOverlay` with clone of active approver step
+- Switch `CSS.Transform` → `CSS.Translate` in `SortableApproverItem`
+- Add activation constraint `{ distance: 5 }` to PointerSensor
+
+### 5. `src/components/jobs/stage-config/InterviewQuestionsList.tsx`
+- Add `DragOverlay` with clone of active question
+- Switch `CSS.Transform` → `CSS.Translate` in `SortableQuestionItem`
+- Set `opacity: 0` on source when dragging (already has `opacity-50`, change to `opacity-0`)
+
+### 6. `src/components/settings/OfferFormFieldsManager.tsx`
+- Switch `CSS.Transform` → `CSS.Translate` in `SortableFieldRow`
+- Already has DragOverlay — good. Just fix the transform type
+
+### 7. `src/components/jobs/postings/PostingFieldsBuilder.tsx`
+- Already has DragOverlay — good. Verify transform type in `SortableRow`
+
+### 8. `src/components/jobs/PipelineOverview.tsx`
+- Add `dropAnimation` config to existing `DragOverlay`: `{ duration: 200, easing: 'ease' }`
+- Add `modifiers={[restrictToWindowEdges]}` to prevent dragging cards off screen
+
+## Summary of pattern applied everywhere
+
+```text
+Source item:  CSS.Translate (not Transform), opacity: 0 when dragging
+DragOverlay:  Clone of item with shadow + slight rotation, dropAnimation config
+Sensors:      PointerSensor { distance: 5-10 }, TouchSensor { delay: 150 }
 ```
-
-Then ensure the `Tabs` component and its active `TabsContent` also participate in flex layout (`flex-1 min-h-0 overflow-hidden` / `overflow-auto` as needed) so the pipeline kanban and other tab contents scroll internally rather than pushing the page.
-
-The pipeline tab already has `h-[calc(100svh-16rem)]` — this can be replaced with `flex-1 min-h-0` since the parent will now constrain it properly.
 
 ## Files
 
 | File | Change |
 |------|--------|
-| `src/pages/JobDetail.tsx` | Apply fixed viewport height to root; make inner layout flex-col with min-h-0; remove hardcoded calc heights on pipeline tab |
+| `src/components/jobs/DraggableCandidateCard.tsx` | Simplify to translate-only + opacity:0; remove rotation/scale from source |
+| `src/components/jobs/DraggableStageItem.tsx` | CSS.Translate; opacity:0 when dragging |
+| `src/components/jobs/HiringPlanTab.tsx` | Add DragOverlay with clone + dropAnimation |
+| `src/components/jobs/OfferApprovalChainConfig.tsx` | Add DragOverlay; CSS.Translate; activation constraint |
+| `src/components/jobs/stage-config/InterviewQuestionsList.tsx` | Add DragOverlay; CSS.Translate; opacity:0 |
+| `src/components/settings/OfferFormFieldsManager.tsx` | CSS.Translate fix |
+| `src/components/jobs/postings/PostingFieldsBuilder.tsx` | CSS.Translate fix if needed |
+| `src/components/jobs/PipelineOverview.tsx` | Add dropAnimation + restrictToWindowEdges modifier |
 
