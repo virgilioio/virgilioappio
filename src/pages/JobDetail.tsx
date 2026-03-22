@@ -797,16 +797,7 @@ export default function JobDetail() {
         {!isMobile && (
           <>
             <div className="mb-2 animate-fade-in">
-              <PageHeader 
-                title={job.title} 
-                compact
-                metrics={[
-                  { label: 'Total Candidates', value: totalCandidates },
-                  { label: 'Active Candidates', value: activeCount },
-                  { label: 'Hired Candidates', value: hiredCount },
-                  { label: 'Rejected Candidates', value: rejectedCount }
-                ]}
-              />
+              <PageHeader title={job.title} compact />
             </div>
           </>
         )}
