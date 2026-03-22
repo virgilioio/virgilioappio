@@ -1497,9 +1497,9 @@ export default function JobDetail() {
                             ) : (
                               <Button
                                 size="sm"
-                                variant={tableSelectionMode ? 'secondary' : 'outline'}
-                                onClick={() => setTableSelectionMode((v) => !v)}
-                                aria-pressed={tableSelectionMode}
+                                variant={selectionMode ? 'secondary' : 'outline'}
+                                onClick={() => setSelectionMode((v) => !v)}
+                                aria-pressed={selectionMode}
                               >
                                 Select
                               </Button>
