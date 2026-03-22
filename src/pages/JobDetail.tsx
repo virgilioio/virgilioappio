@@ -1323,8 +1323,8 @@ export default function JobDetail() {
                 )}
 
                 {/* Pipeline Tab */}
-                <TabsContent value="pipeline">
-                  <div className="h-[calc(100vh-12rem)] min-h-0">
+                <TabsContent value="pipeline" className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                  <div className="flex-1 min-h-0 overflow-auto">
                     {!isRestrictedViewer && (
                     <Card className="mb-4">
                        <CardHeader className="py-3">
