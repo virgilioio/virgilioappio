@@ -53,8 +53,9 @@ function SortableApproverItem({
   } = useSortable({ id: step.id })
 
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Translate.toString(transform),
     transition,
+    opacity: isDragging ? 0 : undefined,
   }
 
   const getRoleBadgeVariant = (role: string | null) => {

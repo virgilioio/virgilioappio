@@ -39,8 +39,9 @@ export function DraggableStageItem({ stage, index, onRemove, onConfigure, jhsId,
   })
 
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Translate.toString(transform),
     transition,
+    opacity: (isDragging || isSortableDragging) ? 0 : undefined,
   }
 
   const stageTypeVariants: Record<string, import("@/components/ui/badge").BadgeProps["variant"]> = {
