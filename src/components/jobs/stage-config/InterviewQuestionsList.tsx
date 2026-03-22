@@ -249,6 +249,7 @@ export function InterviewQuestionsList({
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
         <SortableContext
@@ -266,6 +267,21 @@ export function InterviewQuestionsList({
             ))}
           </div>
         </SortableContext>
+        <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+          {activeId && (() => {
+            const question = items.find(q => q.id === activeId)
+            if (!question) return null
+            return (
+              <div style={{ transform: 'rotate(-1deg) scale(1.02)', boxShadow: '0 12px 28px rgba(0,0,0,0.18)' }}>
+                <SortableQuestionItem
+                  question={question}
+                  onEdit={() => {}}
+                  onDelete={() => {}}
+                />
+              </div>
+            )
+          })()}
+        </DragOverlay>
       </DndContext>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
