@@ -61,7 +61,7 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
   const [configSheetOpen, setConfigSheetOpen] = useState(false)
   const [configJhsId, setConfigJhsId] = useState<string | null>(null)
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
