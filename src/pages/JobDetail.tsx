@@ -802,7 +802,7 @@ export default function JobDetail() {
           </>
         )}
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 min-h-0 flex flex-col overflow-hidden">
           {isMobile ? (
             // Mobile: Tabs
             <>
