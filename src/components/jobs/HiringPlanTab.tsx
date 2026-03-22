@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverlay } from '@dnd-kit/core'
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useJobStages } from '@/hooks/useJobStages'
 import { Button } from '@/components/ui/button'
@@ -61,7 +61,7 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
   const [configSheetOpen, setConfigSheetOpen] = useState(false)
   const [configJhsId, setConfigJhsId] = useState<string | null>(null)
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -360,6 +360,25 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
                     })}
                   </div>
                 </SortableContext>
+                <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+                  {activeId && (() => {
+                    const stage = selectedStages.find(s => s.id === activeId)
+                    if (!stage) return null
+                    const index = selectedStages.indexOf(stage)
+                    const instance = instancesMap.get(stage.id)
+                    return (
+                      <div style={{ transform: 'rotate(-2deg) scale(1.02)', boxShadow: '0 12px 28px rgba(0,0,0,0.18)' }}>
+                        <DraggableStageItem
+                          stage={stage}
+                          index={index}
+                          onRemove={() => {}}
+                          jhsId={instance?.jhsId}
+                          customStageName={instance?.customStageName}
+                        />
+                      </div>
+                    )
+                  })()}
+                </DragOverlay>
               </DndContext>
             )}
           </div>

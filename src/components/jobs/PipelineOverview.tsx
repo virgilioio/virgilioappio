@@ -699,7 +699,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                 </Card>
               ))}
             </div>
-            <DragOverlay>
+            <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
               {activeId && assocMap.get(activeId) ? (
                 (() => {
                   const { assoc, stageJhsId } = assocMap.get(activeId)!

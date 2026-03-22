@@ -29,9 +29,9 @@ interface OfferFormFieldsManagerProps {
 function SortableFieldRow({ id, children }: { id: string; children: (handlers: { attributes: any; listeners: any }) => React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Translate.toString(transform),
     transition,
-    opacity: isDragging ? 0.6 : undefined,
+    opacity: isDragging ? 0 : undefined,
   }
   return (
     <div ref={setNodeRef} style={style} className="w-full">

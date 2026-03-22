@@ -7,6 +7,8 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
 } from '@dnd-kit/core'
 import {
   arrayMove,
@@ -58,8 +60,9 @@ function SortableQuestionItem({
   } = useSortable({ id: question.id })
 
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Translate.toString(transform),
     transition,
+    opacity: isDragging ? 0 : undefined,
   }
 
   const getAnswerTypeIcon = () => {
@@ -184,15 +187,21 @@ export function InterviewQuestionsList({
   const [items, setItems] = useState(questions)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [questionToDelete, setQuestionToDelete] = useState<string | null>(null)
+  const [activeId, setActiveId] = useState<string | null>(null)
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   )
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(String(event.active.id))
+  }
+
   const handleDragEnd = (event: DragEndEvent) => {
+    setActiveId(null)
     const { active, over } = event
 
     if (over && active.id !== over.id) {
@@ -240,6 +249,7 @@ export function InterviewQuestionsList({
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
         <SortableContext
@@ -257,6 +267,21 @@ export function InterviewQuestionsList({
             ))}
           </div>
         </SortableContext>
+        <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+          {activeId && (() => {
+            const question = items.find(q => q.id === activeId)
+            if (!question) return null
+            return (
+              <div style={{ transform: 'rotate(-1deg) scale(1.02)', boxShadow: '0 12px 28px rgba(0,0,0,0.18)' }}>
+                <SortableQuestionItem
+                  question={question}
+                  onEdit={() => {}}
+                  onDelete={() => {}}
+                />
+              </div>
+            )
+          })()}
+        </DragOverlay>
       </DndContext>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

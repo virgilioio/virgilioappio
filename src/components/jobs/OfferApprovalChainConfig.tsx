@@ -15,6 +15,8 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
 } from '@dnd-kit/core'
 import {
   arrayMove,
@@ -53,8 +55,9 @@ function SortableApproverItem({
   } = useSortable({ id: step.id })
 
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Translate.toString(transform),
     transition,
+    opacity: isDragging ? 0 : undefined,
   }
 
   const getRoleBadgeVariant = (role: string | null) => {
@@ -120,6 +123,7 @@ function SortableApproverItem({
 
 export function OfferApprovalChainConfig({ jobId, jobTitle }: OfferApprovalChainConfigProps) {
   const [selectedUserId, setSelectedUserId] = useState('')
+  const [activeId, setActiveId] = useState<string | null>(null)
   const {
     isLoading,
     isEnabled,
@@ -184,7 +188,12 @@ export function OfferApprovalChainConfig({ jobId, jobTitle }: OfferApprovalChain
     setSelectedUserId('')
   }
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(String(event.active.id))
+  }
+
   const handleDragEnd = (event: DragEndEvent) => {
+    setActiveId(null)
     const { active, over } = event
     if (!over || active.id === over.id) return
 
@@ -286,6 +295,7 @@ export function OfferApprovalChainConfig({ jobId, jobTitle }: OfferApprovalChain
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
+                onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
               >
                 <SortableContext
@@ -305,6 +315,24 @@ export function OfferApprovalChainConfig({ jobId, jobTitle }: OfferApprovalChain
                     ))}
                   </div>
                 </SortableContext>
+                <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+                  {activeId && (() => {
+                    const step = steps.find(s => s.id === activeId)
+                    if (!step) return null
+                    const index = steps.indexOf(step)
+                    return (
+                      <div style={{ transform: 'rotate(-1deg) scale(1.02)', boxShadow: '0 12px 28px rgba(0,0,0,0.18)' }}>
+                        <SortableApproverItem
+                          step={step}
+                          index={index}
+                          canConfigure={false}
+                          isBusy={false}
+                          onRemove={() => {}}
+                        />
+                      </div>
+                    )
+                  })()}
+                </DragOverlay>
               </DndContext>
             )}
           </div>
