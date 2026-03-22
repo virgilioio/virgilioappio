@@ -123,6 +123,7 @@ function SortableApproverItem({
 
 export function OfferApprovalChainConfig({ jobId, jobTitle }: OfferApprovalChainConfigProps) {
   const [selectedUserId, setSelectedUserId] = useState('')
+  const [activeId, setActiveId] = useState<string | null>(null)
   const {
     isLoading,
     isEnabled,
