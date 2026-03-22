@@ -781,8 +781,8 @@ export default function JobDetail() {
   )
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
-      <div className="layout-container pt-1 pb-4 sm:pt-2 sm:pb-6 lg:pt-3 lg:pb-8">
+    <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col bg-background overflow-hidden">
+      <div className="layout-container pt-1 pb-2 sm:pt-2 sm:pb-3 flex-1 min-h-0 flex flex-col overflow-hidden">
         {/* Mobile Header */}
         {isMobile && (
           <div className="mb-6">
