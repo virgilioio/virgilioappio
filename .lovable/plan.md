@@ -1,72 +1,74 @@
 
 
-# Smooth Drag-and-Drop Audit & Improvements
+# Fix Pipeline Kanban Drag-and-Drop: Horizontal Scroll + Full Page Refresh
 
-## Current Issues Found
+## Problems
 
-Six DnD implementations across the app, all with similar problems:
+### 1. Horizontal scroll during drag
+The board container (line 596) has `overflow-x-auto`. When a card is dragged, `CSS.Translate` moves it within the scrollable container, causing the stage column to scroll horizontally as the card shifts position. The `DropZone` expanding from `h-0` to `h-16` also pushes sibling cards, creating visible content shifting.
 
-1. **No `DragOverlay` on sortable lists** — HiringPlanTab, OfferApprovalChainConfig, InterviewQuestionsList drag the actual DOM node, causing layout reflows and content jumping as the item leaves document flow
-2. **`CSS.Transform` instead of `CSS.Translate`** — Sortable items use `CSS.Transform.toString()` which includes scale transforms from the sorting algorithm, causing size flicker. Should use `CSS.Translate.toString()` for position-only movement
-3. **PipelineOverview (Kanban)** — DraggableCandidateCard applies rotation/scale on the source element AND the DragOverlay, creating redundant transforms. Source should just hide cleanly
-4. **No smooth drop animation** — Missing `dropAnimation` config on DragOverlay for a polished settle effect
-5. **Activation constraints inconsistent** — Some use PointerSensor with no distance threshold, causing accidental drags on click
+### 2. Full re-render on drop
+`onDragEnd` (line 282-326) calls `await loadPipeline()` after every move — this re-fetches ALL candidates from the server and replaces all state, causing a full flash/re-render instead of a smooth transition. There's no optimistic update.
 
 ## Fixes
 
-### 1. `src/components/jobs/DraggableCandidateCard.tsx`
-- Remove rotation/scale from the source element transform — only apply `CSS.Translate.toString(transform)`
-- Source element should just go `opacity: 0` when dragging (the DragOverlay handles the visual)
-- Remove unnecessary `transition` on transform (causes lag following the cursor)
+### Fix 1: Prevent horizontal scroll during drag
 
-### 2. `src/components/jobs/DraggableStageItem.tsx`
-- Switch from `CSS.Transform.toString()` to `CSS.Translate.toString()` to avoid scale flicker
-- When `isDragging`, set `opacity: 0` (placeholder stays in flow, overlay shows the visual)
+**`src/components/jobs/DraggableCandidateCard.tsx`**
+- When `isDragging` is true, the source element should collapse to `height: 0, overflow: hidden, margin: 0, padding: 0` so it doesn't take up space or affect scroll. This prevents the "gap" from pushing content.
 
-### 3. `src/components/jobs/HiringPlanTab.tsx`
-- Add `DragOverlay` with a rendered clone of the active stage item
-- Track `activeId` on `onDragStart` (already done), render overlay content
-- Add `dropAnimation` with `{ duration: 200, easing: 'ease' }`
+**`src/components/jobs/DropZone.tsx`**
+- Remove the `h-16` expansion for non-empty stages — this is what causes sibling cards to jump. Instead, use a subtle border/highlight on the stage column itself to indicate it's a valid drop target (no height change = no content shift).
 
-### 4. `src/components/jobs/OfferApprovalChainConfig.tsx`
-- Same pattern: add `DragOverlay` with clone of active approver step
-- Switch `CSS.Transform` → `CSS.Translate` in `SortableApproverItem`
-- Add activation constraint `{ distance: 5 }` to PointerSensor
+### Fix 2: Optimistic state update on drop
 
-### 5. `src/components/jobs/stage-config/InterviewQuestionsList.tsx`
-- Add `DragOverlay` with clone of active question
-- Switch `CSS.Transform` → `CSS.Translate` in `SortableQuestionItem`
-- Set `opacity: 0` on source when dragging (already has `opacity-50`, change to `opacity-0`)
+**`src/components/jobs/PipelineOverview.tsx`** — `onDragEnd` callback
+- Before calling the server, immediately update `byStage` state: remove the association from its source stage and add it to the target stage
+- Then call `moveAssociationToStage` in the background (no `await`)
+- Only call `loadPipeline()` if the server call fails (to revert)
+- This gives instant visual feedback — the card appears in the new column immediately
 
-### 6. `src/components/settings/OfferFormFieldsManager.tsx`
-- Switch `CSS.Transform` → `CSS.Translate` in `SortableFieldRow`
-- Already has DragOverlay — good. Just fix the transform type
-
-### 7. `src/components/jobs/postings/PostingFieldsBuilder.tsx`
-- Already has DragOverlay — good. Verify transform type in `SortableRow`
-
-### 8. `src/components/jobs/PipelineOverview.tsx`
-- Add `dropAnimation` config to existing `DragOverlay`: `{ duration: 200, easing: 'ease' }`
-- Add `modifiers={[restrictToWindowEdges]}` to prevent dragging cards off screen
-
-## Summary of pattern applied everywhere
-
-```text
-Source item:  CSS.Translate (not Transform), opacity: 0 when dragging
-DragOverlay:  Clone of item with shadow + slight rotation, dropAnimation config
-Sensors:      PointerSensor { distance: 5-10 }, TouchSensor { delay: 150 }
+```tsx
+const onDragEnd = useCallback(async (event: DragEndEvent) => {
+  const { active, over } = event
+  setActiveId(null)
+  if (!over) return
+  
+  const assocId = String(active.id)
+  const toStageId = String(over.id)
+  const entry = assocMap.get(assocId)
+  if (!entry || entry.stageJhsId === toStageId) return
+  
+  // Optimistic update: move card in local state
+  setByStage(prev => {
+    const next = { ...prev }
+    // Remove from source
+    next[entry.stageJhsId] = (next[entry.stageJhsId] || []).filter(a => a.id !== assocId)
+    // Add to target
+    next[toStageId] = [...(next[toStageId] || []), { ...entry.assoc, current_stage_id: toStageId }]
+    return next
+  })
+  
+  // Server sync in background
+  try {
+    await moveAssociationToStage(assocId, toStageId)
+    // Silently refresh to sync any server-side changes
+    loadPipeline()
+  } catch {
+    // Revert on failure
+    loadPipeline()
+    toast({ title: 'Error', description: 'Failed to move candidate.', variant: 'destructive' })
+  }
+}, [...])
 ```
+
+For bulk moves, same pattern — optimistically move all selected cards.
 
 ## Files
 
 | File | Change |
 |------|--------|
-| `src/components/jobs/DraggableCandidateCard.tsx` | Simplify to translate-only + opacity:0; remove rotation/scale from source |
-| `src/components/jobs/DraggableStageItem.tsx` | CSS.Translate; opacity:0 when dragging |
-| `src/components/jobs/HiringPlanTab.tsx` | Add DragOverlay with clone + dropAnimation |
-| `src/components/jobs/OfferApprovalChainConfig.tsx` | Add DragOverlay; CSS.Translate; activation constraint |
-| `src/components/jobs/stage-config/InterviewQuestionsList.tsx` | Add DragOverlay; CSS.Translate; opacity:0 |
-| `src/components/settings/OfferFormFieldsManager.tsx` | CSS.Translate fix |
-| `src/components/jobs/postings/PostingFieldsBuilder.tsx` | CSS.Translate fix if needed |
-| `src/components/jobs/PipelineOverview.tsx` | Add dropAnimation + restrictToWindowEdges modifier |
+| `src/components/jobs/DraggableCandidateCard.tsx` | Collapse source element when dragging (height:0) instead of just opacity:0, preventing scroll shifts |
+| `src/components/jobs/DropZone.tsx` | Remove height expansion for non-empty stages; use border/bg highlight only |
+| `src/components/jobs/PipelineOverview.tsx` | Optimistic `byStage` state update in `onDragEnd` before server call; background sync |
 
