@@ -83,7 +83,7 @@ export default function JobDetail() {
   }, [pipelineView])
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([])
-  const [tableSelectionMode, setTableSelectionMode] = useState(false)
+  
   const [pipelineRefresh, setPipelineRefresh] = useState(0)
   const [showBulkRejectionDialog, setShowBulkRejectionDialog] = useState(false)
   const [showBulkEmailDialog, setShowBulkEmailDialog] = useState(false)
