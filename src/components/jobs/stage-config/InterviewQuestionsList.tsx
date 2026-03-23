@@ -4,6 +4,7 @@ import {
   closestCenter,
   KeyboardSensor,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragEndEvent,
@@ -103,8 +104,7 @@ function SortableQuestionItem({
       style={style}
       className={cn(
         'flex items-start gap-3 p-4 bg-white border border-virgilio-border rounded-lg',
-        'hover:border-virgilio-purple/50 transition-all duration-200',
-        isDragging && 'opacity-50 shadow-lg'
+        'hover:border-virgilio-purple/50 transition-all duration-200'
       )}
     >
       <button
@@ -191,6 +191,7 @@ export function InterviewQuestionsList({
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -272,7 +273,7 @@ export function InterviewQuestionsList({
             const question = items.find(q => q.id === activeId)
             if (!question) return null
             return (
-              <div style={{ transform: 'rotate(-1deg) scale(1.02)', boxShadow: '0 12px 28px rgba(0,0,0,0.18)' }}>
+              <div style={{ transform: 'rotate(-1.5deg) scale(1.03)', boxShadow: '0 12px 24px rgba(0,0,0,0.15)' }}>
                 <SortableQuestionItem
                   question={question}
                   onEdit={() => {}}

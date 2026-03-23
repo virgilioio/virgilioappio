@@ -11,7 +11,7 @@ import { ALL_FIELD_TYPES, SMART_FIELD_TYPES, fieldTypeLabel } from '@/components
 import { FormField } from '@/components/ui/form-field'
 import { GripVertical, Plus, Trash2, Save, Link2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, useDroppable, DragOverlay } from '@dnd-kit/core'
+import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors, useDroppable, DragOverlay } from '@dnd-kit/core'
 import { SortableContext, rectSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { cn } from '@/lib/utils'
@@ -243,7 +243,8 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
   const defaultLibraryIds = useMemo(() => new Set(availableLibraryFields.filter((f) => f.is_default).map((f) => f.id)), [availableLibraryFields])
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } })
   )
 
   const [isDragging, setIsDragging] = useState(false)
@@ -456,11 +457,13 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                   ))}
                 </div>
               </SortableContext>
-              <DragOverlay>
+              <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
                 {activeId ? (
-                  <div className="p-3 border border-border/40 rounded-brand bg-background shadow-lg w-[280px]">
-                    <div className="text-sm font-medium">{activeField?.field_label || 'Field'}</div>
-                    <div className="text-xs text-muted-foreground capitalize">{activeField?.field_type}</div>
+                  <div style={{ transform: 'rotate(-1.5deg) scale(1.03)', boxShadow: '0 12px 24px rgba(0,0,0,0.15)' }}>
+                    <div className="p-3 border border-border/40 rounded-brand bg-background w-[280px]">
+                      <div className="text-sm font-medium">{activeField?.field_label || 'Field'}</div>
+                      <div className="text-xs text-muted-foreground capitalize">{activeField?.field_type}</div>
+                    </div>
                   </div>
                 ) : null}
               </DragOverlay>

@@ -65,8 +65,7 @@ export function DraggableStageItem({ stage, index, onRemove, onConfigure, jhsId,
       style={style}
       className={cn(
         "transition-colors",
-        isDisabled ? "opacity-60 bg-muted/30" : "hover:bg-surface-secondary/30",
-        showDragging && "shadow-lg z-10"
+        isDisabled ? "opacity-60 bg-muted/30" : "hover:bg-surface-secondary/30"
       )}
     >
       <CardContent className="p-4">

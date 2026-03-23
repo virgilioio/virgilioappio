@@ -12,6 +12,7 @@ import {
   DndContext,
   closestCenter,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragEndEvent,
@@ -76,13 +77,13 @@ function SortableApproverItem({
       style={style}
       className={cn(
         'flex items-center justify-between p-4 border border-border rounded-md bg-background',
-        isDragging && 'opacity-50'
+        
       )}
     >
       <div className="flex items-center gap-4">
         {canConfigure && (
           <button
-            className="cursor-grab touch-none text-muted-foreground hover:text-foreground"
+            className="cursor-grab active:cursor-grabbing touch-none text-muted-foreground hover:text-foreground"
             {...attributes}
             {...listeners}
           >
@@ -143,7 +144,8 @@ export function OfferApprovalChainConfig({ jobId, jobTitle }: OfferApprovalChain
   const canConfigure = permissions.isPlatformAdmin || permissions.isWorkspaceOwner || permissions.isAdmin
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } })
   )
 
   if (!permissions.canViewJobAssignments) return null
@@ -321,7 +323,7 @@ export function OfferApprovalChainConfig({ jobId, jobTitle }: OfferApprovalChain
                     if (!step) return null
                     const index = steps.indexOf(step)
                     return (
-                      <div style={{ transform: 'rotate(-1deg) scale(1.02)', boxShadow: '0 12px 28px rgba(0,0,0,0.18)' }}>
+                      <div style={{ transform: 'rotate(-1.5deg) scale(1.03)', boxShadow: '0 12px 24px rgba(0,0,0,0.15)' }}>
                         <SortableApproverItem
                           step={step}
                           index={index}

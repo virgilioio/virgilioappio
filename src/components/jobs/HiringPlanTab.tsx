@@ -367,7 +367,7 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
                     const index = selectedStages.indexOf(stage)
                     const instance = instancesMap.get(stage.id)
                     return (
-                      <div style={{ transform: 'rotate(-2deg) scale(1.02)', boxShadow: '0 12px 28px rgba(0,0,0,0.18)' }}>
+                      <div style={{ transform: 'rotate(-1.5deg) scale(1.03)', boxShadow: '0 12px 24px rgba(0,0,0,0.15)' }}>
                         <DraggableStageItem
                           stage={stage}
                           index={index}
