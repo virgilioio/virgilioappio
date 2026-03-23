@@ -1,33 +1,25 @@
 
 
-# Fix Scorecard Deletion 409 Conflict
+# Add Scheduled/Sent Email Indicator to Rejection Banner
 
-## Root Cause
+## Current State
 
-Migration `20251201195702` added `draft_scorecard_id UUID REFERENCES public.job_stage_scorecards(id)` to `scheduled_bookings` — with no `ON DELETE` action (defaults to `RESTRICT`). When a user deletes a scorecard that was AI-generated from a booking, the FK on `scheduled_bookings.draft_scorecard_id` blocks the delete.
-
-The `deleteMyScorecard` function already handles `scorecard_question_responses` (which has `ON DELETE CASCADE` anyway), but doesn't account for `scheduled_bookings.draft_scorecard_id`.
+The app fetches `rejectionEmailScheduledFor` and `rejectionEmailSentAt` from the database in `CandidateProfileSheet`, but **neither value is ever displayed**. The `RejectionStatusBanner` only shows rejection date, reason, notes, and a Reactivate button. There is no visual indicator anywhere that a rejection email was sent or is scheduled.
 
 ## Fix
 
-**Database migration**: Alter the FK constraint on `scheduled_bookings.draft_scorecard_id` to `ON DELETE SET NULL`. This is the correct behavior — if a draft scorecard is deleted, the booking should simply lose its reference, not be deleted or blocked.
+Add email status info to the `RejectionStatusBanner` — a small inline indicator below the existing rejection details:
 
-```sql
-ALTER TABLE public.scheduled_bookings
-  DROP CONSTRAINT IF EXISTS scheduled_bookings_draft_scorecard_id_fkey;
+- **Scheduled**: `Clock` icon + "Rejection email scheduled for Mar 25, 2026 at 9:00 AM" in a subtle amber/yellow tone
+- **Sent**: `Mail` icon + "Rejection email sent on Mar 24, 2026" in a subtle green/white tone  
+- **Neither**: No extra line shown (current behavior preserved)
 
-ALTER TABLE public.scheduled_bookings
-  ADD CONSTRAINT scheduled_bookings_draft_scorecard_id_fkey
-  FOREIGN KEY (draft_scorecard_id)
-  REFERENCES public.job_stage_scorecards(id)
-  ON DELETE SET NULL;
-```
+This is the natural place since users already look at this banner when reviewing rejected candidates.
 
-No code changes needed — the `deleteMyScorecard` function in `useScorecards.ts` already works correctly once the FK constraint allows the delete.
-
-## Files
+## Changes
 
 | File | Change |
 |------|--------|
-| New migration | Alter `scheduled_bookings.draft_scorecard_id` FK to `ON DELETE SET NULL` |
+| `src/components/candidates/RejectionStatusBanner.tsx` | Add optional `rejectionEmailScheduledFor` and `rejectionEmailSentAt` props; render inline status line |
+| `src/components/candidates/CandidateProfileSheet.tsx` | Pass `rejectionEmailScheduledFor` and `rejectionEmailSentAt` to `RejectionStatusBanner` |
 
