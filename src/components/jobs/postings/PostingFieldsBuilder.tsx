@@ -243,7 +243,8 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
   const defaultLibraryIds = useMemo(() => new Set(availableLibraryFields.filter((f) => f.is_default).map((f) => f.id)), [availableLibraryFields])
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } })
   )
 
   const [isDragging, setIsDragging] = useState(false)
