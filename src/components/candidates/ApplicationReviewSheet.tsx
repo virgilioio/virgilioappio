@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ensureAbsoluteUrl } from '@/lib/utils'
 import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'

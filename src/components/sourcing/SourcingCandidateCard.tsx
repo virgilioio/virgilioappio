@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { ensureAbsoluteUrl } from '@/lib/utils'
 import { useNavigate } from 'react-router-dom'
 import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
