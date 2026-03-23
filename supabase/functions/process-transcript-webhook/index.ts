@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { Webhook } from "npm:svix@1.24.0";
+import pdfParse from "npm:pdf-parse@1.1.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -69,8 +70,14 @@ function findIngestCodeInRecipients(emailData: any): { code: string | null; foun
   return { code: null, foundIn: '' };
 }
 
+// Extract text from PDF bytes
+async function extractTextFromPdfBytes(pdfBytes: Uint8Array): Promise<string> {
+  const result = await pdfParse(Buffer.from(pdfBytes));
+  return (result.text || '').trim();
+}
+
 // Extract transcript content from email
-function extractTranscriptContent(emailData: any): { content: string; metadata: any } {
+async function extractTranscriptContent(emailData: any): Promise<{ content: string; metadata: any }> {
   let content = '';
   const metadata: any = {
     from: emailData.from,
@@ -102,6 +109,23 @@ function extractTranscriptContent(emailData: any): { content: string; metadata: 
       if (attachment.content_type === 'text/calendar' || 
           attachment.content_type === 'application/ics' ||
           attachment.filename?.endsWith('.ics')) {
+        continue;
+      }
+
+      // Handle PDF attachments (Fireflies sends transcripts as PDF)
+      if (attachment.content_type === 'application/pdf' || 
+          attachment.filename?.endsWith('.pdf')) {
+        try {
+          const pdfBytes = Uint8Array.from(atob(attachment.content), (c: string) => c.charCodeAt(0));
+          const pdfText = await extractTextFromPdfBytes(pdfBytes);
+          console.log('[Transcript Webhook] Extracted PDF text, length:', pdfText.length);
+          if (pdfText.length > content.length) {
+            content = pdfText;
+            metadata.content_source = `attachment:${attachment.filename}`;
+          }
+        } catch (e) {
+          console.warn('[Transcript Webhook] Failed to parse PDF attachment:', e);
+        }
         continue;
       }
       
@@ -281,7 +305,7 @@ serve(async (req) => {
     }
 
     // Extract transcript content
-    let { content, metadata } = extractTranscriptContent(emailData);
+    let { content, metadata } = await extractTranscriptContent(emailData);
 
     // If no content from webhook payload, fetch from Resend receiving API
     if ((!content || content.trim().length < 100) && emailData.email_id && resendApiKey) {
@@ -296,7 +320,7 @@ serve(async (req) => {
           if (res.ok) {
             const fullEmail = await res.json();
             console.log(`[Transcript Webhook] Resend fetch OK (attempt ${attempt + 1}): text=${fullEmail.text?.length || 0} html=${fullEmail.html?.length || 0}`);
-            const enriched = extractTranscriptContent({
+            const enriched = await extractTranscriptContent({
               ...emailData,
               text: fullEmail.text || emailData.text,
               html: fullEmail.html || emailData.html,
