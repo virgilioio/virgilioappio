@@ -61,7 +61,10 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
   const [orderedIds, setOrderedIds] = useState<string[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } })
+  )
 
   useEffect(() => {
     setOrderedIds(fields.map(f => f.id))
