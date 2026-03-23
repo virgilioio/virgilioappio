@@ -320,7 +320,7 @@ serve(async (req) => {
           if (res.ok) {
             const fullEmail = await res.json();
             console.log(`[Transcript Webhook] Resend fetch OK (attempt ${attempt + 1}): text=${fullEmail.text?.length || 0} html=${fullEmail.html?.length || 0}`);
-            const enriched = extractTranscriptContent({
+            const enriched = await extractTranscriptContent({
               ...emailData,
               text: fullEmail.text || emailData.text,
               html: fullEmail.html || emailData.html,
