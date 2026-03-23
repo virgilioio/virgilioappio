@@ -225,23 +225,27 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     setStageOptions(filtered.length > 0 ? filtered : [])
   }, [jobId, loadHiringPlanInstances, includeApplicationReview])
 
+  const processPipelineData = useCallback((associations: PipelineAssociation[]) => {
+    const active = associations.filter(a => a.status !== 'rejected' && a.status !== 'hired' && a.status !== 'offer')
+    const rejectedList = associations.filter(a => a.status === 'rejected')
+    const hiredList = associations.filter(a => a.status === 'hired')
+    const grouped: Record<string, PipelineAssociation[]> = {}
+    active.forEach(a => {
+      if (!a.current_stage_id) return
+      if (!grouped[a.current_stage_id]) grouped[a.current_stage_id] = []
+      grouped[a.current_stage_id].push(a)
+    })
+    setByStage(grouped)
+    setRejected(rejectedList)
+    setHired(hiredList)
+  }, [])
+
   const loadPipeline = useCallback(async () => {
     if (!jobId) return
     setIsLoadingCandidates(true)
     try {
       const associations = await fetchAssociationsForJob(jobId)
-      const active = associations.filter(a => a.status !== 'rejected' && a.status !== 'hired' && a.status !== 'offer')
-      const rejectedList = associations.filter(a => a.status === 'rejected')
-      const hiredList = associations.filter(a => a.status === 'hired')
-      const grouped: Record<string, PipelineAssociation[]> = {}
-      active.forEach(a => {
-        if (!a.current_stage_id) return
-        if (!grouped[a.current_stage_id]) grouped[a.current_stage_id] = []
-        grouped[a.current_stage_id].push(a)
-      })
-      setByStage(grouped)
-      setRejected(rejectedList)
-      setHired(hiredList)
+      processPipelineData(associations)
     } catch (e) {
       console.error('Failed to load pipeline:', e)
       toast({
@@ -252,7 +256,17 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     } finally {
       setIsLoadingCandidates(false)
     }
-  }, [jobId, fetchAssociationsForJob])
+  }, [jobId, fetchAssociationsForJob, processPipelineData])
+
+  const silentRefresh = useCallback(async () => {
+    if (!jobId) return
+    try {
+      const associations = await fetchAssociationsForJob(jobId)
+      processPipelineData(associations)
+    } catch (e) {
+      console.error('Silent refresh failed:', e)
+    }
+  }, [jobId, fetchAssociationsForJob, processPipelineData])
 
   useEffect(() => {
     if (!jobId) return

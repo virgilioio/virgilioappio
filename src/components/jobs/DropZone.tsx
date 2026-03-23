@@ -15,8 +15,8 @@ type DropZoneProps = {
 export default function DropZone({ active, size = 'compact', isEmpty, tintClass, className }: DropZoneProps) {
   const baseHeight =
     size === 'expanded'
-      ? active ? 'h-40' : 'h-0' // expanded only when dragging over empty column
-      : 'h-0'  // no height change for non-empty stages
+      ? active ? 'h-40' : 'h-0'
+      : active ? 'h-16' : 'h-0'
 
   const bgClass = isEmpty
     ? (tintClass ?? 'bg-transparent') // match column tint for empty columns
