@@ -17,6 +17,8 @@ export function RejectionStatusBanner({
   rejectedByName,
   rejectionReason,
   rejectionNotes,
+  rejectionEmailScheduledFor,
+  rejectionEmailSentAt,
   onReactivate,
 }: RejectionStatusBannerProps) {
   if (!rejectedAt) return null;
