@@ -782,12 +782,8 @@ serve(async (req) => {
           const resolvedSubject = resolvePlaceholders(confirmationAutomation.subject);
           const resolvedBody = resolvePlaceholders(confirmationAutomation.body);
 
-          // Convert plain text body to basic HTML (preserve line breaks)
-          const bodyHtml = resolvedBody
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/\n/g, '<br>');
+          // send-user-email's textToHtml() handles both HTML and plain text
+          const bodyHtml = resolvedBody;
 
           // Call send-user-email with service role auth (fire-and-forget)
           const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
