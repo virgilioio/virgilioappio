@@ -82,7 +82,7 @@ function SortableApproverItem({
       <div className="flex items-center gap-4">
         {canConfigure && (
           <button
-            className="cursor-grab touch-none text-muted-foreground hover:text-foreground"
+            className="cursor-grab active:cursor-grabbing touch-none text-muted-foreground hover:text-foreground"
             {...attributes}
             {...listeners}
           >
