@@ -101,6 +101,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
 
   const [stageOptions, setStageOptions] = useState<{ jhsId: string; stage: JobStage; position: number }[]>([])
   const [isLoadingCandidates, setIsLoadingCandidates] = useState(false)
+  const hasRenderedOnce = useRef(false)
   const [byStage, setByStage] = useState<Record<string, PipelineAssociation[]>>({})
   const [rejected, setRejected] = useState<PipelineAssociation[]>([])
   const [hired, setHired] = useState<PipelineAssociation[]>([])
