@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Clock, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface RejectionStatusBannerProps {
@@ -7,6 +7,8 @@ interface RejectionStatusBannerProps {
   rejectedByName?: string;
   rejectionReason?: { id: string; name: string; category: string } | null;
   rejectionNotes?: string | null;
+  rejectionEmailScheduledFor?: string | null;
+  rejectionEmailSentAt?: string | null;
   onReactivate: () => void;
 }
 
@@ -15,6 +17,8 @@ export function RejectionStatusBanner({
   rejectedByName,
   rejectionReason,
   rejectionNotes,
+  rejectionEmailScheduledFor,
+  rejectionEmailSentAt,
   onReactivate,
 }: RejectionStatusBannerProps) {
   if (!rejectedAt) return null;
@@ -29,6 +33,18 @@ export function RejectionStatusBanner({
         </p>
         {rejectionNotes && (
           <p className="text-xs text-white/70 italic mt-1">"{rejectionNotes}"</p>
+        )}
+        {rejectionEmailSentAt && (
+          <p className="text-xs text-green-200 flex items-center gap-1 mt-1">
+            <Mail className="h-3 w-3" />
+            Rejection email sent on {format(new Date(rejectionEmailSentAt), 'MMM d, yyyy')}
+          </p>
+        )}
+        {!rejectionEmailSentAt && rejectionEmailScheduledFor && (
+          <p className="text-xs text-amber-200 flex items-center gap-1 mt-1">
+            <Clock className="h-3 w-3" />
+            Rejection email scheduled for {format(new Date(rejectionEmailScheduledFor), "MMM d, yyyy 'at' h:mm a")}
+          </p>
         )}
       </div>
       <Button variant="outline" size="sm" onClick={onReactivate} className="bg-white hover:bg-white/90 text-foreground border-0">
