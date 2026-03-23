@@ -305,7 +305,7 @@ serve(async (req) => {
     }
 
     // Extract transcript content
-    let { content, metadata } = extractTranscriptContent(emailData);
+    let { content, metadata } = await extractTranscriptContent(emailData);
 
     // If no content from webhook payload, fetch from Resend receiving API
     if ((!content || content.trim().length < 100) && emailData.email_id && resendApiKey) {
