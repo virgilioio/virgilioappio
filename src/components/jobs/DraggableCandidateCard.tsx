@@ -17,7 +17,6 @@ export default function DraggableCandidateCard({ id, children, isPartOfBulkDrag 
         transform: CSS.Translate.toString(transform),
         opacity: isPartOfBulkDrag ? 0.5 : 1,
         cursor: 'grab',
-        transition: 'transform 200ms ease, opacity 150ms ease',
       }
 
   return (

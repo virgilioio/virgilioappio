@@ -456,11 +456,13 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                   ))}
                 </div>
               </SortableContext>
-              <DragOverlay>
+              <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
                 {activeId ? (
-                  <div className="p-3 border border-border/40 rounded-brand bg-background shadow-lg w-[280px]">
-                    <div className="text-sm font-medium">{activeField?.field_label || 'Field'}</div>
-                    <div className="text-xs text-muted-foreground capitalize">{activeField?.field_type}</div>
+                  <div style={{ transform: 'rotate(-1.5deg) scale(1.03)', boxShadow: '0 12px 24px rgba(0,0,0,0.15)' }}>
+                    <div className="p-3 border border-border/40 rounded-brand bg-background w-[280px]">
+                      <div className="text-sm font-medium">{activeField?.field_label || 'Field'}</div>
+                      <div className="text-xs text-muted-foreground capitalize">{activeField?.field_type}</div>
+                    </div>
                   </div>
                 ) : null}
               </DragOverlay>

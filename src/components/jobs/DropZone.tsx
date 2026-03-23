@@ -28,7 +28,7 @@ export default function DropZone({ active, size = 'compact', isEmpty, tintClass,
     <div
       aria-label="Drop candidate here"
       className={cn(
-        'rounded-lg transition-all duration-200',
+        'rounded-lg transition-all duration-[250ms]',
         borderClass,
         bgClass,
         baseHeight,
