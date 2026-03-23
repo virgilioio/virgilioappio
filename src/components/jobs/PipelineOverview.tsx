@@ -953,7 +953,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
         </div>
       )}
       {!onCandidateClick && (
-        <CandidateProfileSheet open={panelOpen} onOpenChange={(o) => setPanelOpen(o)} candidateId={selectedCandidateId} jobId={jobId} hasPrev={hasPrev} hasNext={hasNext} onNavigatePrev={handlePrevCandidate} onNavigateNext={handleNextCandidate} onStageChanged={() => { loadPipeline(); onStageChanged?.(); }} />
+        <CandidateProfileSheet open={panelOpen} onOpenChange={(o) => setPanelOpen(o)} candidateId={selectedCandidateId} jobId={jobId} hasPrev={hasPrev} hasNext={hasNext} onNavigatePrev={handlePrevCandidate} onNavigateNext={handleNextCandidate} onStageChanged={() => { silentRefresh(); onStageChanged?.(); }} />
       )}
     </div>
   )
