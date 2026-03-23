@@ -384,7 +384,7 @@ serve(async (req) => {
               attendees: [
                 { email: profile.email }, // Interviewer
                 // Only add transcript ingest for job-specific bookings
-                ...(transcriptIngestEmail ? [{ email: transcriptIngestEmail, optional: true, responseStatus: 'accepted' }] : []),
+                ...(transcriptIngestEmail ? [{ email: transcriptIngestEmail, responseStatus: 'accepted' }] : []),
                 // Add guest emails as attendees
                 ...(guest_emails || []).map((ge: string) => ({ email: ge })),
               ],
