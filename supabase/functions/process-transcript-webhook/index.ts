@@ -70,8 +70,14 @@ function findIngestCodeInRecipients(emailData: any): { code: string | null; foun
   return { code: null, foundIn: '' };
 }
 
+// Extract text from PDF bytes
+async function extractTextFromPdfBytes(pdfBytes: Uint8Array): Promise<string> {
+  const result = await pdfParse(Buffer.from(pdfBytes));
+  return (result.text || '').trim();
+}
+
 // Extract transcript content from email
-function extractTranscriptContent(emailData: any): { content: string; metadata: any } {
+async function extractTranscriptContent(emailData: any): Promise<{ content: string; metadata: any }> {
   let content = '';
   const metadata: any = {
     from: emailData.from,
@@ -103,6 +109,23 @@ function extractTranscriptContent(emailData: any): { content: string; metadata: 
       if (attachment.content_type === 'text/calendar' || 
           attachment.content_type === 'application/ics' ||
           attachment.filename?.endsWith('.ics')) {
+        continue;
+      }
+
+      // Handle PDF attachments (Fireflies sends transcripts as PDF)
+      if (attachment.content_type === 'application/pdf' || 
+          attachment.filename?.endsWith('.pdf')) {
+        try {
+          const pdfBytes = Uint8Array.from(atob(attachment.content), (c: string) => c.charCodeAt(0));
+          const pdfText = await extractTextFromPdfBytes(pdfBytes);
+          console.log('[Transcript Webhook] Extracted PDF text, length:', pdfText.length);
+          if (pdfText.length > content.length) {
+            content = pdfText;
+            metadata.content_source = `attachment:${attachment.filename}`;
+          }
+        } catch (e) {
+          console.warn('[Transcript Webhook] Failed to parse PDF attachment:', e);
+        }
         continue;
       }
       
