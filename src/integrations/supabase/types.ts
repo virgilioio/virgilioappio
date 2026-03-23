@@ -5966,6 +5966,7 @@ export type Database = {
         | "approval_recalled"
         | "offer_document_generated"
         | "offer_sent"
+        | "candidate_applied"
       application_field_source: "library" | "custom"
       automation_type: "single_email" | "email_sequence"
       contract_status_enum:
@@ -6216,6 +6217,7 @@ export const Constants = {
         "approval_recalled",
         "offer_document_generated",
         "offer_sent",
+        "candidate_applied",
       ],
       application_field_source: ["library", "custom"],
       automation_type: ["single_email", "email_sequence"],

@@ -53,6 +53,7 @@ export function getActivityColor(activityType: string): string {
   const colorMap: Record<string, string> = {
     'candidate_created': 'hsl(var(--success))',
     'candidate_added': 'hsl(var(--success))',
+    'candidate_applied': 'hsl(var(--primary))',
     'candidate_profile_updated': 'hsl(var(--info))',
     'candidate_assigned_to_job': 'hsl(var(--primary))',
     'candidate_stage_changed': 'hsl(var(--warning))',
