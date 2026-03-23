@@ -284,9 +284,9 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
 
   useEffect(() => {
     if (typeof refreshToken !== 'undefined') {
-      loadPipeline()
+      silentRefresh()
     }
-  }, [refreshToken, loadPipeline])
+  }, [refreshToken, silentRefresh])
 
   const handleMove = async (associationId: string, toStageId: string) => {
     await moveAssociationToStage(associationId, toStageId)
