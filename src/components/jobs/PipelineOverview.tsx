@@ -101,6 +101,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
 
   const [stageOptions, setStageOptions] = useState<{ jhsId: string; stage: JobStage; position: number }[]>([])
   const [isLoadingCandidates, setIsLoadingCandidates] = useState(false)
+  const hasRenderedOnce = useRef(false)
   const [byStage, setByStage] = useState<Record<string, PipelineAssociation[]>>({})
   const [rejected, setRejected] = useState<PipelineAssociation[]>([])
   const [hired, setHired] = useState<PipelineAssociation[]>([])
@@ -370,6 +371,13 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   // Get status priorities for all candidates (batch query)
   const { statusMap, isLoading: isStatusLoading } = usePipelineCandidateStatuses(jobId, allAssociations)
 
+  // Mark board as "has rendered once" so subsequent refreshes skip the skeleton
+  useEffect(() => {
+    if (!isLoadingPlan && !isLoadingCandidates && !isStatusLoading) {
+      hasRenderedOnce.current = true
+    }
+  }, [isLoadingPlan, isLoadingCandidates, isStatusLoading])
+
   const getTimeInfo = useCallback((a: PipelineAssociation) => {
     const base = a.entered_stage_at || a.created_at
     const nowMs = Date.now()
@@ -595,8 +603,8 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
         </div>
       )}
 
-      {/* Unified loading gate: show skeleton until stages, candidates, AND statuses are all ready */}
-      {(isLoadingPlan || isLoadingCandidates || isStatusLoading) ? (
+      {/* Unified loading gate: show skeleton only on initial load; after first render, keep board mounted */}
+      {(!hasRenderedOnce.current && (isLoadingPlan || isLoadingCandidates || isStatusLoading)) ? (
         <div className="flex gap-4 overflow-hidden pb-2">
           {Array.from({ length: 4 }).map((_, colIdx) => (
             <div key={colIdx} className="w-72 flex-shrink-0 rounded-lg border bg-card flex flex-col">
