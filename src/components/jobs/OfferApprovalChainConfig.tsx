@@ -76,7 +76,7 @@ function SortableApproverItem({
       style={style}
       className={cn(
         'flex items-center justify-between p-4 border border-border rounded-md bg-background',
-        isDragging && 'opacity-50'
+        
       )}
     >
       <div className="flex items-center gap-4">
