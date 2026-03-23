@@ -143,7 +143,8 @@ export function OfferApprovalChainConfig({ jobId, jobTitle }: OfferApprovalChain
   const canConfigure = permissions.isPlatformAdmin || permissions.isWorkspaceOwner || permissions.isAdmin
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } })
   )
 
   if (!permissions.canViewJobAssignments) return null
