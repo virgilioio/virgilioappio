@@ -1,74 +1,51 @@
 
 
-# Fix Pipeline Kanban Drag-and-Drop: Horizontal Scroll + Full Page Refresh
+# Fix Polish Notes to Work with Both Manual and AI-Generated Notes
 
-## Problems
+## Problem
 
-### 1. Horizontal scroll during drag
-The board container (line 596) has `overflow-x-auto`. When a card is dragged, `CSS.Translate` moves it within the scrollable container, causing the stage column to scroll horizontally as the card shifts position. The `DropZone` expanding from `h-0` to `h-16` also pushes sibling cards, creating visible content shifting.
+The `polish-scorecard-notes` edge function receives `currentNotes` as raw HTML from the rich text editor. This works adequately for simple manual notes (e.g., `<p>Good candidate</p>`), but when the notes contain AI-generated content from the ingest system (applied via "Apply Suggestion"), the HTML is heavily formatted with `<h2>`, `<strong>`, `<ul>`, `<li>`, etc. This raw HTML:
 
-### 2. Full re-render on drop
-`onDragEnd` (line 282-326) calls `await loadPipeline()` after every move — this re-fetches ALL candidates from the server and replaces all state, causing a full flash/re-render instead of a smooth transition. There's no optimistic update.
+1. Wastes tokens sent to OpenAI
+2. Can confuse the model's language detection (HTML tags look like English)
+3. Makes the "raw notes" section of the prompt harder for the model to parse
 
-## Fixes
+The same issue exists for `jobDescription` — it's HTML from the rich text editor but isn't stripped before being sent to the AI.
 
-### Fix 1: Prevent horizontal scroll during drag
+## Fix
 
-**`src/components/jobs/DraggableCandidateCard.tsx`**
-- When `isDragging` is true, the source element should collapse to `height: 0, overflow: hidden, margin: 0, padding: 0` so it doesn't take up space or affect scroll. This prevents the "gap" from pushing content.
+**`supabase/functions/polish-scorecard-notes/index.ts`**
 
-**`src/components/jobs/DropZone.tsx`**
-- Remove the `h-16` expansion for non-empty stages — this is what causes sibling cards to jump. Instead, use a subtle border/highlight on the stage column itself to indicate it's a valid drop target (no height change = no content shift).
+Add an HTML-stripping helper at the top and apply it to both `currentNotes` and `jobDescription` before inserting them into the prompt:
 
-### Fix 2: Optimistic state update on drop
-
-**`src/components/jobs/PipelineOverview.tsx`** — `onDragEnd` callback
-- Before calling the server, immediately update `byStage` state: remove the association from its source stage and add it to the target stage
-- Then call `moveAssociationToStage` in the background (no `await`)
-- Only call `loadPipeline()` if the server call fails (to revert)
-- This gives instant visual feedback — the card appears in the new column immediately
-
-```tsx
-const onDragEnd = useCallback(async (event: DragEndEvent) => {
-  const { active, over } = event
-  setActiveId(null)
-  if (!over) return
-  
-  const assocId = String(active.id)
-  const toStageId = String(over.id)
-  const entry = assocMap.get(assocId)
-  if (!entry || entry.stageJhsId === toStageId) return
-  
-  // Optimistic update: move card in local state
-  setByStage(prev => {
-    const next = { ...prev }
-    // Remove from source
-    next[entry.stageJhsId] = (next[entry.stageJhsId] || []).filter(a => a.id !== assocId)
-    // Add to target
-    next[toStageId] = [...(next[toStageId] || []), { ...entry.assoc, current_stage_id: toStageId }]
-    return next
-  })
-  
-  // Server sync in background
-  try {
-    await moveAssociationToStage(assocId, toStageId)
-    // Silently refresh to sync any server-side changes
-    loadPipeline()
-  } catch {
-    // Revert on failure
-    loadPipeline()
-    toast({ title: 'Error', description: 'Failed to move candidate.', variant: 'destructive' })
-  }
-}, [...])
+```ts
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<\/h[1-6]>/gi, '\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
 ```
 
-For bulk moves, same pattern — optimistically move all selected cards.
+Then in the prompt construction:
+- `currentNotes` → `stripHtml(currentNotes)`
+- `jobDescription` → `stripHtml(jobDescription)`
+
+This ensures the AI always receives clean plain text regardless of whether the notes are manual or AI-generated from the ingest system.
 
 ## Files
 
 | File | Change |
 |------|--------|
-| `src/components/jobs/DraggableCandidateCard.tsx` | Collapse source element when dragging (height:0) instead of just opacity:0, preventing scroll shifts |
-| `src/components/jobs/DropZone.tsx` | Remove height expansion for non-empty stages; use border/bg highlight only |
-| `src/components/jobs/PipelineOverview.tsx` | Optimistic `byStage` state update in `onDragEnd` before server call; background sync |
+| `supabase/functions/polish-scorecard-notes/index.ts` | Add `stripHtml` helper; strip HTML from `currentNotes` and `jobDescription` before prompt insertion |
 
