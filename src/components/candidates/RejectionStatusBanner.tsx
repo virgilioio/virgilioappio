@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Clock, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface RejectionStatusBannerProps {
@@ -7,6 +7,8 @@ interface RejectionStatusBannerProps {
   rejectedByName?: string;
   rejectionReason?: { id: string; name: string; category: string } | null;
   rejectionNotes?: string | null;
+  rejectionEmailScheduledFor?: string | null;
+  rejectionEmailSentAt?: string | null;
   onReactivate: () => void;
 }
 
