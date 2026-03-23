@@ -1,63 +1,28 @@
 
 
-# Fix Pipeline Kanban: Drop Zone Visibility + Reload Flash
+# Fix Pipeline Skeleton Flash After Drag-and-Drop
 
-## Problems
+## Root Cause
 
-### 1. No drop zone in non-empty stages
-`DropZone.tsx` line 19: when `size === 'compact'` (non-empty stage), height is always `h-0` — the drop zone never becomes visible regardless of hover. Users can't see where the card will land.
+The `onDragEnd` handler already does optimistic update + `silentRefresh()` correctly. But it also calls `onStageChanged?.()` (line 356), which triggers `setPipelineRefresh(v => v + 1)` in JobDetail.tsx. This increments `refreshToken`, which triggers the `useEffect` at line 285-289 that calls `loadPipeline()` — and `loadPipeline()` sets `isLoadingCandidates(true)`, showing the skeleton.
 
-### 2. Full board flash on drop
-`loadPipeline()` (line 230) sets `setIsLoadingCandidates(true)`, which triggers the skeleton loader (line 585), replacing the entire board with loading skeletons after every drop. The optimistic update works but is immediately obliterated by the loading state.
+So the fix already in place (`silentRefresh`) is immediately undone by the `refreshToken` → `loadPipeline()` loop.
 
-## Fixes
+## Fix
 
-### Fix 1: Show drop zone in non-empty stages
-**`src/components/jobs/DropZone.tsx`**
+Two changes in **`src/components/jobs/PipelineOverview.tsx`**:
 
-Change compact size behavior: when `active` (hovered), expand to `h-16` with the tinted background and border. When not hovered, stay at `h-0`. This gives a smooth animated insertion cue.
+1. **`refreshToken` useEffect (line 285-289)**: Use `silentRefresh()` instead of `loadPipeline()`. The `refreshToken` is also triggered by CandidateProfileSheet stage changes — those should also sync silently since the user is looking at the board.
 
-```
-compact + active  →  h-16 (visible drop target)
-compact + !active →  h-0  (hidden)
-expanded + active →  h-40 (empty column)
-expanded + !active → h-0
-```
+2. **`handleMove` (line 291-294)**: This is called from dropdown/menu moves (not DnD). Replace `loadPipeline()` with `silentRefresh()` here too for consistency.
 
-### Fix 2: Silent background sync after drop
-**`src/components/jobs/PipelineOverview.tsx`**
+3. **`CandidateProfileSheet` callback (line 956)**: Replace `loadPipeline()` with `silentRefresh()`.
 
-Create a `silentRefresh` function that fetches data WITHOUT setting `isLoadingCandidates` to `true`. This preserves the optimistic UI while syncing server state in the background.
-
-```tsx
-const silentRefresh = useCallback(async () => {
-  if (!jobId) return
-  try {
-    const associations = await fetchAssociationsForJob(jobId)
-    const active = associations.filter(a => a.status !== 'rejected' && a.status !== 'hired' && a.status !== 'offer')
-    const rejectedList = associations.filter(a => a.status === 'rejected')
-    const hiredList = associations.filter(a => a.status === 'hired')
-    const grouped: Record<string, PipelineAssociation[]> = {}
-    active.forEach(a => {
-      if (!a.current_stage_id) return
-      if (!grouped[a.current_stage_id]) grouped[a.current_stage_id] = []
-      grouped[a.current_stage_id].push(a)
-    })
-    setByStage(grouped)
-    setRejected(rejectedList)
-    setHired(hiredList)
-  } catch (e) {
-    console.error('Silent refresh failed:', e)
-  }
-}, [jobId, fetchAssociationsForJob])
-```
-
-Then in `onDragEnd` (lines 330, 340), replace `loadPipeline()` with `silentRefresh()`.
+This ensures `loadPipeline()` (with skeleton) is only called on initial mount (line 271-283), never after user interactions.
 
 ## Files
 
 | File | Change |
 |------|--------|
-| `src/components/jobs/DropZone.tsx` | Make compact drop zone expand to `h-16` when hovered |
-| `src/components/jobs/PipelineOverview.tsx` | Add `silentRefresh` that syncs without loading state; use in `onDragEnd` |
+| `src/components/jobs/PipelineOverview.tsx` | Replace `loadPipeline()` with `silentRefresh()` in refreshToken useEffect, handleMove, and CandidateProfileSheet callback |
 
