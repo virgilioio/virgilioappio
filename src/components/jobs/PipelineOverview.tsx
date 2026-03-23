@@ -371,6 +371,13 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   // Get status priorities for all candidates (batch query)
   const { statusMap, isLoading: isStatusLoading } = usePipelineCandidateStatuses(jobId, allAssociations)
 
+  // Mark board as "has rendered once" so subsequent refreshes skip the skeleton
+  useEffect(() => {
+    if (!isLoadingPlan && !isLoadingCandidates && !isStatusLoading) {
+      hasRenderedOnce.current = true
+    }
+  }, [isLoadingPlan, isLoadingCandidates, isStatusLoading])
+
   const getTimeInfo = useCallback((a: PipelineAssociation) => {
     const base = a.entered_stage_at || a.created_at
     const nowMs = Date.now()
