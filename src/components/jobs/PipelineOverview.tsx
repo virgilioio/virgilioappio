@@ -354,7 +354,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
       silentRefresh()
     }
     onStageChanged?.()
-  }, [moveAssociationToStage, loadPipeline, selectedIds, emitSelectedCandidateIds, onStageChanged, assocMap])
+  }, [moveAssociationToStage, silentRefresh, selectedIds, emitSelectedCandidateIds, onStageChanged, assocMap])
 
   // Get all associations for status-based sorting
   const allAssociations = useMemo(() => {
