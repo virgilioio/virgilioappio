@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ensureAbsoluteUrl } from '@/lib/utils'
 import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -106,7 +107,7 @@ export function ApplicationReviewSheet({
                         <Button
                           variant="outline"
                           className="h-8 w-8 p-0"
-                          onClick={() => window.open(review.currentCandidate!.linkedinUrl!, '_blank')}
+                          onClick={() => window.open(ensureAbsoluteUrl(review.currentCandidate!.linkedinUrl!), '_blank')}
                           aria-label="Open LinkedIn profile"
                         >
                           <LinkedInFilled className="h-5 w-5" />

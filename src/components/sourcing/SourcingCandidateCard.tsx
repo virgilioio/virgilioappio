@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { ensureAbsoluteUrl } from '@/lib/utils'
 import { useNavigate } from 'react-router-dom'
 import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
@@ -118,7 +119,7 @@ export function SourcingCandidateCard({ candidate, jobId }: SourcingCandidateCar
               </h3>
               {candidate.linkedin_url && (
                 <a 
-                  href={candidate.linkedin_url}
+                  href={ensureAbsoluteUrl(candidate.linkedin_url)}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}

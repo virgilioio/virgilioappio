@@ -237,7 +237,7 @@ serve(async (req) => {
           candidate_name: candidateName,
           email: candidateEmail,
           phone: body.phone?.slice(0, 80) || null,
-          linkedin_url: body.linkedin_url?.slice(0, 512) || null,
+          linkedin_url: (() => { const u = body.linkedin_url?.slice(0, 512)?.trim(); return u ? (u.match(/^https?:\/\//i) ? u : `https://${u}`) : null; })(),
           profile_summary: body.profile_summary || null,
           skills: body.skills ? [body.skills] : null,
           source: "public_posting",
@@ -354,7 +354,7 @@ serve(async (req) => {
       console.log('🔗 Syncing LinkedIn URL to candidate profile:', body.linkedin_sync);
       const { error: linkedinErr } = await supabase
         .from('candidates')
-        .update({ linkedin_url: body.linkedin_sync.slice(0, 512) })
+        .update({ linkedin_url: (() => { const u = body.linkedin_sync.slice(0, 512).trim(); return u.match(/^https?:\/\//i) ? u : `https://${u}`; })() })
         .eq('id', globalCandidateId);
       if (linkedinErr) {
         console.error('⚠️ Warning: Failed to sync LinkedIn URL:', linkedinErr);

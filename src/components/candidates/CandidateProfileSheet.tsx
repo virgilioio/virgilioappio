@@ -54,7 +54,7 @@ import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 import { MobileJobSelector } from '@/components/candidates/MobileJobSelector'
 import { AddOrTransferCandidateDialog } from '@/components/candidates/AddOrTransferCandidateDialog'
 import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
-import { cn } from '@/lib/utils'
+import { cn, ensureAbsoluteUrl } from '@/lib/utils'
 import { MinimizableEmailComposer } from '@/components/candidates/MinimizableEmailComposer'
 import { EmailHistoryList } from './EmailHistoryList'
 import { EmailHistoryCardEmail } from './EmailHistoryCard'
@@ -935,7 +935,7 @@ const stageHasAutomation = useMemo(() => {
                     <Button
                       variant="outline"
                        className="h-8 w-8 p-0 min-h-0"
-                       onClick={() => window.open(candidate.linkedin_url, '_blank')}
+                       onClick={() => window.open(ensureAbsoluteUrl(candidate.linkedin_url!), '_blank')}
                       aria-label="Open LinkedIn profile"
                     >
                       <LinkedInFilled className="h-5 w-5" />
