@@ -103,8 +103,7 @@ function SortableQuestionItem({
       style={style}
       className={cn(
         'flex items-start gap-3 p-4 bg-white border border-virgilio-border rounded-lg',
-        'hover:border-virgilio-purple/50 transition-all duration-200',
-        isDragging && 'opacity-50 shadow-lg'
+        'hover:border-virgilio-purple/50 transition-all duration-200'
       )}
     >
       <button
