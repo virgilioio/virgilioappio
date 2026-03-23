@@ -34,6 +34,18 @@ export function RejectionStatusBanner({
         {rejectionNotes && (
           <p className="text-xs text-white/70 italic mt-1">"{rejectionNotes}"</p>
         )}
+        {rejectionEmailSentAt && (
+          <p className="text-xs text-green-200 flex items-center gap-1 mt-1">
+            <Mail className="h-3 w-3" />
+            Rejection email sent on {format(new Date(rejectionEmailSentAt), 'MMM d, yyyy')}
+          </p>
+        )}
+        {!rejectionEmailSentAt && rejectionEmailScheduledFor && (
+          <p className="text-xs text-amber-200 flex items-center gap-1 mt-1">
+            <Clock className="h-3 w-3" />
+            Rejection email scheduled for {format(new Date(rejectionEmailScheduledFor), "MMM d, yyyy 'at' h:mm a")}
+          </p>
+        )}
       </div>
       <Button variant="outline" size="sm" onClick={onReactivate} className="bg-white hover:bg-white/90 text-foreground border-0">
         <RotateCcw className="h-4 w-4 mr-2" /> Reactivate

@@ -995,6 +995,8 @@ const stageHasAutomation = useMemo(() => {
                         rejectedByName={rejectionDetails.rejectedByName || undefined}
                         rejectionReason={rejectionDetails.rejectionReason}
                         rejectionNotes={rejectionDetails.rejectionNotes}
+                        rejectionEmailScheduledFor={rejectionDetails.rejectionEmailScheduledFor}
+                        rejectionEmailSentAt={rejectionDetails.rejectionEmailSentAt}
                         onReactivate={handleReactivate}
                       />
                     </div>
