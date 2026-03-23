@@ -155,13 +155,13 @@ ${candidateProfile}
 
 **Position:**
 ${jobTitle}
-${jobDescription ? `\n\n**Job Description:**\n${jobDescription}` : ''}
+${jobDescription ? `\n\n**Job Description:**\n${stripHtml(jobDescription)}` : ''}
 
 **Interview Questions & Candidate Responses:**
 ${formattedQuestionsAndAnswers}
 
 **Interviewer's Raw Notes:**
-${currentNotes || "No additional notes provided."}
+${currentNotes ? stripHtml(currentNotes) : "No additional notes provided."}
 
 ---
 
