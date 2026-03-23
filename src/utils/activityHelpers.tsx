@@ -23,6 +23,7 @@ export function getActivityIcon(activityType: string): React.ReactNode {
   const iconMap: Record<string, LucideIcon> = {
     'candidate_created': UserPlus,
     'candidate_added': UserPlus,
+    'candidate_applied': Send,
     'candidate_profile_updated': Edit3,
     'candidate_assigned_to_job': Briefcase,
     'candidate_stage_changed': ArrowRight,
@@ -52,6 +53,7 @@ export function getActivityColor(activityType: string): string {
   const colorMap: Record<string, string> = {
     'candidate_created': 'hsl(var(--success))',
     'candidate_added': 'hsl(var(--success))',
+    'candidate_applied': 'hsl(var(--primary))',
     'candidate_profile_updated': 'hsl(var(--info))',
     'candidate_assigned_to_job': 'hsl(var(--primary))',
     'candidate_stage_changed': 'hsl(var(--warning))',

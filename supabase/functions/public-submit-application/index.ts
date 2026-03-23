@@ -443,7 +443,7 @@ serve(async (req) => {
         p_user_id: globalCandidateId,
         p_organization_id: (posting as any).job?.organization_id || null,
         p_tenant_id: posting.tenant_id || null,
-        p_activity_type: 'candidate_added',
+        p_activity_type: 'candidate_applied',
         p_title: 'Applied via job posting',
         p_description: `Candidate applied for ${jobTitle}`,
         p_metadata: {},
