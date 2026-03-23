@@ -106,7 +106,7 @@ export function ApplicationReviewSheet({
                         <Button
                           variant="outline"
                           className="h-8 w-8 p-0"
-                          onClick={() => window.open(review.currentCandidate!.linkedinUrl!, '_blank')}
+                          onClick={() => window.open(ensureAbsoluteUrl(review.currentCandidate!.linkedinUrl!), '_blank')}
                           aria-label="Open LinkedIn profile"
                         >
                           <LinkedInFilled className="h-5 w-5" />

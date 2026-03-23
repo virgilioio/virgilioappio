@@ -118,7 +118,7 @@ export function SourcingCandidateCard({ candidate, jobId }: SourcingCandidateCar
               </h3>
               {candidate.linkedin_url && (
                 <a 
-                  href={candidate.linkedin_url}
+                  href={ensureAbsoluteUrl(candidate.linkedin_url)}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}

@@ -935,7 +935,7 @@ const stageHasAutomation = useMemo(() => {
                     <Button
                       variant="outline"
                        className="h-8 w-8 p-0 min-h-0"
-                       onClick={() => window.open(candidate.linkedin_url, '_blank')}
+                       onClick={() => window.open(ensureAbsoluteUrl(candidate.linkedin_url!), '_blank')}
                       aria-label="Open LinkedIn profile"
                     >
                       <LinkedInFilled className="h-5 w-5" />

@@ -354,7 +354,7 @@ serve(async (req) => {
       console.log('🔗 Syncing LinkedIn URL to candidate profile:', body.linkedin_sync);
       const { error: linkedinErr } = await supabase
         .from('candidates')
-        .update({ linkedin_url: body.linkedin_sync.slice(0, 512) })
+        .update({ linkedin_url: (() => { const u = body.linkedin_sync.slice(0, 512).trim(); return u.match(/^https?:\/\//i) ? u : `https://${u}`; })() })
         .eq('id', globalCandidateId);
       if (linkedinErr) {
         console.error('⚠️ Warning: Failed to sync LinkedIn URL:', linkedinErr);
