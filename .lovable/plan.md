@@ -1,97 +1,63 @@
 
 
-# DnD Polish Pass — Unified Interaction Language
+# Fix Pipeline Kanban: Drop Zone Visibility + Reload Flash
 
-## Audit: All DnD Surfaces Found
+## Problems
 
-| # | Surface | File | Type | Sensors | DragOverlay | Source Behavior | Overlay Style |
-|---|---------|------|------|---------|-------------|-----------------|---------------|
-| 1 | Pipeline Kanban | `PipelineOverview.tsx` + `DraggableCandidateCard.tsx` + `DroppableStage.tsx` + `DropZone.tsx` | Draggable → Droppable | Mouse(10px) + Touch(180ms) | Yes, with bulk stack | Collapse (h:0) | rotate(-2deg) scale(1.02) shadow |
-| 2 | Hiring Plan stages | `HiringPlanTab.tsx` + `DraggableStageItem.tsx` | Sortable list | Pointer(5px) + Keyboard | Yes | opacity:0 | rotate(-2deg) scale(1.02) shadow |
-| 3 | Offer Approval Chain | `OfferApprovalChainConfig.tsx` | Sortable list | Pointer(5px) | Yes | opacity:0 (+ conflicting `opacity-50` class) | rotate(-1deg) scale(1.02) shadow |
-| 4 | Interview Questions | `InterviewQuestionsList.tsx` | Sortable list | Pointer(5px) + Keyboard | Yes | opacity:0 (+ conflicting `opacity-50` class) | rotate(-1deg) scale(1.02) shadow |
-| 5 | Offer Form Fields | `OfferFormFieldsManager.tsx` | Sortable list | Pointer(5px) | Yes (minimal: label+type) | opacity:0 | No rotation, just shadow-lg w-[280px] |
-| 6 | Posting Fields | `PostingFieldsBuilder.tsx` | Sortable + DropBox zones | Pointer(5px) | Yes (minimal: label+type) | opacity:0 | No rotation, just shadow-lg w-[280px] |
+### 1. No drop zone in non-empty stages
+`DropZone.tsx` line 19: when `size === 'compact'` (non-empty stage), height is always `h-0` — the drop zone never becomes visible regardless of hover. Users can't see where the card will land.
 
-## Inconsistencies Found
+### 2. Full board flash on drop
+`loadPipeline()` (line 230) sets `setIsLoadingCandidates(true)`, which triggers the skeleton loader (line 585), replacing the entire board with loading skeletons after every drop. The optimistic update works but is immediately obliterated by the loading state.
 
-1. **Overlay rotation**: Kanban uses -2deg, approval/questions use -1deg, form fields use 0deg
-2. **Shadow style**: Mixed between inline `boxShadow` and Tailwind `shadow-lg`
-3. **Source opacity**: Some use `opacity: 0` via style, but also have `opacity-50` in className (conflicting — e.g., InterviewQuestionsList line 107, OfferApprovalChainConfig line 79)
-4. **Drop animation**: Kanban + HiringPlan + Approval + Questions have `dropAnimation: { duration: 200, easing: 'ease' }`, but OfferFormFieldsManager and PostingFieldsBuilder DragOverlays have NO dropAnimation
-5. **Touch sensor**: Only PipelineOverview has TouchSensor; all sortable lists lack it
-6. **Keyboard sensor**: Only HiringPlanTab and InterviewQuestionsList have KeyboardSensor; others don't
-7. **DropZone**: Only used in kanban; no visual drop indicator for sortable lists
-8. **Cursor**: DraggableCandidateCard sets `cursor: grab`; sortable items use `cursor-grab` class on handle only; no `active:cursor-grabbing` on some
+## Fixes
 
-## Unified Design Language
+### Fix 1: Show drop zone in non-empty stages
+**`src/components/jobs/DropZone.tsx`**
 
-**Overlay**: `rotate(-1.5deg) scale(1.03)`, shadow `0 12px 24px rgba(0,0,0,0.15)` — consistent everywhere
-**Source**: `opacity: 0` (style only, no conflicting classes)
-**Drop animation**: `{ duration: 200, easing: 'ease' }` everywhere
-**Sensors**: All get Pointer(5px) + Touch(180ms, 8px tolerance). Keyboard where already present stays.
-**Drag handle**: `cursor-grab active:cursor-grabbing` on all handles
-**Transition on source**: `transition` from dnd-kit only, no extra CSS transition that lags behind cursor
+Change compact size behavior: when `active` (hovered), expand to `h-16` with the tinted background and border. When not hovered, stay at `h-0`. This gives a smooth animated insertion cue.
 
-## Changes
+```
+compact + active  →  h-16 (visible drop target)
+compact + !active →  h-0  (hidden)
+expanded + active →  h-40 (empty column)
+expanded + !active → h-0
+```
 
-### 1. `src/components/jobs/DraggableCandidateCard.tsx`
-- Remove `transition: 'transform 200ms ease, opacity 150ms ease'` from non-dragging style (this causes lag following cursor during drag initiation)
-- Keep collapse behavior (h:0) for kanban source — this is correct for cross-container drag
-- Keep `cursor: 'grab'`
+### Fix 2: Silent background sync after drop
+**`src/components/jobs/PipelineOverview.tsx`**
 
-### 2. `src/components/jobs/DraggableStageItem.tsx`
-- Remove conflicting `showDragging && "shadow-lg z-10"` class (overlay handles the visual)
-- Ensure opacity:0 is the only visual change when dragging
+Create a `silentRefresh` function that fetches data WITHOUT setting `isLoadingCandidates` to `true`. This preserves the optimistic UI while syncing server state in the background.
 
-### 3. `src/components/jobs/PipelineOverview.tsx`
-- Unify overlay style to `rotate(-1.5deg) scale(1.03)`, shadow `0 12px 24px rgba(0,0,0,0.15)`
+```tsx
+const silentRefresh = useCallback(async () => {
+  if (!jobId) return
+  try {
+    const associations = await fetchAssociationsForJob(jobId)
+    const active = associations.filter(a => a.status !== 'rejected' && a.status !== 'hired' && a.status !== 'offer')
+    const rejectedList = associations.filter(a => a.status === 'rejected')
+    const hiredList = associations.filter(a => a.status === 'hired')
+    const grouped: Record<string, PipelineAssociation[]> = {}
+    active.forEach(a => {
+      if (!a.current_stage_id) return
+      if (!grouped[a.current_stage_id]) grouped[a.current_stage_id] = []
+      grouped[a.current_stage_id].push(a)
+    })
+    setByStage(grouped)
+    setRejected(rejectedList)
+    setHired(hiredList)
+  } catch (e) {
+    console.error('Silent refresh failed:', e)
+  }
+}, [jobId, fetchAssociationsForJob])
+```
 
-### 4. `src/components/jobs/HiringPlanTab.tsx`
-- Unify overlay style from `rotate(-2deg) scale(1.02)` to `rotate(-1.5deg) scale(1.03)`, shadow `0 12px 24px rgba(0,0,0,0.15)`
-- Add TouchSensor
-
-### 5. `src/components/jobs/OfferApprovalChainConfig.tsx`
-- Remove conflicting `isDragging && 'opacity-50'` from className (line 79) — style `opacity: 0` already handles it
-- Unify overlay style from `rotate(-1deg) scale(1.02)` to `rotate(-1.5deg) scale(1.03)`
-- Add TouchSensor
-
-### 6. `src/components/jobs/stage-config/InterviewQuestionsList.tsx`
-- Remove conflicting `isDragging && 'opacity-50 shadow-lg'` from className (line 107) — style `opacity: 0` already handles it
-- Unify overlay style from `rotate(-1deg) scale(1.02)` to `rotate(-1.5deg) scale(1.03)`
-- Add TouchSensor
-
-### 7. `src/components/settings/OfferFormFieldsManager.tsx`
-- Add `dropAnimation={{ duration: 200, easing: 'ease' }}` to DragOverlay
-- Add overlay rotation/shadow to match system: wrap content in div with unified style
-- Add TouchSensor
-
-### 8. `src/components/jobs/postings/PostingFieldsBuilder.tsx`
-- Add `dropAnimation={{ duration: 200, easing: 'ease' }}` to DragOverlay
-- Add overlay rotation/shadow to match system
-- Add TouchSensor
-
-### 9. `src/components/jobs/DropZone.tsx`
-- Refine the transition for empty columns: use `duration-250` for slightly smoother expansion
-
-## What stays untouched
-- All drag logic, reorder logic, persistence, optimistic updates
-- Selection behavior, bulk drag logic, counts, filters
-- Stage rules, permissions, business logic
-- Kanban collapse-on-drag behavior (correct for cross-container)
-- Keyboard sensor presence/absence (only add where missing, don't remove)
+Then in `onDragEnd` (lines 330, 340), replace `loadPipeline()` with `silentRefresh()`.
 
 ## Files
 
 | File | Change |
 |------|--------|
-| `src/components/jobs/DraggableCandidateCard.tsx` | Remove extra CSS transition on non-dragging state |
-| `src/components/jobs/DraggableStageItem.tsx` | Remove conflicting shadow class when dragging |
-| `src/components/jobs/PipelineOverview.tsx` | Unify overlay style constants |
-| `src/components/jobs/HiringPlanTab.tsx` | Unify overlay style + add TouchSensor |
-| `src/components/jobs/OfferApprovalChainConfig.tsx` | Remove conflicting opacity class + unify overlay + add TouchSensor |
-| `src/components/jobs/stage-config/InterviewQuestionsList.tsx` | Remove conflicting opacity/shadow class + unify overlay + add TouchSensor |
-| `src/components/settings/OfferFormFieldsManager.tsx` | Add dropAnimation + overlay styling + TouchSensor |
-| `src/components/jobs/postings/PostingFieldsBuilder.tsx` | Add dropAnimation + overlay styling + TouchSensor |
-| `src/components/jobs/DropZone.tsx` | Refine transition duration |
+| `src/components/jobs/DropZone.tsx` | Make compact drop zone expand to `h-16` when hovered |
+| `src/components/jobs/PipelineOverview.tsx` | Add `silentRefresh` that syncs without loading state; use in `onDragEnd` |
 
