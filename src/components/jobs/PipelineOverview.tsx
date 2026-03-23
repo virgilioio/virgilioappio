@@ -596,8 +596,8 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
         </div>
       )}
 
-      {/* Unified loading gate: show skeleton until stages, candidates, AND statuses are all ready */}
-      {(isLoadingPlan || isLoadingCandidates || isStatusLoading) ? (
+      {/* Unified loading gate: show skeleton only on initial load; after first render, keep board mounted */}
+      {(!hasRenderedOnce.current && (isLoadingPlan || isLoadingCandidates || isStatusLoading)) ? (
         <div className="flex gap-4 overflow-hidden pb-2">
           {Array.from({ length: 4 }).map((_, colIdx) => (
             <div key={colIdx} className="w-72 flex-shrink-0 rounded-lg border bg-card flex flex-col">
