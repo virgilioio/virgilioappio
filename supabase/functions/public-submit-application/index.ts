@@ -237,7 +237,7 @@ serve(async (req) => {
           candidate_name: candidateName,
           email: candidateEmail,
           phone: body.phone?.slice(0, 80) || null,
-          linkedin_url: body.linkedin_url?.slice(0, 512) || null,
+          linkedin_url: (() => { const u = body.linkedin_url?.slice(0, 512)?.trim(); return u ? (u.match(/^https?:\/\//i) ? u : `https://${u}`) : null; })(),
           profile_summary: body.profile_summary || null,
           skills: body.skills ? [body.skills] : null,
           source: "public_posting",
