@@ -341,7 +341,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
           : 'Candidate moved to the selected stage.',
       })
       // Silently sync server state
-      loadPipeline()
+      silentRefresh()
     } catch (error) {
       toast({
         title: 'Error',
@@ -351,7 +351,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
         variant: 'destructive',
       })
       // Revert on failure
-      loadPipeline()
+      silentRefresh()
     }
     onStageChanged?.()
   }, [moveAssociationToStage, loadPipeline, selectedIds, emitSelectedCandidateIds, onStageChanged, assocMap])
