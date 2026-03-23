@@ -290,7 +290,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
 
   const handleMove = async (associationId: string, toStageId: string) => {
     await moveAssociationToStage(associationId, toStageId)
-    await loadPipeline()
+    await silentRefresh()
   }
 
   const onDragEnd = useCallback(async (event: DragEndEvent) => {
