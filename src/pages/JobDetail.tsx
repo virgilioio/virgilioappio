@@ -813,7 +813,7 @@ export default function JobDetail() {
                 </TabsList>
               
               
-              <TabsContent value="candidates" className="flex-1 min-h-0 overflow-y-auto">
+              <TabsContent value="candidates">
                 <JobAnalyticsDashboard 
                   jobId={id!}
                   candidates={allAssociatedCandidates.length ? allAssociatedCandidates : applicationReviewCandidates}
@@ -822,7 +822,7 @@ export default function JobDetail() {
               </TabsContent>
               
               {!isRestrictedViewer && (
-               <TabsContent value="job-setup" className="flex-1 min-h-0 overflow-y-auto">
+               <TabsContent value="job-setup">
                 <JobSetupPanel
                   jobId={id!}
                   jobTitle={job.title}
@@ -1283,8 +1283,8 @@ export default function JobDetail() {
               />
               
               {/* Main content */}
-              <div className="flex-1 min-h-0 min-w-0 flex flex-col">
-                <TabsContent value="candidates" className="flex-1 min-h-0 overflow-y-auto">
+              <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-y-auto">
+                <TabsContent value="candidates">
                   <JobAnalyticsDashboard 
                     jobId={id!}
                     candidates={allAssociatedCandidates.length ? allAssociatedCandidates : applicationReviewCandidates}
@@ -1294,7 +1294,7 @@ export default function JobDetail() {
                 
                 {/* All Candidates Tab */}
                 {!isRestrictedViewer && (
-                <TabsContent value="all-candidates" className="flex-1 min-h-0 overflow-y-auto">
+                <TabsContent value="all-candidates">
                   <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
                       <div>
@@ -1677,7 +1677,7 @@ export default function JobDetail() {
 
                 {/* Job Setup Tab */}
                 {!isRestrictedViewer && (
-                <TabsContent value="job-setup" className="flex-1 min-h-0 overflow-y-auto">
+                <TabsContent value="job-setup">
                     <JobSetupPanel
                       jobId={id!}
                       jobTitle={job.title}
