@@ -34,7 +34,7 @@ import { useMyScorecards } from '@/hooks/useScorecards'
 import { useAllStageScorecards } from '@/hooks/useAllStageScorecards'
 import { ExpandableScoreDisplay } from '@/components/candidates/ExpandableScoreDisplay'
 import { StageBookingsList } from '@/components/candidates/StageBookingsList'
-import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
+import { CandidateProfileDownloadDialog } from '@/components/candidates/CandidateProfileDownloadDialog'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 import { toast } from '@/hooks/use-toast'
 import CandidateNameCard from '@/components/candidates/CandidateNameCard'
@@ -211,7 +211,7 @@ const [simpleScheduleOpen, setSimpleScheduleOpen] = useState(false)
 // Offer delete warning dialog
 const [showOfferDeleteWarning, setShowOfferDeleteWarning] = useState(false)
 const [pendingStatusAction, setPendingStatusAction] = useState<(() => Promise<void>) | null>(null)
-
+const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
 // Stage automations query for lightning icon
 
 // Stage automations query for lightning icon
@@ -1538,26 +1538,7 @@ const stageHasAutomation = useMemo(() => {
                                   variant="outline"
                                   size="sm"
                                   disabled={!candidate}
-                                  onClick={async () => {
-                                    if (!candidate) return
-                                    try {
-                                      await generateCandidatePdf({
-                                        candidate,
-                                        job
-                                      })
-                                      toast({ 
-                                        title: 'PDF Generated', 
-                                        description: 'Candidate profile PDF has been downloaded.' 
-                                      })
-                                    } catch (error) {
-                                      console.error('Error generating PDF:', error)
-                                      toast({ 
-                                        title: 'Error', 
-                                        description: 'Failed to generate PDF. Please try again.', 
-                                        variant: 'destructive' 
-                                      })
-                                    }
-                                  }}
+                                  onClick={() => setDownloadDialogOpen(true)}
                                 >
                                   <Download className="h-4 w-4 mr-2" />
                                   Download
@@ -1870,6 +1851,18 @@ const stageHasAutomation = useMemo(() => {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+    {candidate && (
+      <CandidateProfileDownloadDialog
+        open={downloadDialogOpen}
+        onOpenChange={setDownloadDialogOpen}
+        pdfOptions={{
+          candidate,
+          job,
+          workExperience,
+          education,
+        }}
+      />
+    )}
   </>
   )
 }

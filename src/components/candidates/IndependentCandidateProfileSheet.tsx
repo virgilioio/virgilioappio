@@ -26,7 +26,7 @@ import { Badge } from '@/components/ui/badge'
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
 import gioAiBannerIcon from '@/assets/gio-ai-banner-icon.png'
 import { ChevronDown } from 'lucide-react'
-import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
+import { CandidateProfileDownloadDialog } from '@/components/candidates/CandidateProfileDownloadDialog'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 import { toast } from '@/hooks/use-toast'
 import CandidateNameCard from '@/components/candidates/CandidateNameCard'
@@ -74,6 +74,7 @@ export function IndependentCandidateProfileSheet({
   const [editOpen, setEditOpen] = useState(false)
   const [editLoading, setEditLoading] = useState(false)
   const [scheduleOpen, setScheduleOpen] = useState(false)
+  const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
 
   // Handler for job sidebar navigation
   const handleJobSelect = (jobId: string) => {
@@ -299,6 +300,16 @@ export function IndependentCandidateProfileSheet({
                         AI Enrich
                       </Button>
                     )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!candidate}
+                      onClick={() => setDownloadDialogOpen(true)}
+                      className="gap-1.5"
+                    >
+                      <FileText className="h-4 w-4" />
+                      Download
+                    </Button>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 sm:gap-sm">
@@ -804,6 +815,18 @@ export function IndependentCandidateProfileSheet({
           )}
         </SheetContent>
       </Sheet>
+      {candidate && (
+        <CandidateProfileDownloadDialog
+          open={downloadDialogOpen}
+          onOpenChange={setDownloadDialogOpen}
+          pdfOptions={{
+            candidate,
+            workExperience,
+            education,
+            certifications,
+          }}
+        />
+      )}
     </>
   )
 }

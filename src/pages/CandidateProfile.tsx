@@ -29,7 +29,7 @@ import { useCandidateResolver } from '@/hooks/useCandidateResolver'
 import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDropzone'
 import { MinimizableOfferComposer } from '@/components/candidates/MinimizableOfferComposer'
 import { getSkillColor } from '@/utils/skillColors'
-import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
+import { CandidateProfileDownloadDialog } from '@/components/candidates/CandidateProfileDownloadDialog'
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import AddJobCandidateToPipelineDialog from '@/components/candidates/AddJobCandidateToPipelineDialog'
@@ -47,6 +47,7 @@ export default function CandidateProfile() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isOfferLetterDialogOpen, setIsOfferLetterDialogOpen] = useState(false)
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false)
+  const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'job' | 'resume' | 'overview'>('overview')
   const { candidates, isLoading: candidatesLoading, updateCandidate } = useCandidates(jobId || '')
   const { getJob, isLoading: jobLoading } = useJobs()
@@ -332,7 +333,7 @@ export default function CandidateProfile() {
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => generateCandidatePdf({ candidate, job, organization: jobOrganization })}
+                        onClick={() => setDownloadDialogOpen(true)}
                         title="Download PDF"
                       >
                         <Download className="h-4 w-4" />
@@ -640,6 +641,17 @@ export default function CandidateProfile() {
                 </div>
               </DialogContent>
             </Dialog>
+            {candidate && (
+              <CandidateProfileDownloadDialog
+                open={downloadDialogOpen}
+                onOpenChange={setDownloadDialogOpen}
+                pdfOptions={{
+                  candidate,
+                  job,
+                  organization: jobOrganization,
+                }}
+              />
+            )}
           </AppContainer>
         </JobAssignmentGuard>
       </PermissionGate>
