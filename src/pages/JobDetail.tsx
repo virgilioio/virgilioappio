@@ -813,7 +813,7 @@ export default function JobDetail() {
                 </TabsList>
               
               
-              <TabsContent value="candidates">
+              <TabsContent value="candidates" className="flex-1 min-h-0 overflow-y-auto">
                 <JobAnalyticsDashboard 
                   jobId={id!}
                   candidates={allAssociatedCandidates.length ? allAssociatedCandidates : applicationReviewCandidates}
@@ -822,7 +822,7 @@ export default function JobDetail() {
               </TabsContent>
               
               {!isRestrictedViewer && (
-               <TabsContent value="job-setup" className="overflow-y-auto">
+               <TabsContent value="job-setup" className="flex-1 min-h-0 overflow-y-auto">
                 <JobSetupPanel
                   jobId={id!}
                   jobTitle={job.title}
@@ -1284,7 +1284,7 @@ export default function JobDetail() {
               
               {/* Main content */}
               <div className="flex-1 min-h-0 min-w-0 flex flex-col">
-                <TabsContent value="candidates">
+                <TabsContent value="candidates" className="flex-1 min-h-0 overflow-y-auto">
                   <JobAnalyticsDashboard 
                     jobId={id!}
                     candidates={allAssociatedCandidates.length ? allAssociatedCandidates : applicationReviewCandidates}
@@ -1294,7 +1294,7 @@ export default function JobDetail() {
                 
                 {/* All Candidates Tab */}
                 {!isRestrictedViewer && (
-                <TabsContent value="all-candidates">
+                <TabsContent value="all-candidates" className="flex-1 min-h-0 overflow-y-auto">
                   <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
                       <div>
@@ -1677,7 +1677,7 @@ export default function JobDetail() {
 
                 {/* Job Setup Tab */}
                 {!isRestrictedViewer && (
-                <TabsContent value="job-setup" className="overflow-y-auto">
+                <TabsContent value="job-setup" className="flex-1 min-h-0 overflow-y-auto">
                     <JobSetupPanel
                       jobId={id!}
                       jobTitle={job.title}
