@@ -321,9 +321,9 @@ export function MemberInviteSheet({
                     <div className="text-sm">
                       <span className="font-medium">Billing impact:</span> Adding this {selectedRoleInfo?.label} will increase your subscription
                       <div className="mt-1 text-xs">
-                        • Monthly: +{formatPrice(seatsPreview.monthlyCostIncrease / 100)} (total: {seatsPreview.newSeats} seats)
+                        • Monthly: +{formatPrice(seatsPreview.monthlyCostIncrease)} (total: {seatsPreview.newSeats} seats)
                         <br />
-                        • Yearly: +{formatPrice(seatsPreview.yearlyCostIncrease / 100)} (total: {seatsPreview.newSeats} seats)
+                        • Yearly: +{formatPrice(seatsPreview.yearlyCostIncrease)} (total: {seatsPreview.newSeats} seats)
                       </div>
                     </div>
                   </AlertDescription>
@@ -335,7 +335,7 @@ export function MemberInviteSheet({
                   <Info className="h-4 w-4" />
                   <AlertDescription>
                     <div className="text-sm">
-                      <span className="font-medium">Free role:</span> Members don't affect billing
+                      <span className="font-medium">Free at invite:</span> Members are free until assigned as a Recruiter on a job, which converts them to a paid seat
                     </div>
                   </AlertDescription>
                 </Alert>
