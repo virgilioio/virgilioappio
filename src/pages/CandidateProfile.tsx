@@ -47,6 +47,7 @@ export default function CandidateProfile() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isOfferLetterDialogOpen, setIsOfferLetterDialogOpen] = useState(false)
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false)
+  const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'job' | 'resume' | 'overview'>('overview')
   const { candidates, isLoading: candidatesLoading, updateCandidate } = useCandidates(jobId || '')
   const { getJob, isLoading: jobLoading } = useJobs()
