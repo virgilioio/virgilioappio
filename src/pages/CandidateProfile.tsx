@@ -672,6 +672,9 @@ export default function CandidateProfile() {
                   candidate,
                   job,
                   organization: jobOrganization,
+                  workExperience,
+                  education,
+                  certifications,
                 }}
               />
             )}

@@ -1872,6 +1872,7 @@ const stageHasAutomation = useMemo(() => {
           job,
           workExperience,
           education,
+          certifications,
         }}
       />
     )}
