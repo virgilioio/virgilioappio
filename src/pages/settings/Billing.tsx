@@ -271,7 +271,7 @@ export function Billing() {
           value={`${billing.seat_quantity || 1}`}
           suffix=" Seats"
           icon={Users}
-          iconColor="text-primary"
+          iconColor="text-virgilio-success"
           footer={
             <span className="text-xs text-muted-foreground">Paid seats</span>
           }
