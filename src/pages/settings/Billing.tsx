@@ -281,7 +281,7 @@ export function Billing() {
           value={totalCredits}
           suffix="/mo"
           icon={Sparkles}
-          iconColor="text-primary"
+          iconColor="text-violet-500"
           footer={
             <span className="text-xs text-muted-foreground">
               {creditsPerSeat} per seat
