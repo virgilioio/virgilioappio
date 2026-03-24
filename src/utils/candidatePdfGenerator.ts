@@ -235,9 +235,9 @@ export const generateCandidatePdf = async ({
 
     // ── Enrichment metadata line ──
     const metaParts: string[] = []
-    if (candidate.seniority_level) metaParts.push(candidate.seniority_level)
-    if (candidate.functional_area) metaParts.push(candidate.functional_area)
-    if (candidate.years_experience) metaParts.push(`${candidate.years_experience} yrs experience`)
+    if (c.seniority_level) metaParts.push(c.seniority_level)
+    if (c.functional_area) metaParts.push(c.functional_area)
+    if (c.years_experience) metaParts.push(`${c.years_experience} yrs experience`)
     if (metaParts.length > 0) {
       setSmall()
       pdf.setTextColor(120, 120, 120)
