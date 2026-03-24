@@ -15,7 +15,7 @@ import { useInvoiceHistory } from '@/hooks/useInvoiceHistory'
 import { useSwitchBillingInterval } from '@/hooks/useSwitchBillingInterval'
 import { InvoiceHistoryTable } from '@/components/billing/InvoiceHistoryTable'
 import { CreditBundleCard } from '@/components/billing/CreditBundleCard'
-import { PerSeatPricingCard } from '@/components/billing/PerSeatPricingCard'
+
 
 export function Billing() {
   const { organizationId, userType } = useAuth()
