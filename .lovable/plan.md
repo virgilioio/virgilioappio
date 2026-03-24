@@ -1,38 +1,44 @@
 
 
-# Fix Blank Space Above Job Setup Content
+# Fix Job Setup White Space and Scrolling
 
-## Problem
+## Root Cause
 
-The `flex-1 min-h-0` added to the job-setup `TabsContent` is causing the container to stretch to fill the entire available height of the flex column parent. The `JobSetupPanel` content then renders at its natural size within that stretched container, leaving a large blank space. This flex behavior is unnecessary for the job-setup tab — unlike the pipeline tab (which has a board that needs to fill the viewport), the setup tab just needs to scroll its content naturally.
+The layout hierarchy is: `Tabs(flex-col, flex-1, overflow-hidden)` → `div(flex-1, flex-col)` → `TabsContent`. The Pipeline tab works correctly because it uses a **two-layer pattern**:
+
+```text
+TabsContent (flex-1, min-h-0, flex flex-col, overflow-hidden)  ← fills space, no scroll
+  └─ div (flex-1, min-h-0, overflow-auto)                      ← inner scroll container
+       └─ content
+```
+
+The job-setup tab currently has just `overflow-auto` on the TabsContent — which does nothing because there's no height constraint. Previously, adding `flex-1 min-h-0 overflow-auto` directly on TabsContent caused blank space due to the overflow container interacting poorly with flex sizing.
+
+The fix is to mirror the Pipeline's two-layer approach: TabsContent fills the space and clips, inner div scrolls.
 
 ## Fix
 
-**`src/pages/JobDetail.tsx`** — Remove `flex-1 min-h-0` from both desktop and mobile job-setup TabsContent. Keep only `overflow-auto` for scrolling:
+**`src/pages/JobDetail.tsx`** — Both desktop (line 1680) and mobile (line 825):
 
-Desktop (line 1680):
 ```tsx
 // Before
-<TabsContent value="job-setup" className="flex-1 min-h-0 overflow-auto">
+<TabsContent value="job-setup" className="overflow-auto">
+  <JobSetupPanel ... />
+</TabsContent>
 
 // After
-<TabsContent value="job-setup" className="overflow-auto">
+<TabsContent value="job-setup" className="flex-1 min-h-0 flex flex-col overflow-hidden">
+  <div className="flex-1 min-h-0 overflow-auto">
+    <JobSetupPanel ... />
+  </div>
+</TabsContent>
 ```
 
-Mobile (line 825):
-```tsx
-// Before
-<TabsContent value="job-setup" className="flex-1 min-h-0 overflow-auto">
-
-// After
-<TabsContent value="job-setup" className="overflow-auto">
-```
-
-The parent flex-col container already constrains the height. `overflow-auto` alone will enable scrolling when content exceeds the viewport, without stretching the container and creating blank space.
+This exactly matches how the Pipeline tab handles its layout — the TabsContent fills available height without scrolling, and the inner div provides the scroll container.
 
 ## Files
 
 | File | Change |
 |------|--------|
-| `src/pages/JobDetail.tsx` | Remove `flex-1 min-h-0` from both job-setup TabsContent elements (lines 825 and 1680) |
+| `src/pages/JobDetail.tsx` | Wrap JobSetupPanel in scroll div; update TabsContent classes on lines 825 and 1680 |
 
