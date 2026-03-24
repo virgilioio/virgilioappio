@@ -641,6 +641,17 @@ export default function CandidateProfile() {
                 </div>
               </DialogContent>
             </Dialog>
+            {candidate && (
+              <CandidateProfileDownloadDialog
+                open={downloadDialogOpen}
+                onOpenChange={setDownloadDialogOpen}
+                pdfOptions={{
+                  candidate,
+                  job,
+                  organization: jobOrganization,
+                }}
+              />
+            )}
           </AppContainer>
         </JobAssignmentGuard>
       </PermissionGate>
