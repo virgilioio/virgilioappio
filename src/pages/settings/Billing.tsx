@@ -15,7 +15,7 @@ import { useInvoiceHistory } from '@/hooks/useInvoiceHistory'
 import { useSwitchBillingInterval } from '@/hooks/useSwitchBillingInterval'
 import { InvoiceHistoryTable } from '@/components/billing/InvoiceHistoryTable'
 import { CreditBundleCard } from '@/components/billing/CreditBundleCard'
-import { PerSeatPricingCard } from '@/components/billing/PerSeatPricingCard'
+
 
 export function Billing() {
   const { organizationId, userType } = useAuth()
@@ -257,7 +257,7 @@ export function Billing() {
           title="Next Billing"
           value={nextBillingDate}
           icon={CalendarDays}
-          iconColor="text-primary"
+          iconColor="text-warning"
           footer={
             isTrialing && billing.days_until_trial_end !== null ? (
               <span className="text-xs text-muted-foreground">
@@ -271,7 +271,7 @@ export function Billing() {
           value={`${billing.seat_quantity || 1}`}
           suffix=" Seats"
           icon={Users}
-          iconColor="text-primary"
+          iconColor="text-virgilio-success"
           footer={
             <span className="text-xs text-muted-foreground">Paid seats</span>
           }
@@ -281,7 +281,7 @@ export function Billing() {
           value={totalCredits}
           suffix="/mo"
           icon={Sparkles}
-          iconColor="text-primary"
+          iconColor="text-violet-500"
           footer={
             <span className="text-xs text-muted-foreground">
               {creditsPerSeat} per seat
@@ -450,14 +450,6 @@ export function Billing() {
         </Card>
       </div>
 
-      {/* ── Per-Seat Pricing Card (for trial/locked/pending users) ── */}
-      {needsSubscription && (
-        <PerSeatPricingCard
-          showTrialCTA={isPendingTrial || isTrialing}
-          currentSeats={billing.seat_quantity || 1}
-          billingInterval={billing.billing_interval as 'month' | 'year' || 'month'}
-        />
-      )}
 
       {/* ── Credit Bundle Card (for active users) ── */}
       {isActive && (
