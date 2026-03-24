@@ -822,8 +822,7 @@ export default function JobDetail() {
               </TabsContent>
               
               {!isRestrictedViewer && (
-               <TabsContent value="job-setup" className="flex-1 min-h-0 flex flex-col overflow-hidden">
-                <div className="flex-1 min-h-0 overflow-auto">
+               <TabsContent value="job-setup" className="overflow-y-auto">
                 <JobSetupPanel
                   jobId={id!}
                   jobTitle={job.title}
@@ -834,7 +833,6 @@ export default function JobDetail() {
                   onEdit={handleEditJob}
                   onArchive={handleArchiveJob}
                 />
-                </div>
               </TabsContent>
               )}
                <TabsContent value="pipeline">
@@ -1679,8 +1677,7 @@ export default function JobDetail() {
 
                 {/* Job Setup Tab */}
                 {!isRestrictedViewer && (
-                <TabsContent value="job-setup" className="flex-1 min-h-0 flex flex-col overflow-hidden">
-                  <div className="flex-1 min-h-0 overflow-auto">
+                <TabsContent value="job-setup" className="overflow-y-auto">
                     <JobSetupPanel
                       jobId={id!}
                       jobTitle={job.title}
@@ -1691,7 +1688,6 @@ export default function JobDetail() {
                       onEdit={handleEditJob}
                       onArchive={handleArchiveJob}
                     />
-                  </div>
                 </TabsContent>
                 )}
               </div>
