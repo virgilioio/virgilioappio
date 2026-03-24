@@ -117,6 +117,22 @@ export default function CandidateProfile() {
     }
   }, [candidateId, candidates])
 
+  // Fetch work experience, education, certifications for PDF export
+  useEffect(() => {
+    if (!candidateId) return
+    const loadRelatedData = async () => {
+      const [weRes, eduRes, certRes] = await Promise.all([
+        supabase.from('candidate_work_experience').select('*').eq('candidate_id', candidateId).order('start_date', { ascending: false }),
+        supabase.from('candidate_education').select('*').eq('candidate_id', candidateId).order('start_date', { ascending: false }),
+        supabase.from('candidate_certifications').select('*').eq('candidate_id', candidateId).order('year_obtained', { ascending: false }),
+      ])
+      setWorkExperience((weRes.data || []) as CandidateWorkExperience[])
+      setEducation((eduRes.data || []) as CandidateEducation[])
+      setCertifications((certRes.data || []) as CandidateCertification[])
+    }
+    loadRelatedData()
+  }, [candidateId])
+
   useEffect(() => {
     if (jobId) {
       loadJob()
