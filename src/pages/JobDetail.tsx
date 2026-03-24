@@ -667,6 +667,11 @@ export default function JobDetail() {
       // Refresh pipeline keys after successful creation
       setPipelineRefresh((v) => v + 1)
       setShowAddCandidate(false)
+      
+      // Open the candidate profile sheet
+      if (result?.id) {
+        updateCandidateUrl(result.id)
+      }
       return result
     } catch (error) {
       console.error('Error adding candidate:', error)

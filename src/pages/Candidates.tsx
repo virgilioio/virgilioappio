@@ -95,9 +95,9 @@ export default function Candidates() {
           return null // Don't close the form yet
         }
         
-        // Success - open candidate profile in new tab
+        // Success - open candidate profile sheet in current page
         if (result?.id) {
-          window.open(`/candidates?openCandidate=${result.id}`, '_blank')
+          setSearchParams({ openCandidate: result.id }, { replace: true })
         }
         
         handleFormClose()

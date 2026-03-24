@@ -104,8 +104,12 @@ export function GlobalCreateButton() {
           title: 'Success',
           description: 'Candidate created successfully!'
         })
-        // Navigate to candidates page to see the new candidate
-        navigate('/candidates')
+        // Navigate to candidates page and open the candidate profile sheet
+        if (newCandidate?.id) {
+          navigate(`/candidates?openCandidate=${newCandidate.id}`)
+        } else {
+          navigate('/candidates')
+        }
       }
       
       setCandidateSheetOpen(false)
