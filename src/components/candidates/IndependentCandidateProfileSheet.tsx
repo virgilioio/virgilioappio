@@ -300,6 +300,16 @@ export function IndependentCandidateProfileSheet({
                         AI Enrich
                       </Button>
                     )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!candidate}
+                      onClick={() => setDownloadDialogOpen(true)}
+                      className="gap-1.5"
+                    >
+                      <FileText className="h-4 w-4" />
+                      Download
+                    </Button>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 sm:gap-sm">
