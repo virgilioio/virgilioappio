@@ -1851,6 +1851,18 @@ const stageHasAutomation = useMemo(() => {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+    {candidate && (
+      <CandidateProfileDownloadDialog
+        open={downloadDialogOpen}
+        onOpenChange={setDownloadDialogOpen}
+        pdfOptions={{
+          candidate,
+          job,
+          workExperience,
+          education,
+        }}
+      />
+    )}
   </>
   )
 }
