@@ -1,80 +1,104 @@
 
 
-# Fix Bulk Import Job Selection
+# Redesign Billing Page — Dashboard-Style Layout
 
-## Problems Found
+## Current State
 
-### Bug 1: Selection doesn't work — label-based matching in SearchableSelect
+The billing page is a vertical stack of full-width cards: banners, "Current Plan" card, pricing card, credit bundles, pricing details, usage analytics, and invoice history. It works but feels like a long settings form rather than a premium billing dashboard.
 
-`SearchableSelect` (line 108) sets `CommandItem value={option.label}` — the **display label**, not the unique ID. The `onSelect` callback then does `options.find(opt => opt.label.toLowerCase() === selectedLabel.toLowerCase())` to reverse-lookup the value.
+## Inspiration from Reference
 
-This breaks when multiple options share the same label (e.g. two jobs titled "Software Engineer"). The cmdk library also **deduplicates items by their `value` prop**, so items with identical labels get merged/hidden — explaining the selection failure.
+The reference image shows a **dashboard-style billing page** with:
+- A row of **summary stat cards** across the top (Current Plan, Next Billing, Team Seats, Payment)
+- Two side-by-side cards: **Your Plan** (left) and **Payment Method** (right)
+- A full-width **Billing History** table below
 
-### Bug 2: Jobs listed as duplicates — no status filter
+## Redesigned Structure
 
-`MinimizableBulkUploadDialog` uses `useJobs()` which returns **all** jobs (open, draft, closed, archived). Per the project's own convention (documented in memory), this dropdown should only show `open` and `draft` jobs. The unfiltered list likely shows the same logical job in multiple states, or simply too many irrelevant entries.
+Using the existing style guide (Poppins font, rounded-2xl cards, MetricCard components, smart-field badges, virgilio-purple accents):
 
-## Fix
-
-### 1. `src/components/ui/searchable-select.tsx` — Use unique value for CommandItem
-
-Change CommandItem to use `option.value` (the UUID) instead of `option.label` for matching. Add a `keywords` prop with the label so search still works by text.
-
-```tsx
-// Line 106-116: Before
-<CommandItem
-  key={option.value}
-  value={option.label}
-  onSelect={(selectedLabel) => {
-    const matchedOption = options.find(opt => opt.label.toLowerCase() === selectedLabel.toLowerCase())
-    if (matchedOption) {
-      onValueChange(matchedOption.value === value ? "" : matchedOption.value)
-    }
-    setOpen(false)
-  }}
->
-
-// After
-<CommandItem
-  key={option.value}
-  value={option.value}
-  keywords={[option.label]}
-  onSelect={(selectedValue) => {
-    onValueChange(selectedValue === value ? "" : selectedValue)
-    setOpen(false)
-  }}
->
+```text
+┌─────────────────────────────────────────────────────────┐
+│ Billing.                                                │
+│ Manage your subscription and billing                    │
+├─────────────────────────────────────────────────────────┤
+│ [Alert banners - trial/locked/past-due as today]        │
+├────────────┬────────────┬────────────┬──────────────────┤
+│ Current    │ Next       │ Team       │ Enrichment       │
+│ Plan       │ Billing    │ Seats      │ Credits          │
+│ GoGio ATS  │ Apr 6,2026 │ 3 of 5    │ 360/mo           │
+│ $99/mo     │            │ Usage      │ 100/seat         │
+├────────────┴────────────┴────────────┴──────────────────┤
+│                                                         │
+│  ┌─── Your Plan ────────────┐  ┌─── Payment Method ──┐  │
+│  │ GoGio ATS  [Active]      │  │ Stripe Connected     │  │
+│  │ Per-seat pricing         │  │ user@email.com       │  │
+│  │ $99/seat/month           │  │                      │  │
+│  │                          │  │ [Manage Payment]     │  │
+│  │ Team Usage: 3/5 seats    │  │ [Go to Stripe]       │  │
+│  │ [Switch to Annual]       │  │                      │  │
+│  │ [Manage Subscription]    │  └──────────────────────┘  │
+│  └──────────────────────────┘                            │
+│                                                         │
+│  ┌─── Billing History ──────────────────────────────────┐│
+│  │ Invoice | Date | Period | Amount | Status | Actions  ││
+│  │ ...                                                  ││
+│  └──────────────────────────────────────────────────────┘│
+│                                                         │
+│  (Credit Bundles card — for active users)                │
+│  (PerSeatPricingCard — for trial/pending users)         │
+└─────────────────────────────────────────────────────────┘
 ```
 
-This ensures each item is unique (by UUID) and selection maps directly to the correct option. The `keywords` prop lets cmdk still search/filter by the display label.
+## Changes
 
-### 2. `src/components/candidates/MinimizableBulkUploadDialog.tsx` — Filter to active jobs only
+### File: `src/pages/settings/Billing.tsx` — Full restructure of layout
 
-```tsx
-// Line 84-87: Before
-const jobOptions = jobs?.map((job) => ({
-  value: job.id,
-  label: job.title,
-})) || [];
+1. **Top stat cards row** — Replace the 3-column grid inside "Current Plan" card with 4 standalone `MetricCard` components in a horizontal row:
+   - **Current Plan**: "GoGio ATS" with billing interval subtitle, using CreditCard icon
+   - **Next Billing**: formatted date (trial end or subscription renewal), using Clock icon
+   - **Team Seats**: "{seat_quantity} Seats" with "Paid seats" subtitle, using Users icon
+   - **Enrichment Credits**: "{totalCredits}/mo" with "per seat" detail, using Sparkles icon
 
-// After
-const jobOptions = jobs
-  ?.filter((job) => job.status === 'open' || job.status === 'draft')
-  .map((job) => ({
-    value: job.id,
-    label: job.title,
-  })) || [];
-```
+2. **Two-column card layout** — Replace the single "Current Plan" card with two side-by-side cards in a `grid grid-cols-1 md:grid-cols-2 gap-6`:
 
-## Files
+   **Left: "Your Plan" card**
+   - Plan name + status badge
+   - Price display (e.g., "$99/seat/month")
+   - Billing interval info
+   - Seat count with a small progress indicator
+   - Action buttons: Subscribe/Switch Interval/Manage
 
-| File | Change |
-|------|--------|
-| `src/components/ui/searchable-select.tsx` | Use `option.value` + `keywords={[option.label]}` for CommandItem matching |
-| `src/components/candidates/MinimizableBulkUploadDialog.tsx` | Filter jobs to `open`/`draft` only |
+   **Right: "Payment Method" card**
+   - Shows Stripe connection status
+   - "Manage in Stripe" button to open billing portal
+   - For trial/pending users: shows "No payment method" with CTA
 
-## What stays untouched
-- `useJobs` hook — no changes to data fetching
-- All other SearchableSelect consumers — the fix is backward-compatible (value was already unique UUIDs in all usages)
-- No business logic, permissions, or layout changes
+3. **Billing History** — Keep the existing `InvoiceHistoryTable` in a full-width card below the two-column section. Show for all statuses (not just active/past-due/canceled) so users can always see it.
+
+4. **Remove "Pricing Details" card** — The static pricing info card (lines 370-423) is redundant when the PerSeatPricingCard already covers this for trial users. Remove it to declutter.
+
+5. **Remove "Usage Analytics" card** — The billing period usage metrics card (lines 425-444) adds visual clutter. The key usage info (seats) is already shown in the top stat cards and "Your Plan" card.
+
+6. **Keep conditional cards** — `PerSeatPricingCard` (for trial/pending) and `CreditBundleCard` (for active) remain as-is, positioned after the two-column section.
+
+7. **Keep all alert banners** — Trial warning, locked, past due, grace period, canceled banners remain unchanged at the top.
+
+### Files NOT changed
+- `src/components/billing/InvoiceHistoryTable.tsx` — unchanged
+- `src/components/billing/PerSeatPricingCard.tsx` — unchanged  
+- `src/components/billing/CreditBundleCard.tsx` — unchanged
+- `src/components/ui/metric-card.tsx` — unchanged
+- All hooks (`useBillingStatus`, `useStripePricing`, `useInvoiceHistory`, etc.) — unchanged
+- No business logic, data flow, or permissions changes
+
+### Summary
+| Section | Before | After |
+|---------|--------|-------|
+| Top metrics | Buried inside "Current Plan" card | 4 standalone MetricCards in a row |
+| Plan + Payment | Single wide card | Two side-by-side cards |
+| Pricing Details | Static text card | Removed (redundant) |
+| Usage Analytics | Separate card | Removed (key info in top row) |
+| Invoice History | Conditional | Always visible |
+| Alert banners | Top of page | Unchanged |
 
