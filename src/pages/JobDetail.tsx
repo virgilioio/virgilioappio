@@ -822,7 +822,8 @@ export default function JobDetail() {
               </TabsContent>
               
               {!isRestrictedViewer && (
-               <TabsContent value="job-setup" className="overflow-auto">
+               <TabsContent value="job-setup" className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                <div className="flex-1 min-h-0 overflow-auto">
                 <JobSetupPanel
                   jobId={id!}
                   jobTitle={job.title}
@@ -833,6 +834,7 @@ export default function JobDetail() {
                   onEdit={handleEditJob}
                   onArchive={handleArchiveJob}
                 />
+                </div>
               </TabsContent>
               )}
                <TabsContent value="pipeline">
