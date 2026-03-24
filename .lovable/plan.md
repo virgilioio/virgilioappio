@@ -1,66 +1,38 @@
 
 
-# Why Fireflies Stopped Working + PDF Support Fix
+# Fix Job Setup Tab Scrolling
 
-## Why it stopped working
+## Problem
 
-Two compounding issues:
+The outer page layout uses `overflow-hidden` from the root all the way down through the Tabs container. The **Pipeline tab** correctly has `className="flex-1 min-h-0 flex flex-col overflow-hidden"` with an inner `overflow-auto` div, allowing its content to scroll. But the **Job Setup tab** (desktop, line 1680) has no overflow or flex classes at all — its content overflows the fixed viewport and gets clipped with no scrollbar.
 
-1. **Ingest email was marked as optional attendee** — When `create-booking` added the ingest email (`int_xxxx@ingest.gogio.io`) to the Google Calendar event, it was flagged as `optional: true` (line 387). Fireflies and other AI note-takers only track **required** attendees. Since the ingest email was optional, Fireflies never recognized it as a participant and never sent its transcript there. **This was already fixed** in the previous session — `optional: true` was removed. However, bookings created before the fix still have the old calendar event with the optional flag.
+## Fix
 
-2. **PDF attachments are not supported** — When you manually forwarded the Fireflies transcript, it arrived as a PDF attachment (`application/pdf`). The `extractTranscriptContent` function in `process-transcript-webhook` only handles text-based attachments (`.txt`, `.vtt`, `.srt`, `text/*`). The PDF was silently skipped, leaving only a ~1-character email body, which was rejected as "Transcript content too short."
+**`src/pages/JobDetail.tsx`** — Desktop job-setup TabsContent (line 1680)
 
-**In short:** Fireflies didn't send because the ingest email looked optional. When you manually sent it, the PDF format wasn't supported.
+Add `className="flex-1 min-h-0 overflow-auto"` to the TabsContent so it becomes a scroll container within the fixed-height layout:
 
-## Fix: Add PDF text extraction to the webhook
+```tsx
+// Before
+<TabsContent value="job-setup">
 
-**`supabase/functions/process-transcript-webhook/index.ts`**
-
-Add a PDF extraction block alongside the existing text attachment handling. In Deno, we can use `pdf-parse` (available on npm via `npm:` specifier) or a lightweight approach using `pdfjs-dist` to extract text from base64-encoded PDF attachments.
-
-The change is localized to `extractTranscriptContent`:
-
-```
-// Current: only handles text/* attachments
-// New: also handle application/pdf and .pdf files
-
-for (const attachment of emailData.attachments) {
-  // Skip calendar attachments (existing)
-  ...
-  
-  // NEW: Handle PDF attachments
-  if (attachment.content_type === 'application/pdf' || 
-      attachment.filename?.endsWith('.pdf')) {
-    try {
-      const pdfBytes = Uint8Array.from(atob(attachment.content), c => c.charCodeAt(0));
-      const pdfText = await extractTextFromPdfBytes(pdfBytes);
-      if (pdfText.length > content.length) {
-        content = pdfText;
-        metadata.content_source = `attachment:${attachment.filename}`;
-      }
-    } catch (e) {
-      console.warn('[Transcript Webhook] Failed to parse PDF attachment:', e);
-    }
-  }
-  
-  // Existing text handling...
-}
+// After
+<TabsContent value="job-setup" className="flex-1 min-h-0 overflow-auto">
 ```
 
-For `extractTextFromPdfBytes`, use `npm:pdf-parse` which works in Deno and extracts text from a PDF buffer in a single call — lightweight and no browser dependencies needed.
+Apply the same fix to the **mobile** job-setup TabsContent (line 825):
 
-After the code change, redeploy the `process-transcript-webhook` function.
+```tsx
+// Before
+<TabsContent value="job-setup">
+
+// After
+<TabsContent value="job-setup" className="flex-1 min-h-0 overflow-auto">
+```
 
 ## Files
 
 | File | Change |
 |------|--------|
-| `supabase/functions/process-transcript-webhook/index.ts` | Add PDF text extraction for PDF attachments using `npm:pdf-parse`; add `extractTextFromPdfBytes` helper |
-
-## Summary
-
-- **Why it broke**: Ingest email was optional (Fireflies ignored it) + PDF format unsupported (manual forward was rejected)
-- **Optional attendee fix**: Already deployed — new bookings work correctly
-- **Old bookings**: Calendar events created before the fix still have the optional flag; users would need to recreate or manually update those events
-- **PDF fix**: This plan adds PDF parsing so Fireflies transcripts (which default to PDF) are correctly processed going forward
+| `src/pages/JobDetail.tsx` | Add `flex-1 min-h-0 overflow-auto` to both desktop (line 1680) and mobile (line 825) job-setup TabsContent |
 
