@@ -1679,17 +1679,19 @@ export default function JobDetail() {
 
                 {/* Job Setup Tab */}
                 {!isRestrictedViewer && (
-                <TabsContent value="job-setup" className="overflow-auto">
-                  <JobSetupPanel
-                    jobId={id!}
-                    jobTitle={job.title}
-                    job={{
-                      ...job,
-                      hiring_team: (job.hiring_team as any[]) || []
-                    }}
-                    onEdit={handleEditJob}
-                    onArchive={handleArchiveJob}
-                  />
+                <TabsContent value="job-setup" className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                  <div className="flex-1 min-h-0 overflow-auto">
+                    <JobSetupPanel
+                      jobId={id!}
+                      jobTitle={job.title}
+                      job={{
+                        ...job,
+                        hiring_team: (job.hiring_team as any[]) || []
+                      }}
+                      onEdit={handleEditJob}
+                      onArchive={handleArchiveJob}
+                    />
+                  </div>
                 </TabsContent>
                 )}
               </div>
