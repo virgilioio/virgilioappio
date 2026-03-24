@@ -1538,26 +1538,7 @@ const stageHasAutomation = useMemo(() => {
                                   variant="outline"
                                   size="sm"
                                   disabled={!candidate}
-                                  onClick={async () => {
-                                    if (!candidate) return
-                                    try {
-                                      await generateCandidatePdf({
-                                        candidate,
-                                        job
-                                      })
-                                      toast({ 
-                                        title: 'PDF Generated', 
-                                        description: 'Candidate profile PDF has been downloaded.' 
-                                      })
-                                    } catch (error) {
-                                      console.error('Error generating PDF:', error)
-                                      toast({ 
-                                        title: 'Error', 
-                                        description: 'Failed to generate PDF. Please try again.', 
-                                        variant: 'destructive' 
-                                      })
-                                    }
-                                  }}
+                                  onClick={() => setDownloadDialogOpen(true)}
                                 >
                                   <Download className="h-4 w-4 mr-2" />
                                   Download
