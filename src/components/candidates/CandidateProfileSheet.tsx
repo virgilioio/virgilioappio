@@ -211,7 +211,7 @@ const [simpleScheduleOpen, setSimpleScheduleOpen] = useState(false)
 // Offer delete warning dialog
 const [showOfferDeleteWarning, setShowOfferDeleteWarning] = useState(false)
 const [pendingStatusAction, setPendingStatusAction] = useState<(() => Promise<void>) | null>(null)
-
+const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
 // Stage automations query for lightning icon
 
 // Stage automations query for lightning icon
