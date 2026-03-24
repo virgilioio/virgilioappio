@@ -22,10 +22,8 @@ export function Billing() {
   const { data: billing, isLoading } = useBillingStatus()
   const openPortal = useOpenBillingPortal()
   const createCheckout = useCreateCheckout()
-  const { data: pricing, isLoading: isPricingLoading } = useStripePricing()
   const { data: invoices = [], isLoading: isInvoicesLoading } = useInvoiceHistory()
   const switchInterval = useSwitchBillingInterval()
-  const { data: usage, isLoading: isUsageLoading } = useBillingPeriodUsage()
 
   if (isLoading) {
     return (
@@ -34,8 +32,16 @@ export function Billing() {
           <Skeleton className="h-8 w-48 mb-2" />
           <Skeleton className="h-4 w-64" />
         </div>
-        <CardSkeleton />
-        <CardSkeleton />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <CardSkeleton />
+          <CardSkeleton />
+          <CardSkeleton />
+          <CardSkeleton />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <CardSkeleton />
+          <CardSkeleton />
+        </div>
       </div>
     )
   }
@@ -78,12 +84,23 @@ export function Billing() {
     const config = variants[billing.billing_status] || variants.locked
     return <Badge variant={config.variant as any}>{config.label}</Badge>
   }
-  
+
   const canSwitchInterval = isActive && billing.stripe_subscription_id
-  
+
   // Calculate credits per seat based on billing interval
   const creditsPerSeat = billing.billing_interval === 'year' ? 120 : 100
   const totalCredits = (billing.seat_quantity || 1) * creditsPerSeat
+
+  // Next billing date
+  const nextBillingDate = isTrialing && billing.trial_ends_at
+    ? format(new Date(billing.trial_ends_at), 'MMM d, yyyy')
+    : billing.subscription_end
+      ? format(new Date(billing.subscription_end), 'MMM d, yyyy')
+      : 'N/A'
+
+  // Price display
+  const pricePerSeat = billing.billing_interval === 'year' ? '$999' : '$99'
+  const intervalLabel = billing.billing_interval === 'year' ? '/year' : '/mo'
 
   return (
     <div className="space-y-6">
@@ -91,11 +108,11 @@ export function Billing() {
       <div>
         <BillingTitle>Billing</BillingTitle>
         <p className="text-sm text-muted-foreground mt-1">
-          Manage your subscription and view usage
+          Manage your subscription and billing
         </p>
       </div>
 
-      {/* Pending Trial Banner - CC Wall */}
+      {/* ── Alert Banners (unchanged) ── */}
       {isPendingTrial && (
         <Alert variant="default">
           <CreditCard className="h-4 w-4" />
@@ -118,14 +135,13 @@ export function Billing() {
         </Alert>
       )}
 
-      {/* Trial Warning Banner - Show when <= 3 days */}
       {showTrialWarning && (
         <Alert variant="warning">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Trial ending soon</AlertTitle>
           <AlertDescription className="flex items-center justify-between">
             <span>
-              Your trial ends in {billing.days_until_trial_end} {billing.days_until_trial_end === 1 ? 'day' : 'days'}. 
+              Your trial ends in {billing.days_until_trial_end} {billing.days_until_trial_end === 1 ? 'day' : 'days'}.
               Subscribe now to avoid service interruption.
             </span>
             <Button
@@ -141,7 +157,6 @@ export function Billing() {
         </Alert>
       )}
 
-      {/* Locked Banner */}
       {isLocked && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
@@ -161,7 +176,6 @@ export function Billing() {
         </Alert>
       )}
 
-      {/* Past Due Banner */}
       {isPastDue && (
         <Alert variant="warning">
           <AlertTriangle className="h-4 w-4" />
@@ -181,7 +195,6 @@ export function Billing() {
         </Alert>
       )}
 
-      {/* Grace Period Banner */}
       {isGracePeriod && (
         <Alert variant="destructive">
           <Clock className="h-4 w-4" />
@@ -203,14 +216,13 @@ export function Billing() {
         </Alert>
       )}
 
-      {/* Canceled Banner */}
       {isCanceled && (
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Subscription Canceled</AlertTitle>
           <AlertDescription className="flex items-center justify-between">
             <span>
-              Your subscription has been canceled. 
+              Your subscription has been canceled.
               {billing.subscription_end && (
                 <> Access will end on {format(new Date(billing.subscription_end), 'MMM d, yyyy')}.</>
               )}
@@ -228,238 +240,249 @@ export function Billing() {
         </Alert>
       )}
 
-      {/* Current Plan Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Current Plan</CardTitle>
-          <CardDescription>Your subscription details and status</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <div className="text-sm text-muted-foreground mb-2">Plan</div>
-              <div className="font-semibold">
-                {isPendingTrial 
-                  ? 'GoGio ATS (Pending)' 
-                  : isTrialing
-                    ? 'GoGio ATS (Trial)'
-                    : 'GoGio ATS'}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {billing.billing_interval === 'year' ? 'Annual billing' : 'Monthly billing'}
-              </div>
-            </div>
+      {/* ── Top Metric Cards Row ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard
+          title="Current Plan"
+          value={isPendingTrial ? 'Pending' : isTrialing ? 'Trial' : 'GoGio ATS'}
+          icon={CreditCard}
+          iconColor="text-primary"
+          footer={
+            <span className="text-xs text-muted-foreground">
+              {billing.billing_interval === 'year' ? 'Annual billing' : 'Monthly billing'}
+            </span>
+          }
+        />
+        <MetricCard
+          title="Next Billing"
+          value={nextBillingDate}
+          icon={CalendarDays}
+          iconColor="text-primary"
+          footer={
+            isTrialing && billing.days_until_trial_end !== null ? (
+              <span className="text-xs text-muted-foreground">
+                {billing.days_until_trial_end} {billing.days_until_trial_end === 1 ? 'day' : 'days'} remaining
+              </span>
+            ) : undefined
+          }
+        />
+        <MetricCard
+          title="Team Seats"
+          value={`${billing.seat_quantity || 1}`}
+          suffix=" Seats"
+          icon={Users}
+          iconColor="text-primary"
+          footer={
+            <span className="text-xs text-muted-foreground">Paid seats</span>
+          }
+        />
+        <MetricCard
+          title="Enrichment Credits"
+          value={totalCredits}
+          suffix="/mo"
+          icon={Sparkles}
+          iconColor="text-primary"
+          footer={
+            <span className="text-xs text-muted-foreground">
+              {creditsPerSeat} per seat
+            </span>
+          }
+        />
+      </div>
 
-            <div>
-              <div className="text-sm text-muted-foreground mb-2">Status</div>
+      {/* ── Two-Column: Your Plan + Payment Method ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Your Plan */}
+        <Card className="rounded-2xl">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Your Plan</CardTitle>
               {getStatusBadge()}
             </div>
-
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {/* Plan name + price */}
             <div>
-              <div className="text-sm text-muted-foreground mb-2">
-                {isTrialing ? 'Trial Ends' : 'Next Renewal'}
+              <p className="text-2xl font-poppins font-bold text-foreground">
+                GoGio ATS
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Per-seat pricing · {pricePerSeat}/seat{intervalLabel}
+              </p>
+            </div>
+
+            {/* Seat usage */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Team seats</span>
+                <span className="font-medium">{billing.seat_quantity || 1} active</span>
               </div>
-              {isTrialing && billing.trial_ends_at ? (
-                <>
-                  <div className="font-medium">
-                    {format(new Date(billing.trial_ends_at), 'MMM d, yyyy')}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    ({billing.days_until_trial_end} {billing.days_until_trial_end === 1 ? 'day' : 'days'} remaining)
-                  </div>
-                </>
-              ) : billing.subscription_end ? (
-                <div className="font-medium">
-                  {format(new Date(billing.subscription_end), 'MMM d, yyyy')}
-                </div>
-              ) : (
-                <div className="text-sm text-muted-foreground">N/A</div>
+              <Progress
+                value={100}
+                className="h-2"
+                indicatorClassName="bg-primary"
+              />
+              <p className="text-xs text-muted-foreground">
+                Only recruiters & admins count as paid seats
+              </p>
+            </div>
+
+            {/* Credits summary */}
+            <div className="flex items-center gap-3 rounded-xl bg-muted/50 p-3">
+              <Sparkles className="h-5 w-5 text-primary shrink-0" />
+              <div>
+                <p className="text-sm font-medium">{totalCredits} credits/month</p>
+                <p className="text-xs text-muted-foreground">
+                  {creditsPerSeat} per seat{billing.billing_interval === 'year' ? ' · annual bonus' : ''}
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-wrap gap-3 pt-2">
+              {needsSubscription && (
+                <Button
+                  variant="virgilio"
+                  onClick={() => createCheckout.mutate({ interval: 'month' })}
+                  disabled={createCheckout.isPending}
+                >
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  {createCheckout.isPending
+                    ? 'Loading...'
+                    : isPendingTrial
+                      ? 'Start Free Trial'
+                      : isTrialing
+                        ? 'Subscribe Now'
+                        : 'Subscribe'}
+                </Button>
+              )}
+
+              {canSwitchInterval && (
+                <Button
+                  variant="outline"
+                  onClick={() => switchInterval.mutate({
+                    newInterval: billing.billing_interval === 'month' ? 'year' : 'month',
+                  })}
+                  disabled={switchInterval.isPending}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Switch to {billing.billing_interval === 'month' ? 'Annual (Save 17%)' : 'Monthly'}
+                </Button>
+              )}
+
+              {isActive && billing.stripe_subscription_id && (
+                <Button
+                  variant="outline"
+                  onClick={() => openPortal.mutate()}
+                  disabled={openPortal.isPending}
+                >
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  {openPortal.isPending ? 'Opening...' : 'Manage Subscription'}
+                </Button>
               )}
             </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          {/* Seat Count & Credits */}
-          <div className="pt-4 border-t grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Users className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <div className="font-medium">
-                  {billing.seat_quantity || 1} Recruiter {(billing.seat_quantity || 1) === 1 ? 'Seat' : 'Seats'}
+        {/* Payment Method */}
+        <Card className="rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-lg">Payment Method</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {isActive || isPastDue ? (
+              <>
+                <div className="flex items-center gap-3 rounded-xl bg-muted/50 p-4">
+                  <div className="p-2 rounded-full bg-background shadow-sm border border-border/50">
+                    <Shield className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Stripe Connected</p>
+                    <p className="text-xs text-muted-foreground">
+                      Payment managed securely via Stripe
+                    </p>
+                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {billing.billing_interval === 'year' ? '$999/seat/year' : '$99/seat/month'}
-                </div>
-              </div>
-            </div>
 
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Sparkles className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <div className="font-medium">
-                  {totalCredits} Enrichment Credits/Month
+                <div className="space-y-2">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => openPortal.mutate()}
+                    disabled={openPortal.isPending}
+                  >
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    {openPortal.isPending ? 'Opening...' : 'Manage Payment Method'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full text-muted-foreground"
+                    onClick={() => openPortal.mutate()}
+                    disabled={openPortal.isPending}
+                  >
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Open Stripe Dashboard
+                  </Button>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {creditsPerSeat} credits per seat ({billing.billing_interval === 'year' ? 'annual bonus!' : 'monthly'})
+              </>
+            ) : (
+              <div className="text-center py-6">
+                <div className="p-3 rounded-full bg-muted/50 w-fit mx-auto mb-3">
+                  <CreditCard className="h-8 w-8 text-muted-foreground" />
                 </div>
+                <p className="text-sm font-medium mb-1">No payment method</p>
+                <p className="text-xs text-muted-foreground mb-4">
+                  {isPendingTrial
+                    ? 'Add a payment method to start your free trial'
+                    : 'Subscribe to add a payment method'}
+                </p>
+                <Button
+                  variant="virgilio"
+                  size="sm"
+                  onClick={() => createCheckout.mutate({ interval: 'month' })}
+                  disabled={createCheckout.isPending}
+                >
+                  {createCheckout.isPending ? 'Loading...' : isPendingTrial ? 'Start Free Trial' : 'Subscribe Now'}
+                </Button>
               </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-3 pt-4 border-t">
-            {needsSubscription && (
-              <Button
-                variant="virgilio"
-                onClick={() => createCheckout.mutate({ interval: 'month' })}
-                disabled={createCheckout.isPending}
-              >
-                <CreditCard className="mr-2 h-4 w-4" />
-                {createCheckout.isPending ? 'Loading...' : isPendingTrial ? 'Start Free Trial' : isTrialing ? 'Subscribe Now' : 'Subscribe'}
-              </Button>
             )}
+          </CardContent>
+        </Card>
+      </div>
 
-            {canSwitchInterval && (
-              <Button
-                variant="outline"
-                onClick={() => switchInterval.mutate({ 
-                  newInterval: billing.billing_interval === 'month' ? 'year' : 'month' 
-                })}
-                disabled={switchInterval.isPending}
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Switch to {billing.billing_interval === 'month' ? 'Annual (Save 17%)' : 'Monthly'}
-              </Button>
-            )}
-
-            {isActive && billing.stripe_subscription_id && (
-              <Button
-                variant="outline"
-                onClick={() => openPortal.mutate()}
-                disabled={openPortal.isPending}
-              >
-                <ExternalLink className="mr-2 h-4 w-4" />
-                {openPortal.isPending ? 'Opening...' : 'Manage in Stripe'}
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Per-Seat Pricing Card (for trial/locked/pending users) */}
+      {/* ── Per-Seat Pricing Card (for trial/locked/pending users) ── */}
       {needsSubscription && (
-        <PerSeatPricingCard 
+        <PerSeatPricingCard
           showTrialCTA={isPendingTrial || isTrialing}
           currentSeats={billing.seat_quantity || 1}
           billingInterval={billing.billing_interval as 'month' | 'year' || 'month'}
         />
       )}
 
-      {/* Credit Bundle Card - Show for active users */}
+      {/* ── Credit Bundle Card (for active users) ── */}
       {isActive && (
-        <CreditBundleCard 
+        <CreditBundleCard
           bonusCreditsAvailable={(billing.bonus_credits_purchased || 0) - (billing.bonus_credits_used || 0)}
         />
       )}
 
-      {/* Pricing Info Card */}
-      <Card>
+      {/* ── Invoice History (always visible) ── */}
+      <Card className="rounded-2xl">
         <CardHeader>
-          <CardTitle>Pricing Details</CardTitle>
-          <CardDescription>Simple, transparent per-seat pricing</CardDescription>
+          <CardTitle className="text-lg">Billing History</CardTitle>
+          <CardDescription>View and download your past invoices</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {isInvoicesLoading ? (
             <div className="space-y-3">
-              <h4 className="font-medium">Per-Seat Subscription</h4>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <div className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                  <span><strong>$99/seat/month</strong> or <strong>$999/seat/year</strong> (~17% savings)</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                  <span>Only recruiters count as seats—hiring managers & interviewers are free</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                  <span>100 enrichment credits per seat/month (120 on annual plans)</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                  <span>Automatic scaling—seats added or removed are prorated</span>
-                </div>
-              </div>
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
             </div>
-
-            <div className="space-y-3">
-              <h4 className="font-medium">Credit Bundles (Add-ons)</h4>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <div className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                  <span><strong>500 credits</strong> for $49 ($0.098 each)</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                  <span><strong>1,500 credits</strong> for $129 ($0.086 each, save 12%)</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                  <span><strong>5,000 credits</strong> for $349 ($0.070 each, save 29%)</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                  <span>Bonus credits never expire while subscription is active</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          ) : (
+            <InvoiceHistoryTable invoices={invoices} />
+          )}
         </CardContent>
       </Card>
-
-      {/* Usage Analytics */}
-      {isActive && usage && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Current Billing Period Usage</CardTitle>
-            <CardDescription>
-              {format(new Date(usage.periodStart), 'MMM d')} - {format(new Date(usage.periodEnd), 'MMM d, yyyy')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <MetricCard title="Jobs Created" value={usage.jobsCreated} icon={<Briefcase />} />
-              <MetricCard title="Candidates Added" value={usage.candidatesAdded} icon={<UserPlus />} />
-              <MetricCard title="Active Members" value={usage.activeMembers} icon={<Users />} />
-              <MetricCard title="Billable Seats" value={usage.billableSeats} icon={<TrendingUp />} />
-              <MetricCard title="Emails Sent" value={usage.emailsSent} icon={<Mail />} />
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Invoice History */}
-      {(isActive || isPastDue || isCanceled) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Invoice History</CardTitle>
-            <CardDescription>View and download your past invoices</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isInvoicesLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-              </div>
-            ) : (
-              <InvoiceHistoryTable invoices={invoices} />
-            )}
-          </CardContent>
-        </Card>
-      )}
     </div>
   )
 }
