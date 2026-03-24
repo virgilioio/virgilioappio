@@ -30,6 +30,10 @@ import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDr
 import { MinimizableOfferComposer } from '@/components/candidates/MinimizableOfferComposer'
 import { getSkillColor } from '@/utils/skillColors'
 import { CandidateProfileDownloadDialog } from '@/components/candidates/CandidateProfileDownloadDialog'
+import { supabase } from '@/lib/supabaseClient'
+import type { CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
+import type { CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
+import type { CandidateCertification } from '@/components/candidates/CandidateCertifications'
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import AddJobCandidateToPipelineDialog from '@/components/candidates/AddJobCandidateToPipelineDialog'
@@ -48,6 +52,9 @@ export default function CandidateProfile() {
   const [isOfferLetterDialogOpen, setIsOfferLetterDialogOpen] = useState(false)
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false)
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
+  const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
+  const [education, setEducation] = useState<CandidateEducation[]>([])
+  const [certifications, setCertifications] = useState<CandidateCertification[]>([])
   const [activeTab, setActiveTab] = useState<'job' | 'resume' | 'overview'>('overview')
   const { candidates, isLoading: candidatesLoading, updateCandidate } = useCandidates(jobId || '')
   const { getJob, isLoading: jobLoading } = useJobs()
@@ -109,6 +116,22 @@ export default function CandidateProfile() {
       }
     }
   }, [candidateId, candidates])
+
+  // Fetch work experience, education, certifications for PDF export
+  useEffect(() => {
+    if (!candidateId) return
+    const loadRelatedData = async () => {
+      const [weRes, eduRes, certRes] = await Promise.all([
+        supabase.from('candidate_work_experience').select('*').eq('candidate_id', candidateId).order('start_date', { ascending: false }),
+        supabase.from('candidate_education').select('*').eq('candidate_id', candidateId).order('start_date', { ascending: false }),
+        supabase.from('candidate_certifications').select('*').eq('candidate_id', candidateId).order('year_obtained', { ascending: false }),
+      ])
+      setWorkExperience((weRes.data || []) as CandidateWorkExperience[])
+      setEducation((eduRes.data || []) as CandidateEducation[])
+      setCertifications((certRes.data || []) as CandidateCertification[])
+    }
+    loadRelatedData()
+  }, [candidateId])
 
   useEffect(() => {
     if (jobId) {
@@ -649,6 +672,9 @@ export default function CandidateProfile() {
                   candidate,
                   job,
                   organization: jobOrganization,
+                  workExperience,
+                  education,
+                  certifications,
                 }}
               />
             )}

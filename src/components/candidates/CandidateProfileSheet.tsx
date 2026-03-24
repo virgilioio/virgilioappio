@@ -16,6 +16,7 @@ import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeVi
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
+import type { CandidateCertification } from '@/components/candidates/CandidateCertifications'
 import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign, MessageSquare, UserRound } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 
@@ -131,6 +132,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   
   const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
   const [education, setEducation] = useState<CandidateEducation[]>([])
+  const [certifications, setCertifications] = useState<CandidateCertification[]>([])
   const [editOpen, setEditOpen] = useState(false)
   const [editLoading, setEditLoading] = useState(false)
   const { updateAssociationStatus, moveAssociationToStage, createAssociationAndMove } = usePipelineActions()
@@ -339,6 +341,16 @@ const stageHasAutomation = useMemo(() => {
           .eq('id', candidateId)
           .single()
         setCandidate(data || null)
+
+        // Fetch work experience, education, and certifications for PDF export
+        const [weRes, eduRes, certRes] = await Promise.all([
+          supabase.from('candidate_work_experience').select('*').eq('candidate_id', candidateId).order('start_date', { ascending: false }),
+          supabase.from('candidate_education').select('*').eq('candidate_id', candidateId).order('start_date', { ascending: false }),
+          supabase.from('candidate_certifications').select('*').eq('candidate_id', candidateId).order('year_obtained', { ascending: false }),
+        ])
+        setWorkExperience((weRes.data || []) as CandidateWorkExperience[])
+        setEducation((eduRes.data || []) as CandidateEducation[])
+        setCertifications((certRes.data || []) as CandidateCertification[])
       } finally {
         setLoading(false)
       }
@@ -1860,6 +1872,7 @@ const stageHasAutomation = useMemo(() => {
           job,
           workExperience,
           education,
+          certifications,
         }}
       />
     )}
