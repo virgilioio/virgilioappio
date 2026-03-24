@@ -25,6 +25,7 @@ export default function Candidates() {
   const { canViewCandidates } = usePermissions()
   const { hasRecruiterRole, isPrivileged, isLoading: rolesLoading } = useUserJobRoles()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [selectedCandidate, setSelectedCandidate] = useState(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false)
