@@ -74,6 +74,7 @@ export function IndependentCandidateProfileSheet({
   const [editOpen, setEditOpen] = useState(false)
   const [editLoading, setEditLoading] = useState(false)
   const [scheduleOpen, setScheduleOpen] = useState(false)
+  const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
 
   // Handler for job sidebar navigation
   const handleJobSelect = (jobId: string) => {
