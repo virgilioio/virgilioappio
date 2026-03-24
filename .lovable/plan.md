@@ -1,48 +1,62 @@
 
 
-# Billing MetricCard Colors + Remove PerSeatPricingCard
+# Billing Transparency Improvements
 
-## Issue 1: MetricCard icon colors are all `text-primary`
+Three targeted enhancements to communicate seat billing impact clearly across the platform.
 
-The billing page uses `iconColor="text-primary"` for all 4 metric cards. Other pages (Pipeline, Analytics) use semantic colors per metric type. The style guide already demonstrates this pattern with different colors per card.
+## 1. Add Seat Breakdown to Billing Page
 
-**Fix in `src/pages/settings/Billing.tsx`** — assign distinct icon colors:
+**File: `src/pages/settings/Billing.tsx`**
 
-| Card | Current | New |
-|------|---------|-----|
-| Current Plan | `text-primary` | `text-primary` (purple — keep, it's the brand plan card) |
-| Next Billing | `text-primary` | `text-warning` (orange — time/calendar) |
-| Team Seats | `text-primary` | `text-virgilio-success` (green — people/active) |
-| Enrichment Credits | `text-primary` | `text-violet-500` (violet — sparkles/AI) |
+Replace the static `Progress value={100}` and generic "Team seats: X active" in the "Your Plan" card (lines 314-328) with a detailed seat breakdown showing who occupies paid vs free seats.
 
-## Issue 2: PerSeatPricingCard is redundant and oversized
+- Show paid count and free count separately (e.g., "2 Paid · 3 Free")
+- List the role types under each (Admins & Recruiters = paid, HMs & Interviewers = free)
+- Use a segmented progress bar showing paid vs free proportions
+- Pull counts from `useRecruiterUserIds` + `useCustomerMembers` or reuse the same logic from `MembersTab`
 
-The `PerSeatPricingCard` is a large card with a monthly/annual toggle, feature checklist, and CTA — essentially a marketing pricing page component. Real ATS platforms (Ashby, Lever, Greenhouse) do NOT show a full pricing breakdown card on their billing page. Their billing pages show:
+To keep it clean, create a small `BillingSeatBreakdown` component in `src/components/billing/BillingSeatBreakdown.tsx` that:
+- Fetches members via existing hooks
+- Computes paid/free counts using the same `isBillableMember` logic from MembersTab
+- Renders a compact breakdown with colored dots (purple for paid, green for free)
+- Includes a "View team" link to navigate to the members tab
 
-- Current plan + status
-- Manage/upgrade buttons that redirect to Stripe or a checkout flow
-- Invoice history
+## 2. Improve Billing Communication in Invite Flow
 
-The "Your Plan" card already covers plan info, pricing, interval switching, and subscribe/checkout CTAs. The `PerSeatPricingCard` duplicates all of this in a much larger format. It should be removed.
+**File: `src/components/members/MemberInviteSheet.tsx`**
 
-**Fix in `src/pages/settings/Billing.tsx`**:
-- Remove the `PerSeatPricingCard` import and its conditional render block (lines 453-460)
-- The "Your Plan" card already has: plan name, price per seat, interval info, subscribe button, switch interval button, and manage subscription button — everything the user needs
+The existing billing impact alert (lines 317-341) has issues:
+- `useSeatsPreview` only considers `admin` as billable, but recruiters are also paid seats
+- The price formatting divides by 100 twice (formatPrice already divides by 100, but the hook returns cents)
+- The "Free role" alert for members is misleading — members become paid when assigned as recruiters
 
-## Issue 3: Style Guide — add icon color mapping examples
+Fix the billing alert:
+- Keep the admin billing warning as-is (admins are immediately billable)
+- Change the "Free role" member alert to be more accurate: "Members are free until assigned as a Recruiter on a job, which converts them to a paid seat"
+- Fix the price calculation: `seatsPreview.monthlyCostIncrease` is already in cents, so pass it directly to `formatPrice` without dividing by 100 again
 
-The MetricCardGuide already shows colored icons in the style guide (success, warning, destructive), so no changes needed there. The existing examples already demonstrate the color mapping pattern.
+## 3. Add Seat Summary to Members Page Header
 
-## Summary of changes
+**File: `src/components/settings/MembersTab.tsx`**
+
+The stat cards already show Paid Seats and Free Collaborators counts (lines 135-164). Enhance the `PageHeader` (line 133) to include an inline summary:
+
+- Add a subtitle to PageHeader: "X paid seats · Y free collaborators"
+- This gives immediate context without needing to scan the stat cards
+
+## Files Changed
 
 | File | Change |
 |------|--------|
-| `src/pages/settings/Billing.tsx` | Assign semantic icon colors to 4 MetricCards; remove `PerSeatPricingCard` import and render block |
+| `src/components/billing/BillingSeatBreakdown.tsx` | New component — compact paid/free seat breakdown for billing page |
+| `src/pages/settings/Billing.tsx` | Replace static progress bar with `BillingSeatBreakdown` in "Your Plan" card |
+| `src/components/members/MemberInviteSheet.tsx` | Fix member role billing alert text; fix price double-division bug |
+| `src/components/settings/MembersTab.tsx` | Add seat summary subtitle to PageHeader |
 
 ## What stays untouched
-- `PerSeatPricingCard` component file — kept for potential future use elsewhere
-- "Your Plan" card — unchanged, already covers all billing actions
-- Payment Method card — unchanged
-- Invoice History — unchanged
-- All hooks, business logic, permissions — unchanged
+- All hooks (useBillingStatus, useSeatsPreview, useRecruiterUserIds)
+- SeatUpgradeConfirmDialog (job assignment flow)
+- SeatUsageCard component
+- Database, edge functions, permissions
+- Billing page layout structure (metric cards, two-column grid, invoice history)
 
