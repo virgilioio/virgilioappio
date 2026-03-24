@@ -223,8 +223,9 @@ export const generateCandidatePdf = async ({
     yPosition += 7
 
     // ── Current title at company (H3) ──
-    const currentTitle = candidate.current_job_title || candidate.role_current
-    const currentCompany = candidate.company_current
+    const c = candidate as any
+    const currentTitle = c.current_job_title || c.role_current
+    const currentCompany = c.company_current
     if (currentTitle || currentCompany) {
       setH3()
       const titleLine = [currentTitle, currentCompany].filter(Boolean).join(' at ')
