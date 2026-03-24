@@ -257,7 +257,7 @@ export function Billing() {
           title="Next Billing"
           value={nextBillingDate}
           icon={CalendarDays}
-          iconColor="text-primary"
+          iconColor="text-warning"
           footer={
             isTrialing && billing.days_until_trial_end !== null ? (
               <span className="text-xs text-muted-foreground">
