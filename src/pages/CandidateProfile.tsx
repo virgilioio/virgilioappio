@@ -333,7 +333,7 @@ export default function CandidateProfile() {
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => generateCandidatePdf({ candidate, job, organization: jobOrganization })}
+                        onClick={() => setDownloadDialogOpen(true)}
                         title="Download PDF"
                       >
                         <Download className="h-4 w-4" />

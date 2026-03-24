@@ -815,6 +815,18 @@ export function IndependentCandidateProfileSheet({
           )}
         </SheetContent>
       </Sheet>
+      {candidate && (
+        <CandidateProfileDownloadDialog
+          open={downloadDialogOpen}
+          onOpenChange={setDownloadDialogOpen}
+          pdfOptions={{
+            candidate,
+            workExperience,
+            education,
+            certifications,
+          }}
+        />
+      )}
     </>
   )
 }
