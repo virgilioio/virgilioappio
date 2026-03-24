@@ -341,6 +341,16 @@ const stageHasAutomation = useMemo(() => {
           .eq('id', candidateId)
           .single()
         setCandidate(data || null)
+
+        // Fetch work experience, education, and certifications for PDF export
+        const [weRes, eduRes, certRes] = await Promise.all([
+          supabase.from('candidate_work_experience').select('*').eq('candidate_id', candidateId).order('start_date', { ascending: false }),
+          supabase.from('candidate_education').select('*').eq('candidate_id', candidateId).order('start_date', { ascending: false }),
+          supabase.from('candidate_certifications').select('*').eq('candidate_id', candidateId).order('year_obtained', { ascending: false }),
+        ])
+        setWorkExperience((weRes.data || []) as CandidateWorkExperience[])
+        setEducation((eduRes.data || []) as CandidateEducation[])
+        setCertifications((certRes.data || []) as CandidateCertification[])
       } finally {
         setLoading(false)
       }
