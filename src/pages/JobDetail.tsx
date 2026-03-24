@@ -813,7 +813,7 @@ export default function JobDetail() {
                 </TabsList>
               
               
-              <TabsContent value="candidates">
+              <TabsContent value="candidates" className="flex-1 min-h-0 overflow-y-auto">
                 <JobAnalyticsDashboard 
                   jobId={id!}
                   candidates={allAssociatedCandidates.length ? allAssociatedCandidates : applicationReviewCandidates}
