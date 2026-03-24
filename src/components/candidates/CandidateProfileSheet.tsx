@@ -16,6 +16,7 @@ import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeVi
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
+import type { CandidateCertification } from '@/components/candidates/CandidateCertifications'
 import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign, MessageSquare, UserRound } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 
