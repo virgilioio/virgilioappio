@@ -311,21 +311,8 @@ export function Billing() {
               </p>
             </div>
 
-            {/* Seat usage */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Team seats</span>
-                <span className="font-medium">{billing.seat_quantity || 1} active</span>
-              </div>
-              <Progress
-                value={100}
-                className="h-2"
-                indicatorClassName="bg-primary"
-              />
-              <p className="text-xs text-muted-foreground">
-                Only recruiters & admins count as paid seats
-              </p>
-            </div>
+            {/* Seat usage breakdown */}
+            <BillingSeatBreakdown />
 
             {/* Credits summary */}
             <div className="flex items-center gap-3 rounded-xl bg-muted/50 p-3">

@@ -130,7 +130,11 @@ export function MembersTab() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Team Members" />
+      <PageHeader title="Team Members">
+        <span className="text-sm text-muted-foreground font-medium">
+          {paidCount} paid {paidCount === 1 ? 'seat' : 'seats'} · {freeCount} free {freeCount === 1 ? 'collaborator' : 'collaborators'}
+        </span>
+      </PageHeader>
 
       <Card data-onboarding-target="team">
         <CardContent className="py-6">
