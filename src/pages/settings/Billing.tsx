@@ -450,14 +450,6 @@ export function Billing() {
         </Card>
       </div>
 
-      {/* ── Per-Seat Pricing Card (for trial/locked/pending users) ── */}
-      {needsSubscription && (
-        <PerSeatPricingCard
-          showTrialCTA={isPendingTrial || isTrialing}
-          currentSeats={billing.seat_quantity || 1}
-          billingInterval={billing.billing_interval as 'month' | 'year' || 'month'}
-        />
-      )}
 
       {/* ── Credit Bundle Card (for active users) ── */}
       {isActive && (
