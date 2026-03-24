@@ -1294,7 +1294,7 @@ export default function JobDetail() {
                 
                 {/* All Candidates Tab */}
                 {!isRestrictedViewer && (
-                <TabsContent value="all-candidates" className="flex-1 min-h-0 overflow-y-auto">
+                <TabsContent value="all-candidates">
                   <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
                       <div>
