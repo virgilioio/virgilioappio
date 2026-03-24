@@ -68,7 +68,6 @@ export function GlobalCreateButton() {
           .maybeSingle()
         
         if (existingAssoc) {
-          // Association already exists (from merge flow)
           toast({
             title: 'Success',
             description: 'Candidate created and assigned to job successfully!'
@@ -99,13 +98,19 @@ export function GlobalCreateButton() {
             })
           }
         }
+        // Navigate to the job page and open the candidate profile
+        navigate(`/jobs/${candidateData.assignedJobId}?candidate=${newCandidate.id}`)
       } else {
         toast({
           title: 'Success',
           description: 'Candidate created successfully!'
         })
-        // Navigate to candidates page to see the new candidate
-        navigate('/candidates')
+        // Navigate to candidates page and open the candidate profile sheet
+        if (newCandidate?.id) {
+          navigate(`/candidates?openCandidate=${newCandidate.id}`)
+        } else {
+          navigate('/candidates')
+        }
       }
       
       setCandidateSheetOpen(false)

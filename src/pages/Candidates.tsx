@@ -1,6 +1,6 @@
 // cache-bust: 8F42B1C3
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -25,6 +25,7 @@ export default function Candidates() {
   const { canViewCandidates } = usePermissions()
   const { hasRecruiterRole, isPrivileged, isLoading: rolesLoading } = useUserJobRoles()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [selectedCandidate, setSelectedCandidate] = useState(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false)
@@ -94,9 +95,9 @@ export default function Candidates() {
           return null // Don't close the form yet
         }
         
-        // Success - open candidate profile in new tab
+        // Success - open candidate profile sheet in current page
         if (result?.id) {
-          window.open(`/candidates?openCandidate=${result.id}`, '_blank')
+          setSearchParams({ openCandidate: result.id }, { replace: true })
         }
         
         handleFormClose()
