@@ -457,7 +457,7 @@ async function handleCandidates(params: CreateCandidateParams, user: any, member
         stage_name: assoc.job_hiring_stages?.custom_stage_name 
           || assoc.job_hiring_stages?.job_stages?.stage_name 
           || 'Unknown Stage',
-        candidate_url: `/jobs/${assoc.job_id}/candidates/${candidateId}`
+        candidate_url: `/jobs/${assoc.job_id}?candidate=${candidateId}`
       }));
     }
   } else {
@@ -1004,7 +1004,7 @@ async function handleLookup(body: any, user: any, member: any, corsHeaders: Reco
     stage_name: assoc.job_hiring_stages?.custom_stage_name
       || assoc.job_hiring_stages?.job_stages?.stage_name
       || 'Unknown Stage',
-    candidate_url: `/jobs/${assoc.job_id}/candidates/${candidate.id}`
+    candidate_url: `/jobs/${assoc.job_id}?candidate=${candidate.id}`
   }));
 
   console.log(`✅ Lookup found candidate ${candidate.id} with ${currentJobs.length} active jobs`);
@@ -1013,7 +1013,7 @@ async function handleLookup(body: any, user: any, member: any, corsHeaders: Reco
     exists: true,
     candidate_id: candidate.id,
     candidate_name: candidate.candidate_name,
-    candidate_url: currentJobs.length > 0 ? currentJobs[0].candidate_url : null,
+    candidate_url: currentJobs.length > 0 ? currentJobs[0].candidate_url : `/candidates?openCandidate=${candidate.id}`,
     current_jobs: currentJobs
   }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
