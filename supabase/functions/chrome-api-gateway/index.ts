@@ -851,6 +851,9 @@ async function handleEnrich(body: any, user: any, member: any, corsHeaders: Reco
   console.log(`🔍 Enrich contact for LinkedIn URL: ${linkedin_url}, tenant: ${tenantId}`);
 
   // Call enrichment provider bulk_match API
+  const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/apollo-phone-webhook`;
+  console.log(`📞 Phone webhook URL: ${webhookUrl}`);
+  
   const enrichResponse = await fetch(APOLLO_BULK_MATCH_URL, {
     method: 'POST',
     headers: {
@@ -861,6 +864,7 @@ async function handleEnrich(body: any, user: any, member: any, corsHeaders: Reco
     body: JSON.stringify({
       details: [{ linkedin_url }],
       reveal_phone_number: true,
+      webhook_url: webhookUrl
     })
   });
 
