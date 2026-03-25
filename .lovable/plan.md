@@ -1,39 +1,52 @@
 
 
-# Fix: Open Candidate Profile Sheet After Creation
+# Fix Chrome Extension Contact Enrichment
 
-## Root Cause
+## Problem
 
-Three entry points fail to open the candidate profile after successful creation:
+Two issues identified:
 
-1. **Candidates.tsx** (line 99): Uses `window.open(..., '_blank')` which opens a **new browser tab** instead of opening the profile sheet in the current page.
+### 1. Apollo API Error (this project)
+The `chrome-api-gateway` edge function calls Apollo's `bulk_match` API with `reveal_phone_number: true` but **without a `webhook_url`**. Apollo now requires a valid webhook URL when phone reveal is enabled.
 
-2. **GlobalCreateButton.tsx** (line 108): When no job is assigned, navigates to `/candidates` **without** the `openCandidate` query param. When a job IS assigned, doesn't navigate to the job page to show the candidate either.
+Error from logs:
+```
+❌ Enrichment API error: 400 {"error":"Please add a valid 'webhook_url' parameter when using 'reveal_phone_number'"}
+```
 
-3. **JobDetail.tsx** (line 668-669): Closes the form and refreshes the pipeline, but never opens the candidate profile sheet. Should set the URL `?candidate=` param to trigger the sheet.
+The `enrich-by-linkedin` function already does this correctly (line 178), but the gateway doesn't.
+
+### 2. Contact Info Dialog (Chrome extension project)
+The "Contact Info" fetch is an inline button handler in `CandidateForm.tsx` — not a modal dialog. It doesn't auto-close because there's nothing to close. This is expected behavior. If you want auto-close behavior, that would be a change in the [Chrome Helper Hub](/projects/0dd6103b-040c-463c-8357-f544b2f5ad1c) project.
 
 ## Fix
 
-### 1. `src/pages/Candidates.tsx`
-Replace `window.open('/candidates?openCandidate=...', '_blank')` with in-page navigation using `useSearchParams`. After creation, set `openCandidate` query param on the current page so `IndependentCandidateTable`'s existing `useEffect` picks it up and opens the sheet.
+**File: `supabase/functions/chrome-api-gateway/index.ts`** (lines 853-865)
 
-### 2. `src/components/layout/GlobalCreateButton.tsx`
-- **No job assigned**: Navigate to `/candidates?openCandidate=${id}` instead of just `/candidates`
-- **Job assigned**: Navigate to `/jobs/${jobId}?candidate=${id}` so the job page opens the candidate sheet
+Add `webhook_url` to the Apollo `bulk_match` call, matching the pattern from `enrich-by-linkedin`:
 
-### 3. `src/pages/JobDetail.tsx`
-After successful creation in `handleAddCandidate`, update the URL with `?candidate=${result.id}` using `setSearchParams` or `navigate` so the existing candidate sheet logic opens the profile.
+```typescript
+const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/apollo-phone-webhook`;
 
-## Files
+const enrichResponse = await fetch(APOLLO_BULK_MATCH_URL, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache',
+    'X-Api-Key': APOLLO_API_KEY
+  },
+  body: JSON.stringify({
+    details: [{ linkedin_url }],
+    reveal_phone_number: true,
+    webhook_url: webhookUrl
+  })
+});
+```
 
-| File | Change |
-|------|--------|
-| `src/pages/Candidates.tsx` | Replace `window.open` with in-page `searchParams.set('openCandidate', id)` |
-| `src/components/layout/GlobalCreateButton.tsx` | Add `openCandidate` param to navigation; add job-context navigation |
-| `src/pages/JobDetail.tsx` | After creation, set `?candidate=` URL param to open the profile sheet |
+One line added. Then redeploy the edge function.
 
 ## What stays untouched
-- `IndependentCandidateTable.tsx` — already handles `openCandidate` query param
-- `CandidateFormSheet.tsx` — no changes
-- All hooks, Supabase queries, permissions
+- `enrich-by-linkedin` — already correct
+- `apollo-phone-webhook` — already handles incoming phone data
+- Chrome extension code — no changes needed in this project
 
