@@ -1,52 +1,72 @@
 
 
-# Fix Chrome Extension Contact Enrichment
+# Fix "Open in GoGio" URLs in Chrome Extension
 
 ## Problem
 
-Two issues identified:
+The edge functions (`chrome-api-gateway` and `chrome-api-candidates`) generate legacy candidate URLs:
 
-### 1. Apollo API Error (this project)
-The `chrome-api-gateway` edge function calls Apollo's `bulk_match` API with `reveal_phone_number: true` but **without a `webhook_url`**. Apollo now requires a valid webhook URL when phone reveal is enabled.
-
-Error from logs:
 ```
-❌ Enrichment API error: 400 {"error":"Please add a valid 'webhook_url' parameter when using 'reveal_phone_number'"}
+/jobs/{jobId}/candidates/{candidateId}
 ```
 
-The `enrich-by-linkedin` function already does this correctly (line 178), but the gateway doesn't.
+This route (`/jobs/:jobId/candidates/:candidateId`) renders the old full-page `CandidateProfile` component. The current platform uses:
 
-### 2. Contact Info Dialog (Chrome extension project)
-The "Contact Info" fetch is an inline button handler in `CandidateForm.tsx` — not a modal dialog. It doesn't auto-close because there's nothing to close. This is expected behavior. If you want auto-close behavior, that would be a change in the [Chrome Helper Hub](/projects/0dd6103b-040c-463c-8357-f544b2f5ad1c) project.
+- **Job-associated**: `/jobs/{jobId}?candidate={candidateId}` — opens the profile sheet within the job pipeline
+- **Independent (no job)**: `/candidates?openCandidate={candidateId}` — opens the profile sheet on the candidates page
 
-## Fix
+## What to prompt the Chrome Helper Hub project
 
-**File: `supabase/functions/chrome-api-gateway/index.ts`** (lines 853-865)
+Here is the exact prompt you can send to the Chrome Helper Hub project:
 
-Add `webhook_url` to the Apollo `bulk_match` call, matching the pattern from `enrich-by-linkedin`:
+---
 
+**Update the "Open in GoGio" candidate URLs to use the current routing pattern.**
+
+Currently, two edge functions in the **main ATS project** return `candidate_url` in the legacy format `/jobs/{jobId}/candidates/{candidateId}`. The correct URLs are now:
+
+- **Job-associated candidates**: `/jobs/{jobId}?candidate={candidateId}`
+- **Independent candidates (no job association)**: `/candidates?openCandidate={candidateId}`
+
+### Changes needed in the ATS project (this project's edge functions)
+
+**File: `supabase/functions/chrome-api-gateway/index.ts`**
+
+Line ~460 and ~1007 — change:
 ```typescript
-const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/apollo-phone-webhook`;
-
-const enrichResponse = await fetch(APOLLO_BULK_MATCH_URL, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Cache-Control': 'no-cache',
-    'X-Api-Key': APOLLO_API_KEY
-  },
-  body: JSON.stringify({
-    details: [{ linkedin_url }],
-    reveal_phone_number: true,
-    webhook_url: webhookUrl
-  })
-});
+candidate_url: `/jobs/${assoc.job_id}/candidates/${candidateId}`
+```
+to:
+```typescript
+candidate_url: `/jobs/${assoc.job_id}?candidate=${candidateId}`
 ```
 
-One line added. Then redeploy the edge function.
+Line ~1016 — for independent candidates with no job associations, change the fallback:
+```typescript
+candidate_url: currentJobs.length > 0 ? currentJobs[0].candidate_url : `/candidates?openCandidate=${candidate.id}`
+```
 
-## What stays untouched
-- `enrich-by-linkedin` — already correct
-- `apollo-phone-webhook` — already handles incoming phone data
-- Chrome extension code — no changes needed in this project
+**File: `supabase/functions/chrome-api-candidates/index.ts`**
+
+Line ~281 — same change:
+```typescript
+candidate_url: `/jobs/${assoc.job_id}?candidate=${candidateId}`
+```
+
+### No changes needed in the Chrome Helper Hub
+The extension code in `CandidateForm.tsx` already uses the URL correctly — it just prepends `https://app.gogio.io` and opens in a new tab. The fix is entirely in the URL format returned by the edge functions.
+
+After updating the edge functions, redeploy both `chrome-api-gateway` and `chrome-api-candidates`.
+
+---
+
+## Summary
+
+This is actually a fix in **this project's** edge functions, not the Chrome Helper Hub. The extension code is fine — it just opens whatever URL the API returns. The two edge functions need their `candidate_url` format updated from the legacy `/jobs/{id}/candidates/{id}` path to the query-parameter pattern (`/jobs/{id}?candidate={id}` or `/candidates?openCandidate={id}`).
+
+| File | Change |
+|------|--------|
+| `supabase/functions/chrome-api-gateway/index.ts` | Update 3 `candidate_url` assignments to use query params |
+| `supabase/functions/chrome-api-candidates/index.ts` | Update 1 `candidate_url` assignment to use query params |
+| Chrome Helper Hub — no changes needed | URLs are consumed as-is |
 
