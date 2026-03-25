@@ -1004,7 +1004,7 @@ async function handleLookup(body: any, user: any, member: any, corsHeaders: Reco
     stage_name: assoc.job_hiring_stages?.custom_stage_name
       || assoc.job_hiring_stages?.job_stages?.stage_name
       || 'Unknown Stage',
-    candidate_url: `/jobs/${assoc.job_id}/candidates/${candidate.id}`
+    candidate_url: `/jobs/${assoc.job_id}?candidate=${candidate.id}`
   }));
 
   console.log(`✅ Lookup found candidate ${candidate.id} with ${currentJobs.length} active jobs`);
