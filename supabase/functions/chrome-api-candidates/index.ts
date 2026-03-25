@@ -278,7 +278,7 @@ serve(async (req) => {
           stage_name: assoc.job_hiring_stages?.custom_stage_name 
             || assoc.job_hiring_stages?.job_stages?.stage_name 
             || 'Unknown Stage',
-          candidate_url: `/jobs/${assoc.job_id}/candidates/${candidateId}`
+          candidate_url: `/jobs/${assoc.job_id}?candidate=${candidateId}`
         }));
         console.log(`📋 Found ${existingJobAssociations.length} existing job associations`);
       }

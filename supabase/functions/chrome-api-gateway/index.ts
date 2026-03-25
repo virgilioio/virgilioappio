@@ -1013,7 +1013,7 @@ async function handleLookup(body: any, user: any, member: any, corsHeaders: Reco
     exists: true,
     candidate_id: candidate.id,
     candidate_name: candidate.candidate_name,
-    candidate_url: currentJobs.length > 0 ? currentJobs[0].candidate_url : null,
+    candidate_url: currentJobs.length > 0 ? currentJobs[0].candidate_url : `/candidates?openCandidate=${candidate.id}`,
     current_jobs: currentJobs
   }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
