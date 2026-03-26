@@ -54,6 +54,7 @@ function InternalBookingConfirmationForm({
   customLocation,
   guestEmails,
   onGuestEmailsChange,
+  organizationId,
 }: {
   selectedSlot: { start: string; end: string };
   candidateTimezone: string;
@@ -66,6 +67,7 @@ function InternalBookingConfirmationForm({
   customLocation: string;
   guestEmails: string[];
   onGuestEmailsChange: (emails: string[]) => void;
+  organizationId: string;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sendInvitation, setSendInvitation] = useState(true);
@@ -748,6 +750,7 @@ export function ScheduleInterviewSheet({
                     customLocation={customLocation}
                     guestEmails={guestEmails}
                     onGuestEmailsChange={setGuestEmails}
+                    organizationId={organizationId}
                   />
                 </div>
               )}
