@@ -20,6 +20,7 @@ interface MonthCalendarProps {
   onDateSelect: (date: Date) => void;
   currentMonth: Date;
   onMonthChange: (date: Date) => void;
+  allowAllDates?: boolean;
 }
 
 export function MonthCalendar({ 
@@ -27,7 +28,8 @@ export function MonthCalendar({
   selectedDate, 
   onDateSelect,
   currentMonth,
-  onMonthChange
+  onMonthChange,
+  allowAllDates = false,
 }: MonthCalendarProps) {
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -101,22 +103,25 @@ export function MonthCalendar({
             const isPast = day < new Date(new Date().setHours(0, 0, 0, 0));
             const isTodayDate = isToday(day);
 
+            const isSelectable = allowAllDates ? (isCurrentMonth && !isPast) : (isAvailable && isCurrentMonth && !isPast);
+
             return (
               <button
                 key={idx}
-                onClick={() => isAvailable && isCurrentMonth && !isPast && onDateSelect(day)}
-                disabled={!isAvailable || !isCurrentMonth || isPast}
+                onClick={() => isSelectable && onDateSelect(day)}
+                disabled={!isSelectable}
                 className={`
                   relative min-h-[44px] w-full rounded-lg text-sm font-semibold
                   transition-all duration-200 ease-out
                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple focus-visible:ring-offset-2
                   ${!isCurrentMonth ? 'text-virgilio-border cursor-default' : ''}
                   ${isPast ? 'opacity-30 cursor-not-allowed' : ''}
-                  ${isCurrentMonth && !isAvailable && !isPast ? 'text-virgilio-muted/30 cursor-not-allowed' : ''}
-                  ${isCurrentMonth && isAvailable && !isSelected && !isPast ? 
+                  ${isCurrentMonth && !isSelectable && !isPast ? 'text-virgilio-muted/30 cursor-not-allowed' : ''}
+                  ${isCurrentMonth && isSelectable && !isSelected && !isPast ? 
                     'text-virgilio-text hover:bg-virgilio-purple/10 hover:-translate-y-0.5 hover:shadow-sm cursor-pointer' : ''}
                   ${isSelected ? 'bg-virgilio-purple text-white shadow-md' : ''}
                   ${isTodayDate && !isSelected && isCurrentMonth ? 'ring-1 ring-virgilio-purple/30' : ''}
+                  ${allowAllDates && isCurrentMonth && !isPast && !isAvailable && !isSelected ? 'text-virgilio-muted hover:bg-virgilio-purple/10 hover:-translate-y-0.5 hover:shadow-sm cursor-pointer' : ''}
                 `}
                 aria-label={format(day, 'MMMM d, yyyy')}
                 aria-pressed={isSelected}
