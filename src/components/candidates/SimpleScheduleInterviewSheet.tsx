@@ -282,7 +282,7 @@ export function SimpleScheduleInterviewSheet({
   const queryClient = useQueryClient();
   const [selectedInterviewer, setSelectedInterviewer] = useState<TeamInterviewer | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string } | null>(null);
   const [selectedDuration, setSelectedDuration] = useState<number>(30);
   const [meetingType, setMeetingType] = useState<'google_meet' | 'custom'>('google_meet');
@@ -555,17 +555,15 @@ export function SimpleScheduleInterviewSheet({
                       </CardContent>
                     </Card>
 
-                    {selectedDate && (
-                      <Card>
-                        <CardContent className="p-6">
-                          <DayCalendarEvents
-                            selectedDate={selectedDate}
-                            busyEvents={availabilityData?.busy_events || []}
-                            isLoading={isLoadingAvailability}
-                          />
-                        </CardContent>
-                      </Card>
-                    )}
+                    <Card>
+                      <CardContent className="p-6">
+                        <DayCalendarEvents
+                          selectedDate={selectedDate}
+                          busyEvents={availabilityData?.busy_events || []}
+                          isLoading={isLoadingAvailability}
+                        />
+                      </CardContent>
+                    </Card>
                   </div>
                 </div>
               )}
