@@ -116,11 +116,12 @@ export function MonthCalendar({
                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple focus-visible:ring-offset-2
                   ${!isCurrentMonth ? 'text-virgilio-border cursor-default' : ''}
                   ${isPast ? 'opacity-30 cursor-not-allowed' : ''}
-                  ${isCurrentMonth && !isAvailable && !isPast ? 'text-virgilio-muted/30 cursor-not-allowed' : ''}
-                  ${isCurrentMonth && isAvailable && !isSelected && !isPast ? 
+                  ${isCurrentMonth && !isSelectable && !isPast ? 'text-virgilio-muted/30 cursor-not-allowed' : ''}
+                  ${isCurrentMonth && isSelectable && !isSelected && !isPast ? 
                     'text-virgilio-text hover:bg-virgilio-purple/10 hover:-translate-y-0.5 hover:shadow-sm cursor-pointer' : ''}
                   ${isSelected ? 'bg-virgilio-purple text-white shadow-md' : ''}
                   ${isTodayDate && !isSelected && isCurrentMonth ? 'ring-1 ring-virgilio-purple/30' : ''}
+                  ${allowAllDates && isCurrentMonth && !isPast && !isAvailable && !isSelected ? 'text-virgilio-muted hover:bg-virgilio-purple/10 hover:-translate-y-0.5 hover:shadow-sm cursor-pointer' : ''}
                 `}
                 aria-label={format(day, 'MMMM d, yyyy')}
                 aria-pressed={isSelected}

@@ -15,6 +15,7 @@ import { startOfMonth, endOfMonth, isSameDay, parseISO } from 'date-fns';
 import { useBookingAvailability } from '@/hooks/useBookingAvailability';
 import { MonthCalendar } from '@/components/booking/MonthCalendar';
 import { TimeSlotsList } from '@/components/booking/TimeSlotsList';
+import { DayCalendarEvents } from '@/components/scheduling/DayCalendarEvents';
 import { MeetingLocationSelector } from '@/components/scheduling/MeetingLocationSelector';
 import { InterviewDurationSelector } from '@/components/scheduling/InterviewDurationSelector';
 import { ManualInterviewerSelector } from '@/components/scheduling/ManualInterviewerSelector';
@@ -696,21 +697,36 @@ export function ScheduleInterviewSheet({
                         onDateSelect={setSelectedDate}
                         currentMonth={currentMonth}
                         onMonthChange={setCurrentMonth}
+                        allowAllDates
                       />
                     </CardContent>
                   </Card>
 
-                  <Card>
-                    <CardContent className="p-6">
-                      <TimeSlotsList
-                        selectedDate={selectedDate}
-                        timeSlots={timeSlotsForSelectedDate}
-                        selectedSlot={selectedSlot}
-                        onSlotSelect={setSelectedSlot}
-                        isLoading={isLoadingAvailability}
-                      />
-                    </CardContent>
-                  </Card>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Card>
+                      <CardContent className="p-6">
+                        <TimeSlotsList
+                          selectedDate={selectedDate}
+                          timeSlots={timeSlotsForSelectedDate}
+                          selectedSlot={selectedSlot}
+                          onSlotSelect={setSelectedSlot}
+                          isLoading={isLoadingAvailability}
+                        />
+                      </CardContent>
+                    </Card>
+
+                    {selectedDate && (
+                      <Card>
+                        <CardContent className="p-6">
+                          <DayCalendarEvents
+                            selectedDate={selectedDate}
+                            busyEvents={availabilityData?.busy_events || []}
+                            isLoading={isLoadingAvailability}
+                          />
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
                 </div>
               )}
 
