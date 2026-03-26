@@ -232,6 +232,7 @@ function SimpleBookingConfirmationForm({
               <GuestEmailInput
                 emails={guestEmails}
                 onChange={onGuestEmailsChange}
+                organizationId={organizationId}
               />
 
               <div className="flex gap-3 pt-2">
