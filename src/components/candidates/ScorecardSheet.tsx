@@ -712,7 +712,7 @@ export function ScorecardSheet({
     if (aiSuggestedRating && aiRatingToScoreRating[aiSuggestedRating]) {
       setRating(aiRatingToScoreRating[aiSuggestedRating]);
       if (aiAnalysis) {
-        setOverview(markdownToHtml(aiAnalysis));
+        setOverview(markdownToHtml(normalizeAiAnalysis(aiAnalysis)));
       }
       toast({
         title: "AI suggestion applied",
