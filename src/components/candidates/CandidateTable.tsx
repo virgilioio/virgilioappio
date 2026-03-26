@@ -130,6 +130,7 @@ export function CandidateTable({
     if (onRowClick) {
       e.preventDefault()
       e.stopPropagation()
+      markCandidateAsViewed(candidate.id)
       onRowClick(candidate.id)
     } else {
       handleCandidateClick(candidate)
