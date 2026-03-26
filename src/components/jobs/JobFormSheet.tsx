@@ -141,7 +141,7 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
       salary_max: formData.salary_max ? parseInt(formData.salary_max) : null,
       currency: formData.currency || null,
       status: formData.status,
-      organization_id: formData.organization_id,
+      ...(job ? {} : { organization_id: formData.organization_id }),
       skills: selectedSkills,
       auto_generated_skills: autoSkills.length > 0 ? autoSkills : undefined,
       last_skills_generation: autoSkills.length > 0 ? new Date().toISOString() : undefined,
@@ -287,6 +287,7 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
                 emptyMessage="No departments available."
                 onCreateNew={() => setIsOrgFormOpen(true)}
                 createNewLabel="Create Department"
+              disabled={!!job}
               />
               {!formData.organization_id && childOrganizations.length > 0 && (
                 <p className="text-sm text-muted-foreground mt-1">
