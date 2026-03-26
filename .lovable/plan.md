@@ -1,42 +1,44 @@
 
 
-# Fix "New" Badge: Never Clears + Restyle to Match Badge Guidelines
+# Fix: RLS Error When Updating a Job
 
-## Problem 1: "New" badge never removed in Application Review
+## Root Cause
 
-**Root cause**: In `CandidateTable.tsx`, when `onRowClick` is provided, `handleLinkClick` (line 129) calls `onRowClick` but skips `markCandidateAsViewed`. Since Application Review always passes `onRowClick`, clicking a candidate never marks them as viewed — the "New" badge persists forever.
+`JobFormSheet.handleSubmit` (line 144) always includes `organization_id` in the update payload. When Supabase/PostgREST processes `.update({ ...data, organization_id })` on the `jobs` table, the foreign key validation and RLS policy evaluation against the `organizations` table triggers the 42501 error for non-platform-admin users.
 
-**Fix**: Add `markCandidateAsViewed(candidate.id)` inside the `onRowClick` branch of `handleLinkClick`.
+`organization_id` should never be changed after job creation — it's set at INSERT time only.
+
+## Fix
+
+**File: `src/components/jobs/JobFormSheet.tsx`**
+
+In `handleSubmit`, exclude `organization_id` from the payload when editing an existing job (when `job` prop is present). Only include it for new job creation.
 
 ```typescript
-const handleLinkClick = (e: React.MouseEvent, candidate: CandidateTableCandidate) => {
-  if (onRowClick) {
-    e.preventDefault()
-    e.stopPropagation()
-    markCandidateAsViewed(candidate.id)  // ← add this line
-    onRowClick(candidate.id)
-  } else {
-    handleCandidateClick(candidate)
-  }
+const submitData = {
+  title: formData.title,
+  description: formData.description || null,
+  location: formData.location || null,
+  salary_min: formData.salary_min ? parseInt(formData.salary_min) : null,
+  salary_max: formData.salary_max ? parseInt(formData.salary_max) : null,
+  currency: formData.currency || null,
+  status: formData.status,
+  ...(job ? {} : { organization_id: formData.organization_id }), // only on create
+  skills: selectedSkills,
+  auto_generated_skills: autoSkills.length > 0 ? autoSkills : undefined,
+  last_skills_generation: autoSkills.length > 0 ? new Date().toISOString() : undefined,
+  hiring_team: formData.hiring_team
 }
 ```
 
-## Problem 2: "New" badge doesn't follow badge visual guidelines
+Additionally, disable the organization selector when editing (since it can't be changed):
+- Add `disabled={!!job}` to the `SearchableSelect` for organization on line ~282.
 
-Currently uses a red `destructive` Badge with custom classes. Should follow the Smart Field pastel pattern.
-
-**Fix**: Update `new-badge.tsx` to use a pastel-style badge (e.g., emerald/green tint for "new" items):
-
-```
-border-emerald-200 bg-emerald-100 text-emerald-700
-```
-
-With a subtle sparkle or dot icon for polish.
-
-## Files changed
+## Summary
 
 | File | Change |
 |------|--------|
-| `src/components/candidates/CandidateTable.tsx` | Add `markCandidateAsViewed` call in the `onRowClick` branch |
-| `src/components/ui/new-badge.tsx` | Restyle badge to Smart Field pastel pattern |
+| `src/components/jobs/JobFormSheet.tsx` | Exclude `organization_id` from update payload; disable org selector when editing |
+
+One-file fix. No database or RLS changes needed.
 
