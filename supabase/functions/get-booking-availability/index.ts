@@ -152,13 +152,13 @@ serve(async (req) => {
 
     console.log('[get-booking-availability] Existing bookings:', bookedSlots.length);
 
-    // Merge all busy times
-    const allBusySlots = [...googleBusySlots, ...bookedSlots];
+    // For internal scheduling: only filter out GoGio bookings, keep Google Calendar busy times as info
+    // For external scheduling: filter out both Google Calendar and GoGio bookings
+    const filterBusySlots = internal_scheduling ? bookedSlots : [...googleBusySlots, ...bookedSlots];
 
     // Filter out occupied slots
     const availableSlots = filteredSlots.filter(slot => {
-      return !allBusySlots.some(busy => 
-        // Check if slot overlaps with busy time
+      return !filterBusySlots.some(busy => 
         slot.start < busy.end && slot.end > busy.start
       );
     });
@@ -171,10 +171,19 @@ serve(async (req) => {
       end: slot.end.toISOString(),
     }));
 
+    // Format busy events for frontend display (only for internal scheduling)
+    const formattedBusyEvents = internal_scheduling 
+      ? googleBusySlots.map(slot => ({
+          start: slot.start.toISOString(),
+          end: slot.end.toISOString(),
+        }))
+      : undefined;
+
     return new Response(JSON.stringify({
       available_slots: formattedSlots,
       total_slots: formattedSlots.length,
       date_range: { start: start_date, end: end_date },
+      ...(formattedBusyEvents && { busy_events: formattedBusyEvents }),
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

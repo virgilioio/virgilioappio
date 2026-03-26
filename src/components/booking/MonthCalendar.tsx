@@ -20,6 +20,7 @@ interface MonthCalendarProps {
   onDateSelect: (date: Date) => void;
   currentMonth: Date;
   onMonthChange: (date: Date) => void;
+  allowAllDates?: boolean;
 }
 
 export function MonthCalendar({ 
@@ -27,7 +28,8 @@ export function MonthCalendar({
   selectedDate, 
   onDateSelect,
   currentMonth,
-  onMonthChange
+  onMonthChange,
+  allowAllDates = false,
 }: MonthCalendarProps) {
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -101,11 +103,13 @@ export function MonthCalendar({
             const isPast = day < new Date(new Date().setHours(0, 0, 0, 0));
             const isTodayDate = isToday(day);
 
+            const isSelectable = allowAllDates ? (isCurrentMonth && !isPast) : (isAvailable && isCurrentMonth && !isPast);
+
             return (
               <button
                 key={idx}
-                onClick={() => isAvailable && isCurrentMonth && !isPast && onDateSelect(day)}
-                disabled={!isAvailable || !isCurrentMonth || isPast}
+                onClick={() => isSelectable && onDateSelect(day)}
+                disabled={!isSelectable}
                 className={`
                   relative min-h-[44px] w-full rounded-lg text-sm font-semibold
                   transition-all duration-200 ease-out

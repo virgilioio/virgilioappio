@@ -6,8 +6,14 @@ interface AvailabilitySlot {
   end: string;
 }
 
+interface BusyEvent {
+  start: string;
+  end: string;
+}
+
 interface AvailabilityResponse {
   available_slots: AvailabilitySlot[];
+  busy_events?: BusyEvent[];
   total_slots: number;
   date_range: {
     start: string;
