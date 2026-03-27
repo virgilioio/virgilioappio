@@ -910,6 +910,23 @@ const stageHasAutomation = useMemo(() => {
   }
   const handleHire = () => handleSetStatus('hired')
 
+  const handleUnhire = async () => {
+    if (!associationId) return
+    const { error } = await supabase
+      .from('job_candidate_associations')
+      .update({ status: 'offer', hired_at: null, hired_by: null } as any)
+      .eq('id', associationId)
+    if (error) {
+      console.error('Error unhiring candidate:', error)
+      toast({ title: 'Error', description: 'Failed to return candidate to offer stage', variant: 'destructive' })
+      return
+    }
+    setAssociationStatus('offer')
+    setHiredDetails(null)
+    onStageChanged?.()
+    toast({ title: 'Status updated', description: 'Candidate returned to offer stage' })
+  }
+
   const getHeaderBgClass = (type: string) => {
     switch (type) {
       case 'application':
@@ -1096,6 +1113,7 @@ const stageHasAutomation = useMemo(() => {
                         hiredByName={hiredDetails?.hiredByName || undefined}
                         jobTitle={job?.title}
                         candidateSource={candidate?.source || candidate?.job_board_source || undefined}
+                        onUnhire={handleUnhire}
                       />
                     </div>
                   )}
