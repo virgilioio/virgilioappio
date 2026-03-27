@@ -1195,7 +1195,7 @@ export default function JobDetail() {
                                       isCandidateNewForUser={() => false}
                                       onRowClick={openSuggestedProfile}
                                       hideActions={true}
-                                      showMatchScore={true}
+                                      showFitScore={true}
                                       hideSkills={true}
                                     />
                                   ) : (
@@ -1610,7 +1610,7 @@ export default function JobDetail() {
                                       isCandidateNewForUser={() => false}
                                       onRowClick={openSuggestedProfile}
                                       hideActions={true}
-                                      showMatchScore={true}
+                                      showFitScore={true}
                                       hideSkills={true}
                                     />
                                   ) : (
