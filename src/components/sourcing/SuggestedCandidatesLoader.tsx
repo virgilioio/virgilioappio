@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { GioLoader } from '@/components/ui/GioLoader'
-import { Progress } from '@/components/ui/progress'
 
 const THINKING_MESSAGES = [
   "Scanning your talent pool",
