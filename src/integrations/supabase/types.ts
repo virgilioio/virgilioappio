@@ -2044,6 +2044,8 @@ export type Database = {
           email_ingest_address: string | null
           email_ingest_code: string | null
           entered_stage_at: string | null
+          hired_at: string | null
+          hired_by: string | null
           id: string
           job_id: string
           notes: string | null
@@ -2074,6 +2076,8 @@ export type Database = {
           email_ingest_address?: string | null
           email_ingest_code?: string | null
           entered_stage_at?: string | null
+          hired_at?: string | null
+          hired_by?: string | null
           id?: string
           job_id: string
           notes?: string | null
@@ -2104,6 +2108,8 @@ export type Database = {
           email_ingest_address?: string | null
           email_ingest_code?: string | null
           entered_stage_at?: string | null
+          hired_at?: string | null
+          hired_by?: string | null
           id?: string
           job_id?: string
           notes?: string | null
