@@ -27,6 +27,7 @@ interface CandidateFiltersPanelProps {
     pipelineStatusOptions: FilterOption[]
     jobOptions: FilterOption[]
     stageOptions: FilterOption[]
+    companyOptions: FilterOption[]
     rejectedAtStageOptions: FilterOption[]
     experienceRange: { min: number; max: number } | null
     salaryRange: { min: number; max: number } | null
@@ -42,8 +43,8 @@ export function CandidateFiltersPanel({ filterOptions }: CandidateFiltersPanelPr
   const [sheetOpen, setSheetOpen] = useState(false)
 
   // Collect active filter tags for display below
-  const activeTags: { key: 'statuses' | 'sources' | 'countries' | 'states' | 'cities' | 'seniorityLevels' | 'functionalAreas' | 'specializations' | 'skills' | 'enrichmentStatuses' | 'pipelineStatuses' | 'jobs' | 'stages' | 'rejectedAtStages'; value: string; label?: string }[] = []
-  const arrayKeys = ['statuses', 'sources', 'countries', 'states', 'cities', 'seniorityLevels', 'functionalAreas', 'specializations', 'skills', 'enrichmentStatuses', 'pipelineStatuses', 'jobs', 'stages', 'rejectedAtStages'] as const
+  const activeTags: { key: 'statuses' | 'sources' | 'countries' | 'states' | 'cities' | 'companies' | 'seniorityLevels' | 'functionalAreas' | 'specializations' | 'skills' | 'enrichmentStatuses' | 'pipelineStatuses' | 'jobs' | 'stages' | 'rejectedAtStages'; value: string; label?: string }[] = []
+  const arrayKeys = ['statuses', 'sources', 'countries', 'states', 'cities', 'companies', 'seniorityLevels', 'functionalAreas', 'specializations', 'skills', 'enrichmentStatuses', 'pipelineStatuses', 'jobs', 'stages', 'rejectedAtStages'] as const
   for (const k of arrayKeys) {
     for (const v of filters[k]) {
       // For jobs filter, show job title instead of job ID
@@ -241,6 +242,15 @@ export function CandidateFiltersPanel({ filterOptions }: CandidateFiltersPanelPr
           selectedValues={filters.cities}
           onToggle={(v) => toggleArrayFilter('cities', v)}
           onClear={() => setArrayFilter('cities', [])}
+          searchable
+        />
+
+        <FilterCheckboxGroup
+          label="Company"
+          options={filterOptions.companyOptions}
+          selectedValues={filters.companies}
+          onToggle={(v) => toggleArrayFilter('companies', v)}
+          onClear={() => setArrayFilter('companies', [])}
           searchable
         />
 
