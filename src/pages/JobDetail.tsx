@@ -627,7 +627,7 @@ export default function JobDetail() {
       // Refetch matching candidates if skills may have changed
       if (pipelineSectionTab === 'suggested') {
         console.log('🔄 Job updated, refreshing matching candidates...')
-        refetchMatches()
+        refetchSuggested()
       }
     } catch (error) {
       console.error('Error updating job:', error)
