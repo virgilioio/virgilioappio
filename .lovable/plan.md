@@ -1,51 +1,44 @@
 
 
-# Add "Hired" Status Banner to Candidate Profile Sheet
+# Add "Unhire" Button to Hired Banner
 
-## Problem
+## What changes
 
-When a candidate is marked as "hired", there's no visual banner like the ones for "rejected" and "offer" statuses. The user wants a hired banner showing: job name, hire date, candidate source, and the recruiter who hired them.
+Add an "Unhire" button to `HiredStatusBanner` that returns the candidate to the `offer` status while preserving all offer data. This mirrors the "Reactivate" button on the rejection banner and the "Create Offer" button on the offer banner.
 
-## Database Change
+## Key behavior
 
-The `job_candidate_associations` table currently has no `hired_at` or `hired_by` columns (unlike `rejected_at`/`rejected_by` and `offered_at`/`offered_by`). We need to add them.
+- Clicking "Unhire" sets the association status back to `offer`
+- Offer data (`offer_letters`, `offered_at`, `offered_by`) is **preserved** — not deleted
+- `hired_at` and `hired_by` are cleared (set to null)
+- The Offer tab remains visible and editable
+- Offer data is only lost when returning to the pipeline (active status), which already works via `handleReactivate` → `checkOfferAndProceed`
 
-**Migration:**
-```sql
-ALTER TABLE public.job_candidate_associations
-  ADD COLUMN hired_at timestamptz,
-  ADD COLUMN hired_by uuid REFERENCES auth.users(id);
-```
-
-## Code Changes
+## Files changed
 
 | File | Change |
 |------|--------|
-| `src/components/candidates/HiredStatusBanner.tsx` | **New file** — banner component matching rejection/offer banner pattern |
-| `src/components/candidates/CandidateProfileSheet.tsx` | (1) Add `hired_at`, `hired_by` to the association `.select()` query. (2) Add `hiredDetails` state. (3) Populate it when `status === 'hired'` (resolve recruiter name from profiles, get job title from existing `job` state, get source from `candidate.source`). (4) Set `hired_at`/`hired_by` when marking as hired via `handleSetStatus`. (5) Render `HiredStatusBanner` alongside the rejection/offer banners. |
+| `src/components/candidates/HiredStatusBanner.tsx` | Add `onUnhire` callback prop; render "Unhire" button (outline style matching rejection banner pattern) |
+| `src/components/candidates/CandidateProfileSheet.tsx` | Add `handleUnhire` function that updates status to `offer`, clears `hired_at`/`hired_by`, restores offer banner state, and re-shows Offer tab. Pass `onUnhire` to `HiredStatusBanner`. |
 
-## HiredStatusBanner Component
+## handleUnhire logic
 
-- Emerald/green background (`bg-emerald-700`) to match the "hired" semantic color
-- Shows:
-  - **Title**: "Candidate Hired"
-  - **Job name**: from the loaded job data
-  - **Hire date**: formatted from `hired_at`
-  - **Source**: from `candidate.source` or `candidate.job_board_source`
-  - **Recruiter**: resolved name from `hired_by` profile lookup
-- No action button needed (unlike rejection's "Reactivate" or offer's "Create Offer")
+```
+1. Update association: status='offer', hired_at=null, hired_by=null
+2. setAssociationStatus('offer')
+3. setHiredDetails(null)
+4. Restore offerDetails state (already loaded from DB if it exists)
+5. onStageChanged?.() to refresh pipeline
+6. Toast: "Candidate returned to offer stage"
+```
 
-## handleSetStatus Update
-
-When `handleSetStatus('hired')` is called, update the association with `hired_at: new Date().toISOString()` and `hired_by: user?.id` alongside the status change (similar to how `handleMoveToOffer` sets `offered_at`/`offered_by`).
-
-## Visual Result
+## Visual result
 
 ```text
-┌─────────────────────────────────────────────────────┐
-│  ✓ Candidate Hired                                  │
-│  Account Executive, Enterprise • Mar 27, 2026       │
-│  Source: LinkedIn • Recruiter: Allan Bravo           │
-└─────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│  ✓ Candidate Hired                                    [Unhire] │
+│  Account Executive, Enterprise • Mar 27, 2026                  │
+│  Source: LinkedIn • Recruiter: Allan Bravo                      │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
