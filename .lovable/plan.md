@@ -1,26 +1,50 @@
 
 
-# Fix Saved Views: Filters Not Applied + Ellipsis Menu Z-Index
+# Fix: Saved View Selected But Filters Not Applied
 
-## Problem 1: Selecting a saved view doesn't apply filters
+## Root Cause
 
-**Root cause**: In `IndependentCandidateTable.tsx`, `setFiltersFromRecord` (line 197) only restores a subset of array filter keys. It's missing:
-- `companies`, `jobs`, `stages`, `rejectedAtStages` (array filters)
-- `experienceMin`, `experienceMax`, `salaryMin`, `salaryMax` (numeric filters)
-- `dateFrom`, `dateTo` (date filters)
+In `IndependentCandidateTable.tsx` (line 222-231), when restoring from sessionStorage on mount:
 
-**Fix**: Update `setFiltersFromRecord` to restore ALL filter keys using `setArrayFilter`, `setNumericFilter`, and `setDateFilter` from the candidate filter context. The full list of array keys should match `CandidateFilters`.
+```typescript
+const storedViewId = getActiveViewId()
+if (storedViewId) {
+  setActiveViewId(storedViewId)  // ← Only sets the UI label
+  // ← NEVER applies the view's filters!
+}
+```
 
-## Problem 2: Ellipsis menu opens behind the saved views dropdown
+The view appears selected visually, but `setFiltersFromRecord` is never called with the view's saved filters. The `usePersistentFilters` hook does separately restore filters from sessionStorage, but if the session was lost or filters were empty when stored, the view shows as active with no filters applied.
 
-**Root cause**: The `DropdownMenuContent` inside the `PopoverContent` renders at a lower z-index than the popover.
+## Fix
 
-**Fix**: In `SavedViewSelector.tsx`, add `className="z-[200]"` to the `DropdownMenuContent` (line 143) and add `modal={false}` to the `DropdownMenu` (line 137) so it doesn't fight with the popover's portal.
+When a `storedViewId` is found, look up the matching view from the loaded `views` list and apply its filters. This requires using `views` (not just `defaultView`) from `useSavedViews`.
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/components/candidates/IndependentCandidateTable.tsx` | Expand `setFiltersFromRecord` to restore all array keys + numeric + date filters using context setters |
-| `src/components/filters/SavedViewSelector.tsx` | Add `modal={false}` to DropdownMenu + `z-[200]` to DropdownMenuContent |
+| `src/components/candidates/IndependentCandidateTable.tsx` | (1) Destructure `views` from `useSavedViews('candidates')` alongside `defaultView`. (2) In the mount `useEffect`, when `storedViewId` is found, look up the view in `views` and call `setFiltersFromRecord(view.filters)`. Add `views` to the dependency considerations so the effect re-runs when views finish loading. |
+
+## Updated logic
+
+```typescript
+const { views, defaultView } = useSavedViews('candidates')
+
+useEffect(() => {
+  const storedViewId = getActiveViewId()
+  if (storedViewId) {
+    setActiveViewId(storedViewId)
+    const matchedView = views.find(v => v.id === storedViewId)
+    if (matchedView) {
+      setFiltersFromRecord(matchedView.filters as Record<string, unknown>)
+    }
+  } else if (defaultView) {
+    setActiveViewId(defaultView.id)
+    setFiltersFromRecord(defaultView.filters as Record<string, unknown>)
+  }
+}, [defaultView?.id, views.length])
+```
+
+This ensures that whenever a saved view is marked as active, its filters are actually applied — both on initial load and when restoring from session.
 
