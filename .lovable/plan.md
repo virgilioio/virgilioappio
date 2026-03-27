@@ -1,27 +1,38 @@
 
 
-# Replace Shimmer Bar with Animated Progress Bar
+# Lilac-Themed Progress Bar for Suggested Candidates Loader
 
-## Change
+## Colors (from the tab system)
 
-Replace the shimmer beam div in `SuggestedCandidatesLoader.tsx` with a progress bar that rapidly fills to ~85%, then slowly crawls toward 99% — giving a realistic "almost done" feel.
+| Element | Value | Source |
+|---------|-------|--------|
+| Fill gradient start | `#d7c5fb` (Lilac Frost) | Tab active background |
+| Fill gradient end | `#6F3FF5` (Virgilio Purple) | Brand purple |
+| Track background | `bg-muted` (`--muted`) | Matches tab container bg |
+| Glow | `rgba(215, 197, 251, 0.4)` | Lilac-based shadow |
+| Percentage text | `#0d0d09` or white | Tab active text color |
 
 ## Implementation
 
 **File**: `src/components/sourcing/SuggestedCandidatesLoader.tsx`
 
-- Add a `progress` state starting at 0
-- Use `useEffect` with `setInterval` (~100ms):
-  - While < 85: increment by ~2-3 per tick (reaches 85% in ~3-4 seconds)
-  - While < 99: increment by ~0.1-0.2 per tick (crawls slowly, never quite hits 100)
-- Replace the shimmer `div` with the shadcn `<Progress>` component, using `value={progress}`
-- Style: `w-48 h-1.5`, custom `indicatorClassName` for rounded + primary color
+Replace the current `<Progress>` component with a custom pill bar:
 
-## Visual result
+- **Track**: `w-64 h-6 rounded-full bg-muted border border-border/50 overflow-hidden`
+- **Fill**: Inner div with `bg-gradient-to-r from-[#d7c5fb] to-[#6F3FF5]`, `rounded-full`, `transition-all duration-150 ease-out`, `shadow-[0_0_12px_rgba(215,197,251,0.4)]`
+- **Width**: driven by existing `progress` state (fast to 85%, crawl to 99%)
+- **Percentage label**: small white bold text inside the fill, right-aligned (`pr-2`), only shown when progress > 15% (so it doesn't clip)
 
 ```text
-[GioLoader coin flip]
-[████████████████████░░░] 85% → slowly crawling...
-"Matching skills & experience..."
+Track:  [░░░░░░░░░░░░░░░░░░░░░░░░░░░░]  bg-muted
+Fill:   [████████████████████ 84%     ]  lilac → purple gradient + glow
 ```
+
+Keep all existing logic (non-linear progress, rotating messages, GioLoader) unchanged — only the bar visual changes.
+
+## Files changed
+
+| File | Change |
+|------|--------|
+| `src/components/sourcing/SuggestedCandidatesLoader.tsx` | Replace `<Progress>` with custom lilac gradient bar |
 
