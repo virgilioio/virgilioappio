@@ -918,13 +918,13 @@ const stageHasAutomation = useMemo(() => {
       .eq('id', associationId)
     if (error) {
       console.error('Error unhiring candidate:', error)
-      toast.error('Failed to return candidate to offer stage')
+      toast({ title: 'Error', description: 'Failed to return candidate to offer stage', variant: 'destructive' })
       return
     }
     setAssociationStatus('offer')
     setHiredDetails(null)
     onStageChanged?.()
-    toast.success('Candidate returned to offer stage')
+    toast({ title: 'Status updated', description: 'Candidate returned to offer stage' })
   }
 
   const getHeaderBgClass = (type: string) => {
