@@ -1096,6 +1096,7 @@ const stageHasAutomation = useMemo(() => {
                         hiredByName={hiredDetails?.hiredByName || undefined}
                         jobTitle={job?.title}
                         candidateSource={candidate?.source || candidate?.job_board_source || undefined}
+                        onUnhire={handleUnhire}
                       />
                     </div>
                   )}
