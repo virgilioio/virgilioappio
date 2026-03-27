@@ -36,6 +36,7 @@ export function useCandidateFilteredData(
       if (filters.countries.length > 0 && (!c.location_country || !filters.countries.includes(c.location_country))) return false
       if (filters.states.length > 0 && (!c.location_state || !filters.states.includes(c.location_state))) return false
       if (filters.cities.length > 0 && (!c.location_city || !filters.cities.includes(c.location_city))) return false
+      if (filters.companies.length > 0 && (!c.company_current || !filters.companies.includes(c.company_current))) return false
       if (filters.seniorityLevels.length > 0 && (!c.seniority_level || !filters.seniorityLevels.includes(c.seniority_level))) return false
       if (filters.functionalAreas.length > 0 && (!c.functional_area || !filters.functionalAreas.includes(c.functional_area))) return false
       if (filters.specializations.length > 0 && (!c.specialization || !filters.specializations.includes(c.specialization))) return false
