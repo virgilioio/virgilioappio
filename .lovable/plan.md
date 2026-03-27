@@ -1,38 +1,47 @@
 
 
-# Lilac-Themed Progress Bar for Suggested Candidates Loader
+# Add Anti-Hallucination Rules to AI Fit Analysis Prompt
 
-## Colors (from the tab system)
+## What changes
 
-| Element | Value | Source |
-|---------|-------|--------|
-| Fill gradient start | `#d7c5fb` (Lilac Frost) | Tab active background |
-| Fill gradient end | `#6F3FF5` (Virgilio Purple) | Brand purple |
-| Track background | `bg-muted` (`--muted`) | Matches tab container bg |
-| Glow | `rgba(215, 197, 251, 0.4)` | Lilac-based shadow |
-| Percentage text | `#0d0d09` or white | Tab active text color |
+Insert the user's finalized anti-hallucination rules into the `SYSTEM_PROMPT` in `supabase/functions/analyze-candidate-fit/index.ts`, and tighten the Salary Alignment dimension description.
 
 ## Implementation
 
-**File**: `src/components/sourcing/SuggestedCandidatesLoader.tsx`
+**File**: `supabase/functions/analyze-candidate-fit/index.ts`
 
-Replace the current `<Progress>` component with a custom pill bar:
+### 1. Insert anti-hallucination block after CRITICAL RULES (after line 111)
 
-- **Track**: `w-64 h-6 rounded-full bg-muted border border-border/50 overflow-hidden`
-- **Fill**: Inner div with `bg-gradient-to-r from-[#d7c5fb] to-[#6F3FF5]`, `rounded-full`, `transition-all duration-150 ease-out`, `shadow-[0_0_12px_rgba(215,197,251,0.4)]`
-- **Width**: driven by existing `progress` state (fast to 85%, crawl to 99%)
-- **Percentage label**: small white bold text inside the fill, right-aligned (`pr-2`), only shown when progress > 15% (so it doesn't clip)
+Add a new `ANTI-HALLUCINATION RULES` section with the user's exact 8 rules:
 
-```text
-Track:  [░░░░░░░░░░░░░░░░░░░░░░░░░░░░]  bg-muted
-Fill:   [████████████████████ 84%     ]  lilac → purple gradient + glow
+1. Never claim a job requires something unless explicitly stated in the job description
+2. Never claim a candidate lacks something unless candidate data explicitly confirms absence — "not mentioned" means unknown, not absent
+3. Missing information on either side = "unknown" / "not provided" — never convert into a penalty unless explicit contradictory evidence exists
+4. Education penalty only if job explicitly requires a degree AND candidate data confirms they don't have it
+5. Never misstate salary figures — use exact numeric values, no paraphrasing or rounding
+6. Salary alignment: within posted range or ±25% of job max = negotiable, no penalty. Only flag >25% above job max. Missing salary data = null dimension
+7. Every gap/mismatch must explicitly reference (a) the exact job requirement/datum and (b) the exact candidate datum or state data is unavailable
+8. When evidence is ambiguous, incomplete, or missing, prefer a neutral assessment over a negative inference
+
+### 2. Replace Salary Alignment dimension description (line 139)
+
+Replace:
+```
+- Salary Alignment (weight ~10): Compare candidate salary expectations vs job range. null if unknown.
 ```
 
-Keep all existing logic (non-linear progress, rotating messages, GioLoader) unchanged — only the bar visual changes.
+With:
+```
+- Salary Alignment (weight ~10): Compare using exact numeric values only. Do not approximate or paraphrase salary figures. If candidate expected salary is within ±25% of the job max or within the posted range, treat it as negotiable and do not penalize. Only flag a mismatch when the candidate expectation is more than 25% above the job maximum. If salary data is missing on either side, return null for this dimension and do not infer a mismatch.
+```
+
+### 3. Deploy edge function
+
+Deploy the updated `analyze-candidate-fit` function.
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/components/sourcing/SuggestedCandidatesLoader.tsx` | Replace `<Progress>` with custom lilac gradient bar |
+| `supabase/functions/analyze-candidate-fit/index.ts` | Add 8 anti-hallucination rules + tighten salary dimension wording |
 
