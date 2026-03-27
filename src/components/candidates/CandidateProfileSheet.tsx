@@ -1086,6 +1086,18 @@ const stageHasAutomation = useMemo(() => {
                       />
                     </div>
                   )}
+                  
+                  {/* Hired Status Banner - Full width above both columns */}
+                  {associationStatus === 'hired' && (
+                    <div className="mb-6">
+                      <HiredStatusBanner
+                        hiredAt={hiredDetails?.hiredAt || null}
+                        hiredByName={hiredDetails?.hiredByName || undefined}
+                        jobTitle={job?.title}
+                        candidateSource={candidate?.source || candidate?.job_board_source || undefined}
+                      />
+                    </div>
+                  )}
                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                    {/* Left column (50%) */}
                    <div className="space-y-6">
