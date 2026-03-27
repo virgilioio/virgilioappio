@@ -1176,14 +1176,8 @@ export default function JobDetail() {
                                     )}
                                   </div>
                                   {isLoadingMatches ? (
-                                    <div className="space-y-3 py-4">
-                                      {Array.from({ length: 4 }).map((_, i) => (
-                                        <div key={i} className="flex items-center gap-3 h-10">
-                                          <Skeleton className="h-8 w-8 rounded-full" />
-                                          <Skeleton className="h-4 w-40" />
-                                          <Skeleton className="h-4 w-20 ml-auto" />
-                                        </div>
-                                      ))}
+                                    <div className="flex items-center justify-center py-12">
+                                      <SuggestedCandidatesLoader />
                                     </div>
                                   ) : matchingCandidates && matchingCandidates.length > 0 ? (
                                     <CandidateTable
@@ -1591,14 +1585,8 @@ export default function JobDetail() {
                                     )}
                                   </div>
                                   {isLoadingMatches ? (
-                                    <div className="space-y-3 py-4">
-                                      {Array.from({ length: 4 }).map((_, i) => (
-                                        <div key={i} className="flex items-center gap-3 h-10">
-                                          <Skeleton className="h-8 w-8 rounded-full" />
-                                          <Skeleton className="h-4 w-40" />
-                                          <Skeleton className="h-4 w-20 ml-auto" />
-                                        </div>
-                                      ))}
+                                    <div className="flex items-center justify-center py-12">
+                                      <SuggestedCandidatesLoader />
                                     </div>
                                   ) : matchingCandidates && matchingCandidates.length > 0 ? (
                                     <CandidateTable
