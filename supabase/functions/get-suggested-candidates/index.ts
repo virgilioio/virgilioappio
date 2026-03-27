@@ -1,7 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeadersOf, handlePreflight } from "../_shared/cors.ts";
+import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -89,7 +89,7 @@ serve(async (req) => {
   if (preflight) return preflight;
 
   const origin = req.headers.get("Origin") ?? undefined;
-  const headers = corsHeadersOf(origin);
+  const headers = corsHeadersFor(origin);
 
   if (!OPENAI_API_KEY) {
     return new Response(JSON.stringify({ error: "OPENAI_API_KEY not configured" }), {
