@@ -67,6 +67,7 @@ import { GenerateBookingLinkButton } from '@/components/candidates/GenerateBooki
 import { RejectionDialog } from './RejectionDialog'
 import { RejectionStatusBanner } from './RejectionStatusBanner'
 import { OfferStatusBanner } from './OfferStatusBanner'
+import { HiredStatusBanner } from './HiredStatusBanner'
 import { MinimizableOfferComposer } from './MinimizableOfferComposer'
 import { CandidateReminders } from './CandidateReminders'
 import { CandidateInsightsTab } from './insights/CandidateInsightsTab'
@@ -150,6 +151,10 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [offerDetails, setOfferDetails] = useState<{
     offeredAt: string | null;
     offeredByName: string | null;
+  } | null>(null)
+  const [hiredDetails, setHiredDetails] = useState<{
+    hiredAt: string | null;
+    hiredByName: string | null;
   } | null>(null)
   const [viewingScorecardId, setViewingScorecardId] = useState<string | null>(null)
   const [viewingScorecard, setViewingScorecard] = useState<any>(null)
@@ -327,6 +332,7 @@ const stageHasAutomation = useMemo(() => {
     setCurrentStageId(null)
     setRejectionDetails(null)
     setOfferDetails(null)
+    setHiredDetails(null)
     setJobCandidate(null)
     setJobCandidateId(null)
     setWhatsAppTemplateSentAt(null)
@@ -444,6 +450,8 @@ const stageHasAutomation = useMemo(() => {
             rejection_reason:rejection_reasons(id, name, category),
             offered_at,
             offered_by,
+            hired_at,
+            hired_by,
             whatsapp_template_sent_at
           `)
           .eq('job_id', jobId)
@@ -499,6 +507,27 @@ const stageHasAutomation = useMemo(() => {
           })
         } else {
           setOfferDetails(null)
+        }
+        
+        // Set hired details if hired
+        if (assoc?.status === 'hired') {
+          let hiredByName = null
+          if ((assoc as any).hired_by) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('first_name, last_name')
+              .eq('user_id', (assoc as any).hired_by)
+              .maybeSingle()
+            if (profile) {
+              hiredByName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || null
+            }
+          }
+          setHiredDetails({
+            hiredAt: (assoc as any).hired_at,
+            hiredByName,
+          })
+        } else {
+          setHiredDetails(null)
         }
       }
     }
@@ -622,8 +651,41 @@ const stageHasAutomation = useMemo(() => {
 
   const handleSetStatus = async (s: 'active' | 'rejected' | 'hired') => {
     if (!associationId) return
+    
+    // If marking as hired, also set hired_at and hired_by
+    if (s === 'hired') {
+      const now = new Date().toISOString()
+      await supabase
+        .from('job_candidate_associations')
+        .update({ 
+          status: s, 
+          hired_at: now, 
+          hired_by: user?.id 
+        } as any)
+        .eq('id', associationId)
+      
+      // Resolve recruiter name
+      let hiredByName = null
+      if (user?.id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('user_id', user.id)
+          .maybeSingle()
+        if (profile) {
+          hiredByName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || null
+        }
+      }
+      setHiredDetails({ hiredAt: now, hiredByName })
+      setAssociationStatus(s)
+      onStageChanged?.()
+      toast({ title: 'Status updated', description: 'Candidate marked as hired.' })
+      return
+    }
+    
     await updateAssociationStatus(associationId, s)
     setAssociationStatus(s)
+    if (s === 'active') setHiredDetails(null)
     onStageChanged?.()
   }
 
@@ -842,6 +904,7 @@ const stageHasAutomation = useMemo(() => {
       handleSetStatus('active')
       setRejectionDetails(null)
       setOfferDetails(null)
+      setHiredDetails(null)
       if (activeTab === 'offer') setActiveTab('job')
     })
   }
@@ -1021,6 +1084,18 @@ const stageHasAutomation = useMemo(() => {
                         offeredAt={offerDetails?.offeredAt || null}
                         offeredByName={offerDetails?.offeredByName || undefined}
                         onCreateOffer={() => setOfferFormOpen(true)}
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Hired Status Banner - Full width above both columns */}
+                  {associationStatus === 'hired' && (
+                    <div className="mb-6">
+                      <HiredStatusBanner
+                        hiredAt={hiredDetails?.hiredAt || null}
+                        hiredByName={hiredDetails?.hiredByName || undefined}
+                        jobTitle={job?.title}
+                        candidateSource={candidate?.source || candidate?.job_board_source || undefined}
                       />
                     </div>
                   )}
