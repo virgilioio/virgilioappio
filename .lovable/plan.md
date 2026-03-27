@@ -1,52 +1,27 @@
 
 
-# Add Gio Thinking Animation to Suggested Candidates Loading
+# Replace Shimmer Bar with Animated Progress Bar
 
-## What changes
+## Change
 
-Replace the plain skeleton loaders in the Suggested Candidates tab with the `GioThinkingHeader` component (coin-flipping avatar + rotating status messages + shimmer bar), matching the Find page's loading experience.
-
-## Thinking messages
-
-Swap the Find-page messages for suggested-candidates-specific ones:
-
-```
-"Scanning your talent pool"
-"Analyzing job requirements"
-"Matching skills & experience"
-"Evaluating candidate fit"
-"Ranking best matches"
-"Finding your people"
-```
+Replace the shimmer beam div in `SuggestedCandidatesLoader.tsx` with a progress bar that rapidly fills to ~85%, then slowly crawls toward 99% — giving a realistic "almost done" feel.
 
 ## Implementation
 
-### 1. New component: `SuggestedCandidatesLoader.tsx`
+**File**: `src/components/sourcing/SuggestedCandidatesLoader.tsx`
 
-A thin wrapper around `GioLoader` (coin-flip avatar) with its own `THINKING_MESSAGES` array and the same shimmer bar + rotating text pattern from `GioThinkingHeader`, but with suggested-candidates-specific copy. Keeps `GioThinkingHeader` unchanged for the Find page.
+- Add a `progress` state starting at 0
+- Use `useEffect` with `setInterval` (~100ms):
+  - While < 85: increment by ~2-3 per tick (reaches 85% in ~3-4 seconds)
+  - While < 99: increment by ~0.1-0.2 per tick (crawls slowly, never quite hits 100)
+- Replace the shimmer `div` with the shadcn `<Progress>` component, using `value={progress}`
+- Style: `w-48 h-1.5`, custom `indicatorClassName` for rounded + primary color
 
-### 2. Update `JobDetail.tsx` (two places: mobile ~line 1178 and desktop ~line 1593)
+## Visual result
 
-Replace the skeleton `div` block:
-```tsx
-// Before
-{isLoadingMatches ? (
-  <div className="space-y-3 py-4">
-    {Array.from({ length: 4 }).map(...skeleton...)}
-  </div>
-)
-// After
-{isLoadingMatches ? (
-  <div className="flex items-center justify-center py-12">
-    <SuggestedCandidatesLoader />
-  </div>
-)
+```text
+[GioLoader coin flip]
+[████████████████████░░░] 85% → slowly crawling...
+"Matching skills & experience..."
 ```
-
-## Files changed
-
-| File | Change |
-|------|--------|
-| `src/components/sourcing/SuggestedCandidatesLoader.tsx` | New component — GioLoader + rotating messages |
-| `src/pages/JobDetail.tsx` | Replace skeleton blocks (2 places) with the new loader |
 
