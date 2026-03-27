@@ -67,6 +67,7 @@ import { GenerateBookingLinkButton } from '@/components/candidates/GenerateBooki
 import { RejectionDialog } from './RejectionDialog'
 import { RejectionStatusBanner } from './RejectionStatusBanner'
 import { OfferStatusBanner } from './OfferStatusBanner'
+import { HiredStatusBanner } from './HiredStatusBanner'
 import { MinimizableOfferComposer } from './MinimizableOfferComposer'
 import { CandidateReminders } from './CandidateReminders'
 import { CandidateInsightsTab } from './insights/CandidateInsightsTab'
@@ -150,6 +151,10 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [offerDetails, setOfferDetails] = useState<{
     offeredAt: string | null;
     offeredByName: string | null;
+  } | null>(null)
+  const [hiredDetails, setHiredDetails] = useState<{
+    hiredAt: string | null;
+    hiredByName: string | null;
   } | null>(null)
   const [viewingScorecardId, setViewingScorecardId] = useState<string | null>(null)
   const [viewingScorecard, setViewingScorecard] = useState<any>(null)
@@ -327,6 +332,7 @@ const stageHasAutomation = useMemo(() => {
     setCurrentStageId(null)
     setRejectionDetails(null)
     setOfferDetails(null)
+    setHiredDetails(null)
     setJobCandidate(null)
     setJobCandidateId(null)
     setWhatsAppTemplateSentAt(null)
@@ -444,6 +450,8 @@ const stageHasAutomation = useMemo(() => {
             rejection_reason:rejection_reasons(id, name, category),
             offered_at,
             offered_by,
+            hired_at,
+            hired_by,
             whatsapp_template_sent_at
           `)
           .eq('job_id', jobId)
@@ -499,6 +507,27 @@ const stageHasAutomation = useMemo(() => {
           })
         } else {
           setOfferDetails(null)
+        }
+        
+        // Set hired details if hired
+        if (assoc?.status === 'hired') {
+          let hiredByName = null
+          if ((assoc as any).hired_by) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('first_name, last_name')
+              .eq('user_id', (assoc as any).hired_by)
+              .maybeSingle()
+            if (profile) {
+              hiredByName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || null
+            }
+          }
+          setHiredDetails({
+            hiredAt: (assoc as any).hired_at,
+            hiredByName,
+          })
+        } else {
+          setHiredDetails(null)
         }
       }
     }
