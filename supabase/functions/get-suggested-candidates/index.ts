@@ -154,7 +154,7 @@ serve(async (req) => {
     // Query candidates from same tenant
     let query = sb
       .from("candidates")
-      .select("id, candidate_name, role_current, company_current, current_job_title, skills, standardized_skills, years_experience, location_city, location_state, location_country, salary_amount, salary_currency, salary_period, profile_summary, linkedin_url, source, created_at, enriched_at, first_viewed_by")
+      .select("id, candidate_name, role_current, company_current, current_job_title, skills, standardized_skills, years_experience, location_city, location_state, location_country, salary_amount, salary_currency, salary_period, profile_summary, linkedin_url, source, created_at, enriched_at")
       .eq("tenant_id", job.tenant_id)
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
@@ -299,7 +299,7 @@ serve(async (req) => {
               source: "local",
               created_at: c.created_at,
               enriched_at: c.enriched_at,
-              first_viewed_by: c.first_viewed_by,
+              
               profile_summary: c.profile_summary,
               // AI scoring fields
               ai_fit_score: score.score,
