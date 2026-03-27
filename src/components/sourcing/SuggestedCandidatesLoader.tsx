@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { GioLoader } from '@/components/ui/GioLoader'
-import { Progress } from '@/components/ui/progress'
 
 const THINKING_MESSAGES = [
   "Scanning your talent pool",
@@ -37,11 +36,18 @@ export function SuggestedCandidatesLoader() {
     <div className="flex flex-col items-center justify-center space-y-8 animate-fade-in">
       <GioLoader size="md" />
 
-      <Progress
-        value={progress}
-        className="w-48 h-1.5 bg-muted"
-        indicatorClassName="rounded-full"
-      />
+      <div className="w-64 h-6 rounded-full bg-muted border border-border/50 overflow-hidden relative">
+        <div 
+          className="h-full bg-gradient-to-r from-[#d7c5fb] to-[#6F3FF5] shadow-[0_0_12px_rgba(215,197,251,0.4)] transition-all duration-150 ease-out flex items-center justify-end pr-2"
+          style={{ width: `${progress}%` }}
+        >
+          {progress > 15 && (
+            <span className="text-[10px] font-bold text-white leading-none whitespace-nowrap">
+              {Math.round(progress)}%
+            </span>
+          )}
+        </div>
+      </div>
 
       <div className="h-8 flex items-center justify-center">
         <p 
