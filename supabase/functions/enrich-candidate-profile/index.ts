@@ -122,18 +122,19 @@ Structure:
 Keep it substantive and actionable — no fluff, no headers beyond the two bullet sections.
 
 CRITICAL RULES:
-- **functional_area**: ALWAYS infer from job titles and responsibilities. Examples: "Sales", "Engineering", "Marketing", "Operations", "Finance", "HR", "Product", "Design", "Legal", "Quality", "Manufacturing". Never leave empty.
-- **specialization**: ALWAYS infer a specific sub-area. Examples: "Frontend Development", "Enterprise Sales", "Content Marketing", "Quality Assurance", "Process Engineering". Never leave empty.
-- **standardized_title**: ALWAYS provide a standardized English job title. Translate non-English titles (e.g. "Ingeniero de Calidad" → "Quality Engineer"), expand abbreviations (e.g. "SDR" → "Sales Development Representative"), and normalize to common industry titles. Do the same for each work experience entry.
+- **ANTI-HALLUCINATION**: Only extract information that is EXPLICITLY stated in the resume text. If a field's information is not present in the text, return null or omit it entirely. NEVER infer, guess, or fabricate data that isn't clearly written in the resume. If the text is too short, garbled, or unclear to extract meaningful data, return minimal results with only what you can confirm.
+- **functional_area**: Infer from job titles and responsibilities ONLY if clearly stated. Examples: "Sales", "Engineering", "Marketing", "Operations", "Finance", "HR", "Product", "Design", "Legal", "Quality", "Manufacturing". Return null if not determinable.
+- **specialization**: Infer a specific sub-area ONLY if clearly stated. Examples: "Frontend Development", "Enterprise Sales", "Content Marketing", "Quality Assurance", "Process Engineering". Return null if not determinable.
+- **standardized_title**: Provide a standardized English job title ONLY if a title is explicitly mentioned. Translate non-English titles (e.g. "Ingeniero de Calidad" → "Quality Engineer"), expand abbreviations (e.g. "SDR" → "Sales Development Representative"), and normalize to common industry titles. Do the same for each work experience entry. Return null if no title is found.
 
-For work_experience: Extract ALL positions. Infer company_industry and company_size_category when possible. Always include standardized_title for each position.
-For skills: Extract 10-20 skills. Mark core skills as is_primary=true (max 5-7 primary).
-For seniority_level: Infer from most recent title and years of experience.
+For work_experience: Extract ALL positions that are EXPLICITLY listed. Infer company_industry and company_size_category when possible. Always include standardized_title for each position.
+For skills: Extract 10-20 skills that are EXPLICITLY mentioned. Mark core skills as is_primary=true (max 5-7 primary).
+For seniority_level: Infer from most recent title and years of experience, only if clearly determinable.
 For years_in_leadership: Count years where title contains Manager, Director, VP, Chief, Head, Lead.
 
 For location (location_country, location_state, location_city): Infer the candidate's CURRENT location from the resume header/address, their most recent work experience location, or any other signals. Use full country names (e.g. "Mexico" not "MX"). If only a city is clear, still try to infer the state/country.
 
-Be thorough. Extract everything you can find.`;
+Extract only what is explicitly present. Do NOT fabricate or guess missing information.`;
 
 // ---------- Standardization helpers ----------
 
@@ -227,6 +228,14 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
   console.log(`[enrich] Starting enrichment for candidate ${candidateId}`);
   
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+  // Guard: reject text that's too short or unreadable (defense-in-depth)
+  const readable = resumeText.replace(/[^a-zA-Z0-9\s.,;:!?@\-()\/'"]/g, '');
+  if (readable.trim().length < 200) {
+    console.warn(`[enrich] Resume text too short/unreadable for ${candidateId} (${readable.trim().length} readable chars) — skipping`);
+    await supabase.from('candidates').update({ enrichment_status: 'not_possible' }).eq('id', candidateId);
+    return;
+  }
 
   await supabase.from('candidates').update({ enrichment_status: 'processing' }).eq('id', candidateId);
 
@@ -507,28 +516,14 @@ serve(async (req) => {
         }
       }
 
-      // Fallback: use candidate bio/profile_summary
-      if (!resumeText) {
-        const { data: candidateData } = await supabase
-          .from('candidates')
-          .select('bio, profile_summary, candidate_name, current_job_title, skills')
-          .eq('id', body.candidateId)
-          .single();
-
-        if (candidateData) {
-          const parts = [
-            candidateData.candidate_name,
-            candidateData.current_job_title,
-            candidateData.bio,
-            candidateData.profile_summary,
-            candidateData.skills?.join(', '),
-          ].filter(Boolean);
-          resumeText = parts.join('\n\n');
-        }
-      }
-
-      if (!resumeText) {
-        return new Response(JSON.stringify({ error: 'No resume text available for this candidate. Upload a resume first.' }), {
+      // No fallback — if no resume text was extracted, mark as not enrichable
+      if (!resumeText || resumeText.trim().length < 200) {
+        console.warn(`[enrich] No usable resume text for ${body.candidateId} (${resumeText?.length || 0} chars) — marking not_possible`);
+        await supabase.from('candidates').update({ enrichment_status: 'not_possible' }).eq('id', body.candidateId);
+        return new Response(JSON.stringify({ 
+          error: 'Resume text too short or unreadable for enrichment. Upload a proper resume.',
+          candidateId: body.candidateId 
+        }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
