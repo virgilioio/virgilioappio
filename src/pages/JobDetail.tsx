@@ -431,13 +431,14 @@ export default function JobDetail() {
         .map(a => a.candidate_id)
       const hiredIds = associations.filter(a => a.status === 'hired').map(a => a.candidate_id)
       const rejectedIds = associations.filter(a => a.status === 'rejected').map(a => a.candidate_id)
-      const applicationReviewIds = associations
+      const applicationReviewAssocs = associations
         .filter(a => 
           a.status === 'active' && 
           a.current_stage_id && 
           stageMap[a.current_stage_id]?.type === 'application_review'
         )
-        .map(a => a.candidate_id)
+      const applicationReviewIds = applicationReviewAssocs.map(a => a.candidate_id)
+      const fitScoreMap = new Map(applicationReviewAssocs.map(a => [a.candidate_id, a.ai_fit_score ?? null]))
       const recruitingIds = associations
         .filter(a => 
           a.status !== 'rejected' && 
@@ -463,7 +464,19 @@ export default function JobDetail() {
       setHiredCandidates(hiredIds.map((id) => byId.get(id)).filter(Boolean))
       setRejectedCandidates(rejectedIds.map((id) => byId.get(id)).filter(Boolean))
       setRecruitingProcessCandidates(recruitingIds.map((id) => byId.get(id)).filter(Boolean))
-      setApplicationReviewCandidates(applicationReviewIds.map((id) => byId.get(id)).filter(Boolean))
+      const appReviewCands = applicationReviewIds
+        .map((id) => {
+          const c = byId.get(id)
+          if (!c) return null
+          return { ...c, ai_fit_score: fitScoreMap.get(id) ?? null }
+        })
+        .filter(Boolean)
+        .sort((a: any, b: any) => {
+          const sa = a.ai_fit_score ?? -1
+          const sb = b.ai_fit_score ?? -1
+          return sb - sa
+        })
+      setApplicationReviewCandidates(appReviewCands)
       setAllAssociatedCandidates(allIdsAll.map((id) => byId.get(id)).filter(Boolean))
       setStatusListsLoading(false)
     }
@@ -1618,6 +1631,7 @@ export default function JobDetail() {
                                   selectedIds={selectedCandidateIds}
                                   onSelectedIdsChange={setSelectedCandidateIds}
                                   hideSkills={true}
+                                  showFitScore={true}
                                 />
                               </div>
                             ) : pipelineSectionTab === 'offers' ? (
