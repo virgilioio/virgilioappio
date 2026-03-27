@@ -34,6 +34,7 @@ interface BaseCandidate {
   first_viewed_by: Record<string, string> | null
   match_score?: number
   match_tier?: 'excellent' | 'good' | 'fair' | 'minimal'
+  ai_fit_score?: number | null
 }
 
 interface LocalCandidate extends BaseCandidate {
@@ -72,6 +73,7 @@ interface CandidateTableProps {
   hideActions?: boolean // Hide action buttons for suggested candidates
   showMatchScore?: boolean // Show match score column for AI suggestions
   hideSkills?: boolean // Hide skills column
+  showFitScore?: boolean // Show AI fit score badge before candidate name
 }
 
 export function CandidateTable({ 
@@ -90,7 +92,8 @@ export function CandidateTable({
   onSelectedIdsChange,
   hideActions = false,
   showMatchScore = false,
-  hideSkills = false
+  hideSkills = false,
+  showFitScore = false
 }: CandidateTableProps) {
   const { id: jobId } = useParams<{ id: string }>()
   const permissions = usePermissions()
@@ -337,7 +340,23 @@ export function CandidateTable({
                           className="block w-full h-full"
                           onClick={(e) => handleLinkClick(e, candidate)}
                           >
-                            <div className="font-medium text-text-primary flex items-center">
+                            <div className="font-medium text-text-primary flex items-center gap-1.5">
+                              {showFitScore && candidate.ai_fit_score != null && (
+                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold border ${
+                                  candidate.ai_fit_score >= 75 
+                                    ? 'border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                    : candidate.ai_fit_score >= 50
+                                    ? 'border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                    : 'border-red-200 bg-red-100 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300'
+                                }`}>
+                                  {Math.round(candidate.ai_fit_score)}%
+                                </span>
+                              )}
+                              {showFitScore && candidate.ai_fit_score == null && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border border-border bg-muted text-muted-foreground">
+                                  —
+                                </span>
+                              )}
                               {candidate.candidate_name}
                               <NewBadge show={isCandidateNewForUser(candidate)} />
                             </div>
@@ -480,7 +499,18 @@ export function CandidateTable({
                         <div className="space-y-sm">
                           <div className="flex items-start justify-between">
                             <div>
-                              <h4 className="font-medium text-text-primary flex items-center">
+                          <h4 className="font-medium text-text-primary flex items-center gap-1.5">
+                                {showFitScore && candidate.ai_fit_score != null && (
+                                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold border ${
+                                    candidate.ai_fit_score >= 75 
+                                      ? 'border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                      : candidate.ai_fit_score >= 50
+                                      ? 'border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                      : 'border-red-200 bg-red-100 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300'
+                                  }`}>
+                                    {Math.round(candidate.ai_fit_score)}%
+                                  </span>
+                                )}
                                 {candidate.candidate_name}
                                 <NewBadge show={isCandidateNewForUser(candidate)} />
                               </h4>
