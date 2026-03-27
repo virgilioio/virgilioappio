@@ -1,50 +1,75 @@
 
 
-# Fix: Saved View Selected But Filters Not Applied
+# Fix AI Enrichment Hallucination
 
 ## Root Cause
 
-In `IndependentCandidateTable.tsx` (line 222-231), when restoring from sessionStorage on mount:
+Two problems in `enrich-candidate-profile/index.ts`:
+
+1. **Fallback creates fake "resume"** (lines 511-528): When no resume text is extractable, the function concatenates whatever exists on the candidate record (even just a name) and sends it to OpenAI. A candidate named "John Smith" with no resume gets enriched as if their name alone is a resume — OpenAI invents an entire career.
+
+2. **No minimum text threshold**: Line 530 only checks `if (!resumeText)` — but 10 characters of garbage or just a name passes this check and triggers full AI extraction.
+
+3. **System prompt encourages invention**: "Extract ALL structured data" and "Be thorough" with no guardrail against fabrication when data is sparse.
+
+## Fix (single file: `supabase/functions/enrich-candidate-profile/index.ts`)
+
+### A. Add minimum text guard (200 chars)
+
+After all text extraction attempts (line 536), before calling `enrichCandidateProfile`, add a hard gate:
 
 ```typescript
-const storedViewId = getActiveViewId()
-if (storedViewId) {
-  setActiveViewId(storedViewId)  // ← Only sets the UI label
-  // ← NEVER applies the view's filters!
+const MIN_RESUME_LENGTH = 200;
+if (resumeText.length < MIN_RESUME_LENGTH) {
+  // Mark as not enrichable, don't hallucinate
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  await supabase.from('candidates').update({ 
+    enrichment_status: 'not_possible',
+  }).eq('id', body.candidateId);
+  
+  return new Response(JSON.stringify({ 
+    error: 'Resume text too short or unreadable for enrichment',
+    candidateId: body.candidateId 
+  }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
 ```
 
-The view appears selected visually, but `setFiltersFromRecord` is never called with the view's saved filters. The `usePersistentFilters` hook does separately restore filters from sessionStorage, but if the session was lost or filters were empty when stored, the view shows as active with no filters applied.
+### B. Remove dangerous fallback
 
-## Fix
+Remove lines 510-528 (the fallback that builds "resume text" from `candidate_name`, `current_job_title`, `bio`). If no resume attachment text is extractable, the function should return early with a clear "no resume" error — not fabricate input from sparse profile fields.
 
-When a `storedViewId` is found, look up the matching view from the loaded `views` list and apply its filters. This requires using `views` (not just `defaultView`) from `useSavedViews`.
+### C. Add anti-hallucination instruction to system prompt
 
-## Files changed
+Add to `SYSTEM_PROMPT` (line 114):
 
-| File | Change |
-|------|--------|
-| `src/components/candidates/IndependentCandidateTable.tsx` | (1) Destructure `views` from `useSavedViews('candidates')` alongside `defaultView`. (2) In the mount `useEffect`, when `storedViewId` is found, look up the view in `views` and call `setFiltersFromRecord(view.filters)`. Add `views` to the dependency considerations so the effect re-runs when views finish loading. |
-
-## Updated logic
-
-```typescript
-const { views, defaultView } = useSavedViews('candidates')
-
-useEffect(() => {
-  const storedViewId = getActiveViewId()
-  if (storedViewId) {
-    setActiveViewId(storedViewId)
-    const matchedView = views.find(v => v.id === storedViewId)
-    if (matchedView) {
-      setFiltersFromRecord(matchedView.filters as Record<string, unknown>)
-    }
-  } else if (defaultView) {
-    setActiveViewId(defaultView.id)
-    setFiltersFromRecord(defaultView.filters as Record<string, unknown>)
-  }
-}, [defaultView?.id, views.length])
+```
+CRITICAL: Only extract information that is EXPLICITLY stated in the resume text.
+- If a field's information is not present in the text, return null or omit it entirely.
+- NEVER infer, guess, or fabricate data that isn't clearly written in the resume.
+- If the text is too short, garbled, or unclear to extract meaningful data, return minimal results with only what you can confirm.
 ```
 
-This ensures that whenever a saved view is marked as active, its filters are actually applied — both on initial load and when restoring from session.
+### D. Add readability check inside `enrichCandidateProfile` function
+
+As a second safety net, at the top of `enrichCandidateProfile` (line 226), add:
+
+```typescript
+// Guard: reject text that's too short or unreadable
+const readable = resumeText.replace(/[^a-zA-Z0-9\s.,;:!?@\-()\/'"]/g, '');
+if (readable.trim().length < 200) {
+  await supabase.from('candidates').update({ enrichment_status: 'not_possible' }).eq('id', candidateId);
+  return;
+}
+```
+
+## Summary
+
+| Change | Purpose |
+|--------|---------|
+| Remove bio/name fallback | Stop fabricating "resume text" from sparse data |
+| Add 200-char minimum gate | Reject unreadable/image PDFs and empty resumes |
+| Anti-hallucination prompt | Instruct model to return null instead of guessing |
+| Inner readability guard | Defense-in-depth for direct callers |
+
+One edge function file changed. No client-side or database changes needed.
 
