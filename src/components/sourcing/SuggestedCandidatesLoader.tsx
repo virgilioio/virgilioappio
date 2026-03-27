@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { GioLoader } from '@/components/ui/GioLoader'
+import { Progress } from '@/components/ui/progress'
 
 const THINKING_MESSAGES = [
   "Scanning your talent pool",
@@ -12,6 +13,7 @@ const THINKING_MESSAGES = [
 
 export function SuggestedCandidatesLoader() {
   const [messageIndex, setMessageIndex] = useState(0)
+  const [progress, setProgress] = useState(0)
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -20,15 +22,26 @@ export function SuggestedCandidatesLoader() {
     return () => clearInterval(interval)
   }, [])
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev < 85) return prev + 2.5
+        if (prev < 99) return prev + 0.15
+        return prev
+      })
+    }, 100)
+    return () => clearInterval(interval)
+  }, [])
+
   return (
     <div className="flex flex-col items-center justify-center space-y-8 animate-fade-in">
       <GioLoader size="md" />
 
-      <div className="w-48 h-1.5 bg-muted rounded-full overflow-hidden">
-        <div 
-          className="h-full w-1/4 rounded-full bg-primary animate-shimmer-beam"
-        />
-      </div>
+      <Progress
+        value={progress}
+        className="w-48 h-1.5 bg-muted"
+        indicatorClassName="rounded-full"
+      />
 
       <div className="h-8 flex items-center justify-center">
         <p 
