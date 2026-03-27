@@ -904,6 +904,7 @@ const stageHasAutomation = useMemo(() => {
       handleSetStatus('active')
       setRejectionDetails(null)
       setOfferDetails(null)
+      setHiredDetails(null)
       if (activeTab === 'offer') setActiveTab('job')
     })
   }
