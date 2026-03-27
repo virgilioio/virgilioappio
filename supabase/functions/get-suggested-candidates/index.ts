@@ -1,7 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
+import { corsHeadersOf, handlePreflight } from "../_shared/cors.ts";
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -53,6 +53,15 @@ const TOOL_SCHEMA = {
   },
 };
 
+function computeSkillsHash(job: any): string {
+  const parts = [
+    (job.title || "").toLowerCase().trim(),
+    (job.skills || []).slice().sort().join(",").toLowerCase(),
+    (job.description || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 500).toLowerCase(),
+  ];
+  return parts.join("|");
+}
+
 function buildCandidateSummary(c: any, workExp: any[]): string {
   let summary = `${c.candidate_name}`;
   if (c.role_current) summary += ` | Current: ${c.role_current}`;
@@ -67,7 +76,6 @@ function buildCandidateSummary(c: any, workExp: any[]): string {
   }
   if (c.profile_summary) summary += ` | Summary: ${c.profile_summary.slice(0, 300)}`;
   
-  // Add recent work experience (top 3)
   const recentExp = workExp.slice(0, 3);
   if (recentExp.length > 0) {
     summary += ` | Experience: ${recentExp.map((w: any) => `${w.job_title} at ${w.company_name}${w.duration_months ? ` (${Math.round(w.duration_months/12)}y)` : ""}`).join("; ")}`;
@@ -81,7 +89,7 @@ serve(async (req) => {
   if (preflight) return preflight;
 
   const origin = req.headers.get("Origin") ?? undefined;
-  const headers = corsHeadersFor(origin);
+  const headers = corsHeadersOf(origin);
 
   if (!OPENAI_API_KEY) {
     return new Response(JSON.stringify({ error: "OPENAI_API_KEY not configured" }), {
@@ -90,7 +98,6 @@ serve(async (req) => {
   }
 
   try {
-    // Validate auth
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing authorization" }), {
@@ -100,7 +107,6 @@ serve(async (req) => {
 
     const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     
-    // Verify user token
     const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY") || SUPABASE_SERVICE_ROLE_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -146,12 +152,66 @@ serve(async (req) => {
     
     const excludeIds = new Set((existingAssocs || []).map((a: any) => a.candidate_id));
 
-    // 3. Pre-filter: get candidates from same tenant with skill overlap or relevant title
+    // 3. Compute skills hash for cache
+    const skillsHash = computeSkillsHash(job);
+
+    // 4. Check cache
+    const { data: cachedScores } = await sb
+      .from("job_suggested_candidates_cache")
+      .select("candidate_id, ai_fit_score, ai_fit_confidence, ai_fit_rationale")
+      .eq("job_id", job_id)
+      .eq("job_skills_hash", skillsHash)
+      .gte("scored_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+
+    const hasFreshCache = cachedScores && cachedScores.length > 0;
+
+    if (hasFreshCache) {
+      // Filter out excluded candidates from cache
+      const validCached = cachedScores.filter((cs: any) => !excludeIds.has(cs.candidate_id));
+
+      if (count_only) {
+        const passCount = validCached.filter((cs: any) => cs.ai_fit_score >= 40).length;
+        return new Response(JSON.stringify({ total_count: passCount, breakdown: { localCandidates: passCount, averageMatch: 0 } }), {
+          headers: { ...headers, "Content-Type": "application/json" },
+        });
+      }
+
+      // Fetch fresh candidate data for cached scores
+      const cachedIds = validCached.map((cs: any) => cs.candidate_id);
+      const { data: cachedCandidates } = await sb
+        .from("candidates")
+        .select("id, candidate_name, role_current, company_current, current_job_title, skills, standardized_skills, years_experience, location_city, location_state, location_country, salary_amount, salary_currency, salary_period, profile_summary, linkedin_url, source, created_at, enriched_at")
+        .in("id", cachedIds)
+        .is("deleted_at", null);
+
+      const candidateMap = new Map((cachedCandidates || []).map((c: any) => [c.id, c]));
+      
+      const results = validCached
+        .filter((cs: any) => cs.ai_fit_score >= 40 && candidateMap.has(cs.candidate_id))
+        .map((cs: any) => {
+          const c = candidateMap.get(cs.candidate_id)!;
+          return buildResponseCandidate(c, cs.ai_fit_score, cs.ai_fit_confidence, cs.ai_fit_rationale);
+        })
+        .sort((a: any, b: any) => b.ai_fit_score - a.ai_fit_score)
+        .slice(0, limit);
+
+      const avgScore = results.length > 0
+        ? Math.round(results.reduce((sum: number, c: any) => sum + c.ai_fit_score, 0) / results.length)
+        : 0;
+
+      console.log(`✅ Cache hit for job ${job_id}: ${results.length} candidates`);
+      return new Response(JSON.stringify({
+        candidates: results,
+        total_count: results.length,
+        breakdown: { localCandidates: results.length, apolloCandidates: 0, averageMatch: avgScore },
+      }), { headers: { ...headers, "Content-Type": "application/json" } });
+    }
+
+    // 5. No cache — run AI scoring
     const jobSkills = (job.skills || []).map((s: string) => s.toLowerCase());
     const jobTitle = (job.title || "").toLowerCase();
     const titleWords = jobTitle.split(/\s+/).filter((w: string) => w.length > 3);
 
-    // Query candidates from same tenant
     let query = sb
       .from("candidates")
       .select("id, candidate_name, role_current, company_current, current_job_title, skills, standardized_skills, years_experience, location_city, location_state, location_country, salary_amount, salary_currency, salary_period, profile_summary, linkedin_url, source, created_at, enriched_at")
@@ -166,37 +226,30 @@ serve(async (req) => {
       throw new Error("Failed to fetch candidates");
     }
 
-    // Filter out already-associated and apply pre-filter
     const preFiltered = (allCandidates || []).filter((c: any) => {
       if (excludeIds.has(c.id)) return false;
       
       const candidateSkills = [...(c.skills || []), ...(c.standardized_skills || [])].map((s: string) => s.toLowerCase());
       const candidateTitle = (c.role_current || c.current_job_title || "").toLowerCase();
       
-      // Check skill overlap (at least 1 matching skill)
       const hasSkillOverlap = jobSkills.length > 0 && candidateSkills.some((cs: string) => 
         jobSkills.some((js: string) => cs.includes(js) || js.includes(cs))
       );
       
-      // Check title relevance
       const hasTitleMatch = titleWords.length > 0 && titleWords.some((tw: string) => 
         candidateTitle.includes(tw)
       );
       
-      // If job has no skills, rely on title match or include all
       if (jobSkills.length === 0) return hasTitleMatch || true;
       
       return hasSkillOverlap || hasTitleMatch;
-    }).slice(0, 50); // Cap at 50 for AI scoring
+    }).slice(0, 50);
 
     if (count_only) {
-      // For count_only, return the pre-filtered count as estimate
       return new Response(JSON.stringify({ 
         total_count: preFiltered.length, 
         breakdown: { localCandidates: preFiltered.length, averageMatch: 0 } 
-      }), {
-        headers: { ...headers, "Content-Type": "application/json" },
-      });
+      }), { headers: { ...headers, "Content-Type": "application/json" } });
     }
 
     if (preFiltered.length === 0) {
@@ -205,7 +258,7 @@ serve(async (req) => {
       });
     }
 
-    // 4. Fetch work experience for pre-filtered candidates
+    // Fetch work experience
     const candidateIds = preFiltered.map((c: any) => c.id);
     const { data: allWorkExp } = await sb
       .from("candidate_work_experience")
@@ -220,7 +273,7 @@ serve(async (req) => {
       workExpMap.set(w.candidate_id, list);
     });
 
-    // 5. Build job context
+    // Build job context
     let jobContext = `JOB: ${job.title}`;
     jobContext += `\nDescription: ${jobDescription}`;
     if (job.skills?.length) jobContext += `\nRequired Skills: ${job.skills.join(", ")}`;
@@ -228,7 +281,7 @@ serve(async (req) => {
     if (job.location) jobContext += `\nLocation: ${job.location}`;
     if (job.department) jobContext += `\nDepartment: ${job.department}`;
 
-    // 6. Score candidates in batches via AI
+    // Score in batches
     const BATCH_SIZE = 10;
     const scoredCandidates: any[] = [];
 
@@ -281,32 +334,10 @@ serve(async (req) => {
           if (candidateIdx >= 0 && candidateIdx < batch.length) {
             const c = batch[candidateIdx];
             scoredCandidates.push({
-              id: c.id,
-              candidate_name: c.candidate_name,
-              skills: c.skills,
-              standardized_skills: c.standardized_skills,
-              location: [c.location_city, c.location_state, c.location_country].filter(Boolean).join(", ") || null,
-              location_country: c.location_country,
-              location_state: c.location_state,
-              location_city: c.location_city,
-              linkedin_url: c.linkedin_url,
-              salary_amount: c.salary_amount,
-              salary_currency: c.salary_currency,
-              salary_period: c.salary_period,
-              years_experience: c.years_experience,
-              current_company: c.company_current,
-              current_role: c.role_current || c.current_job_title,
-              source: "local",
-              created_at: c.created_at,
-              enriched_at: c.enriched_at,
-              
-              profile_summary: c.profile_summary,
-              // AI scoring fields
+              candidate: c,
               ai_fit_score: score.score,
               ai_fit_confidence: score.confidence,
               ai_fit_rationale: score.rationale,
-              match_score: score.score, // For backward compatibility
-              match_tier: score.score >= 75 ? "excellent" : score.score >= 50 ? "good" : score.score >= 25 ? "fair" : "minimal",
             });
           }
         }
@@ -316,11 +347,37 @@ serve(async (req) => {
       }
     }
 
-    // 7. Filter ≥40% and sort by score desc
+    // 6. Cache ALL scored results (not just passing ones)
+    if (scoredCandidates.length > 0) {
+      // Delete old cache for this job first
+      await sb.from("job_suggested_candidates_cache").delete().eq("job_id", job_id);
+      
+      const cacheRows = scoredCandidates.map((sc: any) => ({
+        job_id,
+        candidate_id: sc.candidate.id,
+        ai_fit_score: sc.ai_fit_score,
+        ai_fit_confidence: sc.ai_fit_confidence,
+        ai_fit_rationale: sc.ai_fit_rationale,
+        job_skills_hash: skillsHash,
+      }));
+
+      const { error: cacheErr } = await sb
+        .from("job_suggested_candidates_cache")
+        .upsert(cacheRows, { onConflict: "job_id,candidate_id" });
+
+      if (cacheErr) {
+        console.error("Cache write error:", cacheErr);
+      } else {
+        console.log(`📦 Cached ${cacheRows.length} scores for job ${job_id}`);
+      }
+    }
+
+    // 7. Filter ≥40% and sort
     const filtered = scoredCandidates
-      .filter((c: any) => c.ai_fit_score >= 40)
+      .filter((sc: any) => sc.ai_fit_score >= 40)
       .sort((a: any, b: any) => b.ai_fit_score - a.ai_fit_score)
-      .slice(0, limit);
+      .slice(0, limit)
+      .map((sc: any) => buildResponseCandidate(sc.candidate, sc.ai_fit_score, sc.ai_fit_confidence, sc.ai_fit_rationale));
 
     const avgScore = filtered.length > 0 
       ? Math.round(filtered.reduce((sum: number, c: any) => sum + c.ai_fit_score, 0) / filtered.length)
@@ -336,9 +393,7 @@ serve(async (req) => {
         apolloCandidates: 0,
         averageMatch: avgScore,
       },
-    }), {
-      headers: { ...headers, "Content-Type": "application/json" },
-    });
+    }), { headers: { ...headers, "Content-Type": "application/json" } });
 
   } catch (err) {
     console.error("get-suggested-candidates error:", err);
@@ -347,3 +402,32 @@ serve(async (req) => {
     });
   }
 });
+
+function buildResponseCandidate(c: any, score: number, confidence: string, rationale: string) {
+  return {
+    id: c.id,
+    candidate_name: c.candidate_name,
+    skills: c.skills,
+    standardized_skills: c.standardized_skills,
+    location: [c.location_city, c.location_state, c.location_country].filter(Boolean).join(", ") || null,
+    location_country: c.location_country,
+    location_state: c.location_state,
+    location_city: c.location_city,
+    linkedin_url: c.linkedin_url,
+    salary_amount: c.salary_amount,
+    salary_currency: c.salary_currency,
+    salary_period: c.salary_period,
+    years_experience: c.years_experience,
+    current_company: c.company_current,
+    current_role: c.role_current || c.current_job_title,
+    source: "local",
+    created_at: c.created_at,
+    enriched_at: c.enriched_at,
+    profile_summary: c.profile_summary,
+    ai_fit_score: score,
+    ai_fit_confidence: confidence,
+    ai_fit_rationale: rationale,
+    match_score: score,
+    match_tier: score >= 75 ? "excellent" : score >= 50 ? "good" : score >= 25 ? "fair" : "minimal",
+  };
+}
