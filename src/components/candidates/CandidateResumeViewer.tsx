@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { RotateCcw, ExternalLink, Download, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import { PDFResumeViewer } from './PDFResumeViewer'
+import { DOCXResumeViewer } from './DOCXResumeViewer'
 
 interface CandidateResumeViewerProps {
   candidateId?: string
@@ -280,24 +281,8 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
               style={{ maxHeight: `${height}vh` }}
               loading="lazy"
             />
-          ) : needsConversion && conversionStatus !== 'completed' ? (
-            <div className="p-6 text-center text-text-secondary" style={{ height: `${height}vh` }}>
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <div className="text-sm mb-2">
-                    {conversionStatus === 'processing' 
-                      ? 'Document is being converted to PDF for preview...'
-                      : conversionStatus === 'failed'
-                      ? 'Preview unavailable - conversion failed'
-                      : 'Document will be converted to PDF for preview'
-                    }
-                  </div>
-                  <div className="text-xs text-text-tertiary">
-                    You can still download the original file below
-                  </div>
-                </div>
-              </div>
-            </div>
+          ) : needsConversion && signedUrl ? (
+            <DOCXResumeViewer url={signedUrl} height={height} />
           ) : (
             <div className="p-6 text-center text-text-secondary" style={{ height: `${height}vh` }}>
               <div className="flex items-center justify-center h-full">
