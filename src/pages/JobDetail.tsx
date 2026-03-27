@@ -44,6 +44,7 @@ import { BulkEmailDialog } from '@/components/candidates/BulkEmailDialog'
 import { CandidateMergeDialog } from '@/components/candidates/CandidateMergeDialog'
 import { useJobMatchingCandidates, MatchedCandidate } from '@/hooks/useJobMatchingCandidates'
 import { useJobMatchingCandidatesCount } from '@/hooks/useJobMatchingCandidatesCount'
+import { useJobSuggestedCandidates, useJobSuggestedCandidatesCount } from '@/hooks/useJobSuggestedCandidates'
 import { useRealTimeSkillMatching } from '@/hooks/useRealTimeSkillMatching'
 import { ApplicationReviewSheet } from '@/components/candidates/ApplicationReviewSheet'
 
@@ -383,7 +384,7 @@ export default function JobDetail() {
   })
 
   // Background count hook - always enabled for tab badge
-  const { count: suggestedCount } = useJobMatchingCandidatesCount({
+  const { count: suggestedCount } = useJobSuggestedCandidatesCount({
     jobId: id || '',
     enabled: !!id
   })
@@ -546,12 +547,16 @@ export default function JobDetail() {
     placeholderData: (previousData: any) => previousData,
   })
 
-  // AI matching candidates hook - only load when suggested tab is active
-  const { candidates: matchingCandidates, isLoading: isLoadingMatches, refetch: refetchMatches } = useJobMatchingCandidates({
+  // AI suggested candidates hook - only load when suggested tab is active
+  const { candidates: suggestedAICandidates, isLoading: isLoadingSuggested, refetch: refetchSuggested } = useJobSuggestedCandidates({
     jobId: id || '',
     enabled: !!id && pipelineSectionTab === 'suggested',
-    jobSkills: job?.skills // Pass job skills to trigger refresh when they change
+    jobSkills: job?.skills
   })
+
+  // Keep old hook for backward compat (used by openSuggestedProfile and other references)
+  const matchingCandidates = suggestedAICandidates as any[]
+  const isLoadingMatches = isLoadingSuggested
 
   // Handle URL candidate parameter on mount and when URL changes
   useEffect(() => {
@@ -622,7 +627,7 @@ export default function JobDetail() {
       // Refetch matching candidates if skills may have changed
       if (pipelineSectionTab === 'suggested') {
         console.log('🔄 Job updated, refreshing matching candidates...')
-        refetchMatches()
+        refetchSuggested()
       }
     } catch (error) {
       console.error('Error updating job:', error)
@@ -1190,7 +1195,7 @@ export default function JobDetail() {
                                       isCandidateNewForUser={() => false}
                                       onRowClick={openSuggestedProfile}
                                       hideActions={true}
-                                      showMatchScore={true}
+                                      showFitScore={true}
                                       hideSkills={true}
                                     />
                                   ) : (
@@ -1605,7 +1610,7 @@ export default function JobDetail() {
                                       isCandidateNewForUser={() => false}
                                       onRowClick={openSuggestedProfile}
                                       hideActions={true}
-                                      showMatchScore={true}
+                                      showFitScore={true}
                                       hideSkills={true}
                                     />
                                   ) : (
