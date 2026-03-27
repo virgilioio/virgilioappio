@@ -651,8 +651,41 @@ const stageHasAutomation = useMemo(() => {
 
   const handleSetStatus = async (s: 'active' | 'rejected' | 'hired') => {
     if (!associationId) return
+    
+    // If marking as hired, also set hired_at and hired_by
+    if (s === 'hired') {
+      const now = new Date().toISOString()
+      await supabase
+        .from('job_candidate_associations')
+        .update({ 
+          status: s, 
+          hired_at: now, 
+          hired_by: user?.id 
+        } as any)
+        .eq('id', associationId)
+      
+      // Resolve recruiter name
+      let hiredByName = null
+      if (user?.id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('user_id', user.id)
+          .maybeSingle()
+        if (profile) {
+          hiredByName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || null
+        }
+      }
+      setHiredDetails({ hiredAt: now, hiredByName })
+      setAssociationStatus(s)
+      onStageChanged?.()
+      toast({ title: 'Status updated', description: 'Candidate marked as hired.' })
+      return
+    }
+    
     await updateAssociationStatus(associationId, s)
     setAssociationStatus(s)
+    if (s === 'active') setHiredDetails(null)
     onStageChanged?.()
   }
 
