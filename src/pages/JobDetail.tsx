@@ -384,7 +384,7 @@ export default function JobDetail() {
   })
 
   // Background count hook - always enabled for tab badge
-  const { count: suggestedCount } = useJobMatchingCandidatesCount({
+  const { count: suggestedCount } = useJobSuggestedCandidatesCount({
     jobId: id || '',
     enabled: !!id
   })
@@ -547,12 +547,16 @@ export default function JobDetail() {
     placeholderData: (previousData: any) => previousData,
   })
 
-  // AI matching candidates hook - only load when suggested tab is active
-  const { candidates: matchingCandidates, isLoading: isLoadingMatches, refetch: refetchMatches } = useJobMatchingCandidates({
+  // AI suggested candidates hook - only load when suggested tab is active
+  const { candidates: suggestedAICandidates, isLoading: isLoadingSuggested, refetch: refetchSuggested } = useJobSuggestedCandidates({
     jobId: id || '',
     enabled: !!id && pipelineSectionTab === 'suggested',
-    jobSkills: job?.skills // Pass job skills to trigger refresh when they change
+    jobSkills: job?.skills
   })
+
+  // Keep old hook for backward compat (used by openSuggestedProfile and other references)
+  const matchingCandidates = suggestedAICandidates as any[]
+  const isLoadingMatches = isLoadingSuggested
 
   // Handle URL candidate parameter on mount and when URL changes
   useEffect(() => {
