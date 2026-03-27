@@ -134,13 +134,13 @@ export function SavedViewSelector({
                       </div>
                     </div>
 
-                    <DropdownMenu>
+                    <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                         <button className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-accent/40">
                           <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-[160px]">
+                      <DropdownMenuContent align="end" className="w-[160px] z-[200]">
                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setRenameTarget(view); setPopoverOpen(false) }}>
                           <Pencil className="h-3.5 w-3.5 mr-2" />
                           Rename
