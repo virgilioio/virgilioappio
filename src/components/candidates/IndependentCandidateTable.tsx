@@ -187,7 +187,7 @@ export function IndependentCandidateTable({
   }
 
   // Filter logic — use context-based filters + search
-  const { filters, setArrayFilter } = useCandidateFilters()
+  const { filters, setArrayFilter, setNumericFilter, setDateFilter } = useCandidateFilters()
   const filterOptions = useCandidateFilterOptions(candidates, allAssociations)
   const filteredCandidates = useCandidateFilteredData(candidates, filters, searchTerm, associationsMap)
 
@@ -196,11 +196,19 @@ export function IndependentCandidateTable({
 
   const setFiltersFromRecord = useCallback((record: Record<string, unknown>) => {
     const f = record as unknown as CandidateFilters
-    const arrayKeys = ['statuses', 'sources', 'countries', 'states', 'cities', 'seniorityLevels', 'functionalAreas', 'specializations', 'skills', 'enrichmentStatuses', 'pipelineStatuses'] as const
+    const arrayKeys = ['statuses', 'sources', 'countries', 'states', 'cities', 'companies', 'seniorityLevels', 'functionalAreas', 'specializations', 'skills', 'enrichmentStatuses', 'pipelineStatuses', 'jobs', 'stages', 'rejectedAtStages'] as const
     for (const key of arrayKeys) {
       setArrayFilter(key, (f[key] as string[]) ?? [])
     }
-  }, [setArrayFilter])
+    const numericKeys = ['experienceMin', 'experienceMax', 'salaryMin', 'salaryMax'] as const
+    for (const key of numericKeys) {
+      setNumericFilter(key, (f[key] as number | null) ?? null)
+    }
+    const dateKeys = ['dateFrom', 'dateTo'] as const
+    for (const key of dateKeys) {
+      setDateFilter(key, f[key] ? new Date(f[key] as string | Date) : null)
+    }
+  }, [setArrayFilter, setNumericFilter, setDateFilter])
 
   const { setActiveViewId: persistViewId, getActiveViewId } = usePersistentFilters(
     'candidates',
