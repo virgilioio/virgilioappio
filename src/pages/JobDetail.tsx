@@ -44,6 +44,7 @@ import { BulkEmailDialog } from '@/components/candidates/BulkEmailDialog'
 import { CandidateMergeDialog } from '@/components/candidates/CandidateMergeDialog'
 import { useJobMatchingCandidates, MatchedCandidate } from '@/hooks/useJobMatchingCandidates'
 import { useJobMatchingCandidatesCount } from '@/hooks/useJobMatchingCandidatesCount'
+import { useJobSuggestedCandidates, useJobSuggestedCandidatesCount } from '@/hooks/useJobSuggestedCandidates'
 import { useRealTimeSkillMatching } from '@/hooks/useRealTimeSkillMatching'
 import { ApplicationReviewSheet } from '@/components/candidates/ApplicationReviewSheet'
 
