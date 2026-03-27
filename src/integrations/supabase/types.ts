@@ -2531,6 +2531,54 @@ export type Database = {
           },
         ]
       }
+      job_suggested_candidates_cache: {
+        Row: {
+          ai_fit_confidence: string | null
+          ai_fit_rationale: string | null
+          ai_fit_score: number
+          candidate_id: string
+          id: string
+          job_id: string
+          job_skills_hash: string
+          scored_at: string | null
+        }
+        Insert: {
+          ai_fit_confidence?: string | null
+          ai_fit_rationale?: string | null
+          ai_fit_score: number
+          candidate_id: string
+          id?: string
+          job_id: string
+          job_skills_hash: string
+          scored_at?: string | null
+        }
+        Update: {
+          ai_fit_confidence?: string | null
+          ai_fit_rationale?: string | null
+          ai_fit_score?: number
+          candidate_id?: string
+          id?: string
+          job_id?: string
+          job_skills_hash?: string
+          scored_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_suggested_candidates_cache_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_suggested_candidates_cache_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs: {
         Row: {
           auto_generated_skills: Json | null
