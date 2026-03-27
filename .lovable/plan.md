@@ -1,44 +1,50 @@
 
 
-# Fix: RLS Error When Updating a Job
+# Display AI Fit Score in Application Review + Sort by Score
 
-## Root Cause
+## What changes
 
-`JobFormSheet.handleSubmit` (line 144) always includes `organization_id` in the update payload. When Supabase/PostgREST processes `.update({ ...data, organization_id })` on the `jobs` table, the foreign key validation and RLS policy evaluation against the `organizations` table triggers the 42501 error for non-platform-admin users.
+Show the AI fit score inline before each candidate's name in the Application Review tab as `[85%] Candidate Name`, and default-sort candidates by score (highest first). Users can toggle the sort.
 
-`organization_id` should never be changed after job creation — it's set at INSERT time only.
-
-## Fix
-
-**File: `src/components/jobs/JobFormSheet.tsx`**
-
-In `handleSubmit`, exclude `organization_id` from the payload when editing an existing job (when `job` prop is present). Only include it for new job creation.
-
-```typescript
-const submitData = {
-  title: formData.title,
-  description: formData.description || null,
-  location: formData.location || null,
-  salary_min: formData.salary_min ? parseInt(formData.salary_min) : null,
-  salary_max: formData.salary_max ? parseInt(formData.salary_max) : null,
-  currency: formData.currency || null,
-  status: formData.status,
-  ...(job ? {} : { organization_id: formData.organization_id }), // only on create
-  skills: selectedSkills,
-  auto_generated_skills: autoSkills.length > 0 ? autoSkills : undefined,
-  last_skills_generation: autoSkills.length > 0 ? new Date().toISOString() : undefined,
-  hiring_team: formData.hiring_team
-}
-```
-
-Additionally, disable the organization selector when editing (since it can't be changed):
-- Add `disabled={!!job}` to the `SearchableSelect` for organization on line ~282.
-
-## Summary
+## Files changed
 
 | File | Change |
 |------|--------|
-| `src/components/jobs/JobFormSheet.tsx` | Exclude `organization_id` from update payload; disable org selector when editing |
+| `src/hooks/usePipelineActions.ts` | Add `ai_fit_score` to `PipelineAssociation` interface and the `.select()` query |
+| `src/pages/JobDetail.tsx` | When building `applicationReviewCandidates`, attach the `ai_fit_score` from the association to each candidate object. Sort by score descending by default. |
+| `src/components/candidates/CandidateTable.tsx` | Add `showFitScore` prop. When enabled: (1) show a color-coded score badge before the candidate name in the Name column, (2) add a sortable "AI Fit" column header, (3) sort candidates by `ai_fit_score` descending by default |
 
-One-file fix. No database or RLS changes needed.
+## Technical details
+
+### 1. `usePipelineActions.ts`
+- Add `ai_fit_score?: number | null` to `PipelineAssociation`
+- Add `ai_fit_score` to the `.select()` string on line 31
+
+### 2. `JobDetail.tsx` (lines ~434-466)
+- When filtering `applicationReviewIds`, also build a map of `candidateId → ai_fit_score` from associations
+- When setting `applicationReviewCandidates`, attach `ai_fit_score` to each candidate object
+- Sort by `ai_fit_score` descending (nulls last)
+
+### 3. `CandidateTable.tsx`
+- Add `showFitScore?: boolean` prop
+- Add `ai_fit_score?: number | null` to `BaseCandidate` interface
+- In the Name cell, when `showFitScore` is true and `ai_fit_score` exists, render a small color-coded badge before the name:
+  - `≥75`: emerald/green
+  - `≥50`: amber/yellow  
+  - `<50`: red/orange
+- Add local sort state: when `showFitScore` is true, default sort by `ai_fit_score` desc
+- Add a clickable sort toggle on the "Name" column header (or a small "AI Fit" header) to let users re-sort
+
+### 4. Pass `showFitScore={true}` in `JobDetail.tsx` for the application review `CandidateTable`
+
+## Visual result
+
+Each row in Application Review will show:
+```
+[85%] John Smith    [New]    Mar 27, 2026
+[72%] Jane Doe               Mar 26, 2026
+[—]   Bob Wilson   [New]    Mar 25, 2026
+```
+
+Candidates sorted highest score first by default. The score badge uses the same emerald/amber/red pastel pattern as other badges in the system.
 
