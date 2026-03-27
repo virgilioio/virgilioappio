@@ -217,18 +217,22 @@ export function IndependentCandidateTable({
     {} as any,
   )
 
-  const { defaultView } = useSavedViews('candidates')
+  const { views, defaultView } = useSavedViews('candidates')
 
   useEffect(() => {
     const storedViewId = getActiveViewId()
     if (storedViewId) {
       setActiveViewId(storedViewId)
+      const matchedView = views.find(v => v.id === storedViewId)
+      if (matchedView) {
+        setFiltersFromRecord(matchedView.filters as Record<string, unknown>)
+      }
     } else if (defaultView) {
       setActiveViewId(defaultView.id)
       setFiltersFromRecord(defaultView.filters as Record<string, unknown>)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultView?.id])
+  }, [defaultView?.id, views.length])
 
   const handleActiveViewChange = useCallback((viewId: string | null) => {
     setActiveViewId(viewId)
