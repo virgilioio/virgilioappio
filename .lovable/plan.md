@@ -1,50 +1,51 @@
 
 
-# Display AI Fit Score in Application Review + Sort by Score
+# Add "Hired" Status Banner to Candidate Profile Sheet
 
-## What changes
+## Problem
 
-Show the AI fit score inline before each candidate's name in the Application Review tab as `[85%] Candidate Name`, and default-sort candidates by score (highest first). Users can toggle the sort.
+When a candidate is marked as "hired", there's no visual banner like the ones for "rejected" and "offer" statuses. The user wants a hired banner showing: job name, hire date, candidate source, and the recruiter who hired them.
 
-## Files changed
+## Database Change
+
+The `job_candidate_associations` table currently has no `hired_at` or `hired_by` columns (unlike `rejected_at`/`rejected_by` and `offered_at`/`offered_by`). We need to add them.
+
+**Migration:**
+```sql
+ALTER TABLE public.job_candidate_associations
+  ADD COLUMN hired_at timestamptz,
+  ADD COLUMN hired_by uuid REFERENCES auth.users(id);
+```
+
+## Code Changes
 
 | File | Change |
 |------|--------|
-| `src/hooks/usePipelineActions.ts` | Add `ai_fit_score` to `PipelineAssociation` interface and the `.select()` query |
-| `src/pages/JobDetail.tsx` | When building `applicationReviewCandidates`, attach the `ai_fit_score` from the association to each candidate object. Sort by score descending by default. |
-| `src/components/candidates/CandidateTable.tsx` | Add `showFitScore` prop. When enabled: (1) show a color-coded score badge before the candidate name in the Name column, (2) add a sortable "AI Fit" column header, (3) sort candidates by `ai_fit_score` descending by default |
+| `src/components/candidates/HiredStatusBanner.tsx` | **New file** — banner component matching rejection/offer banner pattern |
+| `src/components/candidates/CandidateProfileSheet.tsx` | (1) Add `hired_at`, `hired_by` to the association `.select()` query. (2) Add `hiredDetails` state. (3) Populate it when `status === 'hired'` (resolve recruiter name from profiles, get job title from existing `job` state, get source from `candidate.source`). (4) Set `hired_at`/`hired_by` when marking as hired via `handleSetStatus`. (5) Render `HiredStatusBanner` alongside the rejection/offer banners. |
 
-## Technical details
+## HiredStatusBanner Component
 
-### 1. `usePipelineActions.ts`
-- Add `ai_fit_score?: number | null` to `PipelineAssociation`
-- Add `ai_fit_score` to the `.select()` string on line 31
+- Emerald/green background (`bg-emerald-700`) to match the "hired" semantic color
+- Shows:
+  - **Title**: "Candidate Hired"
+  - **Job name**: from the loaded job data
+  - **Hire date**: formatted from `hired_at`
+  - **Source**: from `candidate.source` or `candidate.job_board_source`
+  - **Recruiter**: resolved name from `hired_by` profile lookup
+- No action button needed (unlike rejection's "Reactivate" or offer's "Create Offer")
 
-### 2. `JobDetail.tsx` (lines ~434-466)
-- When filtering `applicationReviewIds`, also build a map of `candidateId → ai_fit_score` from associations
-- When setting `applicationReviewCandidates`, attach `ai_fit_score` to each candidate object
-- Sort by `ai_fit_score` descending (nulls last)
+## handleSetStatus Update
 
-### 3. `CandidateTable.tsx`
-- Add `showFitScore?: boolean` prop
-- Add `ai_fit_score?: number | null` to `BaseCandidate` interface
-- In the Name cell, when `showFitScore` is true and `ai_fit_score` exists, render a small color-coded badge before the name:
-  - `≥75`: emerald/green
-  - `≥50`: amber/yellow  
-  - `<50`: red/orange
-- Add local sort state: when `showFitScore` is true, default sort by `ai_fit_score` desc
-- Add a clickable sort toggle on the "Name" column header (or a small "AI Fit" header) to let users re-sort
+When `handleSetStatus('hired')` is called, update the association with `hired_at: new Date().toISOString()` and `hired_by: user?.id` alongside the status change (similar to how `handleMoveToOffer` sets `offered_at`/`offered_by`).
 
-### 4. Pass `showFitScore={true}` in `JobDetail.tsx` for the application review `CandidateTable`
+## Visual Result
 
-## Visual result
-
-Each row in Application Review will show:
+```text
+┌─────────────────────────────────────────────────────┐
+│  ✓ Candidate Hired                                  │
+│  Account Executive, Enterprise • Mar 27, 2026       │
+│  Source: LinkedIn • Recruiter: Allan Bravo           │
+└─────────────────────────────────────────────────────┘
 ```
-[85%] John Smith    [New]    Mar 27, 2026
-[72%] Jane Doe               Mar 26, 2026
-[—]   Bob Wilson   [New]    Mar 25, 2026
-```
-
-Candidates sorted highest score first by default. The score badge uses the same emerald/amber/red pastel pattern as other badges in the system.
 
