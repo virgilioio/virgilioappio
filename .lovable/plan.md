@@ -1,24 +1,43 @@
 
 
-# Add Company Filter to Candidates "More Filters"
+# Display DOCX Resumes in the Resume Viewer (Client-Side)
 
-## What changes
+## Problem
 
-Add a "Company" filter to the candidates More Filters sheet, using the `company_current` field already present on candidates. This follows the exact same pattern as existing filters (e.g., City, Specialization).
+DOCX resumes currently rely on a server-side `convert-document-to-pdf` edge function that only produces a placeholder PDF. Users see "Converting..." indefinitely or "Conversion failed" — DOCX files are never actually viewable inline.
+
+## Solution
+
+Render DOCX files directly in the browser using **mammoth.js** (a lightweight library that converts DOCX to clean HTML). No server-side conversion needed.
+
+## How it works
+
+1. Detect DOCX file type (already done via `needsConversion`)
+2. Fetch the DOCX blob from Supabase storage (signed URL already available)
+3. Convert to HTML using `mammoth.convertToHtml()`
+4. Render the HTML in a sandboxed container with styled formatting
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/contexts/CandidateFilterContext.tsx` | Add `companies` to `CandidateFilters` interface, `EMPTY_FILTERS`, `ArrayFilterKey` type, and `activeFilterCount` loop |
-| `src/hooks/useCandidateFilterOptions.ts` | Add `companyOptions` using `deriveOptions(candidates, c => c.company_current)` to the returned object and empty state |
-| `src/hooks/useCandidateFilteredData.ts` | Add company filter check: `if (filters.companies.length > 0 && (!c.company_current \|\| !filters.companies.includes(c.company_current))) return false` |
-| `src/components/candidates/CandidateFiltersPanel.tsx` | (1) Add `companyOptions` to the `filterOptions` interface. (2) Add a `FilterCheckboxGroup` for "Company" in the More Filters sheet. (3) Add `companies` to `activeTags` loop. |
+| `package.json` | Add `mammoth` dependency |
+| `src/components/candidates/DOCXResumeViewer.tsx` | **New** — component that fetches DOCX blob, converts via mammoth.js, renders styled HTML |
+| `src/components/candidates/CandidateResumeViewer.tsx` | Replace the `needsConversion && conversionStatus !== 'completed'` branch with `<DOCXResumeViewer>` when we have a signed URL for a DOCX file. Remove dependency on conversion status for display. |
 
-## Implementation notes
+## DOCXResumeViewer design
 
-- `company_current` is already fetched and available on `IndependentCandidate`
-- The company filter goes in the "More Filters" sheet (not as a top-level chip) since it can have many values
-- Searchable checkbox group, same as City/Specialization
-- No database changes needed
+- Props: `url: string`, `height: number`
+- Fetches the DOCX file as ArrayBuffer
+- Calls `mammoth.convertToHtml({ arrayBuffer })` 
+- Renders result in a scrollable `<div>` with basic document styling (fonts, spacing, tables, lists)
+- Shows loading spinner while converting, error state on failure
+- Matches the same container style as `PDFResumeViewer` (rounded border, bg-muted/30, overflow-y-auto)
+
+## Behavior change
+
+- DOCX resumes render immediately client-side — no waiting for server conversion
+- The conversion status banner is hidden when we can render DOCX directly
+- Download buttons still work as before (original DOCX file)
+- Falls back to "cannot preview" message only if mammoth conversion fails
 
