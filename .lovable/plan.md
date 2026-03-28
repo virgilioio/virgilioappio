@@ -1,47 +1,66 @@
 
 
-# Add Anti-Hallucination Rules to AI Fit Analysis Prompt
+# Fix: Resume File Not Saved When Creating Candidate via "Upload Resume First"
 
-## What changes
+## Investigation findings
 
-Insert the user's finalized anti-hallucination rules into the `SYSTEM_PROMPT` in `supabase/functions/analyze-candidate-fit/index.ts`, and tighten the Salary Alignment dimension description.
+I traced through the full code path for creating a new candidate after dropping a resume on the form. The flow is:
 
-## Implementation
+1. Resume is dropped → file parsed for data, file added to `pendingFiles` via `onFileCaptured`
+2. User clicks Save → `filesToUpload` captured as local copy of `pendingFiles`
+3. `onSubmit` calls parent → parent creates candidate, calls `handleFormClose()`, returns result
+4. `handlePostSubmitActions` runs → should upload files via `uploadFileForCandidate`
 
-**File**: `supabase/functions/analyze-candidate-fit/index.ts`
+## Problems found
 
-### 1. Insert anti-hallucination block after CRITICAL RULES (after line 111)
+### Problem 1: Silent failure in post-submit upload
+In `handlePostSubmitActions` (line 431-435), if the upload fails for any reason (RLS, network, timing), the error is caught and only logged to console — no toast, no retry. The user never knows the upload failed.
 
-Add a new `ANTI-HALLUCINATION RULES` section with the user's exact 8 rules:
+### Problem 2: `candidates.resume_url` never updated
+`uploadFileForCandidate` uploads to storage and creates a `candidate_attachments` record, but never updates the `candidates` table with `resume_url`. Some parts of the app may look at `candidates.resume_url` instead of `candidate_attachments` to determine if a resume exists.
 
-1. Never claim a job requires something unless explicitly stated in the job description
-2. Never claim a candidate lacks something unless candidate data explicitly confirms absence — "not mentioned" means unknown, not absent
-3. Missing information on either side = "unknown" / "not provided" — never convert into a penalty unless explicit contradictory evidence exists
-4. Education penalty only if job explicitly requires a degree AND candidate data confirms they don't have it
-5. Never misstate salary figures — use exact numeric values, no paraphrasing or rounding
-6. Salary alignment: within posted range or ±25% of job max = negotiable, no penalty. Only flag >25% above job max. Missing salary data = null dimension
-7. Every gap/mismatch must explicitly reference (a) the exact job requirement/datum and (b) the exact candidate datum or state data is unavailable
-8. When evidence is ambiguous, incomplete, or missing, prefer a neutral assessment over a negative inference
+### Problem 3: JobDetail's `handleAddCandidate` swallows errors
+In `JobDetail.tsx` line 696, the catch block doesn't re-throw, so if `addCandidate` throws, `handleAddCandidate` returns `undefined`, and `handlePostSubmitActions` never runs (the files are lost).
 
-### 2. Replace Salary Alignment dimension description (line 139)
+### Problem 4: Race condition risk with form close
+The parent calls `handleFormClose()` before returning `result`. While the async function should survive React re-renders, the form close triggers a `useEffect` that resets `pendingFiles`. If for any reason the local `filesToUpload` reference is lost or the function re-enters, files are gone.
 
-Replace:
+## Fix
+
+**File 1**: `src/components/candidates/CandidateFormSheet.tsx`
+
+1. In `handlePostSubmitActions`, add a user-visible toast on upload failure (currently silent)
+2. After successful upload, update `candidates.resume_url` with the storage path so the candidate record itself reflects that a resume exists
+3. Add a safety check: if `filesToUpload` is empty but `pendingFiles` has items, use `pendingFiles` as fallback
+
+**File 2**: `src/pages/JobDetail.tsx`
+
+In `handleAddCandidate` catch block (line 696), re-throw the error so CandidateFormSheet knows creation failed and doesn't silently lose files:
 ```
-- Salary Alignment (weight ~10): Compare candidate salary expectations vs job range. null if unknown.
+} catch (error) {
+  console.error('Error adding candidate:', error)
+  throw error  // ← add this
+}
 ```
 
-With:
+**File 3**: `src/components/candidates/CandidateFormSheet.tsx` (uploadFileForCandidate)
+
+After creating the `candidate_attachments` record, also update the `candidates` table:
+```ts
+if (markAsResume) {
+  await supabase
+    .from('candidates')
+    .update({ resume_url: storagePath })
+    .eq('id', jobCandidateId)
+}
 ```
-- Salary Alignment (weight ~10): Compare using exact numeric values only. Do not approximate or paraphrase salary figures. If candidate expected salary is within ±25% of the job max or within the posted range, treat it as negotiable and do not penalize. Only flag a mismatch when the candidate expectation is more than 25% above the job maximum. If salary data is missing on either side, return null for this dimension and do not infer a mismatch.
-```
 
-### 3. Deploy edge function
+## Summary
 
-Deploy the updated `analyze-candidate-fit` function.
-
-## Files changed
-
-| File | Change |
-|------|--------|
-| `supabase/functions/analyze-candidate-fit/index.ts` | Add 8 anti-hallucination rules + tighten salary dimension wording |
+| Change | File | Purpose |
+|--------|------|---------|
+| Show toast on upload failure | CandidateFormSheet.tsx | User knows upload failed |
+| Update `candidates.resume_url` | CandidateFormSheet.tsx | Resume linked on candidate record |
+| Re-throw in catch | JobDetail.tsx | Don't silently lose files on error |
+| Fallback file reference | CandidateFormSheet.tsx | Safety net for race conditions |
 
