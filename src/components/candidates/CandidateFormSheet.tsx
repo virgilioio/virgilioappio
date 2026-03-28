@@ -399,6 +399,14 @@ export function CandidateFormSheet({
         await supabase.storage.from('candidate-attachments').remove([storagePath])
         throw dbError
       }
+
+      // Also update the candidates table so resume_url is set
+      if (markAsResume) {
+        await supabase
+          .from('candidates')
+          .update({ resume_url: storagePath })
+          .eq('id', jobCandidateId)
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to upload resume'
       toast({ title: 'Error', description: msg, variant: 'destructive' })
@@ -430,6 +438,11 @@ export function CandidateFormSheet({
           console.log('📎 All files uploaded successfully')
         } catch (error) {
           console.error('📎 Error uploading files:', error)
+          toast({
+            title: 'Resume upload failed',
+            description: 'The candidate was created, but the resume file could not be saved. Please re-upload it from the candidate profile.',
+            variant: 'destructive'
+          })
         } finally {
           setIsUploadingResume(false)
         }
