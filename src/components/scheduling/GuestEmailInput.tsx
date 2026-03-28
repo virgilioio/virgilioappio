@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, KeyboardEvent, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback, KeyboardEvent, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
@@ -35,6 +36,7 @@ export function GuestEmailInput({ emails, onChange, max = 10, organizationId }: 
   const [error, setError] = useState<string | null>(null);
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [dropdownCoords, setDropdownCoords] = useState({ top: 0, left: 0, width: 0 });
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -66,6 +68,30 @@ export function GuestEmailInput({ emails, onChange, max = 10, organizationId }: 
     setHighlightIndex(-1);
     setShowDropdown(inputValue.trim().length >= 1 && suggestions.length > 0);
   }, [inputValue, suggestions]);
+
+  // Calculate dropdown position relative to viewport
+  const updateDropdownPosition = useCallback(() => {
+    if (inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setDropdownCoords({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (showDropdown) {
+      updateDropdownPosition();
+      window.addEventListener('scroll', updateDropdownPosition, true);
+      window.addEventListener('resize', updateDropdownPosition);
+      return () => {
+        window.removeEventListener('scroll', updateDropdownPosition, true);
+        window.removeEventListener('resize', updateDropdownPosition);
+      };
+    }
+  }, [showDropdown, updateDropdownPosition]);
 
   // Close on outside click
   useEffect(() => {
@@ -212,10 +238,17 @@ export function GuestEmailInput({ emails, onChange, max = 10, organizationId }: 
             disabled={emails.length >= max}
           />
 
-          {showDropdown && suggestions.length > 0 && (
+          {showDropdown && suggestions.length > 0 && createPortal(
             <div
               ref={dropdownRef}
-              className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-md max-h-48 overflow-y-auto"
+              style={{
+                position: 'fixed',
+                top: dropdownCoords.top,
+                left: dropdownCoords.left,
+                width: dropdownCoords.width,
+                zIndex: 9999,
+              }}
+              className="bg-popover border border-border rounded-md shadow-md max-h-48 overflow-y-auto"
             >
               {suggestions.map((member, idx) => {
                 const first = member.profile?.first_name || '';
@@ -245,7 +278,8 @@ export function GuestEmailInput({ emails, onChange, max = 10, organizationId }: 
                   </button>
                 );
               })}
-            </div>
+            </div>,
+            document.body
           )}
         </div>
 
