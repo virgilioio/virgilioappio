@@ -694,6 +694,7 @@ export default function JobDetail() {
       return result
     } catch (error) {
       console.error('Error adding candidate:', error)
+      throw error
     }
   }
 
