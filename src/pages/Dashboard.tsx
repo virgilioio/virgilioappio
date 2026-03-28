@@ -3,7 +3,7 @@ import { UpcomingActivities } from '@/components/dashboard/UpcomingActivities'
 import { JobsOverview } from '@/components/dashboard/JobsOverview'
 import { TrialCountdownBanner } from '@/components/dashboard/TrialCountdownBanner'
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist'
-import { RecentSourcingProjects } from '@/components/dashboard/RecentSourcingProjects'
+
 import { PendingActivities } from '@/components/dashboard/PendingActivities'
 import { StaleCandidates } from '@/components/dashboard/StaleCandidates'
 import { useUserProfile } from '@/hooks/useUserProfile'
@@ -35,8 +35,6 @@ export default function Dashboard() {
   // Compute deemphasis state for checklist
   const hasSeenValue = (sourcingProjects?.length ?? 0) > 0
   
-  // Show sourcing panel for Admin and above (members see it on job-level)
-  const showSourcingPanel = isPrivileged || hasRecruiterRole
   
   return (
     <div>
@@ -52,7 +50,7 @@ export default function Dashboard() {
             {/* Left Column - Jobs & Searches */}
             <div className="space-y-6 min-w-0">
               <OnboardingChecklist isDeemphasized={!hasSeenValue} />
-              {showSourcingPanel && <div className="hidden sm:block"><RecentSourcingProjects /></div>}
+              
               {hasJobContent && <div className="hidden sm:block"><JobsOverview permissions={permissions} /></div>}
             </div>
             
