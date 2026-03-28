@@ -1,66 +1,42 @@
 
 
-# Fix: Resume File Not Saved When Creating Candidate via "Upload Resume First"
+# Fix: Guest Autocomplete Dropdown Not Visible in Scheduling Sheet
 
-## Investigation findings
+## Investigation
 
-I traced through the full code path for creating a new candidate after dropping a resume on the form. The flow is:
+The autocomplete code in `GuestEmailInput.tsx` is fully implemented and correct — it queries org members via `useCustomerMembers`, filters by name/email, and renders a dropdown. The data exists in the database and the props are passed correctly through the component chain.
 
-1. Resume is dropped → file parsed for data, file added to `pendingFiles` via `onFileCaptured`
-2. User clicks Save → `filesToUpload` captured as local copy of `pendingFiles`
-3. `onSubmit` calls parent → parent creates candidate, calls `handleFormClose()`, returns result
-4. `handlePostSubmitActions` runs → should upload files via `uploadFileForCandidate`
+## Root Cause
 
-## Problems found
-
-### Problem 1: Silent failure in post-submit upload
-In `handlePostSubmitActions` (line 431-435), if the upload fails for any reason (RLS, network, timing), the error is caught and only logged to console — no toast, no retry. The user never knows the upload failed.
-
-### Problem 2: `candidates.resume_url` never updated
-`uploadFileForCandidate` uploads to storage and creates a `candidate_attachments` record, but never updates the `candidates` table with `resume_url`. Some parts of the app may look at `candidates.resume_url` instead of `candidate_attachments` to determine if a resume exists.
-
-### Problem 3: JobDetail's `handleAddCandidate` swallows errors
-In `JobDetail.tsx` line 696, the catch block doesn't re-throw, so if `addCandidate` throws, `handleAddCandidate` returns `undefined`, and `handlePostSubmitActions` never runs (the files are lost).
-
-### Problem 4: Race condition risk with form close
-The parent calls `handleFormClose()` before returning `result`. While the async function should survive React re-renders, the form close triggers a `useEffect` that resets `pendingFiles`. If for any reason the local `filesToUpload` reference is lost or the function re-enters, files are gone.
+The dropdown is rendered with `position: absolute` inside the `SheetContent` which has `overflow-y-auto`. When the scheduling sheet opens as a **nested sheet** (inside the candidate profile sheet), the dropdown gets clipped by the sheet's overflow container. The `z-50` class only affects stacking within that overflow context — it doesn't escape the clipping boundary.
 
 ## Fix
 
-**File 1**: `src/components/candidates/CandidateFormSheet.tsx`
+**File**: `src/components/scheduling/GuestEmailInput.tsx`
 
-1. In `handlePostSubmitActions`, add a user-visible toast on upload failure (currently silent)
-2. After successful upload, update `candidates.resume_url` with the storage path so the candidate record itself reflects that a resume exists
-3. Add a safety check: if `filesToUpload` is empty but `pendingFiles` has items, use `pendingFiles` as fallback
+Use a React Portal to render the dropdown at the document root (escaping the sheet's overflow clipping), and dynamically position it below the input using `getBoundingClientRect()`.
 
-**File 2**: `src/pages/JobDetail.tsx`
+### Changes
 
-In `handleAddCandidate` catch block (line 696), re-throw the error so CandidateFormSheet knows creation failed and doesn't silently lose files:
-```
-} catch (error) {
-  console.error('Error adding candidate:', error)
-  throw error  // ← add this
-}
-```
+1. Import `createPortal` from `react-dom`
+2. Add a `useEffect` + ref to calculate the input's position on screen
+3. Render the dropdown via `createPortal(...)` to `document.body`, positioned absolutely using the input's bounding rect coordinates
+4. Keep all existing filtering, keyboard navigation, and selection logic unchanged
 
-**File 3**: `src/components/candidates/CandidateFormSheet.tsx` (uploadFileForCandidate)
+### Positioning logic
 
-After creating the `candidate_attachments` record, also update the `candidates` table:
-```ts
-if (markAsResume) {
-  await supabase
-    .from('candidates')
-    .update({ resume_url: storagePath })
-    .eq('id', jobCandidateId)
-}
+```text
+Input rect → dropdown positioned at:
+  top: rect.bottom + 4px (gap)
+  left: rect.left
+  width: rect.width
 ```
 
-## Summary
+Recalculate position when `showDropdown` becomes true and on window scroll/resize.
 
-| Change | File | Purpose |
-|--------|------|---------|
-| Show toast on upload failure | CandidateFormSheet.tsx | User knows upload failed |
-| Update `candidates.resume_url` | CandidateFormSheet.tsx | Resume linked on candidate record |
-| Re-throw in catch | JobDetail.tsx | Don't silently lose files on error |
-| Fallback file reference | CandidateFormSheet.tsx | Safety net for race conditions |
+## Files changed
+
+| File | Change |
+|------|--------|
+| `src/components/scheduling/GuestEmailInput.tsx` | Portal-render dropdown to escape sheet overflow clipping |
 
