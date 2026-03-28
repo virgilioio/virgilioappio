@@ -107,7 +107,6 @@ export function GuestEmailInput({ emails, onChange, max = 10, organizationId }: 
   }, []);
 
   const addEmail = (raw: string) => {
-    skipBlurRef.current = true;
     const email = raw.trim().toLowerCase();
     if (!email) return;
 
@@ -148,6 +147,7 @@ export function GuestEmailInput({ emails, onChange, max = 10, organizationId }: 
       }
       if (e.key === 'Enter' && highlightIndex >= 0 && highlightIndex < suggestions.length) {
         e.preventDefault();
+        skipBlurRef.current = true;
         const member = suggestions[highlightIndex];
         if (member.profile?.email) addEmail(member.profile.email);
         return;
@@ -160,6 +160,7 @@ export function GuestEmailInput({ emails, onChange, max = 10, organizationId }: 
 
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
+      skipBlurRef.current = true;
       addEmail(inputValue);
     }
     if (e.key === 'Backspace' && !inputValue && emails.length > 0) {
@@ -269,7 +270,7 @@ export function GuestEmailInput({ emails, onChange, max = 10, organizationId }: 
                     className={`w-full text-left px-2.5 py-1.5 text-xs hover:bg-accent transition-colors flex items-center gap-2 ${
                       idx === highlightIndex ? 'bg-accent' : ''
                     }`}
-                    onMouseDown={(e) => { e.preventDefault(); if (email) addEmail(email); }}
+                    onMouseDown={(e) => { e.preventDefault(); skipBlurRef.current = true; if (email) addEmail(email); }}
                     onMouseEnter={() => setHighlightIndex(idx)}
                   >
                     <Avatar className="h-5 w-5 shrink-0">
