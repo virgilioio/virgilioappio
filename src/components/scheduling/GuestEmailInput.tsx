@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, KeyboardEvent, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback, KeyboardEvent, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
