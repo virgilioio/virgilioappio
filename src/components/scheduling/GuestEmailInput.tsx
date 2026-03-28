@@ -69,6 +69,30 @@ export function GuestEmailInput({ emails, onChange, max = 10, organizationId }: 
     setShowDropdown(inputValue.trim().length >= 1 && suggestions.length > 0);
   }, [inputValue, suggestions]);
 
+  // Calculate dropdown position relative to viewport
+  const updateDropdownPosition = useCallback(() => {
+    if (inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setDropdownCoords({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (showDropdown) {
+      updateDropdownPosition();
+      window.addEventListener('scroll', updateDropdownPosition, true);
+      window.addEventListener('resize', updateDropdownPosition);
+      return () => {
+        window.removeEventListener('scroll', updateDropdownPosition, true);
+        window.removeEventListener('resize', updateDropdownPosition);
+      };
+    }
+  }, [showDropdown, updateDropdownPosition]);
+
   // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
