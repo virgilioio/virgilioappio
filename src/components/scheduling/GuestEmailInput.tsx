@@ -238,10 +238,17 @@ export function GuestEmailInput({ emails, onChange, max = 10, organizationId }: 
             disabled={emails.length >= max}
           />
 
-          {showDropdown && suggestions.length > 0 && (
+          {showDropdown && suggestions.length > 0 && createPortal(
             <div
               ref={dropdownRef}
-              className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-md max-h-48 overflow-y-auto"
+              style={{
+                position: 'fixed',
+                top: dropdownCoords.top,
+                left: dropdownCoords.left,
+                width: dropdownCoords.width,
+                zIndex: 9999,
+              }}
+              className="bg-popover border border-border rounded-md shadow-md max-h-48 overflow-y-auto"
             >
               {suggestions.map((member, idx) => {
                 const first = member.profile?.first_name || '';
@@ -271,7 +278,8 @@ export function GuestEmailInput({ emails, onChange, max = 10, organizationId }: 
                   </button>
                 );
               })}
-            </div>
+            </div>,
+            document.body
           )}
         </div>
 
