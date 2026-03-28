@@ -39,6 +39,7 @@ export function GuestEmailInput({ emails, onChange, max = 10, organizationId }: 
   const [dropdownCoords, setDropdownCoords] = useState({ top: 0, left: 0, width: 0 });
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const skipBlurRef = useRef(false);
 
   const { data: members } = useCustomerMembers(organizationId || '');
 
@@ -106,6 +107,7 @@ export function GuestEmailInput({ emails, onChange, max = 10, organizationId }: 
   }, []);
 
   const addEmail = (raw: string) => {
+    skipBlurRef.current = true;
     const email = raw.trim().toLowerCase();
     if (!email) return;
 
@@ -166,8 +168,11 @@ export function GuestEmailInput({ emails, onChange, max = 10, organizationId }: 
   };
 
   const handleBlur = () => {
-    // Delay to allow dropdown click
     setTimeout(() => {
+      if (skipBlurRef.current) {
+        skipBlurRef.current = false;
+        return;
+      }
       if (inputValue.trim() && !showDropdown) {
         addEmail(inputValue);
       }
