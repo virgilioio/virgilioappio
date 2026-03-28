@@ -1,72 +1,36 @@
 
 
-# Fix: "Invalid email format" Error When Clicking Guest Autocomplete Option
+# Fix: Mouse Click on Guest Autocomplete Still Triggers Validation Error
 
-## Root Cause
+## Root cause
 
-When clicking a dropdown suggestion, two things happen simultaneously:
-
-1. The input **blurs** → `handleBlur` fires with a 200ms delay
-2. The `onMouseDown` handler on the dropdown item calls `addEmail(member.email)` and sets `showDropdown = false`
-
-The race: after 200ms, `handleBlur`'s timeout fires. By then `showDropdown` is `false`, so the guard `!showDropdown` passes, and it calls `addEmail(inputValue)` where `inputValue` is the partial search text (e.g. "elo") — which fails email validation → "Invalid email format".
+The `skipBlurRef` is set inside `addEmail()`, but the real problem is that `e.preventDefault()` on a portal-rendered `mousedown` doesn't reliably prevent the input's blur across all browsers. The blur fires, and by the time the 200ms timeout reads `skipBlurRef`, the sequence depends on exact event ordering between the portal click and the input blur — which is unreliable.
 
 ## Fix
 
 **File**: `src/components/scheduling/GuestEmailInput.tsx`
 
-**Change `handleBlur`** (lines 168-175): After the dropdown click adds the email, `inputValue` gets cleared to `''`. Check for that:
+Two changes:
 
-```typescript
-const handleBlur = () => {
-  setTimeout(() => {
-    if (inputValue.trim() && !showDropdown) {
-      addEmail(inputValue);
-    }
-  }, 200);
-};
+1. **Dropdown item `onMouseDown`** (line 272): Set `skipBlurRef.current = true` explicitly *before* calling `addEmail`, so even if blur fires first, the ref is already set when the timeout checks it:
+
+```tsx
+onMouseDown={(e) => {
+  e.preventDefault();
+  skipBlurRef.current = true;
+  if (email) addEmail(email);
+}}
 ```
 
-The problem is `inputValue` is stale inside the timeout closure. Use a ref to track whether a dropdown selection just happened:
+2. **Remove `skipBlurRef.current = true` from inside `addEmail`** (line 110): It belongs only in the mouse/keyboard handlers that trigger blur races, not in the generic `addEmail` function. The keyboard Enter handler in `handleKeyDown` should also set it before calling `addEmail`.
 
-1. Add a ref: `const justSelectedRef = useRef(false)`
-2. In `addEmail`, when called from dropdown click, set `justSelectedRef.current = true`
-3. In `handleBlur` timeout, check `if (justSelectedRef.current) { justSelectedRef.current = false; return; }`
+3. **Add `skipBlurRef = true` before `addEmail` in `handleKeyDown`** Enter key branch (line 148-150) and the comma/Enter branch (line 162-163).
 
-Alternatively (simpler): just set `inputValue` to `''` in the `onMouseDown` handler **before** calling `addEmail`, so by the time the blur timeout fires, `inputValue.trim()` is falsy and the guard short-circuits.
-
-**Simplest fix** — update `handleBlur` to re-read `inputValue` via a ref:
-
-1. Add `const inputValueRef = useRef(inputValue)` and keep it synced
-2. In `handleBlur`, read `inputValueRef.current` instead of the stale closure value
-
-**Recommended approach** (least code, most robust): Add a `skipBlurRef`:
-
-```typescript
-const skipBlurRef = useRef(false);
-
-// In addEmail, at the top:
-skipBlurRef.current = true;
-
-// In handleBlur:
-const handleBlur = () => {
-  setTimeout(() => {
-    if (skipBlurRef.current) {
-      skipBlurRef.current = false;
-      return;
-    }
-    if (inputValue.trim()) {
-      addEmail(inputValue);
-    }
-  }, 200);
-};
-```
-
-This ensures that whenever `addEmail` is called (from dropdown click, Enter key, etc.), the subsequent blur timeout is skipped.
+This ensures `skipBlurRef` is always set *before* any blur timeout can read it, regardless of event ordering.
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/components/scheduling/GuestEmailInput.tsx` | Add `skipBlurRef` to prevent blur handler from validating stale input after dropdown selection |
+| `src/components/scheduling/GuestEmailInput.tsx` | Move `skipBlurRef` setting from `addEmail` to callers (`onMouseDown`, `handleKeyDown`) |
 
