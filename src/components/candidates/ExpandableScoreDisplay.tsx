@@ -1,15 +1,27 @@
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { SafeHtml } from "@/components/ui/safe-html";
-import { ChevronRight, User } from "lucide-react";
+import { ChevronRight, User, X } from "lucide-react";
 import gioAiBannerIcon from "@/assets/gio-ai-banner-icon.png";
 import { formatDistanceToNow } from "date-fns";
 import type { ScorecardWithAuthor } from "@/hooks/useAllStageScorecards";
 import type { ScoreRating } from "@/hooks/useScorecards";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface ExpandableScoreDisplayProps {
   scorecards: ScorecardWithAuthor[];
   currentUserId?: string;
   onOpenFullSheet?: (scorecardId: string) => void;
+  onDismissAiDraft?: (scorecardId: string) => Promise<void>;
 }
 
 const ratingOptions = [
