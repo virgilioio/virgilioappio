@@ -59,7 +59,7 @@ export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSh
       {/* AI Analysis Available indicator */}
       {hasAiDrafts && (
         <div
-          className="rounded-lg bg-pastel-purple/30 border border-pastel-purple/50 cursor-pointer hover:bg-pastel-purple/40 transition-colors"
+          className="relative rounded-lg bg-pastel-purple/30 border border-pastel-purple/50 cursor-pointer hover:bg-pastel-purple/40 transition-colors"
           onClick={() => firstAiDraft && onOpenFullSheet?.(firstAiDraft.id)}
         >
           <div className="p-3 flex items-start gap-3">
@@ -68,9 +68,42 @@ export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSh
               <p className="text-sm font-semibold text-foreground">AI Notes Analysis Available</p>
               <p className="text-xs text-muted-foreground">Click to review AI-generated insights</p>
             </div>
+            {onDismissAiDraft && (
+              <button
+                className="shrink-0 p-1 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                title="Dismiss AI notes"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDismissDialog(true);
+                }}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
       )}
+
+      <AlertDialog open={showDismissDialog} onOpenChange={setShowDismissDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Dismiss AI Notes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the AI-generated notes for this stage. If you reschedule the interview, new AI notes will be generated from the new call.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={dismissing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDismissAiDraft}
+              disabled={dismissing}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {dismissing ? "Deleting..." : "Delete AI Notes"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Human-submitted scorecards */}
       {humanScorecards.length === 0 && (

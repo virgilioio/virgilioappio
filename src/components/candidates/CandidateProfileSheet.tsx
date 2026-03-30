@@ -83,10 +83,16 @@ interface StageScorecardProps {
   associationId: string;
   currentUserId?: string;
   onOpenFullSheet: (scorecardId: string) => void;
+  onDismissAiDraft: (scorecardId: string) => Promise<void>;
 }
 
-function StageScorecards({ stageInstanceId, associationId, currentUserId, onOpenFullSheet }: StageScorecardProps) {
-  const { scorecards, loading } = useAllStageScorecards(stageInstanceId, associationId);
+function StageScorecards({ stageInstanceId, associationId, currentUserId, onOpenFullSheet, onDismissAiDraft }: StageScorecardProps) {
+  const { scorecards, loading, refetch } = useAllStageScorecards(stageInstanceId, associationId);
+
+  const handleDismiss = async (scorecardId: string) => {
+    await onDismissAiDraft(scorecardId);
+    refetch();
+  };
 
   if (loading) {
     return <div className="text-sm text-text-tertiary">Loading scorecards...</div>;
@@ -97,6 +103,7 @@ function StageScorecards({ stageInstanceId, associationId, currentUserId, onOpen
       scorecards={scorecards}
       currentUserId={currentUserId}
       onOpenFullSheet={onOpenFullSheet}
+      onDismissAiDraft={handleDismiss}
     />
   );
 }
