@@ -192,6 +192,24 @@ const [scoreOpen, setScoreOpen] = useState(false)
 const [scoreStageInstId, setScoreStageInstId] = useState<string | null>(null)
 const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefined)
 
+// Dismiss AI draft scorecard
+const handleDismissAiDraft = async (scorecardId: string) => {
+  // Delete question responses first (FK constraint)
+  await (supabase as any)
+    .from('scorecard_question_responses')
+    .delete()
+    .eq('scorecard_id', scorecardId);
+  // Delete the AI draft scorecard
+  const { error } = await (supabase as any)
+    .from('job_stage_scorecards')
+    .delete()
+    .eq('id', scorecardId)
+    .eq('is_ai_draft', true);
+  if (error) throw error;
+  await refetchScorecards();
+  toast({ title: 'AI notes dismissed', description: 'The AI-generated notes have been removed.' });
+};
+
 // Fetch scorecard template visibility for the active scorecard stage
 const { data: scorecardTemplateVisibility } = useQuery({
   queryKey: ['scorecard-visibility', scoreStageInstId],
