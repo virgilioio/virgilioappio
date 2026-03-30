@@ -143,7 +143,95 @@ INTERVIEW STAGE: ${booking.job_hiring_stage.stage.stage_name}
       ? booking.transcript_raw.substring(0, 15000) + '\n\n[Transcript truncated for processing...]'
       : booking.transcript_raw;
 
+    // === EMPTY CONVERSATION GUARD ===
+    // Strip filler patterns: timestamps, speaker labels, system messages, join/leave notifications
+    const substantiveText = transcriptContent
+      .replace(/\d{1,2}:\d{2}(:\d{2})?\s*(AM|PM|am|pm)?\s*/g, '') // timestamps
+      .replace(/\[\d{1,2}:\d{2}(:\d{2})?\]/g, '') // bracketed timestamps
+      .replace(/Speaker\s*\d+\s*:/gi, '') // "Speaker 1:"
+      .replace(/(Host|Guest|Participant|Interviewer|Interviewee)\s*\d*\s*:/gi, '') // role labels
+      .replace(/^.*\b(joined|left|entered|exited|started recording|stopped recording|recording started|recording stopped|meeting started|meeting ended|call started|call ended|waiting for others|has joined the meeting|has left the meeting)\b.*$/gim, '') // system messages
+      .replace(/\b(um+|uh+|hmm+|okay|ok|yeah|yes|no|hi|hello|hey|bye|goodbye|thanks|thank you)\b/gi, '') // filler words
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    const substantiveWordCount = substantiveText.split(/\s+/).filter(w => w.length > 1).length;
+    console.log('[generate-scorecard] Substantive word count:', substantiveWordCount);
+
+    if (substantiveWordCount < 50) {
+      console.log('[generate-scorecard] Empty/near-empty conversation detected, skipping AI analysis');
+      
+      const emptyMessage = 'No substantive conversation took place during this call. The interview may need to be rescheduled.';
+      
+      // Still create/update the AI draft scorecard but with empty-conversation message
+      if (booking.job_candidate_association_id && booking.job_hiring_stage?.id && interviewer?.user_id) {
+        const { data: existingScorecard } = await supabase
+          .from('job_stage_scorecards')
+          .select('id, is_ai_draft')
+          .eq('association_id', booking.job_candidate_association_id)
+          .eq('stage_instance_id', booking.job_hiring_stage.id)
+          .eq('created_by', interviewer.user_id)
+          .single();
+
+        let scorecardId = null;
+        if (existingScorecard?.is_ai_draft) {
+          await supabase
+            .from('job_stage_scorecards')
+            .update({
+              general_overview: emptyMessage,
+              ai_suggested_rating: null,
+              source_booking_id: booking_id,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existingScorecard.id);
+          scorecardId = existingScorecard.id;
+        } else if (!existingScorecard) {
+          const { data: newScorecard } = await supabase
+            .from('job_stage_scorecards')
+            .insert({
+              association_id: booking.job_candidate_association_id,
+              candidate_id: booking.candidate_id,
+              job_id: booking.job_id,
+              stage_instance_id: booking.job_hiring_stage.id,
+              created_by: interviewer.user_id,
+              rating: 'yes',
+              general_overview: emptyMessage,
+              is_ai_draft: true,
+              source_booking_id: booking_id,
+              ai_suggested_rating: null,
+            })
+            .select('id')
+            .single();
+          scorecardId = newScorecard?.id;
+        }
+
+        // Store summary in booking
+        await supabase
+          .from('scheduled_bookings')
+          .update({ transcript_summary: emptyMessage })
+          .eq('id', booking_id);
+
+        return new Response(JSON.stringify({
+          status: 'empty_conversation',
+          booking_id,
+          scorecard_id: scorecardId,
+          message: emptyMessage,
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+    // === END EMPTY CONVERSATION GUARD ===
+
     const systemPrompt = `You are an expert interview analyst helping recruiters document interview feedback. Your task is to analyze an interview transcript and generate structured, professional interview notes.
+
+CRITICAL — EMPTY OR NEAR-EMPTY TRANSCRIPTS:
+If the transcript contains only greetings, silence markers, or system messages with no substantive interview discussion, respond with:
+- general_overview: "No substantive interview discussion took place during this call."
+- suggested_rating: "yes" (neutral default)
+- question_responses: all set to "[No discussion took place during this interview]"
+Do NOT use the candidate's resume, profile, or job description to fabricate interview notes. Your analysis must be based solely on what was actually said during the interview.
 
 Guidelines:
 - Be objective and evidence-based - cite specific examples from the transcript

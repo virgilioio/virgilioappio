@@ -83,10 +83,16 @@ interface StageScorecardProps {
   associationId: string;
   currentUserId?: string;
   onOpenFullSheet: (scorecardId: string) => void;
+  onDismissAiDraft: (scorecardId: string) => Promise<void>;
 }
 
-function StageScorecards({ stageInstanceId, associationId, currentUserId, onOpenFullSheet }: StageScorecardProps) {
-  const { scorecards, loading } = useAllStageScorecards(stageInstanceId, associationId);
+function StageScorecards({ stageInstanceId, associationId, currentUserId, onOpenFullSheet, onDismissAiDraft }: StageScorecardProps) {
+  const { scorecards, loading, refetch } = useAllStageScorecards(stageInstanceId, associationId);
+
+  const handleDismiss = async (scorecardId: string) => {
+    await onDismissAiDraft(scorecardId);
+    refetch();
+  };
 
   if (loading) {
     return <div className="text-sm text-text-tertiary">Loading scorecards...</div>;
@@ -97,6 +103,7 @@ function StageScorecards({ stageInstanceId, associationId, currentUserId, onOpen
       scorecards={scorecards}
       currentUserId={currentUserId}
       onOpenFullSheet={onOpenFullSheet}
+      onDismissAiDraft={handleDismiss}
     />
   );
 }
@@ -184,6 +191,24 @@ const { rows: myScorecards, byStage: myScorecardsByStage, upsertMyScorecard, ref
 const [scoreOpen, setScoreOpen] = useState(false)
 const [scoreStageInstId, setScoreStageInstId] = useState<string | null>(null)
 const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefined)
+
+// Dismiss AI draft scorecard
+const handleDismissAiDraft = async (scorecardId: string) => {
+  // Delete question responses first (FK constraint)
+  await (supabase as any)
+    .from('scorecard_question_responses')
+    .delete()
+    .eq('scorecard_id', scorecardId);
+  // Delete the AI draft scorecard
+  const { error } = await (supabase as any)
+    .from('job_stage_scorecards')
+    .delete()
+    .eq('id', scorecardId)
+    .eq('is_ai_draft', true);
+  if (error) throw error;
+  await refetchScorecards();
+  toast({ title: 'AI notes dismissed', description: 'The AI-generated notes have been removed.' });
+};
 
 // Fetch scorecard template visibility for the active scorecard stage
 const { data: scorecardTemplateVisibility } = useQuery({
@@ -1283,6 +1308,7 @@ const stageHasAutomation = useMemo(() => {
                   setViewingScorecardId(scorecardId)
                   setScoreOpen(true)
                 }}
+                onDismissAiDraft={handleDismissAiDraft}
               />
               
               {/* Submit Scorecard Button - show for all stages if user hasn't submitted yet or AI draft exists */}
