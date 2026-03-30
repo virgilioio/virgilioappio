@@ -31,11 +31,24 @@ const ratingOptions = [
   { value: "strong_yes" as ScoreRating, label: "Strong Yes", variant: "default" as const },
 ];
 
-export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSheet }: ExpandableScoreDisplayProps) {
+export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSheet, onDismissAiDraft }: ExpandableScoreDisplayProps) {
+  const [showDismissDialog, setShowDismissDialog] = useState(false);
+  const [dismissing, setDismissing] = useState(false);
 
   const humanScorecards = scorecards.filter(s => !s.is_ai_draft);
   const hasAiDrafts = scorecards.some(s => s.is_ai_draft);
   const firstAiDraft = scorecards.find(s => s.is_ai_draft);
+
+  const handleDismissAiDraft = async () => {
+    if (!firstAiDraft || !onDismissAiDraft) return;
+    setDismissing(true);
+    try {
+      await onDismissAiDraft(firstAiDraft.id);
+    } finally {
+      setDismissing(false);
+      setShowDismissDialog(false);
+    }
+  };
 
   const getRatingConfig = (rating: ScoreRating) => {
     return ratingOptions.find(opt => opt.value === rating) || ratingOptions[0];
