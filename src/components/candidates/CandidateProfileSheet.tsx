@@ -1308,6 +1308,7 @@ const stageHasAutomation = useMemo(() => {
                   setViewingScorecardId(scorecardId)
                   setScoreOpen(true)
                 }}
+                onDismissAiDraft={handleDismissAiDraft}
               />
               
               {/* Submit Scorecard Button - show for all stages if user hasn't submitted yet or AI draft exists */}
