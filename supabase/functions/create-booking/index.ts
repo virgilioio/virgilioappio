@@ -741,7 +741,7 @@ serve(async (req) => {
 
       await supabase.functions.invoke('send-user-email', {
         body: {
-          from_email: 'noreply@virgilio.tech',
+          from_email: 'noreply@app.gogio.io',
           to: [profile.email],
           subject: `New Interview Scheduled: ${stageName} with ${candidate_name}${jobTitle}`,
           body_html: interviewerEmailBody,

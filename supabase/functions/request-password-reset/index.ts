@@ -91,7 +91,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const emailHtml = createEmailTemplate({
       recipientName: email.split('@')[0], // Use email prefix as fallback
-      preheaderText: 'Reset your Virgilio password',
+      preheaderText: 'Reset your GoGio password',
       title: 'Reset Your Password',
       content: emailContent,
       ctaText: 'Reset Password',
