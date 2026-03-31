@@ -85,7 +85,7 @@ export function useMailIdentities() {
           queryClient.invalidateQueries({ queryKey: ['calendar-identities'] });
           
           // Recompute onboarding progress
-          refreshOnboardingProgress(queryClient, user?.id, organizationId);
+          refreshOnboardingProgress(queryClient, user?.id, tenant?.id);
         }
         
         if (e.data?.type === 'mail-oauth-error') {
