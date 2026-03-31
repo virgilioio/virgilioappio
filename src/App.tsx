@@ -86,7 +86,7 @@ function AppContent() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/accept-invite/:token" element={<AcceptInvite />} />
-        <Route path="/verify-email" element={<VerifyEmail />} />
+        
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
