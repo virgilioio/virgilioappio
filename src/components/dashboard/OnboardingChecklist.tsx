@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Check, ChevronRight } from 'lucide-react';
 import gioAvatar from '@/assets/gio-avatar.png';
