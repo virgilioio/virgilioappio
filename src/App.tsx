@@ -36,7 +36,7 @@ const SignUp = lazy(() => import('./pages/SignUp'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const AcceptInvite = lazy(() => import('./pages/AcceptInvite'))
-const VerifyEmail = lazy(() => import('./pages/VerifyEmail'))
+
 const NotFound = lazy(() => import('./pages/NotFound'))
 const CandidateProfile = lazy(() => import('@/pages/CandidateProfile'))
 const IndependentCandidateProfile = lazy(() => import('@/pages/IndependentCandidateProfile'))
