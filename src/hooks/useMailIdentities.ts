@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useOrgContext } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTenant } from '@/hooks/useTenant';
+import { refreshOnboardingProgress } from '@/utils/refreshOnboardingProgress';
 
 export interface MailIdentity {
   id: string;
@@ -22,6 +24,7 @@ export function useMailIdentities() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { organizationId } = useOrgContext();
+  const { tenant } = useTenant();
 
   const { data: identities, isLoading } = useQuery({
     queryKey: ['mail-identities'],
@@ -82,29 +85,7 @@ export function useMailIdentities() {
           queryClient.invalidateQueries({ queryKey: ['calendar-identities'] });
           
           // Recompute onboarding progress
-          try {
-            const { data: { user: authUser } } = await supabase.auth.getUser();
-            if (authUser?.id) {
-              const { data: member } = await supabase
-                .from('members')
-                .select('tenant_id')
-                .eq('user_id', authUser.id)
-                .eq('user_status', 'active')
-                .single();
-
-              if (member?.tenant_id) {
-                await supabase.rpc('check_onboarding_task_completion', {
-                  p_user_id: authUser.id,
-                  p_tenant_id: member.tenant_id
-                });
-                queryClient.invalidateQueries({ 
-                  queryKey: ['onboarding-progress', authUser.id, member.tenant_id] 
-                });
-              }
-            }
-          } catch (error) {
-            console.error('Failed to update onboarding progress:', error);
-          }
+          refreshOnboardingProgress(queryClient, user?.id, tenant?.id);
         }
         
         if (e.data?.type === 'mail-oauth-error') {

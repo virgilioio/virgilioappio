@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { refreshOnboardingProgress } from '@/utils/refreshOnboardingProgress'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrgContext } from '@/contexts/OrgContext'
@@ -321,29 +322,7 @@ export function useCandidates(jobId: string) {
       await getCandidates()
       
       // Recompute onboarding progress
-      try {
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        if (authUser?.id) {
-          const { data: member } = await supabase
-            .from('members')
-            .select('tenant_id')
-            .eq('user_id', authUser.id)
-            .eq('user_status', 'active')
-            .single();
-
-          if (member?.tenant_id) {
-            await supabase.rpc('check_onboarding_task_completion', {
-              p_user_id: authUser.id,
-              p_tenant_id: member.tenant_id
-            });
-            queryClient.invalidateQueries({ 
-              queryKey: ['onboarding-progress', authUser.id, member.tenant_id] 
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Failed to update onboarding progress:', error);
-      }
+      refreshOnboardingProgress(queryClient, user?.id, tenant?.id);
       
       return {
         id: newCandidate.id,
@@ -402,29 +381,7 @@ export function useCandidates(jobId: string) {
       await getCandidates()
       
       // Recompute onboarding progress
-      try {
-        const { data: { user: authUser } } = await supabase.auth.getUser()
-        if (authUser?.id) {
-          const { data: member } = await supabase
-            .from('members')
-            .select('tenant_id')
-            .eq('user_id', authUser.id)
-            .eq('user_status', 'active')
-            .single()
-
-          if (member?.tenant_id) {
-            await supabase.rpc('check_onboarding_task_completion', {
-              p_user_id: authUser.id,
-              p_tenant_id: member.tenant_id
-            })
-            queryClient.invalidateQueries({ 
-              queryKey: ['onboarding-progress', authUser.id, member.tenant_id] 
-            })
-          }
-        }
-      } catch (error) {
-        console.error('Failed to update onboarding progress:', error)
-      }
+      refreshOnboardingProgress(queryClient, user?.id, tenant?.id);
 
       return { id: existingCandidateId, wasMerged: true }
     } catch (err) {

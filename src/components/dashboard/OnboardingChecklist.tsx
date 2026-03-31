@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Check, ChevronRight } from 'lucide-react';
 import gioAvatar from '@/assets/gio-avatar.png';
@@ -26,10 +25,6 @@ export function OnboardingChecklist({ isDeemphasized = false }: OnboardingCheckl
     refreshProgress
   } = useOnboardingProgress();
 
-  // Recompute onboarding progress when checklist mounts
-  useEffect(() => {
-    refreshProgress();
-  }, [refreshProgress]);
   
   // Don't show if dismissed or loading
   if (isDismissed || isLoading) return null;
