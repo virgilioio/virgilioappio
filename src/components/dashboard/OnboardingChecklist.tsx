@@ -25,10 +25,6 @@ export function OnboardingChecklist({ isDeemphasized = false }: OnboardingCheckl
     refreshProgress
   } = useOnboardingProgress();
 
-  // Recompute onboarding progress when checklist mounts
-  useEffect(() => {
-    refreshProgress();
-  }, [refreshProgress]);
   
   // Don't show if dismissed or loading
   if (isDismissed || isLoading) return null;

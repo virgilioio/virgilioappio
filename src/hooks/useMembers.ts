@@ -427,29 +427,7 @@ export function useMembers(includeHierarchy: boolean = false) {
       await syncSeatsAfterChange()
       
       // Recompute onboarding progress
-      try {
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        if (authUser?.id) {
-          const { data: member } = await supabase
-            .from('members')
-            .select('tenant_id')
-            .eq('user_id', authUser.id)
-            .eq('user_status', 'active')
-            .single();
-
-          if (member?.tenant_id) {
-            await supabase.rpc('check_onboarding_task_completion', {
-              p_user_id: authUser.id,
-              p_tenant_id: member.tenant_id
-            });
-            queryClient.invalidateQueries({ 
-              queryKey: ['onboarding-progress', authUser.id, member.tenant_id] 
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Failed to update onboarding progress:', error);
-      }
+      refreshOnboardingProgress(queryClient, user?.id, tenantId);
       
       return newMember
     } catch (err) {

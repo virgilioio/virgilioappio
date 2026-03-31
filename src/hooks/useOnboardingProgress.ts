@@ -59,7 +59,7 @@ export function useOnboardingProgress() {
   });
   
   // Refresh/recalculate progress
-  const refreshProgress = async () => {
+  const refreshProgress = useCallback(async () => {
     if (!user?.id || !tenantId) return;
     
     await supabase.rpc('check_onboarding_task_completion', {
@@ -70,7 +70,7 @@ export function useOnboardingProgress() {
     queryClient.invalidateQueries({ 
       queryKey: ['onboarding-progress', user.id, tenantId] 
     });
-  };
+  }, [user?.id, tenantId, queryClient]);
   
   // Manual task completion
   const markTaskComplete = async (taskId: string, completed: boolean) => {
