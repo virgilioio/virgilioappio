@@ -24,6 +24,7 @@ export function useMailIdentities() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { organizationId } = useOrgContext();
+  const { tenant } = useTenant();
 
   const { data: identities, isLoading } = useQuery({
     queryKey: ['mail-identities'],
