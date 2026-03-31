@@ -207,7 +207,6 @@ export default function AcceptInvite() {
         } else if (signUpError.message.includes('Database error saving new user')) {
           setErrors({ general: 'There was an issue creating your account. Please try again or contact support.' });
         } else {
-        } else {
           throw signUpError;
         }
         return;
