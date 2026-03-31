@@ -163,7 +163,7 @@ export default function Onboarding() {
   // Also check for pending invitations and attempt auto-join for verified domains
   useEffect(() => {
     const checkExistingMembershipOrAutoJoin = async () => {
-      if (!user || !emailVerified) return;
+      if (!user || !isReady) return;
       
       // Check if user already has an active membership
       const { data: existingMember } = await supabase
