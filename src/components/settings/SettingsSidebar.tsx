@@ -60,6 +60,12 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
       icon: Receipt, 
       show: userType === 'workspace_owner' && !!organizationId
     },
+    {
+      id: 'integrations',
+      label: 'Integrations',
+      icon: Plug,
+      show: permissions.isMember && !permissions.isAdmin && !permissions.isWorkspaceOwner && !permissions.isPlatformAdmin,
+    },
     { 
       id: 'workspace', 
       label: 'Workspace', 
