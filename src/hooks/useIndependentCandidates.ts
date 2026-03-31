@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTenant } from '@/hooks/useTenant'
@@ -7,6 +7,7 @@ import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
 import { log } from '@/lib/logger'
 import { getOrganizationTree } from '@/lib/organizationHelpers'
 import { checkForDuplicateCandidate, createCandidate, DuplicateCheckResult } from '@/lib/candidateHelpers'
+import { useQueryClient, useQuery } from '@tanstack/react-query'
 
 export interface ContactPhone {
   type: 'work' | 'mobile' | 'other'
@@ -83,79 +84,61 @@ export interface DuplicateResult {
   mergedData: any
 }
 
+// Org tree cache (module-level, reset via effect when org changes)
+const orgTreeCache = new Map<string, string[]>()
+
+async function fetchIndependentCandidates(organizationId: string): Promise<IndependentCandidate[]> {
+  // Resolve org tree (cached)
+  let orgIds = orgTreeCache.get(organizationId)
+  if (!orgIds) {
+    orgIds = await getOrganizationTree(organizationId)
+    orgTreeCache.set(organizationId, orgIds)
+  }
+
+  const { data, error } = await withAuthRetry(async () =>
+    await supabase
+      .from('candidates')
+      .select('id,candidate_name,email,phone,contact_phones,contact_emails,location_country,location_state,location_city,salary_amount,salary_currency,salary_period,profile_summary,linkedin_url,resume_url,skills,standardized_skills,auto_generated_skills,status,source,created_at,updated_at,created_by,organization_id,seniority_level,functional_area,specialization,standardized_title,years_experience,enrichment_status,current_job_title,company_current')
+      .in('organization_id', orgIds)
+      .order('created_at', { ascending: false })
+      .limit(1000)
+  )
+
+  if (error) throw error
+
+  return (data || []).map(candidate => ({
+    ...candidate,
+    auto_generated_skills: (candidate.auto_generated_skills as any) || null
+  })) as IndependentCandidate[]
+}
+
 export function useIndependentCandidates() {
-  const [candidates, setCandidates] = useState<IndependentCandidate[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const { user, organizationId, userType } = useAuth()
   const { tenant } = useTenant()
-  const orgTreeRef = useRef<string[] | null>(null)
+  const queryClient = useQueryClient()
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
-  const isFetchingRef = useRef(false)
 
-  // Reset org tree cache when organizationId changes
+  const queryKey = ['independent-candidates', organizationId] as const
+
+  // Clear org tree cache when org changes
   useEffect(() => {
-    orgTreeRef.current = null
+    if (organizationId) orgTreeCache.delete(organizationId)
   }, [organizationId])
 
-  const getCandidates = async () => {
-    if (!user || !organizationId) return
-    
-    // Concurrency guard: skip if already fetching
-    if (isFetchingRef.current) {
-      log.debug('Skipping getCandidates — fetch already in progress')
-      return
-    }
-    isFetchingRef.current = true
+  const { data: candidates = [], isLoading, error: queryError } = useQuery({
+    queryKey,
+    queryFn: () => fetchIndependentCandidates(organizationId!),
+    enabled: !!user && !!organizationId,
+    staleTime: 30_000, // 30 seconds
+    refetchOnWindowFocus: false,
+  })
 
-    setIsLoading(true)
-    setError(null)
+  const error = queryError ? (queryError instanceof Error ? queryError.message : 'Failed to fetch candidates') : null
 
-    try {
-      log.debug('Fetching independent candidates for organization:', organizationId)
-      
-      // Use cached org tree or fetch once
-      if (!orgTreeRef.current) {
-        orgTreeRef.current = await getOrganizationTree(organizationId)
-      }
-      const orgIds = orgTreeRef.current
-      log.debug('Fetching candidates from org tree:', orgIds)
-      
-      const { data, error: fetchError } = await withAuthRetry(async () =>
-        await supabase
-          .from('candidates')
-          .select('id,candidate_name,email,phone,contact_phones,contact_emails,location_country,location_state,location_city,salary_amount,salary_currency,salary_period,profile_summary,linkedin_url,resume_url,skills,standardized_skills,auto_generated_skills,status,source,created_at,updated_at,created_by,organization_id,seniority_level,functional_area,specialization,standardized_title,years_experience,enrichment_status,current_job_title,company_current')
-          .in('organization_id', orgIds)
-          .order('created_at', { ascending: false })
-          .limit(1000)
-      )
-
-      if (fetchError) {
-        log.error('Error fetching independent candidates:', fetchError)
-        throw fetchError
-      }
-
-      log.debug('Fetched independent candidates:', data)
-      // Type cast the data to fix auto_generated_skills type mismatch
-      const typedData = (data || []).map(candidate => ({
-        ...candidate,
-        auto_generated_skills: (candidate.auto_generated_skills as any) || null
-      })) as IndependentCandidate[]
-      setCandidates(typedData)
-    } catch (err) {
-      const errorMessage = extractErrorMessage(err)
-      log.error('Independent candidates fetch error:', err)
-      setError(errorMessage)
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive'
-      })
-    } finally {
-      setIsLoading(false)
-      isFetchingRef.current = false
-    }
-  }
+  // Backward-compat refresh function
+  const getCandidates = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['independent-candidates'] })
+  }, [queryClient])
 
   const addCandidate = async (
     candidateData: CreateIndependentCandidateData,
@@ -163,17 +146,10 @@ export function useIndependentCandidates() {
   ): Promise<IndependentCandidate | DuplicateResult | null> => {
     if (!user || !organizationId) throw new Error('User not authenticated or no organization context')
 
-    setIsLoading(true)
-    setError(null)
-
     try {
-      log.debug('Adding independent candidate:', candidateData)
-      
-      // Check for duplicates using shared helper - pass tenantId for cross-tenant isolation
       const duplicateCheck = await checkForDuplicateCandidate(candidateData, organizationId, tenant?.id)
-      
+
       if (duplicateCheck) {
-        // Found duplicate - return for UI to handle
         return {
           isDuplicate: true,
           existingCandidate: duplicateCheck.existingCandidate as IndependentCandidate,
@@ -182,7 +158,6 @@ export function useIndependentCandidates() {
         }
       }
 
-      // Create candidate using shared helper
       const newCandidate = await createCandidate({
         ...candidateData,
         candidate_name: candidateData.candidate_name,
@@ -193,15 +168,13 @@ export function useIndependentCandidates() {
       })
 
       if (!options?.silent) {
-        toast({
-          title: 'Success',
-          description: 'Candidate added successfully'
-        })
+        toast({ title: 'Success', description: 'Candidate added successfully' })
       }
 
       if (!options?.skipRefresh) {
-        await getCandidates()
+        queryClient.invalidateQueries({ queryKey: ['independent-candidates'] })
       }
+
       return {
         ...newCandidate,
         auto_generated_skills: (newCandidate.auto_generated_skills as any) || null
@@ -209,28 +182,15 @@ export function useIndependentCandidates() {
     } catch (err) {
       const errorMessage = extractErrorMessage(err)
       log.error('Independent candidate creation error:', err)
-      setError(errorMessage)
       if (!options?.silent) {
-        toast({
-          title: 'Error',
-          description: errorMessage,
-          variant: 'destructive'
-        })
+        toast({ title: 'Error', description: errorMessage, variant: 'destructive' })
       }
       throw err
-    } finally {
-      setIsLoading(false)
     }
   }
 
   const updateCandidate = async (id: string, candidateData: Partial<CreateIndependentCandidateData>) => {
-    setIsLoading(true)
-    setError(null)
-
     try {
-      log.debug('Updating independent candidate:', id, candidateData)
-      
-      // Explicitly map only valid database fields to prevent schema errors
       const updateData: Record<string, any> = {}
       if (candidateData.candidate_name !== undefined) updateData.candidate_name = candidateData.candidate_name
       if (candidateData.email !== undefined) updateData.email = candidateData.email
@@ -259,135 +219,71 @@ export function useIndependentCandidates() {
           .single()
       )
 
-      if (updateError) {
-        log.error('Error updating independent candidate:', updateError)
-        throw updateError
-      }
+      if (updateError) throw updateError
 
-      log.debug('Updated independent candidate:', updatedCandidate)
-      toast({
-        title: 'Success',
-        description: 'Candidate updated successfully'
-      })
-
-      await getCandidates() // Refresh the list
+      toast({ title: 'Success', description: 'Candidate updated successfully' })
+      queryClient.invalidateQueries({ queryKey: ['independent-candidates'] })
       return updatedCandidate
     } catch (err) {
       const errorMessage = extractErrorMessage(err)
       log.error('Independent candidate update error:', err)
-      setError(errorMessage)
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive'
-      })
+      toast({ title: 'Error', description: errorMessage, variant: 'destructive' })
       throw err
-    } finally {
-      setIsLoading(false)
     }
   }
 
   const deleteCandidate = async (id: string) => {
-    setIsLoading(true)
-    setError(null)
-
     try {
-      log.debug('Deleting independent candidate:', id)
-      
-      // Platform admins must use the admin-operations edge function
-      // This ensures all admin actions are audited
       if (userType === 'platform_admin') {
-        log.debug('Platform admin deleting candidate via edge function:', id)
         const { data, error: edgeFunctionError } = await supabase.functions.invoke('admin-operations', {
-          body: { 
-            action: 'delete-candidate',
-            candidate_id: id 
-          }
+          body: { action: 'delete-candidate', candidate_id: id }
         })
 
-        if (edgeFunctionError) {
-          log.error('Error calling admin-operations edge function:', edgeFunctionError)
-          throw edgeFunctionError
-        }
+        if (edgeFunctionError) throw edgeFunctionError
+        if (!data?.success) throw new Error(data?.error || 'Failed to delete candidate')
 
-        if (!data?.success) {
-          throw new Error(data?.error || 'Failed to delete candidate')
-        }
-
-        log.debug('Candidate deleted via admin edge function:', data)
-        toast({
-          title: 'Success',
-          description: data.message || 'Candidate deleted successfully'
-        })
+        toast({ title: 'Success', description: data.message || 'Candidate deleted successfully' })
       } else {
-        // Workspace owners can delete directly via RLS
         const { error: deleteError } = await withAuthRetry(async () =>
-          await supabase
-            .from('candidates')
-            .delete()
-            .eq('id', id)
+          await supabase.from('candidates').delete().eq('id', id)
         )
-
-        if (deleteError) {
-          log.error('Error deleting independent candidate:', deleteError)
-          throw deleteError
-        }
-
-        log.debug('Deleted independent candidate:', id)
-        toast({
-          title: 'Success',
-          description: 'Candidate deleted successfully'
-        })
+        if (deleteError) throw deleteError
+        toast({ title: 'Success', description: 'Candidate deleted successfully' })
       }
-      toast({
-        title: 'Success',
-        description: 'Candidate deleted successfully'
-      })
 
-      await getCandidates() // Refresh the list
+      queryClient.invalidateQueries({ queryKey: ['independent-candidates'] })
     } catch (err) {
       const errorMessage = extractErrorMessage(err)
       log.error('Independent candidate deletion error:', err)
-      setError(errorMessage)
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive'
-      })
+      toast({ title: 'Error', description: errorMessage, variant: 'destructive' })
       throw err
-    } finally {
-      setIsLoading(false)
     }
   }
 
-  useEffect(() => {
-    if (user && organizationId) {
-      getCandidates()
-    }
-  }, [user, organizationId])
+  // Debounced invalidation for real-time
+  const debouncedInvalidate = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: ['independent-candidates'] })
+    }, 2000)
+  }, [queryClient])
 
-  // Add real-time subscription for candidates across organization hierarchy
+  // Real-time subscription
   useEffect(() => {
     if (!user?.id || !organizationId) return
 
-    console.log('🔄 Setting up real-time subscriptions for candidates')
-    
     let channel: any
-    
+
     const setupSubscription = async () => {
-      // Use cached org tree or fetch
-      if (!orgTreeRef.current) {
-        orgTreeRef.current = await getOrganizationTree(organizationId)
+      let orgIds = orgTreeCache.get(organizationId)
+      if (!orgIds) {
+        orgIds = await getOrganizationTree(organizationId)
+        orgTreeCache.set(organizationId, orgIds)
       }
-      const orgIds = orgTreeRef.current
-      console.log('📡 Setting up subscriptions for org tree:', orgIds)
-      
-      // Create unique channel name to avoid subscription conflicts
+
       const channelId = Math.random().toString(36).substr(2, 9)
-      
       channel = supabase.channel(`candidates-changes-${channelId}`)
-      
-      // Add a listener for each org ID in the hierarchy
+
       orgIds.forEach(orgId => {
         channel.on(
           'postgres_changes',
@@ -397,39 +293,23 @@ export function useIndependentCandidates() {
             table: 'candidates',
             filter: `organization_id=eq.${orgId}`
           },
-          (payload) => {
-            // Skip real-time refresh when batch enrichment is running
-            if ((window as any).__enrichmentActive) {
-              console.log('📡 Real-time change ignored — enrichment active')
-              return
-            }
-            console.log('📡 Real-time candidate change detected:', payload)
-            // Debounce: wait 2s after last change before refreshing
-            if (debounceRef.current) clearTimeout(debounceRef.current)
-            debounceRef.current = setTimeout(() => {
-              getCandidates()
-            }, 2000)
+          () => {
+            if ((window as any).__enrichmentActive) return
+            debouncedInvalidate()
           }
         )
       })
-      
-      channel.subscribe((status) => {
-        console.log('📡 Candidates subscription status:', status)
-      })
+
+      channel.subscribe()
     }
 
     setupSubscription()
 
     return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current)
-      }
-      if (channel) {
-        console.log('🔄 Cleaning up candidates subscription')
-        supabase.removeChannel(channel)
-      }
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      if (channel) supabase.removeChannel(channel)
     }
-  }, [user?.id, organizationId])
+  }, [user?.id, organizationId, debouncedInvalidate])
 
   return {
     candidates,
