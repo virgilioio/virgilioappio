@@ -560,6 +560,14 @@ export function useJobs() {
     }
   }, [userId, userType, organizationId])
 
+  // Debounced refresh for real-time events
+  const debouncedRefresh = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      getJobs()
+    }, 2000)
+  }, [getJobs])
+
   // Add real-time subscriptions for jobs
   useEffect(() => {
     if (!userId) return
@@ -575,14 +583,13 @@ export function useJobs() {
       .on(
         'postgres_changes',
         {
-          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          event: '*',
           schema: 'public',
           table: 'jobs'
         },
         (payload) => {
           console.log('📡 Real-time job change detected:', payload)
-          // Refresh jobs when changes occur
-          getJobs()
+          debouncedRefresh()
         }
       )
       .subscribe((status) => {
@@ -602,10 +609,7 @@ export function useJobs() {
         },
         (payload) => {
           console.log('Job request approved:', payload)
-          // Refresh jobs when a job request is approved
-          setTimeout(() => {
-            getJobs()
-          }, 1000) // Small delay to ensure job creation is complete
+          debouncedRefresh()
         }
       )
       .subscribe()
@@ -622,19 +626,19 @@ export function useJobs() {
         },
         (payload) => {
           console.log('Job assignments change detected:', payload)
-          // Refresh jobs when job assignments change
-          getJobs()
+          debouncedRefresh()
         }
       )
       .subscribe()
 
     return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
       console.log('Cleaning up real-time subscriptions')
       supabase.removeChannel(jobsChannel)
       supabase.removeChannel(jobRequestsChannel)
       supabase.removeChannel(jobAssignmentsChannel)
     }
-  }, [userId, userType, organizationId])
+  }, [userId, userType, organizationId, debouncedRefresh])
 
   // Job-scoped filtering: non-privileged members only see assigned jobs
   const scopedJobs = useMemo(() => {
