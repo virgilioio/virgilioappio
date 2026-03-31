@@ -241,30 +241,6 @@ export default function AcceptInvite() {
 
       console.log('Invitation processed successfully:', edgeFunctionResult)
 
-      // If user was created but not confirmed (needs email verification)
-      if (authData.user && !authData.user.email_confirmed_at) {
-        console.log('User needs email confirmation, but auto-signing in...')
-        
-        // Attempt to sign in the user immediately
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: invitationData.invite_email,
-          password: password
-        })
-
-        if (signInError) {
-          console.log('Auto sign-in failed, user will need to verify email:', signInError)
-          // Show success message but redirect to verification
-          toast({
-            title: 'Account Created Successfully!',
-            description: `Please check your email (${invitationData.invite_email}) to verify your account before signing in.`,
-            variant: 'default'
-          })
-          navigate(`/verify-email?email=${encodeURIComponent(invitationData.invite_email)}&organization=${encodeURIComponent(invitationData.organization_name)}`)
-          return
-        }
-
-        console.log('User auto-signed in successfully:', signInData.user?.id)
-      }
 
       // Show success message and redirect to dashboard
       const hasWarning = edgeFunctionResult.warning

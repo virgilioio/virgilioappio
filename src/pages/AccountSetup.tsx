@@ -131,12 +131,7 @@ export default function AccountSetup() {
         <div className="w-full max-w-md mx-auto">
           <Card className="border-0 shadow-none bg-transparent p-0">
             <CardContent className="p-0">
-              {emailVerified === false ? (
-                <VerifyEmailPending 
-                  userEmail={userEmail} 
-                  onVerified={handleEmailVerified}
-                />
-              ) : (
+              {(
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-2">
                     <Label htmlFor="firstName" className="text-base font-medium">First Name</Label>

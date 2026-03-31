@@ -42,20 +42,10 @@ export default function SignUp() {
     try {
       const { error } = await signUp(email, password)
       if (error) {
-        if (
-          error.message?.includes('Error sending confirmation email') ||
-          error.message?.includes('domain with your API key is not verified') ||
-          error.message?.includes('could not send email')
-        ) {
-          setError('Account setup is temporarily unavailable because confirmation emails cannot be sent. Please contact your administrator.')
-        } else {
-          setError(error.message)
-        }
+        setError(error.message)
       } else {
-        setSuccess('Check your email for a verification link to complete your account setup.')
-        setEmail('')
-        setPassword('')
-        setConfirmPassword('')
+        setSuccess('Account created! Redirecting...')
+        setTimeout(() => navigate('/account-setup'), 1000)
       }
     } catch (err) {
       setError('An unexpected error occurred')
