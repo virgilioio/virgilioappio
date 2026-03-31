@@ -23,15 +23,6 @@ export default function AccountSetup() {
     const checkEmailAndProfile = async () => {
       if (!user) return
 
-      setUserEmail(user.email || '')
-      
-      // Check if email is verified
-      const isGoogleOAuth = user.app_metadata?.provider === 'google'
-      const isVerified = isGoogleOAuth 
-        ? user.user_metadata?.email_verified === true
-        : user.email_confirmed_at !== null
-
-      setEmailVerified(isVerified)
 
       // Pre-fill from metadata if available (e.g., Google OAuth)
       if (user.user_metadata?.first_name) {
