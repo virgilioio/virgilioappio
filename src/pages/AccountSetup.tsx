@@ -161,7 +161,7 @@ export default function AccountSetup() {
                     type="submit" 
                     size="lg" 
                     className="w-full h-12" 
-                    disabled={isSubmitting || !emailVerified}
+                    disabled={isSubmitting}
                   >
                     {isSubmitting ? 'Saving...' : 'Continue'}
                   </Button>
