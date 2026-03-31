@@ -234,7 +234,7 @@ export function useOrganizations() {
       await getOrganizations()
       
       // Recompute onboarding progress
-      refreshOnboardingProgress(queryClient, user?.id, tenantId);
+      refreshOnboardingProgress(queryClient, user?.id, tenantOrgId);
       
       return newOrg
     } catch (err) {

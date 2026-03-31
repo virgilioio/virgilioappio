@@ -381,7 +381,7 @@ export function useCandidates(jobId: string) {
       await getCandidates()
       
       // Recompute onboarding progress
-      refreshOnboardingProgress(queryClient, user?.id, tenantId);
+      refreshOnboardingProgress(queryClient, user?.id, tenant?.id);
 
       return { id: existingCandidateId, wasMerged: true }
     } catch (err) {

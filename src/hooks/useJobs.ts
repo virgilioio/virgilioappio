@@ -328,7 +328,7 @@ export function useJobs() {
       await getJobs() // Refresh the list
       
       // Recompute onboarding progress
-      refreshOnboardingProgress(queryClient, user?.id, tenantId);
+      refreshOnboardingProgress(queryClient, user?.id, orgData.tenant_id);
       
       return newJob
     } catch (err) {
