@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/hooks/use-toast'
 import { GoGioLogo } from '@/components/GoGioLogo'
-import { VerifyEmailPending } from '@/components/VerifyEmailPending'
+
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrgContext } from '@/contexts/OrgContext'
 import onboardingHero from '@/assets/onboarding-hero-new.png'
@@ -26,8 +26,7 @@ interface PendingInvitation {
 export default function Onboarding() {
   const [workspaceName, setWorkspaceName] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [emailVerified, setEmailVerified] = useState<boolean | null>(null)
-  const [userEmail, setUserEmail] = useState('')
+  const [isReady, setIsReady] = useState(false)
   const [provisioningStatus, setProvisioningStatus] = useState<'idle' | 'creating' | 'configuring' | 'finalizing' | 'complete'>('idle')
   const [pendingInvitation, setPendingInvitation] = useState<PendingInvitation | null>(null)
   const { toast } = useToast()
@@ -37,21 +36,7 @@ export default function Onboarding() {
   const { refreshOrgContext } = useOrgContext()
 
   useEffect(() => {
-    const checkEmailVerification = async () => {
-      if (!user) return
-
-      setUserEmail(user.email || '')
-      
-      // Check if email is verified
-      const isGoogleOAuth = user.app_metadata?.provider === 'google'
-      const isVerified = isGoogleOAuth 
-        ? user.user_metadata?.email_verified === true
-        : user.email_confirmed_at !== null
-
-      setEmailVerified(isVerified)
-    }
-
-    checkEmailVerification()
+    if (user) setIsReady(true)
   }, [user])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,7 +62,6 @@ export default function Onboarding() {
       if (error) {
         console.error('[Onboarding] Provision-tenant error', error)
         if (error.message?.includes('EMAIL_NOT_VERIFIED')) {
-          setEmailVerified(false)
           setProvisioningStatus('idle')
           setIsSubmitting(false)
           return
@@ -162,7 +146,6 @@ export default function Onboarding() {
       console.error('[Onboarding] Onboarding failed', err)
       setProvisioningStatus('idle')
       if (err?.message?.includes('EMAIL_NOT_VERIFIED')) {
-        setEmailVerified(false)
       } else {
         toast({ 
           title: 'Onboarding failed', 
@@ -175,19 +158,12 @@ export default function Onboarding() {
     }
   }
 
-  const handleEmailVerified = () => {
-    setEmailVerified(true)
-    toast({ 
-      title: 'Email verified!', 
-      description: 'You can now create your workspace.' 
-    })
-  }
 
   // Pre-flight check: If user already has a workspace, redirect to dashboard
   // Also check for pending invitations and attempt auto-join for verified domains
   useEffect(() => {
     const checkExistingMembershipOrAutoJoin = async () => {
-      if (!user || !emailVerified) return;
+      if (!user || !isReady) return;
       
       // Check if user already has an active membership
       const { data: existingMember } = await supabase
@@ -308,7 +284,7 @@ export default function Onboarding() {
     };
     
     checkExistingMembershipOrAutoJoin();
-  }, [user, emailVerified, navigate, toast, refreshOrgContext]);
+  }, [user, isReady, navigate, toast, refreshOrgContext]);
 
 
   const handleCancel = async () => {
@@ -363,17 +339,12 @@ export default function Onboarding() {
         <div className="w-full max-w-md mx-auto">
           <Card className="border-0 shadow-none bg-transparent p-0">
             <CardContent className="p-0">
-              {emailVerified === false ? (
-                <VerifyEmailPending 
-                  userEmail={userEmail} 
-                  onVerified={handleEmailVerified}
-                />
-              ) : (
+              {(
                 <>
                   {pendingInvitation && (
                     <PendingInvitationAlert 
                       invitation={pendingInvitation} 
-                      userEmail={userEmail}
+                      userEmail={user?.email || ''}
                     />
                   )}
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -393,7 +364,7 @@ export default function Onboarding() {
                     type="submit" 
                     size="lg" 
                     className="w-full h-12" 
-                    disabled={isSubmitting || !emailVerified}
+                    disabled={isSubmitting}
                   >
                     {isSubmitting ? 'Creating...' : 'Create workspace'}
                   </Button>

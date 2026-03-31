@@ -36,7 +36,7 @@ const SignUp = lazy(() => import('./pages/SignUp'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const AcceptInvite = lazy(() => import('./pages/AcceptInvite'))
-const VerifyEmail = lazy(() => import('./pages/VerifyEmail'))
+
 const NotFound = lazy(() => import('./pages/NotFound'))
 const CandidateProfile = lazy(() => import('@/pages/CandidateProfile'))
 const IndependentCandidateProfile = lazy(() => import('@/pages/IndependentCandidateProfile'))
@@ -86,7 +86,7 @@ function AppContent() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/accept-invite/:token" element={<AcceptInvite />} />
-        <Route path="/verify-email" element={<VerifyEmail />} />
+        
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />

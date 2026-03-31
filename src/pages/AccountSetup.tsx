@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import { GoGioLogo } from '@/components/GoGioLogo'
-import { VerifyEmailPending } from '@/components/VerifyEmailPending'
+
 import { useAuth } from '@/contexts/AuthContext'
 import onboardingHero from '@/assets/onboarding-hero-new.png'
 
@@ -15,8 +15,6 @@ export default function AccountSetup() {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [emailVerified, setEmailVerified] = useState<boolean | null>(null)
-  const [userEmail, setUserEmail] = useState('')
   const navigate = useNavigate()
   
   const { user, logout } = useAuth()
@@ -25,15 +23,6 @@ export default function AccountSetup() {
     const checkEmailAndProfile = async () => {
       if (!user) return
 
-      setUserEmail(user.email || '')
-      
-      // Check if email is verified
-      const isGoogleOAuth = user.app_metadata?.provider === 'google'
-      const isVerified = isGoogleOAuth 
-        ? user.user_metadata?.email_verified === true
-        : user.email_confirmed_at !== null
-
-      setEmailVerified(isVerified)
 
       // Pre-fill from metadata if available (e.g., Google OAuth)
       if (user.user_metadata?.first_name) {
@@ -105,10 +94,6 @@ export default function AccountSetup() {
     }
   }
 
-  const handleEmailVerified = () => {
-    setEmailVerified(true)
-    toast.success('Email verified! You can now complete your account setup.')
-  }
 
   const handleCancel = async () => {
     try {
@@ -146,12 +131,7 @@ export default function AccountSetup() {
         <div className="w-full max-w-md mx-auto">
           <Card className="border-0 shadow-none bg-transparent p-0">
             <CardContent className="p-0">
-              {emailVerified === false ? (
-                <VerifyEmailPending 
-                  userEmail={userEmail} 
-                  onVerified={handleEmailVerified}
-                />
-              ) : (
+              {(
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-2">
                     <Label htmlFor="firstName" className="text-base font-medium">First Name</Label>
@@ -181,7 +161,7 @@ export default function AccountSetup() {
                     type="submit" 
                     size="lg" 
                     className="w-full h-12" 
-                    disabled={isSubmitting || !emailVerified}
+                    disabled={isSubmitting}
                   >
                     {isSubmitting ? 'Saving...' : 'Continue'}
                   </Button>
