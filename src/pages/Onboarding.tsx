@@ -36,21 +36,7 @@ export default function Onboarding() {
   const { refreshOrgContext } = useOrgContext()
 
   useEffect(() => {
-    const checkEmailVerification = async () => {
-      if (!user) return
-
-      setUserEmail(user.email || '')
-      
-      // Check if email is verified
-      const isGoogleOAuth = user.app_metadata?.provider === 'google'
-      const isVerified = isGoogleOAuth 
-        ? user.user_metadata?.email_verified === true
-        : user.email_confirmed_at !== null
-
-      setEmailVerified(isVerified)
-    }
-
-    checkEmailVerification()
+    if (user) setIsReady(true)
   }, [user])
 
   const handleSubmit = async (e: React.FormEvent) => {
