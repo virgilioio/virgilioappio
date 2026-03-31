@@ -1,31 +1,45 @@
 
 
-# Disable Email Confirmation Entirely
+# Fix: Frontend Request Storm from Onboarding Progress
 
-## What changes
+## Root cause
 
-### 1. Supabase Dashboard (YOU must do this)
-Go to **Authentication → Providers → Email** and turn OFF **"Confirm email"** (or "Enable email confirmations"). This makes all signups immediately active — no confirmation email sent.
+**Infinite render loop in `OnboardingChecklist`**: `refreshProgress` is a plain async function (not wrapped in `useCallback`), so it gets a new reference on every render. The `useEffect([refreshProgress])` fires on every render, which calls the RPC, invalidates the query, triggers a re-render, which creates a new `refreshProgress`, which triggers the effect again — infinite loop.
 
-### 2. Code cleanup — remove all email verification gates and pages
+Additionally, 5 other hooks (`useCandidates`, `useJobs`, `useMembers`, `useOrganizations`, `useMailIdentities`) each independently call `supabase.auth.getUser()` + query `members` + call the same `check_onboarding_task_completion` RPC after every mutation. That's 3 extra requests per mutation, duplicated across hooks.
 
-With confirmation disabled, `email_confirmed_at` is set immediately on signup. All verification UI becomes dead code.
+## Fix plan
+
+### 1. Stabilize `refreshProgress` in `useOnboardingProgress.ts`
+
+Wrap `refreshProgress` in `useCallback` with `[user?.id, tenantId]` dependencies. This stops the infinite loop immediately.
+
+### 2. Remove the `useEffect` trigger in `OnboardingChecklist.tsx`
+
+Delete the `useEffect(() => { refreshProgress() }, [refreshProgress])` block entirely. React Query already fetches on mount via `useQuery`. The RPC should only run on explicit user actions (mutations), not on every mount/re-render.
+
+### 3. Consolidate RPC calls in mutation hooks
+
+In `useCandidates.ts`, `useJobs.ts`, `useMembers.ts`, `useOrganizations.ts`, and `useMailIdentities.ts`: replace the 10-line inline RPC block (getUser → query members → call RPC → invalidate) with a single call to a shared helper that uses cached auth/tenant data and deduplicates concurrent calls.
+
+Create a small utility `src/utils/refreshOnboardingProgress.ts`:
+- Accepts `queryClient`, `userId`, `tenantId`
+- Calls the RPC once
+- Invalidates `['onboarding-progress']`
+- Uses an in-flight guard ref to prevent duplicate concurrent calls
+
+Then each mutation hook just calls `refreshOnboardingProgress(queryClient, user.id, tenantId)` instead of the full inline block.
+
+## Files changed
 
 | File | Change |
 |------|--------|
-| `src/pages/AcceptInvite.tsx` | Remove the `email_confirmed_at` check block (~lines 249-272) that redirects to `/verify-email`. After signup, go straight to dashboard. Remove the SMTP error handling (lines 209-214) since no confirmation email is sent anymore. |
-| `src/pages/SignUp.tsx` | Remove SMTP error handling (lines 45-53). Change success message from "Check your email for verification" to "Account created! Redirecting..." and auto-redirect to `/account-setup` or `/dashboard`. |
-| `src/pages/AccountSetup.tsx` | Remove `emailVerified` state, the `email_confirmed_at` check (lines 30-36), and the `VerifyEmailPending` conditional render (lines 149-152). Always show the form directly. |
-| `src/pages/Onboarding.tsx` | Same as AccountSetup — remove `emailVerified` gate and `VerifyEmailPending` conditional. |
-| `src/pages/VerifyEmail.tsx` | Delete this file entirely — no longer needed. |
-| `src/components/VerifyEmailPending.tsx` | Delete this file entirely — no longer needed. |
-| `src/App.tsx` | Remove the `/verify-email` route (line 89) and its lazy import (line 39). |
-| `src/contexts/AuthContext.tsx` | Remove `emailRedirectTo` from `signUp` options (line 90) — no longer relevant. |
-
-### Summary
-
-- **Dashboard**: Disable email confirmation toggle
-- **Delete**: 2 files (`VerifyEmail.tsx`, `VerifyEmailPending.tsx`)
-- **Simplify**: 5 files (remove verification gates and dead error handling)
-- **Result**: Invited users sign up and land in the app immediately. Regular signups work instantly too. Zero SMTP dependency for account creation.
+| `src/hooks/useOnboardingProgress.ts` | Wrap `refreshProgress` in `useCallback` |
+| `src/components/dashboard/OnboardingChecklist.tsx` | Remove the `useEffect` that calls `refreshProgress` on mount |
+| `src/utils/refreshOnboardingProgress.ts` | New shared helper with in-flight guard |
+| `src/hooks/useCandidates.ts` | Replace inline RPC block with shared helper call |
+| `src/hooks/useJobs.ts` | Same |
+| `src/hooks/useMembers.ts` | Same |
+| `src/hooks/useOrganizations.ts` | Same |
+| `src/hooks/useMailIdentities.ts` | Same |
 
