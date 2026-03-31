@@ -364,7 +364,7 @@ export default function Onboarding() {
                     type="submit" 
                     size="lg" 
                     className="w-full h-12" 
-                    disabled={isSubmitting || !emailVerified}
+                    disabled={isSubmitting}
                   >
                     {isSubmitting ? 'Creating...' : 'Create workspace'}
                   </Button>
