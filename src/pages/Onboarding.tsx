@@ -339,12 +339,7 @@ export default function Onboarding() {
         <div className="w-full max-w-md mx-auto">
           <Card className="border-0 shadow-none bg-transparent p-0">
             <CardContent className="p-0">
-              {emailVerified === false ? (
-                <VerifyEmailPending 
-                  userEmail={userEmail} 
-                  onVerified={handleEmailVerified}
-                />
-              ) : (
+              {(
                 <>
                   {pendingInvitation && (
                     <PendingInvitationAlert 
