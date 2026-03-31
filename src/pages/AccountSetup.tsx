@@ -94,10 +94,6 @@ export default function AccountSetup() {
     }
   }
 
-  const handleEmailVerified = () => {
-    setEmailVerified(true)
-    toast.success('Email verified! You can now complete your account setup.')
-  }
 
   const handleCancel = async () => {
     try {
