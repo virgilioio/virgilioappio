@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import { GoGioLogo } from '@/components/GoGioLogo'
-import { VerifyEmailPending } from '@/components/VerifyEmailPending'
+
 import { useAuth } from '@/contexts/AuthContext'
 import onboardingHero from '@/assets/onboarding-hero-new.png'
 
