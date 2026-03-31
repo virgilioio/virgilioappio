@@ -62,7 +62,6 @@ export default function Onboarding() {
       if (error) {
         console.error('[Onboarding] Provision-tenant error', error)
         if (error.message?.includes('EMAIL_NOT_VERIFIED')) {
-          setEmailVerified(false)
           setProvisioningStatus('idle')
           setIsSubmitting(false)
           return
