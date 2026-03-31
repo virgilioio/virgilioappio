@@ -1,33 +1,101 @@
 
+# Fix invitation signup failure: separate Auth email config from app email config
 
-# Fix: Old Virgilio Domain Still Used as Email Sender
+## What I found
+
+This is still not an RLS problem, and not the `accept-invitation-with-metadata` step.
+
+The actual failure happens earlier at:
+
+```text
+POST /signup → 500 Error sending confirmation email
+```
+
+The auth logs confirm the same error twice today for different users:
+
+```text
+gomail: could not send email 1: 550 The associated domain with your API key is not verified.
+Please, create a new API key with full access or with a verified domain.
+```
+
+## Important clarification
+
+Your custom invitation emails can still be sending correctly from `gogio.io` while invited-user signup still fails.
+
+Why:
+
+- `send-invitation` uses the project Edge Function secret `RESEND_API_KEY`
+- `AcceptInvite.tsx` creates the account with `supabase.auth.signUp(...)`
+- that signup triggers **Supabase Auth’s own email sender / SMTP configuration**
+- the failing API key is therefore the one configured in **Supabase Auth SMTP settings**, which is separate from the key your invitation Edge Function uses
+
+So this explains the contradiction:
+- invite email arrives fine
+- user clicks invite
+- account creation fails on `/signup`
+- they see “Failed to accept invitation”
 
 ## Root cause
 
-Yes — this is exactly what's breaking invitations. The Supabase Auth SMTP configuration is still sending from `noreply@app.virgilio.io`, but your mail provider (Resend) only has `gogio.io` verified. Resend rejects every email with `550 The associated domain with your API key is not verified`.
+Supabase Auth is configured with a Resend/API key that is not authorized for the sender domain being used for confirmation emails.
 
-## Two things to fix
+Even if the visible sender is already `noreply@app.gogio.io`, the underlying API key configured in Supabase Auth is still wrong / scoped incorrectly / not full-access.
 
-### 1. Supabase Dashboard — SMTP sender address (YOU must do this)
+## Fix plan
 
-This is **not** a code change — it's a configuration change in your Supabase project:
+### 1. Fix the actual infrastructure issue in Supabase Auth
+In Supabase Dashboard:
 
-1. Go to **Supabase Dashboard → Authentication → Email Templates → SMTP Settings**
-2. Change the **Sender email** from `noreply@app.virgilio.io` to `noreply@app.gogio.io`
-3. Save
+```text
+Authentication → Email Templates / SMTP Settings
+```
 
-This unblocks all Auth emails: signup confirmations, password resets, magic links, and invitation signups.
+Update the SMTP/API credentials used by Supabase Auth:
+- replace the current Resend key with a **Full Access** key, or
+- use a key explicitly authorized for `app.gogio.io` / `gogio.io`
 
-### 2. Code fix — hardcoded old domain in `create-booking`
+Also verify the sender address there matches:
+```text
+noreply@app.gogio.io
+```
 
-**File**: `supabase/functions/create-booking/index.ts` (line 744)
+This is the real unblocker.
 
-Change `noreply@virgilio.tech` → `noreply@app.gogio.io` so booking notification emails also send from the correct domain.
+### 2. Improve the invite acceptance UI error
+Update `src/pages/AcceptInvite.tsx` so when signup fails with:
+- `Error sending confirmation email`
+- `associated domain with your API key is not verified`
+- generic `/signup` 500 from Auth
 
-## Files changed
+the user sees a precise message instead of the misleading:
+```text
+Failed to accept invitation. Please try again.
+```
+
+Use wording like:
+```text
+We couldn’t finish account setup because confirmation emails are temporarily unavailable. Please contact your administrator.
+```
+
+### 3. Optional hardening
+Also update normal signup handling (`src/contexts/AuthContext.tsx` or `src/pages/SignUp.tsx`) so the same infrastructure error is surfaced clearly outside the invite flow.
+
+## Files to update
 
 | File | Change |
-|------|--------|
-| `supabase/functions/create-booking/index.ts` | Replace `noreply@virgilio.tech` with `noreply@app.gogio.io` |
-| **Supabase Dashboard** (manual) | Update SMTP sender from `virgilio.io` to `gogio.io` |
+|---|---|
+| `src/pages/AcceptInvite.tsx` | Add specific handling for Auth email-sending failures during `signUp` |
+| `src/contexts/AuthContext.tsx` or `src/pages/SignUp.tsx` | Optionally surface the same SMTP/Auth error more clearly for regular signup |
 
+## Notes
+
+- No evidence points to `accept-invitation-with-metadata` being the failing step
+- No evidence points to members-table RLS blocking invited users
+- `send-confirmation-email` Edge Function exists in the repo, but the current auth logs show Supabase Auth itself is still trying and failing to send the confirmation email during `/signup`
+
+## Recommended implementation order
+
+1. Correct Supabase Auth SMTP/API key in dashboard
+2. Patch `AcceptInvite.tsx` error handling
+3. Patch regular signup error handling for consistency
+4. Re-test invited-user signup end to end
