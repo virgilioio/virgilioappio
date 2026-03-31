@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { refreshOnboardingProgress } from '@/utils/refreshOnboardingProgress'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrgContext } from '@/contexts/OrgContext'
