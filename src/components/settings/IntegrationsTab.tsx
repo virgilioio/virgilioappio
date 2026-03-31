@@ -221,8 +221,13 @@ export function IntegrationsTab({ initialConfigureId }: IntegrationsTabProps) {
 
   const hasActiveFilters = search.length > 0 || selectedCategories.length > 0 || selectedStatuses.length > 0
 
+  const { isAdmin, isWorkspaceOwner, isPlatformAdmin } = usePermissions()
+  const isAdminLevel = isAdmin || isWorkspaceOwner || isPlatformAdmin
+
   const filteredIntegrations = useMemo(() => {
     return INTEGRATIONS.filter((entry) => {
+      // WhatsApp is admin-only
+      if (entry.id === 'whatsapp' && !isAdminLevel) return false
       if (search) {
         const q = search.toLowerCase()
         if (!entry.name.toLowerCase().includes(q) && !entry.description.toLowerCase().includes(q)) {
@@ -239,7 +244,7 @@ export function IntegrationsTab({ initialConfigureId }: IntegrationsTabProps) {
       }
       return true
     })
-  }, [search, selectedCategories, selectedStatuses, statuses])
+  }, [search, selectedCategories, selectedStatuses, statuses, isAdminLevel])
 
   const dialogEntry = dialogId ? INTEGRATIONS.find((e) => e.id === dialogId) : null
   const configEntry = configureId ? INTEGRATIONS.find((e) => e.id === configureId) : null
