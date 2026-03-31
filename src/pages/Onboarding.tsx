@@ -344,7 +344,7 @@ export default function Onboarding() {
                   {pendingInvitation && (
                     <PendingInvitationAlert 
                       invitation={pendingInvitation} 
-                      userEmail={userEmail}
+                      userEmail={user?.email || ''}
                     />
                   )}
                 <form onSubmit={handleSubmit} className="space-y-6">
