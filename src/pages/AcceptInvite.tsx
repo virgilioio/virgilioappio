@@ -206,6 +206,12 @@ export default function AcceptInvite() {
           return;
         } else if (signUpError.message.includes('Database error saving new user')) {
           setErrors({ general: 'There was an issue creating your account. Please try again or contact support.' });
+        } else if (
+          signUpError.message.includes('Error sending confirmation email') ||
+          signUpError.message.includes('domain with your API key is not verified') ||
+          signUpError.message.includes('could not send email')
+        ) {
+          setErrors({ general: 'We couldn\'t finish account setup because confirmation emails are temporarily unavailable. Please contact your administrator.' });
         } else {
           throw signUpError;
         }
