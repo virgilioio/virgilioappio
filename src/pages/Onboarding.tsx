@@ -146,7 +146,6 @@ export default function Onboarding() {
       console.error('[Onboarding] Onboarding failed', err)
       setProvisioningStatus('idle')
       if (err?.message?.includes('EMAIL_NOT_VERIFIED')) {
-        setEmailVerified(false)
       } else {
         toast({ 
           title: 'Onboarding failed', 
