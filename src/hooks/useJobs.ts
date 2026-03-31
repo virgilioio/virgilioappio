@@ -146,6 +146,13 @@ export function useJobs() {
   const getJobs = useCallback(async () => {
     if (!user) return
 
+    // Concurrency guard: skip if already fetching
+    if (isFetchingRef.current) {
+      log.debug('Skipping getJobs — fetch already in progress')
+      return
+    }
+    isFetchingRef.current = true
+
     setIsLoading(true)
     setError(null)
 
@@ -163,6 +170,7 @@ export function useJobs() {
       })
     } finally {
       setIsLoading(false)
+      isFetchingRef.current = false
     }
   }, [user, userType, organizationId])
 
