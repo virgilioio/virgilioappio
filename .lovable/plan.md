@@ -1,45 +1,106 @@
 
 
-# Fix: Frontend Request Storm from Onboarding Progress
+# Performance Optimization Plan
 
-## Root cause
+## Diagnosis
 
-**Infinite render loop in `OnboardingChecklist`**: `refreshProgress` is a plain async function (not wrapped in `useCallback`), so it gets a new reference on every render. The `useEffect([refreshProgress])` fires on every render, which calls the RPC, invalidates the query, triggers a re-render, which creates a new `refreshProgress`, which triggers the effect again — infinite loop.
+After reviewing the codebase, here are the key performance bottlenecks:
 
-Additionally, 5 other hooks (`useCandidates`, `useJobs`, `useMembers`, `useOrganizations`, `useMailIdentities`) each independently call `supabase.auth.getUser()` + query `members` + call the same `check_onboarding_task_completion` RPC after every mutation. That's 3 extra requests per mutation, duplicated across hooks.
+### 1. Jobs real-time subscriptions fire `getJobs()` with ZERO debounce
+The candidates hook has a 2-second debounce on real-time changes. The jobs hook has **none** — every single `postgres_changes` event on `jobs`, `job_requests`, and `job_assignments` tables triggers an immediate full refetch. With many users, this creates a cascade of redundant fetches.
 
-## Fix plan
+### 2. Core data hooks (`useJobs`, `useIndependentCandidates`, `useCandidates`) use raw `useState` instead of React Query
+These are the most critical hooks in the app, yet they don't use React Query — meaning:
+- No **stale-time caching** — every mount triggers a fresh fetch
+- No **deduplication** — if 3 components use `useJobs()`, you get 3 separate fetches
+- No **background refetch** — real-time subs do full state wipes instead of smooth updates
+- Every mutation calls `await getJobs()` / `await getCandidates()` synchronously, blocking the UI
 
-### 1. Stabilize `refreshProgress` in `useOnboardingProgress.ts`
+Meanwhile, 37 other hooks in the app already use React Query properly with `staleTime`.
 
-Wrap `refreshProgress` in `useCallback` with `[user?.id, tenantId]` dependencies. This stops the infinite loop immediately.
+### 3. Real-time creates new channels on every mount
+`useJobs` creates 3 Supabase channels (jobs, job_requests, job_assignments) per mount. `useIndependentCandidates` creates 1 channel per org ID in the hierarchy. Channel IDs are random, so they're never reused.
 
-### 2. Remove the `useEffect` trigger in `OnboardingChecklist.tsx`
+### 4. `getJobsOptimized` fires an extra query to resolve `tenant_id` on every call
+Every time jobs are fetched, there's a preliminary `SELECT tenant_id FROM organizations` query that could be cached.
 
-Delete the `useEffect(() => { refreshProgress() }, [refreshProgress])` block entirely. React Query already fetches on mount via `useQuery`. The RPC should only run on explicit user actions (mutations), not on every mount/re-render.
+## Plan
 
-### 3. Consolidate RPC calls in mutation hooks
+### Phase 1 — Quick wins (immediate impact, low risk)
 
-In `useCandidates.ts`, `useJobs.ts`, `useMembers.ts`, `useOrganizations.ts`, and `useMailIdentities.ts`: replace the 10-line inline RPC block (getUser → query members → call RPC → invalidate) with a single call to a shared helper that uses cached auth/tenant data and deduplicates concurrent calls.
+**A. Debounce jobs real-time subscriptions**
+- File: `src/hooks/useJobs.ts`
+- Add a 2-second debounce (same as candidates) on all 3 real-time channel callbacks
+- Prevents rapid-fire `getJobs()` when multiple records change at once
 
-Create a small utility `src/utils/refreshOnboardingProgress.ts`:
-- Accepts `queryClient`, `userId`, `tenantId`
-- Calls the RPC once
-- Invalidates `['onboarding-progress']`
-- Uses an in-flight guard ref to prevent duplicate concurrent calls
+**B. Add concurrency guard to `useJobs.getJobs()`**
+- File: `src/hooks/useJobs.ts`
+- Same pattern as `useIndependentCandidates` — skip fetch if one is already in-flight
+- Prevents overlapping fetches from real-time + manual refresh collisions
 
-Then each mutation hook just calls `refreshOnboardingProgress(queryClient, user.id, tenantId)` instead of the full inline block.
+**C. Cache tenant_id resolution in `useJobs`**
+- File: `src/hooks/useJobs.ts`
+- Store resolved `tenantId` in a ref instead of querying `organizations` on every `getJobs()` call
+- Reset ref when `organizationId` changes
+
+### Phase 2 — Migrate core hooks to React Query (high impact, moderate effort)
+
+This is the single biggest improvement. Convert the 3 heaviest hooks from raw `useState` + `useEffect` to React Query:
+
+**D. Migrate `useJobs` to React Query**
+- File: `src/hooks/useJobs.ts`
+- Replace `useState` + `useEffect` fetch with `useQuery({ queryKey: ['jobs', organizationId], ... })`
+- Set `staleTime: 60_000` (1 minute) — jobs don't change every second
+- Mutations use `queryClient.invalidateQueries(['jobs'])` instead of `await getJobs()`
+- Real-time subscription calls `invalidateQueries` instead of direct refetch
+- Keeps `scopedJobs` memo for role-based filtering
+
+**E. Migrate `useIndependentCandidates` to React Query**
+- File: `src/hooks/useIndependentCandidates.ts`
+- Same pattern: `useQuery` with `staleTime: 30_000`
+- Real-time changes invalidate instead of full refetch
+- Deduplicates across `Candidates.tsx` + any other consumers
+
+**F. Migrate `useCandidates` to React Query**
+- File: `src/hooks/useCandidates.ts`
+- Same pattern, scoped by `jobId`
+
+### Phase 3 — Database-side (requires Supabase Dashboard)
+
+**G. Add missing indexes on high-traffic foreign keys**
+These are the joins that run on every page load — indexes here directly reduce query time:
+- `job_candidate_associations.candidate_id` (if not indexed)
+- `job_candidate_associations.job_id` (if not indexed)
+- `candidates.organization_id`
+- `jobs.tenant_id`
+- `members.user_id` + `members.organization_id` composite
+
+**H. Optimize RLS predicates**
+Wrap `auth.uid()` calls in `(select auth.uid())` to prevent re-evaluation per row. This is a known Supabase performance pattern — the subselect is evaluated once per query instead of once per row.
+
+## Implementation order
+
+| Step | Impact | Risk | Effort |
+|------|--------|------|--------|
+| A. Debounce jobs real-time | High | Very low | 15 min |
+| B. Concurrency guard on getJobs | Medium | Very low | 10 min |
+| C. Cache tenant_id | Low | Very low | 10 min |
+| D. Migrate useJobs to React Query | Very high | Medium | 1 hour |
+| E. Migrate useIndependentCandidates to RQ | Very high | Medium | 1 hour |
+| F. Migrate useCandidates to RQ | High | Medium | 45 min |
+| G. Add DB indexes | High | Low | Migration |
+| H. Optimize RLS auth.uid() | Medium | Low | Migration |
+
+## Recommendation
+
+I'd suggest we start with **Phase 1 (A+B+C)** — these are safe, surgical changes that will immediately reduce redundant network requests by 50-70%. Then we can tackle Phase 2 incrementally, one hook at a time.
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/hooks/useOnboardingProgress.ts` | Wrap `refreshProgress` in `useCallback` |
-| `src/components/dashboard/OnboardingChecklist.tsx` | Remove the `useEffect` that calls `refreshProgress` on mount |
-| `src/utils/refreshOnboardingProgress.ts` | New shared helper with in-flight guard |
-| `src/hooks/useCandidates.ts` | Replace inline RPC block with shared helper call |
-| `src/hooks/useJobs.ts` | Same |
-| `src/hooks/useMembers.ts` | Same |
-| `src/hooks/useOrganizations.ts` | Same |
-| `src/hooks/useMailIdentities.ts` | Same |
+| `src/hooks/useJobs.ts` | Debounce real-time callbacks, add concurrency guard, cache tenant_id |
+| `src/hooks/useIndependentCandidates.ts` | (Phase 2) Migrate to React Query |
+| `src/hooks/useCandidates.ts` | (Phase 2) Migrate to React Query |
+| DB migration | (Phase 3) Add indexes + optimize RLS |
 
