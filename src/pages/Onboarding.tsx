@@ -26,8 +26,7 @@ interface PendingInvitation {
 export default function Onboarding() {
   const [workspaceName, setWorkspaceName] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [emailVerified, setEmailVerified] = useState<boolean | null>(null)
-  const [userEmail, setUserEmail] = useState('')
+  const [isReady, setIsReady] = useState(false)
   const [provisioningStatus, setProvisioningStatus] = useState<'idle' | 'creating' | 'configuring' | 'finalizing' | 'complete'>('idle')
   const [pendingInvitation, setPendingInvitation] = useState<PendingInvitation | null>(null)
   const { toast } = useToast()
