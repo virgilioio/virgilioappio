@@ -284,7 +284,7 @@ export default function Onboarding() {
     };
     
     checkExistingMembershipOrAutoJoin();
-  }, [user, emailVerified, navigate, toast, refreshOrgContext]);
+  }, [user, isReady, navigate, toast, refreshOrgContext]);
 
 
   const handleCancel = async () => {
