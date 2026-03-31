@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { refreshOnboardingProgress } from '@/utils/refreshOnboardingProgress'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
