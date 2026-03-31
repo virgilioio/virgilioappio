@@ -158,13 +158,6 @@ export default function Onboarding() {
     }
   }
 
-  const handleEmailVerified = () => {
-    setEmailVerified(true)
-    toast({ 
-      title: 'Email verified!', 
-      description: 'You can now create your workspace.' 
-    })
-  }
 
   // Pre-flight check: If user already has a workspace, redirect to dashboard
   // Also check for pending invitations and attempt auto-join for verified domains
