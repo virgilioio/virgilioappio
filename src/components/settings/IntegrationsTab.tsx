@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { usePermissions } from '@/hooks/usePermissions'
 import { Search, X } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Input } from '@/components/ui/input'
