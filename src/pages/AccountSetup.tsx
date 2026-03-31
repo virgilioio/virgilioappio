@@ -15,8 +15,6 @@ export default function AccountSetup() {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [emailVerified, setEmailVerified] = useState<boolean | null>(null)
-  const [userEmail, setUserEmail] = useState('')
   const navigate = useNavigate()
   
   const { user, logout } = useAuth()
