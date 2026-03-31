@@ -206,6 +206,12 @@ export default function AcceptInvite() {
           return;
         } else if (signUpError.message.includes('Database error saving new user')) {
           setErrors({ general: 'There was an issue creating your account. Please try again or contact support.' });
+        } else if (
+          signUpError.message.includes('Error sending confirmation email') ||
+          signUpError.message.includes('domain with your API key is not verified') ||
+          signUpError.message.includes('could not send email')
+        ) {
+          setErrors({ general: 'We couldn\'t finish account setup because confirmation emails are temporarily unavailable. Please contact your administrator.' });
         } else {
           throw signUpError;
         }
@@ -290,6 +296,12 @@ export default function AcceptInvite() {
         errorMessage = 'This invitation has expired. Please request a new invitation.'
       } else if (error.message?.includes('Email not confirmed')) {
         errorMessage = 'Please check your email to confirm your account before signing in.'
+      } else if (
+        error.message?.includes('Error sending confirmation email') ||
+        error.message?.includes('domain with your API key is not verified') ||
+        error.message?.includes('could not send email')
+      ) {
+        errorMessage = 'We couldn\'t finish account setup because confirmation emails are temporarily unavailable. Please contact your administrator.'
       }
       
       toast({
