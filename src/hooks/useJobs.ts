@@ -77,6 +77,14 @@ export function useJobs() {
   const { normalizeJobSpecs } = useJobSpecNormalization()
   const queryClient = useQueryClient()
   const { assignedJobIds, isPrivileged, isLoading: rolesLoading } = useUserJobRoles()
+  const isFetchingRef = useRef(false)
+  const tenantIdRef = useRef<string | null>(null)
+  const debounceRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Reset cached tenant_id when org changes
+  useEffect(() => {
+    tenantIdRef.current = null
+  }, [organizationId])
 
   // Optimized single query function to replace N+1 pattern
   const getJobsOptimized = async () => {
@@ -84,16 +92,16 @@ export function useJobs() {
 
     console.log('Fetching jobs with optimized query for user:', user.id, 'userType:', userType, 'organizationId:', organizationId)
 
-    // Fetch tenant_id for current org to scope jobs to the active tenant
-    // This prevents platform admins with multi-tenant memberships from seeing cross-tenant jobs
-    let tenantId: string | null = null
-    if (organizationId) {
+    // Use cached tenant_id or fetch once
+    let tenantId = tenantIdRef.current
+    if (!tenantId && organizationId) {
       const { data: orgData } = await supabase
         .from('organizations')
         .select('tenant_id')
         .eq('id', organizationId)
         .single()
       tenantId = orgData?.tenant_id || null
+      tenantIdRef.current = tenantId
     }
 
     // Build the main query with all JOINs to eliminate N+1 queries
