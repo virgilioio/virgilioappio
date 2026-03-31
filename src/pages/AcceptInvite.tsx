@@ -290,6 +290,12 @@ export default function AcceptInvite() {
         errorMessage = 'This invitation has expired. Please request a new invitation.'
       } else if (error.message?.includes('Email not confirmed')) {
         errorMessage = 'Please check your email to confirm your account before signing in.'
+      } else if (
+        error.message?.includes('Error sending confirmation email') ||
+        error.message?.includes('domain with your API key is not verified') ||
+        error.message?.includes('could not send email')
+      ) {
+        errorMessage = 'We couldn\'t finish account setup because confirmation emails are temporarily unavailable. Please contact your administrator.'
       }
       
       toast({
