@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { refreshOnboardingProgress } from '@/utils/refreshOnboardingProgress'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
@@ -77,6 +77,14 @@ export function useJobs() {
   const { normalizeJobSpecs } = useJobSpecNormalization()
   const queryClient = useQueryClient()
   const { assignedJobIds, isPrivileged, isLoading: rolesLoading } = useUserJobRoles()
+  const isFetchingRef = useRef(false)
+  const tenantIdRef = useRef<string | null>(null)
+  const debounceRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Reset cached tenant_id when org changes
+  useEffect(() => {
+    tenantIdRef.current = null
+  }, [organizationId])
 
   // Optimized single query function to replace N+1 pattern
   const getJobsOptimized = async () => {
@@ -84,16 +92,16 @@ export function useJobs() {
 
     console.log('Fetching jobs with optimized query for user:', user.id, 'userType:', userType, 'organizationId:', organizationId)
 
-    // Fetch tenant_id for current org to scope jobs to the active tenant
-    // This prevents platform admins with multi-tenant memberships from seeing cross-tenant jobs
-    let tenantId: string | null = null
-    if (organizationId) {
+    // Use cached tenant_id or fetch once
+    let tenantId = tenantIdRef.current
+    if (!tenantId && organizationId) {
       const { data: orgData } = await supabase
         .from('organizations')
         .select('tenant_id')
         .eq('id', organizationId)
         .single()
       tenantId = orgData?.tenant_id || null
+      tenantIdRef.current = tenantId
     }
 
     // Build the main query with all JOINs to eliminate N+1 queries
@@ -138,6 +146,13 @@ export function useJobs() {
   const getJobs = useCallback(async () => {
     if (!user) return
 
+    // Concurrency guard: skip if already fetching
+    if (isFetchingRef.current) {
+      log.debug('Skipping getJobs — fetch already in progress')
+      return
+    }
+    isFetchingRef.current = true
+
     setIsLoading(true)
     setError(null)
 
@@ -155,6 +170,7 @@ export function useJobs() {
       })
     } finally {
       setIsLoading(false)
+      isFetchingRef.current = false
     }
   }, [user, userType, organizationId])
 
@@ -544,6 +560,14 @@ export function useJobs() {
     }
   }, [userId, userType, organizationId])
 
+  // Debounced refresh for real-time events
+  const debouncedRefresh = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      getJobs()
+    }, 2000)
+  }, [getJobs])
+
   // Add real-time subscriptions for jobs
   useEffect(() => {
     if (!userId) return
@@ -559,14 +583,13 @@ export function useJobs() {
       .on(
         'postgres_changes',
         {
-          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          event: '*',
           schema: 'public',
           table: 'jobs'
         },
         (payload) => {
           console.log('📡 Real-time job change detected:', payload)
-          // Refresh jobs when changes occur
-          getJobs()
+          debouncedRefresh()
         }
       )
       .subscribe((status) => {
@@ -586,10 +609,7 @@ export function useJobs() {
         },
         (payload) => {
           console.log('Job request approved:', payload)
-          // Refresh jobs when a job request is approved
-          setTimeout(() => {
-            getJobs()
-          }, 1000) // Small delay to ensure job creation is complete
+          debouncedRefresh()
         }
       )
       .subscribe()
@@ -606,19 +626,19 @@ export function useJobs() {
         },
         (payload) => {
           console.log('Job assignments change detected:', payload)
-          // Refresh jobs when job assignments change
-          getJobs()
+          debouncedRefresh()
         }
       )
       .subscribe()
 
     return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
       console.log('Cleaning up real-time subscriptions')
       supabase.removeChannel(jobsChannel)
       supabase.removeChannel(jobRequestsChannel)
       supabase.removeChannel(jobAssignmentsChannel)
     }
-  }, [userId, userType, organizationId])
+  }, [userId, userType, organizationId, debouncedRefresh])
 
   // Job-scoped filtering: non-privileged members only see assigned jobs
   const scopedJobs = useMemo(() => {
