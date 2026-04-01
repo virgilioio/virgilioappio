@@ -58,6 +58,8 @@ export default function PublicBookingPage() {
   const [tokenStatus, setTokenStatus] = useState<'active' | 'expired' | null>(null);
   const [rescheduleBookingId, setRescheduleBookingId] = useState<string | null>(null);
   const [bookingCancelled, setBookingCancelled] = useState(false);
+  const autoAdvanceCountRef = useRef(0);
+  const hasAutoSelectedRef = useRef(false);
 
   // Parse contextual booking context from URL (legacy base64)
   const legacyContext = useMemo(() => {
