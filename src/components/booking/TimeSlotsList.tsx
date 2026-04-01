@@ -117,7 +117,7 @@ export function TimeSlotsList({
         </h4>
       </div>
       
-      <ScrollArea className="h-[500px] pr-4">
+      <ScrollArea className="h-[380px] pr-4">
         <div className="space-y-6">
           {renderSlots(morningSlots, 'Morning')}
           {renderSlots(afternoonSlots, 'Afternoon')}

@@ -136,6 +136,15 @@ export function MonthCalendar({
           })}
         </div>
       </div>
+
+      {/* No availability banner */}
+      {noAvailabilityInMonth && (
+        <div className="mt-4 p-3 bg-virgilio-purple/5 border border-virgilio-border rounded-lg text-center">
+          <p className="text-sm text-virgilio-muted">
+            No available times this month. Use the arrows to check other months.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
