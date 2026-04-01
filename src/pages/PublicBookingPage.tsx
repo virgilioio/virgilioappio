@@ -166,6 +166,33 @@ export default function PublicBookingPage() {
     return Array.from(uniqueDates).map(dateStr => new Date(dateStr));
   }, [availabilityData]);
 
+  // Auto-select first available date + auto-advance empty months
+  useEffect(() => {
+    if (isLoadingAvailability) return;
+    
+    if (availableDates.length > 0) {
+      // Auto-select first available date if nothing selected or selected date is in a different month
+      if (!selectedDate || !isSameMonth(selectedDate, currentMonth)) {
+        if (!hasAutoSelectedRef.current) {
+          setSelectedDate(availableDates[0]);
+          hasAutoSelectedRef.current = true;
+        }
+      }
+      autoAdvanceCountRef.current = 0; // Reset advance counter
+    } else if (availableDates.length === 0 && autoAdvanceCountRef.current < 6) {
+      // No availability this month — auto-advance
+      autoAdvanceCountRef.current += 1;
+      setCurrentMonth(prev => addMonths(prev, 1));
+    }
+  }, [availableDates, isLoadingAvailability, currentMonth]);
+
+  // Reset auto-select flag when user manually changes month
+  const handleMonthChange = (newMonth: Date) => {
+    setCurrentMonth(newMonth);
+    hasAutoSelectedRef.current = false;
+    autoAdvanceCountRef.current = 0;
+  };
+
   // Filter time slots for selected date
   const timeSlotsForSelectedDate = useMemo(() => {
     if (!selectedDate || !availabilityData?.available_slots) return [];
@@ -175,6 +202,16 @@ export default function PublicBookingPage() {
       return isSameDay(slotDate, selectedDate);
     });
   }, [selectedDate, availabilityData]);
+
+  // Handler for quick schedule selection
+  const handleQuickSelect = (slot: { start: string; end: string }) => {
+    const slotDate = parseISO(slot.start);
+    if (!isSameMonth(slotDate, currentMonth)) {
+      setCurrentMonth(startOfMonth(slotDate));
+    }
+    setSelectedDate(slotDate);
+    setSelectedSlot(slot);
+  };
 
   // Create booking mutation
   const createBookingMutation = useMutation({
