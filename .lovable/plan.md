@@ -1,39 +1,42 @@
 
 
-# Fix: Calendar starts at October instead of April
+# Smart Quick Schedule: Soonest + Golden Hours + Labels
 
-## Root cause
+## What changes
 
-The auto-advance effect (line 182-186) fires in a chain reaction. It watches `currentMonth` in its dependency array, so each time it advances the month, the effect re-runs:
+**File: `src/components/booking/QuickSchedulePanel.tsx`**
 
-1. April loads → no availability → advance to May
-2. May loads → no availability → advance to June
-3. ... continues until it either finds slots or hits the 6-month cap (October)
+Replace the naive `slice(0, 5)` with smart slot selection logic:
 
-The calendar jumps to October instantly because React batches these state updates and the availability query returns empty for each intermediate month.
+### Selection algorithm
 
-## Fix
+1. **Slot 1 — "Earliest available"**: Always the absolute first chronological slot, labeled with a badge.
+2. **Slots 2–5 — One per unique day, preferring golden hours**: For each remaining unique day (up to 4 more days), pick the single best slot using this priority:
+   - **Golden hours** (10:00–11:00 AM, 2:00–3:00 PM) → highest score
+   - **Good hours** (9:00–12:00 PM, 1:00–5:00 PM) → medium score
+   - **Edge hours** (before 9 AM, after 5 PM) → lowest score
+3. Skip any day already represented by slot 1.
 
-**File: `src/pages/PublicBookingPage.tsx`** (lines 169-187)
+### UI enhancements
 
-Remove `currentMonth` from the `useEffect` dependency array. Instead, only react to `availableDates` and `isLoadingAvailability` changes. The auto-advance should only trigger when a fresh availability response comes back empty — not when the month itself changes.
+- Slot 1 gets a small `"Earliest available"` lilac badge/tag above the date.
+- Remaining slots show just date + time as today.
+- Keep existing styling and hover effects.
 
-Additionally, the auto-advance should **not run on the initial month** (April/today). It should only kick in after the user has seen the current month is empty. This way:
+### Implementation detail
 
-- Calendar always opens on the current month (April)
-- If April has no slots, show the "No available times this month" banner
-- User can manually navigate, OR we auto-advance **once** after a brief delay to the next month with availability — but the starting view is always today's month
+```
+function selectSmartSlots(slots: TimeSlot[], max: number): (TimeSlot & { label?: string })[]
+```
 
-Concrete change:
-- Remove `currentMonth` from the dependency array of the auto-advance effect
-- Add a guard: only auto-advance if `autoAdvanceCountRef.current > 0` OR add a small initial flag that skips auto-advance on first render, letting the user see the current month first
-- Alternatively (simpler): remove auto-advance entirely and rely on the "No available times this month" banner — the user clicks the arrow themselves. This is what Calendly does.
-
-**Recommended approach**: Remove auto-advance entirely. Keep auto-select of first available date when dates exist. Show the banner when no dates are available. This matches Calendly behavior and eliminates the bug.
+- Group all slots by date string (`YYYY-MM-DD`).
+- First slot = `slots[0]`, labeled `"Earliest available"`.
+- For remaining day groups (sorted chronologically, skipping first slot's day), score each slot's hour and pick the highest-scored one per day.
+- Return up to `max` results.
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/pages/PublicBookingPage.tsx` | Remove auto-advance logic from useEffect (lines 182-186), keep auto-select of first date, keep banner |
+| `src/components/booking/QuickSchedulePanel.tsx` | Add `selectSmartSlots` helper, render optional label badge on first slot |
 
