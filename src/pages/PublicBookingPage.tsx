@@ -469,7 +469,7 @@ export default function PublicBookingPage() {
           </div>
         )}
         
-        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr_380px] gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr_340px] gap-8">
           {/* Left column - Event summary */}
           <div className="order-1">
             {config.profiles && (
@@ -484,42 +484,67 @@ export default function PublicBookingPage() {
             )}
           </div>
 
-          {/* Middle column - Calendar */}
+          {/* Middle column - Calendar + inline time slots */}
           <div className="order-2">
-            <Card className="shadow-calendly border-virgilio-border">
+            <Card className="shadow-calendly border-virgilio-border overflow-hidden">
               <CardContent className="p-6">
-                <MonthCalendar
-                  availableDates={availableDates}
-                  selectedDate={selectedDate}
-                  onDateSelect={setSelectedDate}
-                  currentMonth={currentMonth}
-                  onMonthChange={setCurrentMonth}
-                />
-                
-                {/* Timezone display */}
-                <div className="mt-6 pt-6 border-t border-virgilio-border">
-                  <div className="flex items-center gap-2 text-sm text-virgilio-muted">
-                    <Globe className="h-4 w-4" />
-                    <span>
-                      Times shown in {candidateTimezone.replace(/_/g, ' ')}
-                    </span>
+                <div className="flex gap-0">
+                  {/* Calendar side */}
+                  <div className="flex-shrink-0 w-full transition-all duration-300 ease-out"
+                    style={{ 
+                      maxWidth: selectedDate && timeSlotsForSelectedDate.length > 0 ? 'calc(100% - 260px)' : '100%' 
+                    }}
+                  >
+                    <MonthCalendar
+                      availableDates={availableDates}
+                      selectedDate={selectedDate}
+                      onDateSelect={setSelectedDate}
+                      currentMonth={currentMonth}
+                      onMonthChange={handleMonthChange}
+                      noAvailabilityInMonth={!isLoadingAvailability && availableDates.length === 0 && autoAdvanceCountRef.current >= 6}
+                    />
+                    
+                    {/* Timezone display */}
+                    <div className="mt-6 pt-6 border-t border-virgilio-border">
+                      <div className="flex items-center gap-2 text-sm text-virgilio-muted">
+                        <Globe className="h-4 w-4" />
+                        <span>
+                          Times shown in {candidateTimezone.replace(/_/g, ' ')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Inline time slots (Calendly-style expansion) */}
+                  <div 
+                    className={`
+                      overflow-hidden transition-all duration-300 ease-out border-l border-virgilio-border
+                      ${selectedDate && timeSlotsForSelectedDate.length > 0 
+                        ? 'w-[260px] opacity-100 pl-6' 
+                        : 'w-0 opacity-0 pl-0 border-l-0'}
+                    `}
+                  >
+                    <TimeSlotsList
+                      selectedDate={selectedDate}
+                      timeSlots={timeSlotsForSelectedDate}
+                      selectedSlot={selectedSlot}
+                      onSlotSelect={setSelectedSlot}
+                      isLoading={isLoadingAvailability}
+                    />
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Right column - Time slots & Form */}
+          {/* Right column - Quick Schedule or Confirmation Form */}
           <div className="order-3">
             {!selectedSlot ? (
               <Card className="shadow-calendly border-virgilio-border">
                 <CardContent className="p-6">
-                  <TimeSlotsList
-                    selectedDate={selectedDate}
-                    timeSlots={timeSlotsForSelectedDate}
-                    selectedSlot={selectedSlot}
-                    onSlotSelect={setSelectedSlot}
-                    isLoading={isLoadingAvailability}
+                  <QuickSchedulePanel
+                    availableSlots={availabilityData?.available_slots || []}
+                    onQuickSelect={handleQuickSelect}
                   />
                 </CardContent>
               </Card>
@@ -529,7 +554,6 @@ export default function PublicBookingPage() {
                 candidateTimezone={candidateTimezone}
                 onCancel={() => setSelectedSlot(null)}
                 onConfirm={createBookingMutation.mutateAsync}
-                // Pre-fill candidate info from context
                 defaultCandidateName={bookingContext?.candidateName}
                 defaultCandidateEmail={bookingContext?.candidateEmail}
               />
