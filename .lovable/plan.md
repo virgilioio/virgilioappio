@@ -1,36 +1,68 @@
 
 
-# Allow Members to Access Integrations in Settings
+# Redesign Public Booking Page: Inline Slots, Auto-select, Quick Schedule, Lilac Available Dates
 
-## Problem
+## Overview
 
-The "Workspace" section in the settings sidebar is gated to platform admins and workspace owners only (line 67). Regular members (with `isMember` role) cannot see Integrations at all — meaning they can't sync their Google Workspace (Gmail/Calendar).
+Redesign the candidate scheduling page to match a Calendly-style inline layout with smooth animations, auto-navigation, and a Quick Schedule feature.
 
-WhatsApp is a company-wide toggle (admin-only), so it should be restricted for regular members.
+## Changes
 
-## Plan
+### 1. Lilac highlight for available dates + auto-select first date + auto-advance month
 
-### 1. Show Integrations as a top-level sidebar item for members
+**File: `src/components/booking/MonthCalendar.tsx`**
 
-In `src/components/settings/SettingsSidebar.tsx`:
-- Add a new top-level nav item `integrations` (with the Plug icon) that shows when the user is a member but NOT an admin/workspace owner/platform admin. This way members who can't see the Workspace section still get access to Integrations directly.
-- Keep the existing Integrations item inside the Workspace submenu for admins/owners (no change there).
+- Available dates that are not selected get a lilac background (`bg-virgilio-purple/15 text-virgilio-purple`) instead of plain text — matching Calendly's blue circles but in our brand color.
+- Accept new prop `noAvailabilityInMonth?: boolean` — when true, show a subtle banner below the grid: "No available times this month."
+- The parent page handles auto-advancing month and auto-selecting the first date.
 
-### 2. Hide/disable WhatsApp for non-admin members
+### 2. Auto-select first available date + auto-advance empty months
 
-In `src/components/settings/IntegrationsTab.tsx`:
-- Filter out or gray out the WhatsApp integration card for regular members (non-admin, non-workspace-owner).
-- Use `usePermissions()` to check `isAdmin || isWorkspaceOwner || isPlatformAdmin`. If false, either hide the WhatsApp card entirely or show it as disabled with a tooltip like "Admin only".
+**File: `src/pages/PublicBookingPage.tsx`**
 
-### 3. Ensure Settings.tsx renders IntegrationsTab for members
+- Add `useEffect` watching `availableDates` + `isLoadingAvailability`:
+  - If dates exist and nothing selected → auto-select the first one.
+  - If no dates and not loading → auto-advance `currentMonth` forward (max 6 months lookahead). Track a counter in a ref to cap the search.
 
-In `src/pages/Settings.tsx`:
-- The `<TabsContent value="integrations">` block is already rendered unconditionally (no permission gate), so members can already access the tab content — no change needed there.
+### 3. Inline time slots (Calendly-style) — calendar card expands
+
+**File: `src/pages/PublicBookingPage.tsx`**
+
+- When a date is selected and time slots exist, the middle calendar card smoothly expands to show `TimeSlotsList` side-by-side to the right of the calendar using `transition-all duration-300 ease-out`.
+- Layout: calendar card uses an inner flex container. Left side = MonthCalendar + timezone. Right side = TimeSlotsList (appears with `w-0 opacity-0` → `w-[260px] opacity-100` transition).
+- The right column is freed up for QuickSchedulePanel (or confirmation form once a slot is picked).
+
+**File: `src/components/booking/TimeSlotsList.tsx`**
+
+- Reduce ScrollArea height from 500px to ~400px for inline fit.
+- Remove the "Select a date" empty state (since it only renders when a date is selected now).
+
+### 4. Quick Scheduling panel (right column)
+
+**New file: `src/components/booking/QuickSchedulePanel.tsx`**
+
+- Shows "Quick Schedule" heading with the next 3–5 available slots across all upcoming dates.
+- Each option: a card/button showing day + time (e.g., "Mon, Apr 7 · 10:30 AM").
+- Clicking one sets both `selectedDate` + `selectedSlot`, jumping directly to the confirmation form.
+- Styled as outlined cards with hover effects matching our design system.
+
+**File: `src/pages/PublicBookingPage.tsx`**
+
+- Right column shows `QuickSchedulePanel` when `!selectedSlot`, `BookingConfirmationForm` when a slot is selected.
+
+### 5. Layout changes summary
+
+```text
+Current:  [Interviewer] [Calendar card] [Time slots / Form]
+New:      [Interviewer] [Calendar + inline slots] [Quick Schedule / Form]
+```
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/components/settings/SettingsSidebar.tsx` | Add top-level "Integrations" nav item for members who can't see Workspace |
-| `src/components/settings/IntegrationsTab.tsx` | Hide or disable WhatsApp card for non-admin users |
+| `src/pages/PublicBookingPage.tsx` | Auto-select, auto-advance, inline time slots in calendar card, QuickSchedulePanel in right column |
+| `src/components/booking/MonthCalendar.tsx` | Lilac background for available dates, optional no-availability banner |
+| `src/components/booking/TimeSlotsList.tsx` | Reduce height, remove unused empty state |
+| `src/components/booking/QuickSchedulePanel.tsx` | New — next 3-5 slots for one-click scheduling |
 
