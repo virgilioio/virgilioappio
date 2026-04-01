@@ -119,7 +119,9 @@ export function MonthCalendar({
                   ${!isCurrentMonth ? 'text-virgilio-border cursor-default' : ''}
                   ${isPast ? 'opacity-30 cursor-not-allowed' : ''}
                   ${isCurrentMonth && !isSelectable && !isPast ? 'text-virgilio-muted/30 cursor-not-allowed' : ''}
-                  ${isCurrentMonth && isSelectable && !isSelected && !isPast ? 
+                  ${isCurrentMonth && isSelectable && !isSelected && !isPast && isAvailable ? 
+                    'text-virgilio-purple bg-virgilio-purple/10 hover:bg-virgilio-purple/20 hover:-translate-y-0.5 hover:shadow-sm cursor-pointer font-bold' : ''}
+                  ${isCurrentMonth && isSelectable && !isSelected && !isPast && !isAvailable ? 
                     'text-virgilio-text hover:bg-virgilio-purple/10 hover:-translate-y-0.5 hover:shadow-sm cursor-pointer' : ''}
                   ${isSelected ? 'bg-virgilio-purple text-white shadow-md' : ''}
                   ${isTodayDate && !isSelected && isCurrentMonth ? 'ring-1 ring-virgilio-purple/30' : ''}
