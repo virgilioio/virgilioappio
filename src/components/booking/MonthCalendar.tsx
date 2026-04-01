@@ -21,6 +21,7 @@ interface MonthCalendarProps {
   currentMonth: Date;
   onMonthChange: (date: Date) => void;
   allowAllDates?: boolean;
+  noAvailabilityInMonth?: boolean;
 }
 
 export function MonthCalendar({ 
@@ -30,6 +31,7 @@ export function MonthCalendar({
   currentMonth,
   onMonthChange,
   allowAllDates = false,
+  noAvailabilityInMonth = false,
 }: MonthCalendarProps) {
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -117,7 +119,9 @@ export function MonthCalendar({
                   ${!isCurrentMonth ? 'text-virgilio-border cursor-default' : ''}
                   ${isPast ? 'opacity-30 cursor-not-allowed' : ''}
                   ${isCurrentMonth && !isSelectable && !isPast ? 'text-virgilio-muted/30 cursor-not-allowed' : ''}
-                  ${isCurrentMonth && isSelectable && !isSelected && !isPast ? 
+                  ${isCurrentMonth && isSelectable && !isSelected && !isPast && isAvailable ? 
+                    'text-virgilio-purple bg-virgilio-purple/10 hover:bg-virgilio-purple/20 hover:-translate-y-0.5 hover:shadow-sm cursor-pointer font-bold' : ''}
+                  ${isCurrentMonth && isSelectable && !isSelected && !isPast && !isAvailable ? 
                     'text-virgilio-text hover:bg-virgilio-purple/10 hover:-translate-y-0.5 hover:shadow-sm cursor-pointer' : ''}
                   ${isSelected ? 'bg-virgilio-purple text-white shadow-md' : ''}
                   ${isTodayDate && !isSelected && isCurrentMonth ? 'ring-1 ring-virgilio-purple/30' : ''}
@@ -132,6 +136,15 @@ export function MonthCalendar({
           })}
         </div>
       </div>
+
+      {/* No availability banner */}
+      {noAvailabilityInMonth && (
+        <div className="mt-4 p-3 bg-virgilio-purple/5 border border-virgilio-border rounded-lg text-center">
+          <p className="text-sm text-virgilio-muted">
+            No available times this month. Use the arrows to check other months.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
@@ -8,13 +8,14 @@ import { MonthCalendar } from '@/components/booking/MonthCalendar';
 import { TimeSlotsList } from '@/components/booking/TimeSlotsList';
 import { BookingConfirmationForm } from '@/components/booking/BookingConfirmationForm';
 import { ExistingBookingView, ExistingBookingData } from '@/components/booking/ExistingBookingView';
+import { QuickSchedulePanel } from '@/components/booking/QuickSchedulePanel';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import { AlertCircle, Globe, ShieldX } from 'lucide-react';
-import { startOfMonth, endOfMonth, isSameDay, parseISO } from 'date-fns';
+import { startOfMonth, endOfMonth, addMonths, isSameDay, isSameMonth, parseISO } from 'date-fns';
 import { useBookingAvailability } from '@/hooks/useBookingAvailability';
 import { 
   parseBookingContextFromUrl, 
@@ -57,6 +58,8 @@ export default function PublicBookingPage() {
   const [tokenStatus, setTokenStatus] = useState<'active' | 'expired' | null>(null);
   const [rescheduleBookingId, setRescheduleBookingId] = useState<string | null>(null);
   const [bookingCancelled, setBookingCancelled] = useState(false);
+  const autoAdvanceCountRef = useRef(0);
+  const hasAutoSelectedRef = useRef(false);
 
   // Parse contextual booking context from URL (legacy base64)
   const legacyContext = useMemo(() => {
@@ -163,6 +166,33 @@ export default function PublicBookingPage() {
     return Array.from(uniqueDates).map(dateStr => new Date(dateStr));
   }, [availabilityData]);
 
+  // Auto-select first available date + auto-advance empty months
+  useEffect(() => {
+    if (isLoadingAvailability) return;
+    
+    if (availableDates.length > 0) {
+      // Auto-select first available date if nothing selected or selected date is in a different month
+      if (!selectedDate || !isSameMonth(selectedDate, currentMonth)) {
+        if (!hasAutoSelectedRef.current) {
+          setSelectedDate(availableDates[0]);
+          hasAutoSelectedRef.current = true;
+        }
+      }
+      autoAdvanceCountRef.current = 0; // Reset advance counter
+    } else if (availableDates.length === 0 && autoAdvanceCountRef.current < 6) {
+      // No availability this month — auto-advance
+      autoAdvanceCountRef.current += 1;
+      setCurrentMonth(prev => addMonths(prev, 1));
+    }
+  }, [availableDates, isLoadingAvailability, currentMonth]);
+
+  // Reset auto-select flag when user manually changes month
+  const handleMonthChange = (newMonth: Date) => {
+    setCurrentMonth(newMonth);
+    hasAutoSelectedRef.current = false;
+    autoAdvanceCountRef.current = 0;
+  };
+
   // Filter time slots for selected date
   const timeSlotsForSelectedDate = useMemo(() => {
     if (!selectedDate || !availabilityData?.available_slots) return [];
@@ -172,6 +202,16 @@ export default function PublicBookingPage() {
       return isSameDay(slotDate, selectedDate);
     });
   }, [selectedDate, availabilityData]);
+
+  // Handler for quick schedule selection
+  const handleQuickSelect = (slot: { start: string; end: string }) => {
+    const slotDate = parseISO(slot.start);
+    if (!isSameMonth(slotDate, currentMonth)) {
+      setCurrentMonth(startOfMonth(slotDate));
+    }
+    setSelectedDate(slotDate);
+    setSelectedSlot(slot);
+  };
 
   // Create booking mutation
   const createBookingMutation = useMutation({
@@ -429,7 +469,7 @@ export default function PublicBookingPage() {
           </div>
         )}
         
-        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr_380px] gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr_340px] gap-8">
           {/* Left column - Event summary */}
           <div className="order-1">
             {config.profiles && (
@@ -444,42 +484,67 @@ export default function PublicBookingPage() {
             )}
           </div>
 
-          {/* Middle column - Calendar */}
+          {/* Middle column - Calendar + inline time slots */}
           <div className="order-2">
-            <Card className="shadow-calendly border-virgilio-border">
+            <Card className="shadow-calendly border-virgilio-border overflow-hidden">
               <CardContent className="p-6">
-                <MonthCalendar
-                  availableDates={availableDates}
-                  selectedDate={selectedDate}
-                  onDateSelect={setSelectedDate}
-                  currentMonth={currentMonth}
-                  onMonthChange={setCurrentMonth}
-                />
-                
-                {/* Timezone display */}
-                <div className="mt-6 pt-6 border-t border-virgilio-border">
-                  <div className="flex items-center gap-2 text-sm text-virgilio-muted">
-                    <Globe className="h-4 w-4" />
-                    <span>
-                      Times shown in {candidateTimezone.replace(/_/g, ' ')}
-                    </span>
+                <div className="flex gap-0">
+                  {/* Calendar side */}
+                  <div className="flex-shrink-0 w-full transition-all duration-300 ease-out"
+                    style={{ 
+                      maxWidth: selectedDate && timeSlotsForSelectedDate.length > 0 ? 'calc(100% - 260px)' : '100%' 
+                    }}
+                  >
+                    <MonthCalendar
+                      availableDates={availableDates}
+                      selectedDate={selectedDate}
+                      onDateSelect={setSelectedDate}
+                      currentMonth={currentMonth}
+                      onMonthChange={handleMonthChange}
+                      noAvailabilityInMonth={!isLoadingAvailability && availableDates.length === 0 && autoAdvanceCountRef.current >= 6}
+                    />
+                    
+                    {/* Timezone display */}
+                    <div className="mt-6 pt-6 border-t border-virgilio-border">
+                      <div className="flex items-center gap-2 text-sm text-virgilio-muted">
+                        <Globe className="h-4 w-4" />
+                        <span>
+                          Times shown in {candidateTimezone.replace(/_/g, ' ')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Inline time slots (Calendly-style expansion) */}
+                  <div 
+                    className={`
+                      overflow-hidden transition-all duration-300 ease-out border-l border-virgilio-border
+                      ${selectedDate && timeSlotsForSelectedDate.length > 0 
+                        ? 'w-[260px] opacity-100 pl-6' 
+                        : 'w-0 opacity-0 pl-0 border-l-0'}
+                    `}
+                  >
+                    <TimeSlotsList
+                      selectedDate={selectedDate}
+                      timeSlots={timeSlotsForSelectedDate}
+                      selectedSlot={selectedSlot}
+                      onSlotSelect={setSelectedSlot}
+                      isLoading={isLoadingAvailability}
+                    />
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Right column - Time slots & Form */}
+          {/* Right column - Quick Schedule or Confirmation Form */}
           <div className="order-3">
             {!selectedSlot ? (
               <Card className="shadow-calendly border-virgilio-border">
                 <CardContent className="p-6">
-                  <TimeSlotsList
-                    selectedDate={selectedDate}
-                    timeSlots={timeSlotsForSelectedDate}
-                    selectedSlot={selectedSlot}
-                    onSlotSelect={setSelectedSlot}
-                    isLoading={isLoadingAvailability}
+                  <QuickSchedulePanel
+                    availableSlots={availabilityData?.available_slots || []}
+                    onQuickSelect={handleQuickSelect}
                   />
                 </CardContent>
               </Card>
@@ -489,7 +554,6 @@ export default function PublicBookingPage() {
                 candidateTimezone={candidateTimezone}
                 onCancel={() => setSelectedSlot(null)}
                 onConfirm={createBookingMutation.mutateAsync}
-                // Pre-fill candidate info from context
                 defaultCandidateName={bookingContext?.candidateName}
                 defaultCandidateEmail={bookingContext?.candidateEmail}
               />

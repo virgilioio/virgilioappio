@@ -23,13 +23,7 @@ export function TimeSlotsList({
   isLoading 
 }: TimeSlotsListProps) {
   if (!selectedDate) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[400px] text-center px-4">
-        <p className="text-sm text-virgilio-muted font-medium">
-          Select a date to view available times
-        </p>
-      </div>
-    );
+    return null;
   }
 
   if (isLoading) {
@@ -123,7 +117,7 @@ export function TimeSlotsList({
         </h4>
       </div>
       
-      <ScrollArea className="h-[500px] pr-4">
+      <ScrollArea className="h-[380px] pr-4">
         <div className="space-y-6">
           {renderSlots(morningSlots, 'Morning')}
           {renderSlots(afternoonSlots, 'Afternoon')}
