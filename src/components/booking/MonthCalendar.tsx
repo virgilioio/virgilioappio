@@ -21,6 +21,7 @@ interface MonthCalendarProps {
   currentMonth: Date;
   onMonthChange: (date: Date) => void;
   allowAllDates?: boolean;
+  noAvailabilityInMonth?: boolean;
 }
 
 export function MonthCalendar({ 
