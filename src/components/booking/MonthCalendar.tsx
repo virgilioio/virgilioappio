@@ -31,6 +31,7 @@ export function MonthCalendar({
   currentMonth,
   onMonthChange,
   allowAllDates = false,
+  noAvailabilityInMonth = false,
 }: MonthCalendarProps) {
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
