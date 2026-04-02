@@ -28,6 +28,118 @@ import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/integrations/supabase/client'
 import { useQueryClient } from '@tanstack/react-query'
 import type { UnifiedActivity } from '@/types/activity'
+import { format, parseISO, isToday, isTomorrow, addDays, startOfDay, isSameDay } from 'date-fns'
+import { cn } from '@/lib/utils'
+
+// ── Week Strip ──────────────────────────────────────────────────
+
+interface WeekStripProps {
+  selectedDate: Date | null
+  onSelectDate: (date: Date) => void
+  activityDates: Set<string> // YYYY-MM-DD strings
+}
+
+function WeekStrip({ selectedDate, onSelectDate, activityDates }: WeekStripProps) {
+  const today = startOfDay(new Date())
+  const days = Array.from({ length: 7 }, (_, i) => addDays(today, i))
+
+  return (
+    <div className="flex items-center justify-between gap-1 mb-4 px-1">
+      {days.map((day) => {
+        const dateKey = format(day, 'yyyy-MM-dd')
+        const isSelected = selectedDate && isSameDay(day, selectedDate)
+        const isTodayDate = isToday(day)
+        const hasActivity = activityDates.has(dateKey)
+
+        return (
+          <button
+            key={dateKey}
+            onClick={() => onSelectDate(day)}
+            className={cn(
+              "flex flex-col items-center gap-0.5 rounded-lg px-2 py-1.5 transition-all text-center min-w-[40px]",
+              "hover:bg-accent",
+              isSelected && "bg-primary/10 ring-1 ring-primary",
+              !isSelected && isTodayDate && "ring-1 ring-primary/30"
+            )}
+          >
+            <span className="text-[10px] font-medium text-muted-foreground uppercase">
+              {format(day, 'EEE')}
+            </span>
+            <span className={cn(
+              "text-sm font-semibold leading-none",
+              isSelected ? "text-primary" : "text-foreground"
+            )}>
+              {format(day, 'd')}
+            </span>
+            {/* Activity indicator dot */}
+            <div className={cn(
+              "h-1 w-1 rounded-full transition-colors",
+              hasActivity ? "bg-[hsl(var(--primary))]" : "bg-transparent"
+            )} />
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Day Group Header ────────────────────────────────────────────
+
+function DayGroupHeader({ date }: { date: Date }) {
+  const label = isToday(date)
+    ? `Today, ${format(date, 'MMM d')}`
+    : isTomorrow(date)
+      ? `Tomorrow, ${format(date, 'MMM d')}`
+      : format(date, 'EEE, MMM d')
+
+  return (
+    <div className={cn(
+      "flex items-center gap-2 py-1.5 px-1",
+      "border-l-2",
+      isToday(date) ? "border-l-primary" : "border-l-muted-foreground/20"
+    )}>
+      <span className={cn(
+        "text-xs font-semibold uppercase tracking-wide",
+        isToday(date) ? "text-primary" : "text-muted-foreground"
+      )}>
+        {label}
+      </span>
+    </div>
+  )
+}
+
+// ── Timeline Activity Row ──────────────────────────────────────
+
+function TimelineActivityRow({
+  activity,
+  isLast,
+  ...rowProps
+}: {
+  activity: UnifiedActivity
+  isLast: boolean
+} & Omit<React.ComponentProps<typeof ActivityRow>, 'activity'>) {
+  const time = format(parseISO(activity.dateTime), 'h:mm a')
+
+  return (
+    <div className="flex gap-3">
+      {/* Timeline column */}
+      <div className="flex flex-col items-center w-[52px] shrink-0">
+        <span className="text-[11px] font-medium text-muted-foreground whitespace-nowrap">
+          {time}
+        </span>
+        {!isLast && (
+          <div className="flex-1 w-px bg-border mt-1" />
+        )}
+      </div>
+      {/* Activity content */}
+      <div className="flex-1 min-w-0 pb-2">
+        <ActivityRow activity={activity} {...rowProps} />
+      </div>
+    </div>
+  )
+}
+
+// ── Main Component ─────────────────────────────────────────────
 
 export function UpcomingActivities() {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming')
@@ -37,16 +149,15 @@ export function UpcomingActivities() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [bookingToCancel, setBookingToCancel] = useState<string | null>(null)
   const [statusUpdateBooking, setStatusUpdateBooking] = useState<{ id: string; status: string } | null>(null)
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null)
 
   const permissions = usePermissions()
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  
-  // Fetch bookings
+
   const { bookings, isLoading: isLoadingBookings, cancelBooking, updateStatus, isCancelling, isUpdating } =
     useScheduledBookings(activeTab, permissions)
 
-  // Fetch reminders
   const { reminders, isLoading: isLoadingReminders, completeReminder, isCompleting } =
     useDashboardReminders(activeTab)
 
@@ -64,7 +175,7 @@ export function UpcomingActivities() {
       dateTime: b.scheduled_start,
       interview: b
     }))
-    
+
     const reminderActivities: UnifiedActivity[] = reminders.map(r => ({
       type: 'reminder' as const,
       id: r.id,
@@ -75,13 +186,43 @@ export function UpcomingActivities() {
       dateTime: r.due_at,
       reminder: r
     }))
-    
+
     const merged = [...interviewActivities, ...reminderActivities]
     if (activeTab === 'past') {
       return merged.sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime())
     }
     return merged.sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime())
   }, [bookings, reminders, activeTab])
+
+  // Activity dates for week strip dots
+  const activityDates = useMemo(() => {
+    const set = new Set<string>()
+    activities.forEach(a => set.add(format(parseISO(a.dateTime), 'yyyy-MM-dd')))
+    return set
+  }, [activities])
+
+  // Filter activities by selected day (only in upcoming tab)
+  const filteredActivities = useMemo(() => {
+    if (!selectedDay || activeTab === 'past') return activities
+    return activities.filter(a => isSameDay(parseISO(a.dateTime), selectedDay))
+  }, [activities, selectedDay, activeTab])
+
+  // Group activities by day
+  const groupedActivities = useMemo(() => {
+    const groups: { date: Date; items: UnifiedActivity[] }[] = []
+    const source = filteredActivities
+
+    for (const activity of source) {
+      const actDate = startOfDay(parseISO(activity.dateTime))
+      const lastGroup = groups[groups.length - 1]
+      if (lastGroup && isSameDay(lastGroup.date, actDate)) {
+        lastGroup.items.push(activity)
+      } else {
+        groups.push({ date: actDate, items: [activity] })
+      }
+    }
+    return groups
+  }, [filteredActivities])
 
   // Set up realtime listener for Google Calendar sync updates
   useEffect(() => {
@@ -100,7 +241,7 @@ export function UpcomingActivities() {
         (payload) => {
           const newBooking = payload.new as ScheduledBooking;
           const oldBooking = payload.old as ScheduledBooking;
-          
+
           if (newBooking.sync_source === 'google_calendar') {
             if (newBooking.status === 'cancelled' && oldBooking.status !== 'cancelled') {
               toast({
@@ -114,21 +255,41 @@ export function UpcomingActivities() {
                 description: `Your interview with ${newBooking.candidate_name} was rescheduled in Google Calendar.`,
               });
             }
-            
+
             queryClient.invalidateQueries({ queryKey: ['scheduled-bookings'] });
           }
         }
       )
       .subscribe();
-    
+
     return () => {
       supabase.removeChannel(channel);
     };
   }, [user?.id, queryClient]);
 
-  const displayedActivities = isExpanded ? activities : activities.slice(0, 5)
+  // For show more: limit to 5 groups worth of items when collapsed
+  const displayedGroups = useMemo(() => {
+    if (isExpanded) return groupedActivities
+    let count = 0
+    const result: typeof groupedActivities = []
+    for (const group of groupedActivities) {
+      if (count >= 5) break
+      const remaining = 5 - count
+      if (group.items.length <= remaining) {
+        result.push(group)
+        count += group.items.length
+      } else {
+        result.push({ ...group, items: group.items.slice(0, remaining) })
+        count += remaining
+      }
+    }
+    return result
+  }, [groupedActivities, isExpanded])
 
-  const showInterviewer = permissions.isMember || 
+  const totalActivities = filteredActivities.length
+  const displayedCount = displayedGroups.reduce((sum, g) => sum + g.items.length, 0)
+
+  const showInterviewer = permissions.isMember ||
     permissions.isAdmin || permissions.isWorkspaceOwner || permissions.isPlatformAdmin
 
   const handleViewDetails = (bookingId: string) => {
@@ -180,17 +341,56 @@ export function UpcomingActivities() {
     window.open(`/jobs/${jobId}?candidate=${candidateId}`, '_blank')
   }
 
+  const handleDaySelect = (date: Date) => {
+    if (selectedDay && isSameDay(selectedDay, date)) {
+      setSelectedDay(null) // deselect = show all
+    } else {
+      setSelectedDay(date)
+    }
+  }
+
+  const isPastTab = activeTab === 'past'
+
+  const sharedRowProps = isPastTab
+    ? { currentUserId: user?.id, showInterviewer, isPastTab: true as const, onViewDetails: handleViewDetails, onNavigate: handleNavigateToCandidate }
+    : {
+        currentUserId: user?.id,
+        showInterviewer,
+        isPastTab: false as const,
+        onViewDetails: handleViewDetails,
+        onNavigate: handleNavigateToCandidate,
+        onCopyMeetingLink: handleCopyMeetingLink,
+        onMarkInterviewCompleted: (id: string) => handleStatusUpdate(id, 'completed'),
+        onMarkNoShow: (id: string) => handleStatusUpdate(id, 'no_show'),
+        onCancelInterview: handleCancelBooking,
+        onCompleteReminder: completeReminder,
+        isUpdating,
+        isCancelling,
+        isCompletingReminder: isCompleting,
+      }
+
   const EmptyState = ({ type }: { type: 'upcoming' | 'past' }) => (
     <div className="text-center py-8 text-muted-foreground">
       <CalendarCheck className="h-12 w-12 mx-auto mb-3 opacity-50" />
       <p className="text-sm">
-        {type === 'upcoming' ? 'No upcoming activities' : 'No past activities yet'}
+        {type === 'upcoming'
+          ? selectedDay
+            ? 'No activities on this day'
+            : 'No upcoming activities'
+          : 'No past activities yet'}
       </p>
       <p className="text-xs mt-1">
         {type === 'upcoming'
-          ? 'Scheduled interviews and reminders will appear here'
+          ? selectedDay
+            ? 'Try selecting a different day or view all'
+            : 'Scheduled interviews and reminders will appear here'
           : 'Completed interviews and reminders will appear here'}
       </p>
+      {selectedDay && type === 'upcoming' && (
+        <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => setSelectedDay(null)}>
+          View all upcoming
+        </Button>
+      )}
     </div>
   )
 
@@ -203,7 +403,7 @@ export function UpcomingActivities() {
   )
 
   const ShowMoreButton = () => (
-    activities.length > 5 && (
+    totalActivities > 5 ? (
       <div className="mt-4 flex justify-center">
         <Button
           variant="ghost"
@@ -217,13 +417,43 @@ export function UpcomingActivities() {
             </>
           ) : (
             <>
-              Show More ({activities.length - 5} more) <ChevronDown className="h-4 w-4" />
+              Show More ({totalActivities - displayedCount} more) <ChevronDown className="h-4 w-4" />
             </>
           )}
         </Button>
       </div>
-    )
+    ) : null
   )
+
+  const renderAgenda = (type: 'upcoming' | 'past') => {
+    if (isLoading) return <LoadingState />
+    if (displayedGroups.length === 0) return <EmptyState type={type} />
+
+    return (
+      <>
+        <div className={isExpanded ? 'max-h-[400px] overflow-y-auto' : ''}>
+          <div className="space-y-3">
+            {displayedGroups.map((group) => (
+              <div key={format(group.date, 'yyyy-MM-dd')}>
+                <DayGroupHeader date={group.date} />
+                <div className="mt-1 ml-1">
+                  {group.items.map((activity, idx) => (
+                    <TimelineActivityRow
+                      key={`${activity.type}-${activity.id}`}
+                      activity={activity}
+                      isLast={idx === group.items.length - 1}
+                      {...sharedRowProps}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <ShowMoreButton />
+      </>
+    )
+  }
 
   return (
     <>
@@ -231,72 +461,27 @@ export function UpcomingActivities() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CalendarCheck className="h-5 w-5" />
-            Upcoming Activities
+            Agenda
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'upcoming' | 'past')}>
+          <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as 'upcoming' | 'past'); setSelectedDay(null) }}>
             <TabsList className="grid w-full grid-cols-2 mb-4">
               <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
               <TabsTrigger value="past">Past</TabsTrigger>
             </TabsList>
 
             <TabsContent value="upcoming" className="mt-0">
-              {isLoading ? (
-                <LoadingState />
-              ) : activities.length === 0 ? (
-                <EmptyState type="upcoming" />
-              ) : (
-                <div className={isExpanded ? 'max-h-[400px] overflow-y-auto' : ''}>
-                  <div className="space-y-2">
-                    {displayedActivities.map((activity) => (
-                      <ActivityRow
-                        key={`${activity.type}-${activity.id}`}
-                        activity={activity}
-                        currentUserId={user?.id}
-                        showInterviewer={showInterviewer}
-                        isPastTab={false}
-                        onViewDetails={handleViewDetails}
-                        onNavigate={handleNavigateToCandidate}
-                        onCopyMeetingLink={handleCopyMeetingLink}
-                        onMarkInterviewCompleted={(id) => handleStatusUpdate(id, 'completed')}
-                        onMarkNoShow={(id) => handleStatusUpdate(id, 'no_show')}
-                        onCancelInterview={handleCancelBooking}
-                        onCompleteReminder={completeReminder}
-                        isUpdating={isUpdating}
-                        isCancelling={isCancelling}
-                        isCompletingReminder={isCompleting}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-              {!isLoading && <ShowMoreButton />}
+              <WeekStrip
+                selectedDate={selectedDay}
+                onSelectDate={handleDaySelect}
+                activityDates={activityDates}
+              />
+              {renderAgenda('upcoming')}
             </TabsContent>
 
             <TabsContent value="past" className="mt-0">
-              {isLoading ? (
-                <LoadingState />
-              ) : activities.length === 0 ? (
-                <EmptyState type="past" />
-              ) : (
-                <div className={isExpanded ? 'max-h-[400px] overflow-y-auto' : ''}>
-                  <div className="space-y-2">
-                    {displayedActivities.map((activity) => (
-                      <ActivityRow
-                        key={`${activity.type}-${activity.id}`}
-                        activity={activity}
-                        currentUserId={user?.id}
-                        showInterviewer={showInterviewer}
-                        isPastTab={true}
-                        onViewDetails={handleViewDetails}
-                        onNavigate={handleNavigateToCandidate}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-              {!isLoading && <ShowMoreButton />}
+              {renderAgenda('past')}
             </TabsContent>
           </Tabs>
         </CardContent>
@@ -307,9 +492,7 @@ export function UpcomingActivities() {
         bookingId={selectedBookingId}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        onBookingUpdated={() => {
-          // Refresh handled by query invalidation
-        }}
+        onBookingUpdated={() => {}}
       />
 
       {/* Cancel Confirmation Dialog */}
