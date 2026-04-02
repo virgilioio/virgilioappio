@@ -486,14 +486,6 @@ export function UpcomingActivities() {
           </Tabs>
         </CardContent>
       </Card>
-            </TabsContent>
-
-            <TabsContent value="past" className="mt-0">
-              {renderAgenda('past')}
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
 
       {/* Booking Details Dialog */}
       <BookingDetailsDialog
