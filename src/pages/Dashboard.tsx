@@ -18,7 +18,10 @@ import { DraggableDashboardCard, DashboardCardOverlay } from '@/components/dashb
 import { DroppableColumn } from '@/components/dashboard/DroppableColumn'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Button } from '@/components/ui/button'
-import { Settings2, RotateCcw } from 'lucide-react'
+import { Settings2, RotateCcw, Plus } from 'lucide-react'
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+} from '@/components/ui/sheet'
 import {
   DndContext,
   closestCorners,
