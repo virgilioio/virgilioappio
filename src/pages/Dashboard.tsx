@@ -20,6 +20,7 @@ import {
   computeTabletPlacements,
   WIDGET_REGISTRY,
   SIZE_TO_COLS,
+  WidgetSize,
 } from '@/hooks/useDashboardLayout'
 import { DraggableDashboardCard, DashboardCardOverlay } from '@/components/dashboard/DraggableDashboardCard'
 import { useIsMobile } from '@/hooks/use-mobile'
