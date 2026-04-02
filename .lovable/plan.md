@@ -1,62 +1,77 @@
 
-# Dashboard Layout: 2:2:1 Three-Column Grid
 
-## Layout change
+# Upcoming Activities → Calendar/Agenda Redesign + 2:2:2 Layout
+
+## The idea
+
+Instead of a generic card with rows, transform Upcoming Activities into an **agenda-style calendar widget** — a mini calendar at the top showing the current week (or month dots), with activities grouped by day below, similar to Google Calendar's "Schedule" view or Apple Calendar's day list. The dashboard becomes a balanced 2:2:2 grid.
+
+## Layout: 2:2:2
 
 **File: `src/pages/Dashboard.tsx`**
 
-Replace the current `lg:grid-cols-2` grid with a 5-column grid using `col-span`:
-
-```
-grid-cols-1 → md:grid-cols-3 → xl:grid-cols-5
-```
-
-| Breakpoint | Layout |
-|-----------|--------|
-| Mobile (`<768px`) | Single column, everything stacked |
-| Tablet (`md` 768–1279px) | 2:1 → Left col (Application Review + Jobs) spans 2, right col (Tasks + Upcoming) spans 1 |
-| Desktop (`xl` 1280px+) | 2:2:1 → Application Review + Jobs \| Tasks \| Upcoming Activities |
-
-### Grid structure (desktop)
+Switch from `xl:grid-cols-5` to `xl:grid-cols-3` with equal columns:
 
 ```text
-┌──────────────┬──────────────┬────────────┐
-│ col-span-2   │ col-span-2   │ col-span-1 │
-│              │              │            │
-│ App Review   │ Tasks        │ Upcoming   │
-│ Jobs Overview│              │ Activities │
-└──────────────┴──────────────┴────────────┘
+┌──────────────┬──────────────┬──────────────┐
+│  col 1       │  col 2       │  col 3       │
+│              │              │              │
+│ App Review   │ Tasks        │ Agenda /     │
+│ Jobs Overview│              │ Calendar     │
+└──────────────┴──────────────┴──────────────┘
 ```
 
-### Implementation
+- `grid-cols-1 md:grid-cols-2 xl:grid-cols-3`
+- Each column: `col-span-1`
+- On tablet: 2 columns (col 3 drops below). On mobile: single column.
 
-```tsx
-<div className="grid gap-6 grid-cols-1 md:grid-cols-3 xl:grid-cols-5 overflow-hidden">
-  {/* Col 1 — Application Review + Jobs */}
-  <div className="space-y-6 min-w-0 md:col-span-2 xl:col-span-2">
-    <OnboardingChecklist ... />
-    {hasJobContent && <ApplicationReviewCard />}
-    {hasJobContent && <JobsOverview ... />}
-  </div>
-  
-  {/* Col 2 — Tasks */}
-  <div className="space-y-6 min-w-0 md:col-span-1 xl:col-span-2">
-    <TasksOverview />
-  </div>
-  
-  {/* Col 3 — Upcoming Activities (narrow) */}
-  <div className="space-y-6 min-w-0 md:col-span-3 xl:col-span-1">
-    <UpcomingActivities />
-  </div>
-</div>
+This gives Upcoming Activities a full ~430px column — enough room for a proper calendar widget.
+
+## Calendar/Agenda redesign
+
+**File: `src/components/dashboard/UpcomingActivities.tsx`**
+
+Replace the current flat list with an agenda-style layout:
+
+### Top section: Mini week strip
+- A horizontal row showing the next 7 days (Mon–Sun) as small date circles
+- Days with activities get a **lilac dot indicator** beneath them (matching the booking page pattern)
+- Today is highlighted with the brand primary ring
+- Clicking a day scrolls/filters to that day's activities
+
+### Main section: Day-grouped agenda list
+- Activities grouped under day headers: **"Today"**, **"Tomorrow"**, **"Wed, Apr 8"**, etc.
+- Each day header has a subtle left border accent (lilac for today, muted for others)
+- Under each header, activity rows render with a **timeline connector** — a thin vertical line on the left connecting the time markers, giving it that agenda/timeline feel
+- Time shown as a left-aligned label (`9:00 AM`) with the activity details to its right
+- Keep the existing `ActivityRow` component for the content, but wrap it in the timeline layout
+
+### Visual structure per day group:
+```text
+Today, Apr 2
+│
+├─ 9:00 AM   Interview · Dwight K. · [confirmed]
+│
+├─ 2:30 PM   Reminder · Follow up with Jane
+│
+Tomorrow, Apr 3
+│
+├─ 10:00 AM  Interview · Michael S. · [confirmed]
 ```
 
-On tablet (md), the third column spans full width below the other two. On desktop (xl), it sits as the narrow right column.
+### Tabs stay
+- Keep Upcoming/Past tabs — they control which activities load
+- "Show more" behavior stays the same
 
-No changes to UpcomingActivities internals — it stays as-is, just rendered in a narrower container.
+### No changes to:
+- ActivityRow internals (actions, dropdowns, badges)
+- Data fetching hooks
+- Alert dialogs for cancel/status update
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/pages/Dashboard.tsx` | Replace 2-col grid with 5-col grid using col-span for 2:2:1 ratio, adjust responsive breakpoints |
+| `src/pages/Dashboard.tsx` | Switch to `xl:grid-cols-3` equal columns, each `col-span-1` |
+| `src/components/dashboard/UpcomingActivities.tsx` | Add mini week strip at top, group activities by day with timeline connectors and day headers |
+
