@@ -73,9 +73,15 @@ function findCardColumn(columns: DashboardColumns, cardId: string): ColumnId | n
 }
 
 export function useDashboardLayout() {
-  const [columns, setColumns] = useState<DashboardColumns>(loadColumns)
+  const [layoutState] = useState(() => loadLayout())
+  const [columns, setColumns] = useState<DashboardColumns>(layoutState.columns)
+  const [hiddenCards, setHiddenCards] = useState<DashboardCardId[]>(layoutState.hidden)
   const [isCustomizing, setIsCustomizing] = useState(false)
   const columnsBeforeDrag = useRef<DashboardColumns | null>(null)
+
+  const persist = useCallback((cols: DashboardColumns, hidden: DashboardCardId[]) => {
+    saveLayout(cols, hidden)
+  }, [])
 
   const saveDragStart = useCallback(() => {
     columnsBeforeDrag.current = JSON.parse(JSON.stringify(columns))
@@ -97,10 +103,7 @@ export function useDashboardLayout() {
         right: [...prev.right],
       }
 
-      // Remove from source
       next[sourceCol] = next[sourceCol].filter(id => id !== cardId)
-
-      // Clamp index
       const idx = Math.min(overIndex, next[overColumnId].length)
       next[overColumnId].splice(idx, 0, cardId)
 
@@ -118,19 +121,20 @@ export function useDashboardLayout() {
       const oldIndex = col.indexOf(activeId as DashboardCardId)
       const newIndex = col.indexOf(overId as DashboardCardId)
       if (oldIndex === -1 || newIndex === -1) return prev
-
-      const next = { ...prev, [columnId]: arrayMove(col, oldIndex, newIndex) }
-      return next
+      return { ...prev, [columnId]: arrayMove(col, oldIndex, newIndex) }
     })
   }, [])
 
   const finalizeLayout = useCallback(() => {
     setColumns(prev => {
-      saveColumns(prev)
+      setHiddenCards(h => {
+        persist(prev, h)
+        return h
+      })
       columnsBeforeDrag.current = null
       return prev
     })
-  }, [])
+  }, [persist])
 
   const cancelDrag = useCallback(() => {
     if (columnsBeforeDrag.current) {
@@ -139,9 +143,52 @@ export function useDashboardLayout() {
     }
   }, [])
 
+  const hideCard = useCallback((cardId: DashboardCardId) => {
+    setColumns(prev => {
+      const sourceCol = findCardColumn(prev, cardId)
+      if (!sourceCol) return prev
+      const next = {
+        left: [...prev.left],
+        center: [...prev.center],
+        right: [...prev.right],
+      }
+      next[sourceCol] = next[sourceCol].filter(id => id !== cardId)
+      setHiddenCards(h => {
+        const newHidden = [...h, cardId]
+        persist(next, newHidden)
+        return newHidden
+      })
+      return next
+    })
+  }, [persist])
+
+  const showCard = useCallback((cardId: DashboardCardId) => {
+    setHiddenCards(prev => {
+      const newHidden = prev.filter(id => id !== cardId)
+      setColumns(cols => {
+        const counts = {
+          left: cols.left.length,
+          center: cols.center.length,
+          right: cols.right.length,
+        }
+        const shortest = (Object.keys(counts) as ColumnId[]).reduce((a, b) => counts[a] <= counts[b] ? a : b)
+        const next = {
+          left: [...cols.left],
+          center: [...cols.center],
+          right: [...cols.right],
+        }
+        next[shortest] = [...next[shortest], cardId]
+        persist(next, newHidden)
+        return next
+      })
+      return newHidden
+    })
+  }, [persist])
+
   const resetLayout = useCallback(() => {
     setColumns(DEFAULT_COLUMNS)
-    saveColumns(DEFAULT_COLUMNS)
+    setHiddenCards([])
+    saveLayout(DEFAULT_COLUMNS, [])
   }, [])
 
   const toggleCustomizing = useCallback(() => {
@@ -150,6 +197,7 @@ export function useDashboardLayout() {
 
   return {
     columns,
+    hiddenCards,
     isCustomizing,
     findCardColumn: (cardId: string) => findCardColumn(columns, cardId),
     saveDragStart,
@@ -157,6 +205,8 @@ export function useDashboardLayout() {
     reorderWithinColumn,
     finalizeLayout,
     cancelDrag,
+    hideCard,
+    showCard,
     resetLayout,
     toggleCustomizing,
   }
