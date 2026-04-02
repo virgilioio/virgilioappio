@@ -104,7 +104,7 @@ export function UpcomingActivities() {
   const [statusUpdateBooking, setStatusUpdateBooking] = useState<{ id: string; status: string } | null>(null)
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
   const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()))
-  const [calendarOpen, setCalendarOpen] = useState(true)
+  const [calendarOpen, setCalendarOpen] = useState(false)
 
   const permissions = usePermissions()
   const { user } = useAuth()
