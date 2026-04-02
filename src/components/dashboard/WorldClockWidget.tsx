@@ -189,11 +189,11 @@ export function WorldClockWidget() {
 
   return (
     <>
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden bg-accent/40 border-accent/60">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg font-semibold flex items-center gap-2" withPeriod={false}>
-              <Clock className="h-4 w-4 text-muted-foreground" />
+              <Clock className="h-4 w-4 text-accent-foreground" />
               World Clock
             </CardTitle>
             <Button
@@ -210,10 +210,10 @@ export function WorldClockWidget() {
           {/* City header with navigation */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2 min-w-0">
-              <h3 className="text-base font-semibold text-foreground truncate">
+              <h3 className="text-base font-poppins font-semibold text-foreground truncate">
                 {current.label}
               </h3>
-              <Badge variant="secondary" className="text-[10px] font-mono shrink-0 px-1.5 py-0">
+              <Badge className="text-[10px] font-mono shrink-0 px-1.5 py-0 border-purple-200 bg-purple-100 text-purple-700 dark:border-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
                 {utcOffset}
               </Badge>
             </div>
@@ -239,14 +239,14 @@ export function WorldClockWidget() {
               <span className="text-[10px] text-muted-foreground capitalize">{tod}</span>
             </div>
           </div>
-          <div className="font-mono text-4xl font-bold tracking-tight text-foreground tabular-nums leading-none mb-1.5">
+          <div className="font-poppins text-4xl font-bold tracking-tight text-foreground tabular-nums leading-none mb-1.5">
             {timeString}
           </div>
-          <p className="text-xs text-muted-foreground">{dateString}</p>
+          <p className="text-xs text-muted-foreground font-inter">{dateString}</p>
 
           {/* Dot indicators for multiple timezones */}
           {timezones.length > 1 && (
-            <div className="flex items-center justify-center gap-1.5 mt-3 pt-3 border-t border-border">
+            <div className="flex items-center justify-center gap-1.5 mt-3 pt-3 border-t border-accent/60">
               {timezones.map((tz, i) => (
                 <button
                   key={tz.id}
@@ -254,8 +254,8 @@ export function WorldClockWidget() {
                   className={cn(
                     'h-1.5 rounded-full transition-all duration-200',
                     i === safeIndex
-                      ? 'w-4 bg-primary'
-                      : 'w-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                      ? 'w-4 bg-accent-foreground'
+                      : 'w-1.5 bg-accent-foreground/30 hover:bg-accent-foreground/50'
                   )}
                 />
               ))}
