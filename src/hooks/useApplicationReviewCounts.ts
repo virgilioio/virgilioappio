@@ -5,6 +5,8 @@ import { useJobs } from '@/hooks/useJobs'
 export interface ApplicationReviewCount {
   jobId: string
   jobTitle: string
+  jobStatus: string
+  jobLocation: string | null
   count: number
 }
 
