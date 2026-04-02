@@ -424,12 +424,16 @@ export function UpcomingActivities() {
             </TabsList>
 
             <TabsContent value="upcoming" className="mt-0">
-              <WeekStrip
+              <AgendaCalendar
                 selectedDate={selectedDay}
-                onSelectDate={handleDaySelect}
+                onDateSelect={handleDaySelect}
+                currentMonth={currentMonth}
+                onMonthChange={setCurrentMonth}
                 activityDates={activityDates}
               />
-              {renderAgenda('upcoming')}
+              <div className="mt-4 border-t pt-4">
+                {renderAgenda('upcoming')}
+              </div>
             </TabsContent>
 
             <TabsContent value="past" className="mt-0">
