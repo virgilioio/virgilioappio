@@ -1,7 +1,7 @@
 import { ReactNode } from 'react'
 import { useSortable, defaultAnimateLayoutChanges } from '@dnd-kit/sortable'
 import type { AnimateLayoutChanges } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+
 import { GripVertical, X, Columns2, Columns3, Columns4 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { WidgetSize, WIDGET_REGISTRY, DashboardCardId, CARD_SIZE_RULES } from '@/hooks/useDashboardLayout'
