@@ -108,12 +108,12 @@ export function DraggableDashboardCard({
           {onHide && (
             <button
               onClick={onHide}
-              className={cn(
+             className={cn(
                 "absolute -top-2 -right-2 z-10 flex items-center justify-center",
-                "h-7 w-7 rounded-full bg-destructive text-destructive-foreground shadow-md",
+                "h-7 w-7 rounded-full bg-muted text-destructive shadow-sm border border-border",
                 "cursor-pointer",
-                "opacity-0 group-hover/card:opacity-100 transition-opacity duration-200",
-                "focus:opacity-100 hover:scale-110 transition-transform"
+                "transition-colors duration-200",
+                "hover:bg-destructive hover:text-destructive-foreground"
               )}
             >
               <X className="h-3.5 w-3.5" />
