@@ -158,7 +158,7 @@ export default function Dashboard() {
               </DragOverlay>
             </DndContext>
           ) : (
-            <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 items-start">
               {gridContent}
             </div>
           )}
