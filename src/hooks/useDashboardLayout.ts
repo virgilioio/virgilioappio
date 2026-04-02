@@ -204,14 +204,16 @@ export function useDashboardLayout() {
 
   const reorderWidgets = useCallback((activeId: string, overId: string) => {
     setWidgets(prev => {
-      const oldIndex = prev.findIndex(w => w.id === activeId)
-      const newIndex = prev.findIndex(w => w.id === overId)
-      if (oldIndex === -1 || newIndex === -1) return prev
-      const next = [...prev]
-      const [moved] = next.splice(oldIndex, 1)
-      next.splice(newIndex, 0, moved)
-      // Re-number orders
-      return next.map((w, i) => ({ ...w, order: i }))
+      const activeWidget = prev.find(w => w.id === activeId)
+      const overWidget = prev.find(w => w.id === overId)
+      if (!activeWidget || !overWidget) return prev
+      const activeOrder = activeWidget.order
+      const overOrder = overWidget.order
+      return prev.map(w => {
+        if (w.id === activeId) return { ...w, order: overOrder }
+        if (w.id === overId) return { ...w, order: activeOrder }
+        return w
+      }).sort((a, b) => a.order - b.order)
     })
   }, [])
 

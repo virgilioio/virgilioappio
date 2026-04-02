@@ -31,8 +31,9 @@ import {
 } from '@/components/ui/sheet'
 import {
   DndContext,
-  closestCenter,
+  closestCorners,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragEndEvent,
@@ -71,7 +72,8 @@ export default function Dashboard() {
   const [addWidgetOpen, setAddWidgetOpen] = useState(false)
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 5 } })
   )
 
   if (orgLoading || !hasOrganizationContext) {
@@ -257,13 +259,13 @@ export default function Dashboard() {
           {isCustomizing ? (
             <DndContext
               sensors={sensors}
-              collisionDetection={closestCenter}
+              collisionDetection={closestCorners}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
               onDragCancel={handleDragCancel}
             >
               <SortableContext items={renderableWidgets.map(w => w.id)} strategy={rectSortingStrategy}>
-                <div className="grid gap-6 items-start" style={gridStyle}>
+                <div className="grid gap-5 items-start" style={gridStyle}>
                   {renderGrid()}
                 </div>
               </SortableContext>
@@ -278,7 +280,7 @@ export default function Dashboard() {
               </DragOverlay>
             </DndContext>
           ) : (
-            <div className="grid gap-6 items-start" style={gridStyle}>
+            <div className="grid gap-5 items-start" style={gridStyle}>
               {renderGrid()}
             </div>
           )}
