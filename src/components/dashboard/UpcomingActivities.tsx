@@ -40,10 +40,10 @@ import { PageTitle } from '@/components/ui/page-title'
 
 function DayGroupHeader({ date }: { date: Date }) {
   const label = isToday(date)
-    ? `Today, ${format(date, 'MMM d')}`
+    ? `Today, ${format(date, 'MMMM d, yyyy')}`
     : isTomorrow(date)
-      ? `Tomorrow, ${format(date, 'MMM d')}`
-      : format(date, 'EEE, MMM d')
+      ? `Tomorrow, ${format(date, 'MMMM d, yyyy')}`
+      : format(date, 'EEE, MMMM d, yyyy')
 
   return (
     <div className={cn(
