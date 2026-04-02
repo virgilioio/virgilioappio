@@ -152,6 +152,7 @@ export default function Dashboard() {
     'app-review': hasJobContent ? true as unknown as ReactNode : null,
     'onboarding': <OnboardingChecklist isDeemphasized={!hasSeenValue} />,
     'jobs': hasJobContent ? true as unknown as ReactNode : null,
+    'world-clock': <WorldClockWidget />,
   }
 
   // ── Mobile: flat stacked list, no DnD ──
