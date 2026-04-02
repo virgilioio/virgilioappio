@@ -280,7 +280,7 @@ export default function Dashboard() {
               </DragOverlay>
             </DndContext>
           ) : (
-            <div className="grid gap-6 items-start" style={gridStyle}>
+            <div className="grid gap-5 items-start" style={gridStyle}>
               {renderGrid()}
             </div>
           )}
