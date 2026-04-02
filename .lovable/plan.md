@@ -1,51 +1,37 @@
 
 
-# Application Review Card for Dashboard
+# Application Review Card: Add Show More Toggle, Job Status Badge & Location
 
-## Overview
+## Changes
 
-A new dashboard card showing jobs that have candidates waiting in the Application Review stage, with per-job counts. Clicking a job row navigates to that job's application review tab. Empty state uses the Gio mascot pattern.
+### 1. Extend hook to include job status and location
 
-## Data fetching
+**File: `src/hooks/useApplicationReviewCounts.ts`**
 
-**New hook: `src/hooks/useApplicationReviewCounts.ts`**
+- Add `jobStatus` and `jobLocation` fields to `ApplicationReviewCount` interface
+- Pull them from the existing `jobs` array (already available via `useJobs()`) when building results
 
-A React Query hook that fetches counts by querying:
-```sql
-job_candidate_associations (status = 'active')
-  → joined with job_hiring_stages (current_stage_id)
-  → joined with job_stages (stage_type = 'application_review')
-  → grouped by job_id
-```
+### 2. Update card rows to match JobsOverview layout + add show more toggle
 
-Returns: `{ jobId, jobTitle, count }[]` — only jobs with count > 0.
+**File: `src/components/dashboard/ApplicationReviewCard.tsx`**
 
-Uses two queries:
-1. Get all `job_hiring_stages` where `job_stages.stage_type = 'application_review'` for the user's accessible jobs.
-2. Count `job_candidate_associations` grouped by job for those stage IDs.
+**Row layout** — match the exact JobsOverview pattern:
+- Top line: job title (truncated) + `Badge` with status variant (`job-open`, `job-draft`, etc.)
+- Second line: location with `MapPin` icon (if present), same `text-xs text-muted-foreground` styling
+- Right side: count badge + `ChevronRight`
+- Use `flex items-start` (not `items-center`) like JobsOverview
 
-Alternatively, a single query joining associations → hiring stages → job_stages filtering by stage_type, then grouping client-side. Stale time ~30s to match other dashboard hooks.
+**Show more/less toggle** — replace static `<p>+N more</p>` with:
+- `useState` for `showAll`
+- `<Button variant="ghost" size="sm" className="w-full mt-2">` showing "Show N more" / "Show less"
+- Same pattern as other dashboard cards
 
-## New component: `src/components/dashboard/ApplicationReviewCard.tsx`
-
-- Card with icon (`FileSearch` or `ClipboardList`) + title "Application Review"
-- Each row: job title (truncated) + count badge (lilac/purple) + chevron
-- Clicking a row → navigates to `/jobs/{jobId}?tab=application-review` (or opens in new tab, matching JobsOverview pattern)
-- If no jobs have candidates in review → `GioEmptyState` with "No applications to review" message
-- Loading state: skeleton rows matching TasksOverview pattern
-- Max 5-6 jobs shown, with "View all" link if more
-
-## Dashboard placement
-
-**File: `src/pages/Dashboard.tsx`**
-
-Add `<ApplicationReviewCard />` in the left column, between `OnboardingChecklist` and `JobsOverview`. Gate it behind `hasJobContent` like JobsOverview.
+**New imports**: `Badge`, `MapPin`, `Button`, `useState`
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/hooks/useApplicationReviewCounts.ts` | New — React Query hook fetching per-job application review counts |
-| `src/components/dashboard/ApplicationReviewCard.tsx` | New — compact card listing jobs with review candidates |
-| `src/pages/Dashboard.tsx` | Add ApplicationReviewCard to left column |
+| `src/hooks/useApplicationReviewCounts.ts` | Add `jobStatus` and `jobLocation` to interface and results |
+| `src/components/dashboard/ApplicationReviewCard.tsx` | Match JobsOverview row style (status badge, location), add interactive show more/less |
 
