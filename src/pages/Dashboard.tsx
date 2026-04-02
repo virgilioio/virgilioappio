@@ -116,7 +116,7 @@ export default function Dashboard() {
             <TrialCountdownBanner />
             <div className="flex flex-col gap-6">
               {mobileCards.map(cardId => (
-                <div key={cardId} className="min-w-0">{cardRegistry[cardId]}</div>
+                <div key={cardId} className="min-w-0">{renderCard(cardId)}</div>
               ))}
             </div>
           </div>
