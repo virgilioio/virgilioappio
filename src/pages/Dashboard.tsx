@@ -41,6 +41,14 @@ import {
 const COLUMN_IDS: ColumnId[] = ['left', 'center', 'right']
 const MOBILE_ORDER: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs']
 
+const CARD_LABELS: Record<DashboardCardId, string> = {
+  'agenda': 'Agenda & Calendar',
+  'tasks': 'Tasks',
+  'app-review': 'Application Review',
+  'onboarding': 'Onboarding Checklist',
+  'jobs': 'Jobs Overview',
+}
+
 export default function Dashboard() {
   const { profile, isLoading } = useUserProfile()
   const permissions = usePermissions()
@@ -49,6 +57,7 @@ export default function Dashboard() {
   const { hasRecruiterRole, isPrivileged } = useUserJobRoles()
   const {
     columns,
+    hiddenCards,
     isCustomizing,
     findCardColumn,
     saveDragStart,
@@ -56,11 +65,14 @@ export default function Dashboard() {
     reorderWithinColumn,
     finalizeLayout,
     cancelDrag,
+    hideCard,
+    showCard,
     resetLayout,
     toggleCustomizing,
   } = useDashboardLayout()
   const isMobile = useIsMobile()
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [addWidgetOpen, setAddWidgetOpen] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
