@@ -1,55 +1,36 @@
 
 
-# Customizable Dashboard: Drag-to-Reorder Cards
+# Fix Dashboard DnD: Allow Dropping Below Items in Same Column
 
-## Two parts to address
+## Problem
 
-### Part 1: Fix tablet layout (quick fix)
+The current setup uses `rectSortingStrategy` which treats all grid items as a flat list. When you drag a card toward another card in the same column, `closestCenter` collision detection causes the target to shift away before you can drop below it — the items swap positions instead of allowing insertion.
 
-The current grid uses `order-first md:order-last` which causes the Agenda card to jump to the end on tablet, breaking the visual flow. The fix is to ensure on tablet (md, 2-col), the order is: Tasks + App Review in the first two slots, Agenda wraps below at full width or stays in its slot naturally.
+## Solution
 
-### Part 2: Draggable/customizable dashboard cards
+Switch from `rectSortingStrategy` to `verticalListSortingStrategy` — but that won't work well for a grid. The real fix is two changes:
 
-**Not crazy at all.** You already have `@dnd-kit/core` + `@dnd-kit/sortable` installed and used extensively (pipeline, stage config, form builders). The pattern is well-established in the codebase.
+1. **Replace `closestCenter` with `closestCorners`** — this collision detection algorithm is more forgiving in grid layouts and better handles the "drop below" intent by considering corner proximity rather than center-to-center distance.
 
-**How it works:**
+2. **Add `animateLayoutChanges` override to `useSortable`** in `DraggableDashboardCard.tsx` — disable the layout animation during active drags so items don't visually shift while you're still holding the dragged card. Items only reorder on drop.
 
-1. **New hook: `useDashboardLayout.ts`**
-   - Stores card order as an array of card IDs in `localStorage` (e.g. `['agenda', 'tasks', 'app-review', 'onboarding', 'jobs']`)
-   - Falls back to a default order
-   - Exposes `cardOrder`, `reorderCards(from, to)`, and `resetLayout()`
-   - Uses `arrayMove` from `@dnd-kit/sortable` for reordering
+```tsx
+// In DraggableDashboardCard.tsx
+const animateLayoutChanges = (args) => {
+  const { isSorting, wasDragging } = args;
+  if (isSorting || wasDragging) return false;
+  return defaultAnimateLayoutChanges(args);
+};
 
-2. **New wrapper: `DraggableDashboardCard.tsx`**
-   - Uses `useSortable` from `@dnd-kit/sortable` (same pattern as `DraggableStageItem`, `PostingFieldsBuilder`)
-   - Wraps each dashboard card with a drag handle (grip icon, visible on hover)
-   - Follows the existing DnD style rules: `CSS.Translate`, opacity transitions, `DragOverlay` with rotate/scale
-
-3. **Update `Dashboard.tsx`**
-   - Wrap the grid in `DndContext` + `SortableContext`
-   - Render cards dynamically from the stored order array
-   - Add a subtle "Customize" toggle button (e.g. near the welcome header) that enables drag handles
-   - When not in customize mode, cards render normally with no drag affordance
-
-4. **Responsive behavior**
-   - On mobile: disable drag entirely (touch scrolling conflicts) — keep the fixed mobile order (Agenda → Tasks → App Review)
-   - On tablet/desktop: drag-to-reorder works, saved order persists
-
-**Data flow:**
-```text
-localStorage["dashboard-layout"]
-  → useDashboardLayout() hook
-    → Dashboard.tsx reads cardOrder[]
-      → SortableContext renders cards in that order
-        → DragOverlay shows card preview while dragging
-          → onDragEnd → arrayMove → save to localStorage
+useSortable({ id, disabled: !isCustomizing, animateLayoutChanges })
 ```
+
+This means while dragging, the other cards stay put visually. When you drop, the reorder happens cleanly without the "jumping" behavior.
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/hooks/useDashboardLayout.ts` | New — localStorage-backed card order state with arrayMove |
-| `src/components/dashboard/DraggableDashboardCard.tsx` | New — useSortable wrapper with drag handle |
-| `src/pages/Dashboard.tsx` | Fix tablet ordering; wrap grid in DndContext/SortableContext; render cards from dynamic order; add customize toggle |
+| `src/components/dashboard/DraggableDashboardCard.tsx` | Add `animateLayoutChanges` override to suppress layout shifts during active drag |
+| `src/pages/Dashboard.tsx` | Switch collision detection from `closestCenter` to `closestCorners` |
 
