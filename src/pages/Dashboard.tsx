@@ -113,6 +113,8 @@ export default function Dashboard() {
   const isMobile = useIsMobile()
   const [activeId, setActiveId] = useState<string | null>(null)
   const [addWidgetOpen, setAddWidgetOpen] = useState(false)
+  const [cachedPlacements, setCachedPlacements] = useState<GridPlacement[]>([])
+  const [lastStructuralKey, setLastStructuralKey] = useState('')
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -179,22 +181,14 @@ export default function Dashboard() {
   const gridCols = isTablet ? 4 : 6
 
   // Structural key: changes on add/remove/resize but NOT on reorder
-  const structuralKey = useMemo(
-    () => renderableWidgets.map(w => `${w.id}:${w.size}`).sort().join(','),
-    [renderableWidgets]
-  )
+  const structuralKey = renderableWidgets.map(w => `${w.id}:${w.size}`).sort().join(',')
 
-  // Manage placements as state — only recompute on structural changes
-  const [cachedPlacements, setCachedPlacements] = useState<GridPlacement[]>(() =>
-    isTablet ? computeTabletPlacements(renderableWidgets) : computePlacements(renderableWidgets)
-  )
-  const [lastStructuralKey, setLastStructuralKey] = useState(structuralKey)
-
-  // Recompute placements only when structure changes (size, visibility), not order
+  // Recompute placements only when structure changes (size, visibility), not order swaps
   if (structuralKey !== lastStructuralKey) {
-    setCachedPlacements(
-      isTablet ? computeTabletPlacements(renderableWidgets) : computePlacements(renderableWidgets)
-    )
+    const newPlacements = isTablet
+      ? computeTabletPlacements(renderableWidgets)
+      : computePlacements(renderableWidgets)
+    setCachedPlacements(newPlacements)
     setLastStructuralKey(structuralKey)
   }
 
