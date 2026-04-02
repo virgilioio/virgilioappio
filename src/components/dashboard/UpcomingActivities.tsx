@@ -28,60 +28,11 @@ import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/integrations/supabase/client'
 import { useQueryClient } from '@tanstack/react-query'
 import type { UnifiedActivity } from '@/types/activity'
-import { format, parseISO, isToday, isTomorrow, addDays, startOfDay, isSameDay } from 'date-fns'
+import { format, parseISO, isToday, isTomorrow, startOfDay, isSameDay, startOfMonth } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { AgendaCalendar } from './AgendaCalendar'
 
-// ── Week Strip ──────────────────────────────────────────────────
-
-interface WeekStripProps {
-  selectedDate: Date | null
-  onSelectDate: (date: Date) => void
-  activityDates: Set<string> // YYYY-MM-DD strings
-}
-
-function WeekStrip({ selectedDate, onSelectDate, activityDates }: WeekStripProps) {
-  const today = startOfDay(new Date())
-  const days = Array.from({ length: 7 }, (_, i) => addDays(today, i))
-
-  return (
-    <div className="flex items-center justify-between gap-1 mb-4 px-1">
-      {days.map((day) => {
-        const dateKey = format(day, 'yyyy-MM-dd')
-        const isSelected = selectedDate && isSameDay(day, selectedDate)
-        const isTodayDate = isToday(day)
-        const hasActivity = activityDates.has(dateKey)
-
-        return (
-          <button
-            key={dateKey}
-            onClick={() => onSelectDate(day)}
-            className={cn(
-              "flex flex-col items-center gap-0.5 rounded-lg px-2 py-1.5 transition-all text-center min-w-[40px]",
-              "hover:bg-accent",
-              isSelected && "bg-primary/10 ring-1 ring-primary",
-              !isSelected && isTodayDate && "ring-1 ring-primary/30"
-            )}
-          >
-            <span className="text-[10px] font-medium text-muted-foreground uppercase">
-              {format(day, 'EEE')}
-            </span>
-            <span className={cn(
-              "text-sm font-semibold leading-none",
-              isSelected ? "text-primary" : "text-foreground"
-            )}>
-              {format(day, 'd')}
-            </span>
-            {/* Activity indicator dot */}
-            <div className={cn(
-              "h-1 w-1 rounded-full transition-colors",
-              hasActivity ? "bg-[hsl(var(--primary))]" : "bg-transparent"
-            )} />
-          </button>
-        )
-      })}
-    </div>
-  )
-}
+// WeekStrip removed — using AgendaCalendar instead
 
 // ── Day Group Header ────────────────────────────────────────────
 
@@ -150,6 +101,7 @@ export function UpcomingActivities() {
   const [bookingToCancel, setBookingToCancel] = useState<string | null>(null)
   const [statusUpdateBooking, setStatusUpdateBooking] = useState<{ id: string; status: string } | null>(null)
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
+  const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()))
 
   const permissions = usePermissions()
   const { user } = useAuth()
@@ -472,12 +424,16 @@ export function UpcomingActivities() {
             </TabsList>
 
             <TabsContent value="upcoming" className="mt-0">
-              <WeekStrip
+              <AgendaCalendar
                 selectedDate={selectedDay}
-                onSelectDate={handleDaySelect}
+                onDateSelect={handleDaySelect}
+                currentMonth={currentMonth}
+                onMonthChange={setCurrentMonth}
                 activityDates={activityDates}
               />
-              {renderAgenda('upcoming')}
+              <div className="mt-4 border-t pt-4">
+                {renderAgenda('upcoming')}
+              </div>
             </TabsContent>
 
             <TabsContent value="past" className="mt-0">
