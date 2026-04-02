@@ -30,11 +30,11 @@ import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/integrations/supabase/client'
 import { useQueryClient } from '@tanstack/react-query'
 import type { UnifiedActivity } from '@/types/activity'
-import { format, parseISO, isToday, isTomorrow, startOfDay, isSameDay, startOfMonth } from 'date-fns'
+import { format, parseISO, isToday, isTomorrow, startOfDay, isSameDay, startOfMonth, addMonths, subMonths } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { AgendaCalendar } from './AgendaCalendar'
-
-// WeekStrip removed — using AgendaCalendar instead
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
+import { PageTitle } from '@/components/ui/page-title'
 
 // ── Day Group Header ────────────────────────────────────────────
 
