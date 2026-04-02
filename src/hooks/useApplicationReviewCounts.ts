@@ -5,6 +5,8 @@ import { useJobs } from '@/hooks/useJobs'
 export interface ApplicationReviewCount {
   jobId: string
   jobTitle: string
+  jobStatus: string
+  jobLocation: string | null
   count: number
 }
 
@@ -71,12 +73,15 @@ export function useApplicationReviewCounts() {
       }
 
       // Build result with job titles
-      const jobTitleMap = new Map(jobs?.map(j => [j.id, j.title]) ?? [])
       const results: ApplicationReviewCount[] = []
+      const jobMap = new Map(jobs?.map(j => [j.id, j]) ?? [])
       for (const [jobId, count] of countMap) {
+        const job = jobMap.get(jobId)
         results.push({
           jobId,
-          jobTitle: jobTitleMap.get(jobId) ?? 'Unknown Job',
+          jobTitle: job?.title ?? 'Unknown Job',
+          jobStatus: job?.status ?? 'draft',
+          jobLocation: job?.location ?? null,
           count,
         })
       }
