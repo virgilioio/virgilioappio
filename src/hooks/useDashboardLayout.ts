@@ -3,7 +3,7 @@ import { useState, useCallback, useRef } from 'react'
 // ── Widget size system ──────────────────────────────────────────────
 
 export type WidgetSize = 'small' | 'medium' | 'large'
-export type DashboardCardId = 'agenda' | 'tasks' | 'app-review' | 'onboarding' | 'jobs'
+export type DashboardCardId = 'agenda' | 'tasks' | 'app-review' | 'onboarding' | 'jobs' | 'world-clock'
 
 export interface WidgetMeta {
   id: DashboardCardId
