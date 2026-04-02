@@ -213,7 +213,7 @@ export function WorldClockWidget() {
               <h3 className="text-base font-poppins font-semibold text-foreground truncate">
                 {current.label}
               </h3>
-              <Badge className="text-[10px] font-mono shrink-0 px-1.5 py-0 border-purple-200 bg-purple-100 text-purple-700 dark:border-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+              <Badge variant="default" className="text-[10px] font-mono shrink-0 px-1.5 py-0">
                 {utcOffset}
               </Badge>
             </div>
