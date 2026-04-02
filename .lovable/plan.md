@@ -1,61 +1,61 @@
 
 
-# Hide/Show Dashboard Cards + Add Widget Menu
+# User-Controlled Card Column Spanning
 
-## Overview
+## The challenge
 
-Add the ability to hide dashboard cards and re-add them from a menu. When customizing, each card gets an "X" button to hide it. A "+" button or "Add Widget" menu shows hidden cards that can be re-added to any column.
+The current architecture uses 3 independent flex columns. A card that spans 2 columns cannot live inside a single flex column — it needs to break across column boundaries. This is a fundamental layout change.
 
-## How it works
+### Why it's hard
 
-- A `hiddenCards` set is stored alongside the column layout in localStorage
-- Hiding a card removes it from its column and adds it to `hiddenCards`
-- The "Add Widget" button (visible only in customize mode) opens a Sheet/Popover listing hidden cards with friendly labels and an "Add" button next to each
-- Adding a card removes it from `hiddenCards` and appends it to the column with the fewest cards
-- Reset layout also resets hidden cards
+The multi-column DnD model stores cards as members of one column. A 2-col-wide card conceptually "owns" two column slots. The rendering and drag logic both need to understand this.
+
+### Recommended approach: CSS Grid subgrid with span metadata
+
+Instead of 3 separate flex columns rendered independently, switch the inner rendering to a single CSS Grid with `grid-template-columns: repeat(3, 1fr)` and explicit `grid-column` / `grid-row` placement. Each card gets a `colSpan: 1 | 2` property. The column ownership model stays the same (left/center/right), but rendering computes explicit grid positions from the column arrays + span info.
+
+**Key insight**: The data model (3 column arrays) stays intact for DnD. Only the rendering layer changes to support spanning. A 2-col card anchored in "left" visually extends into "center."
 
 ## Changes
 
 ### 1. `src/hooks/useDashboardLayout.ts`
 
-- Add `hiddenCards: Set<DashboardCardId>` to state
-- Persist hidden cards in localStorage alongside columns (update storage format to `{ columns, hidden }`)
-- New methods:
-  - `hideCard(cardId)` — remove from its column, add to hidden set, save
-  - `showCard(cardId)` — remove from hidden set, add to shortest column, save
-- `resetLayout` also clears hidden cards
-- Update `loadColumns` to handle new storage format with backwards compatibility
+- Add `cardSpans: Record<DashboardCardId, 1 | 2>` to state (default all `1`)
+- Persist in localStorage alongside columns/hidden
+- New method: `toggleCardSpan(cardId)` — toggles between 1 and 2
+- Constraint: a card in the "right" column toggled to span 2 would visually overflow. When a card is set to span 2, if it's in column "right", move it to "center" (spans center+right). If in "center", it spans center+right. If in "left", it spans left+center.
+- When dragging a 2-col card, it always lands as span-1 temporarily (simplifies placement), user re-expands after dropping
 
-### 2. `src/components/dashboard/DraggableDashboardCard.tsx`
+### 2. `src/pages/Dashboard.tsx`
 
-- Add optional `onHide` prop
-- When `isCustomizing` and `onHide` is provided, render an "X" button (opposite corner from drag handle) — small, circular, same style as drag handle but with X icon
+- Replace the 3 independent flex column divs with a single CSS Grid container using explicit `grid-column` and `grid-row` placement
+- Compute grid positions from the column arrays: left cards start at col 1, center at col 2, right at col 3; span-2 cards get `grid-column: span 2`
+- Row positions computed by walking each column's card list and tracking row offsets
+- DnD contexts remain per-column (SortableContext per column still works — the card's "home" column is its anchor)
+- In customize mode, each card shows a small "expand/collapse" icon button (e.g., `Maximize2`/`Minimize2`) to toggle between 1-col and 2-col
 
-### 3. `src/pages/Dashboard.tsx`
+### 3. `src/components/dashboard/DraggableDashboardCard.tsx`
 
-- Pass `onHide` to each `DraggableDashboardCard` when customizing
-- Filter hidden cards from rendering (already handled by removing from columns)
-- Add "Add Widget" button next to "Reset" and "Done" buttons (only visible in customize mode, only enabled when there are hidden cards)
-- Clicking "Add Widget" opens a Sheet listing hidden cards with labels and "Add to dashboard" buttons
+- Add optional `onToggleSpan` prop and `colSpan` prop
+- When `isCustomizing`, show a resize toggle button (opposite side from the X button, or next to drag handle)
+- Visual indicator: when span is 2, the card ring/border could be slightly different shade
 
-### 4. Card label registry
+### 4. DnD behavior with spanning
 
-A simple map in Dashboard.tsx for display names:
-```ts
-const CARD_LABELS: Record<DashboardCardId, string> = {
-  'agenda': 'Agenda & Calendar',
-  'tasks': 'Tasks',
-  'app-review': 'Application Review',
-  'onboarding': 'Onboarding Checklist',
-  'jobs': 'Jobs Overview',
-}
-```
+- During drag (`onDragStart`), temporarily collapse the card to span-1 for clean placement
+- On drop (`onDragEnd`), restore the original span
+- Cross-column moves: if a span-2 card is dropped in "right", auto-move it to "center" so it can span center+right
+- Mobile/tablet: spanning is ignored (single column / 2-col layout), cards always render as span-1
+
+## Complexity assessment
+
+This is a **significant** change. The rendering layer shifts from "3 independent flex columns" to "1 CSS Grid with computed placement." DnD logic gets more complex with span-aware constraints. Estimated ~200-300 lines of new/changed code across 3 files.
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/hooks/useDashboardLayout.ts` | Add `hiddenCards` state, `hideCard`/`showCard` methods, updated storage format |
-| `src/components/dashboard/DraggableDashboardCard.tsx` | Add `onHide` prop with X button in customize mode |
-| `src/pages/Dashboard.tsx` | Add "Add Widget" button + Sheet listing hidden cards; pass `onHide` to draggable cards |
+| `src/hooks/useDashboardLayout.ts` | Add `cardSpans` state, `toggleCardSpan` method, span-aware column constraints |
+| `src/components/dashboard/DraggableDashboardCard.tsx` | Add `onToggleSpan` + `colSpan` props, resize toggle button |
+| `src/pages/Dashboard.tsx` | Replace flex columns with CSS Grid explicit placement, span-aware rendering, span toggle during DnD |
 
