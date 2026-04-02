@@ -1,4 +1,4 @@
-import { ReactNode, useState, useMemo } from 'react'
+import { ReactNode, useState } from 'react'
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
 import { UpcomingActivities } from '@/components/dashboard/UpcomingActivities'
 import { JobsOverview } from '@/components/dashboard/JobsOverview'
@@ -13,9 +13,15 @@ import { WorkspaceProvisioningLoader } from '@/components/onboarding/WorkspacePr
 import { useSourcingProjects } from '@/hooks/useSourcingProjects'
 import { useUserJobRoles } from '@/hooks/useUserJobRoles'
 import { ApplicationReviewCard } from '@/components/dashboard/ApplicationReviewCard'
-import { useDashboardLayout, DashboardCardId, ColumnId, getCardSpan } from '@/hooks/useDashboardLayout'
+import {
+  useDashboardLayout,
+  DashboardCardId,
+  computePlacements,
+  computeTabletPlacements,
+  WIDGET_REGISTRY,
+  SIZE_TO_COLS,
+} from '@/hooks/useDashboardLayout'
 import { DraggableDashboardCard, DashboardCardOverlay } from '@/components/dashboard/DraggableDashboardCard'
-import { DroppableColumn } from '@/components/dashboard/DroppableColumn'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Button } from '@/components/ui/button'
 import { Settings2, RotateCcw, Plus } from 'lucide-react'
@@ -24,84 +30,20 @@ import {
 } from '@/components/ui/sheet'
 import {
   DndContext,
-  closestCorners,
+  closestCenter,
   PointerSensor,
   useSensor,
   useSensors,
   DragEndEvent,
   DragStartEvent,
-  DragOverEvent,
   DragOverlay,
 } from '@dnd-kit/core'
 import {
   SortableContext,
-  verticalListSortingStrategy,
+  rectSortingStrategy,
 } from '@dnd-kit/sortable'
 
-const COLUMN_IDS: ColumnId[] = ['left', 'center', 'right']
-const COLUMN_START: Record<ColumnId, number> = { left: 1, center: 2, right: 3 }
 const MOBILE_ORDER: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs']
-
-const CARD_LABELS: Record<DashboardCardId, string> = {
-  'agenda': 'Agenda & Calendar',
-  'tasks': 'Tasks',
-  'app-review': 'Application Review',
-  'onboarding': 'Onboarding Checklist',
-  'jobs': 'Jobs Overview',
-}
-
-interface GridPlacement {
-  cardId: DashboardCardId
-  columnId: ColumnId
-  gridColumn: string
-  gridRow: number
-}
-
-function computeGridPlacements(
-  columns: Record<ColumnId, DashboardCardId[]>,
-  cardRegistry: Record<DashboardCardId, ReactNode>,
-  spans: Partial<Record<DashboardCardId, 1 | 2>>,
-): GridPlacement[] {
-  const placements: GridPlacement[] = []
-  // Track row usage per grid column (1-indexed)
-  const colRowCursor: Record<number, number> = { 1: 1, 2: 1, 3: 1 }
-
-  // Process columns left → center → right so rows fill naturally
-  for (const colId of COLUMN_IDS) {
-    const cards = columns[colId].filter(id => cardRegistry[id] !== null)
-    const startCol = COLUMN_START[colId]
-
-    for (const cardId of cards) {
-      const span = getCardSpan(spans, cardId)
-
-      if (span === 2) {
-        // Span-2 cards: anchor at startCol, extend to startCol+1
-        // But cap at column 2 max (so it spans cols 2-3)
-        const effectiveStart = Math.min(startCol, 2)
-        const row = Math.max(colRowCursor[effectiveStart], colRowCursor[effectiveStart + 1])
-        placements.push({
-          cardId,
-          columnId: colId,
-          gridColumn: `${effectiveStart} / span 2`,
-          gridRow: row,
-        })
-        colRowCursor[effectiveStart] = row + 1
-        colRowCursor[effectiveStart + 1] = row + 1
-      } else {
-        const row = colRowCursor[startCol]
-        placements.push({
-          cardId,
-          columnId: colId,
-          gridColumn: `${startCol} / span 1`,
-          gridRow: row,
-        })
-        colRowCursor[startCol] = row + 1
-      }
-    }
-  }
-
-  return placements
-}
 
 export default function Dashboard() {
   const { profile, isLoading } = useUserProfile()
@@ -110,19 +52,16 @@ export default function Dashboard() {
   const { data: sourcingProjects } = useSourcingProjects()
   const { hasRecruiterRole, isPrivileged } = useUserJobRoles()
   const {
-    columns,
+    visibleWidgets,
     hiddenCards,
-    cardSpans,
     isCustomizing,
-    findCardColumn,
     saveDragStart,
-    moveCardToColumn,
-    reorderWithinColumn,
+    reorderWidgets,
     finalizeLayout,
     cancelDrag,
     hideCard,
     showCard,
-    toggleCardSpan,
+    cycleWidgetSize,
     resetLayout,
     toggleCustomizing,
   } = useDashboardLayout()
@@ -149,7 +88,7 @@ export default function Dashboard() {
     'jobs': hasJobContent ? <div className="hidden sm:block"><JobsOverview permissions={permissions} /></div> : null,
   }
 
-  // --- Mobile: flat stacked list, no DnD ---
+  // ── Mobile: flat stacked list, no DnD ──
   if (isMobile) {
     const mobileCards = MOBILE_ORDER.filter(id => cardRegistry[id] !== null)
     return (
@@ -169,62 +108,36 @@ export default function Dashboard() {
     )
   }
 
-  // --- Desktop / Tablet: CSS Grid with explicit placement ---
+  // ── Desktop / Tablet ──
+
+  // Filter to only widgets with non-null content
+  const renderableWidgets = visibleWidgets.filter(w => cardRegistry[w.id] !== null)
+
+  // Detect tablet (md but not xl) via checking viewport — use CSS for actual breakpoint, 
+  // but for placement computation we use a heuristic based on viewport
+  const isTablet = typeof window !== 'undefined' && window.innerWidth < 1280
+
+  const placements = isTablet
+    ? computeTabletPlacements(renderableWidgets)
+    : computePlacements(renderableWidgets)
+
+  const gridCols = isTablet ? 4 : 6
 
   const handleDragStart = (event: DragStartEvent) => {
     saveDragStart()
     setActiveId(String(event.active.id))
   }
 
-  const handleDragOver = (event: DragOverEvent) => {
-    const { active, over } = event
-    if (!over) return
-
-    const activeCardId = String(active.id)
-    const overId = String(over.id)
-
-    const sourceCol = active.data.current?.columnId as ColumnId | undefined
-      ?? findCardColumn(activeCardId)
-    if (!sourceCol) return
-
-    let targetCol: ColumnId | null = null
-    let targetIndex: number = 0
-
-    if (COLUMN_IDS.includes(overId as ColumnId)) {
-      targetCol = overId as ColumnId
-      targetIndex = columns[targetCol].length
-    } else {
-      targetCol = findCardColumn(overId)
-      if (targetCol) {
-        targetIndex = columns[targetCol].indexOf(overId as DashboardCardId)
-      }
-    }
-
-    if (!targetCol) return
-    if (sourceCol === targetCol) return
-
-    moveCardToColumn(activeCardId, targetCol, targetIndex)
-  }
-
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     setActiveId(null)
 
-    if (!over) {
+    if (!over || active.id === over.id) {
       cancelDrag()
       return
     }
 
-    const activeCardId = String(active.id)
-    const overId = String(over.id)
-
-    const activeCol = findCardColumn(activeCardId)
-    const overCol = COLUMN_IDS.includes(overId as ColumnId) ? overId as ColumnId : findCardColumn(overId)
-
-    if (activeCol && overCol && activeCol === overCol && activeCardId !== overId && !COLUMN_IDS.includes(overId as ColumnId)) {
-      reorderWithinColumn(activeCol, activeCardId, overId)
-    }
-
+    reorderWidgets(String(active.id), String(over.id))
     finalizeLayout()
   }
 
@@ -233,64 +146,41 @@ export default function Dashboard() {
     cancelDrag()
   }
 
-  const placements = computeGridPlacements(columns, cardRegistry, cardSpans)
-
-  const renderGridContent = () => {
+  const renderGrid = () => {
     if (!isCustomizing) {
-      return placements.map(({ cardId, gridColumn, gridRow }) => (
+      return placements.map(({ id, gridColumn, gridRow }) => (
         <div
-          key={cardId}
+          key={id}
           className="min-w-0"
           style={{ gridColumn, gridRow }}
         >
-          {cardRegistry[cardId]}
+          {cardRegistry[id]}
         </div>
       ))
     }
 
-    // In customizing mode, render per-column SortableContexts
-    // but place items using CSS Grid positioning
-    return COLUMN_IDS.map(colId => {
-      const visibleCards = columns[colId].filter(id => cardRegistry[id] !== null)
-      const colPlacements = placements.filter(p => p.columnId === colId)
-
+    // Customizing mode: same grid placement but with draggable wrappers
+    return placements.map(({ id, gridColumn, gridRow }) => {
+      const widget = renderableWidgets.find(w => w.id === id)!
       return (
-        <SortableContext key={colId} items={visibleCards} strategy={verticalListSortingStrategy}>
-          <DroppableColumn id={colId} isCustomizing={isCustomizing}>
-            {colPlacements.map(({ cardId }) => {
-              const span = getCardSpan(cardSpans, cardId)
-              return (
-                <DraggableDashboardCard
-                  key={cardId}
-                  id={cardId}
-                  columnId={colId}
-                  isCustomizing={isCustomizing}
-                  colSpan={span}
-                  onHide={() => hideCard(cardId)}
-                  onToggleSpan={() => toggleCardSpan(cardId)}
-                >
-                  {cardRegistry[cardId]}
-                </DraggableDashboardCard>
-              )
-            })}
-          </DroppableColumn>
-        </SortableContext>
+        <div key={id} style={{ gridColumn, gridRow }} className="min-w-0">
+          <DraggableDashboardCard
+            id={id}
+            isCustomizing
+            currentSize={widget.size}
+            onHide={() => hideCard(id)}
+            onCycleSize={!WIDGET_REGISTRY[id].fixed ? () => cycleWidgetSize(id) : undefined}
+          >
+            {cardRegistry[id]}
+          </DraggableDashboardCard>
+        </div>
       )
     })
   }
 
-  // For customizing mode, we still use 3 flex columns for DnD droppable targets
-  // For non-customizing mode, we use CSS Grid with explicit placement
-  const gridContent = !isCustomizing ? (
-    <div
-      className="grid gap-6 items-start"
-      style={{
-        gridTemplateColumns: 'repeat(3, 1fr)',
-      }}
-    >
-      {renderGridContent()}
-    </div>
-  ) : null
+  const gridStyle = {
+    gridTemplateColumns: `repeat(${gridCols}, 1fr)`,
+  }
 
   return (
     <div>
@@ -341,15 +231,16 @@ export default function Dashboard() {
           {isCustomizing ? (
             <DndContext
               sensors={sensors}
-              collisionDetection={closestCorners}
+              collisionDetection={closestCenter}
               onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
               onDragCancel={handleDragCancel}
             >
-              <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 items-start">
-                {renderGridContent()}
-              </div>
+              <SortableContext items={renderableWidgets.map(w => w.id)} strategy={rectSortingStrategy}>
+                <div className="grid gap-6 items-start" style={gridStyle}>
+                  {renderGrid()}
+                </div>
+              </SortableContext>
               <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
                 {activeId && cardRegistry[activeId as DashboardCardId] ? (
                   <DashboardCardOverlay>
@@ -361,7 +252,9 @@ export default function Dashboard() {
               </DragOverlay>
             </DndContext>
           ) : (
-            gridContent
+            <div className="grid gap-6 items-start" style={gridStyle}>
+              {renderGrid()}
+            </div>
           )}
         </div>
       </Section>
@@ -380,7 +273,7 @@ export default function Dashboard() {
             ) : (
               hiddenCards.map(cardId => (
                 <div key={cardId} className="flex items-center justify-between p-3 rounded-lg border border-border bg-card">
-                  <span className="text-sm font-medium">{CARD_LABELS[cardId]}</span>
+                  <span className="text-sm font-medium">{WIDGET_REGISTRY[cardId].label}</span>
                   <Button
                     size="sm"
                     variant="outline"
