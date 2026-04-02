@@ -1,61 +1,73 @@
 
 
-# User-Controlled Card Column Spanning
+# 6-Column Grid with Per-Card Size Rules
 
-## The challenge
+## Overview
 
-The current architecture uses 3 independent flex columns. A card that spans 2 columns cannot live inside a single flex column — it needs to break across column boundaries. This is a fundamental layout change.
+Refactor the dashboard from a 3-column grid to a 6-column grid. Cards get granular column-span control with per-card min/max rules. The span toggle becomes a cycle through allowed sizes. Cards show their actual span in real-time during customization (fixing the "no preview" issue).
 
-### Why it's hard
+## Size Rules
 
-The multi-column DnD model stores cards as members of one column. A 2-col-wide card conceptually "owns" two column slots. The rendering and drag logic both need to understand this.
+| Card | Allowed spans | Default |
+|------|--------------|---------|
+| `tasks` | 2 only (fixed) | 2 |
+| `agenda` | 2 only (fixed) | 2 |
+| `app-review` | 2, 3, 4 | 2 |
+| `onboarding` | 2, 3, 4 | 2 |
+| `jobs` | 2, 3, 4 | 2 |
 
-### Recommended approach: CSS Grid subgrid with span metadata
-
-Instead of 3 separate flex columns rendered independently, switch the inner rendering to a single CSS Grid with `grid-template-columns: repeat(3, 1fr)` and explicit `grid-column` / `grid-row` placement. Each card gets a `colSpan: 1 | 2` property. The column ownership model stays the same (left/center/right), but rendering computes explicit grid positions from the column arrays + span info.
-
-**Key insight**: The data model (3 column arrays) stays intact for DnD. Only the rendering layer changes to support spanning. A 2-col card anchored in "left" visually extends into "center."
+No card can be 1, 5, or 6 columns wide. Fixed cards (tasks, agenda) have no resize button.
 
 ## Changes
 
 ### 1. `src/hooks/useDashboardLayout.ts`
 
-- Add `cardSpans: Record<DashboardCardId, 1 | 2>` to state (default all `1`)
-- Persist in localStorage alongside columns/hidden
-- New method: `toggleCardSpan(cardId)` — toggles between 1 and 2
-- Constraint: a card in the "right" column toggled to span 2 would visually overflow. When a card is set to span 2, if it's in column "right", move it to "center" (spans center+right). If in "center", it spans center+right. If in "left", it spans left+center.
-- When dragging a 2-col card, it always lands as span-1 temporarily (simplifies placement), user re-expands after dropping
+- Change `CardSpans` type from `Partial<Record<DashboardCardId, 1 | 2>>` to `Partial<Record<DashboardCardId, number>>`
+- Add a `CARD_SIZE_RULES` config:
+  ```ts
+  const CARD_SIZE_RULES: Record<DashboardCardId, { allowed: number[], default: number }> = {
+    'tasks':      { allowed: [2], default: 2 },
+    'agenda':     { allowed: [2], default: 2 },
+    'app-review': { allowed: [2, 3, 4], default: 2 },
+    'onboarding': { allowed: [2, 3, 4], default: 2 },
+    'jobs':       { allowed: [2, 3, 4], default: 2 },
+  }
+  ```
+- Export `CARD_SIZE_RULES` and a helper `getCardSpan(spans, cardId)` that returns the stored span or the card's default
+- `toggleCardSpan` cycles through `allowed` array (2 → 3 → 4 → 2 for variable cards; no-op for fixed cards)
+- Remove the column-move logic from `toggleCardSpan` (no longer needed since we're not anchoring to 3 logical columns for rendering)
+- Keep the 3 logical columns (left/center/right) for DnD ownership only
+- Bump `STORAGE_KEY` to `'dashboard-layout-v3'` to avoid conflicts with old span values
+- Update `DEFAULT_COLUMNS` so cards distribute well across 6 cols (e.g. left: `['app-review', 'jobs']`, center: `['tasks', 'onboarding']`, right: `['agenda']`)
 
 ### 2. `src/pages/Dashboard.tsx`
 
-- Replace the 3 independent flex column divs with a single CSS Grid container using explicit `grid-column` and `grid-row` placement
-- Compute grid positions from the column arrays: left cards start at col 1, center at col 2, right at col 3; span-2 cards get `grid-column: span 2`
-- Row positions computed by walking each column's card list and tracking row offsets
-- DnD contexts remain per-column (SortableContext per column still works — the card's "home" column is its anchor)
-- In customize mode, each card shows a small "expand/collapse" icon button (e.g., `Maximize2`/`Minimize2`) to toggle between 1-col and 2-col
+- Change grid from `repeat(3, 1fr)` to `repeat(6, 1fr)` for both the view and customize grids
+- Update `computeGridPlacements`:
+  - Instead of mapping columns to grid positions 1/2/3, walk all cards across all 3 logical columns in order and place them row by row into a 6-wide grid
+  - Algorithm: maintain a row-cursor array of 6 slots. For each card, find the first row where `span` consecutive slots are free, place it there
+  - This produces a compact masonry-like layout within the 6-col grid
+- In customize mode, cards render at their **actual current span** in the grid so the user sees real-time preview of size changes
+- The DnD customize grid also uses `repeat(6, 1fr)` with explicit placement (no more 3 flex columns)
+- `DroppableColumn` usage stays for DnD drop targets but they overlay the grid visually
 
 ### 3. `src/components/dashboard/DraggableDashboardCard.tsx`
 
-- Add optional `onToggleSpan` prop and `colSpan` prop
-- When `isCustomizing`, show a resize toggle button (opposite side from the X button, or next to drag handle)
-- Visual indicator: when span is 2, the card ring/border could be slightly different shade
+- `colSpan` prop type changes from `1 | 2` to `number`
+- Only show the resize toggle button when `CARD_SIZE_RULES[id].allowed.length > 1`
+- Update tooltip: "Resize: 2 → 3 cols" etc.
+- Icon: use `Maximize2` when not at max, `Minimize2` when at max (cycles back)
 
-### 4. DnD behavior with spanning
+### 4. Tablet / Mobile
 
-- During drag (`onDragStart`), temporarily collapse the card to span-1 for clean placement
-- On drop (`onDragEnd`), restore the original span
-- Cross-column moves: if a span-2 card is dropped in "right", auto-move it to "center" so it can span center+right
-- Mobile/tablet: spanning is ignored (single column / 2-col layout), cards always render as span-1
-
-## Complexity assessment
-
-This is a **significant** change. The rendering layer shifts from "3 independent flex columns" to "1 CSS Grid with computed placement." DnD logic gets more complex with span-aware constraints. Estimated ~200-300 lines of new/changed code across 3 files.
+- Mobile: unchanged (single column stack, no spans)
+- Tablet (md): use `repeat(4, 1fr)` — cards that are span-4 fill full width, span-2 cards take half, span-3 takes 3/4. Clamp spans to max 4 on tablet.
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/hooks/useDashboardLayout.ts` | Add `cardSpans` state, `toggleCardSpan` method, span-aware column constraints |
-| `src/components/dashboard/DraggableDashboardCard.tsx` | Add `onToggleSpan` + `colSpan` props, resize toggle button |
-| `src/pages/Dashboard.tsx` | Replace flex columns with CSS Grid explicit placement, span-aware rendering, span toggle during DnD |
+| `src/hooks/useDashboardLayout.ts` | 6-col span rules, cycle toggle, bump storage version |
+| `src/pages/Dashboard.tsx` | 6-col grid, updated placement algorithm, real-time span preview |
+| `src/components/dashboard/DraggableDashboardCard.tsx` | Variable span support, conditional resize button |
 
