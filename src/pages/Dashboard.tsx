@@ -200,7 +200,7 @@ export default function Dashboard() {
       <SortableContext key={colId} items={visibleCards} strategy={verticalListSortingStrategy}>
         <DroppableColumn id={colId} isCustomizing={isCustomizing}>
           {visibleCards.map(cardId => (
-            <DraggableDashboardCard key={cardId} id={cardId} columnId={colId} isCustomizing={isCustomizing}>
+            <DraggableDashboardCard key={cardId} id={cardId} columnId={colId} isCustomizing={isCustomizing} onHide={() => hideCard(cardId)}>
               {cardRegistry[cardId]}
             </DraggableDashboardCard>
           ))}
