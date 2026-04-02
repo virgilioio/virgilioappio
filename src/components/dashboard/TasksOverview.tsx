@@ -142,7 +142,7 @@ export function TasksOverview() {
 
       {/* Detail Dialogs */}
       <Dialog open={openCategory !== null && openCategory !== 'stale'} onOpenChange={(open) => !open && setOpenCategory(null)}>
-        <DialogContent className="max-w-lg max-h-[70vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[70vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle>
               {openCategory && openCategory !== 'stale' && CATEGORIES.find(c => c.key === openCategory)?.label}
