@@ -107,6 +107,7 @@ export function UpcomingActivities() {
   const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()))
   const [calendarOpen, setCalendarOpen] = useState(false)
 
+  const isMobile = useIsMobile()
   const permissions = usePermissions()
   const { user } = useAuth()
   const queryClient = useQueryClient()
