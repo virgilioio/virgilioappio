@@ -25,6 +25,7 @@ import {
   GridPlacement,
 } from '@/hooks/useDashboardLayout'
 import { DraggableDashboardCard, DashboardCardOverlay } from '@/components/dashboard/DraggableDashboardCard'
+import { MasonryGrid } from '@/components/dashboard/MasonryGrid'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -48,7 +49,16 @@ import {
   rectSortingStrategy,
 } from '@dnd-kit/sortable'
 
-// ── Placement swap utilities ──
+// ── Placement to masonry items helper ──
+
+function placementsToMasonryItems(placements: GridPlacement[]) {
+  return placements.map(p => {
+    const m = p.gridColumn.match(/(\d+)\s*\/\s*span\s+(\d+)/)
+    const colStart = m ? parseInt(m[1]) - 1 : 0 // convert 1-based to 0-based
+    const colSpan = m ? parseInt(m[2]) : 2
+    return { id: p.id, colStart, colSpan }
+  })
+}
 
 function swapPlacements(
   placements: GridPlacement[],
@@ -60,7 +70,6 @@ function swapPlacements(
   const b = placements.find(p => p.id === overId)
   if (!a || !b) return placements
 
-  // Parse grid columns to get start positions
   const parseCol = (gc: string) => {
     const m = gc.match(/(\d+)\s*\/\s*span\s+(\d+)/)
     return m ? parseInt(m[1]) : 1
@@ -69,8 +78,6 @@ function swapPlacements(
   const aCol = parseCol(a.gridColumn)
   const bCol = parseCol(b.gridColumn)
 
-  // Each widget keeps its own span but goes to the other's position
-  // Clamp so the widget doesn't overflow the grid
   const aNewCol = Math.min(bCol, totalCols - a.colSpan + 1)
   const bNewCol = Math.min(aCol, totalCols - b.colSpan + 1)
 
@@ -222,41 +229,57 @@ export default function Dashboard() {
     cancelDrag()
   }
 
-  const renderGrid = () => {
-    if (!isCustomizing) {
-      return cachedPlacements.map(({ id, gridColumn, gridRow }) => (
-        <div
-          key={id}
-          className="min-w-0"
-          style={{ gridColumn, gridRow }}
-        >
+  const masonryItems = placementsToMasonryItems(cachedPlacements)
+
+  const renderNormalGrid = () => (
+    <MasonryGrid items={masonryItems} totalCols={gridCols}>
+      {cachedPlacements.map(({ id }) => (
+        <div key={id} className="min-w-0">
           {renderCard(id)}
         </div>
-      ))
-    }
+      ))}
+    </MasonryGrid>
+  )
 
-    // Customizing mode: same grid placement but with draggable wrappers
-    return cachedPlacements.map(({ id, gridColumn, gridRow }) => {
-      const widget = renderableWidgets.find(w => w.id === id)!
-      return (
-        <div key={id} style={{ gridColumn, gridRow, transition: 'all 200ms ease' }} className="min-w-0">
-          <DraggableDashboardCard
-            id={id}
-            isCustomizing
-            currentSize={widget.size}
-            onHide={() => hideCard(id)}
-            onCycleSize={!WIDGET_REGISTRY[id].fixed ? () => cycleWidgetSize(id) : undefined}
-          >
-            {renderCard(id)}
-          </DraggableDashboardCard>
-        </div>
-      )
-    })
-  }
-
-  const gridStyle = {
-    gridTemplateColumns: `repeat(${gridCols}, 1fr)`,
-  }
+  const renderCustomizeGrid = () => (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCorners}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+    >
+      <SortableContext items={renderableWidgets.map(w => w.id)} strategy={rectSortingStrategy}>
+        <MasonryGrid items={masonryItems} totalCols={gridCols}>
+          {cachedPlacements.map(({ id }) => {
+            const widget = renderableWidgets.find(w => w.id === id)!
+            return (
+              <div key={id} className="min-w-0">
+                <DraggableDashboardCard
+                  id={id}
+                  isCustomizing
+                  currentSize={widget.size}
+                  onHide={() => hideCard(id)}
+                  onCycleSize={!WIDGET_REGISTRY[id].fixed ? () => cycleWidgetSize(id) : undefined}
+                >
+                  {renderCard(id)}
+                </DraggableDashboardCard>
+              </div>
+            )
+          })}
+        </MasonryGrid>
+      </SortableContext>
+      <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+        {activeId && cardRegistry[activeId as DashboardCardId] ? (
+          <DashboardCardOverlay>
+            <div className="min-w-0">
+              {renderCard(activeId as DashboardCardId)}
+            </div>
+          </DashboardCardOverlay>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
+  )
 
   return (
     <div>
@@ -313,34 +336,7 @@ export default function Dashboard() {
             </Alert>
           )}
 
-          {isCustomizing ? (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCorners}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-              onDragCancel={handleDragCancel}
-            >
-              <SortableContext items={renderableWidgets.map(w => w.id)} strategy={rectSortingStrategy}>
-                <div className="grid gap-5 items-start" style={gridStyle}>
-                  {renderGrid()}
-                </div>
-              </SortableContext>
-              <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
-                {activeId && cardRegistry[activeId as DashboardCardId] ? (
-                  <DashboardCardOverlay>
-                    <div className="min-w-0">
-                      {renderCard(activeId as DashboardCardId)}
-                    </div>
-                  </DashboardCardOverlay>
-                ) : null}
-              </DragOverlay>
-            </DndContext>
-          ) : (
-            <div className="grid gap-5 items-start" style={gridStyle}>
-              {renderGrid()}
-            </div>
-          )}
+          {isCustomizing ? renderCustomizeGrid() : renderNormalGrid()}
         </div>
       </Section>
 
