@@ -227,7 +227,7 @@ export default function Dashboard() {
 
   const renderGrid = () => {
     if (!isCustomizing) {
-      return placements.map(({ id, gridColumn, gridRow }) => (
+      return cachedPlacements.map(({ id, gridColumn, gridRow }) => (
         <div
           key={id}
           className="min-w-0"
@@ -239,10 +239,10 @@ export default function Dashboard() {
     }
 
     // Customizing mode: same grid placement but with draggable wrappers
-    return placements.map(({ id, gridColumn, gridRow }) => {
+    return cachedPlacements.map(({ id, gridColumn, gridRow }) => {
       const widget = renderableWidgets.find(w => w.id === id)!
       return (
-        <div key={id} style={{ gridColumn, gridRow }} className="min-w-0">
+        <div key={id} style={{ gridColumn, gridRow, transition: 'all 200ms ease' }} className="min-w-0">
           <DraggableDashboardCard
             id={id}
             isCustomizing
