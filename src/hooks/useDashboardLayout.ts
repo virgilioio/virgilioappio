@@ -10,7 +10,15 @@ export interface DashboardColumns {
   right: DashboardCardId[]
 }
 
-export type CardSpans = Partial<Record<DashboardCardId, 1 | 2>>
+export type CardSpans = Partial<Record<DashboardCardId, number>>
+
+export const CARD_SIZE_RULES: Record<DashboardCardId, { allowed: number[]; default: number }> = {
+  'tasks':      { allowed: [2], default: 2 },
+  'agenda':     { allowed: [2], default: 2 },
+  'app-review': { allowed: [2, 3, 4], default: 2 },
+  'onboarding': { allowed: [2, 3, 4], default: 2 },
+  'jobs':       { allowed: [2, 3, 4], default: 2 },
+}
 
 interface StoredLayout {
   columns: DashboardColumns
@@ -18,13 +26,20 @@ interface StoredLayout {
   spans: CardSpans
 }
 
-const STORAGE_KEY = 'dashboard-layout-v2'
+const STORAGE_KEY = 'dashboard-layout-v3'
 const ALL_CARD_IDS: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs']
 
 const DEFAULT_COLUMNS: DashboardColumns = {
   left: ['app-review', 'jobs'],
   center: ['tasks', 'onboarding'],
   right: ['agenda'],
+}
+
+export function getCardSpan(spans: CardSpans, cardId: DashboardCardId): number {
+  const stored = spans[cardId]
+  const rules = CARD_SIZE_RULES[cardId]
+  if (stored && rules.allowed.includes(stored)) return stored
+  return rules.default
 }
 
 function loadLayout(): { columns: DashboardColumns; hidden: DashboardCardId[]; spans: CardSpans } {
@@ -47,11 +62,11 @@ function loadLayout(): { columns: DashboardColumns; hidden: DashboardCardId[]; s
     const present = new Set([...validLeft, ...validCenter, ...validRight, ...validHidden])
     const missing = ALL_CARD_IDS.filter(id => !present.has(id))
 
-    // Validate spans
     const validSpans: CardSpans = {}
     for (const [k, v] of Object.entries(spans)) {
-      if (ALL_CARD_IDS.includes(k as DashboardCardId) && (v === 1 || v === 2)) {
-        validSpans[k as DashboardCardId] = v
+      const cardId = k as DashboardCardId
+      if (ALL_CARD_IDS.includes(cardId) && typeof v === 'number' && CARD_SIZE_RULES[cardId].allowed.includes(v)) {
+        validSpans[cardId] = v
       }
     }
 
@@ -82,10 +97,6 @@ function findCardColumn(columns: DashboardColumns, cardId: string): ColumnId | n
   if (columns.center.includes(cardId as DashboardCardId)) return 'center'
   if (columns.right.includes(cardId as DashboardCardId)) return 'right'
   return null
-}
-
-export function getCardSpan(spans: CardSpans, cardId: DashboardCardId): 1 | 2 {
-  return spans[cardId] ?? 1
 }
 
 export function useDashboardLayout() {
@@ -176,7 +187,6 @@ export function useDashboardLayout() {
       setHiddenCards(h => {
         const newHidden = [...h, cardId]
         setCardSpans(s => {
-          // Remove span when hiding
           const newSpans = { ...s }
           delete newSpans[cardId]
           persist(next, newHidden, newSpans)
@@ -215,40 +225,17 @@ export function useDashboardLayout() {
   }, [persist])
 
   const toggleCardSpan = useCallback((cardId: DashboardCardId) => {
+    const rules = CARD_SIZE_RULES[cardId]
+    if (rules.allowed.length <= 1) return // fixed-size card, no-op
+
     setCardSpans(prev => {
-      const currentSpan = prev[cardId] ?? 1
-      const newSpan: 1 | 2 = currentSpan === 1 ? 2 : 1
+      const currentSpan = getCardSpan(prev, cardId)
+      const currentIndex = rules.allowed.indexOf(currentSpan)
+      const nextIndex = (currentIndex + 1) % rules.allowed.length
+      const newSpan = rules.allowed[nextIndex]
 
-      if (newSpan === 2) {
-        // If card is in "right" column, move it to "center" so it can span center+right
-        setColumns(cols => {
-          const col = findCardColumn(cols, cardId)
-          if (col === 'right') {
-            const next = {
-              left: [...cols.left],
-              center: [...cols.center],
-              right: cols.right.filter(id => id !== cardId),
-            }
-            next.center = [...next.center, cardId]
-            const newSpans = { ...prev, [cardId]: newSpan }
-            setHiddenCards(h => {
-              persist(next, h, newSpans)
-              return h
-            })
-            return next
-          }
-          setHiddenCards(h => {
-            persist(cols, h, { ...prev, [cardId]: newSpan })
-            return h
-          })
-          return cols
-        })
-        return { ...prev, [cardId]: newSpan }
-      }
+      const newSpans = { ...prev, [cardId]: newSpan }
 
-      // Collapsing to 1
-      const newSpans = { ...prev }
-      delete newSpans[cardId]
       setColumns(cols => {
         setHiddenCards(h => {
           persist(cols, h, newSpans)
@@ -256,6 +243,7 @@ export function useDashboardLayout() {
         })
         return cols
       })
+
       return newSpans
     })
   }, [persist])
