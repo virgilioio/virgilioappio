@@ -138,7 +138,7 @@ export default function Dashboard() {
           {!isMobile && isCustomizing ? (
             <DndContext
               sensors={sensors}
-              collisionDetection={closestCenter}
+              collisionDetection={closestCorners}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >

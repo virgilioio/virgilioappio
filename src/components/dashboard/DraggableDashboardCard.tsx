@@ -25,7 +25,7 @@ export function DraggableDashboardCard({ id, children, isCustomizing }: Draggabl
     transform,
     transition,
     isDragging,
-  } = useSortable({ id, disabled: !isCustomizing })
+  } = useSortable({ id, disabled: !isCustomizing, animateLayoutChanges })
 
   const style = {
     transform: CSS.Translate.toString(transform),
