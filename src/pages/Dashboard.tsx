@@ -284,6 +284,40 @@ export default function Dashboard() {
           )}
         </div>
       </Section>
+
+      <Sheet open={addWidgetOpen} onOpenChange={setAddWidgetOpen}>
+        <SheetContent side="right" className="w-[340px] sm:max-w-[380px]">
+          <SheetHeader className="pb-4">
+            <SheetTitle className="font-poppins text-base font-semibold">Add Widget</SheetTitle>
+            <SheetDescription className="font-poppins text-xs text-muted-foreground">
+              Choose a widget to add back to your dashboard
+            </SheetDescription>
+          </SheetHeader>
+          <div className="space-y-2 mt-2">
+            {hiddenCards.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">All widgets are visible on your dashboard.</p>
+            ) : (
+              hiddenCards.map(cardId => (
+                <div key={cardId} className="flex items-center justify-between p-3 rounded-lg border border-border bg-card">
+                  <span className="text-sm font-medium">{CARD_LABELS[cardId]}</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs gap-1.5"
+                    onClick={() => {
+                      showCard(cardId)
+                      if (hiddenCards.length <= 1) setAddWidgetOpen(false)
+                    }}
+                  >
+                    <Plus className="h-3 w-3" />
+                    Add
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }
