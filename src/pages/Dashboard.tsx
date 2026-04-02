@@ -12,6 +12,7 @@ import { useOrgContext } from '@/contexts/OrgContext'
 import { WorkspaceProvisioningLoader } from '@/components/onboarding/WorkspaceProvisioningLoader'
 import { useSourcingProjects } from '@/hooks/useSourcingProjects'
 import { useUserJobRoles } from '@/hooks/useUserJobRoles'
+import { ApplicationReviewCard } from '@/components/dashboard/ApplicationReviewCard'
 
 export default function Dashboard() {
   const { profile, isLoading } = useUserProfile()
