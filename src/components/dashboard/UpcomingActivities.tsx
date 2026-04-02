@@ -17,6 +17,8 @@ import {
   CalendarCheck,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import { useScheduledBookings, type ScheduledBooking } from '@/hooks/useScheduledBookings'
 import { useDashboardReminders } from '@/hooks/useCandidateReminders'
