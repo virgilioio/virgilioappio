@@ -12,6 +12,7 @@ import { useOrgContext } from '@/contexts/OrgContext'
 import { WorkspaceProvisioningLoader } from '@/components/onboarding/WorkspaceProvisioningLoader'
 import { useSourcingProjects } from '@/hooks/useSourcingProjects'
 import { useUserJobRoles } from '@/hooks/useUserJobRoles'
+import { ApplicationReviewCard } from '@/components/dashboard/ApplicationReviewCard'
 
 export default function Dashboard() {
   const { profile, isLoading } = useUserProfile()
@@ -50,6 +51,7 @@ export default function Dashboard() {
             <div className="space-y-6 min-w-0">
               <OnboardingChecklist isDeemphasized={!hasSeenValue} />
               
+              {hasJobContent && <ApplicationReviewCard />}
               {hasJobContent && <div className="hidden sm:block"><JobsOverview permissions={permissions} /></div>}
             </div>
             
