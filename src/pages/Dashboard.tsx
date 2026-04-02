@@ -308,12 +308,12 @@ export default function Dashboard() {
           <TrialCountdownBanner />
 
           {isCustomizing && (
-            <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-muted/60 border border-border/50">
-              <Settings2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <p className="text-xs text-muted-foreground">
+            <Alert variant="info">
+              <Info className="h-4 w-4" />
+              <AlertDescription>
                 Drag cards to reorder, resize with the column button, or hide with ✕. Click <strong>Done editing</strong> when finished.
-              </p>
-            </div>
+              </AlertDescription>
+            </Alert>
           )}
 
           {isCustomizing ? (
