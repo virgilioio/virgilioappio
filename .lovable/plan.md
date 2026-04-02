@@ -1,48 +1,87 @@
 
+# Fix dashboard DnD duplication bug
 
-# Fix Duplicate Dashboard Cards + Subscribe Error
+## What I’ll change
 
-## Root Cause
+### 1. Harden the layout model in `src/hooks/useDashboardLayout.ts`
+Refactor the state helpers so the layout always enforces this invariant:
 
-`loadLayout()` in `useDashboardLayout.ts` validates that each card ID is a known ID, but **never deduplicates across columns**. If localStorage contains `onboarding` in both `left` and `center`, both copies are kept. This causes:
-
-1. React warns about duplicate keys in the grid
-2. The `agenda` card mounts twice, both instances create a Supabase channel with `Date.now()` in the same tick → identical channel name → "subscribe multiple times" crash
-
-## Fix
-
-### 1. `src/hooks/useDashboardLayout.ts` — Deduplicate in `loadLayout()`
-
-After filtering valid IDs for each column and hidden list, walk them in order (left → center → right → hidden) and skip any ID already seen. This ensures each card appears exactly once.
-
-```ts
-// After validLeft/validCenter/validRight/validHidden are built:
-const seen = new Set<DashboardCardId>()
-const dedup = (arr: DashboardCardId[]) => 
-  arr.filter(id => { if (seen.has(id)) return false; seen.add(id); return true })
-
-const dedupLeft = dedup(validLeft)
-const dedupCenter = dedup(validCenter)
-const dedupRight = dedup(validRight)
-const dedupHidden = dedup(validHidden)
+```text
+A card id can exist in exactly one place:
+- left
+- center
+- right
+- hidden
 ```
 
-Then use the deduped arrays for the rest of the function (missing card check, return value).
+Planned helpers:
+- `findColumnForCard(cardId, columns)` — live lookup from current state
+- `removeCardFromAllColumns(cardId, columns)` — strips the card from every column before any insert
+- `normalizeColumns(columns)` — defensive dedupe pass that guarantees uniqueness after each mutation
 
-### 2. `src/components/dashboard/UpcomingActivities.tsx` — Use `useRef` for channel ID
+Then update the mutation methods:
+- `moveCardToColumn(...)`  
+  - resolve from live state
+  - remove from all columns first
+  - insert once at the target index
+  - normalize before returning
+  - no-op if the effective placement did not change
+- `reorderWithinColumn(...)`
+  - operate on a cleaned column array
+  - normalize result before returning
+- `showCard(...)` / `hideCard(...)`
+  - make them uniqueness-safe too, so hidden/add flows can never reintroduce duplicates
 
-Replace `Date.now()` with `crypto.randomUUID()` stored in a `useRef` so it's guaranteed unique even if two instances mount in the same tick.
+### 2. Fix stale drag source usage in `src/pages/Dashboard.tsx`
+Refactor the DnD handlers so they never trust `active.data.current?.columnId` after drag start.
 
-```ts
-const channelIdRef = useRef(crypto.randomUUID())
-// ...
-const channel = supabase.channel(`booking-sync-${channelIdRef.current}`)
-```
+Instead:
+- on every `handleDragOver`, derive the active card’s current column from the latest runtime `columns` state via `findCardColumn(activeCardId)`
+- derive the target column from the current hovered item/column
+- skip repeated hover events that would reinsert the card into the same position
+- only call cross-column move logic when the target column is actually different
 
-## Files changed
+This is the key fix for the corruption bug.
 
-| File | Change |
-|------|--------|
-| `src/hooks/useDashboardLayout.ts` | Add deduplication pass in `loadLayout()` |
-| `src/components/dashboard/UpcomingActivities.tsx` | Use `crypto.randomUUID()` via `useRef` for channel name |
+### 3. Make `handleDragEnd` use live state consistently
+Update drop handling so:
+- same-column drops only reorder within that live column
+- cross-column drops do not reinsert again if drag-over already moved the item
+- finalize/persist uses the cleaned runtime state
 
+### 4. Add concise comments around the bug-prone logic
+I’ll document:
+- why `active.data.current?.columnId` becomes stale after the first move
+- why all move operations remove from every column before insert
+- why normalization runs after mutations
+
+## Why this should fix it
+
+Right now the card can be inserted multiple times because drag-over keeps using the original source column from drag-start metadata.
+
+After the refactor:
+- source column always comes from current state
+- every move removes the card globally before inserting
+- every result is normalized
+- duplicate keys and duplicate mounts should stop entirely
+
+## Files to update
+
+- `src/pages/Dashboard.tsx`
+- `src/hooks/useDashboardLayout.ts`
+
+## Expected result
+
+- no visual card duplication during drag
+- no duplicate React key warnings (`agenda`, `onboarding`, etc.)
+- no duplicate widget mounts caused by corrupted layout state
+- same dashboard appearance and overall DnD feel, but with stable behavior
+
+## Verification
+
+I’ll validate these flows after implementation:
+1. drag within same column
+2. drag between columns repeatedly
+3. hover back and forth before drop
+4. hide → re-add → drag again
+5. refresh and confirm persisted layout stays clean
