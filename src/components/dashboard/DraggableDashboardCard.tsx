@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 
 interface DraggableDashboardCardProps {
   id: string
+  columnId: string
   children: ReactNode
   isCustomizing: boolean
 }
@@ -17,7 +18,7 @@ const animateLayoutChanges: AnimateLayoutChanges = (args) => {
   return defaultAnimateLayoutChanges(args)
 }
 
-export function DraggableDashboardCard({ id, children, isCustomizing }: DraggableDashboardCardProps) {
+export function DraggableDashboardCard({ id, columnId, children, isCustomizing }: DraggableDashboardCardProps) {
   const {
     attributes,
     listeners,
@@ -25,7 +26,12 @@ export function DraggableDashboardCard({ id, children, isCustomizing }: Draggabl
     transform,
     transition,
     isDragging,
-  } = useSortable({ id, disabled: !isCustomizing, animateLayoutChanges })
+  } = useSortable({
+    id,
+    disabled: !isCustomizing,
+    animateLayoutChanges,
+    data: { columnId },
+  })
 
   const style = {
     transform: CSS.Translate.toString(transform),
