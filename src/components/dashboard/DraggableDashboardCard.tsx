@@ -68,14 +68,14 @@ export function DraggableDashboardCard({
       {isCustomizing && (
         <>
           {/* Drag handle */}
-          <button
-            className={cn(
-              "absolute -top-2 -left-2 z-10 flex items-center justify-center",
-              "h-7 w-7 rounded-full bg-primary text-primary-foreground shadow-md",
-              "cursor-grab active:cursor-grabbing",
-              "opacity-0 group-hover/card:opacity-100 transition-opacity duration-200",
-              "focus:opacity-100"
-            )}
+           <button
+             className={cn(
+               "absolute -top-2 -left-2 z-10 flex items-center justify-center",
+               "h-7 w-7 rounded-full bg-muted text-muted-foreground shadow-sm border border-border",
+               "cursor-grab active:cursor-grabbing",
+               "transition-colors duration-200",
+               "focus:ring-2 focus:ring-ring"
+             )}
             {...attributes}
             {...listeners}
           >
@@ -86,13 +86,13 @@ export function DraggableDashboardCard({
           {isResizable && onCycleSize && (
             <button
               onClick={onCycleSize}
-              className={cn(
+             className={cn(
                 "absolute -top-2 left-7 z-10 flex items-center gap-1 px-2",
-                "h-7 rounded-full shadow-md",
-                "bg-secondary text-secondary-foreground",
+                "h-7 rounded-full shadow-sm border border-border",
+                "bg-muted text-muted-foreground",
                 "cursor-pointer text-[10px] font-medium",
-                "opacity-0 group-hover/card:opacity-100 transition-opacity duration-200",
-                "focus:opacity-100 hover:bg-accent hover:text-accent-foreground"
+                "transition-colors duration-200",
+                "hover:bg-accent hover:text-accent-foreground"
               )}
               title={`Current: ${SIZE_LABELS[currentSize]}. Click to cycle.`}
             >
@@ -108,12 +108,12 @@ export function DraggableDashboardCard({
           {onHide && (
             <button
               onClick={onHide}
-              className={cn(
+             className={cn(
                 "absolute -top-2 -right-2 z-10 flex items-center justify-center",
-                "h-7 w-7 rounded-full bg-destructive text-destructive-foreground shadow-md",
+                "h-7 w-7 rounded-full bg-muted text-destructive shadow-sm border border-border",
                 "cursor-pointer",
-                "opacity-0 group-hover/card:opacity-100 transition-opacity duration-200",
-                "focus:opacity-100 hover:scale-110 transition-transform"
+                "transition-colors duration-200",
+                "hover:bg-destructive hover:text-destructive-foreground"
               )}
             >
               <X className="h-3.5 w-3.5" />
@@ -122,7 +122,7 @@ export function DraggableDashboardCard({
         </>
       )}
       <div className={cn(
-        isCustomizing && "ring-1 ring-dashed rounded-brand transition-all duration-200 ring-primary/20",
+        isCustomizing && "ring-1 ring-dashed rounded-brand transition-all duration-200 ring-border/40",
       )}>
         {children}
       </div>

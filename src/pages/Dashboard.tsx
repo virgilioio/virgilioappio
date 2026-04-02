@@ -238,12 +238,21 @@ export default function Dashboard() {
                 className="gap-1.5"
               >
                 <Settings2 className="h-3.5 w-3.5" />
-                {isCustomizing ? 'Done' : 'Customize'}
+                {isCustomizing ? 'Done editing' : 'Customize dashboard'}
               </Button>
             </div>
           </div>
 
           <TrialCountdownBanner />
+
+          {isCustomizing && (
+            <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-muted/60 border border-border/50">
+              <Settings2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <p className="text-xs text-muted-foreground">
+                Drag cards to reorder, resize with the column button, or hide with ✕. Click <strong>Done editing</strong> when finished.
+              </p>
+            </div>
+          )}
 
           {isCustomizing ? (
             <DndContext
