@@ -188,7 +188,7 @@ export default function Dashboard() {
             onHide={() => hideCard(id)}
             onCycleSize={!WIDGET_REGISTRY[id].fixed ? () => cycleWidgetSize(id) : undefined}
           >
-            {cardRegistry[id]}
+            {renderCard(id)}
           </DraggableDashboardCard>
         </div>
       )
