@@ -262,7 +262,7 @@ export default function Dashboard() {
                 {activeId && cardRegistry[activeId as DashboardCardId] ? (
                   <DashboardCardOverlay>
                     <div className="min-w-0">
-                      {cardRegistry[activeId as DashboardCardId]}
+                      {renderCard(activeId as DashboardCardId)}
                     </div>
                   </DashboardCardOverlay>
                 ) : null}
