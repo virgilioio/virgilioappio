@@ -4,17 +4,12 @@ import { cn } from '@/lib/utils'
 
 interface DroppableColumnProps {
   id: string
-  children?: ReactNode
+  children: ReactNode
   isCustomizing: boolean
 }
 
 export function DroppableColumn({ id, children, isCustomizing }: DroppableColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id })
-
-  // When used as a hidden drop target (no children), render a visually hidden element
-  if (!children) {
-    return <div ref={setNodeRef} className="absolute inset-0 pointer-events-none" />
-  }
 
   return (
     <div

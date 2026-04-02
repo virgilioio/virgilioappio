@@ -185,9 +185,8 @@ export function UpcomingActivities() {
   useEffect(() => {
     if (!user?.id) return;
 
-    const channelName = `booking-sync-${crypto.randomUUID()}`;
     const channel = supabase
-      .channel(channelName)
+      .channel('booking-sync-notifications')
       .on(
         'postgres_changes',
         {

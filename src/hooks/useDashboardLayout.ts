@@ -10,15 +10,7 @@ export interface DashboardColumns {
   right: DashboardCardId[]
 }
 
-export type CardSpans = Partial<Record<DashboardCardId, number>>
-
-export const CARD_SIZE_RULES: Record<DashboardCardId, { allowed: number[]; default: number }> = {
-  'tasks':      { allowed: [2], default: 2 },
-  'agenda':     { allowed: [2], default: 2 },
-  'app-review': { allowed: [2, 3, 4], default: 2 },
-  'onboarding': { allowed: [2, 3, 4], default: 2 },
-  'jobs':       { allowed: [2, 3, 4], default: 2 },
-}
+export type CardSpans = Partial<Record<DashboardCardId, 1 | 2>>
 
 interface StoredLayout {
   columns: DashboardColumns
@@ -26,66 +18,13 @@ interface StoredLayout {
   spans: CardSpans
 }
 
-const STORAGE_KEY = 'dashboard-layout-v3'
+const STORAGE_KEY = 'dashboard-layout-v2'
 const ALL_CARD_IDS: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs']
-const COLUMN_IDS: ColumnId[] = ['left', 'center', 'right']
 
 const DEFAULT_COLUMNS: DashboardColumns = {
   left: ['app-review', 'jobs'],
   center: ['tasks', 'onboarding'],
   right: ['agenda'],
-}
-
-export function getCardSpan(spans: CardSpans, cardId: DashboardCardId): number {
-  const stored = spans[cardId]
-  const rules = CARD_SIZE_RULES[cardId]
-  if (stored && rules.allowed.includes(stored)) return stored
-  return rules.default
-}
-
-// --- Uniqueness helpers ---
-
-/**
- * Find which column a card currently lives in.
- * Returns null if not found in any column (e.g. it's hidden).
- */
-function findColumnForCard(columns: DashboardColumns, cardId: string): ColumnId | null {
-  for (const colId of COLUMN_IDS) {
-    if (columns[colId].includes(cardId as DashboardCardId)) return colId
-  }
-  return null
-}
-
-/**
- * Remove a card from ALL columns. Returns a new columns object.
- * This is the key invariant enforcer — call before every insert
- * so a card can never exist in two places simultaneously.
- */
-function removeCardFromAllColumns(columns: DashboardColumns, cardId: DashboardCardId): DashboardColumns {
-  return {
-    left: columns.left.filter(id => id !== cardId),
-    center: columns.center.filter(id => id !== cardId),
-    right: columns.right.filter(id => id !== cardId),
-  }
-}
-
-/**
- * Defensive deduplication pass. Walks columns left→center→right
- * and keeps only the first occurrence of each card id.
- */
-function normalizeColumns(columns: DashboardColumns): DashboardColumns {
-  const seen = new Set<DashboardCardId>()
-  const dedup = (arr: DashboardCardId[]) =>
-    arr.filter(id => {
-      if (seen.has(id)) return false
-      seen.add(id)
-      return true
-    })
-  return {
-    left: dedup(columns.left),
-    center: dedup(columns.center),
-    right: dedup(columns.right),
-  }
 }
 
 function loadLayout(): { columns: DashboardColumns; hidden: DashboardCardId[]; spans: CardSpans } {
@@ -100,29 +39,19 @@ function loadLayout(): { columns: DashboardColumns; hidden: DashboardCardId[]; s
 
     if (!cols.left || !cols.center || !cols.right) return { columns: DEFAULT_COLUMNS, hidden: [], spans: {} }
 
-    const rawLeft = cols.left.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
-    const rawCenter = cols.center.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
-    const rawRight = cols.right.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
-    const rawHidden = hidden.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
-
-    // Deduplicate: each card must appear exactly once across all columns + hidden
-    const seen = new Set<DashboardCardId>()
-    const dedup = (arr: DashboardCardId[]) =>
-      arr.filter(id => { if (seen.has(id)) return false; seen.add(id); return true })
-
-    const validLeft = dedup(rawLeft)
-    const validCenter = dedup(rawCenter)
-    const validRight = dedup(rawRight)
-    const validHidden = dedup(rawHidden)
+    const validLeft = cols.left.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
+    const validCenter = cols.center.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
+    const validRight = cols.right.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
+    const validHidden = hidden.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
 
     const present = new Set([...validLeft, ...validCenter, ...validRight, ...validHidden])
     const missing = ALL_CARD_IDS.filter(id => !present.has(id))
 
+    // Validate spans
     const validSpans: CardSpans = {}
     for (const [k, v] of Object.entries(spans)) {
-      const cardId = k as DashboardCardId
-      if (ALL_CARD_IDS.includes(cardId) && typeof v === 'number' && CARD_SIZE_RULES[cardId].allowed.includes(v)) {
-        validSpans[cardId] = v
+      if (ALL_CARD_IDS.includes(k as DashboardCardId) && (v === 1 || v === 2)) {
+        validSpans[k as DashboardCardId] = v
       }
     }
 
@@ -148,6 +77,17 @@ function saveLayout(columns: DashboardColumns, hidden: DashboardCardId[], spans:
   }
 }
 
+function findCardColumn(columns: DashboardColumns, cardId: string): ColumnId | null {
+  if (columns.left.includes(cardId as DashboardCardId)) return 'left'
+  if (columns.center.includes(cardId as DashboardCardId)) return 'center'
+  if (columns.right.includes(cardId as DashboardCardId)) return 'right'
+  return null
+}
+
+export function getCardSpan(spans: CardSpans, cardId: DashboardCardId): 1 | 2 {
+  return spans[cardId] ?? 1
+}
+
 export function useDashboardLayout() {
   const [layoutState] = useState(() => loadLayout())
   const [columns, setColumns] = useState<DashboardColumns>(layoutState.columns)
@@ -164,38 +104,30 @@ export function useDashboardLayout() {
     columnsBeforeDrag.current = JSON.parse(JSON.stringify(columns))
   }, [columns])
 
-  /**
-   * Move a card to a target column at a given index.
-   * IMPORTANT: removes the card from ALL columns first, then inserts once.
-   * This prevents duplication even if called with stale source info.
-   */
   const moveCardToColumn = useCallback((
     activeId: string,
     overColumnId: ColumnId,
     overIndex: number,
   ) => {
     setColumns(prev => {
+      const sourceCol = findCardColumn(prev, activeId)
+      if (!sourceCol) return prev
+
       const cardId = activeId as DashboardCardId
+      const next = {
+        left: [...prev.left],
+        center: [...prev.center],
+        right: [...prev.right],
+      }
 
-      // Remove from every column first — guarantees uniqueness
-      const cleaned = removeCardFromAllColumns(prev, cardId)
+      next[sourceCol] = next[sourceCol].filter(id => id !== cardId)
+      const idx = Math.min(overIndex, next[overColumnId].length)
+      next[overColumnId].splice(idx, 0, cardId)
 
-      // Insert at the target position
-      const targetCol = [...cleaned[overColumnId]]
-      const idx = Math.min(overIndex, targetCol.length)
-      targetCol.splice(idx, 0, cardId)
-
-      const next = { ...cleaned, [overColumnId]: targetCol }
-
-      // Defensive normalization
-      return normalizeColumns(next)
+      return next
     })
   }, [])
 
-  /**
-   * Reorder a card within the same column.
-   * Also normalizes to prevent any accumulated duplicates.
-   */
   const reorderWithinColumn = useCallback((
     columnId: ColumnId,
     activeId: string,
@@ -206,23 +138,21 @@ export function useDashboardLayout() {
       const oldIndex = col.indexOf(activeId as DashboardCardId)
       const newIndex = col.indexOf(overId as DashboardCardId)
       if (oldIndex === -1 || newIndex === -1) return prev
-      const reordered = arrayMove(col, oldIndex, newIndex)
-      return normalizeColumns({ ...prev, [columnId]: reordered })
+      return { ...prev, [columnId]: arrayMove(col, oldIndex, newIndex) }
     })
   }, [])
 
   const finalizeLayout = useCallback(() => {
     setColumns(prev => {
-      const normalized = normalizeColumns(prev)
       setHiddenCards(h => {
         setCardSpans(s => {
-          persist(normalized, h, s)
+          persist(prev, h, s)
           return s
         })
         return h
       })
       columnsBeforeDrag.current = null
-      return normalized
+      return prev
     })
   }, [persist])
 
@@ -235,12 +165,18 @@ export function useDashboardLayout() {
 
   const hideCard = useCallback((cardId: DashboardCardId) => {
     setColumns(prev => {
-      // Remove from all columns
-      const next = removeCardFromAllColumns(prev, cardId)
+      const sourceCol = findCardColumn(prev, cardId)
+      if (!sourceCol) return prev
+      const next = {
+        left: [...prev.left],
+        center: [...prev.center],
+        right: [...prev.right],
+      }
+      next[sourceCol] = next[sourceCol].filter(id => id !== cardId)
       setHiddenCards(h => {
-        // Ensure not already in hidden
-        const newHidden = h.includes(cardId) ? h : [...h, cardId]
+        const newHidden = [...h, cardId]
         setCardSpans(s => {
+          // Remove span when hiding
           const newSpans = { ...s }
           delete newSpans[cardId]
           persist(next, newHidden, newSpans)
@@ -248,7 +184,7 @@ export function useDashboardLayout() {
         })
         return newHidden
       })
-      return normalizeColumns(next)
+      return next
     })
   }, [persist])
 
@@ -256,37 +192,63 @@ export function useDashboardLayout() {
     setHiddenCards(prev => {
       const newHidden = prev.filter(id => id !== cardId)
       setColumns(cols => {
-        // Remove from all columns first in case of stale state
-        const cleaned = removeCardFromAllColumns(cols, cardId)
         const counts = {
-          left: cleaned.left.length,
-          center: cleaned.center.length,
-          right: cleaned.right.length,
+          left: cols.left.length,
+          center: cols.center.length,
+          right: cols.right.length,
         }
         const shortest = (Object.keys(counts) as ColumnId[]).reduce((a, b) => counts[a] <= counts[b] ? a : b)
-        const next = { ...cleaned, [shortest]: [...cleaned[shortest], cardId] }
-        const normalized = normalizeColumns(next)
+        const next = {
+          left: [...cols.left],
+          center: [...cols.center],
+          right: [...cols.right],
+        }
+        next[shortest] = [...next[shortest], cardId]
         setCardSpans(s => {
-          persist(normalized, newHidden, s)
+          persist(next, newHidden, s)
           return s
         })
-        return normalized
+        return next
       })
       return newHidden
     })
   }, [persist])
 
   const toggleCardSpan = useCallback((cardId: DashboardCardId) => {
-    const rules = CARD_SIZE_RULES[cardId]
-    if (rules.allowed.length <= 1) return
-
     setCardSpans(prev => {
-      const currentSpan = getCardSpan(prev, cardId)
-      const currentIndex = rules.allowed.indexOf(currentSpan)
-      const nextIndex = (currentIndex + 1) % rules.allowed.length
-      const newSpan = rules.allowed[nextIndex]
-      const newSpans = { ...prev, [cardId]: newSpan }
+      const currentSpan = prev[cardId] ?? 1
+      const newSpan: 1 | 2 = currentSpan === 1 ? 2 : 1
 
+      if (newSpan === 2) {
+        // If card is in "right" column, move it to "center" so it can span center+right
+        setColumns(cols => {
+          const col = findCardColumn(cols, cardId)
+          if (col === 'right') {
+            const next = {
+              left: [...cols.left],
+              center: [...cols.center],
+              right: cols.right.filter(id => id !== cardId),
+            }
+            next.center = [...next.center, cardId]
+            const newSpans = { ...prev, [cardId]: newSpan }
+            setHiddenCards(h => {
+              persist(next, h, newSpans)
+              return h
+            })
+            return next
+          }
+          setHiddenCards(h => {
+            persist(cols, h, { ...prev, [cardId]: newSpan })
+            return h
+          })
+          return cols
+        })
+        return { ...prev, [cardId]: newSpan }
+      }
+
+      // Collapsing to 1
+      const newSpans = { ...prev }
+      delete newSpans[cardId]
       setColumns(cols => {
         setHiddenCards(h => {
           persist(cols, h, newSpans)
@@ -294,7 +256,6 @@ export function useDashboardLayout() {
         })
         return cols
       })
-
       return newSpans
     })
   }, [persist])
@@ -315,8 +276,7 @@ export function useDashboardLayout() {
     hiddenCards,
     cardSpans,
     isCustomizing,
-    // Expose the live-state lookup for use in DnD handlers
-    findCardColumn: (cardId: string) => findColumnForCard(columns, cardId),
+    findCardColumn: (cardId: string) => findCardColumn(columns, cardId),
     saveDragStart,
     moveCardToColumn,
     reorderWithinColumn,

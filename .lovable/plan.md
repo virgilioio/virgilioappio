@@ -1,87 +1,61 @@
 
-# Fix dashboard DnD duplication bug
 
-## What I’ll change
+# User-Controlled Card Column Spanning
 
-### 1. Harden the layout model in `src/hooks/useDashboardLayout.ts`
-Refactor the state helpers so the layout always enforces this invariant:
+## The challenge
 
-```text
-A card id can exist in exactly one place:
-- left
-- center
-- right
-- hidden
-```
+The current architecture uses 3 independent flex columns. A card that spans 2 columns cannot live inside a single flex column — it needs to break across column boundaries. This is a fundamental layout change.
 
-Planned helpers:
-- `findColumnForCard(cardId, columns)` — live lookup from current state
-- `removeCardFromAllColumns(cardId, columns)` — strips the card from every column before any insert
-- `normalizeColumns(columns)` — defensive dedupe pass that guarantees uniqueness after each mutation
+### Why it's hard
 
-Then update the mutation methods:
-- `moveCardToColumn(...)`  
-  - resolve from live state
-  - remove from all columns first
-  - insert once at the target index
-  - normalize before returning
-  - no-op if the effective placement did not change
-- `reorderWithinColumn(...)`
-  - operate on a cleaned column array
-  - normalize result before returning
-- `showCard(...)` / `hideCard(...)`
-  - make them uniqueness-safe too, so hidden/add flows can never reintroduce duplicates
+The multi-column DnD model stores cards as members of one column. A 2-col-wide card conceptually "owns" two column slots. The rendering and drag logic both need to understand this.
 
-### 2. Fix stale drag source usage in `src/pages/Dashboard.tsx`
-Refactor the DnD handlers so they never trust `active.data.current?.columnId` after drag start.
+### Recommended approach: CSS Grid subgrid with span metadata
 
-Instead:
-- on every `handleDragOver`, derive the active card’s current column from the latest runtime `columns` state via `findCardColumn(activeCardId)`
-- derive the target column from the current hovered item/column
-- skip repeated hover events that would reinsert the card into the same position
-- only call cross-column move logic when the target column is actually different
+Instead of 3 separate flex columns rendered independently, switch the inner rendering to a single CSS Grid with `grid-template-columns: repeat(3, 1fr)` and explicit `grid-column` / `grid-row` placement. Each card gets a `colSpan: 1 | 2` property. The column ownership model stays the same (left/center/right), but rendering computes explicit grid positions from the column arrays + span info.
 
-This is the key fix for the corruption bug.
+**Key insight**: The data model (3 column arrays) stays intact for DnD. Only the rendering layer changes to support spanning. A 2-col card anchored in "left" visually extends into "center."
 
-### 3. Make `handleDragEnd` use live state consistently
-Update drop handling so:
-- same-column drops only reorder within that live column
-- cross-column drops do not reinsert again if drag-over already moved the item
-- finalize/persist uses the cleaned runtime state
+## Changes
 
-### 4. Add concise comments around the bug-prone logic
-I’ll document:
-- why `active.data.current?.columnId` becomes stale after the first move
-- why all move operations remove from every column before insert
-- why normalization runs after mutations
+### 1. `src/hooks/useDashboardLayout.ts`
 
-## Why this should fix it
+- Add `cardSpans: Record<DashboardCardId, 1 | 2>` to state (default all `1`)
+- Persist in localStorage alongside columns/hidden
+- New method: `toggleCardSpan(cardId)` — toggles between 1 and 2
+- Constraint: a card in the "right" column toggled to span 2 would visually overflow. When a card is set to span 2, if it's in column "right", move it to "center" (spans center+right). If in "center", it spans center+right. If in "left", it spans left+center.
+- When dragging a 2-col card, it always lands as span-1 temporarily (simplifies placement), user re-expands after dropping
 
-Right now the card can be inserted multiple times because drag-over keeps using the original source column from drag-start metadata.
+### 2. `src/pages/Dashboard.tsx`
 
-After the refactor:
-- source column always comes from current state
-- every move removes the card globally before inserting
-- every result is normalized
-- duplicate keys and duplicate mounts should stop entirely
+- Replace the 3 independent flex column divs with a single CSS Grid container using explicit `grid-column` and `grid-row` placement
+- Compute grid positions from the column arrays: left cards start at col 1, center at col 2, right at col 3; span-2 cards get `grid-column: span 2`
+- Row positions computed by walking each column's card list and tracking row offsets
+- DnD contexts remain per-column (SortableContext per column still works — the card's "home" column is its anchor)
+- In customize mode, each card shows a small "expand/collapse" icon button (e.g., `Maximize2`/`Minimize2`) to toggle between 1-col and 2-col
 
-## Files to update
+### 3. `src/components/dashboard/DraggableDashboardCard.tsx`
 
-- `src/pages/Dashboard.tsx`
-- `src/hooks/useDashboardLayout.ts`
+- Add optional `onToggleSpan` prop and `colSpan` prop
+- When `isCustomizing`, show a resize toggle button (opposite side from the X button, or next to drag handle)
+- Visual indicator: when span is 2, the card ring/border could be slightly different shade
 
-## Expected result
+### 4. DnD behavior with spanning
 
-- no visual card duplication during drag
-- no duplicate React key warnings (`agenda`, `onboarding`, etc.)
-- no duplicate widget mounts caused by corrupted layout state
-- same dashboard appearance and overall DnD feel, but with stable behavior
+- During drag (`onDragStart`), temporarily collapse the card to span-1 for clean placement
+- On drop (`onDragEnd`), restore the original span
+- Cross-column moves: if a span-2 card is dropped in "right", auto-move it to "center" so it can span center+right
+- Mobile/tablet: spanning is ignored (single column / 2-col layout), cards always render as span-1
 
-## Verification
+## Complexity assessment
 
-I’ll validate these flows after implementation:
-1. drag within same column
-2. drag between columns repeatedly
-3. hover back and forth before drop
-4. hide → re-add → drag again
-5. refresh and confirm persisted layout stays clean
+This is a **significant** change. The rendering layer shifts from "3 independent flex columns" to "1 CSS Grid with computed placement." DnD logic gets more complex with span-aware constraints. Estimated ~200-300 lines of new/changed code across 3 files.
+
+## Files changed
+
+| File | Change |
+|------|--------|
+| `src/hooks/useDashboardLayout.ts` | Add `cardSpans` state, `toggleCardSpan` method, span-aware column constraints |
+| `src/components/dashboard/DraggableDashboardCard.tsx` | Add `onToggleSpan` + `colSpan` props, resize toggle button |
+| `src/pages/Dashboard.tsx` | Replace flex columns with CSS Grid explicit placement, span-aware rendering, span toggle during DnD |
+
