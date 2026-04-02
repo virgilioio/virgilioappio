@@ -1,4 +1,4 @@
-import { ReactNode, useState, useMemo, useCallback } from 'react'
+import { ReactNode, useState } from 'react'
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
 import { UpcomingActivities } from '@/components/dashboard/UpcomingActivities'
 import { JobsOverview } from '@/components/dashboard/JobsOverview'
