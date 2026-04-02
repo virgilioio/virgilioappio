@@ -463,7 +463,7 @@ export function UpcomingActivities() {
                 </CollapsibleTrigger>
               </div>
             </div>
-            <CollapsibleContent>
+            <CollapsibleContent className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
               <AgendaCalendar
                 selectedDate={selectedDay}
                 onDateSelect={handleDaySelect}
