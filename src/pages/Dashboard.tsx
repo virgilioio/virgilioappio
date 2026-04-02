@@ -229,41 +229,57 @@ export default function Dashboard() {
     cancelDrag()
   }
 
-  const renderGrid = () => {
-    if (!isCustomizing) {
-      return cachedPlacements.map(({ id, gridColumn, gridRow }) => (
-        <div
-          key={id}
-          className="min-w-0"
-          style={{ gridColumn, gridRow }}
-        >
+  const masonryItems = placementsToMasonryItems(cachedPlacements)
+
+  const renderNormalGrid = () => (
+    <MasonryGrid items={masonryItems} totalCols={gridCols}>
+      {cachedPlacements.map(({ id }) => (
+        <div key={id} className="min-w-0">
           {renderCard(id)}
         </div>
-      ))
-    }
+      ))}
+    </MasonryGrid>
+  )
 
-    // Customizing mode: same grid placement but with draggable wrappers
-    return cachedPlacements.map(({ id, gridColumn, gridRow }) => {
-      const widget = renderableWidgets.find(w => w.id === id)!
-      return (
-        <div key={id} style={{ gridColumn, gridRow, transition: 'all 200ms ease' }} className="min-w-0">
-          <DraggableDashboardCard
-            id={id}
-            isCustomizing
-            currentSize={widget.size}
-            onHide={() => hideCard(id)}
-            onCycleSize={!WIDGET_REGISTRY[id].fixed ? () => cycleWidgetSize(id) : undefined}
-          >
-            {renderCard(id)}
-          </DraggableDashboardCard>
-        </div>
-      )
-    })
-  }
-
-  const gridStyle = {
-    gridTemplateColumns: `repeat(${gridCols}, 1fr)`,
-  }
+  const renderCustomizeGrid = () => (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCorners}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+    >
+      <SortableContext items={renderableWidgets.map(w => w.id)} strategy={rectSortingStrategy}>
+        <MasonryGrid items={masonryItems} totalCols={gridCols}>
+          {cachedPlacements.map(({ id }) => {
+            const widget = renderableWidgets.find(w => w.id === id)!
+            return (
+              <div key={id} className="min-w-0">
+                <DraggableDashboardCard
+                  id={id}
+                  isCustomizing
+                  currentSize={widget.size}
+                  onHide={() => hideCard(id)}
+                  onCycleSize={!WIDGET_REGISTRY[id].fixed ? () => cycleWidgetSize(id) : undefined}
+                >
+                  {renderCard(id)}
+                </DraggableDashboardCard>
+              </div>
+            )
+          })}
+        </MasonryGrid>
+      </SortableContext>
+      <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+        {activeId && cardRegistry[activeId as DashboardCardId] ? (
+          <DashboardCardOverlay>
+            <div className="min-w-0">
+              {renderCard(activeId as DashboardCardId)}
+            </div>
+          </DashboardCardOverlay>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
+  )
 
   return (
     <div>
@@ -320,34 +336,7 @@ export default function Dashboard() {
             </Alert>
           )}
 
-          {isCustomizing ? (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCorners}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-              onDragCancel={handleDragCancel}
-            >
-              <SortableContext items={renderableWidgets.map(w => w.id)} strategy={rectSortingStrategy}>
-                <div className="grid gap-5 items-start" style={gridStyle}>
-                  {renderGrid()}
-                </div>
-              </SortableContext>
-              <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
-                {activeId && cardRegistry[activeId as DashboardCardId] ? (
-                  <DashboardCardOverlay>
-                    <div className="min-w-0">
-                      {renderCard(activeId as DashboardCardId)}
-                    </div>
-                  </DashboardCardOverlay>
-                ) : null}
-              </DragOverlay>
-            </DndContext>
-          ) : (
-            <div className="grid gap-5 items-start" style={gridStyle}>
-              {renderGrid()}
-            </div>
-          )}
+          {isCustomizing ? renderCustomizeGrid() : renderNormalGrid()}
         </div>
       </Section>
 
