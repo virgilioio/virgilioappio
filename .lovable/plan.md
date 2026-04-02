@@ -1,36 +1,33 @@
 
 
-# Fix Dashboard DnD: Allow Dropping Below Items in Same Column
+# Fix Dashboard DnD: Eliminate Gaps + Runtime Error
 
 ## Problem
 
-The current setup uses `rectSortingStrategy` which treats all grid items as a flat list. When you drag a card toward another card in the same column, `closestCenter` collision detection causes the target to shift away before you can drop below it — the items swap positions instead of allowing insertion.
+Two issues:
+
+1. **Huge gaps when stacking cards**: CSS Grid forces all items in the same row to share the same row height (determined by the tallest card). When you drop a short card below a tall card in the same column, the grid cell for the short card stretches to match its row neighbor, creating a massive visual gap.
+
+2. **Runtime error**: `closestCenter is not defined` — likely a stale build cache, but the code looks correct (imports `closestCorners`). A rebuild should clear it.
 
 ## Solution
 
-Switch from `rectSortingStrategy` to `verticalListSortingStrategy` — but that won't work well for a grid. The real fix is two changes:
+Add `items-start` to the grid container. This tells CSS Grid to align each item to the top of its cell instead of stretching it to fill the full row height. The cards will hug their natural height, eliminating the gap issue.
 
-1. **Replace `closestCenter` with `closestCorners`** — this collision detection algorithm is more forgiving in grid layouts and better handles the "drop below" intent by considering corner proximity rather than center-to-center distance.
-
-2. **Add `animateLayoutChanges` override to `useSortable`** in `DraggableDashboardCard.tsx` — disable the layout animation during active drags so items don't visually shift while you're still holding the dragged card. Items only reorder on drop.
-
-```tsx
-// In DraggableDashboardCard.tsx
-const animateLayoutChanges = (args) => {
-  const { isSorting, wasDragging } = args;
-  if (isSorting || wasDragging) return false;
-  return defaultAnimateLayoutChanges(args);
-};
-
-useSortable({ id, disabled: !isCustomizing, animateLayoutChanges })
+On the grid divs (both the DnD and non-DnD versions), change:
+```
+grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3
+```
+to:
+```
+grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 items-start
 ```
 
-This means while dragging, the other cards stay put visually. When you drop, the reorder happens cleanly without the "jumping" behavior.
+This single CSS change fixes the visual gap problem because each card now only occupies its natural height within the grid, regardless of what's next to it in the same row.
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/components/dashboard/DraggableDashboardCard.tsx` | Add `animateLayoutChanges` override to suppress layout shifts during active drag |
-| `src/pages/Dashboard.tsx` | Switch collision detection from `closestCenter` to `closestCorners` |
+| `src/pages/Dashboard.tsx` | Add `items-start` to both grid containers (lines 146 and 161) |
 
