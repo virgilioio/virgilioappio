@@ -37,7 +37,7 @@ export const CARD_SIZE_RULES: Record<DashboardCardId, WidgetSize[]> = {
   'world-clock': ['small'],
 }
 
-const ALL_CARD_IDS: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs']
+const ALL_CARD_IDS: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs', 'world-clock']
 const TOTAL_COLS = 6
 
 // ── Layout data model ───────────────────────────────────────────────
