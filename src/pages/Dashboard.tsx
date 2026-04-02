@@ -51,6 +51,7 @@ export default function Dashboard() {
             <div className="space-y-6 min-w-0">
               <OnboardingChecklist isDeemphasized={!hasSeenValue} />
               
+              {hasJobContent && <ApplicationReviewCard />}
               {hasJobContent && <div className="hidden sm:block"><JobsOverview permissions={permissions} /></div>}
             </div>
             
