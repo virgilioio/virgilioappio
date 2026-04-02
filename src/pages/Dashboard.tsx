@@ -58,8 +58,6 @@ interface GridPlacement {
 
 /**
  * Pack cards into a 6-wide grid using a row-slot cursor.
- * Each card has a span (2, 3, or 4). We find the first row
- * where `span` consecutive slots are free, place the card there.
  */
 function computeGridPlacements(
   columns: Record<ColumnId, DashboardCardId[]>,
@@ -69,7 +67,6 @@ function computeGridPlacements(
   const GRID_COLS = 6
   const placements: GridPlacement[] = []
 
-  // Collect all visible cards in column order: left → center → right
   const allCards: { cardId: DashboardCardId; columnId: ColumnId }[] = []
   for (const colId of COLUMN_IDS) {
     for (const cardId of columns[colId]) {
@@ -79,8 +76,6 @@ function computeGridPlacements(
     }
   }
 
-  // Track which cells are occupied: grid[row][col] = true/false
-  // We use a sparse approach: for each row, track occupied columns
   const occupied: Map<number, Set<number>> = new Map()
 
   const isSlotFree = (row: number, col: number): boolean => {
@@ -98,7 +93,6 @@ function computeGridPlacements(
   for (const { cardId, columnId } of allCards) {
     const span = getCardSpan(spans, cardId)
 
-    // Find first row where `span` consecutive slots are free
     let placed = false
     for (let row = 1; row <= 100 && !placed; row++) {
       for (let col = 0; col <= GRID_COLS - span; col++) {
@@ -199,24 +193,34 @@ export default function Dashboard() {
     setActiveId(String(event.active.id))
   }
 
+  /**
+   * handleDragOver: called continuously as the user drags over items/columns.
+   *
+   * KEY FIX: We derive the active card's CURRENT column from live state
+   * via findCardColumn(), NOT from active.data.current?.columnId.
+   * The latter becomes stale after the first cross-column move,
+   * which was causing cards to be inserted multiple times.
+   */
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event
     if (!over) return
 
-    const activeCardId = String(active.id)
+    const activeCardId = String(active.id) as DashboardCardId
     const overId = String(over.id)
 
-    const sourceCol = active.data.current?.columnId as ColumnId | undefined
-      ?? findCardColumn(activeCardId)
+    // Derive source from LIVE state — never trust stale drag metadata
+    const sourceCol = findCardColumn(activeCardId)
     if (!sourceCol) return
 
     let targetCol: ColumnId | null = null
     let targetIndex: number = 0
 
     if (COLUMN_IDS.includes(overId as ColumnId)) {
+      // Dropped on an empty column droppable
       targetCol = overId as ColumnId
       targetIndex = columns[targetCol].length
     } else {
+      // Dropped on another card — find which column that card is in
       targetCol = findCardColumn(overId)
       if (targetCol) {
         targetIndex = columns[targetCol].indexOf(overId as DashboardCardId)
@@ -224,11 +228,18 @@ export default function Dashboard() {
     }
 
     if (!targetCol) return
+
+    // No-op if already in the same column — reorder happens on dragEnd
     if (sourceCol === targetCol) return
 
+    // Cross-column move: moveCardToColumn removes from ALL columns first
     moveCardToColumn(activeCardId, targetCol, targetIndex)
   }
 
+  /**
+   * handleDragEnd: finalize placement.
+   * Uses live state to determine columns — never stale metadata.
+   */
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     setActiveId(null)
@@ -238,13 +249,22 @@ export default function Dashboard() {
       return
     }
 
-    const activeCardId = String(active.id)
+    const activeCardId = String(active.id) as DashboardCardId
     const overId = String(over.id)
 
+    // Derive both columns from live state
     const activeCol = findCardColumn(activeCardId)
-    const overCol = COLUMN_IDS.includes(overId as ColumnId) ? overId as ColumnId : findCardColumn(overId)
+    const overCol = COLUMN_IDS.includes(overId as ColumnId)
+      ? overId as ColumnId
+      : findCardColumn(overId)
 
-    if (activeCol && overCol && activeCol === overCol && activeCardId !== overId && !COLUMN_IDS.includes(overId as ColumnId)) {
+    // Same-column reorder
+    if (
+      activeCol && overCol &&
+      activeCol === overCol &&
+      activeCardId !== overId &&
+      !COLUMN_IDS.includes(overId as ColumnId)
+    ) {
       reorderWithinColumn(activeCol, activeCardId, overId)
     }
 
@@ -271,7 +291,6 @@ export default function Dashboard() {
       ))
     }
 
-    // In customize mode, render cards with DnD wrappers at their actual grid positions
     return placements.map(({ cardId, columnId, gridColumn, gridRow }) => {
       const span = getCardSpan(cardSpans, cardId)
       return (
@@ -291,9 +310,7 @@ export default function Dashboard() {
     })
   }
 
-  // We need SortableContexts per column for DnD, but render in a single grid
   const renderCustomizeGrid = () => {
-    // Create the sortable contexts (they don't render DOM, just provide context)
     const sortableCards = renderGridCards()
 
     return (
