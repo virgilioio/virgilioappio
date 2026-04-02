@@ -32,6 +32,7 @@ export function AgendaCalendar({
   currentMonth,
   onMonthChange,
   activityDates,
+  hideHeader = false,
 }: AgendaCalendarProps) {
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
