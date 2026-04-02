@@ -59,8 +59,9 @@ export function DraggableDashboardCard({
 
   const style = {
     transform: CSS.Translate.toString(transform),
-    transition,
-    opacity: isDragging ? 0 : undefined,
+    transition: transition || 'transform 200ms ease',
+    opacity: isDragging ? 0.4 : undefined,
+    scale: isDragging ? '0.98' : undefined,
   }
 
   return (

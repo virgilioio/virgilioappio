@@ -31,8 +31,9 @@ import {
 } from '@/components/ui/sheet'
 import {
   DndContext,
-  closestCenter,
+  closestCorners,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragEndEvent,
