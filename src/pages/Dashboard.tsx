@@ -175,22 +175,35 @@ export default function Dashboard() {
   // Filter to only widgets with non-null content
   const renderableWidgets = visibleWidgets.filter(w => cardRegistry[w.id] !== null)
 
-  // Detect tablet (md but not xl) via checking viewport — use CSS for actual breakpoint, 
-  // but for placement computation we use a heuristic based on viewport
   const isTablet = typeof window !== 'undefined' && window.innerWidth < 1280
-
-  const placements = isTablet
-    ? computeTabletPlacements(renderableWidgets)
-    : computePlacements(renderableWidgets)
-
   const gridCols = isTablet ? 4 : 6
 
-  const handleDragStart = (event: DragStartEvent) => {
-    saveDragStart()
-    setActiveId(String(event.active.id))
+  // Structural key: changes on add/remove/resize but NOT on reorder
+  const structuralKey = useMemo(
+    () => renderableWidgets.map(w => `${w.id}:${w.size}`).sort().join(','),
+    [renderableWidgets]
+  )
+
+  // Manage placements as state — only recompute on structural changes
+  const [cachedPlacements, setCachedPlacements] = useState<GridPlacement[]>(() =>
+    isTablet ? computeTabletPlacements(renderableWidgets) : computePlacements(renderableWidgets)
+  )
+  const [lastStructuralKey, setLastStructuralKey] = useState(structuralKey)
+
+  // Recompute placements only when structure changes (size, visibility), not order
+  if (structuralKey !== lastStructuralKey) {
+    setCachedPlacements(
+      isTablet ? computeTabletPlacements(renderableWidgets) : computePlacements(renderableWidgets)
+    )
+    setLastStructuralKey(structuralKey)
   }
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    saveDragStart()
+    setActiveId(String(event.active.id))
+  }, [saveDragStart])
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event
     setActiveId(null)
 
@@ -199,14 +212,18 @@ export default function Dashboard() {
       return
     }
 
+    // Swap placements directly — no full repack
+    setCachedPlacements(prev => swapPlacements(prev, String(active.id), String(over.id), gridCols))
+
+    // Update order values in the hook for persistence
     reorderWidgets(String(active.id), String(over.id))
     finalizeLayout()
-  }
+  }, [cancelDrag, reorderWidgets, finalizeLayout, gridCols])
 
-  const handleDragCancel = () => {
+  const handleDragCancel = useCallback(() => {
     setActiveId(null)
     cancelDrag()
-  }
+  }, [cancelDrag])
 
   const renderGrid = () => {
     if (!isCustomizing) {
