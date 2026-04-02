@@ -29,11 +29,12 @@ export const SIZE_TO_COLS: Record<WidgetSize, number> = {
 }
 
 export const CARD_SIZE_RULES: Record<DashboardCardId, WidgetSize[]> = {
-  'tasks':      ['small'],
-  'agenda':     ['small'],
-  'app-review': ['small', 'medium', 'large'],
-  'onboarding': ['small', 'medium', 'large'],
-  'jobs':       ['small', 'medium', 'large'],
+  'tasks':       ['small'],
+  'agenda':      ['small'],
+  'app-review':  ['small', 'medium', 'large'],
+  'onboarding':  ['small', 'medium', 'large'],
+  'jobs':        ['small', 'medium', 'large'],
+  'world-clock': ['small'],
 }
 
 const ALL_CARD_IDS: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs']
