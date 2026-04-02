@@ -54,10 +54,20 @@ function loadLayout(): { columns: DashboardColumns; hidden: DashboardCardId[]; s
 
     if (!cols.left || !cols.center || !cols.right) return { columns: DEFAULT_COLUMNS, hidden: [], spans: {} }
 
-    const validLeft = cols.left.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
-    const validCenter = cols.center.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
-    const validRight = cols.right.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
-    const validHidden = hidden.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
+    const rawLeft = cols.left.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
+    const rawCenter = cols.center.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
+    const rawRight = cols.right.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
+    const rawHidden = hidden.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
+
+    // Deduplicate: each card must appear exactly once across all columns + hidden
+    const seen = new Set<DashboardCardId>()
+    const dedup = (arr: DashboardCardId[]) =>
+      arr.filter(id => { if (seen.has(id)) return false; seen.add(id); return true })
+
+    const validLeft = dedup(rawLeft)
+    const validCenter = dedup(rawCenter)
+    const validRight = dedup(rawRight)
+    const validHidden = dedup(rawHidden)
 
     const present = new Set([...validLeft, ...validCenter, ...validRight, ...validHidden])
     const missing = ALL_CARD_IDS.filter(id => !present.has(id))
