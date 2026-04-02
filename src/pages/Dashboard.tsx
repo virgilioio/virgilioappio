@@ -192,12 +192,12 @@ export default function Dashboard() {
     setLastStructuralKey(structuralKey)
   }
 
-  const handleDragStart = useCallback((event: DragStartEvent) => {
+  const handleDragStart = (event: DragStartEvent) => {
     saveDragStart()
     setActiveId(String(event.active.id))
-  }, [saveDragStart])
+  }
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     setActiveId(null)
 
@@ -212,12 +212,12 @@ export default function Dashboard() {
     // Update order values in the hook for persistence
     reorderWidgets(String(active.id), String(over.id))
     finalizeLayout()
-  }, [cancelDrag, reorderWidgets, finalizeLayout, gridCols])
+  }
 
-  const handleDragCancel = useCallback(() => {
+  const handleDragCancel = () => {
     setActiveId(null)
     cancelDrag()
-  }, [cancelDrag])
+  }
 
   const renderGrid = () => {
     if (!isCustomizing) {
