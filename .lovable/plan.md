@@ -1,109 +1,61 @@
 
 
-# Refactor Dashboard DnD: Multi-Column Architecture
+# Hide/Show Dashboard Cards + Add Widget Menu
 
-## Problem
+## Overview
 
-The current flat-array + CSS Grid auto-placement model is fundamentally broken for 2D drag-and-drop. Users want to move cards within and between columns, but `@dnd-kit/sortable` only understands a 1D list, causing unpredictable jumps.
+Add the ability to hide dashboard cards and re-add them from a menu. When customizing, each card gets an "X" button to hide it. A "+" button or "Add Widget" menu shows hidden cards that can be re-added to any column.
 
-## New Architecture
+## How it works
 
-Replace the flat `DashboardCardId[]` with a column-based layout model:
-
-```ts
-type ColumnId = 'left' | 'center' | 'right'
-
-interface DashboardColumns {
-  left: DashboardCardId[]
-  center: DashboardCardId[]
-  right: DashboardCardId[]
-}
-
-// Default:
-{
-  left: ['app-review', 'jobs'],
-  center: ['tasks', 'onboarding'],
-  right: ['agenda']
-}
-```
-
-Each column gets its own `SortableContext`. Cross-column moves are handled via `onDragOver` (move item between containers) and `onDragEnd` (finalize). This is the same pattern as the Kanban pipeline already in the codebase.
+- A `hiddenCards` set is stored alongside the column layout in localStorage
+- Hiding a card removes it from its column and adds it to `hiddenCards`
+- The "Add Widget" button (visible only in customize mode) opens a Sheet/Popover listing hidden cards with friendly labels and an "Add" button next to each
+- Adding a card removes it from `hiddenCards` and appends it to the column with the fewest cards
+- Reset layout also resets hidden cards
 
 ## Changes
 
-### 1. `src/hooks/useDashboardLayout.ts` — Full rewrite
+### 1. `src/hooks/useDashboardLayout.ts`
 
-- State shape changes from `DashboardCardId[]` to `DashboardColumns`
-- `localStorage` stores the columns object
+- Add `hiddenCards: Set<DashboardCardId>` to state
+- Persist hidden cards in localStorage alongside columns (update storage format to `{ columns, hidden }`)
 - New methods:
-  - `moveCard(cardId, toColumn, toIndex)` — moves a card to a specific column at a specific index
-  - `reorderWithinColumn(columnId, activeId, overId)` — reorder inside one column
-- `resetLayout()` resets to default columns
-- Validation on load: ensure all known card IDs appear exactly once across all columns, backfill missing ones
+  - `hideCard(cardId)` — remove from its column, add to hidden set, save
+  - `showCard(cardId)` — remove from hidden set, add to shortest column, save
+- `resetLayout` also clears hidden cards
+- Update `loadColumns` to handle new storage format with backwards compatibility
 
-### 2. `src/components/dashboard/DraggableDashboardCard.tsx` — Minor update
+### 2. `src/components/dashboard/DraggableDashboardCard.tsx`
 
-- Add `columnId` prop so `useSortable` gets a `data` payload with `{ columnId }` — used by `onDragOver` to know the source column
-- Everything else (drag handle, overlay, animations) stays identical
+- Add optional `onHide` prop
+- When `isCustomizing` and `onHide` is provided, render an "X" button (opposite corner from drag handle) — small, circular, same style as drag handle but with X icon
 
-### 3. `src/pages/Dashboard.tsx` — Structural rewrite of the grid
+### 3. `src/pages/Dashboard.tsx`
 
-**Layout**: Replace the single CSS Grid with 3 explicit flex columns:
+- Pass `onHide` to each `DraggableDashboardCard` when customizing
+- Filter hidden cards from rendering (already handled by removing from columns)
+- Add "Add Widget" button next to "Reset" and "Done" buttons (only visible in customize mode, only enabled when there are hidden cards)
+- Clicking "Add Widget" opens a Sheet listing hidden cards with labels and "Add to dashboard" buttons
 
-```tsx
-<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
-  {(['left', 'center', 'right'] as const).map(colId => (
-    <SortableContext key={colId} items={columns[colId]} strategy={verticalListSortingStrategy}>
-      <DroppableColumn id={colId}>
-        {columns[colId].map(cardId => (
-          <DraggableDashboardCard key={cardId} id={cardId} columnId={colId} isCustomizing={isCustomizing}>
-            {cardRegistry[cardId]}
-          </DraggableDashboardCard>
-        ))}
-      </DroppableColumn>
-    </SortableContext>
-  ))}
-</div>
-```
+### 4. Card label registry
 
-**DnD logic**:
-- `onDragOver`: When dragged item enters a different column's sortable area, move it from source column to target column in state (live preview)
-- `onDragEnd`: Finalize position, save to localStorage
-- `onDragCancel`: Revert to pre-drag state
-- Use `verticalListSortingStrategy` per column (now correct — each column IS a vertical list)
-
-**DroppableColumn**: A simple `div` with `useDroppable` that renders as `flex flex-col gap-6 min-h-[100px]` — provides a drop target even when a column is empty.
-
-**Mobile**: Flatten all columns into a single stacked list (Agenda → Tasks → App Review → etc.), no DnD. Same as today.
-
-**Tablet (md)**: Show 2 columns — merge `left` + `center` into first column, `right` stays as second. Or simply show left and center side by side, right below. DnD still works with the column model.
-
-### 4. New: `src/components/dashboard/DroppableColumn.tsx`
-
-Simple wrapper:
-```tsx
-function DroppableColumn({ id, children }) {
-  const { setNodeRef, isOver } = useDroppable({ id })
-  return (
-    <div ref={setNodeRef} className={cn("flex flex-col gap-6 min-h-[100px] rounded-lg transition-colors", isOver && isCustomizing && "bg-primary/5")}>
-      {children}
-    </div>
-  )
+A simple map in Dashboard.tsx for display names:
+```ts
+const CARD_LABELS: Record<DashboardCardId, string> = {
+  'agenda': 'Agenda & Calendar',
+  'tasks': 'Tasks',
+  'app-review': 'Application Review',
+  'onboarding': 'Onboarding Checklist',
+  'jobs': 'Jobs Overview',
 }
 ```
-
-Provides a subtle highlight when dragging over an empty column.
-
-## Visual result
-
-Identical to current dashboard — 3 equal columns, same gap, same card styles. The only visible difference is that dragging now works correctly: cards move within and between columns without jumping.
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/hooks/useDashboardLayout.ts` | Rewrite: column-based state model with cross-column move support |
-| `src/components/dashboard/DraggableDashboardCard.tsx` | Add `columnId` prop, pass as sortable data |
-| `src/components/dashboard/DroppableColumn.tsx` | New — droppable flex column wrapper |
-| `src/pages/Dashboard.tsx` | Render 3 explicit columns with per-column SortableContext, onDragOver for cross-column moves |
+| `src/hooks/useDashboardLayout.ts` | Add `hiddenCards` state, `hideCard`/`showCard` methods, updated storage format |
+| `src/components/dashboard/DraggableDashboardCard.tsx` | Add `onHide` prop with X button in customize mode |
+| `src/pages/Dashboard.tsx` | Add "Add Widget" button + Sheet listing hidden cards; pass `onHide` to draggable cards |
 
