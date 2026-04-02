@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react'
+import { ReactNode, useState, useMemo } from 'react'
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
 import { UpcomingActivities } from '@/components/dashboard/UpcomingActivities'
 import { JobsOverview } from '@/components/dashboard/JobsOverview'
@@ -13,7 +13,7 @@ import { WorkspaceProvisioningLoader } from '@/components/onboarding/WorkspacePr
 import { useSourcingProjects } from '@/hooks/useSourcingProjects'
 import { useUserJobRoles } from '@/hooks/useUserJobRoles'
 import { ApplicationReviewCard } from '@/components/dashboard/ApplicationReviewCard'
-import { useDashboardLayout, DashboardCardId, ColumnId } from '@/hooks/useDashboardLayout'
+import { useDashboardLayout, DashboardCardId, ColumnId, getCardSpan } from '@/hooks/useDashboardLayout'
 import { DraggableDashboardCard, DashboardCardOverlay } from '@/components/dashboard/DraggableDashboardCard'
 import { DroppableColumn } from '@/components/dashboard/DroppableColumn'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -39,6 +39,7 @@ import {
 } from '@dnd-kit/sortable'
 
 const COLUMN_IDS: ColumnId[] = ['left', 'center', 'right']
+const COLUMN_START: Record<ColumnId, number> = { left: 1, center: 2, right: 3 }
 const MOBILE_ORDER: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs']
 
 const CARD_LABELS: Record<DashboardCardId, string> = {
@@ -47,6 +48,59 @@ const CARD_LABELS: Record<DashboardCardId, string> = {
   'app-review': 'Application Review',
   'onboarding': 'Onboarding Checklist',
   'jobs': 'Jobs Overview',
+}
+
+interface GridPlacement {
+  cardId: DashboardCardId
+  columnId: ColumnId
+  gridColumn: string
+  gridRow: number
+}
+
+function computeGridPlacements(
+  columns: Record<ColumnId, DashboardCardId[]>,
+  cardRegistry: Record<DashboardCardId, ReactNode>,
+  spans: Partial<Record<DashboardCardId, 1 | 2>>,
+): GridPlacement[] {
+  const placements: GridPlacement[] = []
+  // Track row usage per grid column (1-indexed)
+  const colRowCursor: Record<number, number> = { 1: 1, 2: 1, 3: 1 }
+
+  // Process columns left → center → right so rows fill naturally
+  for (const colId of COLUMN_IDS) {
+    const cards = columns[colId].filter(id => cardRegistry[id] !== null)
+    const startCol = COLUMN_START[colId]
+
+    for (const cardId of cards) {
+      const span = getCardSpan(spans, cardId)
+
+      if (span === 2) {
+        // Span-2 cards: anchor at startCol, extend to startCol+1
+        // But cap at column 2 max (so it spans cols 2-3)
+        const effectiveStart = Math.min(startCol, 2)
+        const row = Math.max(colRowCursor[effectiveStart], colRowCursor[effectiveStart + 1])
+        placements.push({
+          cardId,
+          columnId: colId,
+          gridColumn: `${effectiveStart} / span 2`,
+          gridRow: row,
+        })
+        colRowCursor[effectiveStart] = row + 1
+        colRowCursor[effectiveStart + 1] = row + 1
+      } else {
+        const row = colRowCursor[startCol]
+        placements.push({
+          cardId,
+          columnId: colId,
+          gridColumn: `${startCol} / span 1`,
+          gridRow: row,
+        })
+        colRowCursor[startCol] = row + 1
+      }
+    }
+  }
+
+  return placements
 }
 
 export default function Dashboard() {
@@ -58,6 +112,7 @@ export default function Dashboard() {
   const {
     columns,
     hiddenCards,
+    cardSpans,
     isCustomizing,
     findCardColumn,
     saveDragStart,
@@ -67,6 +122,7 @@ export default function Dashboard() {
     cancelDrag,
     hideCard,
     showCard,
+    toggleCardSpan,
     resetLayout,
     toggleCustomizing,
   } = useDashboardLayout()
@@ -113,7 +169,7 @@ export default function Dashboard() {
     )
   }
 
-  // --- Desktop / Tablet: multi-column DnD ---
+  // --- Desktop / Tablet: CSS Grid with explicit placement ---
 
   const handleDragStart = (event: DragStartEvent) => {
     saveDragStart()
@@ -127,21 +183,17 @@ export default function Dashboard() {
     const activeCardId = String(active.id)
     const overId = String(over.id)
 
-    // Determine source column from sortable data
     const sourceCol = active.data.current?.columnId as ColumnId | undefined
       ?? findCardColumn(activeCardId)
     if (!sourceCol) return
 
-    // Determine target column: over could be a column id or a card id
     let targetCol: ColumnId | null = null
     let targetIndex: number = 0
 
     if (COLUMN_IDS.includes(overId as ColumnId)) {
-      // Dropped over a column droppable (empty area)
       targetCol = overId as ColumnId
       targetIndex = columns[targetCol].length
     } else {
-      // Dropped over another card
       targetCol = findCardColumn(overId)
       if (targetCol) {
         targetIndex = columns[targetCol].indexOf(overId as DashboardCardId)
@@ -149,9 +201,8 @@ export default function Dashboard() {
     }
 
     if (!targetCol) return
-    if (sourceCol === targetCol) return // within-column handled by sortable
+    if (sourceCol === targetCol) return
 
-    // Move card to target column
     moveCardToColumn(activeCardId, targetCol, targetIndex)
   }
 
@@ -167,7 +218,6 @@ export default function Dashboard() {
     const activeCardId = String(active.id)
     const overId = String(over.id)
 
-    // If over is a card in the same column, do within-column reorder
     const activeCol = findCardColumn(activeCardId)
     const overCol = COLUMN_IDS.includes(overId as ColumnId) ? overId as ColumnId : findCardColumn(overId)
 
@@ -183,31 +233,64 @@ export default function Dashboard() {
     cancelDrag()
   }
 
-  const renderColumn = (colId: ColumnId) => {
-    const visibleCards = columns[colId].filter(id => cardRegistry[id] !== null)
+  const placements = computeGridPlacements(columns, cardRegistry, cardSpans)
 
+  const renderGridContent = () => {
     if (!isCustomizing) {
-      return (
-        <div key={colId} className="flex flex-col gap-6 min-w-0">
-          {visibleCards.map(cardId => (
-            <div key={cardId} className="min-w-0">{cardRegistry[cardId]}</div>
-          ))}
+      return placements.map(({ cardId, gridColumn, gridRow }) => (
+        <div
+          key={cardId}
+          className="min-w-0"
+          style={{ gridColumn, gridRow }}
+        >
+          {cardRegistry[cardId]}
         </div>
-      )
+      ))
     }
 
-    return (
-      <SortableContext key={colId} items={visibleCards} strategy={verticalListSortingStrategy}>
-        <DroppableColumn id={colId} isCustomizing={isCustomizing}>
-          {visibleCards.map(cardId => (
-            <DraggableDashboardCard key={cardId} id={cardId} columnId={colId} isCustomizing={isCustomizing} onHide={() => hideCard(cardId)}>
-              {cardRegistry[cardId]}
-            </DraggableDashboardCard>
-          ))}
-        </DroppableColumn>
-      </SortableContext>
-    )
+    // In customizing mode, render per-column SortableContexts
+    // but place items using CSS Grid positioning
+    return COLUMN_IDS.map(colId => {
+      const visibleCards = columns[colId].filter(id => cardRegistry[id] !== null)
+      const colPlacements = placements.filter(p => p.columnId === colId)
+
+      return (
+        <SortableContext key={colId} items={visibleCards} strategy={verticalListSortingStrategy}>
+          <DroppableColumn id={colId} isCustomizing={isCustomizing}>
+            {colPlacements.map(({ cardId }) => {
+              const span = getCardSpan(cardSpans, cardId)
+              return (
+                <DraggableDashboardCard
+                  key={cardId}
+                  id={cardId}
+                  columnId={colId}
+                  isCustomizing={isCustomizing}
+                  colSpan={span}
+                  onHide={() => hideCard(cardId)}
+                  onToggleSpan={() => toggleCardSpan(cardId)}
+                >
+                  {cardRegistry[cardId]}
+                </DraggableDashboardCard>
+              )
+            })}
+          </DroppableColumn>
+        </SortableContext>
+      )
+    })
   }
+
+  // For customizing mode, we still use 3 flex columns for DnD droppable targets
+  // For non-customizing mode, we use CSS Grid with explicit placement
+  const gridContent = !isCustomizing ? (
+    <div
+      className="grid gap-6 items-start"
+      style={{
+        gridTemplateColumns: 'repeat(3, 1fr)',
+      }}
+    >
+      {renderGridContent()}
+    </div>
+  ) : null
 
   return (
     <div>
@@ -265,7 +348,7 @@ export default function Dashboard() {
               onDragCancel={handleDragCancel}
             >
               <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 items-start">
-                {COLUMN_IDS.map(colId => renderColumn(colId))}
+                {renderGridContent()}
               </div>
               <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
                 {activeId && cardRegistry[activeId as DashboardCardId] ? (
@@ -278,9 +361,7 @@ export default function Dashboard() {
               </DragOverlay>
             </DndContext>
           ) : (
-            <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 items-start">
-              {COLUMN_IDS.map(colId => renderColumn(colId))}
-            </div>
+            gridContent
           )}
         </div>
       </Section>
