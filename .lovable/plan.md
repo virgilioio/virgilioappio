@@ -1,44 +1,51 @@
 
 
-# Fix Tasks Card: Add Icon + Fix Dialog Horizontal Scroll
+# Application Review Card for Dashboard
 
-## Changes
+## Overview
 
-### 1. Add icon to Tasks card title
+A new dashboard card showing jobs that have candidates waiting in the Application Review stage, with per-job counts. Clicking a job row navigates to that job's application review tab. Empty state uses the Gio mascot pattern.
 
-**File: `src/components/dashboard/TasksOverview.tsx`**
+## Data fetching
 
-Other dashboard cards (UpcomingActivities, JobsOverview) use `<Icon className="h-5 w-5" />` inside `CardTitle`. Add `ClipboardList` (or `ListChecks`) from lucide-react to match the pattern:
+**New hook: `src/hooks/useApplicationReviewCounts.ts`**
 
-```tsx
-<CardTitle className="text-lg font-semibold flex items-center gap-2" withPeriod={false}>
-  <ListChecks className="h-5 w-5" />
-  Tasks
-  ...
-</CardTitle>
+A React Query hook that fetches counts by querying:
+```sql
+job_candidate_associations (status = 'active')
+  → joined with job_hiring_stages (current_stage_id)
+  → joined with job_stages (stage_type = 'application_review')
+  → grouped by job_id
 ```
 
-### 2. Fix horizontal scroll in dialog
+Returns: `{ jobId, jobTitle, count }[]` — only jobs with count > 0.
 
-**File: `src/components/dashboard/TasksOverview.tsx`**
+Uses two queries:
+1. Get all `job_hiring_stages` where `job_stages.stage_type = 'application_review'` for the user's accessible jobs.
+2. Count `job_candidate_associations` grouped by job for those stage IDs.
 
-The dialog content at line 144 uses `overflow-y-auto` but has no horizontal overflow constraint. Long email subjects or candidate names can push content wider than the dialog. Fix:
+Alternatively, a single query joining associations → hiring stages → job_stages filtering by stage_type, then grouping client-side. Stale time ~30s to match other dashboard hooks.
 
-- Add `overflow-x-hidden` to `DialogContent`
-- Ensure the inner activity row container has `overflow-hidden` on text elements (already has `truncate` and `min-w-0`, but the parent `flex` container at line 213 needs `overflow-hidden` as well)
+## New component: `src/components/dashboard/ApplicationReviewCard.tsx`
 
-```tsx
-<DialogContent className="max-w-lg max-h-[70vh] overflow-y-auto overflow-x-hidden">
-```
+- Card with icon (`FileSearch` or `ClipboardList`) + title "Application Review"
+- Each row: job title (truncated) + count badge (lilac/purple) + chevron
+- Clicking a row → navigates to `/jobs/{jobId}?tab=application-review` (or opens in new tab, matching JobsOverview pattern)
+- If no jobs have candidates in review → `GioEmptyState` with "No applications to review" message
+- Loading state: skeleton rows matching TasksOverview pattern
+- Max 5-6 jobs shown, with "View all" link if more
 
-And on the ActivityRow button, ensure the flex container clips:
-```tsx
-<div className="flex items-start justify-between gap-2 overflow-hidden">
-```
+## Dashboard placement
+
+**File: `src/pages/Dashboard.tsx`**
+
+Add `<ApplicationReviewCard />` in the left column, between `OnboardingChecklist` and `JobsOverview`. Gate it behind `hasJobContent` like JobsOverview.
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/components/dashboard/TasksOverview.tsx` | Add `ListChecks` icon to card title; add `overflow-x-hidden` / `overflow-hidden` to dialog and row containers |
+| `src/hooks/useApplicationReviewCounts.ts` | New — React Query hook fetching per-job application review counts |
+| `src/components/dashboard/ApplicationReviewCard.tsx` | New — compact card listing jobs with review candidates |
+| `src/pages/Dashboard.tsx` | Add ApplicationReviewCard to left column |
 
