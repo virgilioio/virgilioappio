@@ -1,45 +1,55 @@
 
 
-# Fix Agenda Card: Tablet Layout + Mobile Adjustments
+# Customizable Dashboard: Drag-to-Reorder Cards
 
-## Changes
+## Two parts to address
 
-### 1. Hide calendar widget on mobile
+### Part 1: Fix tablet layout (quick fix)
 
-**File: `src/components/dashboard/UpcomingActivities.tsx`**
+The current grid uses `order-first md:order-last` which causes the Agenda card to jump to the end on tablet, breaking the visual flow. The fix is to ensure on tablet (md, 2-col), the order is: Tasks + App Review in the first two slots, Agenda wraps below at full width or stays in its slot naturally.
 
-- Import `useIsMobile` from `@/hooks/use-mobile`
-- Wrap the entire `Collapsible` block (lines 423-476) in a condition: only render when `!isMobile`
-- On mobile, the card shows just the title, tabs, and agenda list — no calendar widget at all
+### Part 2: Draggable/customizable dashboard cards
 
-### 2. Reorder columns on mobile
+**Not crazy at all.** You already have `@dnd-kit/core` + `@dnd-kit/sortable` installed and used extensively (pipeline, stage config, form builders). The pattern is well-established in the codebase.
 
-**File: `src/pages/Dashboard.tsx`**
+**How it works:**
 
-Use CSS `order` utilities to control mobile stacking order without changing the DOM for desktop:
+1. **New hook: `useDashboardLayout.ts`**
+   - Stores card order as an array of card IDs in `localStorage` (e.g. `['agenda', 'tasks', 'app-review', 'onboarding', 'jobs']`)
+   - Falls back to a default order
+   - Exposes `cardOrder`, `reorderCards(from, to)`, and `resetLayout()`
+   - Uses `arrayMove` from `@dnd-kit/sortable` for reordering
 
-- Agenda column: `order-first md:order-none` — appears first on mobile
-- Tasks column: `order-2 md:order-none` (or default)
-- Application Review / Jobs column: `order-3 md:order-none`
+2. **New wrapper: `DraggableDashboardCard.tsx`**
+   - Uses `useSortable` from `@dnd-kit/sortable` (same pattern as `DraggableStageItem`, `PostingFieldsBuilder`)
+   - Wraps each dashboard card with a drag handle (grip icon, visible on hover)
+   - Follows the existing DnD style rules: `CSS.Translate`, opacity transitions, `DragOverlay` with rotate/scale
 
-Current grid (line 49): `grid-cols-1 md:grid-cols-2 xl:grid-cols-3`
+3. **Update `Dashboard.tsx`**
+   - Wrap the grid in `DndContext` + `SortableContext`
+   - Render cards dynamically from the stored order array
+   - Add a subtle "Customize" toggle button (e.g. near the welcome header) that enables drag handles
+   - When not in customize mode, cards render normally with no drag affordance
 
-On tablet (`md`), the Agenda card currently spans 2 columns (`md:col-span-2`) which causes it to stretch too wide. Fix: remove `md:col-span-2` and let all three columns flow naturally. At `md` (2-col), the third item just wraps to the next row at normal width.
+4. **Responsive behavior**
+   - On mobile: disable drag entirely (touch scrolling conflicts) — keep the fixed mobile order (Agenda → Tasks → App Review)
+   - On tablet/desktop: drag-to-reorder works, saved order persists
 
-### 3. Fix tablet Agenda width
-
-The issue is line 64: `md:col-span-2 xl:col-span-1` makes the Agenda card stretch across the full tablet width. Change to just render normally without spanning:
-
+**Data flow:**
+```text
+localStorage["dashboard-layout"]
+  → useDashboardLayout() hook
+    → Dashboard.tsx reads cardOrder[]
+      → SortableContext renders cards in that order
+        → DragOverlay shows card preview while dragging
+          → onDragEnd → arrayMove → save to localStorage
 ```
-md:col-span-1 xl:col-span-1
-```
-
-This way on tablet (2-col grid), the Agenda sits in one column cell, same width as everything else.
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/components/dashboard/UpcomingActivities.tsx` | Hide Collapsible calendar on mobile using `useIsMobile` |
-| `src/pages/Dashboard.tsx` | Remove `md:col-span-2` from Agenda column; add `order-first md:order-none` for mobile-first positioning |
+| `src/hooks/useDashboardLayout.ts` | New — localStorage-backed card order state with arrayMove |
+| `src/components/dashboard/DraggableDashboardCard.tsx` | New — useSortable wrapper with drag handle |
+| `src/pages/Dashboard.tsx` | Fix tablet ordering; wrap grid in DndContext/SortableContext; render cards from dynamic order; add customize toggle |
 
