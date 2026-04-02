@@ -1,34 +1,31 @@
 
 
-# Collapsible Calendar with Styled Date Title + Correct Date Formats
+# Smooth Collapsible Calendar Animation + Dynamic Date Size
 
 ## Changes
 
-### 1. `src/components/dashboard/AgendaCalendar.tsx`
+### File: `src/components/dashboard/UpcomingActivities.tsx`
 
-Add optional `hideHeader` prop (default `false`). When `true`, skip rendering the month header row (nav arrows + month label) since the parent handles it.
+1. **Smooth expand/collapse animation**: Add `className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up"` to `CollapsibleContent` (these animations already exist in tailwind.config.ts).
 
-### 2. `src/components/dashboard/UpcomingActivities.tsx`
+2. **Dynamic date size**: When collapsed, render the date with `PageTitle as="h3"`. When expanded, render with `PageTitle as="h4"` (current size). Add a CSS transition on the wrapper for smooth scaling:
 
-**Collapsible wrapper:**
-- Import `Collapsible`, `CollapsibleTrigger`, `CollapsibleContent`
-- Import `PageTitle` from `@/components/ui/page-title`
-- Add `calendarOpen` state (default `true`)
-- Wrap `AgendaCalendar` in Collapsible with `hideHeader={true}`
+```tsx
+<div className={cn(
+  "transition-all duration-300 ease-out origin-left",
+  calendarOpen ? "scale-100" : "scale-[1.15]"
+)}>
+  <PageTitle as="h4">
+    {format(currentMonth, 'MMMM d, yyyy')}
+  </PageTitle>
+</div>
+```
 
-**Trigger row:**
-- `PageTitle` as `h4` showing `format(currentMonth, 'MMMM d, yyyy')` — e.g. **"April 2, 2026."** (Poppins bold + purple period)
-- Month nav arrows (ChevronLeft/ChevronRight) in the trigger row so users can change months even when collapsed
-- Collapse/expand chevron indicator
-
-**Date formats throughout:**
-- Collapsible header: `MMMM d, yyyy` → "April 2, 2026"
-- Agenda day headers: Today → `"Today, April 2, 2026"`, Tomorrow → `"Tomorrow, April 3, 2026"`, Other → `"Wed, April 8, 2026"` (all using `MMMM d, yyyy`)
+This uses `transform: scale()` which transitions smoothly rather than switching between discrete font sizes (which can't animate). The date appears ~15% larger when collapsed and smoothly shrinks when expanded.
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/components/dashboard/AgendaCalendar.tsx` | Add `hideHeader` prop |
-| `src/components/dashboard/UpcomingActivities.tsx` | Collapsible wrapper with PageTitle trigger, month nav arrows, updated date formats to `MMMM d, yyyy` |
+| `src/components/dashboard/UpcomingActivities.tsx` | Add collapsible animation classes to `CollapsibleContent`, wrap `PageTitle` in a scaling container that transitions based on `calendarOpen` state |
 
