@@ -72,7 +72,8 @@ export default function Dashboard() {
   const [addWidgetOpen, setAddWidgetOpen] = useState(false)
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 5 } })
   )
 
   if (orgLoading || !hasOrganizationContext) {
