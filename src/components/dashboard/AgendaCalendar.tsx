@@ -22,6 +22,8 @@ interface AgendaCalendarProps {
   onMonthChange: (date: Date) => void;
   /** Set of YYYY-MM-DD strings that have activities */
   activityDates: Set<string>;
+  /** When true, the built-in month header (label + nav arrows) is hidden */
+  hideHeader?: boolean;
 }
 
 export function AgendaCalendar({
