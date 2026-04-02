@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Settings2, RotateCcw } from 'lucide-react'
 import {
   DndContext,
-  closestCenter,
+  closestCorners,
   PointerSensor,
   useSensor,
   useSensors,
