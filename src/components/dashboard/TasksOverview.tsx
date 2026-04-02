@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { usePendingActivities, PendingActivity } from '@/hooks/usePendingActivities';
 import { useStaleCandidates, StaleCandidate } from '@/hooks/useStaleCandidates';
-import { ClipboardCheck, Scale, Mail, FileCheck, AlertTriangle, ChevronRight, Clock } from 'lucide-react';
+import { ChevronRight, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import gioFaceGreen from '@/assets/gio-face-green.png';
@@ -15,17 +15,15 @@ type CategoryKey = 'scorecard' | 'decision' | 'email' | 'offer_approval' | 'stal
 interface CategoryConfig {
   key: CategoryKey;
   label: string;
-  icon: React.ElementType;
-  badgeVariant: string;
   color: string;
 }
 
 const CATEGORIES: CategoryConfig[] = [
-  { key: 'scorecard', label: 'Pending Scorecards', icon: ClipboardCheck, badgeVariant: 'status-invited', color: 'text-amber-600 dark:text-amber-400' },
-  { key: 'decision', label: 'Needs Decision', icon: Scale, badgeVariant: 'pipeline-offer', color: 'text-blue-600 dark:text-blue-400' },
-  { key: 'email', label: 'Unread Emails', icon: Mail, badgeVariant: 'status-active', color: 'text-emerald-600 dark:text-emerald-400' },
-  { key: 'offer_approval', label: 'Offer Approvals', icon: FileCheck, badgeVariant: 'role-recruiter', color: 'text-purple-600 dark:text-purple-400' },
-  { key: 'stale', label: 'Stale Candidates', icon: AlertTriangle, badgeVariant: 'warning', color: 'text-orange-600 dark:text-orange-400' },
+  { key: 'scorecard', label: 'Pending Scorecards', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
+  { key: 'decision', label: 'Needs Decision', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
+  { key: 'email', label: 'Unread Emails', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' },
+  { key: 'offer_approval', label: 'Offer Approvals', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' },
+  { key: 'stale', label: 'Stale Candidates', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' },
 ];
 
 export function TasksOverview() {
@@ -116,9 +114,7 @@ export function TasksOverview() {
             </div>
           ) : (
             <div className="space-y-1">
-              {visibleCategories.map((cat) => {
-                const Icon = cat.icon;
-                return (
+              {visibleCategories.map((cat) => (
                   <button
                     key={cat.key}
                     onClick={() => setOpenCategory(cat.key)}
@@ -128,26 +124,16 @@ export function TasksOverview() {
                       "text-left group"
                     )}
                   >
-                    <Icon className={cn("h-4 w-4 flex-shrink-0", cat.color)} />
                     <span className="text-sm font-medium text-foreground flex-1">{cat.label}</span>
                     <span className={cn(
                       "text-xs font-semibold min-w-[1.5rem] h-5 flex items-center justify-center rounded-full px-1.5",
-                      cat.key === 'stale'
-                        ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300"
-                        : cat.key === 'scorecard'
-                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                        : cat.key === 'decision'
-                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                        : cat.key === 'email'
-                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-                        : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+                      cat.color
                     )}>
                       {counts[cat.key]}
                     </span>
                     <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                   </button>
-                );
-              })}
+              ))}
             </div>
           )}
         </CardContent>
