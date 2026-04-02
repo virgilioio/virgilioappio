@@ -56,8 +56,7 @@ export default function Dashboard() {
             {/* Right Column - Tasks */}
             <div className="space-y-6 min-w-0">
               <UpcomingActivities />
-              <PendingActivities />
-              {(isPrivileged || hasRecruiterRole) && <StaleCandidates />}
+              <TasksOverview />
             </div>
           </div>
         </div>
