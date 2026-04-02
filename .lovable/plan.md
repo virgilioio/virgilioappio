@@ -1,29 +1,48 @@
 
 
-# Fix: "subscribe multiple times" Error in UpcomingActivities
+# Fix Duplicate Dashboard Cards + Subscribe Error
 
 ## Root Cause
 
-The Supabase realtime channel uses a static name `'booking-sync-notifications'`. When the component remounts (React strict mode, or HMR), the previous channel instance may not be fully cleaned up before a new subscription attempt happens on the same channel name.
+`loadLayout()` in `useDashboardLayout.ts` validates that each card ID is a known ID, but **never deduplicates across columns**. If localStorage contains `onboarding` in both `left` and `center`, both copies are kept. This causes:
+
+1. React warns about duplicate keys in the grid
+2. The `agenda` card mounts twice, both instances create a Supabase channel with `Date.now()` in the same tick → identical channel name → "subscribe multiple times" crash
 
 ## Fix
 
-**File: `src/components/dashboard/UpcomingActivities.tsx` (lines 185-225)**
+### 1. `src/hooks/useDashboardLayout.ts` — Deduplicate in `loadLayout()`
 
-Make the channel name unique per mount by appending a timestamp or random suffix:
+After filtering valid IDs for each column and hidden list, walk them in order (left → center → right → hidden) and skip any ID already seen. This ensures each card appears exactly once.
 
 ```ts
-const channelName = `booking-sync-notifications-${Date.now()}`
-const channel = supabase
-  .channel(channelName)
-  // ... rest stays the same
+// After validLeft/validCenter/validRight/validHidden are built:
+const seen = new Set<DashboardCardId>()
+const dedup = (arr: DashboardCardId[]) => 
+  arr.filter(id => { if (seen.has(id)) return false; seen.add(id); return true })
+
+const dedupLeft = dedup(validLeft)
+const dedupCenter = dedup(validCenter)
+const dedupRight = dedup(validRight)
+const dedupHidden = dedup(validHidden)
 ```
 
-This ensures each mount gets a fresh channel instance, avoiding the "subscribe multiple times" error. The cleanup function already calls `supabase.removeChannel(channel)` which will properly dispose of each unique instance.
+Then use the deduped arrays for the rest of the function (missing card check, return value).
+
+### 2. `src/components/dashboard/UpcomingActivities.tsx` — Use `useRef` for channel ID
+
+Replace `Date.now()` with `crypto.randomUUID()` stored in a `useRef` so it's guaranteed unique even if two instances mount in the same tick.
+
+```ts
+const channelIdRef = useRef(crypto.randomUUID())
+// ...
+const channel = supabase.channel(`booking-sync-${channelIdRef.current}`)
+```
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/components/dashboard/UpcomingActivities.tsx` | Use unique channel name per mount |
+| `src/hooks/useDashboardLayout.ts` | Add deduplication pass in `loadLayout()` |
+| `src/components/dashboard/UpcomingActivities.tsx` | Use `crypto.randomUUID()` via `useRef` for channel name |
 
