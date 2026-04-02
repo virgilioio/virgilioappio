@@ -3,7 +3,7 @@ import { useState, useCallback, useRef } from 'react'
 // ── Widget size system ──────────────────────────────────────────────
 
 export type WidgetSize = 'small' | 'medium' | 'large'
-export type DashboardCardId = 'agenda' | 'tasks' | 'app-review' | 'onboarding' | 'jobs'
+export type DashboardCardId = 'agenda' | 'tasks' | 'app-review' | 'onboarding' | 'jobs' | 'world-clock'
 
 export interface WidgetMeta {
   id: DashboardCardId
@@ -19,6 +19,7 @@ export const WIDGET_REGISTRY: Record<DashboardCardId, WidgetMeta> = {
   'app-review':  { id: 'app-review',  label: 'Application Review',   allowedSizes: ['small', 'medium', 'large'], defaultSize: 'small',  fixed: false },
   'onboarding':  { id: 'onboarding',  label: 'Onboarding Checklist', allowedSizes: ['small', 'medium', 'large'], defaultSize: 'small',  fixed: false },
   'jobs':        { id: 'jobs',        label: 'Jobs Overview',        allowedSizes: ['small', 'medium', 'large'], defaultSize: 'medium', fixed: false },
+  'world-clock': { id: 'world-clock', label: 'World Clock',          allowedSizes: ['small'],                  defaultSize: 'small',  fixed: true },
 }
 
 export const SIZE_TO_COLS: Record<WidgetSize, number> = {
@@ -28,14 +29,15 @@ export const SIZE_TO_COLS: Record<WidgetSize, number> = {
 }
 
 export const CARD_SIZE_RULES: Record<DashboardCardId, WidgetSize[]> = {
-  'tasks':      ['small'],
-  'agenda':     ['small'],
-  'app-review': ['small', 'medium', 'large'],
-  'onboarding': ['small', 'medium', 'large'],
-  'jobs':       ['small', 'medium', 'large'],
+  'tasks':       ['small'],
+  'agenda':      ['small'],
+  'app-review':  ['small', 'medium', 'large'],
+  'onboarding':  ['small', 'medium', 'large'],
+  'jobs':        ['small', 'medium', 'large'],
+  'world-clock': ['small'],
 }
 
-const ALL_CARD_IDS: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs']
+const ALL_CARD_IDS: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs', 'world-clock']
 const TOTAL_COLS = 6
 
 // ── Layout data model ───────────────────────────────────────────────
@@ -55,11 +57,12 @@ interface StoredLayout {
 const STORAGE_KEY = 'dashboard-layout-v3'
 
 const DEFAULT_WIDGETS: WidgetLayout[] = [
-  { id: 'tasks',      size: 'small',  order: 0 },
-  { id: 'agenda',     size: 'small',  order: 1 },
-  { id: 'app-review', size: 'small',  order: 2 },
-  { id: 'onboarding', size: 'small',  order: 3 },
-  { id: 'jobs',       size: 'medium', order: 4 },
+  { id: 'tasks',       size: 'small',  order: 0 },
+  { id: 'agenda',      size: 'small',  order: 1 },
+  { id: 'world-clock', size: 'small',  order: 2 },
+  { id: 'app-review',  size: 'small',  order: 3 },
+  { id: 'onboarding',  size: 'small',  order: 4 },
+  { id: 'jobs',        size: 'medium', order: 5 },
 ]
 
 // ── Grid placement engine ───────────────────────────────────────────

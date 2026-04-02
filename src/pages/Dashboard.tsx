@@ -13,6 +13,7 @@ import { WorkspaceProvisioningLoader } from '@/components/onboarding/WorkspacePr
 import { useSourcingProjects } from '@/hooks/useSourcingProjects'
 import { useUserJobRoles } from '@/hooks/useUserJobRoles'
 import { ApplicationReviewCard } from '@/components/dashboard/ApplicationReviewCard'
+import { WorldClockWidget } from '@/components/dashboard/WorldClockWidget'
 import {
   useDashboardLayout,
   DashboardCardId,
@@ -88,7 +89,7 @@ function swapPlacements(
   })
 }
 
-const MOBILE_ORDER: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs']
+const MOBILE_ORDER: DashboardCardId[] = ['agenda', 'tasks', 'world-clock', 'app-review', 'onboarding', 'jobs']
 
 export default function Dashboard() {
   const { profile, isLoading } = useUserProfile()
@@ -139,6 +140,7 @@ export default function Dashboard() {
       case 'app-review': return hasJobContent ? <ApplicationReviewCard size={widgetSize} /> : null
       case 'onboarding': return <OnboardingChecklist isDeemphasized={!hasSeenValue} />
       case 'jobs': return hasJobContent ? <div className="hidden sm:block"><JobsOverview permissions={permissions} size={widgetSize} /></div> : null
+      case 'world-clock': return <WorldClockWidget />
       default: return null
     }
   }
@@ -150,6 +152,7 @@ export default function Dashboard() {
     'app-review': hasJobContent ? true as unknown as ReactNode : null,
     'onboarding': <OnboardingChecklist isDeemphasized={!hasSeenValue} />,
     'jobs': hasJobContent ? true as unknown as ReactNode : null,
+    'world-clock': <WorldClockWidget />,
   }
 
   // ── Mobile: flat stacked list, no DnD ──
