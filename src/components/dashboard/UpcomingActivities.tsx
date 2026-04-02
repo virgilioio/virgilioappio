@@ -101,6 +101,7 @@ export function UpcomingActivities() {
   const [bookingToCancel, setBookingToCancel] = useState<string | null>(null)
   const [statusUpdateBooking, setStatusUpdateBooking] = useState<{ id: string; status: string } | null>(null)
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
+  const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()))
 
   const permissions = usePermissions()
   const { user } = useAuth()
