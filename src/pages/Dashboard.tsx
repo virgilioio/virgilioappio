@@ -39,7 +39,6 @@ import {
 } from '@dnd-kit/sortable'
 
 const COLUMN_IDS: ColumnId[] = ['left', 'center', 'right']
-const COLUMN_START: Record<ColumnId, number> = { left: 1, center: 2, right: 3 }
 const MOBILE_ORDER: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs']
 
 const CARD_LABELS: Record<DashboardCardId, string> = {
@@ -57,45 +56,69 @@ interface GridPlacement {
   gridRow: number
 }
 
+/**
+ * Pack cards into a 6-wide grid using a row-slot cursor.
+ * Each card has a span (2, 3, or 4). We find the first row
+ * where `span` consecutive slots are free, place the card there.
+ */
 function computeGridPlacements(
   columns: Record<ColumnId, DashboardCardId[]>,
   cardRegistry: Record<DashboardCardId, ReactNode>,
-  spans: Partial<Record<DashboardCardId, 1 | 2>>,
+  spans: Partial<Record<DashboardCardId, number>>,
 ): GridPlacement[] {
+  const GRID_COLS = 6
   const placements: GridPlacement[] = []
-  // Track row usage per grid column (1-indexed)
-  const colRowCursor: Record<number, number> = { 1: 1, 2: 1, 3: 1 }
 
-  // Process columns left → center → right so rows fill naturally
+  // Collect all visible cards in column order: left → center → right
+  const allCards: { cardId: DashboardCardId; columnId: ColumnId }[] = []
   for (const colId of COLUMN_IDS) {
-    const cards = columns[colId].filter(id => cardRegistry[id] !== null)
-    const startCol = COLUMN_START[colId]
+    for (const cardId of columns[colId]) {
+      if (cardRegistry[cardId] !== null) {
+        allCards.push({ cardId, columnId: colId })
+      }
+    }
+  }
 
-    for (const cardId of cards) {
-      const span = getCardSpan(spans, cardId)
+  // Track which cells are occupied: grid[row][col] = true/false
+  // We use a sparse approach: for each row, track occupied columns
+  const occupied: Map<number, Set<number>> = new Map()
 
-      if (span === 2) {
-        // Span-2 cards: anchor at startCol, extend to startCol+1
-        // But cap at column 2 max (so it spans cols 2-3)
-        const effectiveStart = Math.min(startCol, 2)
-        const row = Math.max(colRowCursor[effectiveStart], colRowCursor[effectiveStart + 1])
-        placements.push({
-          cardId,
-          columnId: colId,
-          gridColumn: `${effectiveStart} / span 2`,
-          gridRow: row,
-        })
-        colRowCursor[effectiveStart] = row + 1
-        colRowCursor[effectiveStart + 1] = row + 1
-      } else {
-        const row = colRowCursor[startCol]
-        placements.push({
-          cardId,
-          columnId: colId,
-          gridColumn: `${startCol} / span 1`,
-          gridRow: row,
-        })
-        colRowCursor[startCol] = row + 1
+  const isSlotFree = (row: number, col: number): boolean => {
+    return !(occupied.get(row)?.has(col))
+  }
+
+  const markOccupied = (row: number, colStart: number, span: number) => {
+    if (!occupied.has(row)) occupied.set(row, new Set())
+    const rowSet = occupied.get(row)!
+    for (let c = colStart; c < colStart + span; c++) {
+      rowSet.add(c)
+    }
+  }
+
+  for (const { cardId, columnId } of allCards) {
+    const span = getCardSpan(spans, cardId)
+
+    // Find first row where `span` consecutive slots are free
+    let placed = false
+    for (let row = 1; row <= 100 && !placed; row++) {
+      for (let col = 0; col <= GRID_COLS - span; col++) {
+        let fits = true
+        for (let s = 0; s < span; s++) {
+          if (!isSlotFree(row, col + s)) {
+            fits = false
+            break
+          }
+        }
+        if (fits) {
+          placements.push({
+            cardId,
+            columnId,
+            gridColumn: `${col + 1} / span ${span}`,
+            gridRow: row,
+          })
+          markOccupied(row, col, span)
+          placed = true
+        }
       }
     }
   }
@@ -169,7 +192,7 @@ export default function Dashboard() {
     )
   }
 
-  // --- Desktop / Tablet: CSS Grid with explicit placement ---
+  // --- Desktop / Tablet: 6-col CSS Grid with explicit placement ---
 
   const handleDragStart = (event: DragStartEvent) => {
     saveDragStart()
@@ -235,7 +258,7 @@ export default function Dashboard() {
 
   const placements = computeGridPlacements(columns, cardRegistry, cardSpans)
 
-  const renderGridContent = () => {
+  const renderGridCards = () => {
     if (!isCustomizing) {
       return placements.map(({ cardId, gridColumn, gridRow }) => (
         <div
@@ -248,49 +271,66 @@ export default function Dashboard() {
       ))
     }
 
-    // In customizing mode, render per-column SortableContexts
-    // but place items using CSS Grid positioning
-    return COLUMN_IDS.map(colId => {
-      const visibleCards = columns[colId].filter(id => cardRegistry[id] !== null)
-      const colPlacements = placements.filter(p => p.columnId === colId)
-
+    // In customize mode, render cards with DnD wrappers at their actual grid positions
+    return placements.map(({ cardId, columnId, gridColumn, gridRow }) => {
+      const span = getCardSpan(cardSpans, cardId)
       return (
-        <SortableContext key={colId} items={visibleCards} strategy={verticalListSortingStrategy}>
-          <DroppableColumn id={colId} isCustomizing={isCustomizing}>
-            {colPlacements.map(({ cardId }) => {
-              const span = getCardSpan(cardSpans, cardId)
-              return (
-                <DraggableDashboardCard
-                  key={cardId}
-                  id={cardId}
-                  columnId={colId}
-                  isCustomizing={isCustomizing}
-                  colSpan={span}
-                  onHide={() => hideCard(cardId)}
-                  onToggleSpan={() => toggleCardSpan(cardId)}
-                >
-                  {cardRegistry[cardId]}
-                </DraggableDashboardCard>
-              )
-            })}
-          </DroppableColumn>
-        </SortableContext>
+        <div key={cardId} style={{ gridColumn, gridRow }} className="min-w-0">
+          <DraggableDashboardCard
+            id={cardId}
+            columnId={columnId}
+            isCustomizing={isCustomizing}
+            colSpan={span}
+            onHide={() => hideCard(cardId)}
+            onToggleSpan={() => toggleCardSpan(cardId)}
+          >
+            {cardRegistry[cardId]}
+          </DraggableDashboardCard>
+        </div>
       )
     })
   }
 
-  // For customizing mode, we still use 3 flex columns for DnD droppable targets
-  // For non-customizing mode, we use CSS Grid with explicit placement
-  const gridContent = !isCustomizing ? (
-    <div
-      className="grid gap-6 items-start"
-      style={{
-        gridTemplateColumns: 'repeat(3, 1fr)',
-      }}
-    >
-      {renderGridContent()}
-    </div>
-  ) : null
+  // We need SortableContexts per column for DnD, but render in a single grid
+  const renderCustomizeGrid = () => {
+    // Create the sortable contexts (they don't render DOM, just provide context)
+    const sortableCards = renderGridCards()
+
+    return (
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+      >
+        {COLUMN_IDS.map(colId => {
+          const visibleCards = columns[colId].filter(id => cardRegistry[id] !== null)
+          return (
+            <SortableContext key={colId} items={visibleCards} strategy={verticalListSortingStrategy}>
+              <DroppableColumn id={colId} isCustomizing={isCustomizing} />
+            </SortableContext>
+          )
+        })}
+        <div
+          className="grid gap-6 items-start"
+          style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}
+        >
+          {sortableCards}
+        </div>
+        <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+          {activeId && cardRegistry[activeId as DashboardCardId] ? (
+            <DashboardCardOverlay>
+              <div className="min-w-0">
+                {cardRegistry[activeId as DashboardCardId]}
+              </div>
+            </DashboardCardOverlay>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
+    )
+  }
 
   return (
     <div>
@@ -339,29 +379,14 @@ export default function Dashboard() {
           <TrialCountdownBanner />
 
           {isCustomizing ? (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCorners}
-              onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
-              onDragEnd={handleDragEnd}
-              onDragCancel={handleDragCancel}
-            >
-              <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 items-start">
-                {renderGridContent()}
-              </div>
-              <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
-                {activeId && cardRegistry[activeId as DashboardCardId] ? (
-                  <DashboardCardOverlay>
-                    <div className="min-w-0">
-                      {cardRegistry[activeId as DashboardCardId]}
-                    </div>
-                  </DashboardCardOverlay>
-                ) : null}
-              </DragOverlay>
-            </DndContext>
+            renderCustomizeGrid()
           ) : (
-            gridContent
+            <div
+              className="grid gap-6 items-start"
+              style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}
+            >
+              {renderGridCards()}
+            </div>
           )}
         </div>
       </Section>
