@@ -157,7 +157,7 @@ export function TasksOverview() {
       </Dialog>
 
       <Dialog open={openCategory === 'stale'} onOpenChange={(open) => !open && setOpenCategory(null)}>
-        <DialogContent className="max-w-lg max-h-[70vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[70vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle>Stale Candidates</DialogTitle>
           </DialogHeader>
