@@ -420,25 +420,14 @@ export function UpcomingActivities() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as 'upcoming' | 'past'); setSelectedDay(null) }}>
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-              <TabsTrigger value="past">Past</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="upcoming" className="mt-0">
-              <Collapsible open={calendarOpen} onOpenChange={setCalendarOpen}>
-                <div className="flex items-center justify-between mb-3">
-                  <CollapsibleTrigger className="flex items-center gap-2 group cursor-pointer">
-                    <PageTitle as="h4">
-                      {format(currentMonth, 'MMMM d, yyyy')}
-                    </PageTitle>
-                    <ChevronDown className={cn(
-                      "h-4 w-4 text-muted-foreground transition-transform duration-200",
-                      calendarOpen && "rotate-180"
-                    )} />
-                  </CollapsibleTrigger>
-                  <div className="flex gap-0.5">
+          <Collapsible open={calendarOpen} onOpenChange={setCalendarOpen}>
+            <div className="flex items-center justify-between mb-3">
+              <PageTitle as="h4">
+                {format(currentMonth, 'MMMM d, yyyy')}
+              </PageTitle>
+              <div className="flex items-center gap-1">
+                {calendarOpen && (
+                  <>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -457,22 +446,46 @@ export function UpcomingActivities() {
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>
-                  </div>
-                </div>
-                <CollapsibleContent>
-                  <AgendaCalendar
-                    selectedDate={selectedDay}
-                    onDateSelect={handleDaySelect}
-                    currentMonth={currentMonth}
-                    onMonthChange={setCurrentMonth}
-                    activityDates={activityDates}
-                    hideHeader
-                  />
-                </CollapsibleContent>
-              </Collapsible>
-              <div className="mt-4 border-t pt-4">
-                {renderAgenda('upcoming')}
+                  </>
+                )}
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" aria-label="Toggle calendar">
+                    <ChevronDown className={cn(
+                      "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                      calendarOpen && "rotate-180"
+                    )} />
+                  </Button>
+                </CollapsibleTrigger>
               </div>
+            </div>
+            <CollapsibleContent>
+              <AgendaCalendar
+                selectedDate={selectedDay}
+                onDateSelect={handleDaySelect}
+                currentMonth={currentMonth}
+                onMonthChange={setCurrentMonth}
+                activityDates={activityDates}
+                hideHeader
+              />
+            </CollapsibleContent>
+          </Collapsible>
+
+          <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as 'upcoming' | 'past'); setSelectedDay(null) }}>
+            <TabsList className="grid w-full grid-cols-2 my-4">
+              <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+              <TabsTrigger value="past">Past</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="upcoming" className="mt-0">
+              {renderAgenda('upcoming')}
+            </TabsContent>
+
+            <TabsContent value="past" className="mt-0">
+              {renderAgenda('past')}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
             </TabsContent>
 
             <TabsContent value="past" className="mt-0">
