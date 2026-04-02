@@ -265,7 +265,7 @@ export default function Dashboard() {
               onDragCancel={handleDragCancel}
             >
               <SortableContext items={renderableWidgets.map(w => w.id)} strategy={rectSortingStrategy}>
-                <div className="grid gap-6 items-start" style={gridStyle}>
+                <div className="grid gap-5 items-start" style={gridStyle}>
                   {renderGrid()}
                 </div>
               </SortableContext>
