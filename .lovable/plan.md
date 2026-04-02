@@ -1,42 +1,70 @@
 
 
-# Smart Quick Schedule: Soonest + Golden Hours + Labels
+# Consolidate Right Column into a Compact "Tasks Overview" Card
 
-## What changes
+## The idea — and why it's great
 
-**File: `src/components/booking/QuickSchedulePanel.tsx`**
+Your instinct is spot on. Right now the right column stacks 3 separate cards (Upcoming Activities, Pending Activities, Stale Candidates), each with its own loading state, empty state, and expand/collapse. That's a lot of vertical space, especially when most rows are empty or have 1-2 items.
 
-Replace the naive `slice(0, 5)` with smart slot selection logic:
+Ashby's approach (the screenshot) is exactly this — a single compact summary card with labeled rows and counters. Clicking a row navigates or opens a filtered view.
 
-### Selection algorithm
+## Proposed design: "Tasks Overview" card
 
-1. **Slot 1 — "Earliest available"**: Always the absolute first chronological slot, labeled with a badge.
-2. **Slots 2–5 — One per unique day, preferring golden hours**: For each remaining unique day (up to 4 more days), pick the single best slot using this priority:
-   - **Golden hours** (10:00–11:00 AM, 2:00–3:00 PM) → highest score
-   - **Good hours** (9:00–12:00 PM, 1:00–5:00 PM) → medium score
-   - **Edge hours** (before 9 AM, after 5 PM) → lowest score
-3. Skip any day already represented by slot 1.
+A single card replaces **Pending Activities** and **Stale Candidates**. (Upcoming Activities stays separate — it's a calendar/schedule widget, fundamentally different.)
 
-### UI enhancements
-
-- Slot 1 gets a small `"Earliest available"` lilac badge/tag above the date.
-- Remaining slots show just date + time as today.
-- Keep existing styling and hover effects.
-
-### Implementation detail
-
-```
-function selectSmartSlots(slots: TimeSlot[], max: number): (TimeSlot & { label?: string })[]
+```text
+┌─────────────────────────────────────┐
+│  Tasks                              │
+│                                     │
+│  Pending Scorecards           3     │
+│  Needs Decision               2     │
+│  Unread Emails                5     │
+│  Offer Approvals              1     │
+│  Stale Candidates             4     │
+│                                     │
+│  (rows with 0 count are hidden)     │
+└─────────────────────────────────────┘
 ```
 
-- Group all slots by date string (`YYYY-MM-DD`).
-- First slot = `slots[0]`, labeled `"Earliest available"`.
-- For remaining day groups (sorted chronologically, skipping first slot's day), score each slot's hour and pick the highest-scored one per day.
-- Return up to `max` results.
+- Each row is clickable → opens a **dialog** listing the individual items (candidate name, job, stage, time info) with a click-through to the candidate page.
+- Rows with `0` count are **hidden entirely** — no clutter.
+- If ALL counts are 0 → single compact empty state ("You're all caught up").
+- Counter badges use the existing activity badge color scheme (scorecard = amber, decision = blue, email = green, stale = red/warning).
+
+## Why dialog over navigation with filters
+
+- Faster — no page load, user stays on dashboard context.
+- The items already link out to the candidate page (open in new tab), so the dialog acts as a quick triage list.
+- Simpler to implement — reuses existing click handlers from PendingActivities and StaleCandidates.
+
+## Changes
+
+### 1. New component: `TasksOverview`
+
+**File: `src/components/dashboard/TasksOverview.tsx`**
+
+- Imports `usePendingActivities` and `useStaleCandidates` hooks (already exist).
+- Groups pending activities by type, counts each.
+- Renders a single Card with rows for each non-zero category.
+- Each row: icon + label + count badge, clickable.
+- Click opens a `Dialog` with the filtered list of items (reusing the existing render logic from PendingActivities/StaleCandidates for each item row).
+- Empty state when all counts are 0.
+
+### 2. Update Dashboard layout
+
+**File: `src/pages/Dashboard.tsx`**
+
+- Replace `<PendingActivities />` and `<StaleCandidates />` with `<TasksOverview />`.
+- Right column becomes: `UpcomingActivities` + `TasksOverview` — much more compact.
+
+### 3. Keep existing components
+
+`PendingActivities.tsx` and `StaleCandidates.tsx` are NOT deleted — they can still be useful elsewhere or as reference. They just stop being rendered on the dashboard.
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/components/booking/QuickSchedulePanel.tsx` | Add `selectSmartSlots` helper, render optional label badge on first slot |
+| `src/components/dashboard/TasksOverview.tsx` | New — compact summary card with category rows, counters, and detail dialogs |
+| `src/pages/Dashboard.tsx` | Replace PendingActivities + StaleCandidates with TasksOverview |
 
