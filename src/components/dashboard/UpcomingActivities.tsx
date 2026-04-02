@@ -427,13 +427,49 @@ export function UpcomingActivities() {
             </TabsList>
 
             <TabsContent value="upcoming" className="mt-0">
-              <AgendaCalendar
-                selectedDate={selectedDay}
-                onDateSelect={handleDaySelect}
-                currentMonth={currentMonth}
-                onMonthChange={setCurrentMonth}
-                activityDates={activityDates}
-              />
+              <Collapsible open={calendarOpen} onOpenChange={setCalendarOpen}>
+                <div className="flex items-center justify-between mb-3">
+                  <CollapsibleTrigger className="flex items-center gap-2 group cursor-pointer">
+                    <PageTitle as="h4">
+                      {format(currentMonth, 'MMMM d, yyyy')}
+                    </PageTitle>
+                    <ChevronDown className={cn(
+                      "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                      calendarOpen && "rotate-180"
+                    )} />
+                  </CollapsibleTrigger>
+                  <div className="flex gap-0.5">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => { e.stopPropagation(); setCurrentMonth(subMonths(currentMonth, 1)) }}
+                      className="h-7 w-7 p-0"
+                      aria-label="Previous month"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => { e.stopPropagation(); setCurrentMonth(addMonths(currentMonth, 1)) }}
+                      className="h-7 w-7 p-0"
+                      aria-label="Next month"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <CollapsibleContent>
+                  <AgendaCalendar
+                    selectedDate={selectedDay}
+                    onDateSelect={handleDaySelect}
+                    currentMonth={currentMonth}
+                    onMonthChange={setCurrentMonth}
+                    activityDates={activityDates}
+                    hideHeader
+                  />
+                </CollapsibleContent>
+              </Collapsible>
               <div className="mt-4 border-t pt-4">
                 {renderAgenda('upcoming')}
               </div>
