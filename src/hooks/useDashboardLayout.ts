@@ -10,6 +10,11 @@ export interface DashboardColumns {
   right: DashboardCardId[]
 }
 
+interface StoredLayout {
+  columns: DashboardColumns
+  hidden: DashboardCardId[]
+}
+
 const STORAGE_KEY = 'dashboard-layout-v2'
 const ALL_CARD_IDS: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs']
 
@@ -19,36 +24,42 @@ const DEFAULT_COLUMNS: DashboardColumns = {
   right: ['agenda'],
 }
 
-function loadColumns(): DashboardColumns {
+function loadLayout(): { columns: DashboardColumns; hidden: DashboardCardId[] } {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return DEFAULT_COLUMNS
-    const parsed = JSON.parse(raw) as DashboardColumns
-    if (!parsed.left || !parsed.center || !parsed.right) return DEFAULT_COLUMNS
+    if (!raw) return { columns: DEFAULT_COLUMNS, hidden: [] }
+    const parsed = JSON.parse(raw)
 
-    // Validate: collect all IDs present
-    const allPresent = [...parsed.left, ...parsed.center, ...parsed.right]
-    const validLeft = parsed.left.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
-    const validCenter = parsed.center.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
-    const validRight = parsed.right.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
+    // Backwards compatibility: old format stored columns directly
+    const cols: DashboardColumns = parsed.columns ?? parsed
+    const hidden: DashboardCardId[] = parsed.hidden ?? []
 
-    // Add missing cards to the right column
-    const present = new Set([...validLeft, ...validCenter, ...validRight])
+    if (!cols.left || !cols.center || !cols.right) return { columns: DEFAULT_COLUMNS, hidden: [] }
+
+    const validLeft = cols.left.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
+    const validCenter = cols.center.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
+    const validRight = cols.right.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
+    const validHidden = hidden.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
+
+    const present = new Set([...validLeft, ...validCenter, ...validRight, ...validHidden])
     const missing = ALL_CARD_IDS.filter(id => !present.has(id))
 
     return {
-      left: validLeft,
-      center: validCenter,
-      right: [...validRight, ...missing],
+      columns: {
+        left: validLeft,
+        center: validCenter,
+        right: [...validRight, ...missing],
+      },
+      hidden: validHidden,
     }
   } catch {
-    return DEFAULT_COLUMNS
+    return { columns: DEFAULT_COLUMNS, hidden: [] }
   }
 }
 
-function saveColumns(columns: DashboardColumns) {
+function saveLayout(columns: DashboardColumns, hidden: DashboardCardId[]) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(columns))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ columns, hidden }))
   } catch {
     // storage full or unavailable
   }
@@ -62,9 +73,15 @@ function findCardColumn(columns: DashboardColumns, cardId: string): ColumnId | n
 }
 
 export function useDashboardLayout() {
-  const [columns, setColumns] = useState<DashboardColumns>(loadColumns)
+  const [layoutState] = useState(() => loadLayout())
+  const [columns, setColumns] = useState<DashboardColumns>(layoutState.columns)
+  const [hiddenCards, setHiddenCards] = useState<DashboardCardId[]>(layoutState.hidden)
   const [isCustomizing, setIsCustomizing] = useState(false)
   const columnsBeforeDrag = useRef<DashboardColumns | null>(null)
+
+  const persist = useCallback((cols: DashboardColumns, hidden: DashboardCardId[]) => {
+    saveLayout(cols, hidden)
+  }, [])
 
   const saveDragStart = useCallback(() => {
     columnsBeforeDrag.current = JSON.parse(JSON.stringify(columns))
@@ -86,10 +103,7 @@ export function useDashboardLayout() {
         right: [...prev.right],
       }
 
-      // Remove from source
       next[sourceCol] = next[sourceCol].filter(id => id !== cardId)
-
-      // Clamp index
       const idx = Math.min(overIndex, next[overColumnId].length)
       next[overColumnId].splice(idx, 0, cardId)
 
@@ -107,19 +121,20 @@ export function useDashboardLayout() {
       const oldIndex = col.indexOf(activeId as DashboardCardId)
       const newIndex = col.indexOf(overId as DashboardCardId)
       if (oldIndex === -1 || newIndex === -1) return prev
-
-      const next = { ...prev, [columnId]: arrayMove(col, oldIndex, newIndex) }
-      return next
+      return { ...prev, [columnId]: arrayMove(col, oldIndex, newIndex) }
     })
   }, [])
 
   const finalizeLayout = useCallback(() => {
     setColumns(prev => {
-      saveColumns(prev)
+      setHiddenCards(h => {
+        persist(prev, h)
+        return h
+      })
       columnsBeforeDrag.current = null
       return prev
     })
-  }, [])
+  }, [persist])
 
   const cancelDrag = useCallback(() => {
     if (columnsBeforeDrag.current) {
@@ -128,9 +143,52 @@ export function useDashboardLayout() {
     }
   }, [])
 
+  const hideCard = useCallback((cardId: DashboardCardId) => {
+    setColumns(prev => {
+      const sourceCol = findCardColumn(prev, cardId)
+      if (!sourceCol) return prev
+      const next = {
+        left: [...prev.left],
+        center: [...prev.center],
+        right: [...prev.right],
+      }
+      next[sourceCol] = next[sourceCol].filter(id => id !== cardId)
+      setHiddenCards(h => {
+        const newHidden = [...h, cardId]
+        persist(next, newHidden)
+        return newHidden
+      })
+      return next
+    })
+  }, [persist])
+
+  const showCard = useCallback((cardId: DashboardCardId) => {
+    setHiddenCards(prev => {
+      const newHidden = prev.filter(id => id !== cardId)
+      setColumns(cols => {
+        const counts = {
+          left: cols.left.length,
+          center: cols.center.length,
+          right: cols.right.length,
+        }
+        const shortest = (Object.keys(counts) as ColumnId[]).reduce((a, b) => counts[a] <= counts[b] ? a : b)
+        const next = {
+          left: [...cols.left],
+          center: [...cols.center],
+          right: [...cols.right],
+        }
+        next[shortest] = [...next[shortest], cardId]
+        persist(next, newHidden)
+        return next
+      })
+      return newHidden
+    })
+  }, [persist])
+
   const resetLayout = useCallback(() => {
     setColumns(DEFAULT_COLUMNS)
-    saveColumns(DEFAULT_COLUMNS)
+    setHiddenCards([])
+    saveLayout(DEFAULT_COLUMNS, [])
   }, [])
 
   const toggleCustomizing = useCallback(() => {
@@ -139,6 +197,7 @@ export function useDashboardLayout() {
 
   return {
     columns,
+    hiddenCards,
     isCustomizing,
     findCardColumn: (cardId: string) => findCardColumn(columns, cardId),
     saveDragStart,
@@ -146,6 +205,8 @@ export function useDashboardLayout() {
     reorderWithinColumn,
     finalizeLayout,
     cancelDrag,
+    hideCard,
+    showCard,
     resetLayout,
     toggleCustomizing,
   }

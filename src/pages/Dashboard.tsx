@@ -18,7 +18,10 @@ import { DraggableDashboardCard, DashboardCardOverlay } from '@/components/dashb
 import { DroppableColumn } from '@/components/dashboard/DroppableColumn'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Button } from '@/components/ui/button'
-import { Settings2, RotateCcw } from 'lucide-react'
+import { Settings2, RotateCcw, Plus } from 'lucide-react'
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+} from '@/components/ui/sheet'
 import {
   DndContext,
   closestCorners,
@@ -38,6 +41,14 @@ import {
 const COLUMN_IDS: ColumnId[] = ['left', 'center', 'right']
 const MOBILE_ORDER: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs']
 
+const CARD_LABELS: Record<DashboardCardId, string> = {
+  'agenda': 'Agenda & Calendar',
+  'tasks': 'Tasks',
+  'app-review': 'Application Review',
+  'onboarding': 'Onboarding Checklist',
+  'jobs': 'Jobs Overview',
+}
+
 export default function Dashboard() {
   const { profile, isLoading } = useUserProfile()
   const permissions = usePermissions()
@@ -46,6 +57,7 @@ export default function Dashboard() {
   const { hasRecruiterRole, isPrivileged } = useUserJobRoles()
   const {
     columns,
+    hiddenCards,
     isCustomizing,
     findCardColumn,
     saveDragStart,
@@ -53,11 +65,14 @@ export default function Dashboard() {
     reorderWithinColumn,
     finalizeLayout,
     cancelDrag,
+    hideCard,
+    showCard,
     resetLayout,
     toggleCustomizing,
   } = useDashboardLayout()
   const isMobile = useIsMobile()
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [addWidgetOpen, setAddWidgetOpen] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -185,7 +200,7 @@ export default function Dashboard() {
       <SortableContext key={colId} items={visibleCards} strategy={verticalListSortingStrategy}>
         <DroppableColumn id={colId} isCustomizing={isCustomizing}>
           {visibleCards.map(cardId => (
-            <DraggableDashboardCard key={cardId} id={cardId} columnId={colId} isCustomizing={isCustomizing}>
+            <DraggableDashboardCard key={cardId} id={cardId} columnId={colId} isCustomizing={isCustomizing} onHide={() => hideCard(cardId)}>
               {cardRegistry[cardId]}
             </DraggableDashboardCard>
           ))}
@@ -204,15 +219,27 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {isCustomizing && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={resetLayout}
-                  className="text-muted-foreground hover:text-foreground gap-1.5"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  Reset
-                </Button>
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setAddWidgetOpen(true)}
+                    disabled={hiddenCards.length === 0}
+                    className="text-muted-foreground hover:text-foreground gap-1.5"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add Widget
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={resetLayout}
+                    className="text-muted-foreground hover:text-foreground gap-1.5"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Reset
+                  </Button>
+                </>
               )}
               <Button
                 variant={isCustomizing ? 'secondary' : 'ghost'}
@@ -257,6 +284,40 @@ export default function Dashboard() {
           )}
         </div>
       </Section>
+
+      <Sheet open={addWidgetOpen} onOpenChange={setAddWidgetOpen}>
+        <SheetContent side="right" className="w-[340px] sm:max-w-[380px]">
+          <SheetHeader className="pb-4">
+            <SheetTitle className="font-poppins text-base font-semibold">Add Widget</SheetTitle>
+            <SheetDescription className="font-poppins text-xs text-muted-foreground">
+              Choose a widget to add back to your dashboard
+            </SheetDescription>
+          </SheetHeader>
+          <div className="space-y-2 mt-2">
+            {hiddenCards.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">All widgets are visible on your dashboard.</p>
+            ) : (
+              hiddenCards.map(cardId => (
+                <div key={cardId} className="flex items-center justify-between p-3 rounded-lg border border-border bg-card">
+                  <span className="text-sm font-medium">{CARD_LABELS[cardId]}</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs gap-1.5"
+                    onClick={() => {
+                      showCard(cardId)
+                      if (hiddenCards.length <= 1) setAddWidgetOpen(false)
+                    }}
+                  >
+                    <Plus className="h-3 w-3" />
+                    Add
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }
