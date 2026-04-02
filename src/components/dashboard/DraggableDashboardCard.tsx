@@ -122,7 +122,7 @@ export function DraggableDashboardCard({
         </>
       )}
       <div className={cn(
-        isCustomizing && "ring-1 ring-dashed rounded-brand transition-all duration-200 ring-primary/20",
+        isCustomizing && "ring-1 ring-dashed rounded-brand transition-all duration-200 ring-border/40",
       )}>
         {children}
       </div>
