@@ -17,6 +17,8 @@ import {
   CalendarCheck,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import { useScheduledBookings, type ScheduledBooking } from '@/hooks/useScheduledBookings'
 import { useDashboardReminders } from '@/hooks/useCandidateReminders'
@@ -28,20 +30,20 @@ import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/integrations/supabase/client'
 import { useQueryClient } from '@tanstack/react-query'
 import type { UnifiedActivity } from '@/types/activity'
-import { format, parseISO, isToday, isTomorrow, startOfDay, isSameDay, startOfMonth } from 'date-fns'
+import { format, parseISO, isToday, isTomorrow, startOfDay, isSameDay, startOfMonth, addMonths, subMonths } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { AgendaCalendar } from './AgendaCalendar'
-
-// WeekStrip removed — using AgendaCalendar instead
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
+import { PageTitle } from '@/components/ui/page-title'
 
 // ── Day Group Header ────────────────────────────────────────────
 
 function DayGroupHeader({ date }: { date: Date }) {
   const label = isToday(date)
-    ? `Today, ${format(date, 'MMM d')}`
+    ? `Today, ${format(date, 'MMMM d, yyyy')}`
     : isTomorrow(date)
-      ? `Tomorrow, ${format(date, 'MMM d')}`
-      : format(date, 'EEE, MMM d')
+      ? `Tomorrow, ${format(date, 'MMMM d, yyyy')}`
+      : format(date, 'EEE, MMMM d, yyyy')
 
   return (
     <div className={cn(
@@ -102,6 +104,7 @@ export function UpcomingActivities() {
   const [statusUpdateBooking, setStatusUpdateBooking] = useState<{ id: string; status: string } | null>(null)
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
   const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()))
+  const [calendarOpen, setCalendarOpen] = useState(true)
 
   const permissions = usePermissions()
   const { user } = useAuth()
@@ -424,13 +427,49 @@ export function UpcomingActivities() {
             </TabsList>
 
             <TabsContent value="upcoming" className="mt-0">
-              <AgendaCalendar
-                selectedDate={selectedDay}
-                onDateSelect={handleDaySelect}
-                currentMonth={currentMonth}
-                onMonthChange={setCurrentMonth}
-                activityDates={activityDates}
-              />
+              <Collapsible open={calendarOpen} onOpenChange={setCalendarOpen}>
+                <div className="flex items-center justify-between mb-3">
+                  <CollapsibleTrigger className="flex items-center gap-2 group cursor-pointer">
+                    <PageTitle as="h4">
+                      {format(currentMonth, 'MMMM d, yyyy')}
+                    </PageTitle>
+                    <ChevronDown className={cn(
+                      "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                      calendarOpen && "rotate-180"
+                    )} />
+                  </CollapsibleTrigger>
+                  <div className="flex gap-0.5">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => { e.stopPropagation(); setCurrentMonth(subMonths(currentMonth, 1)) }}
+                      className="h-7 w-7 p-0"
+                      aria-label="Previous month"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => { e.stopPropagation(); setCurrentMonth(addMonths(currentMonth, 1)) }}
+                      className="h-7 w-7 p-0"
+                      aria-label="Next month"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <CollapsibleContent>
+                  <AgendaCalendar
+                    selectedDate={selectedDay}
+                    onDateSelect={handleDaySelect}
+                    currentMonth={currentMonth}
+                    onMonthChange={setCurrentMonth}
+                    activityDates={activityDates}
+                    hideHeader
+                  />
+                </CollapsibleContent>
+              </Collapsible>
               <div className="mt-4 border-t pt-4">
                 {renderAgenda('upcoming')}
               </div>

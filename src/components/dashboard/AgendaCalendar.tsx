@@ -22,6 +22,8 @@ interface AgendaCalendarProps {
   onMonthChange: (date: Date) => void;
   /** Set of YYYY-MM-DD strings that have activities */
   activityDates: Set<string>;
+  /** When true, the built-in month header (label + nav arrows) is hidden */
+  hideHeader?: boolean;
 }
 
 export function AgendaCalendar({
@@ -30,6 +32,7 @@ export function AgendaCalendar({
   currentMonth,
   onMonthChange,
   activityDates,
+  hideHeader = false,
 }: AgendaCalendarProps) {
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -42,31 +45,33 @@ export function AgendaCalendar({
   return (
     <div className="space-y-3">
       {/* Month header */}
-      <div className="flex items-center justify-between px-1">
-        <h3 className="text-sm font-semibold text-foreground">
-          {format(currentMonth, 'MMMM yyyy')}
-        </h3>
-        <div className="flex gap-0.5">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onMonthChange(subMonths(currentMonth, 1))}
-            className="h-7 w-7 p-0"
-            aria-label="Previous month"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onMonthChange(addMonths(currentMonth, 1))}
-            className="h-7 w-7 p-0"
-            aria-label="Next month"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+      {!hideHeader && (
+        <div className="flex items-center justify-between px-1">
+          <h3 className="text-sm font-semibold text-foreground">
+            {format(currentMonth, 'MMMM yyyy')}
+          </h3>
+          <div className="flex gap-0.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onMonthChange(subMonths(currentMonth, 1))}
+              className="h-7 w-7 p-0"
+              aria-label="Previous month"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onMonthChange(addMonths(currentMonth, 1))}
+              className="h-7 w-7 p-0"
+              aria-label="Next month"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Weekday row */}
       <div className="grid grid-cols-7 gap-0.5">
