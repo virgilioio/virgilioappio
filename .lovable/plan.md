@@ -1,29 +1,66 @@
 
 
-# Polish Dashboard Customize Mode
+# Polish Dashboard DnD: Stable Placement via Swap Instead of Reorder
 
-## Current state
+## Root Cause
 
-The customize mode infrastructure already exists: toggle button, reset, add widget sheet, drag handles, size cycling, hide buttons, and DnD only in customize mode. The request is largely fulfilled.
+`reorderWidgets` uses splice-based array reordering: it removes the dragged widget and inserts it at the target's position, shifting everything in between. Then `computePlacements` repacks all widgets from scratch into a 6-column grid. This causes widgets that weren't involved in the drag to shift positions — breaking the user's mental model.
 
-## Refinements to apply
+## Solution: Swap, Don't Splice
 
-### 1. `src/pages/Dashboard.tsx` — Header button label
-- Change "Customize" label to "Customize dashboard" for a more intentional feel
-- Change "Done" to "Done editing"
+When a user drags widget A onto widget B, **swap their order values** instead of splicing. This means only A and B change positions; every other widget stays exactly where it was.
 
-### 2. `src/components/dashboard/DraggableDashboardCard.tsx` — Always-visible affordances
-- Remove `opacity-0 group-hover/card:opacity-100` from drag handle, size button, and hide button so they're **always visible** in customize mode — hovering to discover controls feels uncertain; a proper edit mode should make all affordances immediately apparent
-- Tone down the visual weight: use `bg-muted text-muted-foreground` instead of `bg-primary` for the drag handle, and a softer red for hide
-- Make the dashed ring subtler: `ring-border/40` instead of `ring-primary/20`
+### Changes
 
-### 3. `src/pages/Dashboard.tsx` — Subtle background tint in customize mode
-- Add a very faint background tint or top banner ("You're customizing your dashboard") to make the mode unmistakable, then remove it when done
+### 1. `src/hooks/useDashboardLayout.ts` — Swap-based reorder
+
+Replace the splice-based `reorderWidgets` with a simple order-value swap:
+
+```
+const reorderWidgets = (activeId, overId) => {
+  setWidgets(prev => {
+    const activeWidget = prev.find(w => w.id === activeId)
+    const overWidget = prev.find(w => w.id === overId)
+    if (!activeWidget || !overWidget) return prev
+    const activeOrder = activeWidget.order
+    const overOrder = overWidget.order
+    return prev.map(w => {
+      if (w.id === activeId) return { ...w, order: overOrder }
+      if (w.id === overId) return { ...w, order: activeOrder }
+      return w
+    }).sort((a, b) => a.order - b.order)
+  })
+}
+```
+
+This ensures only the two involved widgets change grid position. All neighbors stay put.
+
+### 2. `src/pages/Dashboard.tsx` — Collision detection + visual polish
+
+- Switch from `closestCenter` to `closestCorners` for better spatial accuracy in a grid with variable-width items
+- Add `TouchSensor` with 180ms delay for mobile/tablet ergonomics
+- Ensure the DragOverlay uses consistent width by passing the active widget's `colSpan` to size the overlay container
+- Add `transition: 'transform 200ms ease'` to non-dragging grid items for smoother reflow when a swap occurs
+
+### 3. `src/components/dashboard/DraggableDashboardCard.tsx` — Minor polish
+
+- Re-enable `defaultAnimateLayoutChanges` for non-drag/non-sort scenarios (current implementation already does this correctly)
+- Add a subtle `scale(0.98)` on the source position while dragging to create a placeholder feel rather than full `opacity: 0`
+
+### 4. Visual spacing polish in `src/pages/Dashboard.tsx`
+
+- Change grid gap from `gap-6` to `gap-5` for tighter card rhythm
+- Ensure `items-start` is present (already is) to prevent row-height stretching
+
+## Why this works
+
+The packing algorithm is deterministic: same order + same sizes = same positions. By only swapping two order values, the packer produces a layout that differs from the previous one in exactly two positions. No cascading reflows, no surprising jumps.
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/components/dashboard/DraggableDashboardCard.tsx` | Remove hover-gating on affordances, soften visual styling |
-| `src/pages/Dashboard.tsx` | Update button labels, add subtle customize-mode indicator |
+| `src/hooks/useDashboardLayout.ts` | Replace splice reorder with order-value swap |
+| `src/pages/Dashboard.tsx` | Switch to `closestCorners`, add TouchSensor, tighten gap |
+| `src/components/dashboard/DraggableDashboardCard.tsx` | Subtle drag placeholder styling |
 
