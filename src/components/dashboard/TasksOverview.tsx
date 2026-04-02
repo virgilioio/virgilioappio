@@ -95,6 +95,7 @@ export function TasksOverview() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg font-semibold flex items-center gap-2" withPeriod={false}>
+            <ListChecks className="h-5 w-5" />
             Tasks
             {totalCount > 0 && (
               <span className="ml-auto text-sm font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
