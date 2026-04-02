@@ -1,37 +1,62 @@
 
+# Dashboard Layout: 2:2:1 Three-Column Grid
 
-# Application Review Card: Add Show More Toggle, Job Status Badge & Location
+## Layout change
 
-## Changes
+**File: `src/pages/Dashboard.tsx`**
 
-### 1. Extend hook to include job status and location
+Replace the current `lg:grid-cols-2` grid with a 5-column grid using `col-span`:
 
-**File: `src/hooks/useApplicationReviewCounts.ts`**
+```
+grid-cols-1 → md:grid-cols-3 → xl:grid-cols-5
+```
 
-- Add `jobStatus` and `jobLocation` fields to `ApplicationReviewCount` interface
-- Pull them from the existing `jobs` array (already available via `useJobs()`) when building results
+| Breakpoint | Layout |
+|-----------|--------|
+| Mobile (`<768px`) | Single column, everything stacked |
+| Tablet (`md` 768–1279px) | 2:1 → Left col (Application Review + Jobs) spans 2, right col (Tasks + Upcoming) spans 1 |
+| Desktop (`xl` 1280px+) | 2:2:1 → Application Review + Jobs \| Tasks \| Upcoming Activities |
 
-### 2. Update card rows to match JobsOverview layout + add show more toggle
+### Grid structure (desktop)
 
-**File: `src/components/dashboard/ApplicationReviewCard.tsx`**
+```text
+┌──────────────┬──────────────┬────────────┐
+│ col-span-2   │ col-span-2   │ col-span-1 │
+│              │              │            │
+│ App Review   │ Tasks        │ Upcoming   │
+│ Jobs Overview│              │ Activities │
+└──────────────┴──────────────┴────────────┘
+```
 
-**Row layout** — match the exact JobsOverview pattern:
-- Top line: job title (truncated) + `Badge` with status variant (`job-open`, `job-draft`, etc.)
-- Second line: location with `MapPin` icon (if present), same `text-xs text-muted-foreground` styling
-- Right side: count badge + `ChevronRight`
-- Use `flex items-start` (not `items-center`) like JobsOverview
+### Implementation
 
-**Show more/less toggle** — replace static `<p>+N more</p>` with:
-- `useState` for `showAll`
-- `<Button variant="ghost" size="sm" className="w-full mt-2">` showing "Show N more" / "Show less"
-- Same pattern as other dashboard cards
+```tsx
+<div className="grid gap-6 grid-cols-1 md:grid-cols-3 xl:grid-cols-5 overflow-hidden">
+  {/* Col 1 — Application Review + Jobs */}
+  <div className="space-y-6 min-w-0 md:col-span-2 xl:col-span-2">
+    <OnboardingChecklist ... />
+    {hasJobContent && <ApplicationReviewCard />}
+    {hasJobContent && <JobsOverview ... />}
+  </div>
+  
+  {/* Col 2 — Tasks */}
+  <div className="space-y-6 min-w-0 md:col-span-1 xl:col-span-2">
+    <TasksOverview />
+  </div>
+  
+  {/* Col 3 — Upcoming Activities (narrow) */}
+  <div className="space-y-6 min-w-0 md:col-span-3 xl:col-span-1">
+    <UpcomingActivities />
+  </div>
+</div>
+```
 
-**New imports**: `Badge`, `MapPin`, `Button`, `useState`
+On tablet (md), the third column spans full width below the other two. On desktop (xl), it sits as the narrow right column.
+
+No changes to UpcomingActivities internals — it stays as-is, just rendered in a narrower container.
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/hooks/useApplicationReviewCounts.ts` | Add `jobStatus` and `jobLocation` to interface and results |
-| `src/components/dashboard/ApplicationReviewCard.tsx` | Match JobsOverview row style (status badge, location), add interactive show more/less |
-
+| `src/pages/Dashboard.tsx` | Replace 2-col grid with 5-col grid using col-span for 2:2:1 ratio, adjust responsive breakpoints |
