@@ -13,6 +13,7 @@ import { WorkspaceProvisioningLoader } from '@/components/onboarding/WorkspacePr
 import { useSourcingProjects } from '@/hooks/useSourcingProjects'
 import { useUserJobRoles } from '@/hooks/useUserJobRoles'
 import { ApplicationReviewCard } from '@/components/dashboard/ApplicationReviewCard'
+import { WorldClockWidget } from '@/components/dashboard/WorldClockWidget'
 import {
   useDashboardLayout,
   DashboardCardId,
