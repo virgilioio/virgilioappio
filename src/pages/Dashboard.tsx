@@ -49,7 +49,16 @@ import {
   rectSortingStrategy,
 } from '@dnd-kit/sortable'
 
-// ── Placement swap utilities ──
+// ── Placement to masonry items helper ──
+
+function placementsToMasonryItems(placements: GridPlacement[]) {
+  return placements.map(p => {
+    const m = p.gridColumn.match(/(\d+)\s*\/\s*span\s+(\d+)/)
+    const colStart = m ? parseInt(m[1]) - 1 : 0 // convert 1-based to 0-based
+    const colSpan = m ? parseInt(m[2]) : 2
+    return { id: p.id, colStart, colSpan }
+  })
+}
 
 function swapPlacements(
   placements: GridPlacement[],
@@ -61,7 +70,6 @@ function swapPlacements(
   const b = placements.find(p => p.id === overId)
   if (!a || !b) return placements
 
-  // Parse grid columns to get start positions
   const parseCol = (gc: string) => {
     const m = gc.match(/(\d+)\s*\/\s*span\s+(\d+)/)
     return m ? parseInt(m[1]) : 1
@@ -70,8 +78,6 @@ function swapPlacements(
   const aCol = parseCol(a.gridColumn)
   const bCol = parseCol(b.gridColumn)
 
-  // Each widget keeps its own span but goes to the other's position
-  // Clamp so the widget doesn't overflow the grid
   const aNewCol = Math.min(bCol, totalCols - a.colSpan + 1)
   const bNewCol = Math.min(aCol, totalCols - b.colSpan + 1)
 
