@@ -46,19 +46,23 @@ export default function Dashboard() {
           <TrialCountdownBanner />
           
           {/* Layout: Two columns with 1:1 proportions */}
-          <div className="grid gap-6 lg:grid-cols-2 overflow-hidden">
-            {/* Left Column - Jobs & Searches */}
-            <div className="space-y-6 min-w-0">
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-3 xl:grid-cols-5 overflow-hidden">
+            {/* Col 1 — Application Review + Jobs */}
+            <div className="space-y-6 min-w-0 md:col-span-2 xl:col-span-2">
               <OnboardingChecklist isDeemphasized={!hasSeenValue} />
               
               {hasJobContent && <ApplicationReviewCard />}
               {hasJobContent && <div className="hidden sm:block"><JobsOverview permissions={permissions} /></div>}
             </div>
             
-            {/* Right Column - Tasks */}
-            <div className="space-y-6 min-w-0">
-              <UpcomingActivities />
+            {/* Col 2 — Tasks */}
+            <div className="space-y-6 min-w-0 md:col-span-1 xl:col-span-2">
               <TasksOverview />
+            </div>
+            
+            {/* Col 3 — Upcoming Activities */}
+            <div className="space-y-6 min-w-0 md:col-span-3 xl:col-span-1">
+              <UpcomingActivities />
             </div>
           </div>
         </div>
