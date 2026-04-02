@@ -219,15 +219,27 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {isCustomizing && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={resetLayout}
-                  className="text-muted-foreground hover:text-foreground gap-1.5"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  Reset
-                </Button>
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setAddWidgetOpen(true)}
+                    disabled={hiddenCards.length === 0}
+                    className="text-muted-foreground hover:text-foreground gap-1.5"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add Widget
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={resetLayout}
+                    className="text-muted-foreground hover:text-foreground gap-1.5"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Reset
+                  </Button>
+                </>
               )}
               <Button
                 variant={isCustomizing ? 'secondary' : 'ghost'}
