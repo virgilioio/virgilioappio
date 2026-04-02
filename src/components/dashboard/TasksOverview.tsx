@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { usePendingActivities, PendingActivity } from '@/hooks/usePendingActivities';
 import { useStaleCandidates, StaleCandidate } from '@/hooks/useStaleCandidates';
-import { ClipboardCheck, Scale, Mail, FileCheck, AlertTriangle, ChevronRight, Clock } from 'lucide-react';
+import { ChevronRight, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import gioFaceGreen from '@/assets/gio-face-green.png';
