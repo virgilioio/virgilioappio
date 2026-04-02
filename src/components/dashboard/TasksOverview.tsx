@@ -239,7 +239,7 @@ function StaleCandidateRow({ candidate, onClick }: { candidate: StaleCandidate; 
         isCritical ? "border-destructive/50 bg-destructive/5" : "border-warning/50 bg-warning/5"
       )}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start justify-between gap-2 overflow-hidden">
         <div className="flex-1 min-w-0">
           <span className="text-sm font-medium truncate block">{candidate.candidateName}</span>
           <span className="text-xs text-muted-foreground truncate block mt-0.5">
