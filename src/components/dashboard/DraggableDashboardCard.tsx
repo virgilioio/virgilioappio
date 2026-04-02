@@ -68,14 +68,14 @@ export function DraggableDashboardCard({
       {isCustomizing && (
         <>
           {/* Drag handle */}
-          <button
-            className={cn(
-              "absolute -top-2 -left-2 z-10 flex items-center justify-center",
-              "h-7 w-7 rounded-full bg-primary text-primary-foreground shadow-md",
-              "cursor-grab active:cursor-grabbing",
-              "opacity-0 group-hover/card:opacity-100 transition-opacity duration-200",
-              "focus:opacity-100"
-            )}
+           <button
+             className={cn(
+               "absolute -top-2 -left-2 z-10 flex items-center justify-center",
+               "h-7 w-7 rounded-full bg-muted text-muted-foreground shadow-sm border border-border",
+               "cursor-grab active:cursor-grabbing",
+               "transition-colors duration-200",
+               "focus:ring-2 focus:ring-ring"
+             )}
             {...attributes}
             {...listeners}
           >
