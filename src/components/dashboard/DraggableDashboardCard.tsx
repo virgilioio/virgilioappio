@@ -2,7 +2,7 @@ import { ReactNode } from 'react'
 import { useSortable, defaultAnimateLayoutChanges } from '@dnd-kit/sortable'
 import type { AnimateLayoutChanges } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, X } from 'lucide-react'
+import { GripVertical, X, Maximize2, Minimize2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface DraggableDashboardCardProps {
@@ -10,7 +10,9 @@ interface DraggableDashboardCardProps {
   columnId: string
   children: ReactNode
   isCustomizing: boolean
+  colSpan?: 1 | 2
   onHide?: () => void
+  onToggleSpan?: () => void
 }
 
 const animateLayoutChanges: AnimateLayoutChanges = (args) => {
@@ -19,7 +21,7 @@ const animateLayoutChanges: AnimateLayoutChanges = (args) => {
   return defaultAnimateLayoutChanges(args)
 }
 
-export function DraggableDashboardCard({ id, columnId, children, isCustomizing, onHide }: DraggableDashboardCardProps) {
+export function DraggableDashboardCard({ id, columnId, children, isCustomizing, colSpan = 1, onHide, onToggleSpan }: DraggableDashboardCardProps) {
   const {
     attributes,
     listeners,
@@ -57,6 +59,24 @@ export function DraggableDashboardCard({ id, columnId, children, isCustomizing, 
           >
             <GripVertical className="h-3.5 w-3.5" />
           </button>
+          {onToggleSpan && (
+            <button
+              onClick={onToggleSpan}
+              className={cn(
+                "absolute -top-2 left-7 z-10 flex items-center justify-center",
+                "h-7 w-7 rounded-full shadow-md",
+                colSpan === 2
+                  ? "bg-accent text-accent-foreground"
+                  : "bg-secondary text-secondary-foreground",
+                "cursor-pointer",
+                "opacity-0 group-hover/card:opacity-100 transition-opacity duration-200",
+                "focus:opacity-100 hover:scale-110 transition-transform"
+              )}
+              title={colSpan === 2 ? 'Collapse to 1 column' : 'Expand to 2 columns'}
+            >
+              {colSpan === 2 ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+            </button>
+          )}
           {onHide && (
             <button
               onClick={onHide}
@@ -74,7 +94,8 @@ export function DraggableDashboardCard({ id, columnId, children, isCustomizing, 
         </>
       )}
       <div className={cn(
-        isCustomizing && "ring-1 ring-primary/20 ring-dashed rounded-brand transition-all duration-200"
+        isCustomizing && "ring-1 ring-dashed rounded-brand transition-all duration-200",
+        isCustomizing && colSpan === 2 ? "ring-primary/40" : isCustomizing ? "ring-primary/20" : ""
       )}>
         {children}
       </div>
