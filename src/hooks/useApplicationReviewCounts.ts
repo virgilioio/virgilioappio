@@ -73,7 +73,6 @@ export function useApplicationReviewCounts() {
       }
 
       // Build result with job titles
-      const jobTitleMap = new Map(jobs?.map(j => [j.id, j.title]) ?? [])
       const results: ApplicationReviewCount[] = []
       const jobMap = new Map(jobs?.map(j => [j.id, j]) ?? [])
       for (const [jobId, count] of countMap) {
