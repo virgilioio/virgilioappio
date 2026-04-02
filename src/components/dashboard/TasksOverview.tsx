@@ -15,8 +15,6 @@ type CategoryKey = 'scorecard' | 'decision' | 'email' | 'offer_approval' | 'stal
 interface CategoryConfig {
   key: CategoryKey;
   label: string;
-  icon: React.ElementType;
-  badgeVariant: string;
   color: string;
 }
 
