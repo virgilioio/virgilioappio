@@ -47,22 +47,22 @@ export default function Dashboard() {
           
           {/* Layout: Two columns with 1:1 proportions */}
           <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 overflow-hidden">
-            {/* Col 1 — Application Review + Jobs */}
-            <div className="space-y-6 min-w-0">
+            {/* Col 1 — Agenda / Calendar (first on mobile) */}
+            <div className="space-y-6 min-w-0 order-first md:order-last xl:order-last">
+              <UpcomingActivities />
+            </div>
+
+            {/* Col 2 — Tasks (second on mobile) */}
+            <div className="space-y-6 min-w-0 order-2 md:order-first xl:order-none">
+              <TasksOverview />
+            </div>
+            
+            {/* Col 3 — Application Review + Jobs (third on mobile) */}
+            <div className="space-y-6 min-w-0 order-3 md:order-none xl:order-none">
               <OnboardingChecklist isDeemphasized={!hasSeenValue} />
               
               {hasJobContent && <ApplicationReviewCard />}
               {hasJobContent && <div className="hidden sm:block"><JobsOverview permissions={permissions} /></div>}
-            </div>
-            
-            {/* Col 2 — Tasks */}
-            <div className="space-y-6 min-w-0">
-              <TasksOverview />
-            </div>
-            
-            {/* Col 3 — Agenda / Calendar */}
-            <div className="space-y-6 min-w-0 md:col-span-2 xl:col-span-1">
-              <UpcomingActivities />
             </div>
           </div>
         </div>

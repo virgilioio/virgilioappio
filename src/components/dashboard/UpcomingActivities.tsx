@@ -35,6 +35,7 @@ import { cn } from '@/lib/utils'
 import { AgendaCalendar } from './AgendaCalendar'
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
 import { PageTitle } from '@/components/ui/page-title'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 // ── Day Group Header ────────────────────────────────────────────
 
