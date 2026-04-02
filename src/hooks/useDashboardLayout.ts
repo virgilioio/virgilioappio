@@ -57,11 +57,12 @@ interface StoredLayout {
 const STORAGE_KEY = 'dashboard-layout-v3'
 
 const DEFAULT_WIDGETS: WidgetLayout[] = [
-  { id: 'tasks',      size: 'small',  order: 0 },
-  { id: 'agenda',     size: 'small',  order: 1 },
-  { id: 'app-review', size: 'small',  order: 2 },
-  { id: 'onboarding', size: 'small',  order: 3 },
-  { id: 'jobs',       size: 'medium', order: 4 },
+  { id: 'tasks',       size: 'small',  order: 0 },
+  { id: 'agenda',      size: 'small',  order: 1 },
+  { id: 'world-clock', size: 'small',  order: 2 },
+  { id: 'app-review',  size: 'small',  order: 3 },
+  { id: 'onboarding',  size: 'small',  order: 4 },
+  { id: 'jobs',        size: 'medium', order: 5 },
 ]
 
 // ── Grid placement engine ───────────────────────────────────────────
