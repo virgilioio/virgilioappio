@@ -21,11 +21,13 @@ import {
   WIDGET_REGISTRY,
   SIZE_TO_COLS,
   WidgetSize,
+  GridPlacement,
 } from '@/hooks/useDashboardLayout'
 import { DraggableDashboardCard, DashboardCardOverlay } from '@/components/dashboard/DraggableDashboardCard'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Button } from '@/components/ui/button'
-import { Settings2, RotateCcw, Plus } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Settings2, RotateCcw, Plus, Info } from 'lucide-react'
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from '@/components/ui/sheet'
@@ -44,6 +46,47 @@ import {
   SortableContext,
   rectSortingStrategy,
 } from '@dnd-kit/sortable'
+
+// ── Placement swap utilities ──
+
+function swapPlacements(
+  placements: GridPlacement[],
+  activeId: string,
+  overId: string,
+  totalCols: number,
+): GridPlacement[] {
+  const a = placements.find(p => p.id === activeId)
+  const b = placements.find(p => p.id === overId)
+  if (!a || !b) return placements
+
+  // Parse grid columns to get start positions
+  const parseCol = (gc: string) => {
+    const m = gc.match(/(\d+)\s*\/\s*span\s+(\d+)/)
+    return m ? parseInt(m[1]) : 1
+  }
+
+  const aCol = parseCol(a.gridColumn)
+  const bCol = parseCol(b.gridColumn)
+
+  // Each widget keeps its own span but goes to the other's position
+  // Clamp so the widget doesn't overflow the grid
+  const aNewCol = Math.min(bCol, totalCols - a.colSpan + 1)
+  const bNewCol = Math.min(aCol, totalCols - b.colSpan + 1)
+
+  return placements.map(p => {
+    if (p.id === activeId) return {
+      ...p,
+      gridColumn: `${aNewCol} / span ${a.colSpan}`,
+      gridRow: b.gridRow,
+    }
+    if (p.id === overId) return {
+      ...p,
+      gridColumn: `${bNewCol} / span ${b.colSpan}`,
+      gridRow: a.gridRow,
+    }
+    return p
+  })
+}
 
 const MOBILE_ORDER: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs']
 
@@ -70,6 +113,8 @@ export default function Dashboard() {
   const isMobile = useIsMobile()
   const [activeId, setActiveId] = useState<string | null>(null)
   const [addWidgetOpen, setAddWidgetOpen] = useState(false)
+  const [cachedPlacements, setCachedPlacements] = useState<GridPlacement[]>([])
+  const [lastStructuralKey, setLastStructuralKey] = useState('')
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -132,15 +177,20 @@ export default function Dashboard() {
   // Filter to only widgets with non-null content
   const renderableWidgets = visibleWidgets.filter(w => cardRegistry[w.id] !== null)
 
-  // Detect tablet (md but not xl) via checking viewport — use CSS for actual breakpoint, 
-  // but for placement computation we use a heuristic based on viewport
   const isTablet = typeof window !== 'undefined' && window.innerWidth < 1280
-
-  const placements = isTablet
-    ? computeTabletPlacements(renderableWidgets)
-    : computePlacements(renderableWidgets)
-
   const gridCols = isTablet ? 4 : 6
+
+  // Structural key: changes on add/remove/resize but NOT on reorder
+  const structuralKey = renderableWidgets.map(w => `${w.id}:${w.size}`).sort().join(',')
+
+  // Recompute placements only when structure changes (size, visibility), not order swaps
+  if (structuralKey !== lastStructuralKey) {
+    const newPlacements = isTablet
+      ? computeTabletPlacements(renderableWidgets)
+      : computePlacements(renderableWidgets)
+    setCachedPlacements(newPlacements)
+    setLastStructuralKey(structuralKey)
+  }
 
   const handleDragStart = (event: DragStartEvent) => {
     saveDragStart()
@@ -156,6 +206,10 @@ export default function Dashboard() {
       return
     }
 
+    // Swap placements directly — no full repack
+    setCachedPlacements(prev => swapPlacements(prev, String(active.id), String(over.id), gridCols))
+
+    // Update order values in the hook for persistence
     reorderWidgets(String(active.id), String(over.id))
     finalizeLayout()
   }
@@ -167,7 +221,7 @@ export default function Dashboard() {
 
   const renderGrid = () => {
     if (!isCustomizing) {
-      return placements.map(({ id, gridColumn, gridRow }) => (
+      return cachedPlacements.map(({ id, gridColumn, gridRow }) => (
         <div
           key={id}
           className="min-w-0"
@@ -179,10 +233,10 @@ export default function Dashboard() {
     }
 
     // Customizing mode: same grid placement but with draggable wrappers
-    return placements.map(({ id, gridColumn, gridRow }) => {
+    return cachedPlacements.map(({ id, gridColumn, gridRow }) => {
       const widget = renderableWidgets.find(w => w.id === id)!
       return (
-        <div key={id} style={{ gridColumn, gridRow }} className="min-w-0">
+        <div key={id} style={{ gridColumn, gridRow, transition: 'all 200ms ease' }} className="min-w-0">
           <DraggableDashboardCard
             id={id}
             isCustomizing
@@ -248,12 +302,12 @@ export default function Dashboard() {
           <TrialCountdownBanner />
 
           {isCustomizing && (
-            <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-muted/60 border border-border/50">
-              <Settings2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <p className="text-xs text-muted-foreground">
+            <Alert variant="info">
+              <Info className="h-4 w-4" />
+              <AlertDescription>
                 Drag cards to reorder, resize with the column button, or hide with ✕. Click <strong>Done editing</strong> when finished.
-              </p>
-            </div>
+              </AlertDescription>
+            </Alert>
           )}
 
           {isCustomizing ? (
