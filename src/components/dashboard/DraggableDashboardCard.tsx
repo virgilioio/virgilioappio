@@ -2,7 +2,7 @@ import { ReactNode } from 'react'
 import { useSortable, defaultAnimateLayoutChanges } from '@dnd-kit/sortable'
 import type { AnimateLayoutChanges } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical } from 'lucide-react'
+import { GripVertical, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface DraggableDashboardCardProps {
@@ -10,6 +10,7 @@ interface DraggableDashboardCardProps {
   columnId: string
   children: ReactNode
   isCustomizing: boolean
+  onHide?: () => void
 }
 
 const animateLayoutChanges: AnimateLayoutChanges = (args) => {

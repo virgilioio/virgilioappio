@@ -10,6 +10,11 @@ export interface DashboardColumns {
   right: DashboardCardId[]
 }
 
+interface StoredLayout {
+  columns: DashboardColumns
+  hidden: DashboardCardId[]
+}
+
 const STORAGE_KEY = 'dashboard-layout-v2'
 const ALL_CARD_IDS: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs']
 
@@ -19,36 +24,42 @@ const DEFAULT_COLUMNS: DashboardColumns = {
   right: ['agenda'],
 }
 
-function loadColumns(): DashboardColumns {
+function loadLayout(): { columns: DashboardColumns; hidden: DashboardCardId[] } {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return DEFAULT_COLUMNS
-    const parsed = JSON.parse(raw) as DashboardColumns
-    if (!parsed.left || !parsed.center || !parsed.right) return DEFAULT_COLUMNS
+    if (!raw) return { columns: DEFAULT_COLUMNS, hidden: [] }
+    const parsed = JSON.parse(raw)
 
-    // Validate: collect all IDs present
-    const allPresent = [...parsed.left, ...parsed.center, ...parsed.right]
-    const validLeft = parsed.left.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
-    const validCenter = parsed.center.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
-    const validRight = parsed.right.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
+    // Backwards compatibility: old format stored columns directly
+    const cols: DashboardColumns = parsed.columns ?? parsed
+    const hidden: DashboardCardId[] = parsed.hidden ?? []
 
-    // Add missing cards to the right column
-    const present = new Set([...validLeft, ...validCenter, ...validRight])
+    if (!cols.left || !cols.center || !cols.right) return { columns: DEFAULT_COLUMNS, hidden: [] }
+
+    const validLeft = cols.left.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
+    const validCenter = cols.center.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
+    const validRight = cols.right.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
+    const validHidden = hidden.filter((id): id is DashboardCardId => ALL_CARD_IDS.includes(id))
+
+    const present = new Set([...validLeft, ...validCenter, ...validRight, ...validHidden])
     const missing = ALL_CARD_IDS.filter(id => !present.has(id))
 
     return {
-      left: validLeft,
-      center: validCenter,
-      right: [...validRight, ...missing],
+      columns: {
+        left: validLeft,
+        center: validCenter,
+        right: [...validRight, ...missing],
+      },
+      hidden: validHidden,
     }
   } catch {
-    return DEFAULT_COLUMNS
+    return { columns: DEFAULT_COLUMNS, hidden: [] }
   }
 }
 
-function saveColumns(columns: DashboardColumns) {
+function saveLayout(columns: DashboardColumns, hidden: DashboardCardId[]) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(columns))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ columns, hidden }))
   } catch {
     // storage full or unavailable
   }
