@@ -171,7 +171,7 @@ export default function Dashboard() {
           className="min-w-0"
           style={{ gridColumn, gridRow }}
         >
-          {cardRegistry[id]}
+          {renderCard(id)}
         </div>
       ))
     }
