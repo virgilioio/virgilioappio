@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Settings2, RotateCcw } from 'lucide-react'
 import {
   DndContext,
-  closestCenter,
+  closestCorners,
   PointerSensor,
   useSensor,
   useSensors,
@@ -138,7 +138,7 @@ export default function Dashboard() {
           {!isMobile && isCustomizing ? (
             <DndContext
               sensors={sensors}
-              collisionDetection={closestCenter}
+              collisionDetection={closestCorners}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
