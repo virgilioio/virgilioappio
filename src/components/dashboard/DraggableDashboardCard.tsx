@@ -86,13 +86,13 @@ export function DraggableDashboardCard({
           {isResizable && onCycleSize && (
             <button
               onClick={onCycleSize}
-              className={cn(
+             className={cn(
                 "absolute -top-2 left-7 z-10 flex items-center gap-1 px-2",
-                "h-7 rounded-full shadow-md",
-                "bg-secondary text-secondary-foreground",
+                "h-7 rounded-full shadow-sm border border-border",
+                "bg-muted text-muted-foreground",
                 "cursor-pointer text-[10px] font-medium",
-                "opacity-0 group-hover/card:opacity-100 transition-opacity duration-200",
-                "focus:opacity-100 hover:bg-accent hover:text-accent-foreground"
+                "transition-colors duration-200",
+                "hover:bg-accent hover:text-accent-foreground"
               )}
               title={`Current: ${SIZE_LABELS[currentSize]}. Click to cycle.`}
             >
