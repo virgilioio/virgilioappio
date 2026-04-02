@@ -11,6 +11,12 @@ interface DraggableDashboardCardProps {
   isCustomizing: boolean
 }
 
+const animateLayoutChanges: AnimateLayoutChanges = (args) => {
+  const { isSorting, wasDragging } = args
+  if (isSorting || wasDragging) return false
+  return defaultAnimateLayoutChanges(args)
+}
+
 export function DraggableDashboardCard({ id, children, isCustomizing }: DraggableDashboardCardProps) {
   const {
     attributes,
