@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { usePendingActivities, PendingActivity } from '@/hooks/usePendingActivities';
 import { useStaleCandidates, StaleCandidate } from '@/hooks/useStaleCandidates';
-import { ChevronRight, Clock } from 'lucide-react';
+import { ChevronRight, Clock, ListChecks } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import gioFaceGreen from '@/assets/gio-face-green.png';
@@ -95,6 +95,7 @@ export function TasksOverview() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg font-semibold flex items-center gap-2" withPeriod={false}>
+            <ListChecks className="h-5 w-5" />
             Tasks
             {totalCount > 0 && (
               <span className="ml-auto text-sm font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
@@ -141,7 +142,7 @@ export function TasksOverview() {
 
       {/* Detail Dialogs */}
       <Dialog open={openCategory !== null && openCategory !== 'stale'} onOpenChange={(open) => !open && setOpenCategory(null)}>
-        <DialogContent className="max-w-lg max-h-[70vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[70vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle>
               {openCategory && openCategory !== 'stale' && CATEGORIES.find(c => c.key === openCategory)?.label}
@@ -156,7 +157,7 @@ export function TasksOverview() {
       </Dialog>
 
       <Dialog open={openCategory === 'stale'} onOpenChange={(open) => !open && setOpenCategory(null)}>
-        <DialogContent className="max-w-lg max-h-[70vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[70vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle>Stale Candidates</DialogTitle>
           </DialogHeader>
@@ -210,7 +211,7 @@ function ActivityRow({ activity, onClick }: { activity: PendingActivity; onClick
         "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
       )}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start justify-between gap-2 overflow-hidden">
         <div className="flex-1 min-w-0">
           <span className="text-sm font-medium truncate block">{getTitle()}</span>
           <span className="text-xs text-muted-foreground truncate block mt-0.5">{getSubtitle()}</span>
@@ -238,7 +239,7 @@ function StaleCandidateRow({ candidate, onClick }: { candidate: StaleCandidate; 
         isCritical ? "border-destructive/50 bg-destructive/5" : "border-warning/50 bg-warning/5"
       )}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start justify-between gap-2 overflow-hidden">
         <div className="flex-1 min-w-0">
           <span className="text-sm font-medium truncate block">{candidate.candidateName}</span>
           <span className="text-xs text-muted-foreground truncate block mt-0.5">
