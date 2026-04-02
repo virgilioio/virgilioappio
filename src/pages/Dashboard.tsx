@@ -89,7 +89,7 @@ function swapPlacements(
   })
 }
 
-const MOBILE_ORDER: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs']
+const MOBILE_ORDER: DashboardCardId[] = ['agenda', 'tasks', 'world-clock', 'app-review', 'onboarding', 'jobs']
 
 export default function Dashboard() {
   const { profile, isLoading } = useUserProfile()
