@@ -422,9 +422,14 @@ export function UpcomingActivities() {
         <CardContent>
           <Collapsible open={calendarOpen} onOpenChange={setCalendarOpen}>
             <div className="flex items-center justify-between mb-3">
-              <PageTitle as="h4">
-                {format(currentMonth, 'MMMM d, yyyy')}
-              </PageTitle>
+              <div className={cn(
+                "transition-transform duration-300 ease-out origin-left",
+                calendarOpen ? "scale-100" : "scale-[1.15]"
+              )}>
+                <PageTitle as="h4">
+                  {format(currentMonth, 'MMMM d, yyyy')}
+                </PageTitle>
+              </div>
               <div className="flex items-center gap-1">
                 {calendarOpen && (
                   <>
