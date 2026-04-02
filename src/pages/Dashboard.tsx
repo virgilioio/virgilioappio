@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react'
+import { ReactNode, useState, useMemo, useCallback } from 'react'
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
 import { UpcomingActivities } from '@/components/dashboard/UpcomingActivities'
 import { JobsOverview } from '@/components/dashboard/JobsOverview'
@@ -21,11 +21,13 @@ import {
   WIDGET_REGISTRY,
   SIZE_TO_COLS,
   WidgetSize,
+  GridPlacement,
 } from '@/hooks/useDashboardLayout'
 import { DraggableDashboardCard, DashboardCardOverlay } from '@/components/dashboard/DraggableDashboardCard'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Button } from '@/components/ui/button'
-import { Settings2, RotateCcw, Plus } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Settings2, RotateCcw, Plus, Info } from 'lucide-react'
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from '@/components/ui/sheet'
@@ -44,6 +46,47 @@ import {
   SortableContext,
   rectSortingStrategy,
 } from '@dnd-kit/sortable'
+
+// ── Placement swap utilities ──
+
+function swapPlacements(
+  placements: GridPlacement[],
+  activeId: string,
+  overId: string,
+  totalCols: number,
+): GridPlacement[] {
+  const a = placements.find(p => p.id === activeId)
+  const b = placements.find(p => p.id === overId)
+  if (!a || !b) return placements
+
+  // Parse grid columns to get start positions
+  const parseCol = (gc: string) => {
+    const m = gc.match(/(\d+)\s*\/\s*span\s+(\d+)/)
+    return m ? parseInt(m[1]) : 1
+  }
+
+  const aCol = parseCol(a.gridColumn)
+  const bCol = parseCol(b.gridColumn)
+
+  // Each widget keeps its own span but goes to the other's position
+  // Clamp so the widget doesn't overflow the grid
+  const aNewCol = Math.min(bCol, totalCols - a.colSpan + 1)
+  const bNewCol = Math.min(aCol, totalCols - b.colSpan + 1)
+
+  return placements.map(p => {
+    if (p.id === activeId) return {
+      ...p,
+      gridColumn: `${aNewCol} / span ${a.colSpan}`,
+      gridRow: b.gridRow,
+    }
+    if (p.id === overId) return {
+      ...p,
+      gridColumn: `${bNewCol} / span ${b.colSpan}`,
+      gridRow: a.gridRow,
+    }
+    return p
+  })
+}
 
 const MOBILE_ORDER: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs']
 
