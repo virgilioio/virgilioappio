@@ -35,6 +35,7 @@ import { cn } from '@/lib/utils'
 import { AgendaCalendar } from './AgendaCalendar'
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
 import { PageTitle } from '@/components/ui/page-title'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 // ── Day Group Header ────────────────────────────────────────────
 
@@ -106,6 +107,7 @@ export function UpcomingActivities() {
   const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()))
   const [calendarOpen, setCalendarOpen] = useState(false)
 
+  const isMobile = useIsMobile()
   const permissions = usePermissions()
   const { user } = useAuth()
   const queryClient = useQueryClient()
@@ -420,60 +422,62 @@ export function UpcomingActivities() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Collapsible open={calendarOpen} onOpenChange={setCalendarOpen}>
-            <div className="flex items-center justify-between mb-3">
-              <div className={cn(
-                "transition-transform duration-300 ease-out origin-left",
-                calendarOpen ? "scale-100" : "scale-[1.15]"
-              )}>
-                <PageTitle as="h4">
-                  {format(currentMonth, 'MMMM d, yyyy')}
-                </PageTitle>
-              </div>
-              <div className="flex items-center gap-1">
-                {calendarOpen && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => { e.stopPropagation(); setCurrentMonth(subMonths(currentMonth, 1)) }}
-                      className="h-7 w-7 p-0"
-                      aria-label="Previous month"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
+          {!isMobile && (
+            <Collapsible open={calendarOpen} onOpenChange={setCalendarOpen}>
+              <div className="flex items-center justify-between mb-3">
+                <div className={cn(
+                  "transition-transform duration-300 ease-out origin-left",
+                  calendarOpen ? "scale-100" : "scale-[1.15]"
+                )}>
+                  <PageTitle as="h4">
+                    {format(currentMonth, 'MMMM d, yyyy')}
+                  </PageTitle>
+                </div>
+                <div className="flex items-center gap-1">
+                  {calendarOpen && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); setCurrentMonth(subMonths(currentMonth, 1)) }}
+                        className="h-7 w-7 p-0"
+                        aria-label="Previous month"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); setCurrentMonth(addMonths(currentMonth, 1)) }}
+                        className="h-7 w-7 p-0"
+                        aria-label="Next month"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" aria-label="Toggle calendar">
+                      <ChevronDown className={cn(
+                        "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                        calendarOpen && "rotate-180"
+                      )} />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => { e.stopPropagation(); setCurrentMonth(addMonths(currentMonth, 1)) }}
-                      className="h-7 w-7 p-0"
-                      aria-label="Next month"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </>
-                )}
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" aria-label="Toggle calendar">
-                    <ChevronDown className={cn(
-                      "h-4 w-4 text-muted-foreground transition-transform duration-200",
-                      calendarOpen && "rotate-180"
-                    )} />
-                  </Button>
-                </CollapsibleTrigger>
+                  </CollapsibleTrigger>
+                </div>
               </div>
-            </div>
-            <CollapsibleContent className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
-              <AgendaCalendar
-                selectedDate={selectedDay}
-                onDateSelect={handleDaySelect}
-                currentMonth={currentMonth}
-                onMonthChange={setCurrentMonth}
-                activityDates={activityDates}
-                hideHeader
-              />
-            </CollapsibleContent>
-          </Collapsible>
+              <CollapsibleContent className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
+                <AgendaCalendar
+                  selectedDate={selectedDay}
+                  onDateSelect={handleDaySelect}
+                  currentMonth={currentMonth}
+                  onMonthChange={setCurrentMonth}
+                  activityDates={activityDates}
+                  hideHeader
+                />
+              </CollapsibleContent>
+            </Collapsible>
+          )}
 
           <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as 'upcoming' | 'past'); setSelectedDay(null) }}>
             <TabsList className="grid w-full grid-cols-2 my-4">
