@@ -46,9 +46,9 @@ export default function Dashboard() {
           <TrialCountdownBanner />
           
           {/* Layout: Two columns with 1:1 proportions */}
-          <div className="grid gap-6 grid-cols-1 md:grid-cols-3 xl:grid-cols-5 overflow-hidden">
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 overflow-hidden">
             {/* Col 1 — Application Review + Jobs */}
-            <div className="space-y-6 min-w-0 md:col-span-2 xl:col-span-2">
+            <div className="space-y-6 min-w-0">
               <OnboardingChecklist isDeemphasized={!hasSeenValue} />
               
               {hasJobContent && <ApplicationReviewCard />}
@@ -56,12 +56,12 @@ export default function Dashboard() {
             </div>
             
             {/* Col 2 — Tasks */}
-            <div className="space-y-6 min-w-0 md:col-span-1 xl:col-span-2">
+            <div className="space-y-6 min-w-0">
               <TasksOverview />
             </div>
             
-            {/* Col 3 — Upcoming Activities */}
-            <div className="space-y-6 min-w-0 md:col-span-3 xl:col-span-1">
+            {/* Col 3 — Agenda / Calendar */}
+            <div className="space-y-6 min-w-0 md:col-span-2 xl:col-span-1">
               <UpcomingActivities />
             </div>
           </div>
