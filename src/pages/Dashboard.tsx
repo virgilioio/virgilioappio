@@ -80,12 +80,28 @@ export default function Dashboard() {
   const hasJobContent = permissions.canViewJobs || permissions.canCreateJobs
   const hasSeenValue = (sourcingProjects?.length ?? 0) > 0
 
+  // Size-aware card renderer: returns ReactNode for a given widget
+  const widgetSizeMap = Object.fromEntries(visibleWidgets.map(w => [w.id, w.size])) as Record<DashboardCardId, WidgetSize>
+
+  const renderCard = (id: DashboardCardId): ReactNode => {
+    const widgetSize = widgetSizeMap[id] ?? 'small'
+    switch (id) {
+      case 'agenda': return <UpcomingActivities />
+      case 'tasks': return <TasksOverview />
+      case 'app-review': return hasJobContent ? <ApplicationReviewCard size={widgetSize} /> : null
+      case 'onboarding': return <OnboardingChecklist isDeemphasized={!hasSeenValue} />
+      case 'jobs': return hasJobContent ? <div className="hidden sm:block"><JobsOverview permissions={permissions} size={widgetSize} /></div> : null
+      default: return null
+    }
+  }
+
+  // For null-checks (visibility filtering), we need a simple registry
   const cardRegistry: Record<DashboardCardId, ReactNode> = {
     'agenda': <UpcomingActivities />,
     'tasks': <TasksOverview />,
-    'app-review': hasJobContent ? <ApplicationReviewCard /> : null,
+    'app-review': hasJobContent ? true as unknown as ReactNode : null,
     'onboarding': <OnboardingChecklist isDeemphasized={!hasSeenValue} />,
-    'jobs': hasJobContent ? <div className="hidden sm:block"><JobsOverview permissions={permissions} /></div> : null,
+    'jobs': hasJobContent ? true as unknown as ReactNode : null,
   }
 
   // ── Mobile: flat stacked list, no DnD ──
