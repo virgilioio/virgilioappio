@@ -328,24 +328,26 @@ export function UpcomingActivities() {
       }
 
   const EmptyState = ({ type }: { type: 'upcoming' | 'past' }) => (
-    <div className="text-center py-8 text-muted-foreground">
-      <CalendarCheck className="h-12 w-12 mx-auto mb-3 opacity-50" />
-      <p className="text-sm">
-        {type === 'upcoming'
-          ? selectedDay
-            ? 'No activities on this day'
-            : 'No upcoming activities'
-          : 'No past activities yet'}
-      </p>
-      <p className="text-xs mt-1">
-        {type === 'upcoming'
-          ? selectedDay
-            ? 'Try selecting a different day or view all'
-            : 'Scheduled interviews and reminders will appear here'
-          : 'Completed interviews and reminders will appear here'}
-      </p>
+    <div className="flex flex-col items-center">
+      <GioEmptyState
+        title={
+          type === 'upcoming'
+            ? selectedDay
+              ? 'No activities on this day'
+              : 'No upcoming activities'
+            : 'No past activities yet'
+        }
+        description={
+          type === 'upcoming'
+            ? selectedDay
+              ? 'Try selecting a different day or view all'
+              : 'Scheduled interviews and reminders will appear here'
+            : 'Completed interviews and reminders will appear here'
+        }
+        className="py-6"
+      />
       {selectedDay && type === 'upcoming' && (
-        <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => setSelectedDay(null)}>
+        <Button variant="link" size="sm" className="text-xs -mt-2" onClick={() => setSelectedDay(null)}>
           View all upcoming
         </Button>
       )}
