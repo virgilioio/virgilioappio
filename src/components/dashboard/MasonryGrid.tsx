@@ -8,27 +8,33 @@ interface MasonryItem {
   colSpan: number
 }
 
+interface GhostSlot {
+  colStart: number
+  colSpan: number
+  row: number  // logical row hint (used to position ghost near a target)
+  targetId?: string // id of the widget the ghost is near
+}
+
 interface MasonryGridProps {
   items: MasonryItem[]
   totalCols: number
   children: ReactNode[]
-  /** Map from item id to ReactNode index — children must be in same order as items */
   className?: string
+  ghost?: GhostSlot | null
 }
 
 interface Position {
   top: number
-  left: string   // percentage-based for responsiveness
-  width: string  // percentage-based
+  left: string
+  width: string
 }
 
-export function MasonryGrid({ items, totalCols, children, className }: MasonryGridProps) {
+export function MasonryGrid({ items, totalCols, children, className, ghost }: MasonryGridProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const [heights, setHeights] = useState<Map<string, number>>(new Map())
   const [containerHeight, setContainerHeight] = useState(0)
 
-  // Observe height changes on all items
   useEffect(() => {
     const observer = new ResizeObserver((entries) => {
       let changed = false
@@ -50,60 +56,68 @@ export function MasonryGrid({ items, totalCols, children, className }: MasonryGr
     refs.forEach(el => observer.observe(el))
 
     return () => observer.disconnect()
-  // Re-run when items change
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items.map(i => i.id).join(',')])
 
-  // Compute positions based on measured heights
   const positions = useMemo(() => {
     const colBottoms = new Array(totalCols).fill(0)
     const posMap = new Map<string, Position>()
-
     const colWidthPct = 100 / totalCols
-    // Gap handling: each item gets horizontal gaps via calc
-    // Width = (colSpan / totalCols * 100%) - gap adjustments
-    // Left = (colStart / totalCols * 100%) + half gap
 
     for (const item of items) {
       const h = heights.get(item.id) ?? 0
-      // Find the top for this item: max of all columns it spans
       const spannedCols = []
       for (let c = item.colStart; c < item.colStart + item.colSpan; c++) {
         spannedCols.push(c)
       }
       const top = Math.max(...spannedCols.map(c => colBottoms[c]))
 
-      // Calculate percentage-based left and width
       const leftPct = item.colStart * colWidthPct
       const widthPct = item.colSpan * colWidthPct
-
-      // Adjust for gaps: total gap space in the grid = (totalCols - 1) * GAP
-      // Each column's share of gaps: ((totalCols - 1) * GAP) / totalCols
-      // For an item spanning S columns starting at C:
-      //   left = C * colWidthPct% + C * GAP / totalCols ... simplified:
-      //   We use calc() for precision
-      const gapPerCol = GAP // gap between columns
+      const gapPerCol = GAP
       const totalGapSpace = (totalCols - 1) * gapPerCol
       const gapShare = totalGapSpace / totalCols
 
       const leftCalc = `calc(${leftPct}% + ${item.colStart * gapPerCol - item.colStart * gapShare}px)`
       const widthCalc = `calc(${widthPct}% - ${item.colSpan * gapShare - (item.colSpan - 1) * gapPerCol}px)`
 
-      posMap.set(item.id, {
-        top,
-        left: leftCalc,
-        width: widthCalc,
-      })
+      posMap.set(item.id, { top, left: leftCalc, width: widthCalc })
 
-      // Update column bottoms
       const newBottom = top + h + GAP
       for (const c of spannedCols) {
         colBottoms[c] = newBottom
       }
     }
 
-    return { posMap, containerHeight: Math.max(0, Math.max(...colBottoms) - GAP) }
+    return { posMap, containerHeight: Math.max(0, Math.max(...colBottoms) - GAP), colBottoms }
   }, [items, heights, totalCols])
+
+  // Compute ghost position
+  const ghostPosition = useMemo(() => {
+    if (!ghost) return null
+
+    const colWidthPct = 100 / totalCols
+    const gapPerCol = GAP
+    const totalGapSpace = (totalCols - 1) * gapPerCol
+    const gapShare = totalGapSpace / totalCols
+
+    const leftPct = ghost.colStart * colWidthPct
+    const widthPct = ghost.colSpan * colWidthPct
+    const leftCalc = `calc(${leftPct}% + ${ghost.colStart * gapPerCol - ghost.colStart * gapShare}px)`
+    const widthCalc = `calc(${widthPct}% - ${ghost.colSpan * gapShare - (ghost.colSpan - 1) * gapPerCol}px)`
+
+    // Position ghost near the target widget
+    let top = 0
+    if (ghost.targetId) {
+      const targetPos = positions.posMap.get(ghost.targetId)
+      const targetHeight = heights.get(ghost.targetId) ?? 0
+      if (targetPos) {
+        top = targetPos.top + targetHeight + GAP
+      }
+    }
+
+    return { top, left: leftCalc, width: widthCalc }
+  }, [ghost, totalCols, positions.posMap, heights])
 
   useEffect(() => {
     setContainerHeight(positions.containerHeight)
@@ -140,9 +154,7 @@ export function MasonryGrid({ items, totalCols, children, className }: MasonryGr
               top: pos?.top ?? 0,
               left: pos?.left ?? '0%',
               width: pos?.width ?? '100%',
-              // Only transition after initial measurement
               transition: hasHeight ? 'top 250ms ease, left 250ms ease, width 250ms ease' : 'none',
-              // Hide until first measurement to avoid flash
               opacity: hasHeight ? 1 : 0,
             }}
           >
@@ -150,6 +162,21 @@ export function MasonryGrid({ items, totalCols, children, className }: MasonryGr
           </div>
         )
       })}
+
+      {/* Ghost drop placeholder */}
+      {ghostPosition && (
+        <div
+          style={{
+            position: 'absolute',
+            top: ghostPosition.top,
+            left: ghostPosition.left,
+            width: ghostPosition.width,
+            height: 60,
+            transition: 'top 200ms ease, left 200ms ease, width 200ms ease, opacity 150ms ease',
+          }}
+          className="rounded-lg border-2 border-dashed border-primary/40 bg-primary/5 pointer-events-none z-10"
+        />
+      )}
     </div>
   )
 }

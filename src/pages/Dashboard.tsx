@@ -1,4 +1,4 @@
-import { ReactNode, useState, useRef, useCallback } from 'react'
+import { ReactNode, useState } from 'react'
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
 import { UpcomingActivities } from '@/components/dashboard/UpcomingActivities'
 import { JobsOverview } from '@/components/dashboard/JobsOverview'
@@ -17,15 +17,12 @@ import { WorldClockWidget } from '@/components/dashboard/WorldClockWidget'
 import {
   useDashboardLayout,
   DashboardCardId,
-  computePlacements,
-  computeTabletPlacements,
   WIDGET_REGISTRY,
   SIZE_TO_COLS,
   WidgetSize,
-  GridPlacement,
+  WidgetLayout,
 } from '@/hooks/useDashboardLayout'
 import { DraggableDashboardCard, DashboardCardOverlay } from '@/components/dashboard/DraggableDashboardCard'
-import type { DropPosition } from '@/components/dashboard/DraggableDashboardCard'
 import { MasonryGrid } from '@/components/dashboard/MasonryGrid'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Button } from '@/components/ui/button'
@@ -51,15 +48,19 @@ import {
   rectSortingStrategy,
 } from '@dnd-kit/sortable'
 
-// ── Placement to masonry items helper ──
+// ── Convert position-based widgets to masonry items ──
 
-function placementsToMasonryItems(placements: GridPlacement[]) {
-  return placements.map(p => {
-    const m = p.gridColumn.match(/(\d+)\s*\/\s*span\s+(\d+)/)
-    const colStart = m ? parseInt(m[1]) - 1 : 0
-    const colSpan = m ? parseInt(m[2]) : 2
-    return { id: p.id, colStart, colSpan }
-  })
+function widgetsToMasonryItems(widgets: WidgetLayout[]) {
+  return widgets.map(w => ({
+    id: w.id,
+    colStart: w.col,
+    colSpan: SIZE_TO_COLS[w.size] ?? 2,
+  }))
+}
+
+// Sort widgets by row then col for consistent rendering order
+function sortByPosition(widgets: WidgetLayout[]): WidgetLayout[] {
+  return [...widgets].sort((a, b) => a.row !== b.row ? a.row - b.row : a.col - b.col)
 }
 
 const MOBILE_ORDER: DashboardCardId[] = ['agenda', 'tasks', 'world-clock', 'app-review', 'onboarding', 'jobs']
@@ -75,7 +76,7 @@ export default function Dashboard() {
     hiddenCards,
     isCustomizing,
     saveDragStart,
-    swapWidgetOrder,
+    swapWidgetPositions,
     finalizeLayout,
     cancelDrag,
     hideCard,
@@ -86,7 +87,7 @@ export default function Dashboard() {
   } = useDashboardLayout()
   const isMobile = useIsMobile()
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [dropTarget, setDropTarget] = useState<{ id: string; position: DropPosition } | null>(null)
+  const [overId, setOverId] = useState<string | null>(null)
   const [addWidgetOpen, setAddWidgetOpen] = useState(false)
 
   const sensors = useSensors(
@@ -146,65 +147,65 @@ export default function Dashboard() {
   }
 
   // ── Desktop / Tablet ──
-  const renderableWidgets = visibleWidgets.filter(w => cardRegistry[w.id] !== null)
+  const renderableWidgets = sortByPosition(
+    visibleWidgets.filter(w => cardRegistry[w.id] !== null)
+  )
   const isTablet = typeof window !== 'undefined' && window.innerWidth < 1280
   const gridCols = isTablet ? 4 : 6
 
-  // Compute placements directly from widget order — single source of truth
-  const placements = isTablet
-    ? computeTabletPlacements(renderableWidgets)
-    : computePlacements(renderableWidgets)
+  // Derive masonry items directly from stored positions — no re-packing
+  const masonryItems = widgetsToMasonryItems(renderableWidgets)
 
-  const masonryItems = placementsToMasonryItems(placements)
+  // Ghost slot during drag
+  const ghostSlot = activeId && overId && activeId !== overId
+    ? (() => {
+        const activeWidget = renderableWidgets.find(w => w.id === activeId)
+        const overWidget = renderableWidgets.find(w => w.id === overId)
+        if (!activeWidget || !overWidget) return null
+        return {
+          colStart: overWidget.col,
+          colSpan: SIZE_TO_COLS[activeWidget.size] ?? 2,
+          row: overWidget.row,
+          targetId: overId,
+        }
+      })()
+    : null
 
   const handleDragStart = (event: DragStartEvent) => {
     saveDragStart()
     setActiveId(String(event.active.id))
-    setDropTarget(null)
+    setOverId(null)
   }
 
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event
     if (!over || active.id === over.id) {
-      setDropTarget(null)
+      setOverId(null)
       return
     }
-
-    // Determine if pointer is in top or bottom half of the target
-    const overRect = over.rect
-    if (!overRect) {
-      setDropTarget({ id: String(over.id), position: 'after' })
-      return
-    }
-    const pointerY = (event.activatorEvent as PointerEvent)?.clientY
-    const deltaY = event.delta?.y ?? 0
-    const currentY = pointerY != null ? pointerY + deltaY : overRect.top + overRect.height / 2
-    const midY = overRect.top + overRect.height / 2
-    const position: DropPosition = currentY < midY ? 'before' : 'after'
-    setDropTarget({ id: String(over.id), position })
+    setOverId(String(over.id))
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     if (over && active.id !== over.id) {
-      swapWidgetOrder(String(active.id), String(over.id))
+      // Direct position swap — only these two widgets move
+      swapWidgetPositions(String(active.id), String(over.id))
     }
     setActiveId(null)
-    setDropTarget(null)
+    setOverId(null)
     finalizeLayout()
   }
 
   const handleDragCancel = () => {
     setActiveId(null)
-    setDropTarget(null)
+    setOverId(null)
     cancelDrag()
   }
 
   const renderNormalGrid = () => (
     <MasonryGrid items={masonryItems} totalCols={gridCols}>
-      {placements
-        .filter(({ id }) => renderableWidgets.some(w => w.id === id))
-        .map(({ id }) => (
+      {renderableWidgets.map(({ id }) => (
         <div key={id} className="min-w-0">
           {renderCard(id)}
         </div>
@@ -222,20 +223,17 @@ export default function Dashboard() {
       onDragCancel={handleDragCancel}
     >
       <SortableContext items={renderableWidgets.map(w => w.id)} strategy={rectSortingStrategy}>
-        <MasonryGrid items={masonryItems} totalCols={gridCols}>
-          {placements
-            .filter(({ id }) => renderableWidgets.some(w => w.id === id))
-            .map(({ id }) => {
+        <MasonryGrid items={masonryItems} totalCols={gridCols} ghost={ghostSlot}>
+          {renderableWidgets.map(({ id }) => {
             const widget = renderableWidgets.find(w => w.id === id)
             if (!widget) return null
-            const widgetSize = widget.size
             return (
               <div key={id} className="min-w-0">
                 <DraggableDashboardCard
                   id={id}
                   isCustomizing
-                  currentSize={widgetSize}
-                  dropPosition={dropTarget?.id === id ? dropTarget.position : null}
+                  currentSize={widget.size}
+                  isDropTarget={overId === id && activeId !== id}
                   onHide={() => hideCard(id)}
                   onCycleSize={!WIDGET_REGISTRY[id]?.fixed ? () => cycleWidgetSize(id) : undefined}
                 >
