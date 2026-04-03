@@ -1,4 +1,5 @@
 import { ReactNode, useState } from 'react'
+import { CurrencyConverterWidget } from '@/components/dashboard/CurrencyConverterWidget'
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
 import { UpcomingActivities } from '@/components/dashboard/UpcomingActivities'
 import { JobsOverview } from '@/components/dashboard/JobsOverview'
