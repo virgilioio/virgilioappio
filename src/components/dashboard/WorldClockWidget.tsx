@@ -181,7 +181,7 @@ export function WorldClockWidget() {
 
   return (
     <>
-      <Card className="overflow-hidden bg-accent/40 border-accent/60">
+      <Card className="overflow-hidden bg-accent/40 border-accent/60 min-h-[240px] flex flex-col">
         <CardContent className="p-4">
           {/* Top row: City name + UTC badge */}
           <div className="flex items-center justify-between mb-2">
