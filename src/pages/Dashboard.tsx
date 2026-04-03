@@ -178,7 +178,9 @@ export default function Dashboard() {
 
   const renderNormalGrid = () => (
     <MasonryGrid items={masonryItems} totalCols={gridCols}>
-      {placements.map(({ id }) => (
+      {placements
+        .filter(({ id }) => renderableWidgets.some(w => w.id === id))
+        .map(({ id }) => (
         <div key={id} className="min-w-0">
           {renderCard(id)}
         </div>
@@ -197,9 +199,12 @@ export default function Dashboard() {
     >
       <SortableContext items={renderableWidgets.map(w => w.id)} strategy={rectSortingStrategy}>
         <MasonryGrid items={masonryItems} totalCols={gridCols}>
-          {placements.map(({ id }) => {
+          {placements
+            .filter(({ id }) => renderableWidgets.some(w => w.id === id))
+            .map(({ id }) => {
             const widget = renderableWidgets.find(w => w.id === id)
-            const widgetSize = widget?.size ?? 'small'
+            if (!widget) return null
+            const widgetSize = widget.size
             return (
               <div key={id} className="min-w-0">
                 <DraggableDashboardCard
@@ -207,7 +212,7 @@ export default function Dashboard() {
                   isCustomizing
                   currentSize={widgetSize}
                   onHide={() => hideCard(id)}
-                  onCycleSize={!WIDGET_REGISTRY[id].fixed ? () => cycleWidgetSize(id) : undefined}
+                  onCycleSize={!WIDGET_REGISTRY[id]?.fixed ? () => cycleWidgetSize(id) : undefined}
                 >
                   {renderCard(id)}
                 </DraggableDashboardCard>
