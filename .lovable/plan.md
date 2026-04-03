@@ -1,56 +1,54 @@
 
 
-# Add Currency Converter Dashboard Widget
+# Fix: Dashboard Goes Blank When Calendar Expands
 
-## Overview
-Create a minimalist currency converter widget (1-column, xsmall) with a citron noir background, styled similarly to the World Clock widget. Users can input an amount, select two currencies, and see the converted value. Designed for quick salary conversions.
+## Root Cause
 
-## Design (reference image inspired)
+The `ResizeObserver` callback in `MasonryGrid.tsx` (line 43) captures a **stale closure** over `heights`. When any widget resizes (e.g., calendar expanding), the observer fires and builds `new Map(heights)` — but `heights` is frozen at the value from when the effect was created (only re-runs when item IDs change). This means the updated map overwrites current heights with stale values, corrupting the layout and making widgets invisible.
 
-```text
-┌──────────────┐
-│ From     USD ▾│  ← label + currency selector
-│ 120,000      │  ← editable amount (large Poppins)
-│ ─── ⇅ ───── │  ← swap button + exchange rate
-│ To       EUR ▾│
-│ 110,400      │  ← converted amount (large Poppins)
-└──────────────┘
+## Fix
+
+Replace `new Map(heights)` with `setHeights(prev => ...)` — the functional updater pattern. This ensures the callback always works with the latest state, regardless of when the effect was created.
+
+### `src/components/dashboard/MasonryGrid.tsx` — Lines 40-55
+
+**Before:**
+```typescript
+const observer = new ResizeObserver((entries) => {
+  let changed = false
+  const newHeights = new Map(heights)        // ← stale closure
+  for (const entry of entries) { ... }
+  if (changed) setHeights(newHeights)
+})
 ```
 
-- Background: `bg-primary text-primary-foreground` (citron noir)
-- Typography: Poppins bold for amounts, similar scale to world clock
-- Currency selectors: compact dropdown using existing `CURRENCIES` constant
-- Swap button: circular icon to flip currencies
-- Exchange rate display: small text showing rate
-- Rates: fetched from the existing `currency_exchange_rates` Supabase table, with a localStorage fallback for offline/quick use
-- State persisted in `dashboard-currency-converter` localStorage key
+**After:**
+```typescript
+const observer = new ResizeObserver((entries) => {
+  const updates = new Map<string, number>()
+  for (const entry of entries) {
+    const el = entry.target as HTMLElement
+    const id = el.dataset.masonryId
+    if (!id) continue
+    const h = entry.borderBoxSize?.[0]?.blockSize ?? el.offsetHeight
+    updates.set(id, h)
+  }
+  if (updates.size > 0) {
+    setHeights(prev => {
+      const next = new Map(prev)             // ← always fresh
+      let changed = false
+      for (const [id, h] of updates) {
+        if (next.get(id) !== h) { next.set(id, h); changed = true }
+      }
+      return changed ? next : prev
+    })
+  }
+})
+```
 
-## Changes
-
-### 1. `src/components/dashboard/CurrencyConverterWidget.tsx` — New component
-- Compact 1-col card with citron noir background
-- "From" currency + editable amount input at top
-- Swap button + rate in middle
-- "To" currency + computed amount at bottom
-- Currency selection via small popover using `CURRENCIES` from `@/constants/currencies`
-- Fetches rates from Supabase `currency_exchange_rates` table, falls back to a simple fetch or cached rates
-- Persists selected currencies in localStorage
-
-### 2. `src/hooks/useDashboardLayout.ts` — Register widget
-- Add `'currency-converter'` to `DashboardCardId` union
-- Add registry entry: `allowedSizes: ['xsmall'], defaultSize: 'xsmall', fixed: true`
-- Add to `CARD_SIZE_RULES` and `ALL_CARD_IDS`
-
-### 3. `src/pages/Dashboard.tsx` — Wire up
-- Import `CurrencyConverterWidget`
-- Add case in `renderCard` switch
-- Add to `MOBILE_ORDER`
-
-## Files changed
+This is a single-file, ~15-line change. No other files affected.
 
 | File | Change |
 |------|--------|
-| `src/components/dashboard/CurrencyConverterWidget.tsx` | New: minimalist currency converter, citron noir, 1-col |
-| `src/hooks/useDashboardLayout.ts` | Register `currency-converter` as xsmall fixed widget |
-| `src/pages/Dashboard.tsx` | Wire up new widget in renderCard and mobile order |
+| `src/components/dashboard/MasonryGrid.tsx` | Fix stale closure in ResizeObserver callback using functional state updater |
 
