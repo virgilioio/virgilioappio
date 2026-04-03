@@ -55,8 +55,8 @@ export function DraggableDashboardCard({
 
   const meta = WIDGET_REGISTRY[id as DashboardCardId]
   const isResizable = meta && !meta.fixed && meta.allowedSizes.length > 1
+  const showDropHighlight = isOver && isCustomizing && !isDragging
 
-  // MasonryGrid handles absolute positioning; sortable only needs to track drag state
   const style: React.CSSProperties = {
     opacity: isDragging ? 0.3 : undefined,
     scale: isDragging ? '0.97' : undefined,
@@ -64,7 +64,10 @@ export function DraggableDashboardCard({
   }
 
   return (
-    <div ref={setNodeRef} style={style} className="relative group/card min-w-0">
+    <div ref={setNodeRef} style={style} className={cn(
+      "relative group/card min-w-0",
+      showDropHighlight && "ring-2 ring-primary/30 rounded-brand"
+    )}>
       {isCustomizing && (
         <>
           {/* Drag handle */}
