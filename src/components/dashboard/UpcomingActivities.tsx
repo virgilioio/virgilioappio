@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { GioEmptyState } from '@/components/ui/GioEmptyState'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
