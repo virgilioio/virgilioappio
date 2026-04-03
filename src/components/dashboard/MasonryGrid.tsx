@@ -65,23 +65,27 @@ export function MasonryGrid({ items, totalCols, children, className, ghost, isDr
     const colBottoms = new Array(totalCols).fill(0)
     const posMap = new Map<string, Position>()
     const colWidthPct = 100 / totalCols
+    const gapPerCol = GAP
+    const totalGapSpace = (totalCols - 1) * gapPerCol
+    const gapShare = totalGapSpace / totalCols
 
     for (const item of items) {
+      // Safety clamp: prevent out-of-bounds access
+      const safeColSpan = Math.min(item.colSpan, totalCols)
+      const safeColStart = Math.min(Math.max(0, item.colStart), totalCols - safeColSpan)
+
       const h = heights.get(item.id) ?? 0
       const spannedCols = []
-      for (let c = item.colStart; c < item.colStart + item.colSpan; c++) {
+      for (let c = safeColStart; c < safeColStart + safeColSpan; c++) {
         spannedCols.push(c)
       }
       const top = Math.max(...spannedCols.map(c => colBottoms[c]))
 
-      const leftPct = item.colStart * colWidthPct
-      const widthPct = item.colSpan * colWidthPct
-      const gapPerCol = GAP
-      const totalGapSpace = (totalCols - 1) * gapPerCol
-      const gapShare = totalGapSpace / totalCols
+      const leftPct = safeColStart * colWidthPct
+      const widthPct = safeColSpan * colWidthPct
 
-      const leftCalc = `calc(${leftPct}% + ${item.colStart * gapPerCol - item.colStart * gapShare}px)`
-      const widthCalc = `calc(${widthPct}% - ${item.colSpan * gapShare - (item.colSpan - 1) * gapPerCol}px)`
+      const leftCalc = `calc(${leftPct}% + ${safeColStart * gapPerCol - safeColStart * gapShare}px)`
+      const widthCalc = `calc(${widthPct}% - ${safeColSpan * gapShare - (safeColSpan - 1) * gapPerCol}px)`
 
       posMap.set(item.id, { top, left: leftCalc, width: widthCalc })
 
@@ -120,35 +124,54 @@ export function MasonryGrid({ items, totalCols, children, className, ghost, isDr
     return { top, left: leftCalc, width: widthCalc }
   }, [ghost, totalCols, positions.posMap, heights])
 
-  // Compute empty cells for droppable zones
+  // Compute empty cells for droppable zones — both beside and below widgets
   const emptyCells = useMemo(() => {
     if (!isDragActive) return []
 
-    // Build occupancy grid: for each row, which cols are taken
-    const maxRow = items.length > 0 ? Math.max(...items.map(i => {
-      // Find the logical row from colBottoms
-      const pos = positions.posMap.get(i.id)
-      return pos ? Math.floor(pos.top / 100) + 1 : 1
-    })) : 1
-
-    // Use colBottoms to find the bottom of content
-    const maxBottom = Math.max(0, ...positions.colBottoms)
-
-    // For each column, find if there's empty space at the bottom
     const cells: { col: number; row: number; top: number }[] = []
-    for (let col = 0; col < totalCols; col++) {
-      const colBottom = positions.colBottoms[col]
-      // If this column is shorter than the tallest, there's empty space
-      if (colBottom < maxBottom || maxBottom === 0) {
-        cells.push({ col, row: 999, top: colBottom === 0 ? 0 : colBottom })
+
+    // 1. Collect all unique visual bands (unique top values from positioned items)
+    const bands: { top: number; occupiedCols: Set<number> }[] = []
+    const topToIndex = new Map<number, number>()
+
+    for (const item of items) {
+      const pos = positions.posMap.get(item.id)
+      if (!pos) continue
+      const top = pos.top
+      const safeColSpan = Math.min(item.colSpan, totalCols)
+      const safeColStart = Math.min(Math.max(0, item.colStart), totalCols - safeColSpan)
+
+      if (!topToIndex.has(top)) {
+        topToIndex.set(top, bands.length)
+        bands.push({ top, occupiedCols: new Set() })
+      }
+      const bandIdx = topToIndex.get(top)!
+      for (let c = safeColStart; c < safeColStart + safeColSpan; c++) {
+        bands[bandIdx].occupiedCols.add(c)
       }
     }
 
-    // Also add a full row at the very bottom for any column
+    // 2. For each band, find unoccupied columns → droppable beside existing widgets
+    bands.forEach((band, bandIdx) => {
+      for (let col = 0; col < totalCols; col++) {
+        if (!band.occupiedCols.has(col)) {
+          cells.push({ col, row: bandIdx + 1, top: band.top })
+        }
+      }
+    })
+
+    // 3. Bottom-of-column cells for appending below all content
+    const maxBottom = Math.max(0, ...positions.colBottoms)
+    const nextRow = bands.length + 1
     for (let col = 0; col < totalCols; col++) {
-      const bottom = positions.colBottoms[col]
-      if (bottom >= maxBottom && maxBottom > 0) {
-        cells.push({ col, row: 1000, top: maxBottom + GAP })
+      const colBottom = positions.colBottoms[col]
+      // Add a cell at the bottom of each column
+      if (colBottom < maxBottom || maxBottom === 0) {
+        // Column is shorter — add cell at its bottom
+        cells.push({ col, row: nextRow, top: colBottom === 0 ? 0 : colBottom })
+      } else {
+        // Column is at max — add cell below everything
+        cells.push({ col, row: nextRow + 1, top: maxBottom + GAP })
       }
     }
 

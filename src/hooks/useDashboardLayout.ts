@@ -349,8 +349,14 @@ export function useDashboardLayout() {
       const nextIdx = (currentIdx + 1) % meta.allowedSizes.length
       const newSize = meta.allowedSizes[nextIdx]
 
-      // Update size, keep position — re-pack only this widget's row if needed
-      const next = prev.map(w => w.id === cardId ? { ...w, size: newSize } : w)
+      // Clamp col so widget doesn't overflow grid
+      const newSpan = SIZE_TO_COLS[newSize]
+      const maxCol = TOTAL_COLS - newSpan
+      const next = prev.map(w => {
+        if (w.id !== cardId) return w
+        const safeCol = Math.min(w.col, Math.max(0, maxCol))
+        return { ...w, size: newSize, col: safeCol }
+      })
 
       setHiddenCards(h => {
         persist(next, h)
@@ -365,7 +371,13 @@ export function useDashboardLayout() {
     if (!meta.allowedSizes.includes(size)) return
 
     setWidgets(prev => {
-      const next = prev.map(w => w.id === cardId ? { ...w, size } : w)
+      const newSpan = SIZE_TO_COLS[size]
+      const maxCol = TOTAL_COLS - newSpan
+      const next = prev.map(w => {
+        if (w.id !== cardId) return w
+        const safeCol = Math.min(w.col, Math.max(0, maxCol))
+        return { ...w, size, col: safeCol }
+      })
       setHiddenCards(h => {
         persist(next, h)
         return h
@@ -390,7 +402,11 @@ export function useDashboardLayout() {
   /** Move a widget to an exact col/row — nothing else moves */
   const moveWidgetTo = useCallback((widgetId: string, col: number, row: number) => {
     setWidgets(prev => {
-      const next = prev.map(w => w.id === widgetId ? { ...w, col, row } : w)
+      const widget = prev.find(w => w.id === widgetId)
+      if (!widget) return prev
+      const span = SIZE_TO_COLS[widget.size] ?? 1
+      const safeCol = Math.min(Math.max(0, col), TOTAL_COLS - span)
+      const next = prev.map(w => w.id === widgetId ? { ...w, col: safeCol, row } : w)
       setHiddenCards(h => {
         persist(next, h)
         return h
