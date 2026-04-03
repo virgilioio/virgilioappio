@@ -39,19 +39,24 @@ export function MasonryGrid({ items, totalCols, children, className, ghost, isDr
 
   useEffect(() => {
     const observer = new ResizeObserver((entries) => {
-      let changed = false
-      const newHeights = new Map(heights)
+      const updates = new Map<string, number>()
       for (const entry of entries) {
         const el = entry.target as HTMLElement
         const id = el.dataset.masonryId
         if (!id) continue
         const h = entry.borderBoxSize?.[0]?.blockSize ?? el.offsetHeight
-        if (newHeights.get(id) !== h) {
-          newHeights.set(id, h)
-          changed = true
-        }
+        updates.set(id, h)
       }
-      if (changed) setHeights(newHeights)
+      if (updates.size > 0) {
+        setHeights(prev => {
+          const next = new Map(prev)
+          let changed = false
+          for (const [id, h] of updates) {
+            if (next.get(id) !== h) { next.set(id, h); changed = true }
+          }
+          return changed ? next : prev
+        })
+      }
     })
 
     const refs = itemRefs.current
