@@ -45,9 +45,8 @@ export function DraggableDashboardCard({
     attributes,
     listeners,
     setNodeRef,
-    transform,
-    transition,
     isDragging,
+    isOver,
   } = useSortable({
     id,
     disabled: !isCustomizing,
