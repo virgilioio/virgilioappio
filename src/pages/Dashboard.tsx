@@ -231,7 +231,7 @@ export default function Dashboard() {
       onDragCancel={handleDragCancel}
     >
       <SortableContext items={renderableWidgets.map(w => w.id)} strategy={rectSortingStrategy}>
-        <MasonryGrid items={masonryItems} totalCols={gridCols} ghost={ghostSlot}>
+        <MasonryGrid items={masonryItems} totalCols={gridCols} ghost={ghostSlot} isDragActive={!!activeId}>
           {renderableWidgets.map(({ id }) => {
             const widget = renderableWidgets.find(w => w.id === id)
             if (!widget) return null
