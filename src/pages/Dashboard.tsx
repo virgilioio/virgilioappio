@@ -42,6 +42,7 @@ import {
   useSensors,
   DragEndEvent,
   DragStartEvent,
+  DragOverEvent,
   DragOverlay,
 } from '@dnd-kit/core'
 import {
@@ -54,45 +55,9 @@ import {
 function placementsToMasonryItems(placements: GridPlacement[]) {
   return placements.map(p => {
     const m = p.gridColumn.match(/(\d+)\s*\/\s*span\s+(\d+)/)
-    const colStart = m ? parseInt(m[1]) - 1 : 0 // convert 1-based to 0-based
+    const colStart = m ? parseInt(m[1]) - 1 : 0
     const colSpan = m ? parseInt(m[2]) : 2
     return { id: p.id, colStart, colSpan }
-  })
-}
-
-function swapPlacements(
-  placements: GridPlacement[],
-  activeId: string,
-  overId: string,
-  totalCols: number,
-): GridPlacement[] {
-  const a = placements.find(p => p.id === activeId)
-  const b = placements.find(p => p.id === overId)
-  if (!a || !b) return placements
-
-  const parseCol = (gc: string) => {
-    const m = gc.match(/(\d+)\s*\/\s*span\s+(\d+)/)
-    return m ? parseInt(m[1]) : 1
-  }
-
-  const aCol = parseCol(a.gridColumn)
-  const bCol = parseCol(b.gridColumn)
-
-  const aNewCol = Math.min(bCol, totalCols - a.colSpan + 1)
-  const bNewCol = Math.min(aCol, totalCols - b.colSpan + 1)
-
-  return placements.map(p => {
-    if (p.id === activeId) return {
-      ...p,
-      gridColumn: `${aNewCol} / span ${a.colSpan}`,
-      gridRow: b.gridRow,
-    }
-    if (p.id === overId) return {
-      ...p,
-      gridColumn: `${bNewCol} / span ${b.colSpan}`,
-      gridRow: a.gridRow,
-    }
-    return p
   })
 }
 
@@ -121,8 +86,6 @@ export default function Dashboard() {
   const isMobile = useIsMobile()
   const [activeId, setActiveId] = useState<string | null>(null)
   const [addWidgetOpen, setAddWidgetOpen] = useState(false)
-  const [cachedPlacements, setCachedPlacements] = useState<GridPlacement[]>([])
-  const [lastStructuralKey, setLastStructuralKey] = useState('')
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -136,7 +99,6 @@ export default function Dashboard() {
   const hasJobContent = permissions.canViewJobs || permissions.canCreateJobs
   const hasSeenValue = (sourcingProjects?.length ?? 0) > 0
 
-  // Size-aware card renderer: returns ReactNode for a given widget
   const widgetSizeMap = Object.fromEntries(visibleWidgets.map(w => [w.id, w.size])) as Record<DashboardCardId, WidgetSize>
 
   const renderCard = (id: DashboardCardId): ReactNode => {
@@ -152,7 +114,6 @@ export default function Dashboard() {
     }
   }
 
-  // For null-checks (visibility filtering), we need a simple registry
   const cardRegistry: Record<DashboardCardId, ReactNode> = {
     'agenda': <UpcomingActivities />,
     'tasks': <TasksOverview />,
@@ -162,7 +123,7 @@ export default function Dashboard() {
     'world-clock': <WorldClockWidget />,
   }
 
-  // ── Mobile: flat stacked list, no DnD ──
+  // ── Mobile ──
   if (isMobile) {
     const mobileCards = MOBILE_ORDER.filter(id => cardRegistry[id] !== null)
     return (
@@ -183,44 +144,30 @@ export default function Dashboard() {
   }
 
   // ── Desktop / Tablet ──
-
-  // Filter to only widgets with non-null content
   const renderableWidgets = visibleWidgets.filter(w => cardRegistry[w.id] !== null)
-
   const isTablet = typeof window !== 'undefined' && window.innerWidth < 1280
   const gridCols = isTablet ? 4 : 6
 
-  // Structural key: changes on add/remove/resize but NOT on reorder
-  const structuralKey = renderableWidgets.map(w => `${w.id}:${w.size}`).sort().join(',')
+  // Compute placements directly from widget order — single source of truth
+  const placements = isTablet
+    ? computeTabletPlacements(renderableWidgets)
+    : computePlacements(renderableWidgets)
 
-  // Recompute placements only when structure changes (size, visibility), not order swaps
-  if (structuralKey !== lastStructuralKey) {
-    const newPlacements = isTablet
-      ? computeTabletPlacements(renderableWidgets)
-      : computePlacements(renderableWidgets)
-    setCachedPlacements(newPlacements)
-    setLastStructuralKey(structuralKey)
-  }
+  const masonryItems = placementsToMasonryItems(placements)
 
   const handleDragStart = (event: DragStartEvent) => {
     saveDragStart()
     setActiveId(String(event.active.id))
   }
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event
-    setActiveId(null)
-
-    if (!over || active.id === over.id) {
-      cancelDrag()
-      return
-    }
-
-    // Swap placements directly — no full repack
-    setCachedPlacements(prev => swapPlacements(prev, String(active.id), String(over.id), gridCols))
-
-    // Update order values in the hook for persistence
+    if (!over || active.id === over.id) return
     reorderWidgets(String(active.id), String(over.id))
+  }
+
+  const handleDragEnd = (_event: DragEndEvent) => {
+    setActiveId(null)
     finalizeLayout()
   }
 
@@ -229,11 +176,9 @@ export default function Dashboard() {
     cancelDrag()
   }
 
-  const masonryItems = placementsToMasonryItems(cachedPlacements)
-
   const renderNormalGrid = () => (
     <MasonryGrid items={masonryItems} totalCols={gridCols}>
-      {cachedPlacements.map(({ id }) => (
+      {placements.map(({ id }) => (
         <div key={id} className="min-w-0">
           {renderCard(id)}
         </div>
@@ -246,19 +191,21 @@ export default function Dashboard() {
       sensors={sensors}
       collisionDetection={closestCorners}
       onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
       <SortableContext items={renderableWidgets.map(w => w.id)} strategy={rectSortingStrategy}>
         <MasonryGrid items={masonryItems} totalCols={gridCols}>
-          {cachedPlacements.map(({ id }) => {
-            const widget = renderableWidgets.find(w => w.id === id)!
+          {placements.map(({ id }) => {
+            const widget = renderableWidgets.find(w => w.id === id)
+            const widgetSize = widget?.size ?? 'small'
             return (
               <div key={id} className="min-w-0">
                 <DraggableDashboardCard
                   id={id}
                   isCustomizing
-                  currentSize={widget.size}
+                  currentSize={widgetSize}
                   onHide={() => hideCard(id)}
                   onCycleSize={!WIDGET_REGISTRY[id].fixed ? () => cycleWidgetSize(id) : undefined}
                 >
