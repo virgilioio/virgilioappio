@@ -1,78 +1,62 @@
 
 
-# Enable Free-Placement: Drop Widgets Into Empty Grid Cells
+# Fix: Widget Disappearance, World Clock, and Empty-Cell Placement
 
-## The Problem
+## Root Causes Found
 
-You're absolutely right. Currently, the only way to move a widget is to **swap it with another widget** (drop ON a card). There's no mechanism to drop a widget into empty grid space — like moving the World Clock from column 0 to column 3 on the same row when columns 3-5 are empty.
+### Bug 1: Everything disappears on resize
+`cycleWidgetSize` changes a widget's size without clamping its column. If "Jobs Overview" sits at col=3 and cycles from medium (3 cols) to large (4 cols), it spans cols 3-6. But colBottoms only has indices 0-5 (6-col grid). `colBottoms[6]` is `undefined` → `Math.max(undefined)` = `NaN` → **every subsequent widget gets NaN position** → all invisible. One overflow corrupts the entire masonry engine.
 
-The DnD system uses `closestCorners` collision detection, which only targets other sortable items. Empty cells are invisible to it.
+### Bug 2: World Clock missing
+Same mechanism — if a prior resize corrupted the layout, or if the clock was moved to an empty cell with row=999 (the sentinel value from EmptyGridCell), it sorts to the very end. If colBottoms are already NaN from a prior overflow, the clock renders at NaN top → invisible.
 
-## The Fix
+### Bug 3: Can't place in empty column spaces
+The `emptyCells` algorithm only creates droppable zones at column bottoms (where one column is shorter than the tallest) and at the very bottom row. It never creates drop zones **beside** existing widgets in the same visual band. So if the world clock is at col=4 and col=5 is empty at the same height, there's no droppable there.
 
-Add **invisible droppable cells** to the grid that represent empty space. When you drag a widget over an empty cell, it highlights as a drop target. On drop, the widget moves to that cell's `col`/`row` — no other widget moves at all.
+## Plan
 
-### How it works
+### 1. `src/hooks/useDashboardLayout.ts` — Clamp col on resize
 
-```text
-Before drag:
-[Tasks 2col] [Agenda 2col] [Clock 1col] [ ][ ]
-                                          ^  ^
-                                      empty cells (cols 5,6 — not droppable today)
-
-After fix:
-[Tasks 2col] [Agenda 2col] [Clock 1col] [⬜][⬜]
-                                          ^   ^
-                                    droppable empty cells with ghost preview
-```
-
-When you drag Clock over column 4, the ghost appears there. Drop it — Clock moves to col 4. Tasks and Agenda don't move.
-
-### Implementation
-
-**1. `src/pages/Dashboard.tsx`** — Generate empty cell droppables
-
-During customize mode, compute which grid cells are unoccupied by visible widgets. Render invisible `useDroppable` zones for each empty cell cluster. These participate in DnD collision detection alongside the widget sortables.
-
-On `handleDragEnd`:
-- If dropped on a **widget** → swap positions (existing behavior)
-- If dropped on an **empty cell** → set widget's `col`/`row` to that cell. No swap needed. Nothing else moves.
-
-**2. `src/hooks/useDashboardLayout.ts`** — Add `moveWidgetTo` function
-
-A new helper that directly sets a widget's `col`/`row` without touching any other widget:
+In `cycleWidgetSize`, after computing `newSize`, clamp `col` so `col + SIZE_TO_COLS[newSize] <= TOTAL_COLS`:
 
 ```typescript
-const moveWidgetTo = useCallback((widgetId: string, col: number, row: number) => {
-  setWidgets(prev => {
-    const next = prev.map(w => w.id === widgetId ? { ...w, col, row } : w)
-    setHiddenCards(h => { persist(next, h); return h })
-    return next
-  })
-}, [persist])
+const newSpan = SIZE_TO_COLS[newSize]
+const maxCol = TOTAL_COLS - newSpan
+const safeCol = Math.min(w.col, maxCol)
+return { ...w, size: newSize, col: safeCol }
 ```
 
-**3. `src/components/dashboard/MasonryGrid.tsx`** — Expose grid geometry
+Same guard in `setWidgetSize`.
 
-Add a callback or ref that exposes the container rect and column width calculations, so Dashboard.tsx can map pointer coordinates to grid cells during drag. Alternatively, compute empty cells from the items array and totalCols.
+### 2. `src/components/dashboard/MasonryGrid.tsx` — Safety clamp at render + better empty cells
 
-**4. `src/components/dashboard/EmptyGridCell.tsx`** — New component
+**Clamp items at render time** (defensive, handles any bad stored data):
+```typescript
+const safeColStart = Math.min(item.colStart, totalCols - item.colSpan)
+const safeColSpan = Math.min(item.colSpan, totalCols - safeColStart)
+```
 
-A small droppable zone using `@dnd-kit/core`'s `useDroppable`. Renders as invisible normally, shows a dashed-border ghost when a widget is dragged over it. Each cell knows its `col`/`row` identity.
+**Better empty cell computation**: Instead of only column-bottom gaps, scan each occupied visual band (grouped by `top` values) and find which columns are free at that height. This creates droppable zones beside existing widgets, not just below them.
 
-### What changes for the user
+Algorithm:
+- Collect all unique `top` values from positioned items
+- For each top value, mark which columns are occupied (by items whose top matches and whose colStart..colStart+colSpan covers those cols)
+- For each unoccupied column at that top value, emit an empty cell droppable
+- Also keep the existing bottom-of-column cells for appending below
 
-- Drag a 1-col widget to an empty column → it lands there, nothing else moves
-- Drag a 2-col widget to an empty 2-col gap → same
-- If a widget doesn't fit in the empty space (too wide), the cell doesn't highlight
-- Swapping with existing widgets still works as before
+### 3. `src/components/dashboard/EmptyGridCell.tsx` — Use meaningful row values
+
+Pass the actual visual band index (derived from top position) instead of sentinel values 999/1000, so `moveWidgetTo` stores a sensible row that sorts correctly.
+
+### 4. `src/pages/Dashboard.tsx` — No changes needed
+
+The `handleDragEnd` logic for empty cells and swaps is correct. The fixes are upstream.
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/hooks/useDashboardLayout.ts` | Add `moveWidgetTo(id, col, row)` — direct position set, no swap |
-| `src/components/dashboard/EmptyGridCell.tsx` | New: droppable empty cell with ghost preview |
-| `src/components/dashboard/MasonryGrid.tsx` | Render empty cell droppables in unoccupied grid positions during customize mode |
-| `src/pages/Dashboard.tsx` | Handle drops on empty cells vs. widgets, compute occupied grid map |
+| `src/hooks/useDashboardLayout.ts` | Clamp col on resize to prevent overflow; clamp in `moveWidgetTo` too |
+| `src/components/dashboard/MasonryGrid.tsx` | Safety-clamp colStart/colSpan; compute same-band empty cells beside widgets |
+| `src/components/dashboard/EmptyGridCell.tsx` | No structural change, just receives better row values from MasonryGrid |
 
