@@ -1,57 +1,51 @@
 
 
-# Fix Dashboard Layout: Eliminate Vertical Gaps + Stable DnD
+# Fix Dashboard DnD: Drop Target Visualization + Bidirectional Placement
 
-## Root Cause
+## Problems
 
-**The vertical gaps and cascading movement are two symptoms of the same architectural problem: CSS Grid's row model.**
+### 1. Can't place widgets above others
+The `swapPlacements` function swaps `gridRow`/`gridColumn` values in cached placements, but `MasonryGrid` completely ignores those values. It re-derives positions from the `items` array order and `colStart`/`colSpan`. So the swap has no real effect on visual ordering — items always pack in their original array order.
 
-CSS Grid forces all items in the same row to share the same row height. When row 1 has a tall 4-col "Jobs Overview" widget and a short 2-col "Tasks" widget, the next row starts *below the tall widget* — creating a massive visual gap beneath "Tasks" even though nothing is below it. `items-start` only aligns items to the top of their row cell; it doesn't collapse the row height.
+**Fix**: Instead of swapping cached placement coordinates, swap the actual widget order values and let MasonryGrid repack from the new order. The order swap already happens via `reorderWidgets`, but `cachedPlacements` overrides it. Remove the `swapPlacements` abstraction and rebuild `cachedPlacements` from the reordered widgets immediately after a swap.
 
-This is not a bug in our code — **CSS Grid fundamentally cannot do masonry/tight-packing layout**. No amount of tweaking `gridRow`, `items-start`, or swap logic will fix this.
+### 2. No drop zone visualization
+There is zero visual feedback when dragging over a target widget. The `DraggableDashboardCard` uses `useSortable` which exposes `isOver`, but it's never used. The user gets no indication of where the widget will land.
 
-## Solution: Switch to Absolute Positioning with Height-Aware Packing
+**Fix**: Use `isOver` from `useSortable` to show a subtle highlight ring on the target card during hover. Keep it restrained — a soft border glow, not a full drop zone expansion.
 
-Replace CSS Grid with a container that uses `position: relative` and positions each widget with `position: absolute`, computing `top` and `left` values based on **measured widget heights**.
+### 3. Real-time reorder during drag (onDragOver)
+Currently reordering only happens on `onDragEnd`. Adding `onDragOver` enables live preview of the swap as the user drags, giving immediate spatial feedback.
 
-### How it works
+## Implementation
 
-1. **Measure phase**: Each widget renders normally inside a wrapper. A `ResizeObserver` reports each widget's actual pixel height.
-2. **Pack phase**: A column-height-tracking algorithm places widgets into the grid:
-   - Maintain an array of `columnBottoms[6]` tracking the current bottom edge (in px) of each column
-   - For each widget (in order), find the position where it fits (enough contiguous columns available) with the **lowest top edge** (i.e., `Math.max(...columnBottoms[col..col+span])`)
-   - Place the widget at that `top` value, at the correct `left` (column index × column width)
-   - Update `columnBottoms` for the occupied columns
-3. **Container height**: Set to `Math.max(...columnBottoms)` so the parent sizes correctly
+### `src/components/dashboard/DraggableDashboardCard.tsx`
+- Destructure `isOver` from `useSortable`
+- When `isOver && isCustomizing`, add a subtle ring highlight (`ring-2 ring-primary/30`) to the card wrapper
+- This gives immediate visual feedback for the drop target
 
-This gives true masonry-style packing: a short widget in column 5 won't leave a gap just because column 1-4 has a tall widget.
+### `src/pages/Dashboard.tsx`
+- Remove `swapPlacements` utility entirely
+- Remove `cachedPlacements` and `lastStructuralKey` state — they add complexity and desync from actual widget order
+- Compute placements directly from `renderableWidgets` on every render (the masonry computation is cheap)
+- Add `onDragOver` handler: when active widget hovers over a different widget, call `reorderWidgets` to swap their order values live — MasonryGrid will repack and show the preview immediately
+- On `onDragEnd`: call `finalizeLayout()` to persist
+- On `onDragCancel`: call `cancelDrag()` to restore pre-drag order
 
-### DnD stability
+### `src/components/dashboard/MasonryGrid.tsx`
+- No changes needed — it already handles position transitions smoothly
 
-The swap model stays: dragging widget A onto widget B swaps their `order` values only. The packing algorithm re-runs, but because only two order values changed, the result differs in exactly those two positions. Other widgets stay put because their order didn't change and the height-aware packer places them in the same columns.
+## Result
+- Dragging over a card highlights it subtly
+- The layout previews the swap in real-time during drag
+- Dropping finalizes the position
+- Widgets can be placed above or below others because the order array is the source of truth
+- No cached placement desync issues
 
-### New component: `MasonryGrid`
-
-A dedicated component that:
-- Renders children in a `position: relative` container
-- Wraps each child in a measured `position: absolute` div
-- Uses `ResizeObserver` to track heights
-- Runs the packing algorithm on height changes
-- Animates position changes with CSS transitions (`transform` + `transition: 200ms ease`)
-
-### Changes
+## Files changed
 
 | File | Change |
 |------|--------|
-| `src/components/dashboard/MasonryGrid.tsx` | **New** — height-aware absolute-positioning layout engine with ResizeObserver |
-| `src/hooks/useDashboardLayout.ts` | Update `computePlacements` to return column index + span (no `gridRow`), add a pixel-based placement type |
-| `src/pages/Dashboard.tsx` | Replace CSS Grid `div` with `MasonryGrid` component, keep all existing DnD/customize logic |
-| `src/components/dashboard/DraggableDashboardCard.tsx` | Remove `CSS.Translate` transform (MasonryGrid handles positioning) |
-
-### What stays the same
-
-- Widget registry, sizes, persistence, hide/show, resize cycling
-- DnD sensors, collision detection, swap logic
-- Visual styling of cards, overlay, customize mode controls
-- Mobile flat layout (no change)
+| `src/components/dashboard/DraggableDashboardCard.tsx` | Add `isOver` highlight ring for drop target visualization |
+| `src/pages/Dashboard.tsx` | Remove `swapPlacements`/caching, add `onDragOver` for live reorder preview, compute placements directly |
 
