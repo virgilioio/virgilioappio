@@ -161,21 +161,47 @@ export default function Dashboard() {
   const handleDragStart = (event: DragStartEvent) => {
     saveDragStart()
     setActiveId(String(event.active.id))
+    setDropTarget(null)
   }
 
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event
-    if (!over || active.id === over.id) return
-    reorderWidgets(String(active.id), String(over.id))
+    if (!over || active.id === over.id) {
+      setDropTarget(null)
+      return
+    }
+
+    // Determine if pointer is in top or bottom half of the target
+    const overRect = over.rect
+    if (!overRect) {
+      setDropTarget({ id: String(over.id), position: 'after' })
+      return
+    }
+    const pointerY = (event.activatorEvent as PointerEvent)?.clientY
+    const deltaY = event.delta?.y ?? 0
+    const currentY = pointerY != null ? pointerY + deltaY : overRect.top + overRect.height / 2
+    const midY = overRect.top + overRect.height / 2
+    const position: DropPosition = currentY < midY ? 'before' : 'after'
+    setDropTarget({ id: String(over.id), position })
   }
 
-  const handleDragEnd = (_event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id && dropTarget) {
+      if (dropTarget.position === 'before') {
+        moveWidgetBefore(String(active.id), String(over.id))
+      } else {
+        moveWidgetAfter(String(active.id), String(over.id))
+      }
+    }
     setActiveId(null)
+    setDropTarget(null)
     finalizeLayout()
   }
 
   const handleDragCancel = () => {
     setActiveId(null)
+    setDropTarget(null)
     cancelDrag()
   }
 
