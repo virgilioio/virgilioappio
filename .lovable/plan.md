@@ -1,83 +1,78 @@
 
 
-# Assessment: Current State vs. Utopian Dashboard
+# Enable Free-Placement: Drop Widgets Into Empty Grid Cells
 
-## Where you are now
+## The Problem
 
-**Working well (genuinely premium):**
-- Customize mode entry/exit — intentional, mature
-- Drag overlay — lift, shadow, rotation — polished
-- Drop position indicator (before/after line) — present
-- Masonry packing — no vertical gaps
-- Persistence, resize, hide/show — solid
-- World Clock, metric cards, visual consistency — excellent
+You're absolutely right. Currently, the only way to move a widget is to **swap it with another widget** (drop ON a card). There's no mechanism to drop a widget into empty grid space — like moving the World Clock from column 0 to column 3 on the same row when columns 3-5 are empty.
 
-**The remaining gap — and why swaps can't fix it:**
+The DnD system uses `closestCorners` collision detection, which only targets other sortable items. Empty cells are invisible to it.
 
-The current system stores widgets as an **ordered list** and uses `computePlacements` to **re-pack from scratch** every time. Even with a "swap" (only 2 widgets change order), the greedy packer re-derives ALL positions from the new sequence. Widget C at order 3 may land in a completely different grid cell because widgets A and B (which swapped around it) now occupy different slots earlier in the packing sequence.
+## The Fix
 
-**This is architectural.** No amount of swap vs. splice vs. insert logic can fix it, because the packer is stateless — it doesn't know where widgets *were*, only what order they're in.
+Add **invisible droppable cells** to the grid that represent empty space. When you drag a widget over an empty cell, it highlights as a drop target. On drop, the widget moves to that cell's `col`/`row` — no other widget moves at all.
 
-## What the utopian version requires
-
-Store **explicit grid positions** (`col`, `row`) per widget — not just an order number. When a user drags widget X below widget Y:
-- Widget X gets placed at the target cell
-- Widget Y (if displaced) moves to X's old position
-- Everything else stays exactly where it is
-- No re-packing. No sequence-based derivation.
-
-## Plan
-
-### 1. New layout data model in `useDashboardLayout.ts`
-
-Replace `order`-based `WidgetLayout` with position-based:
+### How it works
 
 ```text
-Current:  { id, size, order: number }
-Proposed: { id, size, col: number, row: number }
+Before drag:
+[Tasks 2col] [Agenda 2col] [Clock 1col] [ ][ ]
+                                          ^  ^
+                                      empty cells (cols 5,6 — not droppable today)
+
+After fix:
+[Tasks 2col] [Agenda 2col] [Clock 1col] [⬜][⬜]
+                                          ^   ^
+                                    droppable empty cells with ghost preview
 ```
 
-`computePlacements` becomes the **initial layout generator** only (used for first load / reset). After that, positions are stored and mutated directly.
+When you drag Clock over column 4, the ghost appears there. Drop it — Clock moves to col 4. Tasks and Agenda don't move.
 
-### 2. New placement logic
+### Implementation
 
-- **On load**: If stored layout has `col`/`row` per widget, use them directly. If migrating from old format, run `computePlacements` once to generate initial positions, then store them.
-- **On drag-drop**: Set dragged widget's `col`/`row` to target position. If another widget occupies that cell, swap their positions (direct coordinate swap, not order swap). No re-packing.
-- **On resize**: Only re-flow the resized widget and anything it now overlaps. Not the whole grid.
-- **On show/add**: Place new widget in first available gap (use packer logic for this one case only).
+**1. `src/pages/Dashboard.tsx`** — Generate empty cell droppables
 
-### 3. MasonryGrid adaptation
+During customize mode, compute which grid cells are unoccupied by visible widgets. Render invisible `useDroppable` zones for each empty cell cluster. These participate in DnD collision detection alongside the widget sortables.
 
-`MasonryGrid` already accepts `items` with `colStart`/`colSpan`. Currently these come from `computePlacements`. Instead, derive them directly from stored `col`/`colSpan` values. The masonry engine's height-measurement and absolute-positioning stay unchanged — only the input source changes.
+On `handleDragEnd`:
+- If dropped on a **widget** → swap positions (existing behavior)
+- If dropped on an **empty cell** → set widget's `col`/`row` to that cell. No swap needed. Nothing else moves.
 
-### 4. Drop target detection
+**2. `src/hooks/useDashboardLayout.ts`** — Add `moveWidgetTo` function
 
-During drag, use pointer position relative to the grid to compute the target `col`/`row` cell. Show a "ghost placeholder" at that exact cell position (a translucent rectangle matching the dragged widget's size). This replaces the current before/after line with precise spatial targeting.
+A new helper that directly sets a widget's `col`/`row` without touching any other widget:
 
-### 5. Collision resolution
+```typescript
+const moveWidgetTo = useCallback((widgetId: string, col: number, row: number) => {
+  setWidgets(prev => {
+    const next = prev.map(w => w.id === widgetId ? { ...w, col, row } : w)
+    setHiddenCards(h => { persist(next, h); return h })
+    return next
+  })
+}, [persist])
+```
 
-When dropping, if the target cells overlap an existing widget:
-- **Simple case** (same size): swap positions directly
-- **Different sizes**: displaced widget moves to the dragged widget's old position (if it fits) or to the nearest available gap
+**3. `src/components/dashboard/MasonryGrid.tsx`** — Expose grid geometry
+
+Add a callback or ref that exposes the container rect and column width calculations, so Dashboard.tsx can map pointer coordinates to grid cells during drag. Alternatively, compute empty cells from the items array and totalCols.
+
+**4. `src/components/dashboard/EmptyGridCell.tsx`** — New component
+
+A small droppable zone using `@dnd-kit/core`'s `useDroppable`. Renders as invisible normally, shows a dashed-border ghost when a widget is dragged over it. Each cell knows its `col`/`row` identity.
+
+### What changes for the user
+
+- Drag a 1-col widget to an empty column → it lands there, nothing else moves
+- Drag a 2-col widget to an empty 2-col gap → same
+- If a widget doesn't fit in the empty space (too wide), the cell doesn't highlight
+- Swapping with existing widgets still works as before
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/hooks/useDashboardLayout.ts` | New `col`/`row` position model, migration from order-based, direct position swap on drop, storage format v4 |
-| `src/pages/Dashboard.tsx` | Derive masonry items from stored positions instead of `computePlacements`, ghost placeholder during drag, grid-cell-based drop targeting |
-| `src/components/dashboard/MasonryGrid.tsx` | Add optional "ghost slot" rendering for drop preview |
-| `src/components/dashboard/DraggableDashboardCard.tsx` | Remove before/after line indicator (replaced by ghost placeholder) |
-
-## Migration
-
-Old `dashboard-layout-v3` data auto-migrates: run `computePlacements` on the stored order-based widgets to generate initial `col`/`row` values, save as `dashboard-layout-v4`.
-
-## What this achieves
-
-- Dragging widget X below widget Y: Y stays put, X lands exactly there
-- No re-packing cascade — positions are stored, not derived
-- Ghost placeholder shows precise landing zone during drag
-- Only the displaced widget (if any) moves — everything else frozen
-- The layout engine becomes **obedient to user intent**, not a compaction optimizer
+| `src/hooks/useDashboardLayout.ts` | Add `moveWidgetTo(id, col, row)` — direct position set, no swap |
+| `src/components/dashboard/EmptyGridCell.tsx` | New: droppable empty cell with ghost preview |
+| `src/components/dashboard/MasonryGrid.tsx` | Render empty cell droppables in unoccupied grid positions during customize mode |
+| `src/pages/Dashboard.tsx` | Handle drops on empty cells vs. widgets, compute occupied grid map |
 
