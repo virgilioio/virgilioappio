@@ -64,7 +64,7 @@ function sortByPosition(widgets: WidgetLayout[]): WidgetLayout[] {
   return [...widgets].sort((a, b) => a.row !== b.row ? a.row - b.row : a.col - b.col)
 }
 
-const MOBILE_ORDER: DashboardCardId[] = ['agenda', 'tasks', 'world-clock', 'app-review', 'onboarding', 'jobs']
+const MOBILE_ORDER: DashboardCardId[] = ['agenda', 'tasks', 'world-clock', 'currency-converter', 'app-review', 'onboarding', 'jobs']
 
 export default function Dashboard() {
   const { profile, isLoading } = useUserProfile()
