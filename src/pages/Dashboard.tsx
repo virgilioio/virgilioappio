@@ -77,6 +77,7 @@ export default function Dashboard() {
     isCustomizing,
     saveDragStart,
     swapWidgetPositions,
+    moveWidgetTo,
     finalizeLayout,
     cancelDrag,
     hideCard,
