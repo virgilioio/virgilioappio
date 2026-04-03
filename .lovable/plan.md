@@ -1,38 +1,78 @@
 
+# Where We Are vs. The Utopian Dashboard
 
-# Redesign World Clock Widget + Add 1-Column Size
+## What's working well
+- Customize mode entry/exit feels intentional and mature
+- Drag overlay with lift + shadow + rotation feels premium
+- Drop position indicator (before/after line) is present
+- Masonry packing eliminates vertical gaps
+- Persistence, resize cycling, hide/show all solid
 
-## Overview
-Simplify the World Clock card layout and introduce a new `xsmall` (1-column) widget size for compact widgets.
+## The one remaining problem — and why it keeps happening
+
+**Root cause**: `moveWidgetBefore` and `moveWidgetAfter` use **splice-based array reordering**. They remove the dragged widget from the array, then insert it at the target position. This shifts the `order` of every widget between the old and new positions. When `computePlacements` re-packs from the new order, multiple widgets get new grid positions — the "running away" effect.
+
+**Example**: Widgets in order: [Tasks(0), Agenda(1), Clock(2), AppReview(3), Onboarding(4), Jobs(5)].
+User drags Jobs to place it after Tasks. `moveWidgetAfter` produces: [Tasks(0), Jobs(1), Agenda(2), Clock(3), AppReview(4), Onboarding(5)]. Agenda, Clock, AppReview, Onboarding ALL got new order values. The packer re-places ALL of them. Everything shifts.
+
+**The fix**: Instead of splice-reorder, use a **targeted swap** — only exchange the order values of the dragged widget and the target widget. Every other widget keeps its exact order value. The packer then only changes the positions of those two widgets.
+
+For "insert before" — swap the dragged widget's order with the target's order.
+For "insert after" — swap the dragged widget's order with the target's order.
+
+Since the masonry packer is deterministic and order-based, swapping exactly two order values means exactly two widgets change position. Everything else stays put.
 
 ## Changes
 
-### 1. `src/hooks/useDashboardLayout.ts` — Add `xsmall` size
-- Add `'xsmall'` to `WidgetSize` type
-- Add `xsmall: 1` to `SIZE_TO_COLS`
-- Update `world-clock` registry entry: `allowedSizes: ['xsmall']`, `defaultSize: 'xsmall'`
-- Update `CARD_SIZE_RULES` for world-clock to `['xsmall']`
-- Update default layout entry for world-clock to `size: 'xsmall'`
-- Add xsmall to `SIZE_ICONS` and `SIZE_LABELS` in DraggableDashboardCard
+### 1. `src/hooks/useDashboardLayout.ts` — Replace splice reorder with swap
 
-### 2. `src/components/dashboard/WorldClockWidget.tsx` — Redesign layout
-- **Remove** CardHeader entirely (no icon + "World Clock" title)
-- **Top row**: City name (left, Poppins semibold) + UTC badge (right, black `default` variant)
-- **Center**: Time in larger font (`text-5xl` Poppins bold, tabular-nums)
-- **Remove** date line, remove time-of-day icon/label row
-- **Bottom row**: Dot navigation (left) + small "+" button (right) to add timezones
-- Keep pagination arrows if multiple timezones exist
-- Keep the lilac `bg-accent/40` background
-- Tighter padding to fit 1-column width
+Replace `moveWidgetBefore` and `moveWidgetAfter` with a single `swapWidgetOrder` function:
 
-### 3. `src/components/dashboard/DraggableDashboardCard.tsx` — Support xsmall in size cycling
-- Add `xsmall` entry to `SIZE_ICONS` and `SIZE_LABELS`
+```typescript
+const swapWidgetOrder = useCallback((activeId: string, targetId: string) => {
+  setWidgets(prev => {
+    const active = prev.find(w => w.id === activeId)
+    const target = prev.find(w => w.id === targetId)
+    if (!active || !target || active.order === target.order) return prev
+    return prev.map(w => {
+      if (w.id === activeId) return { ...w, order: target.order }
+      if (w.id === targetId) return { ...w, order: active.order }
+      return w
+    }).sort((a, b) => a.order - b.order)
+  })
+}, [])
+```
+
+Export `swapWidgetOrder` instead of `moveWidgetBefore`/`moveWidgetAfter`.
+
+### 2. `src/pages/Dashboard.tsx` — Use swap in handleDragEnd
+
+Replace the before/after branching with a single swap call:
+
+```typescript
+const handleDragEnd = (event: DragEndEvent) => {
+  const { active, over } = event
+  if (over && active.id !== over.id) {
+    swapWidgetOrder(String(active.id), String(over.id))
+  }
+  setActiveId(null)
+  setDropTarget(null)
+  finalizeLayout()
+}
+```
+
+The `dropTarget` position indicator (before/after line) stays for visual feedback during drag — it still shows the user where they're aiming. But the actual mutation is always a swap, which preserves all other widgets' positions.
+
+## Why this finally solves it
+
+- Splice reorder: N widgets change order → N widgets re-placed → cascade
+- Swap: 2 widgets change order → 2 widgets re-placed → stable
+
+The dragged widget takes the target's position. The target takes the dragged widget's old position. Nothing else moves.
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/hooks/useDashboardLayout.ts` | Add `xsmall` size (1 col), update world-clock registry |
-| `src/components/dashboard/WorldClockWidget.tsx` | Redesign: remove header/date, city+badge top, bigger time, "+" bottom-right |
-| `src/components/dashboard/DraggableDashboardCard.tsx` | Add xsmall to size icon/label maps |
-
+| `src/hooks/useDashboardLayout.ts` | Replace `moveWidgetBefore`/`moveWidgetAfter` with `swapWidgetOrder` |
+| `src/pages/Dashboard.tsx` | Use `swapWidgetOrder` in `handleDragEnd`, remove before/after branching |
