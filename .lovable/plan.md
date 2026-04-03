@@ -1,62 +1,56 @@
 
 
-# Fix: Widget Disappearance, World Clock, and Empty-Cell Placement
+# Add Currency Converter Dashboard Widget
 
-## Root Causes Found
+## Overview
+Create a minimalist currency converter widget (1-column, xsmall) with a citron noir background, styled similarly to the World Clock widget. Users can input an amount, select two currencies, and see the converted value. Designed for quick salary conversions.
 
-### Bug 1: Everything disappears on resize
-`cycleWidgetSize` changes a widget's size without clamping its column. If "Jobs Overview" sits at col=3 and cycles from medium (3 cols) to large (4 cols), it spans cols 3-6. But colBottoms only has indices 0-5 (6-col grid). `colBottoms[6]` is `undefined` → `Math.max(undefined)` = `NaN` → **every subsequent widget gets NaN position** → all invisible. One overflow corrupts the entire masonry engine.
+## Design (reference image inspired)
 
-### Bug 2: World Clock missing
-Same mechanism — if a prior resize corrupted the layout, or if the clock was moved to an empty cell with row=999 (the sentinel value from EmptyGridCell), it sorts to the very end. If colBottoms are already NaN from a prior overflow, the clock renders at NaN top → invisible.
-
-### Bug 3: Can't place in empty column spaces
-The `emptyCells` algorithm only creates droppable zones at column bottoms (where one column is shorter than the tallest) and at the very bottom row. It never creates drop zones **beside** existing widgets in the same visual band. So if the world clock is at col=4 and col=5 is empty at the same height, there's no droppable there.
-
-## Plan
-
-### 1. `src/hooks/useDashboardLayout.ts` — Clamp col on resize
-
-In `cycleWidgetSize`, after computing `newSize`, clamp `col` so `col + SIZE_TO_COLS[newSize] <= TOTAL_COLS`:
-
-```typescript
-const newSpan = SIZE_TO_COLS[newSize]
-const maxCol = TOTAL_COLS - newSpan
-const safeCol = Math.min(w.col, maxCol)
-return { ...w, size: newSize, col: safeCol }
+```text
+┌──────────────┐
+│ From     USD ▾│  ← label + currency selector
+│ 120,000      │  ← editable amount (large Poppins)
+│ ─── ⇅ ───── │  ← swap button + exchange rate
+│ To       EUR ▾│
+│ 110,400      │  ← converted amount (large Poppins)
+└──────────────┘
 ```
 
-Same guard in `setWidgetSize`.
+- Background: `bg-primary text-primary-foreground` (citron noir)
+- Typography: Poppins bold for amounts, similar scale to world clock
+- Currency selectors: compact dropdown using existing `CURRENCIES` constant
+- Swap button: circular icon to flip currencies
+- Exchange rate display: small text showing rate
+- Rates: fetched from the existing `currency_exchange_rates` Supabase table, with a localStorage fallback for offline/quick use
+- State persisted in `dashboard-currency-converter` localStorage key
 
-### 2. `src/components/dashboard/MasonryGrid.tsx` — Safety clamp at render + better empty cells
+## Changes
 
-**Clamp items at render time** (defensive, handles any bad stored data):
-```typescript
-const safeColStart = Math.min(item.colStart, totalCols - item.colSpan)
-const safeColSpan = Math.min(item.colSpan, totalCols - safeColStart)
-```
+### 1. `src/components/dashboard/CurrencyConverterWidget.tsx` — New component
+- Compact 1-col card with citron noir background
+- "From" currency + editable amount input at top
+- Swap button + rate in middle
+- "To" currency + computed amount at bottom
+- Currency selection via small popover using `CURRENCIES` from `@/constants/currencies`
+- Fetches rates from Supabase `currency_exchange_rates` table, falls back to a simple fetch or cached rates
+- Persists selected currencies in localStorage
 
-**Better empty cell computation**: Instead of only column-bottom gaps, scan each occupied visual band (grouped by `top` values) and find which columns are free at that height. This creates droppable zones beside existing widgets, not just below them.
+### 2. `src/hooks/useDashboardLayout.ts` — Register widget
+- Add `'currency-converter'` to `DashboardCardId` union
+- Add registry entry: `allowedSizes: ['xsmall'], defaultSize: 'xsmall', fixed: true`
+- Add to `CARD_SIZE_RULES` and `ALL_CARD_IDS`
 
-Algorithm:
-- Collect all unique `top` values from positioned items
-- For each top value, mark which columns are occupied (by items whose top matches and whose colStart..colStart+colSpan covers those cols)
-- For each unoccupied column at that top value, emit an empty cell droppable
-- Also keep the existing bottom-of-column cells for appending below
-
-### 3. `src/components/dashboard/EmptyGridCell.tsx` — Use meaningful row values
-
-Pass the actual visual band index (derived from top position) instead of sentinel values 999/1000, so `moveWidgetTo` stores a sensible row that sorts correctly.
-
-### 4. `src/pages/Dashboard.tsx` — No changes needed
-
-The `handleDragEnd` logic for empty cells and swaps is correct. The fixes are upstream.
+### 3. `src/pages/Dashboard.tsx` — Wire up
+- Import `CurrencyConverterWidget`
+- Add case in `renderCard` switch
+- Add to `MOBILE_ORDER`
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/hooks/useDashboardLayout.ts` | Clamp col on resize to prevent overflow; clamp in `moveWidgetTo` too |
-| `src/components/dashboard/MasonryGrid.tsx` | Safety-clamp colStart/colSpan; compute same-band empty cells beside widgets |
-| `src/components/dashboard/EmptyGridCell.tsx` | No structural change, just receives better row values from MasonryGrid |
+| `src/components/dashboard/CurrencyConverterWidget.tsx` | New: minimalist currency converter, citron noir, 1-col |
+| `src/hooks/useDashboardLayout.ts` | Register `currency-converter` as xsmall fixed widget |
+| `src/pages/Dashboard.tsx` | Wire up new widget in renderCard and mobile order |
 
