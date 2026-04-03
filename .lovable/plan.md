@@ -1,78 +1,32 @@
 
-# Where We Are vs. The Utopian Dashboard
 
-## What's working well
-- Customize mode entry/exit feels intentional and mature
-- Drag overlay with lift + shadow + rotation feels premium
-- Drop position indicator (before/after line) is present
-- Masonry packing eliminates vertical gaps
-- Persistence, resize cycling, hide/show all solid
+# Replace Jobs Overview Inline Metrics with MetricCard Components
 
-## The one remaining problem — and why it keeps happening
-
-**Root cause**: `moveWidgetBefore` and `moveWidgetAfter` use **splice-based array reordering**. They remove the dragged widget from the array, then insert it at the target position. This shifts the `order` of every widget between the old and new positions. When `computePlacements` re-packs from the new order, multiple widgets get new grid positions — the "running away" effect.
-
-**Example**: Widgets in order: [Tasks(0), Agenda(1), Clock(2), AppReview(3), Onboarding(4), Jobs(5)].
-User drags Jobs to place it after Tasks. `moveWidgetAfter` produces: [Tasks(0), Jobs(1), Agenda(2), Clock(3), AppReview(4), Onboarding(5)]. Agenda, Clock, AppReview, Onboarding ALL got new order values. The packer re-places ALL of them. Everything shifts.
-
-**The fix**: Instead of splice-reorder, use a **targeted swap** — only exchange the order values of the dragged widget and the target widget. Every other widget keeps its exact order value. The packer then only changes the positions of those two widgets.
-
-For "insert before" — swap the dragged widget's order with the target's order.
-For "insert after" — swap the dragged widget's order with the target's order.
-
-Since the masonry packer is deterministic and order-based, swapping exactly two order values means exactly two widgets change position. Everything else stays put.
+## Problem
+The Jobs Overview card uses plain `div` elements with `bg-muted/50` for its metric summaries (Open, Draft, Closed, Total). The rest of the platform (Analytics, Intelligence, Job Analytics) uses the standardized `MetricCard` component with icon circles, Poppins typography, and optional sparklines. This inconsistency breaks visual cohesion.
 
 ## Changes
 
-### 1. `src/hooks/useDashboardLayout.ts` — Replace splice reorder with swap
+### `src/components/dashboard/JobsOverview.tsx`
 
-Replace `moveWidgetBefore` and `moveWidgetAfter` with a single `swapWidgetOrder` function:
+**Medium size (3-col, line 113-126)** — Replace the 3 plain metric divs with `MetricCard` using `variant="inline"` (compact, no card wrapper) inside a `MetricCardGroup`:
+- Open → `Briefcase` icon, `text-virgilio-success` 
+- Draft → `Clock` icon, `text-warning`
+- Closed → `Users` icon, `text-destructive`
 
-```typescript
-const swapWidgetOrder = useCallback((activeId: string, targetId: string) => {
-  setWidgets(prev => {
-    const active = prev.find(w => w.id === activeId)
-    const target = prev.find(w => w.id === targetId)
-    if (!active || !target || active.order === target.order) return prev
-    return prev.map(w => {
-      if (w.id === activeId) return { ...w, order: target.order }
-      if (w.id === targetId) return { ...w, order: active.order }
-      return w
-    }).sort((a, b) => a.order - b.order)
-  })
-}, [])
-```
+**Large size (4-col, line 180-197)** — Replace the 4 plain metric divs with `MetricCard` (default variant, compact grid):
+- Open → `Briefcase` icon, `text-virgilio-success`
+- Draft → `Clock` icon, `text-warning`
+- Closed → `Users` icon, `text-destructive`
+- Total → `Building` icon, `text-primary`
 
-Export `swapWidgetOrder` instead of `moveWidgetBefore`/`moveWidgetAfter`.
+Both will use the existing `MetricCard` and `MetricCardGroup` components already imported across the platform, ensuring icon circles, Poppins bold values, and consistent elevation/hover behavior.
 
-### 2. `src/pages/Dashboard.tsx` — Use swap in handleDragEnd
-
-Replace the before/after branching with a single swap call:
-
-```typescript
-const handleDragEnd = (event: DragEndEvent) => {
-  const { active, over } = event
-  if (over && active.id !== over.id) {
-    swapWidgetOrder(String(active.id), String(over.id))
-  }
-  setActiveId(null)
-  setDropTarget(null)
-  finalizeLayout()
-}
-```
-
-The `dropTarget` position indicator (before/after line) stays for visual feedback during drag — it still shows the user where they're aiming. But the actual mutation is always a swap, which preserves all other widgets' positions.
-
-## Why this finally solves it
-
-- Splice reorder: N widgets change order → N widgets re-placed → cascade
-- Swap: 2 widgets change order → 2 widgets re-placed → stable
-
-The dragged widget takes the target's position. The target takes the dragged widget's old position. Nothing else moves.
-
-## Files changed
+### Imports to add
+- `MetricCard` from `@/components/ui/metric-card`
+- `MetricCardGroup` from `@/components/ui/metric-card-group`
 
 | File | Change |
 |------|--------|
-| `src/hooks/useDashboardLayout.ts` | Replace `moveWidgetBefore`/`moveWidgetAfter` with `swapWidgetOrder` |
-| `src/pages/Dashboard.tsx` | Use `swapWidgetOrder` in `handleDragEnd`, remove before/after branching |
+| `src/components/dashboard/JobsOverview.tsx` | Replace plain metric divs with `MetricCard`/`MetricCardGroup` in medium and large views |
+
