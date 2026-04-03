@@ -35,7 +35,7 @@ export const CARD_SIZE_RULES: Record<DashboardCardId, WidgetSize[]> = {
   'app-review':  ['small', 'medium', 'large'],
   'onboarding':  ['small', 'medium', 'large'],
   'jobs':        ['small', 'medium', 'large'],
-  'world-clock': ['small'],
+  'world-clock': ['xsmall'],
 }
 
 const ALL_CARD_IDS: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs', 'world-clock']
