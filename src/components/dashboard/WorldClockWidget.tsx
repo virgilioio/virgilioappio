@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -10,7 +10,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Clock, Plus, ChevronLeft, ChevronRight, Trash2, Sun, Moon, Sunrise, Sunset } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, Trash2, Sun, Moon, Sunrise, Sunset } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface TimezoneEntry {
@@ -67,7 +67,6 @@ function loadTimezones(): TimezoneEntry[] {
       if (Array.isArray(parsed) && parsed.length > 0) return parsed
     }
   } catch {}
-  // Default: user's local timezone
   const local = Intl.DateTimeFormat().resolvedOptions().timeZone
   const match = POPULAR_TIMEZONES.find(t => t.timezone === local)
   return [{ id: crypto.randomUUID(), timezone: local, label: match?.label ?? local.split('/').pop()?.replace(/_/g, ' ') ?? 'Local' }]
@@ -88,7 +87,7 @@ function getUtcOffset(timezone: string): string {
     })
     const parts = formatter.formatToParts(now)
     const tzPart = parts.find(p => p.type === 'timeZoneName')
-    return tzPart?.value?.replace('GMT', 'UTC ') ?? ''
+    return tzPart?.value?.replace('GMT', 'UTC') ?? ''
   } catch {
     return ''
   }
@@ -131,7 +130,6 @@ export function WorldClockWidget() {
     saveTimezones(timezones)
   }, [timezones])
 
-  // Clamp index
   const safeIndex = Math.min(currentIndex, Math.max(0, timezones.length - 1))
   const current = timezones[safeIndex]
 
@@ -145,7 +143,6 @@ export function WorldClockWidget() {
 
   const addTimezone = useCallback((tz: typeof POPULAR_TIMEZONES[0]) => {
     setTimezones(prev => {
-      // Avoid duplicates
       if (prev.some(t => t.timezone === tz.timezone)) return prev
       return [...prev, { id: crypto.randomUUID(), timezone: tz.timezone, label: tz.label }]
     })
@@ -155,7 +152,7 @@ export function WorldClockWidget() {
 
   const removeTimezone = useCallback((id: string) => {
     setTimezones(prev => {
-      if (prev.length <= 1) return prev // Keep at least one
+      if (prev.length <= 1) return prev
       const next = prev.filter(t => t.id !== id)
       setCurrentIndex(i => Math.min(i, next.length - 1))
       return next
@@ -172,15 +169,7 @@ export function WorldClockWidget() {
     hour12: false,
   }).format(now)
 
-  const dateString = new Intl.DateTimeFormat('en-US', {
-    timeZone: current.timezone,
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  }).format(now)
-
   const utcOffset = getUtcOffset(current.timezone)
-  const tod = getTimeOfDay(current.timezone)
 
   const filteredTimezones = POPULAR_TIMEZONES.filter(tz =>
     !search || tz.city.toLowerCase().includes(search.toLowerCase()) ||
@@ -190,64 +179,27 @@ export function WorldClockWidget() {
   return (
     <>
       <Card className="overflow-hidden bg-accent/40 border-accent/60">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold flex items-center gap-2" withPeriod={false}>
-              <Clock className="h-4 w-4 text-accent-foreground" />
-              World Clock
-            </CardTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-muted-foreground hover:text-foreground"
-              onClick={() => setAddOpen(true)}
-            >
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="pb-4">
-          {/* City header with navigation */}
+        <CardContent className="p-4">
+          {/* Top row: City name + UTC badge */}
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2 min-w-0">
-              <h3 className="text-base font-poppins font-semibold text-foreground truncate">
-                {current.label}
-              </h3>
-              <Badge variant="default" className="text-[10px] font-mono shrink-0 px-1.5 py-0">
-                {utcOffset}
-              </Badge>
-            </div>
-            {timezones.length > 1 && (
-              <div className="flex items-center gap-0.5 shrink-0">
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={goPrev}>
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                </Button>
-                <span className="text-[10px] text-muted-foreground font-mono tabular-nums w-8 text-center">
-                  {safeIndex + 1}/{timezones.length}
-                </span>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={goNext}>
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            )}
+            <h3 className="text-sm font-poppins font-semibold text-foreground truncate">
+              {current.label}
+            </h3>
+            <Badge variant="default" className="text-[10px] font-mono shrink-0 px-1.5 py-0">
+              {utcOffset}
+            </Badge>
           </div>
 
-          {/* Time display */}
-          <div className="flex items-end gap-3 mb-2">
-            <div className="flex items-center gap-2">
-              <TimeOfDayIcon timezone={current.timezone} className="h-4 w-4" />
-              <span className="text-[10px] text-muted-foreground capitalize">{tod}</span>
-            </div>
-          </div>
-          <div className="font-poppins text-4xl font-bold tracking-tight text-foreground tabular-nums leading-none mb-1.5">
+          {/* Time display - big and centered */}
+          <div className="font-poppins text-5xl font-bold tracking-tight text-foreground tabular-nums leading-none text-center py-2">
             {timeString}
           </div>
-          <p className="text-xs text-muted-foreground font-inter">{dateString}</p>
 
-          {/* Dot indicators for multiple timezones */}
-          {timezones.length > 1 && (
-            <div className="flex items-center justify-center gap-1.5 mt-3 pt-3 border-t border-accent/60">
-              {timezones.map((tz, i) => (
+          {/* Bottom row: dots (left) + nav arrows + "+" button (right) */}
+          <div className="flex items-center justify-between mt-3">
+            {/* Dot indicators */}
+            <div className="flex items-center gap-1.5">
+              {timezones.length > 1 && timezones.map((tz, i) => (
                 <button
                   key={tz.id}
                   onClick={() => setCurrentIndex(i)}
@@ -260,7 +212,29 @@ export function WorldClockWidget() {
                 />
               ))}
             </div>
-          )}
+
+            {/* Nav arrows + Add button */}
+            <div className="flex items-center gap-0.5">
+              {timezones.length > 1 && (
+                <>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={goPrev}>
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={goNext}>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Button>
+                </>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                onClick={() => setAddOpen(true)}
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -315,7 +289,6 @@ export function WorldClockWidget() {
             )}
           </div>
 
-          {/* Manage existing timezones */}
           {timezones.length > 1 && (
             <div className="border-t border-border pt-3 mt-1">
               <p className="text-xs font-medium text-muted-foreground mb-2">Your clocks</p>

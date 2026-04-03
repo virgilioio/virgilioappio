@@ -25,12 +25,14 @@ const animateLayoutChanges: AnimateLayoutChanges = (args) => {
 }
 
 const SIZE_ICONS: Record<WidgetSize, typeof Columns2> = {
+  xsmall: Columns2,
   small: Columns2,
   medium: Columns3,
   large: Columns4,
 }
 
 const SIZE_LABELS: Record<WidgetSize, string> = {
+  xsmall: '1 col',
   small: '2 cols',
   medium: '3 cols',
   large: '4 cols',

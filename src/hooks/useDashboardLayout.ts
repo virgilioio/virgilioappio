@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react'
 
 // ── Widget size system ──────────────────────────────────────────────
 
-export type WidgetSize = 'small' | 'medium' | 'large'
+export type WidgetSize = 'xsmall' | 'small' | 'medium' | 'large'
 export type DashboardCardId = 'agenda' | 'tasks' | 'app-review' | 'onboarding' | 'jobs' | 'world-clock'
 
 export interface WidgetMeta {
@@ -19,10 +19,11 @@ export const WIDGET_REGISTRY: Record<DashboardCardId, WidgetMeta> = {
   'app-review':  { id: 'app-review',  label: 'Application Review',   allowedSizes: ['small', 'medium', 'large'], defaultSize: 'small',  fixed: false },
   'onboarding':  { id: 'onboarding',  label: 'Onboarding Checklist', allowedSizes: ['small', 'medium', 'large'], defaultSize: 'small',  fixed: false },
   'jobs':        { id: 'jobs',        label: 'Jobs Overview',        allowedSizes: ['small', 'medium', 'large'], defaultSize: 'medium', fixed: false },
-  'world-clock': { id: 'world-clock', label: 'World Clock',          allowedSizes: ['small'],                  defaultSize: 'small',  fixed: true },
+  'world-clock': { id: 'world-clock', label: 'World Clock',          allowedSizes: ['xsmall'],                 defaultSize: 'xsmall', fixed: true },
 }
 
 export const SIZE_TO_COLS: Record<WidgetSize, number> = {
+  xsmall: 1,
   small: 2,
   medium: 3,
   large: 4,
@@ -34,7 +35,7 @@ export const CARD_SIZE_RULES: Record<DashboardCardId, WidgetSize[]> = {
   'app-review':  ['small', 'medium', 'large'],
   'onboarding':  ['small', 'medium', 'large'],
   'jobs':        ['small', 'medium', 'large'],
-  'world-clock': ['small'],
+  'world-clock': ['xsmall'],
 }
 
 const ALL_CARD_IDS: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs', 'world-clock']
@@ -59,7 +60,7 @@ const STORAGE_KEY = 'dashboard-layout-v3'
 const DEFAULT_WIDGETS: WidgetLayout[] = [
   { id: 'tasks',       size: 'small',  order: 0 },
   { id: 'agenda',      size: 'small',  order: 1 },
-  { id: 'world-clock', size: 'small',  order: 2 },
+  { id: 'world-clock', size: 'xsmall', order: 2 },
   { id: 'app-review',  size: 'small',  order: 3 },
   { id: 'onboarding',  size: 'small',  order: 4 },
   { id: 'jobs',        size: 'medium', order: 5 },
