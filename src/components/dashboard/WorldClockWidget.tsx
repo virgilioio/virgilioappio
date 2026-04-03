@@ -176,12 +176,15 @@ export function WorldClockWidget() {
     tz.timezone.toLowerCase().includes(search.toLowerCase())
   )
 
+  const tod = getTimeOfDay(current.timezone)
+  const todLabels: Record<string, string> = { dawn: 'Dawn', day: 'Day', dusk: 'Dusk', night: 'Night' }
+
   return (
     <>
       <Card className="overflow-hidden bg-accent/40 border-accent/60">
         <CardContent className="p-4">
           {/* Top row: City name + UTC badge */}
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-poppins font-semibold text-foreground truncate">
               {current.label}
             </h3>
@@ -190,8 +193,14 @@ export function WorldClockWidget() {
             </Badge>
           </div>
 
+          {/* Time of day indicator */}
+          <div className="flex items-center gap-1.5 mb-2">
+            <span className="text-xs text-muted-foreground">{todLabels[tod]}</span>
+            <TimeOfDayIcon timezone={current.timezone} className="h-3.5 w-3.5" />
+          </div>
+
           {/* Time display - big and centered */}
-          <div className="font-poppins text-5xl font-bold tracking-tight text-foreground tabular-nums leading-none text-center py-2">
+          <div className="font-poppins text-4xl font-bold tracking-tight text-foreground tabular-nums leading-none text-center py-1">
             {timeString}
           </div>
 
