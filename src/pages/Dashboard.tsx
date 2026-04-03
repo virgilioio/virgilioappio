@@ -127,6 +127,7 @@ export default function Dashboard() {
     'onboarding': <OnboardingChecklist isDeemphasized={!hasSeenValue} />,
     'jobs': hasJobContent ? true as unknown as ReactNode : null,
     'world-clock': <WorldClockWidget />,
+    'currency-converter': <CurrencyConverterWidget />,
   }
 
   // ── Mobile ──
