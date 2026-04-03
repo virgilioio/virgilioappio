@@ -75,7 +75,8 @@ export default function Dashboard() {
     hiddenCards,
     isCustomizing,
     saveDragStart,
-    reorderWidgets,
+    moveWidgetBefore,
+    moveWidgetAfter,
     finalizeLayout,
     cancelDrag,
     hideCard,
@@ -86,6 +87,7 @@ export default function Dashboard() {
   } = useDashboardLayout()
   const isMobile = useIsMobile()
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [dropTarget, setDropTarget] = useState<{ id: string; position: DropPosition } | null>(null)
   const [addWidgetOpen, setAddWidgetOpen] = useState(false)
 
   const sensors = useSensors(
