@@ -402,7 +402,11 @@ export function useDashboardLayout() {
   /** Move a widget to an exact col/row — nothing else moves */
   const moveWidgetTo = useCallback((widgetId: string, col: number, row: number) => {
     setWidgets(prev => {
-      const next = prev.map(w => w.id === widgetId ? { ...w, col, row } : w)
+      const widget = prev.find(w => w.id === widgetId)
+      if (!widget) return prev
+      const span = SIZE_TO_COLS[widget.size] ?? 1
+      const safeCol = Math.min(Math.max(0, col), TOTAL_COLS - span)
+      const next = prev.map(w => w.id === widgetId ? { ...w, col: safeCol, row } : w)
       setHiddenCards(h => {
         persist(next, h)
         return h
