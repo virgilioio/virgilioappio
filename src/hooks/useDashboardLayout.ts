@@ -357,6 +357,8 @@ export function useDashboardLayout() {
     isCustomizing,
     saveDragStart,
     reorderWidgets,
+    moveWidgetBefore,
+    moveWidgetAfter,
     finalizeLayout,
     cancelDrag,
     hideCard,
