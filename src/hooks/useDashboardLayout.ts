@@ -221,37 +221,17 @@ export function useDashboardLayout() {
     })
   }, [])
 
-  /** Insert activeId before targetId in the order, shifting others down */
-  const moveWidgetBefore = useCallback((activeId: string, targetId: string) => {
+  /** Swap order values of two widgets — only these two move, everything else stays put */
+  const swapWidgetOrder = useCallback((activeId: string, targetId: string) => {
     setWidgets(prev => {
-      const without = prev.filter(w => w.id !== activeId)
-      const activeWidget = prev.find(w => w.id === activeId)
-      if (!activeWidget) return prev
-      const targetIdx = without.findIndex(w => w.id === targetId)
-      if (targetIdx === -1) return prev
-      const reordered = [
-        ...without.slice(0, targetIdx),
-        activeWidget,
-        ...without.slice(targetIdx),
-      ]
-      return reordered.map((w, i) => ({ ...w, order: i }))
-    })
-  }, [])
-
-  /** Insert activeId after targetId in the order, shifting others down */
-  const moveWidgetAfter = useCallback((activeId: string, targetId: string) => {
-    setWidgets(prev => {
-      const without = prev.filter(w => w.id !== activeId)
-      const activeWidget = prev.find(w => w.id === activeId)
-      if (!activeWidget) return prev
-      const targetIdx = without.findIndex(w => w.id === targetId)
-      if (targetIdx === -1) return prev
-      const reordered = [
-        ...without.slice(0, targetIdx + 1),
-        activeWidget,
-        ...without.slice(targetIdx + 1),
-      ]
-      return reordered.map((w, i) => ({ ...w, order: i }))
+      const active = prev.find(w => w.id === activeId)
+      const target = prev.find(w => w.id === targetId)
+      if (!active || !target || active.order === target.order) return prev
+      return prev.map(w => {
+        if (w.id === activeId) return { ...w, order: target.order }
+        if (w.id === targetId) return { ...w, order: active.order }
+        return w
+      }).sort((a, b) => a.order - b.order)
     })
   }, [])
 
