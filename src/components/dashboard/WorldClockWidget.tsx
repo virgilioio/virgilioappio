@@ -199,13 +199,13 @@ export function WorldClockWidget() {
             <TimeOfDayIcon timezone={current.timezone} className="h-3.5 w-3.5" />
           </div>
 
-          {/* Time display - big and centered */}
-          <div className="font-poppins text-[2.7rem] font-bold tracking-tight text-foreground tabular-nums leading-none text-left py-1">
+          {/* Time display - big, left-aligned, pushed down */}
+          <div className="font-poppins text-[2.7rem] font-bold tracking-tight text-foreground tabular-nums leading-none text-left mt-auto py-1">
             {timeString}
           </div>
 
           {/* Bottom row: dots (left) + nav arrows + "+" button (right) */}
-          <div className="flex items-center justify-between mt-auto pt-3">
+          <div className="flex items-center justify-between pt-3">
             {/* Dot indicators */}
             <div className="flex items-center gap-1.5">
               {timezones.length > 1 && timezones.map((tz, i) => (
