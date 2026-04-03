@@ -178,7 +178,9 @@ export default function Dashboard() {
 
   const renderNormalGrid = () => (
     <MasonryGrid items={masonryItems} totalCols={gridCols}>
-      {placements.map(({ id }) => (
+      {placements
+        .filter(({ id }) => renderableWidgets.some(w => w.id === id))
+        .map(({ id }) => (
         <div key={id} className="min-w-0">
           {renderCard(id)}
         </div>
