@@ -190,8 +190,15 @@ export default function Dashboard() {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     if (over && active.id !== over.id) {
-      // Direct position swap — only these two widgets move
-      swapWidgetPositions(String(active.id), String(over.id))
+      const overId = String(over.id)
+      // Check if dropped on an empty cell
+      if (overId.startsWith('empty-') && over.data?.current?.type === 'empty-cell') {
+        const { col, row } = over.data.current as { col: number; row: number }
+        moveWidgetTo(String(active.id), col, row)
+      } else {
+        // Direct position swap — only these two widgets move
+        swapWidgetPositions(String(active.id), overId)
+      }
     }
     setActiveId(null)
     setOverId(null)
