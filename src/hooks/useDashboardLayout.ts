@@ -40,7 +40,7 @@ export const CARD_SIZE_RULES: Record<DashboardCardId, WidgetSize[]> = {
   'currency-converter': ['xsmall'],
 }
 
-const ALL_CARD_IDS: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs', 'world-clock']
+const ALL_CARD_IDS: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs', 'world-clock', 'currency-converter']
 const TOTAL_COLS = 6
 
 // ── Layout data model (position-based) ──────────────────────────────
