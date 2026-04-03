@@ -10,7 +10,7 @@ export interface WidgetMeta {
   label: string
   allowedSizes: WidgetSize[]
   defaultSize: WidgetSize
-  fixed: boolean // true = user cannot resize
+  fixed: boolean
 }
 
 export const WIDGET_REGISTRY: Record<DashboardCardId, WidgetMeta> = {
@@ -41,9 +41,17 @@ export const CARD_SIZE_RULES: Record<DashboardCardId, WidgetSize[]> = {
 const ALL_CARD_IDS: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs', 'world-clock']
 const TOTAL_COLS = 6
 
-// ── Layout data model ───────────────────────────────────────────────
+// ── Layout data model (position-based) ──────────────────────────────
 
 export interface WidgetLayout {
+  id: DashboardCardId
+  size: WidgetSize
+  col: number   // 0-based column index
+  row: number   // logical row (used for ordering, not pixel position)
+}
+
+// Keep order-based type for legacy migration
+interface LegacyWidgetLayout {
   id: DashboardCardId
   size: WidgetSize
   order: number
@@ -55,36 +63,29 @@ interface StoredLayout {
   hidden: DashboardCardId[]
 }
 
-const STORAGE_KEY = 'dashboard-layout-v3'
+interface LegacyStoredLayout {
+  version: number
+  widgets: LegacyWidgetLayout[]
+  hidden: DashboardCardId[]
+}
 
-const DEFAULT_WIDGETS: WidgetLayout[] = [
-  { id: 'tasks',       size: 'small',  order: 0 },
-  { id: 'agenda',      size: 'small',  order: 1 },
-  { id: 'world-clock', size: 'xsmall', order: 2 },
-  { id: 'app-review',  size: 'small',  order: 3 },
-  { id: 'onboarding',  size: 'small',  order: 4 },
-  { id: 'jobs',        size: 'medium', order: 5 },
-]
+const STORAGE_KEY = 'dashboard-layout-v4'
+const LEGACY_STORAGE_KEY = 'dashboard-layout-v3'
 
 // ── Grid placement engine ───────────────────────────────────────────
 
 export interface GridPlacement {
   id: DashboardCardId
-  gridColumn: string   // e.g. "1 / span 3"
+  gridColumn: string
   gridRow: number
   colSpan: number
 }
 
 /**
- * Deterministic row-packing algorithm.
- * Walks widgets in order, placing each into the first row
- * that has enough contiguous free columns starting from the left.
+ * Pack widgets by order into a grid — used ONLY for initial layout generation.
  */
-export function computePlacements(widgets: WidgetLayout[], totalCols: number = TOTAL_COLS): GridPlacement[] {
-  // Track which cells are occupied: rows are created on demand
-  // occupied[row] = Set of column indices (0-based)
+export function computePlacements(widgets: { id: DashboardCardId; size: WidgetSize }[], totalCols: number = TOTAL_COLS): GridPlacement[] {
   const occupied: Map<number, Set<number>> = new Map()
-
   const getRow = (r: number) => {
     if (!occupied.has(r)) occupied.set(r, new Set())
     return occupied.get(r)!
@@ -97,20 +98,15 @@ export function computePlacements(widgets: WidgetLayout[], totalCols: number = T
     const clampedSpan = Math.min(span, totalCols)
     let placed = false
 
-    // Scan rows from top
     for (let row = 1; !placed; row++) {
       const rowSet = getRow(row)
-      // Scan columns left to right
       for (let col = 0; col <= totalCols - clampedSpan; col++) {
         let fits = true
         for (let c = col; c < col + clampedSpan; c++) {
           if (rowSet.has(c)) { fits = false; break }
         }
         if (fits) {
-          // Place it
-          for (let c = col; c < col + clampedSpan; c++) {
-            rowSet.add(c)
-          }
+          for (let c = col; c < col + clampedSpan; c++) rowSet.add(c)
           placements.push({
             id: widget.id,
             gridColumn: `${col + 1} / span ${clampedSpan}`,
@@ -121,16 +117,14 @@ export function computePlacements(widgets: WidgetLayout[], totalCols: number = T
           break
         }
       }
-      // If row is too full, continue to next row
-      if (row > 100) break // safety
+      if (row > 100) break
     }
   }
 
   return placements
 }
 
-/** Tablet: 4-column grid, clamp spans */
-export function computeTabletPlacements(widgets: WidgetLayout[]): GridPlacement[] {
+export function computeTabletPlacements(widgets: { id: DashboardCardId; size: WidgetSize }[]): GridPlacement[] {
   return computePlacements(
     widgets.map(w => ({
       ...w,
@@ -140,45 +134,110 @@ export function computeTabletPlacements(widgets: WidgetLayout[]): GridPlacement[
   )
 }
 
+// ── Convert placements to WidgetLayout with positions ───────────────
+
+function placementsToPositionWidgets(
+  placements: GridPlacement[],
+  sizeMap: Record<string, WidgetSize>
+): WidgetLayout[] {
+  return placements.map(p => {
+    const m = p.gridColumn.match(/(\d+)\s*\/\s*span\s+(\d+)/)
+    const col = m ? parseInt(m[1]) - 1 : 0
+    return {
+      id: p.id,
+      size: sizeMap[p.id] ?? 'small',
+      col,
+      row: p.gridRow,
+    }
+  })
+}
+
+// ── Default layout ──────────────────────────────────────────────────
+
+function generateDefaultWidgets(): WidgetLayout[] {
+  const defaults: { id: DashboardCardId; size: WidgetSize }[] = [
+    { id: 'tasks',       size: 'small' },
+    { id: 'agenda',      size: 'small' },
+    { id: 'world-clock', size: 'xsmall' },
+    { id: 'app-review',  size: 'small' },
+    { id: 'onboarding',  size: 'small' },
+    { id: 'jobs',        size: 'medium' },
+  ]
+  const placements = computePlacements(defaults)
+  const sizeMap = Object.fromEntries(defaults.map(d => [d.id, d.size]))
+  return placementsToPositionWidgets(placements, sizeMap)
+}
+
 // ── Load / Save ─────────────────────────────────────────────────────
 
 function loadLayout(): { widgets: WidgetLayout[]; hidden: DashboardCardId[] } {
   try {
+    // Try v4 first
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return { widgets: DEFAULT_WIDGETS, hidden: [] }
-    const parsed: StoredLayout = JSON.parse(raw)
-    if (!parsed.version || !Array.isArray(parsed.widgets)) {
-      return { widgets: DEFAULT_WIDGETS, hidden: [] }
+    if (raw) {
+      const parsed: StoredLayout = JSON.parse(raw)
+      if (parsed.version === 4 && Array.isArray(parsed.widgets)) {
+        const validWidgets = parsed.widgets
+          .filter(w => ALL_CARD_IDS.includes(w.id) && WIDGET_REGISTRY[w.id])
+          .map(w => {
+            const meta = WIDGET_REGISTRY[w.id]
+            const size = meta.allowedSizes.includes(w.size) ? w.size : meta.defaultSize
+            return { id: w.id, size, col: w.col ?? 0, row: w.row ?? 1 }
+          })
+
+        const validHidden = (parsed.hidden ?? []).filter(id => ALL_CARD_IDS.includes(id))
+        const presentIds = new Set([...validWidgets.map(w => w.id), ...validHidden])
+        const missing = ALL_CARD_IDS.filter(id => !presentIds.has(id))
+
+        if (missing.length > 0) {
+          // Add missing widgets using packer for their placement
+          const maxRow = validWidgets.length > 0 ? Math.max(...validWidgets.map(w => w.row)) : 0
+          missing.forEach((id, i) => {
+            validWidgets.push({
+              id,
+              size: WIDGET_REGISTRY[id].defaultSize,
+              col: 0,
+              row: maxRow + 1 + i,
+            })
+          })
+        }
+
+        return { widgets: validWidgets, hidden: validHidden }
+      }
     }
 
-    const validWidgets = parsed.widgets
-      .filter(w => ALL_CARD_IDS.includes(w.id) && WIDGET_REGISTRY[w.id])
-      .map(w => {
-        const meta = WIDGET_REGISTRY[w.id]
-        const size = meta.allowedSizes.includes(w.size) ? w.size : meta.defaultSize
-        return { id: w.id, size, order: w.order }
-      })
-      .sort((a, b) => a.order - b.order)
+    // Try migrating from v3 (order-based)
+    const legacyRaw = localStorage.getItem(LEGACY_STORAGE_KEY)
+    if (legacyRaw) {
+      const parsed: LegacyStoredLayout = JSON.parse(legacyRaw)
+      if (Array.isArray(parsed.widgets)) {
+        const sorted = [...parsed.widgets]
+          .filter(w => ALL_CARD_IDS.includes(w.id))
+          .sort((a, b) => a.order - b.order)
 
-    const validHidden = (parsed.hidden ?? []).filter(id => ALL_CARD_IDS.includes(id))
-    const presentIds = new Set([...validWidgets.map(w => w.id), ...validHidden])
-    const missing = ALL_CARD_IDS.filter(id => !presentIds.has(id))
+        const sizeMap = Object.fromEntries(sorted.map(w => [w.id, w.size]))
+        const placements = computePlacements(sorted)
+        const widgets = placementsToPositionWidgets(placements, sizeMap)
 
-    // Add missing widgets at end
-    const maxOrder = validWidgets.length > 0 ? Math.max(...validWidgets.map(w => w.order)) : -1
-    missing.forEach((id, i) => {
-      validWidgets.push({ id, size: WIDGET_REGISTRY[id].defaultSize, order: maxOrder + 1 + i })
-    })
+        const hidden = (parsed.hidden ?? []).filter(id => ALL_CARD_IDS.includes(id))
 
-    return { widgets: validWidgets, hidden: validHidden }
+        // Save as v4
+        saveLayout(widgets, hidden)
+        return { widgets, hidden }
+      }
+    }
+
+    // Default
+    const widgets = generateDefaultWidgets()
+    return { widgets, hidden: [] }
   } catch {
-    return { widgets: DEFAULT_WIDGETS, hidden: [] }
+    return { widgets: generateDefaultWidgets(), hidden: [] }
   }
 }
 
 function saveLayout(widgets: WidgetLayout[], hidden: DashboardCardId[]) {
   try {
-    const data: StoredLayout = { version: 1, widgets, hidden }
+    const data: StoredLayout = { version: 4, widgets, hidden }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
   } catch {
     // storage full
@@ -203,35 +262,22 @@ export function useDashboardLayout() {
   // ── Drag helpers ──
 
   const saveDragStart = useCallback(() => {
-    widgetsBeforeDrag.current = [...widgets]
+    widgetsBeforeDrag.current = widgets.map(w => ({ ...w }))
   }, [widgets])
 
-  const reorderWidgets = useCallback((activeId: string, overId: string) => {
-    setWidgets(prev => {
-      const activeWidget = prev.find(w => w.id === activeId)
-      const overWidget = prev.find(w => w.id === overId)
-      if (!activeWidget || !overWidget) return prev
-      const activeOrder = activeWidget.order
-      const overOrder = overWidget.order
-      return prev.map(w => {
-        if (w.id === activeId) return { ...w, order: overOrder }
-        if (w.id === overId) return { ...w, order: activeOrder }
-        return w
-      }).sort((a, b) => a.order - b.order)
-    })
-  }, [])
-
-  /** Swap order values of two widgets — only these two move, everything else stays put */
-  const swapWidgetOrder = useCallback((activeId: string, targetId: string) => {
+  /** Swap positions (col/row) of two widgets — only these two move */
+  const swapWidgetPositions = useCallback((activeId: string, targetId: string) => {
     setWidgets(prev => {
       const active = prev.find(w => w.id === activeId)
       const target = prev.find(w => w.id === targetId)
-      if (!active || !target || active.order === target.order) return prev
+      if (!active || !target) return prev
+      if (active.col === target.col && active.row === target.row) return prev
+
       return prev.map(w => {
-        if (w.id === activeId) return { ...w, order: target.order }
-        if (w.id === targetId) return { ...w, order: active.order }
+        if (w.id === activeId) return { ...w, col: target.col, row: target.row }
+        if (w.id === targetId) return { ...w, col: active.col, row: active.row }
         return w
-      }).sort((a, b) => a.order - b.order)
+      })
     })
   }, [])
 
@@ -270,10 +316,15 @@ export function useDashboardLayout() {
     setHiddenCards(prev => {
       const next = prev.filter(id => id !== cardId)
       setWidgets(ws => {
-        // If card isn't in widgets list, add it at the end
         if (!ws.find(w => w.id === cardId)) {
-          const maxOrder = ws.length > 0 ? Math.max(...ws.map(w => w.order)) : -1
-          const updated = [...ws, { id: cardId, size: WIDGET_REGISTRY[cardId].defaultSize, order: maxOrder + 1 }]
+          // Find first available gap
+          const maxRow = ws.length > 0 ? Math.max(...ws.map(w => w.row)) : 0
+          const updated = [...ws, {
+            id: cardId,
+            size: WIDGET_REGISTRY[cardId].defaultSize,
+            col: 0,
+            row: maxRow + 1,
+          }]
           persist(updated, next)
           return updated
         }
@@ -291,12 +342,16 @@ export function useDashboardLayout() {
     if (meta.fixed || meta.allowedSizes.length <= 1) return
 
     setWidgets(prev => {
-      const next = prev.map(w => {
-        if (w.id !== cardId) return w
-        const currentIdx = meta.allowedSizes.indexOf(w.size)
-        const nextIdx = (currentIdx + 1) % meta.allowedSizes.length
-        return { ...w, size: meta.allowedSizes[nextIdx] }
-      })
+      const widget = prev.find(w => w.id === cardId)
+      if (!widget) return prev
+
+      const currentIdx = meta.allowedSizes.indexOf(widget.size)
+      const nextIdx = (currentIdx + 1) % meta.allowedSizes.length
+      const newSize = meta.allowedSizes[nextIdx]
+
+      // Update size, keep position — re-pack only this widget's row if needed
+      const next = prev.map(w => w.id === cardId ? { ...w, size: newSize } : w)
+
       setHiddenCards(h => {
         persist(next, h)
         return h
@@ -322,9 +377,10 @@ export function useDashboardLayout() {
   // ── Reset ──
 
   const resetLayout = useCallback(() => {
-    setWidgets(DEFAULT_WIDGETS)
+    const defaults = generateDefaultWidgets()
+    setWidgets(defaults)
     setHiddenCards([])
-    saveLayout(DEFAULT_WIDGETS, [])
+    saveLayout(defaults, [])
   }, [])
 
   const toggleCustomizing = useCallback(() => {
@@ -337,8 +393,7 @@ export function useDashboardLayout() {
     hiddenCards,
     isCustomizing,
     saveDragStart,
-    reorderWidgets,
-    swapWidgetOrder,
+    swapWidgetPositions,
     finalizeLayout,
     cancelDrag,
     hideCard,

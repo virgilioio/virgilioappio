@@ -4,7 +4,7 @@ import type { AnimateLayoutChanges } from '@dnd-kit/sortable'
 
 import { GripVertical, X, Columns2, Columns3, Columns4 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { WidgetSize, WIDGET_REGISTRY, DashboardCardId, CARD_SIZE_RULES } from '@/hooks/useDashboardLayout'
+import { WidgetSize, WIDGET_REGISTRY, DashboardCardId } from '@/hooks/useDashboardLayout'
 
 export type DropPosition = 'before' | 'after' | null
 
@@ -13,7 +13,7 @@ interface DraggableDashboardCardProps {
   children: ReactNode
   isCustomizing: boolean
   currentSize: WidgetSize
-  dropPosition?: DropPosition
+  isDropTarget?: boolean
   onHide?: () => void
   onCycleSize?: () => void
 }
@@ -43,7 +43,7 @@ export function DraggableDashboardCard({
   children,
   isCustomizing,
   currentSize,
-  dropPosition,
+  isDropTarget,
   onHide,
   onCycleSize,
 }: DraggableDashboardCardProps) {
@@ -69,14 +69,6 @@ export function DraggableDashboardCard({
 
   return (
     <div ref={setNodeRef} style={style} className="relative group/card min-w-0">
-      {/* Drop position indicators */}
-      {isCustomizing && dropPosition === 'before' && !isDragging && (
-        <div className="absolute -top-[3px] left-0 right-0 z-20 h-[3px] rounded-full bg-primary shadow-[0_0_6px_hsl(var(--primary)/0.4)]" />
-      )}
-      {isCustomizing && dropPosition === 'after' && !isDragging && (
-        <div className="absolute -bottom-[3px] left-0 right-0 z-20 h-[3px] rounded-full bg-primary shadow-[0_0_6px_hsl(var(--primary)/0.4)]" />
-      )}
-
       {isCustomizing && (
         <>
           {/* Drag handle */}
@@ -135,6 +127,7 @@ export function DraggableDashboardCard({
       )}
       <div className={cn(
         isCustomizing && "ring-1 ring-dashed rounded-brand transition-all duration-200 ring-border/40",
+        isCustomizing && isDropTarget && "ring-2 ring-primary/50 ring-solid bg-primary/5",
       )}>
         {children}
       </div>
