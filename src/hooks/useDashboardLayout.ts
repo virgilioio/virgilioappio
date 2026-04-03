@@ -19,7 +19,7 @@ export const WIDGET_REGISTRY: Record<DashboardCardId, WidgetMeta> = {
   'app-review':  { id: 'app-review',  label: 'Application Review',   allowedSizes: ['small', 'medium', 'large'], defaultSize: 'small',  fixed: false },
   'onboarding':  { id: 'onboarding',  label: 'Onboarding Checklist', allowedSizes: ['small', 'medium', 'large'], defaultSize: 'small',  fixed: false },
   'jobs':        { id: 'jobs',        label: 'Jobs Overview',        allowedSizes: ['small', 'medium', 'large'], defaultSize: 'medium', fixed: false },
-  'world-clock': { id: 'world-clock', label: 'World Clock',          allowedSizes: ['small'],                  defaultSize: 'small',  fixed: true },
+  'world-clock': { id: 'world-clock', label: 'World Clock',          allowedSizes: ['xsmall'],                 defaultSize: 'xsmall', fixed: true },
 }
 
 export const SIZE_TO_COLS: Record<WidgetSize, number> = {
