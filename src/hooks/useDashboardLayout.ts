@@ -349,8 +349,14 @@ export function useDashboardLayout() {
       const nextIdx = (currentIdx + 1) % meta.allowedSizes.length
       const newSize = meta.allowedSizes[nextIdx]
 
-      // Update size, keep position — re-pack only this widget's row if needed
-      const next = prev.map(w => w.id === cardId ? { ...w, size: newSize } : w)
+      // Clamp col so widget doesn't overflow grid
+      const newSpan = SIZE_TO_COLS[newSize]
+      const maxCol = TOTAL_COLS - newSpan
+      const next = prev.map(w => {
+        if (w.id !== cardId) return w
+        const safeCol = Math.min(w.col, Math.max(0, maxCol))
+        return { ...w, size: newSize, col: safeCol }
+      })
 
       setHiddenCards(h => {
         persist(next, h)
