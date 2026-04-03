@@ -200,7 +200,7 @@ export function WorldClockWidget() {
           </div>
 
           {/* Time display - big and centered */}
-          <div className="font-poppins text-4xl font-bold tracking-tight text-foreground tabular-nums leading-none text-left py-1">
+          <div className="font-poppins text-5xl font-bold tracking-tight text-foreground tabular-nums leading-none text-left py-1">
             {timeString}
           </div>
 
