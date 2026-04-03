@@ -112,20 +112,11 @@ export function JobsOverview({ permissions, size = 'medium' }: JobsOverviewProps
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Metrics row */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-lg bg-muted/50 p-3 text-center">
-              <p className="text-lg font-semibold text-foreground">{openJobs.length}</p>
-              <p className="text-[11px] text-muted-foreground">Open</p>
-            </div>
-            <div className="rounded-lg bg-muted/50 p-3 text-center">
-              <p className="text-lg font-semibold text-foreground">{draftJobs.length}</p>
-              <p className="text-[11px] text-muted-foreground">Draft</p>
-            </div>
-            <div className="rounded-lg bg-muted/50 p-3 text-center">
-              <p className="text-lg font-semibold text-foreground">{closedJobs.length}</p>
-              <p className="text-[11px] text-muted-foreground">Closed</p>
-            </div>
-          </div>
+          <MetricCardGroup>
+            <MetricCard variant="inline" title="Open" value={openJobs.length} icon={Briefcase} iconColor="text-virgilio-success" />
+            <MetricCard variant="inline" title="Draft" value={draftJobs.length} icon={Clock} iconColor="text-warning" />
+            <MetricCard variant="inline" title="Closed" value={closedJobs.length} icon={Users} iconColor="text-destructive" />
+          </MetricCardGroup>
 
           {/* Job list */}
           {recentJobs.length > 0 && (
