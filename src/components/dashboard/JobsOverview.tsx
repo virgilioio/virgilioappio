@@ -4,6 +4,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Briefcase, ExternalLink, MapPin, Building, ChevronRight, Users, Clock } from 'lucide-react'
+import { MetricCard } from '@/components/ui/metric-card'
+import { MetricCardGroup } from '@/components/ui/metric-card-group'
 import { Link } from 'react-router-dom'
 import { useJobs } from '@/hooks/useJobs'
 import { PermissionsState } from '@/hooks/usePermissions'
@@ -110,20 +112,11 @@ export function JobsOverview({ permissions, size = 'medium' }: JobsOverviewProps
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Metrics row */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-lg bg-muted/50 p-3 text-center">
-              <p className="text-lg font-semibold text-foreground">{openJobs.length}</p>
-              <p className="text-[11px] text-muted-foreground">Open</p>
-            </div>
-            <div className="rounded-lg bg-muted/50 p-3 text-center">
-              <p className="text-lg font-semibold text-foreground">{draftJobs.length}</p>
-              <p className="text-[11px] text-muted-foreground">Draft</p>
-            </div>
-            <div className="rounded-lg bg-muted/50 p-3 text-center">
-              <p className="text-lg font-semibold text-foreground">{closedJobs.length}</p>
-              <p className="text-[11px] text-muted-foreground">Closed</p>
-            </div>
-          </div>
+          <MetricCardGroup>
+            <MetricCard variant="inline" title="Open" value={openJobs.length} icon={Briefcase} iconColor="text-virgilio-success" />
+            <MetricCard variant="inline" title="Draft" value={draftJobs.length} icon={Clock} iconColor="text-warning" />
+            <MetricCard variant="inline" title="Closed" value={closedJobs.length} icon={Users} iconColor="text-destructive" />
+          </MetricCardGroup>
 
           {/* Job list */}
           {recentJobs.length > 0 && (
@@ -178,22 +171,10 @@ export function JobsOverview({ permissions, size = 'medium' }: JobsOverviewProps
       <CardContent className="space-y-4">
         {/* Metrics row */}
         <div className="grid grid-cols-4 gap-3">
-          <div className="rounded-lg bg-muted/50 p-3">
-            <p className="text-lg font-semibold text-foreground">{openJobs.length}</p>
-            <p className="text-[11px] text-muted-foreground">Open</p>
-          </div>
-          <div className="rounded-lg bg-muted/50 p-3">
-            <p className="text-lg font-semibold text-foreground">{draftJobs.length}</p>
-            <p className="text-[11px] text-muted-foreground">Draft</p>
-          </div>
-          <div className="rounded-lg bg-muted/50 p-3">
-            <p className="text-lg font-semibold text-foreground">{closedJobs.length}</p>
-            <p className="text-[11px] text-muted-foreground">Closed</p>
-          </div>
-          <div className="rounded-lg bg-muted/50 p-3">
-            <p className="text-lg font-semibold text-foreground">{jobs?.length ?? 0}</p>
-            <p className="text-[11px] text-muted-foreground">Total</p>
-          </div>
+          <MetricCard title="Open" value={openJobs.length} icon={Briefcase} iconColor="text-virgilio-success" className="shadow-sm" />
+          <MetricCard title="Draft" value={draftJobs.length} icon={Clock} iconColor="text-warning" className="shadow-sm" />
+          <MetricCard title="Closed" value={closedJobs.length} icon={Users} iconColor="text-destructive" className="shadow-sm" />
+          <MetricCard title="Total" value={jobs?.length ?? 0} icon={Building} iconColor="text-primary" className="shadow-sm" />
         </div>
 
         {/* Detailed job table */}
