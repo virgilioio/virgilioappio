@@ -160,7 +160,8 @@ function generateDefaultWidgets(): WidgetLayout[] {
   const defaults: { id: DashboardCardId; size: WidgetSize }[] = [
     { id: 'tasks',       size: 'small' },
     { id: 'agenda',      size: 'small' },
-    { id: 'world-clock', size: 'xsmall' },
+    { id: 'world-clock',        size: 'xsmall' },
+    { id: 'currency-converter', size: 'xsmall' },
     { id: 'app-review',  size: 'small' },
     { id: 'onboarding',  size: 'small' },
     { id: 'jobs',        size: 'medium' },
