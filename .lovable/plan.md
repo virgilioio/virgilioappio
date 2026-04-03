@@ -1,94 +1,38 @@
 
-# Fix dashboard DnD so cards stop “running away”
 
-## Root cause in the current code
+# Redesign World Clock Widget + Add 1-Column Size
 
-The instability is coming from the interaction model, not the visual polish:
+## Overview
+Simplify the World Clock card layout and introduce a new `xsmall` (1-column) widget size for compact widgets.
 
-- `Dashboard.tsx` calls `reorderWidgets()` inside `onDragOver`
-- `useDashboardLayout.ts` currently **swaps order values immediately**
-- `computePlacements()` then **re-packs the whole dashboard from scratch**
-- because widgets have different spans, one hover can reshuffle many later placements
+## Changes
 
-So the dragged card is not being “placed below this card” in a stable way. It is repeatedly triggering a full layout recomputation while hovering.
+### 1. `src/hooks/useDashboardLayout.ts` — Add `xsmall` size
+- Add `'xsmall'` to `WidgetSize` type
+- Add `xsmall: 1` to `SIZE_TO_COLS`
+- Update `world-clock` registry entry: `allowedSizes: ['xsmall']`, `defaultSize: 'xsmall'`
+- Update `CARD_SIZE_RULES` for world-clock to `['xsmall']`
+- Update default layout entry for world-clock to `size: 'xsmall'`
+- Add xsmall to `SIZE_ICONS` and `SIZE_LABELS` in DraggableDashboardCard
 
-## Plan
+### 2. `src/components/dashboard/WorldClockWidget.tsx` — Redesign layout
+- **Remove** CardHeader entirely (no icon + "World Clock" title)
+- **Top row**: City name (left, Poppins semibold) + UTC badge (right, black `default` variant)
+- **Center**: Time in larger font (`text-5xl` Poppins bold, tabular-nums)
+- **Remove** date line, remove time-of-day icon/label row
+- **Bottom row**: Dot navigation (left) + small "+" button (right) to add timezones
+- Keep pagination arrows if multiple timezones exist
+- Keep the lilac `bg-accent/40` background
+- Tighter padding to fit 1-column width
 
-### 1. Stop mutating layout during hover
-In `src/pages/Dashboard.tsx`:
+### 3. `src/components/dashboard/DraggableDashboardCard.tsx` — Support xsmall in size cycling
+- Add `xsmall` entry to `SIZE_ICONS` and `SIZE_LABELS`
 
-- remove structural reordering from `handleDragOver`
-- keep `onDragOver` only for **preview state**
-- only commit the layout change in `onDragEnd`
-
-This prevents the whole dashboard from rearranging while the user is still aiming.
-
-### 2. Switch from “swap with hovered card” to “insert above/below target”
-Instead of treating a hovered card as a swap target, treat it as an insertion target:
-
-- detect whether the pointer is in the **top half** or **bottom half** of the target card
-- interpret that as:
-  - `before target`
-  - `after target`
-
-This matches the user’s mental model:
-- top half = place above
-- bottom half = place below
-
-### 3. Add explicit insertion helpers in the layout hook
-In `src/hooks/useDashboardLayout.ts` add focused helpers such as:
-
-- `moveWidgetBefore(activeId, targetId)`
-- `moveWidgetAfter(activeId, targetId)`
-
-These should:
-- remove the active widget from its current position
-- insert it before/after the target
-- re-normalize `order`
-- keep persistence behavior unchanged
-
-This is more precise than the current swap-based logic.
-
-### 4. Add restrained drop-zone visualization
-In `src/components/dashboard/DraggableDashboardCard.tsx`:
-
-- replace the generic whole-card hover ring with **top/bottom insertion indicators**
-- show a subtle line / band only where the card will land
-- keep styling serious and minimal
-
-This makes the drop result obvious without causing the layout to jump.
-
-### 5. Preserve overlay and current premium motion
-Keep the existing:
-
-- `DragOverlay`
-- calm easing
-- masonry transitions
-- customize-mode controls
-
-Only the placement logic changes.
-
-## File changes
+## Files changed
 
 | File | Change |
 |------|--------|
-| `src/pages/Dashboard.tsx` | Remove live reorder on hover, compute top/bottom insertion intent, commit move on drag end |
-| `src/hooks/useDashboardLayout.ts` | Replace swap-only reorder with insertion helpers and normalized ordering |
-| `src/components/dashboard/DraggableDashboardCard.tsx` | Add explicit top/bottom drop indicators instead of a generic over-state |
-| `src/components/dashboard/MasonryGrid.tsx` | Likely no major logic change; only minor support if needed for target measurement |
+| `src/hooks/useDashboardLayout.ts` | Add `xsmall` size (1 col), update world-clock registry |
+| `src/components/dashboard/WorldClockWidget.tsx` | Redesign: remove header/date, city+badge top, bigger time, "+" bottom-right |
+| `src/components/dashboard/DraggableDashboardCard.tsx` | Add xsmall to size icon/label maps |
 
-## Expected result
-
-After this change:
-
-- dragging over a card will **not** make the whole dashboard reshuffle
-- users can place a card **above or below** another card intentionally
-- the hovered card stays put while aiming
-- the drop target is visually clear
-- customization keeps the current polished, premium feel without chaotic movement
-
-## Technical note
-
-The key fix is: **preview intent during drag, mutate layout only on drop**.
-
-That restores spatial stability while keeping the current 6-column masonry foundation intact, instead of replacing the whole layout system again.
