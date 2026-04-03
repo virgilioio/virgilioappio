@@ -65,23 +65,27 @@ export function MasonryGrid({ items, totalCols, children, className, ghost, isDr
     const colBottoms = new Array(totalCols).fill(0)
     const posMap = new Map<string, Position>()
     const colWidthPct = 100 / totalCols
+    const gapPerCol = GAP
+    const totalGapSpace = (totalCols - 1) * gapPerCol
+    const gapShare = totalGapSpace / totalCols
 
     for (const item of items) {
+      // Safety clamp: prevent out-of-bounds access
+      const safeColSpan = Math.min(item.colSpan, totalCols)
+      const safeColStart = Math.min(Math.max(0, item.colStart), totalCols - safeColSpan)
+
       const h = heights.get(item.id) ?? 0
       const spannedCols = []
-      for (let c = item.colStart; c < item.colStart + item.colSpan; c++) {
+      for (let c = safeColStart; c < safeColStart + safeColSpan; c++) {
         spannedCols.push(c)
       }
       const top = Math.max(...spannedCols.map(c => colBottoms[c]))
 
-      const leftPct = item.colStart * colWidthPct
-      const widthPct = item.colSpan * colWidthPct
-      const gapPerCol = GAP
-      const totalGapSpace = (totalCols - 1) * gapPerCol
-      const gapShare = totalGapSpace / totalCols
+      const leftPct = safeColStart * colWidthPct
+      const widthPct = safeColSpan * colWidthPct
 
-      const leftCalc = `calc(${leftPct}% + ${item.colStart * gapPerCol - item.colStart * gapShare}px)`
-      const widthCalc = `calc(${widthPct}% - ${item.colSpan * gapShare - (item.colSpan - 1) * gapPerCol}px)`
+      const leftCalc = `calc(${leftPct}% + ${safeColStart * gapPerCol - safeColStart * gapShare}px)`
+      const widthCalc = `calc(${widthPct}% - ${safeColSpan * gapShare - (safeColSpan - 1) * gapPerCol}px)`
 
       posMap.set(item.id, { top, left: leftCalc, width: widthCalc })
 
