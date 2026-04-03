@@ -171,8 +171,8 @@ export function CurrencyConverterWidget() {
   const toSymbol = CURRENCY_SYMBOLS[state.toCurrency] ?? state.toCurrency
 
   return (
-    <Card className="overflow-hidden border-0 shadow-md bg-primary text-primary-foreground">
-      <CardContent className="p-4 space-y-3">
+    <Card className="overflow-hidden border-0 shadow-md bg-primary text-primary-foreground min-h-[240px] flex flex-col">
+      <CardContent className="p-4 space-y-3 flex flex-col flex-1">
         {/* From section */}
         <div className="space-y-1">
           <CurrencyPicker
@@ -228,7 +228,7 @@ export function CurrencyConverterWidget() {
         </div>
 
         {/* Exchange rate footer */}
-        <p className="text-[10px] opacity-50 text-right">
+        <p className="text-[10px] opacity-50 text-right mt-auto pt-1">
           1 {state.fromCurrency} = {exchangeRate.toFixed(4)} {state.toCurrency}
         </p>
       </CardContent>

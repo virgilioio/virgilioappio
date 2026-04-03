@@ -181,8 +181,8 @@ export function WorldClockWidget() {
 
   return (
     <>
-      <Card className="overflow-hidden bg-accent/40 border-accent/60">
-        <CardContent className="p-4">
+      <Card className="overflow-hidden bg-accent/40 border-accent/60 min-h-[240px] flex flex-col">
+        <CardContent className="p-4 flex flex-col flex-1">
           {/* Top row: City name + UTC badge */}
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-poppins font-semibold text-foreground truncate">
@@ -205,7 +205,7 @@ export function WorldClockWidget() {
           </div>
 
           {/* Bottom row: dots (left) + nav arrows + "+" button (right) */}
-          <div className="flex items-center justify-between mt-3">
+          <div className="flex items-center justify-between mt-auto pt-3">
             {/* Dot indicators */}
             <div className="flex items-center gap-1.5">
               {timezones.length > 1 && timezones.map((tz, i) => (
