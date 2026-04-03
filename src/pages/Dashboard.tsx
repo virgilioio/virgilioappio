@@ -115,6 +115,7 @@ export default function Dashboard() {
       case 'onboarding': return <OnboardingChecklist isDeemphasized={!hasSeenValue} />
       case 'jobs': return hasJobContent ? <div className="hidden sm:block"><JobsOverview permissions={permissions} size={widgetSize} /></div> : null
       case 'world-clock': return <WorldClockWidget />
+      case 'currency-converter': return <CurrencyConverterWidget />
       default: return null
     }
   }
