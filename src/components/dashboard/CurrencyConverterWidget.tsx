@@ -228,7 +228,7 @@ export function CurrencyConverterWidget() {
         </div>
 
         {/* Exchange rate footer */}
-        <p className="text-[10px] opacity-50 text-right">
+        <p className="text-[10px] opacity-50 text-right mt-auto pt-1">
           1 {state.fromCurrency} = {exchangeRate.toFixed(4)} {state.toCurrency}
         </p>
       </CardContent>

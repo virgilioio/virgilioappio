@@ -205,7 +205,7 @@ export function WorldClockWidget() {
           </div>
 
           {/* Bottom row: dots (left) + nav arrows + "+" button (right) */}
-          <div className="flex items-center justify-between mt-3">
+          <div className="flex items-center justify-between mt-auto pt-3">
             {/* Dot indicators */}
             <div className="flex items-center gap-1.5">
               {timezones.length > 1 && timezones.map((tz, i) => (
