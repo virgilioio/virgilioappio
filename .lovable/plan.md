@@ -1,48 +1,94 @@
 
+# Fix dashboard DnD so cards stop “running away”
 
-# Fix: "Cannot read properties of undefined (reading 'size')" in Dashboard
+## Root cause in the current code
 
-## Root Cause
+The instability is coming from the interaction model, not the visual polish:
 
-During drag-and-drop, `onDragOver` calls `reorderWidgets` which updates the `widgets` state. On the next render, `renderableWidgets` is recomputed from the new state, but `placements` is also recomputed — and during rapid drag events, there can be a moment where a placement references a widget ID that `renderableWidgets.find()` returns `undefined` for.
+- `Dashboard.tsx` calls `reorderWidgets()` inside `onDragOver`
+- `useDashboardLayout.ts` currently **swaps order values immediately**
+- `computePlacements()` then **re-packs the whole dashboard from scratch**
+- because widgets have different spans, one hover can reshuffle many later placements
 
-The `widget?.size ?? 'small'` fallback on line 202 should handle this, but the error at "line 523" in the bundled code suggests a different `.size` access path — likely inside `renderCard` where `widgetSizeMap[id]` is used, or possibly the `WIDGET_REGISTRY[id].fixed` access on line 210 when `id` comes from a stale placement.
+So the dragged card is not being “placed below this card” in a stable way. It is repeatedly triggering a full layout recomputation while hovering.
 
-## Fix
+## Plan
 
-### `src/pages/Dashboard.tsx` — Guard all ID lookups in renderCustomizeGrid
+### 1. Stop mutating layout during hover
+In `src/pages/Dashboard.tsx`:
 
-1. **Filter placements to only valid IDs**: Add a filter after computing placements to ensure every placement ID exists in `renderableWidgets`
-2. **Guard the `WIDGET_REGISTRY[id].fixed` access** on line 210 with optional chaining: `WIDGET_REGISTRY[id]?.fixed`
-3. **Skip rendering if widget not found**: Add an early return in the `.map()` callback
+- remove structural reordering from `handleDragOver`
+- keep `onDragOver` only for **preview state**
+- only commit the layout change in `onDragEnd`
 
-```typescript
-// Line ~200, inside renderCustomizeGrid
-{placements
-  .filter(({ id }) => renderableWidgets.some(w => w.id === id))
-  .map(({ id }) => {
-    const widget = renderableWidgets.find(w => w.id === id)
-    if (!widget) return null
-    const widgetSize = widget.size
-    return (
-      <div key={id} className="min-w-0">
-        <DraggableDashboardCard
-          id={id}
-          isCustomizing
-          currentSize={widgetSize}
-          onHide={() => hideCard(id)}
-          onCycleSize={!WIDGET_REGISTRY[id]?.fixed ? () => cycleWidgetSize(id) : undefined}
-        >
-          {renderCard(id)}
-        </DraggableDashboardCard>
-      </div>
-    )
-  })}
-```
+This prevents the whole dashboard from rearranging while the user is still aiming.
 
-### Files changed
+### 2. Switch from “swap with hovered card” to “insert above/below target”
+Instead of treating a hovered card as a swap target, treat it as an insertion target:
+
+- detect whether the pointer is in the **top half** or **bottom half** of the target card
+- interpret that as:
+  - `before target`
+  - `after target`
+
+This matches the user’s mental model:
+- top half = place above
+- bottom half = place below
+
+### 3. Add explicit insertion helpers in the layout hook
+In `src/hooks/useDashboardLayout.ts` add focused helpers such as:
+
+- `moveWidgetBefore(activeId, targetId)`
+- `moveWidgetAfter(activeId, targetId)`
+
+These should:
+- remove the active widget from its current position
+- insert it before/after the target
+- re-normalize `order`
+- keep persistence behavior unchanged
+
+This is more precise than the current swap-based logic.
+
+### 4. Add restrained drop-zone visualization
+In `src/components/dashboard/DraggableDashboardCard.tsx`:
+
+- replace the generic whole-card hover ring with **top/bottom insertion indicators**
+- show a subtle line / band only where the card will land
+- keep styling serious and minimal
+
+This makes the drop result obvious without causing the layout to jump.
+
+### 5. Preserve overlay and current premium motion
+Keep the existing:
+
+- `DragOverlay`
+- calm easing
+- masonry transitions
+- customize-mode controls
+
+Only the placement logic changes.
+
+## File changes
 
 | File | Change |
 |------|--------|
-| `src/pages/Dashboard.tsx` | Add guard filter + null checks in both `renderCustomizeGrid` and `renderNormalGrid` placement maps |
+| `src/pages/Dashboard.tsx` | Remove live reorder on hover, compute top/bottom insertion intent, commit move on drag end |
+| `src/hooks/useDashboardLayout.ts` | Replace swap-only reorder with insertion helpers and normalized ordering |
+| `src/components/dashboard/DraggableDashboardCard.tsx` | Add explicit top/bottom drop indicators instead of a generic over-state |
+| `src/components/dashboard/MasonryGrid.tsx` | Likely no major logic change; only minor support if needed for target measurement |
 
+## Expected result
+
+After this change:
+
+- dragging over a card will **not** make the whole dashboard reshuffle
+- users can place a card **above or below** another card intentionally
+- the hovered card stays put while aiming
+- the drop target is visually clear
+- customization keeps the current polished, premium feel without chaotic movement
+
+## Technical note
+
+The key fix is: **preview intent during drag, mutate layout only on drop**.
+
+That restores spatial stability while keeping the current 6-column masonry foundation intact, instead of replacing the whole layout system again.
