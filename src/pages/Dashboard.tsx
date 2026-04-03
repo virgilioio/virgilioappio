@@ -186,12 +186,8 @@ export default function Dashboard() {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
-    if (over && active.id !== over.id && dropTarget) {
-      if (dropTarget.position === 'before') {
-        moveWidgetBefore(String(active.id), String(over.id))
-      } else {
-        moveWidgetAfter(String(active.id), String(over.id))
-      }
+    if (over && active.id !== over.id) {
+      swapWidgetOrder(String(active.id), String(over.id))
     }
     setActiveId(null)
     setDropTarget(null)
