@@ -1,4 +1,5 @@
 import { ReactNode, useRef, useState, useEffect, useCallback, useMemo } from 'react'
+import { EmptyGridCell } from './EmptyGridCell'
 
 const GAP = 20 // px gap between items
 
@@ -11,8 +12,8 @@ interface MasonryItem {
 interface GhostSlot {
   colStart: number
   colSpan: number
-  row: number  // logical row hint (used to position ghost near a target)
-  targetId?: string // id of the widget the ghost is near
+  row: number
+  targetId?: string
 }
 
 interface MasonryGridProps {
@@ -21,6 +22,7 @@ interface MasonryGridProps {
   children: ReactNode[]
   className?: string
   ghost?: GhostSlot | null
+  isDragActive?: boolean
 }
 
 interface Position {
@@ -29,7 +31,7 @@ interface Position {
   width: string
 }
 
-export function MasonryGrid({ items, totalCols, children, className, ghost }: MasonryGridProps) {
+export function MasonryGrid({ items, totalCols, children, className, ghost, isDragActive }: MasonryGridProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const [heights, setHeights] = useState<Map<string, number>>(new Map())
@@ -106,7 +108,6 @@ export function MasonryGrid({ items, totalCols, children, className, ghost }: Ma
     const leftCalc = `calc(${leftPct}% + ${ghost.colStart * gapPerCol - ghost.colStart * gapShare}px)`
     const widthCalc = `calc(${widthPct}% - ${ghost.colSpan * gapShare - (ghost.colSpan - 1) * gapPerCol}px)`
 
-    // Position ghost near the target widget
     let top = 0
     if (ghost.targetId) {
       const targetPos = positions.posMap.get(ghost.targetId)
@@ -118,6 +119,41 @@ export function MasonryGrid({ items, totalCols, children, className, ghost }: Ma
 
     return { top, left: leftCalc, width: widthCalc }
   }, [ghost, totalCols, positions.posMap, heights])
+
+  // Compute empty cells for droppable zones
+  const emptyCells = useMemo(() => {
+    if (!isDragActive) return []
+
+    // Build occupancy grid: for each row, which cols are taken
+    const maxRow = items.length > 0 ? Math.max(...items.map(i => {
+      // Find the logical row from colBottoms
+      const pos = positions.posMap.get(i.id)
+      return pos ? Math.floor(pos.top / 100) + 1 : 1
+    })) : 1
+
+    // Use colBottoms to find the bottom of content
+    const maxBottom = Math.max(0, ...positions.colBottoms)
+
+    // For each column, find if there's empty space at the bottom
+    const cells: { col: number; row: number; top: number }[] = []
+    for (let col = 0; col < totalCols; col++) {
+      const colBottom = positions.colBottoms[col]
+      // If this column is shorter than the tallest, there's empty space
+      if (colBottom < maxBottom || maxBottom === 0) {
+        cells.push({ col, row: 999, top: colBottom === 0 ? 0 : colBottom })
+      }
+    }
+
+    // Also add a full row at the very bottom for any column
+    for (let col = 0; col < totalCols; col++) {
+      const bottom = positions.colBottoms[col]
+      if (bottom >= maxBottom && maxBottom > 0) {
+        cells.push({ col, row: 1000, top: maxBottom + GAP })
+      }
+    }
+
+    return cells
+  }, [isDragActive, items, positions.colBottoms, positions.posMap, totalCols])
 
   useEffect(() => {
     setContainerHeight(positions.containerHeight)
@@ -132,13 +168,33 @@ export function MasonryGrid({ items, totalCols, children, className, ghost }: Ma
     }
   }, [])
 
+  // Calc helpers for empty cell positioning
+  const calcLeft = useCallback((col: number) => {
+    const colWidthPct = 100 / totalCols
+    const gapPerCol = GAP
+    const totalGapSpace = (totalCols - 1) * gapPerCol
+    const gapShare = totalGapSpace / totalCols
+    return `calc(${col * colWidthPct}% + ${col * gapPerCol - col * gapShare}px)`
+  }, [totalCols])
+
+  const calcWidth = useCallback((span: number) => {
+    const colWidthPct = 100 / totalCols
+    const gapPerCol = GAP
+    const totalGapSpace = (totalCols - 1) * gapPerCol
+    const gapShare = totalGapSpace / totalCols
+    return `calc(${span * colWidthPct}% - ${span * gapShare - (span - 1) * gapPerCol}px)`
+  }, [totalCols])
+
+  // Extra height for empty cell droppables at the bottom
+  const extraHeight = isDragActive && emptyCells.length > 0 ? 80 : 0
+
   return (
     <div
       ref={containerRef}
       className={className}
       style={{
         position: 'relative',
-        height: containerHeight > 0 ? containerHeight : undefined,
+        height: containerHeight > 0 ? containerHeight + extraHeight : undefined,
         minHeight: containerHeight > 0 ? undefined : 200,
       }}
     >
@@ -162,6 +218,22 @@ export function MasonryGrid({ items, totalCols, children, className, ghost }: Ma
           </div>
         )
       })}
+
+      {/* Empty cell droppables */}
+      {isDragActive && emptyCells.map((cell) => (
+        <div
+          key={`empty-${cell.col}-${cell.row}`}
+          style={{
+            position: 'absolute',
+            top: cell.top,
+            left: calcLeft(cell.col),
+            width: calcWidth(1),
+            height: 60,
+          }}
+        >
+          <EmptyGridCell col={cell.col} row={cell.row} isDragActive />
+        </div>
+      ))}
 
       {/* Ghost drop placeholder */}
       {ghostPosition && (

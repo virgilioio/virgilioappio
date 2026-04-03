@@ -387,6 +387,18 @@ export function useDashboardLayout() {
     setIsCustomizing(prev => !prev)
   }, [])
 
+  /** Move a widget to an exact col/row — nothing else moves */
+  const moveWidgetTo = useCallback((widgetId: string, col: number, row: number) => {
+    setWidgets(prev => {
+      const next = prev.map(w => w.id === widgetId ? { ...w, col, row } : w)
+      setHiddenCards(h => {
+        persist(next, h)
+        return h
+      })
+      return next
+    })
+  }, [persist])
+
   return {
     widgets,
     visibleWidgets,
@@ -394,6 +406,7 @@ export function useDashboardLayout() {
     isCustomizing,
     saveDragStart,
     swapWidgetPositions,
+    moveWidgetTo,
     finalizeLayout,
     cancelDrag,
     hideCard,

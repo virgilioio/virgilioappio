@@ -77,6 +77,7 @@ export default function Dashboard() {
     isCustomizing,
     saveDragStart,
     swapWidgetPositions,
+    moveWidgetTo,
     finalizeLayout,
     cancelDrag,
     hideCard,
@@ -189,8 +190,15 @@ export default function Dashboard() {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     if (over && active.id !== over.id) {
-      // Direct position swap — only these two widgets move
-      swapWidgetPositions(String(active.id), String(over.id))
+      const overId = String(over.id)
+      // Check if dropped on an empty cell
+      if (overId.startsWith('empty-') && over.data?.current?.type === 'empty-cell') {
+        const { col, row } = over.data.current as { col: number; row: number }
+        moveWidgetTo(String(active.id), col, row)
+      } else {
+        // Direct position swap — only these two widgets move
+        swapWidgetPositions(String(active.id), overId)
+      }
     }
     setActiveId(null)
     setOverId(null)
@@ -223,7 +231,7 @@ export default function Dashboard() {
       onDragCancel={handleDragCancel}
     >
       <SortableContext items={renderableWidgets.map(w => w.id)} strategy={rectSortingStrategy}>
-        <MasonryGrid items={masonryItems} totalCols={gridCols} ghost={ghostSlot}>
+        <MasonryGrid items={masonryItems} totalCols={gridCols} ghost={ghostSlot} isDragActive={!!activeId}>
           {renderableWidgets.map(({ id }) => {
             const widget = renderableWidgets.find(w => w.id === id)
             if (!widget) return null
