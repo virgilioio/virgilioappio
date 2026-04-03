@@ -240,6 +240,7 @@ export default function Dashboard() {
                   id={id}
                   isCustomizing
                   currentSize={widgetSize}
+                  dropPosition={dropTarget?.id === id ? dropTarget.position : null}
                   onHide={() => hideCard(id)}
                   onCycleSize={!WIDGET_REGISTRY[id]?.fixed ? () => cycleWidgetSize(id) : undefined}
                 >
