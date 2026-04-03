@@ -23,6 +23,7 @@ export const WIDGET_REGISTRY: Record<DashboardCardId, WidgetMeta> = {
 }
 
 export const SIZE_TO_COLS: Record<WidgetSize, number> = {
+  xsmall: 1,
   small: 2,
   medium: 3,
   large: 4,
