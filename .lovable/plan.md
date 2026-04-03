@@ -1,51 +1,48 @@
 
 
-# Fix Dashboard DnD: Drop Target Visualization + Bidirectional Placement
+# Fix: "Cannot read properties of undefined (reading 'size')" in Dashboard
 
-## Problems
+## Root Cause
 
-### 1. Can't place widgets above others
-The `swapPlacements` function swaps `gridRow`/`gridColumn` values in cached placements, but `MasonryGrid` completely ignores those values. It re-derives positions from the `items` array order and `colStart`/`colSpan`. So the swap has no real effect on visual ordering — items always pack in their original array order.
+During drag-and-drop, `onDragOver` calls `reorderWidgets` which updates the `widgets` state. On the next render, `renderableWidgets` is recomputed from the new state, but `placements` is also recomputed — and during rapid drag events, there can be a moment where a placement references a widget ID that `renderableWidgets.find()` returns `undefined` for.
 
-**Fix**: Instead of swapping cached placement coordinates, swap the actual widget order values and let MasonryGrid repack from the new order. The order swap already happens via `reorderWidgets`, but `cachedPlacements` overrides it. Remove the `swapPlacements` abstraction and rebuild `cachedPlacements` from the reordered widgets immediately after a swap.
+The `widget?.size ?? 'small'` fallback on line 202 should handle this, but the error at "line 523" in the bundled code suggests a different `.size` access path — likely inside `renderCard` where `widgetSizeMap[id]` is used, or possibly the `WIDGET_REGISTRY[id].fixed` access on line 210 when `id` comes from a stale placement.
 
-### 2. No drop zone visualization
-There is zero visual feedback when dragging over a target widget. The `DraggableDashboardCard` uses `useSortable` which exposes `isOver`, but it's never used. The user gets no indication of where the widget will land.
+## Fix
 
-**Fix**: Use `isOver` from `useSortable` to show a subtle highlight ring on the target card during hover. Keep it restrained — a soft border glow, not a full drop zone expansion.
+### `src/pages/Dashboard.tsx` — Guard all ID lookups in renderCustomizeGrid
 
-### 3. Real-time reorder during drag (onDragOver)
-Currently reordering only happens on `onDragEnd`. Adding `onDragOver` enables live preview of the swap as the user drags, giving immediate spatial feedback.
+1. **Filter placements to only valid IDs**: Add a filter after computing placements to ensure every placement ID exists in `renderableWidgets`
+2. **Guard the `WIDGET_REGISTRY[id].fixed` access** on line 210 with optional chaining: `WIDGET_REGISTRY[id]?.fixed`
+3. **Skip rendering if widget not found**: Add an early return in the `.map()` callback
 
-## Implementation
+```typescript
+// Line ~200, inside renderCustomizeGrid
+{placements
+  .filter(({ id }) => renderableWidgets.some(w => w.id === id))
+  .map(({ id }) => {
+    const widget = renderableWidgets.find(w => w.id === id)
+    if (!widget) return null
+    const widgetSize = widget.size
+    return (
+      <div key={id} className="min-w-0">
+        <DraggableDashboardCard
+          id={id}
+          isCustomizing
+          currentSize={widgetSize}
+          onHide={() => hideCard(id)}
+          onCycleSize={!WIDGET_REGISTRY[id]?.fixed ? () => cycleWidgetSize(id) : undefined}
+        >
+          {renderCard(id)}
+        </DraggableDashboardCard>
+      </div>
+    )
+  })}
+```
 
-### `src/components/dashboard/DraggableDashboardCard.tsx`
-- Destructure `isOver` from `useSortable`
-- When `isOver && isCustomizing`, add a subtle ring highlight (`ring-2 ring-primary/30`) to the card wrapper
-- This gives immediate visual feedback for the drop target
-
-### `src/pages/Dashboard.tsx`
-- Remove `swapPlacements` utility entirely
-- Remove `cachedPlacements` and `lastStructuralKey` state — they add complexity and desync from actual widget order
-- Compute placements directly from `renderableWidgets` on every render (the masonry computation is cheap)
-- Add `onDragOver` handler: when active widget hovers over a different widget, call `reorderWidgets` to swap their order values live — MasonryGrid will repack and show the preview immediately
-- On `onDragEnd`: call `finalizeLayout()` to persist
-- On `onDragCancel`: call `cancelDrag()` to restore pre-drag order
-
-### `src/components/dashboard/MasonryGrid.tsx`
-- No changes needed — it already handles position transitions smoothly
-
-## Result
-- Dragging over a card highlights it subtly
-- The layout previews the swap in real-time during drag
-- Dropping finalizes the position
-- Widgets can be placed above or below others because the order array is the source of truth
-- No cached placement desync issues
-
-## Files changed
+### Files changed
 
 | File | Change |
 |------|--------|
-| `src/components/dashboard/DraggableDashboardCard.tsx` | Add `isOver` highlight ring for drop target visualization |
-| `src/pages/Dashboard.tsx` | Remove `swapPlacements`/caching, add `onDragOver` for live reorder preview, compute placements directly |
+| `src/pages/Dashboard.tsx` | Add guard filter + null checks in both `renderCustomizeGrid` and `renderNormalGrid` placement maps |
 
