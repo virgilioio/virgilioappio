@@ -371,7 +371,13 @@ export function useDashboardLayout() {
     if (!meta.allowedSizes.includes(size)) return
 
     setWidgets(prev => {
-      const next = prev.map(w => w.id === cardId ? { ...w, size } : w)
+      const newSpan = SIZE_TO_COLS[size]
+      const maxCol = TOTAL_COLS - newSpan
+      const next = prev.map(w => {
+        if (w.id !== cardId) return w
+        const safeCol = Math.min(w.col, Math.max(0, maxCol))
+        return { ...w, size, col: safeCol }
+      })
       setHiddenCards(h => {
         persist(next, h)
         return h
