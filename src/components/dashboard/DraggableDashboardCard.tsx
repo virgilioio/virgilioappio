@@ -6,11 +6,14 @@ import { GripVertical, X, Columns2, Columns3, Columns4 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { WidgetSize, WIDGET_REGISTRY, DashboardCardId, CARD_SIZE_RULES } from '@/hooks/useDashboardLayout'
 
+export type DropPosition = 'before' | 'after' | null
+
 interface DraggableDashboardCardProps {
   id: string
   children: ReactNode
   isCustomizing: boolean
   currentSize: WidgetSize
+  dropPosition?: DropPosition
   onHide?: () => void
   onCycleSize?: () => void
 }
@@ -38,6 +41,7 @@ export function DraggableDashboardCard({
   children,
   isCustomizing,
   currentSize,
+  dropPosition,
   onHide,
   onCycleSize,
 }: DraggableDashboardCardProps) {
@@ -46,7 +50,6 @@ export function DraggableDashboardCard({
     listeners,
     setNodeRef,
     isDragging,
-    isOver,
   } = useSortable({
     id,
     disabled: !isCustomizing,
@@ -55,7 +58,6 @@ export function DraggableDashboardCard({
 
   const meta = WIDGET_REGISTRY[id as DashboardCardId]
   const isResizable = meta && !meta.fixed && meta.allowedSizes.length > 1
-  const showDropHighlight = isOver && isCustomizing && !isDragging
 
   const style: React.CSSProperties = {
     opacity: isDragging ? 0.3 : undefined,
@@ -64,10 +66,15 @@ export function DraggableDashboardCard({
   }
 
   return (
-    <div ref={setNodeRef} style={style} className={cn(
-      "relative group/card min-w-0",
-      showDropHighlight && "ring-2 ring-primary/30 rounded-brand"
-    )}>
+    <div ref={setNodeRef} style={style} className="relative group/card min-w-0">
+      {/* Drop position indicators */}
+      {isCustomizing && dropPosition === 'before' && !isDragging && (
+        <div className="absolute -top-[3px] left-0 right-0 z-20 h-[3px] rounded-full bg-primary shadow-[0_0_6px_hsl(var(--primary)/0.4)]" />
+      )}
+      {isCustomizing && dropPosition === 'after' && !isDragging && (
+        <div className="absolute -bottom-[3px] left-0 right-0 z-20 h-[3px] rounded-full bg-primary shadow-[0_0_6px_hsl(var(--primary)/0.4)]" />
+      )}
+
       {isCustomizing && (
         <>
           {/* Drag handle */}

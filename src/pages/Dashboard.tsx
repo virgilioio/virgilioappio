@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react'
+import { ReactNode, useState, useRef, useCallback } from 'react'
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
 import { UpcomingActivities } from '@/components/dashboard/UpcomingActivities'
 import { JobsOverview } from '@/components/dashboard/JobsOverview'
@@ -25,6 +25,7 @@ import {
   GridPlacement,
 } from '@/hooks/useDashboardLayout'
 import { DraggableDashboardCard, DashboardCardOverlay } from '@/components/dashboard/DraggableDashboardCard'
+import type { DropPosition } from '@/components/dashboard/DraggableDashboardCard'
 import { MasonryGrid } from '@/components/dashboard/MasonryGrid'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Button } from '@/components/ui/button'
@@ -74,7 +75,8 @@ export default function Dashboard() {
     hiddenCards,
     isCustomizing,
     saveDragStart,
-    reorderWidgets,
+    moveWidgetBefore,
+    moveWidgetAfter,
     finalizeLayout,
     cancelDrag,
     hideCard,
@@ -85,6 +87,7 @@ export default function Dashboard() {
   } = useDashboardLayout()
   const isMobile = useIsMobile()
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [dropTarget, setDropTarget] = useState<{ id: string; position: DropPosition } | null>(null)
   const [addWidgetOpen, setAddWidgetOpen] = useState(false)
 
   const sensors = useSensors(
@@ -158,21 +161,47 @@ export default function Dashboard() {
   const handleDragStart = (event: DragStartEvent) => {
     saveDragStart()
     setActiveId(String(event.active.id))
+    setDropTarget(null)
   }
 
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event
-    if (!over || active.id === over.id) return
-    reorderWidgets(String(active.id), String(over.id))
+    if (!over || active.id === over.id) {
+      setDropTarget(null)
+      return
+    }
+
+    // Determine if pointer is in top or bottom half of the target
+    const overRect = over.rect
+    if (!overRect) {
+      setDropTarget({ id: String(over.id), position: 'after' })
+      return
+    }
+    const pointerY = (event.activatorEvent as PointerEvent)?.clientY
+    const deltaY = event.delta?.y ?? 0
+    const currentY = pointerY != null ? pointerY + deltaY : overRect.top + overRect.height / 2
+    const midY = overRect.top + overRect.height / 2
+    const position: DropPosition = currentY < midY ? 'before' : 'after'
+    setDropTarget({ id: String(over.id), position })
   }
 
-  const handleDragEnd = (_event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id && dropTarget) {
+      if (dropTarget.position === 'before') {
+        moveWidgetBefore(String(active.id), String(over.id))
+      } else {
+        moveWidgetAfter(String(active.id), String(over.id))
+      }
+    }
     setActiveId(null)
+    setDropTarget(null)
     finalizeLayout()
   }
 
   const handleDragCancel = () => {
     setActiveId(null)
+    setDropTarget(null)
     cancelDrag()
   }
 
@@ -211,6 +240,7 @@ export default function Dashboard() {
                   id={id}
                   isCustomizing
                   currentSize={widgetSize}
+                  dropPosition={dropTarget?.id === id ? dropTarget.position : null}
                   onHide={() => hideCard(id)}
                   onCycleSize={!WIDGET_REGISTRY[id]?.fixed ? () => cycleWidgetSize(id) : undefined}
                 >

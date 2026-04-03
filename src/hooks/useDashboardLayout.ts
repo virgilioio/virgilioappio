@@ -220,6 +220,40 @@ export function useDashboardLayout() {
     })
   }, [])
 
+  /** Insert activeId before targetId in the order, shifting others down */
+  const moveWidgetBefore = useCallback((activeId: string, targetId: string) => {
+    setWidgets(prev => {
+      const without = prev.filter(w => w.id !== activeId)
+      const activeWidget = prev.find(w => w.id === activeId)
+      if (!activeWidget) return prev
+      const targetIdx = without.findIndex(w => w.id === targetId)
+      if (targetIdx === -1) return prev
+      const reordered = [
+        ...without.slice(0, targetIdx),
+        activeWidget,
+        ...without.slice(targetIdx),
+      ]
+      return reordered.map((w, i) => ({ ...w, order: i }))
+    })
+  }, [])
+
+  /** Insert activeId after targetId in the order, shifting others down */
+  const moveWidgetAfter = useCallback((activeId: string, targetId: string) => {
+    setWidgets(prev => {
+      const without = prev.filter(w => w.id !== activeId)
+      const activeWidget = prev.find(w => w.id === activeId)
+      if (!activeWidget) return prev
+      const targetIdx = without.findIndex(w => w.id === targetId)
+      if (targetIdx === -1) return prev
+      const reordered = [
+        ...without.slice(0, targetIdx + 1),
+        activeWidget,
+        ...without.slice(targetIdx + 1),
+      ]
+      return reordered.map((w, i) => ({ ...w, order: i }))
+    })
+  }, [])
+
   const finalizeLayout = useCallback(() => {
     setWidgets(prev => {
       setHiddenCards(h => {
@@ -323,6 +357,8 @@ export function useDashboardLayout() {
     isCustomizing,
     saveDragStart,
     reorderWidgets,
+    moveWidgetBefore,
+    moveWidgetAfter,
     finalizeLayout,
     cancelDrag,
     hideCard,
