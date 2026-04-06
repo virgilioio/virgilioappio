@@ -1,36 +1,42 @@
 
 
-# Fix: Skills Generation Crash on Undefined Category Label
+# Fix: Uploaded Photos Not Displaying in Carousel Widget
 
-## Root Cause
+## Likely Root Cause
 
-Line 232 in `JobSkillsGenerationPanel.tsx`:
-```typescript
-getCategoryLabel(category as keyof SkillsByCategory).split(' ')[0]
-```
+The public URLs returned by `getPublicUrl()` are being cached by the browser. Supabase Storage uploads specify `cacheControl: '3600'` (1 hour). If the browser ever requests the URL before the upload fully propagates (or hits a CDN cache miss), it caches a stale/empty response. Since each upload uses a unique UUID filename this shouldn't happen for *new* uploads, but there's another issue:
 
-`getCategoryLabel` returns `undefined` when the `category` key doesn't exist in its internal labels map. This happens when the AI returns a category not in the predefined set (e.g., a typo or unexpected key). Calling `.split()` on `undefined` throws `TypeError: Cannot read properties of undefined (reading 'split')`, which the ErrorBoundary catches and blanks the screen.
+The `getPublicUrl()` returns a bare URL with no cache-busting parameter. If there's any CDN or edge caching layer, the image may not be immediately available at that URL after upload.
+
+Additionally, when `loadPhotos` runs on page load, it constructs URLs the same way — no cache-busting. This means even on reload, cached 404s or empty responses persist.
 
 ## Fix
 
-Add a fallback so that if `getCategoryLabel` returns `undefined`, we use the raw category string instead. This is a one-line defensive fix.
+### `src/components/dashboard/PhotoCarouselWidget.tsx`
 
-### `src/components/jobs/JobSkillsGenerationPanel.tsx` — Line 232
+1. **Add cache-busting query parameter** to all public URLs — both after upload and when loading existing photos:
+   ```typescript
+   // After upload (line 134):
+   const url = `${supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl}?t=${Date.now()}`
 
-Change:
-```typescript
-{getCategoryLabel(category as keyof SkillsByCategory).split(' ')[0]} ({skills.length})
-```
-To:
-```typescript
-{(getCategoryLabel(category as keyof SkillsByCategory) || category).split(' ')[0]} ({skills.length})
-```
+   // When loading (line 85):
+   url: `${supabase.storage.from(BUCKET).getPublicUrl(`${user.id}/${f.name}`).data.publicUrl}?t=${Date.now()}`
+   ```
 
-Apply the same pattern to any other `getCategoryLabel` calls in the file that don't have a fallback.
+2. **Remove aggressive cacheControl** from upload options — change from `'3600'` to `'0'` or remove it entirely, so the CDN doesn't serve stale responses:
+   ```typescript
+   const { error } = await supabase.storage.from(BUCKET).upload(path, compressedFile, {
+     cacheControl: '0',
+     contentType: 'image/jpeg',
+     upsert: false,
+   })
+   ```
+
+3. **Add console logging** to the upload flow to aid debugging if the issue persists — log the upload response and the constructed URL.
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/components/jobs/JobSkillsGenerationPanel.tsx` | Add fallback to all `getCategoryLabel` calls to prevent crash on unknown categories |
+| `src/components/dashboard/PhotoCarouselWidget.tsx` | Add cache-busting to URLs; reduce cacheControl; add debug logging |
 
