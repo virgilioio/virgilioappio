@@ -53,6 +53,7 @@ export function PhotoCarouselWidget() {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [hovering, setHovering] = useState(false)
+  const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set())
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Load photos from Supabase Storage
