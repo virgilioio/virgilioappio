@@ -10,6 +10,42 @@ const BUCKET = 'dashboard-photos'
 const MAX_PHOTOS = 10
 const MAX_SIZE_MB = 5
 const STORAGE_KEY = 'dashboard-photo-order'
+const TARGET_WIDTH = 600
+const TARGET_HEIGHT = 600
+const JPEG_QUALITY = 0.8
+
+/** Compress and resize an image file to fit the widget frame */
+function compressImage(file: File): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const canvas = document.createElement('canvas')
+
+      // Scale down to fit within TARGET dimensions, preserving aspect ratio
+      let { width, height } = img
+      if (width > TARGET_WIDTH || height > TARGET_HEIGHT) {
+        const ratio = Math.min(TARGET_WIDTH / width, TARGET_HEIGHT / height)
+        width = Math.round(width * ratio)
+        height = Math.round(height * ratio)
+      }
+
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      if (!ctx) { reject(new Error('Canvas not supported')); return }
+      ctx.drawImage(img, 0, 0, width, height)
+      canvas.toBlob(
+        blob => blob ? resolve(blob) : reject(new Error('Compression failed')),
+        'image/jpeg',
+        JPEG_QUALITY,
+      )
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Failed to load image')) }
+    img.src = url
+  })
+}
 
 export function PhotoCarouselWidget() {
   const [photos, setPhotos] = useState<{ name: string; url: string }[]>([])
@@ -97,12 +133,14 @@ export function PhotoCarouselWidget() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { toast.error('Please sign in'); return }
 
-      const ext = file.name.split('.').pop() || 'jpg'
-      const fileName = `${crypto.randomUUID()}.${ext}`
+      // Compress and resize before uploading
+      const compressed = await compressImage(file)
+      const fileName = `${crypto.randomUUID()}.jpg`
       const path = `${user.id}/${fileName}`
 
-      const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
+      const { error } = await supabase.storage.from(BUCKET).upload(path, compressed, {
         cacheControl: '3600',
+        contentType: 'image/jpeg',
         upsert: false,
       })
 
