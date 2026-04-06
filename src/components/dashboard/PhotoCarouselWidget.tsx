@@ -320,13 +320,27 @@ export function PhotoCarouselWidget() {
                       <span className="text-xs text-muted-foreground/60">Image unavailable</span>
                     </div>
                   ) : (
-                     <img
-                       key={fadeKey}
-                       src={currentPhoto.url}
-                       alt="Personal photo"
-                       className="absolute inset-0 w-full h-full object-cover rounded-lg animate-fade-in"
-                       onError={() => setBrokenImages(prev => new Set(prev).add(currentPhoto.name))}
-                    />
+                    <>
+                      {/* Previous photo (bottom layer) */}
+                      {displayIndex !== currentIndex && photos[displayIndex] && !brokenImages.has(photos[displayIndex].name) && (
+                        <img
+                          src={photos[displayIndex].url}
+                          alt=""
+                          className="absolute inset-0 w-full h-full object-cover rounded-lg"
+                        />
+                      )}
+                      {/* Current photo (top layer with crossfade) */}
+                      <img
+                        src={currentPhoto.url}
+                        alt="Personal photo"
+                        className="absolute inset-0 w-full h-full object-cover rounded-lg"
+                        style={{
+                          transition: 'opacity 700ms ease-in-out',
+                          opacity: isFading ? 0 : 1,
+                        }}
+                        onError={() => setBrokenImages(prev => new Set(prev).add(currentPhoto.name))}
+                      />
+                    </>
                   )}
                   {/* Ellipsis menu */}
                   <DropdownMenu>
