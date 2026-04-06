@@ -229,7 +229,7 @@ export const JobSkillsGenerationPanel: React.FC<JobSkillsGenerationPanelProps> =
               {Object.entries(skillsByCategory).map(([category, skills]) => (
                 skills.length > 0 && (
                   <TabsTrigger key={category} value={category}>
-                    {getCategoryLabel(category as keyof SkillsByCategory).split(' ')[0]} ({skills.length})
+                    {(getCategoryLabel(category as keyof SkillsByCategory) || category).split(' ')[0]} ({skills.length})
                   </TabsTrigger>
                 )
               ))}
@@ -294,7 +294,7 @@ export const JobSkillsGenerationPanel: React.FC<JobSkillsGenerationPanelProps> =
               skills.length > 0 && (
                 <TabsContent key={category} value={category} className="mt-4">
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-medium">{getCategoryLabel(category as keyof SkillsByCategory)}</h4>
+                    <h4 className="font-medium">{getCategoryLabel(category as keyof SkillsByCategory) || category}</h4>
                     <div className="flex gap-2">
                       <Button
                         type="button"
