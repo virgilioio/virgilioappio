@@ -40,11 +40,38 @@ Deno.serve(async (req) => {
     }
 
     const { data: userType } = await supabaseClient.rpc('get_user_type')
-    if (userType !== 'platform_admin') {
+    if (userType !== 'platform_admin' && userType !== 'workspace_owner') {
       return new Response(
         JSON.stringify({ error: 'Insufficient permissions' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
+    }
+
+    const body: DeleteUserRequest = await req.json()
+    console.log('Delete user request:', body)
+
+    // Validate userId
+    if (!body.userId) {
+      return new Response(
+        JSON.stringify({ error: 'userId is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // For workspace owners, verify the target user belongs to their tenant
+    if (userType === 'workspace_owner') {
+      const { data: callerOrg } = await supabaseClient.rpc('get_user_organization_id')
+      const { data: callerTenantData } = await supabaseAdmin
+        .from('organizations').select('tenant_id').eq('id', callerOrg).single()
+      const { data: targetMember } = await supabaseAdmin
+        .from('members').select('tenant_id').eq('user_id', body.userId).limit(1).single()
+
+      if (!callerTenantData || !targetMember || callerTenantData.tenant_id !== targetMember.tenant_id) {
+        return new Response(
+          JSON.stringify({ error: 'Cannot delete users outside your tenant' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
     }
 
     const body: DeleteUserRequest = await req.json()
