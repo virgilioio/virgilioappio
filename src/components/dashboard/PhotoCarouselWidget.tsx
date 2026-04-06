@@ -53,6 +53,7 @@ export function PhotoCarouselWidget() {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [hovering, setHovering] = useState(false)
+  const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set())
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Load photos from Supabase Storage
@@ -136,9 +137,10 @@ export function PhotoCarouselWidget() {
       // Compress and resize before uploading
       const compressed = await compressImage(file)
       const fileName = `${crypto.randomUUID()}.jpg`
+      const compressedFile = new File([compressed], fileName, { type: 'image/jpeg' })
       const path = `${user.id}/${fileName}`
 
-      const { error } = await supabase.storage.from(BUCKET).upload(path, compressed, {
+      const { error } = await supabase.storage.from(BUCKET).upload(path, compressedFile, {
         cacheControl: '3600',
         contentType: 'image/jpeg',
         upsert: false,
@@ -219,20 +221,26 @@ export function PhotoCarouselWidget() {
             </button>
           ) : (
             <>
-              <img
-                src={currentPhoto.url}
-                alt="Personal photo"
-                className="absolute inset-0 w-full h-full object-cover rounded-lg"
-              />
-              {/* Delete button on hover */}
-              {hovering && (
-                <button
-                  onClick={handleDelete}
-                  className="absolute top-1.5 right-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-all z-10"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </button>
+              {brokenImages.has(currentPhoto.name) ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/50 rounded-lg">
+                  <Camera className="h-6 w-6 text-muted-foreground/40 mb-1" />
+                  <span className="text-xs text-muted-foreground/60">Image unavailable</span>
+                </div>
+              ) : (
+                <img
+                  src={currentPhoto.url}
+                  alt="Personal photo"
+                  className="absolute inset-0 w-full h-full object-cover rounded-lg"
+                  onError={() => setBrokenImages(prev => new Set(prev).add(currentPhoto.name))}
+                />
               )}
+              {/* Delete button — always visible */}
+              <button
+                onClick={handleDelete}
+                className="absolute top-1.5 right-1.5 bg-black/40 hover:bg-black/70 text-white rounded-full p-1 transition-all z-10"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
               {/* Nav arrows on hover when multiple photos */}
               {hovering && photos.length > 1 && (
                 <>
