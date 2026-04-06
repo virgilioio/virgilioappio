@@ -74,16 +74,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    const body: DeleteUserRequest = await req.json()
-    console.log('Delete user request:', body)
-
-    // Validate userId
-    if (!body.userId) {
-      return new Response(
-        JSON.stringify({ error: 'userId is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
 
     // Step 1: Use the safe delete function to remove from public tables
     const { data: deleteResult, error: deleteError } = await supabaseClient
