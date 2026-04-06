@@ -1239,7 +1239,7 @@
 
     "progress": ["progress@2.0.3", "", {}, "sha512-7PiHtLll5LdnKIMw100I+8xJXR5gW2QwWYkT6iJva0bXitZKa/XMrSbdmg3r2Xnaidz9Qumd0VPaMrZlF9V9sA=="],
 
-    "proj4": ["proj4@2.20.6", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/proj4/-/proj4-2.20.6.tgz", { "dependencies": { "mgrs": "1.0.0", "wkt-parser": "^1.5.5" } }, "sha512-w6d8YDpF3cRQP0O93hft7a0aMpadDLtP461h6FC0hJByI/KLbm1mRcsn6XDPymgB4owottJCwWM/RInHp6dYbA=="],
+    "proj4": ["proj4@2.20.8", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/proj4/-/proj4-2.20.8.tgz", { "dependencies": { "mgrs": "1.0.0", "wkt-parser": "^1.5.5" } }, "sha512-1C8sfT4xY4PAPwk0MroFBTGF4R4bzDXdmPQTGYVLsoNssrZ9odzObxS2dTeGBty8jW8KO7h16C1Hs2JP+ctfFw=="],
 
     "prop-types": ["prop-types@15.8.1", "", { "dependencies": { "loose-envify": "^1.4.0", "object-assign": "^4.1.1", "react-is": "^16.13.1" } }, "sha512-oj87CgZICdulUohogVAR7AjlC0327U4el4L6eAvOqCeudMDVU0NThNaV+b9Df4dXgSP1gXMTnPdhfe/2qDH5cg=="],
 
