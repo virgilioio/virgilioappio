@@ -3,7 +3,7 @@ import { useState, useCallback, useRef } from 'react'
 // ── Widget size system ──────────────────────────────────────────────
 
 export type WidgetSize = 'xsmall' | 'small' | 'medium' | 'large'
-export type DashboardCardId = 'agenda' | 'tasks' | 'app-review' | 'onboarding' | 'jobs' | 'world-clock' | 'currency-converter'
+export type DashboardCardId = 'agenda' | 'tasks' | 'app-review' | 'onboarding' | 'jobs' | 'world-clock' | 'currency-converter' | 'photo-carousel'
 
 export interface WidgetMeta {
   id: DashboardCardId
@@ -21,6 +21,7 @@ export const WIDGET_REGISTRY: Record<DashboardCardId, WidgetMeta> = {
   'jobs':        { id: 'jobs',        label: 'Jobs Overview',        allowedSizes: ['small', 'medium', 'large'], defaultSize: 'medium', fixed: false },
   'world-clock':        { id: 'world-clock',        label: 'World Clock',          allowedSizes: ['xsmall'],                 defaultSize: 'xsmall', fixed: true },
   'currency-converter': { id: 'currency-converter', label: 'Currency Converter',   allowedSizes: ['xsmall'],                 defaultSize: 'xsmall', fixed: true },
+  'photo-carousel':     { id: 'photo-carousel',     label: 'Photo Frame',          allowedSizes: ['xsmall'],                 defaultSize: 'xsmall', fixed: true },
 }
 
 export const SIZE_TO_COLS: Record<WidgetSize, number> = {
@@ -38,9 +39,10 @@ export const CARD_SIZE_RULES: Record<DashboardCardId, WidgetSize[]> = {
   'jobs':        ['small', 'medium', 'large'],
   'world-clock':        ['xsmall'],
   'currency-converter': ['xsmall'],
+  'photo-carousel':     ['xsmall'],
 }
 
-const ALL_CARD_IDS: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs', 'world-clock', 'currency-converter']
+const ALL_CARD_IDS: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs', 'world-clock', 'currency-converter', 'photo-carousel']
 const TOTAL_COLS = 6
 
 // ── Layout data model (position-based) ──────────────────────────────
@@ -162,6 +164,7 @@ function generateDefaultWidgets(): WidgetLayout[] {
     { id: 'agenda',      size: 'small' },
     { id: 'world-clock',        size: 'xsmall' },
     { id: 'currency-converter', size: 'xsmall' },
+    { id: 'photo-carousel',     size: 'xsmall' },
     { id: 'app-review',  size: 'small' },
     { id: 'onboarding',  size: 'small' },
     { id: 'jobs',        size: 'medium' },
