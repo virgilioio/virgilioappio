@@ -137,9 +137,10 @@ export function PhotoCarouselWidget() {
       // Compress and resize before uploading
       const compressed = await compressImage(file)
       const fileName = `${crypto.randomUUID()}.jpg`
+      const compressedFile = new File([compressed], fileName, { type: 'image/jpeg' })
       const path = `${user.id}/${fileName}`
 
-      const { error } = await supabase.storage.from(BUCKET).upload(path, compressed, {
+      const { error } = await supabase.storage.from(BUCKET).upload(path, compressedFile, {
         cacheControl: '3600',
         contentType: 'image/jpeg',
         upsert: false,
