@@ -59,18 +59,35 @@ export function PhotoCarouselWidget() {
   const [hovering, setHovering] = useState(false)
   const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set())
   const [isEditing, setIsEditing] = useState(false)
-  const [fadeKey, setFadeKey] = useState(0)
+  const [displayIndex, setDisplayIndex] = useState(0)
+  const [isFading, setIsFading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Crossfade: when currentIndex changes, trigger fade
+  useEffect(() => {
+    if (currentIndex === displayIndex) return
+    setIsFading(true)
+    const timer = setTimeout(() => {
+      setDisplayIndex(currentIndex)
+      setIsFading(false)
+    }, 700)
+    return () => clearTimeout(timer)
+  }, [currentIndex, displayIndex])
 
   // Auto-advance carousel every 5s
   useEffect(() => {
     if (isEditing || photos.length <= 1 || hovering) return
+    // Preload next image
+    const nextIdx = (currentIndex + 1) % photos.length
+    if (photos[nextIdx]) {
+      const preload = new Image()
+      preload.src = photos[nextIdx].url
+    }
     const timer = setInterval(() => {
       setCurrentIndex(prev => (prev + 1) % photos.length)
-      setFadeKey(k => k + 1)
     }, 5000)
     return () => clearInterval(timer)
-  }, [isEditing, photos.length, hovering])
+  }, [isEditing, photos.length, hovering, currentIndex])
 
   const loadPhotos = useCallback(async () => {
     try {
@@ -303,13 +320,27 @@ export function PhotoCarouselWidget() {
                       <span className="text-xs text-muted-foreground/60">Image unavailable</span>
                     </div>
                   ) : (
-                     <img
-                       key={fadeKey}
-                       src={currentPhoto.url}
-                       alt="Personal photo"
-                       className="absolute inset-0 w-full h-full object-cover rounded-lg animate-fade-in"
-                       onError={() => setBrokenImages(prev => new Set(prev).add(currentPhoto.name))}
-                    />
+                    <>
+                      {/* Previous photo (bottom layer) */}
+                      {displayIndex !== currentIndex && photos[displayIndex] && !brokenImages.has(photos[displayIndex].name) && (
+                        <img
+                          src={photos[displayIndex].url}
+                          alt=""
+                          className="absolute inset-0 w-full h-full object-cover rounded-lg"
+                        />
+                      )}
+                      {/* Current photo (top layer with crossfade) */}
+                      <img
+                        src={currentPhoto.url}
+                        alt="Personal photo"
+                        className="absolute inset-0 w-full h-full object-cover rounded-lg"
+                        style={{
+                          transition: 'opacity 700ms ease-in-out',
+                          opacity: isFading ? 0 : 1,
+                        }}
+                        onError={() => setBrokenImages(prev => new Set(prev).add(currentPhoto.name))}
+                      />
+                    </>
                   )}
                   {/* Ellipsis menu */}
                   <DropdownMenu>
