@@ -59,18 +59,35 @@ export function PhotoCarouselWidget() {
   const [hovering, setHovering] = useState(false)
   const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set())
   const [isEditing, setIsEditing] = useState(false)
-  const [fadeKey, setFadeKey] = useState(0)
+  const [displayIndex, setDisplayIndex] = useState(0)
+  const [isFading, setIsFading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Crossfade: when currentIndex changes, trigger fade
+  useEffect(() => {
+    if (currentIndex === displayIndex) return
+    setIsFading(true)
+    const timer = setTimeout(() => {
+      setDisplayIndex(currentIndex)
+      setIsFading(false)
+    }, 700)
+    return () => clearTimeout(timer)
+  }, [currentIndex, displayIndex])
 
   // Auto-advance carousel every 5s
   useEffect(() => {
     if (isEditing || photos.length <= 1 || hovering) return
+    // Preload next image
+    const nextIdx = (currentIndex + 1) % photos.length
+    if (photos[nextIdx]) {
+      const preload = new Image()
+      preload.src = photos[nextIdx].url
+    }
     const timer = setInterval(() => {
       setCurrentIndex(prev => (prev + 1) % photos.length)
-      setFadeKey(k => k + 1)
     }, 5000)
     return () => clearInterval(timer)
-  }, [isEditing, photos.length, hovering])
+  }, [isEditing, photos.length, hovering, currentIndex])
 
   const loadPhotos = useCallback(async () => {
     try {
