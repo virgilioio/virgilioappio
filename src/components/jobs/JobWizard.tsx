@@ -39,7 +39,8 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
     }
   })
 
-  const { createJob, isLoading } = useJobs()
+  const { createJob } = useJobs()
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const resetWizard = () => {
     setWizardState({
@@ -66,8 +67,9 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
   }
 
   const handleNextStep = async () => {
-    // If completing step 1, create the job with basic information
     if (wizardState.currentStep === 1) {
+      if (isSubmitting) return
+      setIsSubmitting(true)
       try {
         const jobResult = await createJob(wizardState.jobData as CreateJobData)
         setWizardState(prev => ({
@@ -81,8 +83,9 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
         })
       } catch (error) {
         console.error('Error creating job:', error)
-        // Don't advance step if job creation fails
         return
+      } finally {
+        setIsSubmitting(false)
       }
     } else {
       setWizardState(prev => ({
@@ -266,11 +269,11 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
                   {wizardState.currentStep === 1 && (
                     <Button
                       onClick={handleNextStep}
-                      disabled={!canProceedToNextStep() || isLoading}
+                      disabled={!canProceedToNextStep() || isSubmitting}
                       type="button"
                       className="flex items-center gap-2"
                     >
-                      {isLoading ? 'Creating...' : 'Create & Continue'}
+                      {isSubmitting ? 'Creating...' : 'Create & Continue'}
                       <ChevronRight className="w-4 h-4" />
                     </Button>
                   )}
