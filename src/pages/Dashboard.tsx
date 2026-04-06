@@ -1,5 +1,6 @@
 import { ReactNode, useState } from 'react'
 import { CurrencyConverterWidget } from '@/components/dashboard/CurrencyConverterWidget'
+import { PhotoCarouselWidget } from '@/components/dashboard/PhotoCarouselWidget'
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
 import { UpcomingActivities } from '@/components/dashboard/UpcomingActivities'
 import { JobsOverview } from '@/components/dashboard/JobsOverview'
@@ -64,7 +65,7 @@ function sortByPosition(widgets: WidgetLayout[]): WidgetLayout[] {
   return [...widgets].sort((a, b) => a.row !== b.row ? a.row - b.row : a.col - b.col)
 }
 
-const MOBILE_ORDER: DashboardCardId[] = ['agenda', 'tasks', 'world-clock', 'currency-converter', 'app-review', 'onboarding', 'jobs']
+const MOBILE_ORDER: DashboardCardId[] = ['agenda', 'tasks', 'world-clock', 'currency-converter', 'photo-carousel', 'app-review', 'onboarding', 'jobs']
 
 export default function Dashboard() {
   const { profile, isLoading } = useUserProfile()
@@ -116,6 +117,7 @@ export default function Dashboard() {
       case 'jobs': return hasJobContent ? <div className="hidden sm:block"><JobsOverview permissions={permissions} size={widgetSize} /></div> : null
       case 'world-clock': return <WorldClockWidget />
       case 'currency-converter': return <CurrencyConverterWidget />
+      case 'photo-carousel': return <PhotoCarouselWidget />
       default: return null
     }
   }
@@ -128,6 +130,7 @@ export default function Dashboard() {
     'jobs': hasJobContent ? true as unknown as ReactNode : null,
     'world-clock': <WorldClockWidget />,
     'currency-converter': <CurrencyConverterWidget />,
+    'photo-carousel': <PhotoCarouselWidget />,
   }
 
   // ── Mobile ──
