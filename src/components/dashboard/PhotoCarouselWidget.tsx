@@ -59,7 +59,18 @@ export function PhotoCarouselWidget() {
   const [hovering, setHovering] = useState(false)
   const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set())
   const [isEditing, setIsEditing] = useState(false)
+  const [fadeKey, setFadeKey] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Auto-advance carousel every 5s
+  useEffect(() => {
+    if (isEditing || photos.length <= 1 || hovering) return
+    const timer = setInterval(() => {
+      setCurrentIndex(prev => (prev + 1) % photos.length)
+      setFadeKey(k => k + 1)
+    }, 5000)
+    return () => clearInterval(timer)
+  }, [isEditing, photos.length, hovering])
 
   const loadPhotos = useCallback(async () => {
     try {
@@ -113,7 +124,8 @@ export function PhotoCarouselWidget() {
     const file = e.target.files?.[0]
     if (!file) return
     e.target.value = ''
-    if (!file.type.startsWith('image/')) { toast.error('Please select an image file'); return }
+    const allowedTypes = ['image/jpeg', 'image/png']
+    if (!allowedTypes.includes(file.type)) { toast.error('Only JPG and PNG files are supported'); return }
     if (file.size > MAX_SIZE_MB * 1024 * 1024) { toast.error(`Image must be under ${MAX_SIZE_MB}MB`); return }
     if (photos.length >= MAX_PHOTOS) { toast.error(`Maximum ${MAX_PHOTOS} photos allowed`); return }
 
@@ -121,11 +133,17 @@ export function PhotoCarouselWidget() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { toast.error('Please sign in'); return }
-      const compressed = await compressImage(file)
       const fileName = `${crypto.randomUUID()}.jpg`
-      const compressedFile = new File([compressed], fileName, { type: 'image/jpeg' })
+      let fileToUpload: File
+      try {
+        const compressed = await compressImage(file)
+        fileToUpload = new File([compressed], fileName, { type: 'image/jpeg' })
+      } catch (compressionErr) {
+        console.warn('Compression failed, uploading original:', compressionErr)
+        fileToUpload = new File([file], fileName, { type: file.type || 'image/jpeg' })
+      }
       const path = `${user.id}/${fileName}`
-      const { error } = await supabase.storage.from(BUCKET).upload(path, compressedFile, {
+      const { error } = await supabase.storage.from(BUCKET).upload(path, fileToUpload, {
         cacheControl: '0',
         contentType: 'image/jpeg',
         upsert: false,
@@ -274,8 +292,9 @@ export function PhotoCarouselWidget() {
                   className="absolute inset-0 flex flex-col items-center justify-center border-2 border-dashed border-muted-foreground/30 rounded-lg hover:border-muted-foreground/50 transition-colors cursor-pointer"
                 >
                   <Camera className="h-8 w-8 text-muted-foreground/50 mb-2" />
-                  <span className="text-xs text-muted-foreground/60 font-medium">Add a photo</span>
-                </button>
+                   <span className="text-xs text-muted-foreground/60 font-medium">Add a photo</span>
+                   <span className="text-[10px] text-muted-foreground/40 mt-0.5">JPG or PNG only</span>
+                 </button>
               ) : (
                 <>
                   {brokenImages.has(currentPhoto.name) ? (
@@ -284,11 +303,12 @@ export function PhotoCarouselWidget() {
                       <span className="text-xs text-muted-foreground/60">Image unavailable</span>
                     </div>
                   ) : (
-                    <img
-                      src={currentPhoto.url}
-                      alt="Personal photo"
-                      className="absolute inset-0 w-full h-full object-cover rounded-lg"
-                      onError={() => setBrokenImages(prev => new Set(prev).add(currentPhoto.name))}
+                     <img
+                       key={fadeKey}
+                       src={currentPhoto.url}
+                       alt="Personal photo"
+                       className="absolute inset-0 w-full h-full object-cover rounded-lg animate-fade-in"
+                       onError={() => setBrokenImages(prev => new Set(prev).add(currentPhoto.name))}
                     />
                   )}
                   {/* Ellipsis menu */}
@@ -359,7 +379,7 @@ export function PhotoCarouselWidget() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/gif,image/webp"
+          accept="image/jpeg,image/png"
           className="hidden"
           onChange={handleUpload}
         />
