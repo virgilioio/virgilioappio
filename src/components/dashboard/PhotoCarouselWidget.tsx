@@ -82,7 +82,7 @@ export function PhotoCarouselWidget() {
         .filter(f => f.name && !f.name.startsWith('.'))
         .map(f => ({
           name: f.name,
-          url: supabase.storage.from(BUCKET).getPublicUrl(`${user.id}/${f.name}`).data.publicUrl,
+          url: `${supabase.storage.from(BUCKET).getPublicUrl(`${user.id}/${f.name}`).data.publicUrl}?t=${Date.now()}`,
         }))
 
       if (savedOrder) {
@@ -126,12 +126,14 @@ export function PhotoCarouselWidget() {
       const compressedFile = new File([compressed], fileName, { type: 'image/jpeg' })
       const path = `${user.id}/${fileName}`
       const { error } = await supabase.storage.from(BUCKET).upload(path, compressedFile, {
-        cacheControl: '3600',
+        cacheControl: '0',
         contentType: 'image/jpeg',
         upsert: false,
       })
-      if (error) { toast.error('Upload failed'); console.error(error); return }
-      const url = supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl
+      if (error) { toast.error('Upload failed'); console.error('Upload error:', error); return }
+      console.log('Upload successful, path:', path)
+      const url = `${supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl}?t=${Date.now()}`
+      console.log('Public URL:', url)
       const newPhotos = [...photos, { name: fileName, url }]
       setPhotos(newPhotos)
       setCurrentIndex(newPhotos.length - 1)
