@@ -21,7 +21,7 @@ export const WIDGET_REGISTRY: Record<DashboardCardId, WidgetMeta> = {
   'jobs':        { id: 'jobs',        label: 'Jobs Overview',        allowedSizes: ['small', 'medium', 'large'], defaultSize: 'medium', fixed: false },
   'world-clock':        { id: 'world-clock',        label: 'World Clock',          allowedSizes: ['xsmall'],                 defaultSize: 'xsmall', fixed: true },
   'currency-converter': { id: 'currency-converter', label: 'Currency Converter',   allowedSizes: ['xsmall'],                 defaultSize: 'xsmall', fixed: true },
-  'photo-carousel':     { id: 'photo-carousel',     label: 'Photo Frame',          allowedSizes: ['xsmall'],                 defaultSize: 'xsmall', fixed: true },
+  'photo-carousel':     { id: 'photo-carousel',     label: 'Photo Frame',          allowedSizes: ['xsmall', 'small'],        defaultSize: 'xsmall', fixed: false },
 }
 
 export const SIZE_TO_COLS: Record<WidgetSize, number> = {
@@ -39,7 +39,7 @@ export const CARD_SIZE_RULES: Record<DashboardCardId, WidgetSize[]> = {
   'jobs':        ['small', 'medium', 'large'],
   'world-clock':        ['xsmall'],
   'currency-converter': ['xsmall'],
-  'photo-carousel':     ['xsmall'],
+  'photo-carousel':     ['xsmall', 'small'],
 }
 
 const ALL_CARD_IDS: DashboardCardId[] = ['agenda', 'tasks', 'app-review', 'onboarding', 'jobs', 'world-clock', 'currency-converter', 'photo-carousel']
