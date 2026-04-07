@@ -9,6 +9,7 @@ import { TimeSlotsList } from '@/components/booking/TimeSlotsList';
 import { BookingConfirmationForm } from '@/components/booking/BookingConfirmationForm';
 import { ExistingBookingView, ExistingBookingData } from '@/components/booking/ExistingBookingView';
 import { QuickSchedulePanel } from '@/components/booking/QuickSchedulePanel';
+import { EventTypePicker } from '@/components/booking/EventTypePicker';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
