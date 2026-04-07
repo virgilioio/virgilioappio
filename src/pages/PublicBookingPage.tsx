@@ -143,6 +143,43 @@ export default function PublicBookingPage() {
     retry: false,
   });
 
+  // Fetch event types for this booking config
+  const { data: eventTypes = [], isLoading: isLoadingEventTypes } = useQuery({
+    queryKey: ['public-event-types', config?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('booking_event_types')
+        .select('*')
+        .eq('booking_config_id', config!.id)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!config?.id,
+  });
+
+  // Auto-select event type if eventSlug is in URL or only one exists
+  useEffect(() => {
+    if (!eventTypes.length) return;
+    if (selectedEventType) return; // already selected
+    
+    if (eventSlug) {
+      const match = eventTypes.find((et: any) => et.slug === eventSlug);
+      if (match) setSelectedEventType(match);
+    } else if (eventTypes.length === 1) {
+      setSelectedEventType(eventTypes[0]);
+    }
+  }, [eventTypes, eventSlug, selectedEventType]);
+
+  // Determine if we need to show the event type picker
+  const hasContextualLink = !!bookingContext || hasShortToken(searchParams);
+  const showEventPicker = !hasContextualLink && eventTypes.length > 1 && !selectedEventType;
+
+  // Use event type's duration if selected, otherwise config default
+  const activeDuration = selectedEventType?.duration_minutes || config?.duration_minutes || 30;
+
   // Fetch availability for the current month
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -151,7 +188,7 @@ export default function PublicBookingPage() {
     config?.id,
     monthStart,
     monthEnd,
-    config?.duration_minutes || 30,
+    activeDuration,
     candidateTimezone
   );
 
