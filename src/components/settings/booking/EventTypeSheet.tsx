@@ -5,14 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Slider } from '@/components/ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Trash2 } from 'lucide-react';
 import { WeeklyScheduleEditor } from './WeeklyScheduleEditor';
 import { SchedulePresets } from './SchedulePresets';
 import { TimezoneSelector } from './TimezoneSelector';
-import { MeetingDurationSelector } from './MeetingDurationSelector';
+
 import { BookingEventType } from '@/hooks/useBookingEventTypes';
 import { WeeklySchedule, getDefaultWeeklySchedule } from '@/hooks/useBookingConfig';
 import {
@@ -225,19 +225,33 @@ export function EventTypeSheet({
                 </p>
               </div>
               <Separator />
-              <MeetingDurationSelector value={durationMinutes} onChange={setDurationMinutes} />
+              <div className="space-y-2">
+                <Label>Meeting Duration</Label>
+                <Select value={String(durationMinutes)} onValueChange={(v) => setDurationMinutes(Number(v))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[15, 30, 45, 60, 90, 120].map((m) => (
+                      <SelectItem key={m} value={String(m)}>{m} minutes</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Separator />
-              <div className="space-y-3">
-                <Label>Buffer Time: {bufferMinutes} minutes</Label>
+              <div className="space-y-2">
+                <Label>Buffer Time</Label>
                 <p className="text-xs text-text-secondary">Time between meetings</p>
-                <Slider
-                  value={[bufferMinutes]}
-                  onValueChange={([v]) => setBufferMinutes(v)}
-                  min={0}
-                  max={60}
-                  step={5}
-                  className="w-full"
-                />
+                <Select value={String(bufferMinutes)} onValueChange={(v) => setBufferMinutes(Number(v))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[0, 5, 10, 15, 20, 30, 45, 60].map((m) => (
+                      <SelectItem key={m} value={String(m)}>{m} minutes</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <Separator />
               <div className="space-y-2">
@@ -254,27 +268,33 @@ export function EventTypeSheet({
 
             <TabsContent value="booking-rules" className="space-y-6 mt-4">
               <div className="space-y-2">
-                <Label htmlFor="et-notice">Minimum Notice (hours)</Label>
-                <Input
-                  id="et-notice"
-                  type="number"
-                  min="0"
-                  value={minNoticeHours}
-                  onChange={(e) => setMinNoticeHours(parseInt(e.target.value) || 0)}
-                />
+                <Label>Minimum Notice</Label>
                 <p className="text-xs text-text-secondary">How far in advance someone must book</p>
+                <Select value={String(minNoticeHours)} onValueChange={(v) => setMinNoticeHours(Number(v))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[0, 1, 2, 4, 8, 12, 24, 48, 72].map((h) => (
+                      <SelectItem key={h} value={String(h)}>{h === 0 ? 'No minimum' : `${h} hour${h > 1 ? 's' : ''}`}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <Separator />
               <div className="space-y-2">
-                <Label htmlFor="et-max-days">Maximum Days Ahead</Label>
-                <Input
-                  id="et-max-days"
-                  type="number"
-                  min="1"
-                  value={maxDaysAhead}
-                  onChange={(e) => setMaxDaysAhead(parseInt(e.target.value) || 1)}
-                />
+                <Label>Maximum Days Ahead</Label>
                 <p className="text-xs text-text-secondary">How far in the future people can book</p>
+                <Select value={String(maxDaysAhead)} onValueChange={(v) => setMaxDaysAhead(Number(v))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[7, 14, 30, 60, 90].map((d) => (
+                      <SelectItem key={d} value={String(d)}>{d} days</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </TabsContent>
           </Tabs>
