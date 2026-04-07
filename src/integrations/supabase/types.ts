@@ -519,6 +519,77 @@ export type Database = {
           },
         ]
       }
+      booking_event_types: {
+        Row: {
+          booking_config_id: string
+          buffer_time_minutes: number
+          color: string | null
+          created_at: string | null
+          custom_event_title: string | null
+          description: string | null
+          duration_minutes: number
+          id: string
+          is_active: boolean | null
+          max_days_ahead: number
+          meeting_location: string | null
+          min_notice_hours: number
+          slug: string
+          sort_order: number | null
+          timezone: string
+          title: string
+          updated_at: string | null
+          weekly_schedule: Json
+        }
+        Insert: {
+          booking_config_id: string
+          buffer_time_minutes?: number
+          color?: string | null
+          created_at?: string | null
+          custom_event_title?: string | null
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          is_active?: boolean | null
+          max_days_ahead?: number
+          meeting_location?: string | null
+          min_notice_hours?: number
+          slug: string
+          sort_order?: number | null
+          timezone?: string
+          title: string
+          updated_at?: string | null
+          weekly_schedule?: Json
+        }
+        Update: {
+          booking_config_id?: string
+          buffer_time_minutes?: number
+          color?: string | null
+          created_at?: string | null
+          custom_event_title?: string | null
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          is_active?: boolean | null
+          max_days_ahead?: number
+          meeting_location?: string | null
+          min_notice_hours?: number
+          slug?: string
+          sort_order?: number | null
+          timezone?: string
+          title?: string
+          updated_at?: string | null
+          weekly_schedule?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_event_types_booking_config_id_fkey"
+            columns: ["booking_config_id"]
+            isOneToOne: false
+            referencedRelation: "booking_configurations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_link_tokens: {
         Row: {
           association_id: string | null

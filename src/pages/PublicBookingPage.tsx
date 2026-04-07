@@ -9,6 +9,7 @@ import { TimeSlotsList } from '@/components/booking/TimeSlotsList';
 import { BookingConfirmationForm } from '@/components/booking/BookingConfirmationForm';
 import { ExistingBookingView, ExistingBookingData } from '@/components/booking/ExistingBookingView';
 import { QuickSchedulePanel } from '@/components/booking/QuickSchedulePanel';
+import { EventTypePicker } from '@/components/booking/EventTypePicker';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -43,7 +44,7 @@ const COMMON_TIMEZONES = [
 ];
 
 export default function PublicBookingPage() {
-  const { shortCode } = useParams<{ shortCode: string }>();
+  const { shortCode, eventSlug } = useParams<{ shortCode: string; eventSlug?: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [candidateTimezone, setCandidateTimezone] = useState(
@@ -60,6 +61,7 @@ export default function PublicBookingPage() {
   const [bookingCancelled, setBookingCancelled] = useState(false);
   const autoAdvanceCountRef = useRef(0);
   const hasAutoSelectedRef = useRef(false);
+  const [selectedEventType, setSelectedEventType] = useState<{ id: string; title: string; slug: string; description: string | null; duration_minutes: number; color: string } | null>(null);
 
   // Parse contextual booking context from URL (legacy base64)
   const legacyContext = useMemo(() => {
@@ -141,6 +143,43 @@ export default function PublicBookingPage() {
     retry: false,
   });
 
+  // Fetch event types for this booking config
+  const { data: eventTypes = [], isLoading: isLoadingEventTypes } = useQuery({
+    queryKey: ['public-event-types', config?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('booking_event_types')
+        .select('*')
+        .eq('booking_config_id', config!.id)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!config?.id,
+  });
+
+  // Auto-select event type if eventSlug is in URL or only one exists
+  useEffect(() => {
+    if (!eventTypes.length) return;
+    if (selectedEventType) return; // already selected
+    
+    if (eventSlug) {
+      const match = eventTypes.find((et: any) => et.slug === eventSlug);
+      if (match) setSelectedEventType(match);
+    } else if (eventTypes.length === 1) {
+      setSelectedEventType(eventTypes[0]);
+    }
+  }, [eventTypes, eventSlug, selectedEventType]);
+
+  // Determine if we need to show the event type picker
+  const hasContextualLink = !!bookingContext || hasShortToken(searchParams);
+  const showEventPicker = !hasContextualLink && eventTypes.length > 1 && !selectedEventType;
+
+  // Use event type's duration if selected, otherwise config default
+  const activeDuration = selectedEventType?.duration_minutes || config?.duration_minutes || 30;
+
   // Fetch availability for the current month
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -149,7 +188,7 @@ export default function PublicBookingPage() {
     config?.id,
     monthStart,
     monthEnd,
-    config?.duration_minutes || 30,
+    activeDuration,
     candidateTimezone
   );
 
@@ -252,7 +291,7 @@ export default function PublicBookingPage() {
             id: data.booking_id,
             scheduled_start: selectedSlot!.start,
             scheduled_end: selectedSlot!.end,
-            duration_minutes: config!.duration_minutes,
+            duration_minutes: activeDuration,
             candidate_email: variables.candidate_email,
             candidate_name: variables.candidate_name,
             candidate_timezone: candidateTimezone,
@@ -411,6 +450,17 @@ export default function PublicBookingPage() {
       </header>
 
       <main className="container mx-auto px-4 md:px-6 lg:px-8 py-8 md:py-12 max-w-[1400px]">
+        {/* Event Type Picker */}
+        {showEventPicker ? (
+          <EventTypePicker
+            eventTypes={eventTypes}
+            onSelect={(et) => setSelectedEventType(et)}
+            interviewerName={config.profiles
+              ? `${config.profiles.first_name} ${config.profiles.last_name}`
+              : config.display_name}
+          />
+        ) : (
+        <>
         {/* Personalized greeting for stage booking links */}
         {bookingContext?.candidateName && !isResolvingToken && (
           <p className="font-poppins font-bold tracking-page-title text-virgilio-text text-lg md:text-xl mb-2">
@@ -472,7 +522,7 @@ export default function PublicBookingPage() {
                 config={{
                   display_name: config.display_name,
                   description: config.description,
-                  duration_minutes: config.duration_minutes,
+                  duration_minutes: activeDuration,
                 }}
               />
             )}
@@ -554,6 +604,8 @@ export default function PublicBookingPage() {
             )}
           </div>
         </div>
+        </>
+        )}
       </main>
     </div>
   );
