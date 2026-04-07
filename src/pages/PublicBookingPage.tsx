@@ -291,7 +291,7 @@ export default function PublicBookingPage() {
             id: data.booking_id,
             scheduled_start: selectedSlot!.start,
             scheduled_end: selectedSlot!.end,
-            duration_minutes: config!.duration_minutes,
+            duration_minutes: activeDuration,
             candidate_email: variables.candidate_email,
             candidate_name: variables.candidate_name,
             candidate_timezone: candidateTimezone,
