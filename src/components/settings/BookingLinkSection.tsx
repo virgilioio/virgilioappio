@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy, ExternalLink, Check, AlertCircle, Loader2, Plus, Clock } from 'lucide-react';
+import { Copy, ExternalLink, Check, AlertCircle, Loader2, Plus } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,7 @@ import { useBookingConfig } from '@/hooks/useBookingConfig';
 import { useBookingEventTypes, BookingEventType } from '@/hooks/useBookingEventTypes';
 import { useCalendarIdentities } from '@/hooks/useCalendarIdentities';
 import { EventTypeSheet } from './booking/EventTypeSheet';
+import { GioEmptyState } from '@/components/ui/GioEmptyState';
 import { toast } from 'sonner';
 
 export function BookingLinkSection() {
@@ -224,16 +225,17 @@ export function BookingLinkSection() {
                 <Loader2 className="w-5 h-5 animate-spin text-text-secondary" />
               </div>
             ) : eventTypes.length === 0 ? (
-              <div className="text-center py-8 border border-dashed border-border rounded-lg">
-                <Clock className="w-8 h-8 text-text-muted mx-auto mb-2" />
-                <p className="text-sm text-text-secondary mb-1">No event types yet</p>
-                <p className="text-xs text-text-muted mb-4">
-                  Create event types to let candidates choose what to book
-                </p>
-                <Button variant="outline" size="sm" onClick={handleOpenCreate}>
-                  <Plus className="w-4 h-4 mr-1" />
-                  Create Your First Event Type
-                </Button>
+              <div className="py-4">
+                <GioEmptyState
+                  title="No event types yet"
+                  description="Create event types to let candidates choose what to book"
+                />
+                <div className="flex justify-center -mt-4">
+                  <Button variant="outline" size="sm" onClick={handleOpenCreate}>
+                    <Plus className="w-4 h-4 mr-1" />
+                    Create Your First Event Type
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="space-y-2">
