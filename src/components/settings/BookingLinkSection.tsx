@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy, ExternalLink, Check, AlertCircle, Loader2, Plus, Clock } from 'lucide-react';
+import { Copy, ExternalLink, Check, AlertCircle, Loader2, Plus } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,7 @@ import { useBookingConfig } from '@/hooks/useBookingConfig';
 import { useBookingEventTypes, BookingEventType } from '@/hooks/useBookingEventTypes';
 import { useCalendarIdentities } from '@/hooks/useCalendarIdentities';
 import { EventTypeSheet } from './booking/EventTypeSheet';
+import { GioEmptyState } from '@/components/ui/GioEmptyState';
 import { toast } from 'sonner';
 
 export function BookingLinkSection() {
