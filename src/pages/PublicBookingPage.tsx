@@ -44,7 +44,7 @@ const COMMON_TIMEZONES = [
 ];
 
 export default function PublicBookingPage() {
-  const { shortCode } = useParams<{ shortCode: string }>();
+  const { shortCode, eventSlug } = useParams<{ shortCode: string; eventSlug?: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [candidateTimezone, setCandidateTimezone] = useState(
@@ -61,6 +61,7 @@ export default function PublicBookingPage() {
   const [bookingCancelled, setBookingCancelled] = useState(false);
   const autoAdvanceCountRef = useRef(0);
   const hasAutoSelectedRef = useRef(false);
+  const [selectedEventType, setSelectedEventType] = useState<{ id: string; title: string; slug: string; description: string | null; duration_minutes: number; color: string } | null>(null);
 
   // Parse contextual booking context from URL (legacy base64)
   const legacyContext = useMemo(() => {
