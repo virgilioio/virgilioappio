@@ -1,9 +1,9 @@
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Copy } from 'lucide-react';
 import { WeeklySchedule } from '@/hooks/useBookingConfig';
+import { TimePickerVirgilio } from '@/components/ui/time-picker-virgilio';
 
 interface WeeklyScheduleEditorProps {
   schedule: WeeklySchedule;
@@ -81,18 +81,16 @@ export function WeeklyScheduleEditor({ schedule, onChange }: WeeklyScheduleEdito
 
             {schedule[key].enabled ? (
               <div className="flex items-center gap-2 flex-1">
-                <Input
-                  type="time"
+                <TimePickerVirgilio
                   value={schedule[key].start}
-                  onChange={(e) => handleTimeChange(key, 'start', e.target.value)}
-                  className="max-w-[120px]"
+                  onChange={(time) => handleTimeChange(key, 'start', time)}
+                  className="max-w-[130px]"
                 />
                 <span className="text-sm text-text-secondary">to</span>
-                <Input
-                  type="time"
+                <TimePickerVirgilio
                   value={schedule[key].end}
-                  onChange={(e) => handleTimeChange(key, 'end', e.target.value)}
-                  className="max-w-[120px]"
+                  onChange={(time) => handleTimeChange(key, 'end', time)}
+                  className="max-w-[130px]"
                 />
               </div>
             ) : (
