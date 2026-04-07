@@ -522,7 +522,7 @@ export default function PublicBookingPage() {
                 config={{
                   display_name: config.display_name,
                   description: config.description,
-                  duration_minutes: config.duration_minutes,
+                  duration_minutes: activeDuration,
                 }}
               />
             )}
