@@ -5188,6 +5188,8 @@ export type Database = {
           subscription_end: string | null
           subscription_status: string | null
           subscription_tier: string | null
+          suspended_at: string | null
+          suspended_reason: string | null
           tenant_id: string
           trial_end: string | null
           trial_ends_at: string | null
@@ -5217,6 +5219,8 @@ export type Database = {
           subscription_end?: string | null
           subscription_status?: string | null
           subscription_tier?: string | null
+          suspended_at?: string | null
+          suspended_reason?: string | null
           tenant_id: string
           trial_end?: string | null
           trial_ends_at?: string | null
@@ -5246,6 +5250,8 @@ export type Database = {
           subscription_end?: string | null
           subscription_status?: string | null
           subscription_tier?: string | null
+          suspended_at?: string | null
+          suspended_reason?: string | null
           tenant_id?: string
           trial_end?: string | null
           trial_ends_at?: string | null
