@@ -12,6 +12,7 @@ import { AvatarUploader } from './AvatarUploader'
 import { ProfileForm } from './ProfileForm'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { BookingLinkSection } from './BookingLinkSection'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 interface ProfileFormData {
   first_name: string
@@ -26,6 +27,7 @@ export function ProfileTab() {
   const { user, userType, memberRole } = useAuth()
   const { profile, updateProfile, uploadAvatar, isLoading: profileLoading } = useUserProfile()
   const queryClient = useQueryClient()
+  const isMobile = useIsMobile()
   
   const [profileFormData, setProfileFormData] = useState<ProfileFormData>({
     first_name: '',
@@ -104,54 +106,82 @@ export function ProfileTab() {
         </CardHeader>
         <CardContent className="space-y-md">
           {/* Avatar Section */}
-          <div className="pb-md border-b border-border">
+          <div className={isMobile ? '' : 'pb-md border-b border-border'}>
             <AvatarUploader
               avatarUrl={profile?.avatar_url}
               firstName={profile?.first_name}
               lastName={profile?.last_name}
               userEmail={user?.email}
               isLoading={profileLoading}
-              onUpload={handleAvatarUpload}
+              onUpload={isMobile ? undefined : handleAvatarUpload}
             />
           </div>
 
-          {/* Profile Form */}
-          <div className="space-y-sm" id="profile-form">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-medium">Personal Information</h4>
-              {lastUpdated && (
-                <span className="text-xs text-text-secondary">
-                  Last updated: {lastUpdated}
-                </span>
+          {isMobile ? (
+            /* Mobile: Read-only profile summary */
+            <div className="space-y-2 text-sm text-text-secondary">
+              {(profile?.first_name || profile?.last_name) && (
+                <div className="flex items-center gap-2">
+                  <User className="h-3 w-3" />
+                  <span>{profile.first_name} {profile.last_name}</span>
+                </div>
+              )}
+              {profile?.title && (
+                <div className="text-xs text-text-muted">{profile.title}</div>
+              )}
+              {profile?.phone && (
+                <div className="text-xs text-text-muted">📞 {profile.phone}</div>
+              )}
+              {profile?.timezone && profile.timezone !== 'UTC' && (
+                <div className="text-xs text-text-muted">🕐 {profile.timezone}</div>
+              )}
+              {profile?.linkedin_url && (
+                <a href={profile.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline truncate block">
+                  LinkedIn Profile
+                </a>
               )}
             </div>
-            
-            <ProfileForm
-              formData={profileFormData}
-              onFormDataChange={setProfileFormData}
-            />
-          </div>
+          ) : (
+            <>
+              {/* Desktop: Profile Form */}
+              <div className="space-y-sm" id="profile-form">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium">Personal Information</h4>
+                  {lastUpdated && (
+                    <span className="text-xs text-text-secondary">
+                      Last updated: {lastUpdated}
+                    </span>
+                  )}
+                </div>
+                
+                <ProfileForm
+                  formData={profileFormData}
+                  onFormDataChange={setProfileFormData}
+                />
+              </div>
 
-          {/* Save Button */}
-          <div className="flex justify-end pt-sm border-t border-border">
-            <Button 
-              onClick={handleProfileSave} 
-              disabled={profileLoading || !hasChanges}
-              className="flex items-center gap-2"
-              size="sm"
-            >
-              <Save className="h-3 w-3" />
-              {profileLoading ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
+              {/* Save Button */}
+              <div className="flex justify-end pt-sm border-t border-border">
+                <Button 
+                  onClick={handleProfileSave} 
+                  disabled={profileLoading || !hasChanges}
+                  className="flex items-center gap-2"
+                  size="sm"
+                >
+                  <Save className="h-3 w-3" />
+                  {profileLoading ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
-      <Separator className="my-8" />
+      <Separator className="my-4 sm:my-8" />
 
       <BookingLinkSection />
       
-      <Separator className="my-8" />
+      <Separator className="my-4 sm:my-8" />
       
       {/* Account Information Card */}
       <Card>
