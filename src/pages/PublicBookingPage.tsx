@@ -469,8 +469,22 @@ export default function PublicBookingPage() {
       </header>
 
       <main className="container mx-auto px-4 md:px-6 lg:px-8 py-8 md:py-12 max-w-[1400px]">
-        {/* Event Type Picker */}
-        {showEventPicker ? (
+        {/* No event types — empty state */}
+        {showNoEventTypes ? (
+          <div className="max-w-lg mx-auto text-center py-16">
+            <Card className="shadow-calendly border-virgilio-border">
+              <CardContent className="pt-8 pb-8 space-y-4">
+                <AlertCircle className="w-12 h-12 text-virgilio-muted mx-auto" />
+                <h1 className="text-2xl font-poppins font-bold text-virgilio-text">
+                  No Availability<span className="text-virgilio-purple">.</span>
+                </h1>
+                <p className="text-virgilio-muted">
+                  There are no booking options available at this time. Please check back later or contact the organizer.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        ) : showEventPicker ? (
           <EventTypePicker
             eventTypes={eventTypes}
             onSelect={(et) => setSelectedEventType(et)}
