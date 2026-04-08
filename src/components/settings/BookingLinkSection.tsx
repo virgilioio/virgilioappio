@@ -14,6 +14,7 @@ import { useCalendarIdentities } from '@/hooks/useCalendarIdentities';
 import { EventTypeSheet } from './booking/EventTypeSheet';
 import { GioEmptyState } from '@/components/ui/GioEmptyState';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export function BookingLinkSection() {
   const { 
@@ -40,6 +41,7 @@ export function BookingLinkSection() {
   const [copied, setCopied] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingEventType, setEditingEventType] = useState<BookingEventType | null>(null);
+  const isMobile = useIsMobile();
 
   const handleCopy = async () => {
     if (!bookingUrl) return;
@@ -157,49 +159,55 @@ export function BookingLinkSection() {
     <>
       <Card data-onboarding-target="booking">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
               <CardTitle>Booking Link</CardTitle>
               <CardDescription>Share your personalized booking link with candidates</CardDescription>
             </div>
-            <div className="flex items-center gap-3">
-              <Switch
-                checked={config.is_active}
-                onCheckedChange={handleToggleActive}
-                disabled={isUpdating || (!hasCalendar && !config.is_active)}
-              />
-              <Badge variant={config.is_active ? 'default' : 'secondary'}>
-                {config.is_active ? 'Active' : 'Inactive'}
-              </Badge>
-            </div>
+            {!isMobile && (
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={config.is_active}
+                  onCheckedChange={handleToggleActive}
+                  disabled={isUpdating || (!hasCalendar && !config.is_active)}
+                />
+                <Badge variant={config.is_active ? 'default' : 'secondary'}>
+                  {config.is_active ? 'Active' : 'Inactive'}
+                </Badge>
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Booking URL Display */}
           <div className="space-y-2">
             <Label>Public Booking URL</Label>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <Input
                 value={bookingUrl}
                 readOnly
                 className="font-mono text-sm"
               />
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleCopy}
-                title="Copy to clipboard"
-              >
-                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => window.open(bookingUrl, '_blank')}
-                title="Open in new tab"
-              >
-                <ExternalLink className="w-4 h-4" />
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleCopy}
+                  title="Copy to clipboard"
+                >
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                </Button>
+                {!isMobile && (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => window.open(bookingUrl, '_blank')}
+                    title="Open in new tab"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
             </div>
             {!hasCalendar && (
               <p className="text-xs text-text-muted">
@@ -214,10 +222,12 @@ export function BookingLinkSection() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-text-primary">Event Types</h3>
-              <Button variant="outline" size="sm" onClick={handleOpenCreate}>
-                <Plus className="w-4 h-4 mr-1" />
-                Create New
-              </Button>
+              {!isMobile && (
+                <Button variant="outline" size="sm" onClick={handleOpenCreate}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  Create New
+                </Button>
+              )}
             </div>
 
             {isLoadingEventTypes ? (
@@ -228,14 +238,16 @@ export function BookingLinkSection() {
               <div className="py-4">
                 <GioEmptyState
                   title="No event types yet"
-                  description="Create event types to let candidates choose what to book"
+                  description={isMobile ? "Create event types from desktop" : "Create event types to let candidates choose what to book"}
                 />
-                <div className="flex justify-center -mt-4">
-                  <Button variant="outline" size="sm" onClick={handleOpenCreate}>
-                    <Plus className="w-4 h-4 mr-1" />
-                    Create Your First Event Type
-                  </Button>
-                </div>
+                {!isMobile && (
+                  <div className="flex justify-center -mt-4">
+                    <Button variant="outline" size="sm" onClick={handleOpenCreate}>
+                      <Plus className="w-4 h-4 mr-1" />
+                      Create Your First Event Type
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-2">
@@ -244,8 +256,8 @@ export function BookingLinkSection() {
                   return (
                     <div
                       key={et.id}
-                      className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:border-primary/40 cursor-pointer transition-colors"
-                      onClick={() => handleOpenEdit(et)}
+                      className={`flex flex-wrap items-center gap-3 p-3 rounded-lg border border-border bg-card transition-colors ${isMobile ? '' : 'hover:border-primary/40 cursor-pointer'}`}
+                      onClick={isMobile ? undefined : () => handleOpenEdit(et)}
                     >
                       {/* Color dot */}
                       <div
@@ -275,10 +287,12 @@ export function BookingLinkSection() {
                       >
                         <Copy className="w-3.5 h-3.5" />
                       </Button>
-                      {/* Active badge */}
-                      <Badge variant={et.is_active ? 'default' : 'secondary'} className="flex-shrink-0 text-xs">
-                        {et.is_active ? '✓' : '—'}
-                      </Badge>
+                      {/* Active badge - hidden on mobile */}
+                      {!isMobile && (
+                        <Badge variant={et.is_active ? 'default' : 'secondary'} className="flex-shrink-0 text-xs">
+                          {et.is_active ? '✓' : '—'}
+                        </Badge>
+                      )}
                     </div>
                   );
                 })}
