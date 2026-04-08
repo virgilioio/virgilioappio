@@ -1,30 +1,27 @@
 
 
-# Fix Event Type Sheet: Time Pickers + Dropdowns
+# Fix: SaaS Admin Actions (Change Plan, Suspend, etc.) Failing Silently
 
-## Changes
+## Root Cause
 
-### 1. WeeklyScheduleEditor — Use `TimePickerVirgilio` instead of `<Input type="time">`
+The `admin-manage-subscription` edge function tries to write `suspended_at` and `suspended_reason` columns to the `tenant_subscriptions` table — but **those columns don't exist there**. They exist on the `organizations` table instead.
 
-The weekly schedule editor currently uses raw `<Input type="time">` for start/end times (lines 84-96). Replace these with `TimePickerVirgilio` to match the style guide. This gives the proper Virgilio-styled popover with Morning/Afternoon/Evening groups and 15-min intervals.
+When the function runs `suspend` or `restore`, the Supabase update silently fails or ignores the unknown columns, so nothing actually changes.
 
-### 2. Meeting tab — Replace `MeetingDurationSelector` radio group with a `Select` dropdown
+Specifically:
+- **Suspend**: Sets `billing_status`, `suspended_at`, `suspended_reason` on `tenant_subscriptions` — last two columns don't exist → update may fail
+- **Restore**: Tries to null out `suspended_at`, `suspended_reason` — same issue
+- **Activate**: Same issue with those columns
 
-Replace the radio-button-based `MeetingDurationSelector` with a simple `Select` dropdown offering common durations: 15, 30, 45, 60, 90, 120 minutes.
+## Fix
 
-### 3. Meeting tab — Replace Buffer Time `Slider` with a `Select` dropdown
+Add `suspended_at` (TIMESTAMPTZ) and `suspended_reason` (TEXT) columns to the `tenant_subscriptions` table via a migration. This is the correct location since all the subscription management logic operates on this table.
 
-Replace the slider (lines 230-241) with a `Select` dropdown offering: 0, 5, 10, 15, 20, 30, 45, 60 minutes.
-
-### 4. Rules tab — Replace `Input type="number"` fields with `Select` dropdowns
-
-- **Minimum Notice**: Replace the number input (lines 258-264) with a `Select` dropdown offering: 0, 1, 2, 4, 8, 12, 24, 48, 72 hours.
-- **Maximum Days Ahead**: Replace the number input (lines 270-276) with a `Select` dropdown offering: 7, 14, 30, 60, 90 days.
+The `organizations` table already has these columns from a previous migration, but the edge function doesn't use that table for suspend/restore — it only uses `tenant_subscriptions`. Adding the columns to `tenant_subscriptions` makes the existing edge function code work correctly without any code changes.
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/components/settings/booking/WeeklyScheduleEditor.tsx` | Replace `<Input type="time">` with `TimePickerVirgilio` |
-| `src/components/settings/booking/EventTypeSheet.tsx` | Replace MeetingDurationSelector, Slider, and number Inputs with Select dropdowns for duration, buffer, notice, and max days |
+| DB migration | `ALTER TABLE tenant_subscriptions ADD COLUMN suspended_at TIMESTAMPTZ, ADD COLUMN suspended_reason TEXT` |
 
