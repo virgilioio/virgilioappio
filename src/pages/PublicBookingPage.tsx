@@ -494,6 +494,24 @@ export default function PublicBookingPage() {
           />
         ) : (
         <>
+        {/* Back to event type picker */}
+        {canGoBackToPicker && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mb-4 text-virgilio-muted hover:text-virgilio-text -ml-2"
+            onClick={() => {
+              setSelectedEventType(null);
+              setSelectedDate(null);
+              setSelectedSlot(null);
+              hasAutoSelectedRef.current = false;
+            }}
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back to options
+          </Button>
+        )}
+
         {/* Personalized greeting for stage booking links */}
         {bookingContext?.candidateName && !isResolvingToken && (
           <p className="font-poppins font-bold tracking-page-title text-virgilio-text text-lg md:text-xl mb-2">
@@ -504,6 +522,15 @@ export default function PublicBookingPage() {
         <h1 className="text-h1-mobile md:text-h1-desktop font-poppins font-bold text-virgilio-text mb-6">
           {rescheduleBookingId ? 'Reschedule Your Interview' : 'Select a Date & Time'}<span className="text-virgilio-purple">.</span>
         </h1>
+
+        {/* Selected event type info */}
+        {selectedEventType && !bookingContext?.jobTitle && (
+          <div className="mb-6 flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: selectedEventType.color || '#7c3aed' }} />
+            <span className="font-medium text-virgilio-text">{selectedEventType.title}</span>
+            <span className="text-sm text-virgilio-muted">· {selectedEventType.duration_minutes} min</span>
+          </div>
+        )}
 
         {/* Reschedule banner */}
         {rescheduleBookingId && (
