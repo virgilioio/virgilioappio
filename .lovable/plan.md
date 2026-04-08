@@ -1,35 +1,53 @@
 
 
-# Mobile Optimization: Profile Page (Consultation-Only)
+# Mobile-Responsive Public Booking Page (Calendly-Style Steps)
 
-Following the consultation-first mobile philosophy, the mobile view should be read-only — no editing, no creating. Users can view their info and copy URLs.
+## Problem
+
+The public booking page uses a 3-column desktop layout (`grid-cols-[320px_1fr_340px]`) that doesn't adapt for mobile. The calendar card tries to do inline side-by-side expansion (calendar + time slots) with fixed pixel widths that break on small screens.
+
+## Solution — Step-Based Mobile Flow
+
+On mobile, convert the booking flow into sequential steps like Calendly:
+
+**Step 1: Date Selection** — Full-width calendar (hide InterviewerCard and QuickSchedulePanel)
+**Step 2: Time Selection** — Full-width time slots list with back button
+**Step 3: Confirmation** — Full-width booking form with back button
+
+Desktop remains unchanged.
 
 ## Changes
 
-### 1. ProfileTab — Hide editing on mobile
+### `src/pages/PublicBookingPage.tsx`
 
-- Import `useIsMobile` hook
-- Hide the **Profile Form** fields, **Save button**, and **Avatar upload button** on mobile — show only the avatar display, name, and read-only account info
-- Hide the **Booking Link section separators** tightening: `my-4 sm:my-8`
-- Make save button `w-full sm:w-auto` (won't matter since it's hidden on mobile, but good fallback)
+1. **Import `useIsMobile`** hook
 
-### 2. BookingLinkSection — Consultation + copy only on mobile
+2. **Add mobile step state**: `const [mobileStep, setMobileStep] = useState<'date' | 'time' | 'confirm'>('date')`
 
-- Import `useIsMobile` hook
-- **Card header**: Hide the Switch + Active/Inactive badge toggle on mobile (no editing)
-- **Booking URL row**: Stack vertically on mobile (`flex-col sm:flex-row`), keep Copy button visible, hide "Open in new tab" button on mobile
-- **Event Types section**: Hide "Create New" button on mobile. Hide empty state create button on mobile. Make event type rows **not clickable** on mobile (no `onClick` to open edit sheet) — keep only the Copy link button visible
-- **Event type rows**: On mobile, use `flex-wrap` so title + duration wrap nicely. Hide the active badge on mobile to save space
+3. **Mobile step transitions**:
+   - When `selectedDate` is set and has time slots → auto-advance to `'time'` step
+   - When `selectedSlot` is set → auto-advance to `'confirm'` step
+   - Back buttons go to previous step and clear relevant selections
 
-### 3. ProfileForm — Read-only display on mobile
+4. **Mobile layout** (inside the `isMobile` conditional):
+   - **Step 'date'**: Show only the calendar card full-width. Include event type info and timezone below. Hide the InterviewerCard and QuickSchedulePanel entirely.
+   - **Step 'time'**: Show only the TimeSlotsList full-width in a card. Add a back button that clears `selectedDate` and returns to step 'date'.
+   - **Step 'confirm'**: Show only the BookingConfirmationForm full-width. Back button clears `selectedSlot` and returns to step 'time'.
 
-- Wrap the form in a conditional: on mobile, render a simple read-only display of the profile fields (name, title, phone, timezone, LinkedIn) as text instead of inputs
-- Or simpler: hide the entire form on mobile and show a compact summary card with the key info
+5. **Desktop layout** (existing): No changes — keep the 3-column grid with inline expansion as-is.
+
+6. **Calendar card on mobile**: Remove the inline time-slots expansion. The calendar takes full width without the `maxWidth: calc(100% - 260px)` squeeze. The time slots panel (`w-[260px]`) is hidden on mobile since it's shown in step 2 instead.
+
+7. **Event type picker + empty states**: Already full-width cards, work fine on mobile — no changes needed.
+
+### Key mobile UX details
+- Step indicator text at top (e.g., "Step 1 of 3 · Select a date") for orientation
+- Interviewer name/duration shown as a compact header line on mobile (not the full InterviewerCard)
+- "Back to options" button (event type picker) still works on mobile
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/components/settings/ProfileTab.tsx` | Import `useIsMobile`; hide form/save on mobile; show read-only summary; tighter spacing |
-| `src/components/settings/BookingLinkSection.tsx` | Import `useIsMobile`; hide switch/create/edit on mobile; stack URL row; keep copy buttons |
+| `src/pages/PublicBookingPage.tsx` | Add `useIsMobile`, mobile step state, conditional mobile vs desktop rendering |
 
