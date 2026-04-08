@@ -181,44 +181,48 @@ export function ProfileTab() {
 
       <BookingLinkSection />
       
-      <Separator className="my-4 sm:my-8" />
-      
-      {/* Account Information Card */}
-      <Card>
-        <CardHeader className="pb-sm">
-          <CardTitle className="flex items-center gap-2 text-lg font-poppins font-bold text-virgilio-text tracking-page-title">
-            <Shield className="h-4 w-4 text-virgilio-purple" />
-            Account Information<span className="text-purple-period">.</span>
-          </CardTitle>
-          <CardDescription className="text-xs text-virgilio-muted">
-            View your account details and permissions
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-sm">
-          <div className="grid gap-sm text-sm text-text-secondary">
-            <div className="flex items-center gap-2">
-              <Mail className="h-3 w-3" />
-              <span>Email: {user?.email}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Shield className="h-3 w-3" />
-              <span>User Type: </span>
-              <Badge variant="secondary" className="text-xs">
-                {userType || 'none'}
-              </Badge>
-            </div>
-            {memberRole && (
-              <div className="flex items-center gap-2">
-                <Shield className="h-3 w-3" />
-                <span>Member Role: </span>
-                <Badge variant="outline" className="text-xs">
-                  {memberRole}
-                </Badge>
+      {!isMobile && (
+        <>
+          <Separator className="my-4 sm:my-8" />
+          
+          {/* Account Information Card - hidden on mobile */}
+          <Card>
+            <CardHeader className="pb-sm">
+              <CardTitle className="flex items-center gap-2 text-lg font-poppins font-bold text-virgilio-text tracking-page-title">
+                <Shield className="h-4 w-4 text-virgilio-purple" />
+                Account Information<span className="text-purple-period">.</span>
+              </CardTitle>
+              <CardDescription className="text-xs text-virgilio-muted">
+                View your account details and permissions
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-sm">
+              <div className="grid gap-sm text-sm text-text-secondary">
+                <div className="flex items-center gap-2">
+                  <Mail className="h-3 w-3" />
+                  <span>Email: {user?.email}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Shield className="h-3 w-3" />
+                  <span>User Type: </span>
+                  <Badge variant="secondary" className="text-xs">
+                    {userType || 'none'}
+                  </Badge>
+                </div>
+                {memberRole && (
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-3 w-3" />
+                    <span>Member Role: </span>
+                    <Badge variant="outline" className="text-xs">
+                      {memberRole}
+                    </Badge>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   )
 }
