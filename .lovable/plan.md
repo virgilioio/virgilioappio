@@ -1,30 +1,35 @@
 
 
-# Fix: Show "No Availability" Banner When No Slots Exist
+# Mobile Optimization: Profile Page (Consultation-Only)
 
-## Problem
+Following the consultation-first mobile philosophy, the mobile view should be read-only — no editing, no creating. Users can view their info and copy URLs.
 
-The "no availability" banner in the calendar only appears when `autoAdvanceCountRef.current >= 6`, a condition that's effectively never met because auto-advancing months is disabled. When there are no available time slots, the calendar just shows with all dates grayed out and no explanation — it looks broken.
+## Changes
 
-## Solution
+### 1. ProfileTab — Hide editing on mobile
 
-Simplify the condition: show the banner whenever availability has finished loading and there are zero available dates in the current month. Remove the `autoAdvanceCountRef` gate.
+- Import `useIsMobile` hook
+- Hide the **Profile Form** fields, **Save button**, and **Avatar upload button** on mobile — show only the avatar display, name, and read-only account info
+- Hide the **Booking Link section separators** tightening: `my-4 sm:my-8`
+- Make save button `w-full sm:w-auto` (won't matter since it's hidden on mobile, but good fallback)
 
-**In `PublicBookingPage.tsx` (line 614):**
+### 2. BookingLinkSection — Consultation + copy only on mobile
 
-Change:
-```tsx
-noAvailabilityInMonth={!isLoadingAvailability && availableDates.length === 0 && autoAdvanceCountRef.current >= 6}
-```
+- Import `useIsMobile` hook
+- **Card header**: Hide the Switch + Active/Inactive badge toggle on mobile (no editing)
+- **Booking URL row**: Stack vertically on mobile (`flex-col sm:flex-row`), keep Copy button visible, hide "Open in new tab" button on mobile
+- **Event Types section**: Hide "Create New" button on mobile. Hide empty state create button on mobile. Make event type rows **not clickable** on mobile (no `onClick` to open edit sheet) — keep only the Copy link button visible
+- **Event type rows**: On mobile, use `flex-wrap` so title + duration wrap nicely. Hide the active badge on mobile to save space
 
-To:
-```tsx
-noAvailabilityInMonth={!isLoadingAvailability && availableDates.length === 0}
-```
+### 3. ProfileForm — Read-only display on mobile
+
+- Wrap the form in a conditional: on mobile, render a simple read-only display of the profile fields (name, title, phone, timezone, LinkedIn) as text instead of inputs
+- Or simpler: hide the entire form on mobile and show a compact summary card with the key info
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/pages/PublicBookingPage.tsx` | Remove `autoAdvanceCountRef >= 6` gate from `noAvailabilityInMonth` prop |
+| `src/components/settings/ProfileTab.tsx` | Import `useIsMobile`; hide form/save on mobile; show read-only summary; tighter spacing |
+| `src/components/settings/BookingLinkSection.tsx` | Import `useIsMobile`; hide switch/create/edit on mobile; stack URL row; keep copy buttons |
 
