@@ -611,7 +611,7 @@ export default function PublicBookingPage() {
                       onDateSelect={setSelectedDate}
                       currentMonth={currentMonth}
                       onMonthChange={handleMonthChange}
-                      noAvailabilityInMonth={!isLoadingAvailability && availableDates.length === 0 && autoAdvanceCountRef.current >= 6}
+                      noAvailabilityInMonth={!isLoadingAvailability && availableDates.length === 0}
                     />
                     
                     {/* Timezone display */}
