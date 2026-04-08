@@ -17,7 +17,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import { AlertCircle, Globe, ShieldX } from 'lucide-react';
 import { startOfMonth, endOfMonth, addMonths, isSameDay, isSameMonth, parseISO } from 'date-fns';
-import { useBookingAvailability } from '@/hooks/useBookingAvailability';
+import { useBookingAvailability, EventTypeOverrides } from '@/hooks/useBookingAvailability';
+import { ArrowLeft } from 'lucide-react';
 import { 
   parseBookingContextFromUrl, 
   BookingContext, 
@@ -61,7 +62,7 @@ export default function PublicBookingPage() {
   const [bookingCancelled, setBookingCancelled] = useState(false);
   const autoAdvanceCountRef = useRef(0);
   const hasAutoSelectedRef = useRef(false);
-  const [selectedEventType, setSelectedEventType] = useState<{ id: string; title: string; slug: string; description: string | null; duration_minutes: number; color: string } | null>(null);
+  const [selectedEventType, setSelectedEventType] = useState<any>(null);
 
   // Parse contextual booking context from URL (legacy base64)
   const legacyContext = useMemo(() => {
@@ -160,25 +161,41 @@ export default function PublicBookingPage() {
     enabled: !!config?.id,
   });
 
-  // Auto-select event type if eventSlug is in URL or only one exists
+  // Auto-select event type only if eventSlug is in URL (direct link)
   useEffect(() => {
     if (!eventTypes.length) return;
-    if (selectedEventType) return; // already selected
+    if (selectedEventType) return;
     
     if (eventSlug) {
       const match = eventTypes.find((et: any) => et.slug === eventSlug);
       if (match) setSelectedEventType(match);
-    } else if (eventTypes.length === 1) {
-      setSelectedEventType(eventTypes[0]);
     }
+    // No auto-select for single event type on general link — always show picker
   }, [eventTypes, eventSlug, selectedEventType]);
 
   // Determine if we need to show the event type picker
   const hasContextualLink = !!bookingContext || hasShortToken(searchParams);
-  const showEventPicker = !hasContextualLink && eventTypes.length > 1 && !selectedEventType;
+  // Show picker on general link when event types exist and none selected
+  const showEventPicker = !hasContextualLink && eventTypes.length > 0 && !selectedEventType;
+  // Show empty state when no event types and no contextual link
+  const showNoEventTypes = !hasContextualLink && !isLoadingEventTypes && eventTypes.length === 0;
+  // Can go back to picker (came from picker, not from direct slug URL)
+  const canGoBackToPicker = !hasContextualLink && !eventSlug && selectedEventType && eventTypes.length > 0;
 
   // Use event type's duration if selected, otherwise config default
   const activeDuration = selectedEventType?.duration_minutes || config?.duration_minutes || 30;
+
+  // Build event type overrides for availability engine
+  const eventTypeOverrides: EventTypeOverrides | undefined = useMemo(() => {
+    if (!selectedEventType) return undefined;
+    return {
+      weekly_schedule: selectedEventType.weekly_schedule,
+      buffer_time_minutes: selectedEventType.buffer_time_minutes,
+      min_notice_hours: selectedEventType.min_notice_hours,
+      max_days_ahead: selectedEventType.max_days_ahead,
+      timezone: selectedEventType.timezone,
+    };
+  }, [selectedEventType]);
 
   // Fetch availability for the current month
   const monthStart = startOfMonth(currentMonth);
@@ -189,7 +206,9 @@ export default function PublicBookingPage() {
     monthStart,
     monthEnd,
     activeDuration,
-    candidateTimezone
+    candidateTimezone,
+    false,
+    eventTypeOverrides
   );
 
   // Extract available dates from availability data
