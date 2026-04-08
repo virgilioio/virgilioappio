@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
@@ -15,10 +15,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { AlertCircle, Globe, ShieldX } from 'lucide-react';
-import { startOfMonth, endOfMonth, addMonths, isSameDay, isSameMonth, parseISO } from 'date-fns';
+import { AlertCircle, Globe, ShieldX, ArrowLeft, Clock } from 'lucide-react';
+import { startOfMonth, endOfMonth, addMonths, isSameDay, isSameMonth, parseISO, format } from 'date-fns';
 import { useBookingAvailability, EventTypeOverrides } from '@/hooks/useBookingAvailability';
-import { ArrowLeft } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { 
   parseBookingContextFromUrl, 
   BookingContext, 
@@ -48,6 +48,8 @@ export default function PublicBookingPage() {
   const { shortCode, eventSlug } = useParams<{ shortCode: string; eventSlug?: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const isMobile = useIsMobile();
+  const [mobileStep, setMobileStep] = useState<'date' | 'time' | 'confirm'>('date');
   const [candidateTimezone, setCandidateTimezone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone
   );
@@ -255,6 +257,22 @@ export default function PublicBookingPage() {
     });
   }, [selectedDate, availabilityData]);
 
+  // Mobile date selection — auto-advance to time step
+  const handleDateSelect = useCallback((date: Date) => {
+    setSelectedDate(date);
+    if (isMobile) {
+      setMobileStep('time');
+    }
+  }, [isMobile]);
+
+  // Mobile slot selection — auto-advance to confirm step
+  const handleSlotSelect = useCallback((slot: { start: string; end: string }) => {
+    setSelectedSlot(slot);
+    if (isMobile) {
+      setMobileStep('confirm');
+    }
+  }, [isMobile]);
+
   // Handler for quick schedule selection
   const handleQuickSelect = (slot: { start: string; end: string }) => {
     const slotDate = parseISO(slot.start);
@@ -263,6 +281,9 @@ export default function PublicBookingPage() {
     }
     setSelectedDate(slotDate);
     setSelectedSlot(slot);
+    if (isMobile) {
+      setMobileStep('confirm');
+    }
   };
 
   // Create booking mutation
@@ -579,97 +600,213 @@ export default function PublicBookingPage() {
           </div>
         )}
         
-        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr_340px] gap-8">
-          {/* Left column - Event summary */}
-          <div className="order-1">
-            {config.profiles && (
-              <InterviewerCard
-                profile={config.profiles}
-                config={{
-                  display_name: config.display_name,
-                  description: config.description,
-                  duration_minutes: activeDuration,
-                }}
-              />
-            )}
-          </div>
+        {isMobile ? (
+          /* ===== MOBILE: Step-based flow ===== */
+          <div className="space-y-4">
+            {/* Compact header with interviewer info */}
+            <div className="flex items-center gap-3 pb-3 border-b border-virgilio-border">
+              {config.profiles?.avatar_url && (
+                <img 
+                  src={config.profiles.avatar_url} 
+                  alt={`${config.profiles.first_name} ${config.profiles.last_name}`}
+                  className="w-10 h-10 rounded-full object-cover"
+                />
+              )}
+              <div className="min-w-0">
+                <p className="font-semibold text-virgilio-text text-sm truncate">
+                  {config.profiles ? `${config.profiles.first_name} ${config.profiles.last_name}` : config.display_name}
+                </p>
+                <div className="flex items-center gap-1 text-xs text-virgilio-muted">
+                  <Clock className="w-3 h-3" />
+                  <span>{activeDuration} min</span>
+                </div>
+              </div>
+            </div>
 
-          {/* Middle column - Calendar + inline time slots */}
-          <div className="order-2">
-            <Card className="shadow-calendly border-virgilio-border overflow-hidden">
-              <CardContent className="p-6">
-                <div className="flex gap-0">
-                  {/* Calendar side */}
-                  <div className="flex-shrink-0 w-full transition-all duration-300 ease-out"
-                    style={{ 
-                      maxWidth: selectedDate && timeSlotsForSelectedDate.length > 0 ? 'calc(100% - 260px)' : '100%' 
-                    }}
-                  >
-                    <MonthCalendar
-                      availableDates={availableDates}
-                      selectedDate={selectedDate}
-                      onDateSelect={setSelectedDate}
-                      currentMonth={currentMonth}
-                      onMonthChange={handleMonthChange}
-                      noAvailabilityInMonth={!isLoadingAvailability && availableDates.length === 0}
-                    />
-                    
-                    {/* Timezone display */}
-                    <div className="mt-6 pt-6 border-t border-virgilio-border">
-                      <div className="flex items-center gap-2 text-sm text-virgilio-muted">
-                        <Globe className="h-4 w-4" />
-                        <span>
-                          Times shown in {candidateTimezone.replace(/_/g, ' ')}
-                        </span>
-                      </div>
+            {/* Step indicator */}
+            <div className="flex items-center gap-2 text-xs text-virgilio-muted">
+              <span className={mobileStep === 'date' ? 'text-virgilio-purple font-semibold' : ''}>Date</span>
+              <span>→</span>
+              <span className={mobileStep === 'time' ? 'text-virgilio-purple font-semibold' : ''}>Time</span>
+              <span>→</span>
+              <span className={mobileStep === 'confirm' ? 'text-virgilio-purple font-semibold' : ''}>Confirm</span>
+            </div>
+
+            {/* Step 1: Date selection */}
+            {mobileStep === 'date' && (
+              <Card className="shadow-calendly border-virgilio-border">
+                <CardContent className="p-4">
+                  <MonthCalendar
+                    availableDates={availableDates}
+                    selectedDate={selectedDate}
+                    onDateSelect={handleDateSelect}
+                    currentMonth={currentMonth}
+                    onMonthChange={handleMonthChange}
+                    noAvailabilityInMonth={!isLoadingAvailability && availableDates.length === 0}
+                  />
+                  {/* Timezone */}
+                  <div className="mt-4 pt-4 border-t border-virgilio-border">
+                    <div className="flex items-center gap-2 text-xs text-virgilio-muted">
+                      <Globe className="h-3 w-3" />
+                      <span>{candidateTimezone.replace(/_/g, ' ')}</span>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            )}
 
-                  {/* Inline time slots (Calendly-style expansion) */}
-                  <div 
-                    className={`
-                      overflow-hidden transition-all duration-300 ease-out border-l border-virgilio-border
-                      ${selectedDate && timeSlotsForSelectedDate.length > 0 
-                        ? 'w-[260px] opacity-100 pl-6' 
-                        : 'w-0 opacity-0 pl-0 border-l-0'}
-                    `}
-                  >
+            {/* Step 2: Time selection */}
+            {mobileStep === 'time' && (
+              <div className="space-y-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-virgilio-muted hover:text-virgilio-text -ml-2 gap-1"
+                  onClick={() => {
+                    setMobileStep('date');
+                    setSelectedDate(null);
+                  }}
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to calendar
+                </Button>
+                <Card className="shadow-calendly border-virgilio-border">
+                  <CardContent className="p-4">
                     <TimeSlotsList
                       selectedDate={selectedDate}
                       timeSlots={timeSlotsForSelectedDate}
                       selectedSlot={selectedSlot}
-                      onSlotSelect={setSelectedSlot}
+                      onSlotSelect={handleSlotSelect}
                       isLoading={isLoadingAvailability}
                     />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
-          {/* Right column - Quick Schedule or Confirmation Form */}
-          <div className="order-3">
-            {!selectedSlot ? (
-              <Card className="shadow-calendly border-virgilio-border">
-                <CardContent className="p-6">
-                  <QuickSchedulePanel
-                    availableSlots={availabilityData?.available_slots || []}
-                    onQuickSelect={handleQuickSelect}
-                  />
-                </CardContent>
-              </Card>
-            ) : (
-              <BookingConfirmationForm
-                selectedSlot={selectedSlot}
-                candidateTimezone={candidateTimezone}
-                onCancel={() => setSelectedSlot(null)}
-                onConfirm={createBookingMutation.mutateAsync}
-                defaultCandidateName={bookingContext?.candidateName}
-                defaultCandidateEmail={bookingContext?.candidateEmail}
-              />
+            {/* Step 3: Confirmation */}
+            {mobileStep === 'confirm' && selectedSlot && (
+              <div className="space-y-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-virgilio-muted hover:text-virgilio-text -ml-2 gap-1"
+                  onClick={() => {
+                    setMobileStep('time');
+                    setSelectedSlot(null);
+                  }}
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to times
+                </Button>
+                <BookingConfirmationForm
+                  selectedSlot={selectedSlot}
+                  candidateTimezone={candidateTimezone}
+                  onCancel={() => {
+                    setSelectedSlot(null);
+                    setMobileStep('time');
+                  }}
+                  onConfirm={createBookingMutation.mutateAsync}
+                  defaultCandidateName={bookingContext?.candidateName}
+                  defaultCandidateEmail={bookingContext?.candidateEmail}
+                />
+              </div>
             )}
           </div>
-        </div>
+        ) : (
+          /* ===== DESKTOP: Original 3-column grid ===== */
+          <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr_340px] gap-8">
+            {/* Left column - Event summary */}
+            <div className="order-1">
+              {config.profiles && (
+                <InterviewerCard
+                  profile={config.profiles}
+                  config={{
+                    display_name: config.display_name,
+                    description: config.description,
+                    duration_minutes: activeDuration,
+                  }}
+                />
+              )}
+            </div>
+
+            {/* Middle column - Calendar + inline time slots */}
+            <div className="order-2">
+              <Card className="shadow-calendly border-virgilio-border overflow-hidden">
+                <CardContent className="p-6">
+                  <div className="flex gap-0">
+                    {/* Calendar side */}
+                    <div className="flex-shrink-0 w-full transition-all duration-300 ease-out"
+                      style={{ 
+                        maxWidth: selectedDate && timeSlotsForSelectedDate.length > 0 ? 'calc(100% - 260px)' : '100%' 
+                      }}
+                    >
+                      <MonthCalendar
+                        availableDates={availableDates}
+                        selectedDate={selectedDate}
+                        onDateSelect={setSelectedDate}
+                        currentMonth={currentMonth}
+                        onMonthChange={handleMonthChange}
+                        noAvailabilityInMonth={!isLoadingAvailability && availableDates.length === 0}
+                      />
+                      
+                      {/* Timezone display */}
+                      <div className="mt-6 pt-6 border-t border-virgilio-border">
+                        <div className="flex items-center gap-2 text-sm text-virgilio-muted">
+                          <Globe className="h-4 w-4" />
+                          <span>
+                            Times shown in {candidateTimezone.replace(/_/g, ' ')}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Inline time slots (Calendly-style expansion) */}
+                    <div 
+                      className={`
+                        overflow-hidden transition-all duration-300 ease-out border-l border-virgilio-border
+                        ${selectedDate && timeSlotsForSelectedDate.length > 0 
+                          ? 'w-[260px] opacity-100 pl-6' 
+                          : 'w-0 opacity-0 pl-0 border-l-0'}
+                      `}
+                    >
+                      <TimeSlotsList
+                        selectedDate={selectedDate}
+                        timeSlots={timeSlotsForSelectedDate}
+                        selectedSlot={selectedSlot}
+                        onSlotSelect={setSelectedSlot}
+                        isLoading={isLoadingAvailability}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right column - Quick Schedule or Confirmation Form */}
+            <div className="order-3">
+              {!selectedSlot ? (
+                <Card className="shadow-calendly border-virgilio-border">
+                  <CardContent className="p-6">
+                    <QuickSchedulePanel
+                      availableSlots={availabilityData?.available_slots || []}
+                      onQuickSelect={handleQuickSelect}
+                    />
+                  </CardContent>
+                </Card>
+              ) : (
+                <BookingConfirmationForm
+                  selectedSlot={selectedSlot}
+                  candidateTimezone={candidateTimezone}
+                  onCancel={() => setSelectedSlot(null)}
+                  onConfirm={createBookingMutation.mutateAsync}
+                  defaultCandidateName={bookingContext?.candidateName}
+                  defaultCandidateEmail={bookingContext?.candidateEmail}
+                />
+              )}
+            </div>
+          </div>
+        )}
         </>
         )}
       </main>
