@@ -15,10 +15,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { AlertCircle, Globe, ShieldX } from 'lucide-react';
-import { startOfMonth, endOfMonth, addMonths, isSameDay, isSameMonth, parseISO } from 'date-fns';
+import { AlertCircle, Globe, ShieldX, ArrowLeft, Clock } from 'lucide-react';
+import { startOfMonth, endOfMonth, addMonths, isSameDay, isSameMonth, parseISO, format } from 'date-fns';
 import { useBookingAvailability, EventTypeOverrides } from '@/hooks/useBookingAvailability';
-import { ArrowLeft } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { 
   parseBookingContextFromUrl, 
   BookingContext, 
