@@ -116,7 +116,7 @@ export default function Settings() {
               </div>
               
               {/* Main content */}
-              <div className="flex-1">
+              <div className="flex-1 min-w-0 overflow-hidden">
                 <TabsContent value="profile">
                   <ProfileTab />
                 </TabsContent>
