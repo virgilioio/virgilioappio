@@ -285,6 +285,12 @@ export default function PublicBookingPage() {
           scheduled_start: selectedSlot.start,
           scheduled_end: selectedSlot.end,
           notes: formData.notes || null,
+          // Pass event type data if selected
+          ...(selectedEventType && {
+            event_type_id: selectedEventType.id,
+            meeting_location: selectedEventType.meeting_location,
+            custom_event_title: selectedEventType.custom_event_title,
+          }),
           // Pass contextual booking context if available
           ...(bookingContext && {
             job_id: bookingContext.jobId,
