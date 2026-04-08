@@ -257,6 +257,22 @@ export default function PublicBookingPage() {
     });
   }, [selectedDate, availabilityData]);
 
+  // Mobile date selection — auto-advance to time step
+  const handleDateSelect = useCallback((date: Date) => {
+    setSelectedDate(date);
+    if (isMobile) {
+      setMobileStep('time');
+    }
+  }, [isMobile]);
+
+  // Mobile slot selection — auto-advance to confirm step
+  const handleSlotSelect = useCallback((slot: { start: string; end: string }) => {
+    setSelectedSlot(slot);
+    if (isMobile) {
+      setMobileStep('confirm');
+    }
+  }, [isMobile]);
+
   // Handler for quick schedule selection
   const handleQuickSelect = (slot: { start: string; end: string }) => {
     const slotDate = parseISO(slot.start);
@@ -265,6 +281,9 @@ export default function PublicBookingPage() {
     }
     setSelectedDate(slotDate);
     setSelectedSlot(slot);
+    if (isMobile) {
+      setMobileStep('confirm');
+    }
   };
 
   // Create booking mutation
