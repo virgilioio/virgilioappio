@@ -48,6 +48,8 @@ export default function PublicBookingPage() {
   const { shortCode, eventSlug } = useParams<{ shortCode: string; eventSlug?: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const isMobile = useIsMobile();
+  const [mobileStep, setMobileStep] = useState<'date' | 'time' | 'confirm'>('date');
   const [candidateTimezone, setCandidateTimezone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone
   );
