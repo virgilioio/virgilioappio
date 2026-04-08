@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
@@ -116,7 +116,19 @@ export function TimePickerVirgilio({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[280px] p-4 pointer-events-auto" align="start">
-        <div className="h-[300px] overflow-y-auto pr-3">
+        <div
+          className="h-[300px] overflow-y-auto pr-3"
+          onWheel={(e) => {
+            e.stopPropagation()
+            const el = e.currentTarget
+            const { scrollTop, scrollHeight, clientHeight } = el
+            const atTop = scrollTop === 0 && e.deltaY < 0
+            const atBottom = scrollTop + clientHeight >= scrollHeight && e.deltaY > 0
+            if (atTop || atBottom) {
+              e.preventDefault()
+            }
+          }}
+        >
           <div className="space-y-4">
             {renderTimeGroup(morningSlots, 'Morning')}
             {renderTimeGroup(afternoonSlots, 'Afternoon')}
