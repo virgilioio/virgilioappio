@@ -1,32 +1,30 @@
 
 
-# Fix: Time Picker Scroll Not Working with Mouse Wheel
+# Fix: Show "No Availability" Banner When No Slots Exist
 
-## Root Cause
+## Problem
 
-The Radix `ScrollArea` component uses `overflow: hidden` on its root and manages scrolling via its own `Viewport`. However, inside a Popover (which is rendered in a portal), the Radix ScrollArea often blocks native wheel/touch scroll events — users can only scroll by dragging the scrollbar handle.
+The "no availability" banner in the calendar only appears when `autoAdvanceCountRef.current >= 6`, a condition that's effectively never met because auto-advancing months is disabled. When there are no available time slots, the calendar just shows with all dates grayed out and no explanation — it looks broken.
 
 ## Solution
 
-Replace the `ScrollArea` wrapper in `TimePickerVirgilio` with a plain `div` that uses native `overflow-y: auto` scrolling. This is simpler and reliably supports mouse wheel, trackpad, and touch scrolling inside popovers.
+Simplify the condition: show the banner whenever availability has finished loading and there are zero available dates in the current month. Remove the `autoAdvanceCountRef` gate.
 
-In `src/components/ui/time-picker-virgilio.tsx` (line 119):
+**In `PublicBookingPage.tsx` (line 614):**
 
-**Before:**
+Change:
 ```tsx
-<ScrollArea className="h-[300px] pr-3">
+noAvailabilityInMonth={!isLoadingAvailability && availableDates.length === 0 && autoAdvanceCountRef.current >= 6}
 ```
 
-**After:**
+To:
 ```tsx
-<div className="h-[300px] overflow-y-auto pr-3">
+noAvailabilityInMonth={!isLoadingAvailability && availableDates.length === 0}
 ```
-
-And update the closing tag accordingly. Remove the `ScrollArea` import since it's no longer used.
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `src/components/ui/time-picker-virgilio.tsx` | Replace `ScrollArea` with native scrollable `div`; remove unused import |
+| `src/pages/PublicBookingPage.tsx` | Remove `autoAdvanceCountRef >= 6` gate from `noAvailabilityInMonth` prop |
 
