@@ -239,32 +239,49 @@ export function BookingLinkSection() {
               </div>
             ) : (
               <div className="space-y-2">
-                {eventTypes.map((et) => (
-                  <div
-                    key={et.id}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:border-primary/40 cursor-pointer transition-colors"
-                    onClick={() => handleOpenEdit(et)}
-                  >
-                    {/* Color dot */}
+                {eventTypes.map((et) => {
+                  const eventUrl = `${bookingUrl}/${et.slug}`;
+                  return (
                     <div
-                      className="w-3 h-3 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: et.color }}
-                    />
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-text-primary truncate">{et.title}</p>
-                      {et.description && (
-                        <p className="text-xs text-text-secondary truncate">{et.description}</p>
-                      )}
+                      key={et.id}
+                      className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:border-primary/40 cursor-pointer transition-colors"
+                      onClick={() => handleOpenEdit(et)}
+                    >
+                      {/* Color dot */}
+                      <div
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: et.color }}
+                      />
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-text-primary truncate">{et.title}</p>
+                        {et.description && (
+                          <p className="text-xs text-text-secondary truncate">{et.description}</p>
+                        )}
+                      </div>
+                      {/* Duration */}
+                      <span className="text-xs text-text-secondary flex-shrink-0">{et.duration_minutes}m</span>
+                      {/* Copy direct link */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="flex-shrink-0 h-7 w-7"
+                        title="Copy direct link"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(eventUrl);
+                          toast.success('Event type link copied');
+                        }}
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </Button>
+                      {/* Active badge */}
+                      <Badge variant={et.is_active ? 'default' : 'secondary'} className="flex-shrink-0 text-xs">
+                        {et.is_active ? '✓' : '—'}
+                      </Badge>
                     </div>
-                    {/* Duration */}
-                    <span className="text-xs text-text-secondary flex-shrink-0">{et.duration_minutes}m</span>
-                    {/* Active badge */}
-                    <Badge variant={et.is_active ? 'default' : 'secondary'} className="flex-shrink-0 text-xs">
-                      {et.is_active ? '✓' : '—'}
-                    </Badge>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

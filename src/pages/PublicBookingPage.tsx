@@ -17,7 +17,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import { AlertCircle, Globe, ShieldX } from 'lucide-react';
 import { startOfMonth, endOfMonth, addMonths, isSameDay, isSameMonth, parseISO } from 'date-fns';
-import { useBookingAvailability } from '@/hooks/useBookingAvailability';
+import { useBookingAvailability, EventTypeOverrides } from '@/hooks/useBookingAvailability';
+import { ArrowLeft } from 'lucide-react';
 import { 
   parseBookingContextFromUrl, 
   BookingContext, 
@@ -61,7 +62,7 @@ export default function PublicBookingPage() {
   const [bookingCancelled, setBookingCancelled] = useState(false);
   const autoAdvanceCountRef = useRef(0);
   const hasAutoSelectedRef = useRef(false);
-  const [selectedEventType, setSelectedEventType] = useState<{ id: string; title: string; slug: string; description: string | null; duration_minutes: number; color: string } | null>(null);
+  const [selectedEventType, setSelectedEventType] = useState<any>(null);
 
   // Parse contextual booking context from URL (legacy base64)
   const legacyContext = useMemo(() => {
@@ -160,25 +161,41 @@ export default function PublicBookingPage() {
     enabled: !!config?.id,
   });
 
-  // Auto-select event type if eventSlug is in URL or only one exists
+  // Auto-select event type only if eventSlug is in URL (direct link)
   useEffect(() => {
     if (!eventTypes.length) return;
-    if (selectedEventType) return; // already selected
+    if (selectedEventType) return;
     
     if (eventSlug) {
       const match = eventTypes.find((et: any) => et.slug === eventSlug);
       if (match) setSelectedEventType(match);
-    } else if (eventTypes.length === 1) {
-      setSelectedEventType(eventTypes[0]);
     }
+    // No auto-select for single event type on general link — always show picker
   }, [eventTypes, eventSlug, selectedEventType]);
 
   // Determine if we need to show the event type picker
   const hasContextualLink = !!bookingContext || hasShortToken(searchParams);
-  const showEventPicker = !hasContextualLink && eventTypes.length > 1 && !selectedEventType;
+  // Show picker on general link when event types exist and none selected
+  const showEventPicker = !hasContextualLink && eventTypes.length > 0 && !selectedEventType;
+  // Show empty state when no event types and no contextual link
+  const showNoEventTypes = !hasContextualLink && !isLoadingEventTypes && eventTypes.length === 0;
+  // Can go back to picker (came from picker, not from direct slug URL)
+  const canGoBackToPicker = !hasContextualLink && !eventSlug && selectedEventType && eventTypes.length > 0;
 
   // Use event type's duration if selected, otherwise config default
   const activeDuration = selectedEventType?.duration_minutes || config?.duration_minutes || 30;
+
+  // Build event type overrides for availability engine
+  const eventTypeOverrides: EventTypeOverrides | undefined = useMemo(() => {
+    if (!selectedEventType) return undefined;
+    return {
+      weekly_schedule: selectedEventType.weekly_schedule,
+      buffer_time_minutes: selectedEventType.buffer_time_minutes,
+      min_notice_hours: selectedEventType.min_notice_hours,
+      max_days_ahead: selectedEventType.max_days_ahead,
+      timezone: selectedEventType.timezone,
+    };
+  }, [selectedEventType]);
 
   // Fetch availability for the current month
   const monthStart = startOfMonth(currentMonth);
@@ -189,7 +206,9 @@ export default function PublicBookingPage() {
     monthStart,
     monthEnd,
     activeDuration,
-    candidateTimezone
+    candidateTimezone,
+    false,
+    eventTypeOverrides
   );
 
   // Extract available dates from availability data
@@ -266,6 +285,12 @@ export default function PublicBookingPage() {
           scheduled_start: selectedSlot.start,
           scheduled_end: selectedSlot.end,
           notes: formData.notes || null,
+          // Pass event type data if selected
+          ...(selectedEventType && {
+            event_type_id: selectedEventType.id,
+            meeting_location: selectedEventType.meeting_location,
+            custom_event_title: selectedEventType.custom_event_title,
+          }),
           // Pass contextual booking context if available
           ...(bookingContext && {
             job_id: bookingContext.jobId,
@@ -450,8 +475,22 @@ export default function PublicBookingPage() {
       </header>
 
       <main className="container mx-auto px-4 md:px-6 lg:px-8 py-8 md:py-12 max-w-[1400px]">
-        {/* Event Type Picker */}
-        {showEventPicker ? (
+        {/* No event types — empty state */}
+        {showNoEventTypes ? (
+          <div className="max-w-lg mx-auto text-center py-16">
+            <Card className="shadow-calendly border-virgilio-border">
+              <CardContent className="pt-8 pb-8 space-y-4">
+                <AlertCircle className="w-12 h-12 text-virgilio-muted mx-auto" />
+                <h1 className="text-2xl font-poppins font-bold text-virgilio-text">
+                  No Availability<span className="text-virgilio-purple">.</span>
+                </h1>
+                <p className="text-virgilio-muted">
+                  There are no booking options available at this time. Please check back later or contact the organizer.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        ) : showEventPicker ? (
           <EventTypePicker
             eventTypes={eventTypes}
             onSelect={(et) => setSelectedEventType(et)}
@@ -461,6 +500,24 @@ export default function PublicBookingPage() {
           />
         ) : (
         <>
+        {/* Back to event type picker */}
+        {canGoBackToPicker && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mb-4 text-virgilio-muted hover:text-virgilio-text -ml-2"
+            onClick={() => {
+              setSelectedEventType(null);
+              setSelectedDate(null);
+              setSelectedSlot(null);
+              hasAutoSelectedRef.current = false;
+            }}
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back to options
+          </Button>
+        )}
+
         {/* Personalized greeting for stage booking links */}
         {bookingContext?.candidateName && !isResolvingToken && (
           <p className="font-poppins font-bold tracking-page-title text-virgilio-text text-lg md:text-xl mb-2">
@@ -471,6 +528,15 @@ export default function PublicBookingPage() {
         <h1 className="text-h1-mobile md:text-h1-desktop font-poppins font-bold text-virgilio-text mb-6">
           {rescheduleBookingId ? 'Reschedule Your Interview' : 'Select a Date & Time'}<span className="text-virgilio-purple">.</span>
         </h1>
+
+        {/* Selected event type info */}
+        {selectedEventType && !bookingContext?.jobTitle && (
+          <div className="mb-6 flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: selectedEventType.color || '#7c3aed' }} />
+            <span className="font-medium text-virgilio-text">{selectedEventType.title}</span>
+            <span className="text-sm text-virgilio-muted">· {selectedEventType.duration_minutes} min</span>
+          </div>
+        )}
 
         {/* Reschedule banner */}
         {rescheduleBookingId && (

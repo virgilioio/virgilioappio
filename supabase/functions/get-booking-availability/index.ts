@@ -6,21 +6,30 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface GetAvailabilityRequest {
-  booking_config_id: string;
-  start_date: string; // ISO 8601
-  end_date: string;   // ISO 8601
-  duration_minutes: number;
-  candidate_timezone: string;
-  internal_scheduling?: boolean;
-}
-
 interface WeeklySchedule {
   [key: string]: {
     enabled: boolean;
     start: string;
     end: string;
   };
+}
+
+interface EventTypeOverrides {
+  weekly_schedule?: WeeklySchedule;
+  buffer_time_minutes?: number;
+  min_notice_hours?: number;
+  max_days_ahead?: number;
+  timezone?: string;
+}
+
+interface GetAvailabilityRequest {
+  booking_config_id: string;
+  start_date: string;
+  end_date: string;
+  duration_minutes: number;
+  candidate_timezone: string;
+  internal_scheduling?: boolean;
+  event_type_overrides?: EventTypeOverrides;
 }
 
 serve(async (req) => {
@@ -40,15 +49,13 @@ serve(async (req) => {
       duration_minutes,
       candidate_timezone,
       internal_scheduling = false,
+      event_type_overrides,
     }: GetAvailabilityRequest = await req.json();
 
     console.log('[get-booking-availability] Request:', {
-      booking_config_id,
-      start_date,
-      end_date,
-      duration_minutes,
-      candidate_timezone,
-      internal_scheduling,
+      booking_config_id, start_date, end_date, duration_minutes,
+      candidate_timezone, internal_scheduling,
+      has_overrides: !!event_type_overrides,
     });
 
     // Load booking configuration
@@ -68,41 +75,32 @@ serve(async (req) => {
       });
     }
 
+    // Resolve effective settings: event type overrides take priority over parent config
+    const effectiveTimezone = event_type_overrides?.timezone || config.timezone;
+    const effectiveSchedule = (event_type_overrides?.weekly_schedule || config.weekly_schedule) as WeeklySchedule;
+    const effectiveBuffer = event_type_overrides?.buffer_time_minutes ?? config.buffer_time_minutes ?? 0;
+    const effectiveMinNotice = event_type_overrides?.min_notice_hours ?? config.min_notice_hours ?? 24;
+    const effectiveMaxDays = event_type_overrides?.max_days_ahead ?? config.max_days_ahead ?? 30;
+
     // Generate potential time slots
-    const potentialSlots = internal_scheduling 
-      ? generateUnrestrictedSlots(
-          new Date(start_date),
-          new Date(end_date),
-          duration_minutes,
-          config.timezone
-        )
-      : generatePotentialSlots(
-          new Date(start_date),
-          new Date(end_date),
-          config.weekly_schedule as WeeklySchedule,
-          duration_minutes,
-          config.buffer_time_minutes || 0,
-          config.timezone
-        );
+    const potentialSlots = internal_scheduling
+      ? generateUnrestrictedSlots(new Date(start_date), new Date(end_date), duration_minutes, effectiveTimezone)
+      : generatePotentialSlots(new Date(start_date), new Date(end_date), effectiveSchedule, duration_minutes, effectiveBuffer, effectiveTimezone);
 
     console.log('[get-booking-availability] Generated', potentialSlots.length, 'potential slots');
 
     // Apply booking rules (skip if internal scheduling)
     let filteredSlots = potentialSlots;
-
     if (!internal_scheduling) {
       const now = new Date();
-      const minStartTime = new Date(now.getTime() + (config.min_notice_hours || 24) * 60 * 60 * 1000);
-      const maxDate = new Date(now.getTime() + (config.max_days_ahead || 30) * 24 * 60 * 60 * 1000);
-
-      filteredSlots = potentialSlots.filter(slot => 
-        slot.start >= minStartTime && slot.start <= maxDate
-      );
+      const minStartTime = new Date(now.getTime() + effectiveMinNotice * 60 * 60 * 1000);
+      const maxDate = new Date(now.getTime() + effectiveMaxDays * 24 * 60 * 60 * 1000);
+      filteredSlots = potentialSlots.filter(slot => slot.start >= minStartTime && slot.start <= maxDate);
     }
 
     console.log('[get-booking-availability] After booking rules:', filteredSlots.length, 'slots');
 
-    // Fetch Google Calendar busy times using direct fetch with service role for internal call
+    // Fetch Google Calendar busy times
     let googleBusySlots: Array<{ start: Date; end: Date }> = [];
     try {
       const calendarResponse = await fetch(`${supabaseUrl}/functions/v1/check-calendar-availability`, {
@@ -113,9 +111,8 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           user_id: config.user_id,
-          start_date: start_date,
-          end_date: end_date,
-          timezone: config.timezone,
+          start_date, end_date,
+          timezone: effectiveTimezone,
         }),
       });
 
@@ -137,7 +134,7 @@ serve(async (req) => {
     }
 
     // Fetch existing bookings
-    const { data: existingBookings, error: bookingsError } = await supabase
+    const { data: existingBookings } = await supabase
       .from('scheduled_bookings')
       .select('scheduled_start, scheduled_end')
       .eq('booking_config_id', booking_config_id)
@@ -145,38 +142,28 @@ serve(async (req) => {
       .gte('scheduled_start', start_date)
       .lte('scheduled_end', end_date);
 
-    const bookedSlots = (existingBookings || []).map(booking => ({
-      start: new Date(booking.scheduled_start),
-      end: new Date(booking.scheduled_end),
+    const bookedSlots = (existingBookings || []).map(b => ({
+      start: new Date(b.scheduled_start),
+      end: new Date(b.scheduled_end),
     }));
 
     console.log('[get-booking-availability] Existing bookings:', bookedSlots.length);
 
-    // For internal scheduling: only filter out GoGio bookings, keep Google Calendar busy times as info
-    // For external scheduling: filter out both Google Calendar and GoGio bookings
     const filterBusySlots = internal_scheduling ? bookedSlots : [...googleBusySlots, ...bookedSlots];
 
-    // Filter out occupied slots
-    const availableSlots = filteredSlots.filter(slot => {
-      return !filterBusySlots.some(busy => 
-        slot.start < busy.end && slot.end > busy.start
-      );
-    });
+    const availableSlots = filteredSlots.filter(slot =>
+      !filterBusySlots.some(busy => slot.start < busy.end && slot.end > busy.start)
+    );
 
     console.log('[get-booking-availability] Final available slots:', availableSlots.length);
 
-    // Return slots in ISO format
     const formattedSlots = availableSlots.map(slot => ({
       start: slot.start.toISOString(),
       end: slot.end.toISOString(),
     }));
 
-    // Format busy events for frontend display (only for internal scheduling)
-    const formattedBusyEvents = internal_scheduling 
-      ? googleBusySlots.map(slot => ({
-          start: slot.start.toISOString(),
-          end: slot.end.toISOString(),
-        }))
+    const formattedBusyEvents = internal_scheduling
+      ? googleBusySlots.map(slot => ({ start: slot.start.toISOString(), end: slot.end.toISOString() }))
       : undefined;
 
     return new Response(JSON.stringify({
@@ -197,119 +184,66 @@ serve(async (req) => {
   }
 });
 
-// Helper: Convert local timezone time to UTC
 function createDateInTimezone(dateStr: string, timeStr: string, tz: string): Date {
-  // Create an ISO string for the local time
   const localISO = `${dateStr}T${timeStr}:00`;
-  
-  // Parse as if it's in UTC (wrong, but we'll fix it)
   const utcDate = new Date(localISO + 'Z');
-  
-  // See what time this UTC moment is in the target timezone
   const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
+    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
   });
-  
   const parts = formatter.formatToParts(utcDate);
   const tzHour = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
   const tzMinute = parseInt(parts.find(p => p.type === 'minute')?.value || '0');
-  
-  // Parse our desired time
   const [wantedHour, wantedMinute] = timeStr.split(':').map(Number);
-  
-  // Calculate the difference
-  const tzTotalMinutes = tzHour * 60 + tzMinute;
-  const wantedTotalMinutes = wantedHour * 60 + wantedMinute;
-  const diffMinutes = wantedTotalMinutes - tzTotalMinutes;
-  
-  // Apply the difference to get correct UTC time
+  const diffMinutes = (wantedHour * 60 + wantedMinute) - (tzHour * 60 + tzMinute);
   return new Date(utcDate.getTime() + diffMinutes * 60 * 1000);
 }
 
-// Helper: Generate potential slots
 function generatePotentialSlots(
-  startDate: Date,
-  endDate: Date,
-  weeklySchedule: WeeklySchedule,
-  durationMinutes: number,
-  bufferMinutes: number,
-  timezone: string
+  startDate: Date, endDate: Date, weeklySchedule: WeeklySchedule,
+  durationMinutes: number, bufferMinutes: number, timezone: string
 ): Array<{ start: Date; end: Date }> {
   const slots: Array<{ start: Date; end: Date }> = [];
   const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-
   let currentDate = new Date(startDate);
   while (currentDate <= endDate) {
     const dayName = dayNames[currentDate.getDay()];
     const dayConfig = weeklySchedule[dayName];
-
     if (dayConfig && dayConfig.enabled) {
-      // Create date string for timezone conversion
-      const dateStr = currentDate.toISOString().split('T')[0]; // "YYYY-MM-DD"
-      
-      // Convert local timezone times to UTC
+      const dateStr = currentDate.toISOString().split('T')[0];
       const slotStart = createDateInTimezone(dateStr, dayConfig.start, timezone);
       const dayEnd = createDateInTimezone(dateStr, dayConfig.end, timezone);
-      
       let currentSlot = new Date(slotStart);
-
       while (currentSlot.getTime() + durationMinutes * 60 * 1000 <= dayEnd.getTime()) {
         const slotEnd = new Date(currentSlot.getTime() + durationMinutes * 60 * 1000);
         slots.push({ start: new Date(currentSlot), end: slotEnd });
-        
-        // Move to next slot (duration + buffer)
         currentSlot = new Date(currentSlot.getTime() + (durationMinutes + bufferMinutes) * 60 * 1000);
       }
     }
-
-    // Move to next day
     currentDate.setDate(currentDate.getDate() + 1);
   }
-
   return slots;
 }
 
-// Helper: Generate unrestricted slots (all dates, 8 AM - 8 PM)
 function generateUnrestrictedSlots(
-  startDate: Date,
-  endDate: Date,
-  durationMinutes: number,
-  timezone: string
+  startDate: Date, endDate: Date, durationMinutes: number, timezone: string
 ): Array<{ start: Date; end: Date }> {
   const slots: Array<{ start: Date; end: Date }> = [];
-  const startHour = 8;  // 8 AM
-  const endHour = 20;   // 8 PM
-  const slotIntervalMinutes = 15; // 15-minute intervals
-
   let currentDate = new Date(startDate);
-  
   while (currentDate <= endDate) {
-    const dateStr = currentDate.toISOString().split('T')[0]; // "YYYY-MM-DD"
-    
-    // Generate slots from 8 AM to 8 PM
-    for (let hour = startHour; hour < endHour; hour++) {
-      for (let minute = 0; minute < 60; minute += slotIntervalMinutes) {
+    const dateStr = currentDate.toISOString().split('T')[0];
+    for (let hour = 8; hour < 20; hour++) {
+      for (let minute = 0; minute < 60; minute += 15) {
         const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
         const slotStart = createDateInTimezone(dateStr, timeStr, timezone);
         const slotEnd = new Date(slotStart.getTime() + durationMinutes * 60 * 1000);
-        
-        // Only add slot if it doesn't extend past 8 PM
         const dayEnd = createDateInTimezone(dateStr, '20:00', timezone);
         if (slotEnd <= dayEnd) {
           slots.push({ start: new Date(slotStart), end: slotEnd });
         }
       }
     }
-    
-    // Move to next day
     currentDate.setDate(currentDate.getDate() + 1);
   }
-
   return slots;
 }
