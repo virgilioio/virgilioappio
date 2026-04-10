@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
 import { createShortBookingToken, generateShortBookingLink, generateContextualBookingLink, BookingContext } from '@/lib/bookingLinkUtils';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { primeClipboard, copyToClipboardSilent } from '@/utils/clipboard';
 
 export interface InterviewerBookingInfo {
@@ -61,7 +61,6 @@ interface ProfileRow {
 }
 
 async function fetchStageInterviewers(jhsId: string): Promise<InterviewerBookingInfo[]> {
-  // Get all stage interviewer assignments
   // @ts-ignore - Supabase type instantiation issue
   const { data: assignmentsData, error: assignmentsError } = await supabase
     .from('stage_interviewer_assignments')
@@ -77,7 +76,6 @@ async function fetchStageInterviewers(jhsId: string): Promise<InterviewerBooking
 
   const memberIds = assignments.map(a => a.member_id);
 
-  // Get members
   const { data: membersData, error: membersError } = await supabase
     .from('members')
     .select('id, user_id')
@@ -90,13 +88,11 @@ async function fetchStageInterviewers(jhsId: string): Promise<InterviewerBooking
     return [];
   }
 
-  // Filter out members without user_id (invited but not yet registered)
   const validMembers = members.filter(m => m.user_id != null) as { id: string; user_id: string }[];
   if (!validMembers.length) return [];
 
   const userIds = validMembers.map(m => m.user_id);
 
-  // Get active booking configurations for these users
   const { data: bookingConfigsData, error: configsError } = await supabase
     .from('booking_configurations')
     .select('id, user_id, short_code, is_active')
@@ -110,7 +106,6 @@ async function fetchStageInterviewers(jhsId: string): Promise<InterviewerBooking
     return [];
   }
 
-  // Get profiles for names
   const { data: profilesData, error: profilesError } = await supabase
     .from('profiles')
     .select('user_id, first_name, last_name')
@@ -122,7 +117,6 @@ async function fetchStageInterviewers(jhsId: string): Promise<InterviewerBooking
     console.error('Error fetching profiles:', profilesError);
   }
 
-  // Build the result by combining all data
   const interviewersWithBooking: InterviewerBookingInfo[] = [];
 
   for (const assignment of assignments) {
@@ -130,7 +124,7 @@ async function fetchStageInterviewers(jhsId: string): Promise<InterviewerBooking
     if (!member) continue;
 
     const config = bookingConfigs?.find(c => c.user_id === member.user_id);
-    if (!config) continue; // Skip members without active booking config
+    if (!config) continue;
 
     const profile = profiles?.find(p => p.user_id === member.user_id);
     const fullName = profile 
@@ -150,7 +144,6 @@ async function fetchStageInterviewers(jhsId: string): Promise<InterviewerBooking
     });
   }
 
-  // Sort by assignment priority
   return interviewersWithBooking.sort(
     (a, b) => (ASSIGNMENT_PRIORITY[a.assignmentType] || 99) - (ASSIGNMENT_PRIORITY[b.assignmentType] || 99)
   );
@@ -159,6 +152,9 @@ async function fetchStageInterviewers(jhsId: string): Promise<InterviewerBooking
 export function useStageBookingInterviewers(params: UseStageBookingInterviewersParams | null) {
   const { toast } = useToast();
   const [copyingInterviewerId, setCopyingInterviewerId] = useState<string | null>(null);
+  // Pre-built links: memberId → ready-to-copy URL
+  const [prebuiltLinks, setPrebuiltLinks] = useState<Record<string, string>>({});
+  const prebuiltAbortRef = useRef<AbortController | null>(null);
 
   const { data: interviewers = [], isLoading } = useQuery<InterviewerBookingInfo[]>({
     queryKey: ['stage-booking-interviewers', params?.jhsId],
@@ -166,53 +162,128 @@ export function useStageBookingInterviewers(params: UseStageBookingInterviewersP
     enabled: !!params?.jhsId,
   });
 
+  // Pre-create tokens for all interviewers when data is ready
+  useEffect(() => {
+    if (!params || interviewers.length === 0) {
+      setPrebuiltLinks({});
+      return;
+    }
+
+    // Abort any in-flight pre-creation from a previous render
+    prebuiltAbortRef.current?.abort();
+    const controller = new AbortController();
+    prebuiltAbortRef.current = controller;
+
+    const context: BookingContext = {
+      jobId: params.jobId,
+      candidateId: params.candidateId,
+      jhsId: params.jhsId,
+      associationId: params.associationId,
+      candidateName: params.candidateName,
+      candidateEmail: params.candidateEmail,
+      jobTitle: params.jobTitle,
+      stageName: params.stageName,
+    };
+
+    // Fire all token creations in parallel
+    Promise.all(
+      interviewers.map(async (interviewer) => {
+        try {
+          const token = await createShortBookingToken({
+            shortCode: interviewer.bookingConfig.short_code,
+            context,
+          });
+
+          const link = token
+            ? generateShortBookingLink({ shortCode: interviewer.bookingConfig.short_code, token })
+            : generateContextualBookingLink({ shortCode: interviewer.bookingConfig.short_code, context });
+
+          return { memberId: interviewer.memberId, link };
+        } catch {
+          // Fallback to base64 link if token creation fails
+          const link = generateContextualBookingLink({ shortCode: interviewer.bookingConfig.short_code, context });
+          return { memberId: interviewer.memberId, link };
+        }
+      })
+    ).then((results) => {
+      if (controller.signal.aborted) return;
+      const linksMap: Record<string, string> = {};
+      for (const r of results) {
+        linksMap[r.memberId] = r.link;
+      }
+      setPrebuiltLinks(linksMap);
+    });
+
+    return () => {
+      controller.abort();
+    };
+  }, [interviewers, params?.jobId, params?.candidateId, params?.jhsId, params?.associationId, params?.candidateName, params?.candidateEmail, params?.jobTitle, params?.stageName]);
+
   const copyLinkForInterviewer = useCallback(async (interviewer: InterviewerBookingInfo) => {
     if (!params) return;
 
     setCopyingInterviewerId(interviewer.memberId);
 
-    // Prime clipboard immediately while user gesture is still valid
-    await primeClipboard();
-
     try {
-      const context: BookingContext = {
-        jobId: params.jobId,
-        candidateId: params.candidateId,
-        jhsId: params.jhsId,
-        associationId: params.associationId,
-        candidateName: params.candidateName,
-        candidateEmail: params.candidateEmail,
-        jobTitle: params.jobTitle,
-        stageName: params.stageName,
-      };
+      const prebuiltLink = prebuiltLinks[interviewer.memberId];
 
-      // Create token for this specific interviewer
-      const token = await createShortBookingToken({
-        shortCode: interviewer.bookingConfig.short_code,
-        context,
-      });
+      if (prebuiltLink) {
+        // Happy path: link is pre-built, copy immediately within user gesture
+        await primeClipboard();
+        const success = await copyToClipboardSilent(prebuiltLink);
+        const name = interviewer.fullName;
 
-      // Generate link
-      const link = token
-        ? generateShortBookingLink({ shortCode: interviewer.bookingConfig.short_code, token })
-        : generateContextualBookingLink({ shortCode: interviewer.bookingConfig.short_code, context });
-
-      // Attempt to overwrite clipboard with real link
-      const success = await copyToClipboardSilent(link);
-      const name = interviewer.fullName;
-
-      if (success) {
-        toast({
-          title: 'Link Copied',
-          description: `Booking link for ${name} copied to clipboard.`,
-        });
+        if (success) {
+          toast({
+            title: 'Link Copied',
+            description: `Booking link for ${name} copied to clipboard.`,
+          });
+        } else {
+          toast({
+            title: 'Copy the link manually',
+            description: prebuiltLink,
+            duration: 15000,
+          });
+        }
       } else {
-        // Clipboard write failed after gesture expired — show link for manual copy
-        toast({
-          title: 'Copy the link manually',
-          description: link,
-          duration: 15000,
+        // Fallback: link not ready yet, use async path (may trigger manual copy)
+        await primeClipboard();
+
+        const context: BookingContext = {
+          jobId: params.jobId,
+          candidateId: params.candidateId,
+          jhsId: params.jhsId,
+          associationId: params.associationId,
+          candidateName: params.candidateName,
+          candidateEmail: params.candidateEmail,
+          jobTitle: params.jobTitle,
+          stageName: params.stageName,
+        };
+
+        const token = await createShortBookingToken({
+          shortCode: interviewer.bookingConfig.short_code,
+          context,
         });
+
+        const link = token
+          ? generateShortBookingLink({ shortCode: interviewer.bookingConfig.short_code, token })
+          : generateContextualBookingLink({ shortCode: interviewer.bookingConfig.short_code, context });
+
+        const success = await copyToClipboardSilent(link);
+        const name = interviewer.fullName;
+
+        if (success) {
+          toast({
+            title: 'Link Copied',
+            description: `Booking link for ${name} copied to clipboard.`,
+          });
+        } else {
+          toast({
+            title: 'Copy the link manually',
+            description: link,
+            duration: 15000,
+          });
+        }
       }
     } catch (error) {
       console.error('Error copying booking link:', error);
@@ -224,7 +295,7 @@ export function useStageBookingInterviewers(params: UseStageBookingInterviewersP
     } finally {
       setCopyingInterviewerId(null);
     }
-  }, [params, toast]);
+  }, [params, toast, prebuiltLinks]);
 
   return {
     interviewers,
