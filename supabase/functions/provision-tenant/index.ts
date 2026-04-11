@@ -401,9 +401,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         status: "ok", 
-        workspaceId: tenantId,  // Frontend expects this field name
-        tenantId,               // Keep for backward compatibility
-        trialEnd 
+        workspaceId: tenantId,
+        tenantId,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
