@@ -30,6 +30,10 @@ import { cn } from '@/lib/utils'
 const getDisplayName = (c: { full_name?: string; candidate_name?: string }) =>
   c.full_name || c.candidate_name || 'Unknown'
 
+// Helper to safely build location string from candidate fields
+const getLocation = (c: { location?: string; location_city?: string; location_state?: string; location_country?: string }) =>
+  c.location || [c.location_city, c.location_state, c.location_country].filter(Boolean).join(', ') || undefined
+
 interface MatchedCandidate {
   id: string
   candidate_name?: string
@@ -189,7 +193,7 @@ export function SourcingCandidateTable({
         setSelectedApolloData({
           candidate_name: getDisplayName(prevCandidate),
           headline: prevCandidate.headline,
-          location: prevCandidate.location || (prevCandidate.location_city ? `${prevCandidate.location_city}, ${prevCandidate.location_country}` : prevCandidate.location_country),
+          location: getLocation(prevCandidate),
           current_company: prevCandidate.current_company,
           current_role: prevCandidate.current_role,
           linkedin_url: prevCandidate.linkedin_url,
@@ -232,7 +236,7 @@ export function SourcingCandidateTable({
         setSelectedApolloData({
           candidate_name: getDisplayName(nextCandidate),
           headline: nextCandidate.headline,
-          location: nextCandidate.location || (nextCandidate.location_city ? `${nextCandidate.location_city}, ${nextCandidate.location_country}` : nextCandidate.location_country),
+          location: getLocation(nextCandidate),
           current_company: nextCandidate.current_company,
           current_role: nextCandidate.current_role,
           linkedin_url: nextCandidate.linkedin_url,
@@ -645,7 +649,7 @@ export function SourcingCandidateTable({
                         setSelectedApolloData({
                            candidate_name: getDisplayName(candidate),
                           headline: candidate.headline,
-                          location: candidate.location || (candidate.location_city ? `${candidate.location_city}, ${candidate.location_country}` : candidate.location_country),
+                           location: getLocation(candidate),
                           current_company: candidate.current_company,
                           current_role: candidate.current_role,
                           linkedin_url: candidate.linkedin_url,
@@ -1003,7 +1007,7 @@ export function SourcingCandidateTable({
                   setSelectedApolloData({
                     candidate_name: getDisplayName(candidate),
                     headline: candidate.headline,
-                    location: candidate.location || (candidate.location_city ? `${candidate.location_city}, ${candidate.location_country}` : candidate.location_country),
+                    location: getLocation(candidate),
                     current_company: candidate.current_company,
                     current_role: candidate.current_role,
                     linkedin_url: candidate.linkedin_url,
@@ -1062,11 +1066,11 @@ export function SourcingCandidateTable({
                         {candidate.current_company && ` @ ${candidate.current_company}`}
                       </p>
                     )}
-                    {candidate.location_city && (
+                    {getLocation(candidate) && (
                       <div className="flex items-center gap-1 mt-1">
                         <MapPin className="h-3 w-3 text-muted-foreground" />
                         <span className="text-xs text-muted-foreground">
-                          {candidate.location_city}, {candidate.location_country}
+                          {getLocation(candidate)}
                         </span>
                       </div>
                     )}
