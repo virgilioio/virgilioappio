@@ -26,9 +26,13 @@ import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabaseClient'
 import { cn } from '@/lib/utils'
 
+// Helper to safely resolve display name across PDL (full_name) and Apollo (candidate_name) candidates
+const getDisplayName = (c: { full_name?: string; candidate_name?: string }) =>
+  c.full_name || c.candidate_name || 'Unknown'
+
 interface MatchedCandidate {
   id: string
-  candidate_name: string
+  candidate_name?: string
   current_role?: string
   current_company?: string
   location?: string  // Full location string (only available after enrichment)
@@ -183,7 +187,7 @@ export function SourcingCandidateTable({
         setSelectedCandidateId(null)
         setSelectedApolloId(prevCandidate.apollo_id)
         setSelectedApolloData({
-          candidate_name: prevCandidate.candidate_name,
+          candidate_name: getDisplayName(prevCandidate),
           headline: prevCandidate.headline,
           location: prevCandidate.location || (prevCandidate.location_city ? `${prevCandidate.location_city}, ${prevCandidate.location_country}` : prevCandidate.location_country),
           current_company: prevCandidate.current_company,
@@ -226,7 +230,7 @@ export function SourcingCandidateTable({
         setSelectedCandidateId(null)
         setSelectedApolloId(nextCandidate.apollo_id)
         setSelectedApolloData({
-          candidate_name: nextCandidate.candidate_name,
+          candidate_name: getDisplayName(nextCandidate),
           headline: nextCandidate.headline,
           location: nextCandidate.location || (nextCandidate.location_city ? `${nextCandidate.location_city}, ${nextCandidate.location_country}` : nextCandidate.location_country),
           current_company: nextCandidate.current_company,
@@ -455,7 +459,7 @@ export function SourcingCandidateTable({
       setAddedCandidates(prev => new Set(prev).add(candidate.id))
       toast({
         title: 'Added to pipeline',
-        description: `${candidate.candidate_name} has been added.`
+        description: `${getDisplayName(candidate)} has been added.`
       })
     } catch (error: any) {
       toast({
@@ -639,7 +643,7 @@ export function SourcingCandidateTable({
                         setSelectedCandidateId(null)
                         setSelectedApolloId(candidate.apollo_id)
                         setSelectedApolloData({
-                          candidate_name: candidate.candidate_name,
+                           candidate_name: getDisplayName(candidate),
                           headline: candidate.headline,
                           location: candidate.location || (candidate.location_city ? `${candidate.location_city}, ${candidate.location_country}` : candidate.location_country),
                           current_company: candidate.current_company,
@@ -668,7 +672,7 @@ export function SourcingCandidateTable({
                         <Checkbox
                           checked={isSelected}
                           onCheckedChange={() => toggleSelectApollo(candidate.apollo_id!)}
-                          aria-label={`Select ${candidate.candidate_name}`}
+                           aria-label={`Select ${getDisplayName(candidate)}`}
                         />
                       ) : (
                         <div className="w-4 h-4" />
@@ -678,12 +682,12 @@ export function SourcingCandidateTable({
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
                           <AvatarFallback className="bg-accent/20 text-accent-foreground font-semibold text-xs">
-                            {candidate.candidate_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                             {getDisplayName(candidate).split(' ').map(n => n[0]).join('').slice(0, 2)}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex flex-col gap-0.5">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm">{candidate.candidate_name}</span>
+                            <span className="font-medium text-sm">{getDisplayName(candidate)}</span>
                             {/* Source badge */}
                             {isPdl ? (
                               <Badge variant="pastel-green" className="text-[10px] px-1.5 py-0 h-4">
@@ -997,7 +1001,7 @@ export function SourcingCandidateTable({
                   setSelectedCandidateId(null)
                   setSelectedApolloId(candidate.apollo_id)
                   setSelectedApolloData({
-                    candidate_name: candidate.candidate_name,
+                    candidate_name: getDisplayName(candidate),
                     headline: candidate.headline,
                     location: candidate.location || (candidate.location_city ? `${candidate.location_city}, ${candidate.location_country}` : candidate.location_country),
                     current_company: candidate.current_company,
@@ -1029,19 +1033,19 @@ export function SourcingCandidateTable({
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={() => toggleSelectApollo(candidate.apollo_id!)}
-                        aria-label={`Select ${candidate.candidate_name}`}
+                        aria-label={`Select ${getDisplayName(candidate)}`}
                       />
                     </div>
                   )}
                   <Avatar className="h-10 w-10">
                     <AvatarFallback className="bg-accent/20 text-accent-foreground font-semibold text-sm">
-                      {candidate.candidate_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                      {getDisplayName(candidate).split(' ').map(n => n[0]).join('').slice(0, 2)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-1.5">
-                        <h3 className="font-semibold text-sm">{candidate.candidate_name}</h3>
+                        <h3 className="font-semibold text-sm">{getDisplayName(candidate)}</h3>
                         {isPdl ? (
                           <Badge variant="pastel-green" className="text-[10px] px-1.5 py-0 h-4">PDL</Badge>
                         ) : candidate.source === 'apollo' ? (
