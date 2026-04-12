@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronLeft, ChevronRight, Download, Mail, Phone, X } from 'lucide-react'
+import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronLeft, ChevronRight, Download, Mail, Phone, X, Info } from 'lucide-react'
 import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
 import emptyStateAvatar from '@/assets/empty-state-avatar.png'
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
@@ -77,6 +77,12 @@ interface SourcingCandidateTableProps {
   jobId?: string | null
   projectId?: string | null
   searchCriteria?: import('@/types/sourcing').SearchCriteria
+  sourceBreakdown?: {
+    pdl: number
+    apollo: number
+    full_data: number
+    preview_only: number
+  }
 }
 
 export function SourcingCandidateTable({ 
@@ -84,7 +90,8 @@ export function SourcingCandidateTable({
   isLoading,
   jobId,
   projectId,
-  searchCriteria
+  searchCriteria,
+  sourceBreakdown
 }: SourcingCandidateTableProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
