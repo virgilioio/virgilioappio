@@ -12,7 +12,8 @@ import { supabase } from '@/lib/supabaseClient'
 
 interface MatchedCandidate {
   id: string
-  candidate_name: string
+  candidate_name?: string
+  full_name?: string
   current_role?: string
   current_company?: string
   location_city?: string
@@ -30,6 +31,7 @@ interface SourcingCandidateCardProps {
 }
 
 export function SourcingCandidateCard({ candidate, jobId }: SourcingCandidateCardProps) {
+  const displayName = candidate.full_name || candidate.candidate_name || 'Unknown'
   const navigate = useNavigate()
   const { toast } = useToast()
   const [isAdding, setIsAdding] = useState(false)
@@ -78,7 +80,7 @@ export function SourcingCandidateCard({ candidate, jobId }: SourcingCandidateCar
       setIsAdded(true)
       toast({
         title: 'Added to pipeline',
-        description: `${candidate.candidate_name} has been added.`
+        description: `${displayName} has been added.`
       })
     } catch (error: any) {
       toast({
@@ -108,14 +110,14 @@ export function SourcingCandidateCard({ candidate, jobId }: SourcingCandidateCar
         <div className="flex items-start gap-3">
           <Avatar className="h-12 w-12">
             <AvatarFallback className="bg-accent/20 text-accent-foreground font-semibold">
-              {candidate.candidate_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+              {displayName.split(' ').map(n => n[0]).join('').slice(0, 2)}
             </AvatarFallback>
           </Avatar>
           
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <h3 className="font-semibold text-sm truncate text-foreground">
-                {candidate.candidate_name}
+                {displayName}
               </h3>
               {candidate.linkedin_url && (
                 <a 
