@@ -472,6 +472,13 @@ export function SourcingCandidateTable({
     }
   }
 
+  // Helper: is this a PDL full-data candidate?
+  const isPdlCandidate = (c: MatchedCandidate) => c.source === 'pdl' || c.is_preview === false
+
+  // Helper: is this an Apollo preview candidate?
+  const isApolloPreview = (c: MatchedCandidate) => 
+    (c.source === 'apollo' || c.is_preview === true || c.needs_enrichment === true) && !isPdlCandidate(c)
+
   const getMatchBadgeColor = (tier: string) => {
     switch (tier) {
       case 'excellent': return 'bg-green-500 text-white hover:bg-green-600'
