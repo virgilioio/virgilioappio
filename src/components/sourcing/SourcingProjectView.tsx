@@ -384,6 +384,7 @@ export function SourcingProjectView({
             onVisibilityToggle={handleVisibilityToggle}
             onLinkToJob={handleLinkToJob}
             isRefreshing={isRefreshing}
+            sourceBreakdown={matchingResult?.source_breakdown}
           />
         </TabsContent>
         
