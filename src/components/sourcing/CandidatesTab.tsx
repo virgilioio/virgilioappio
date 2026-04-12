@@ -70,6 +70,7 @@ export function CandidatesTab({
   onVisibilityToggle,
   onLinkToJob,
   isRefreshing,
+  sourceBreakdown,
 }: CandidatesTabProps) {
   const [showLinkJobDialog, setShowLinkJobDialog] = useState(false)
   const [showCreateJobDialog, setShowCreateJobDialog] = useState(false)
