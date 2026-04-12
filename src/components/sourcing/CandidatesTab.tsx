@@ -221,6 +221,7 @@ export function CandidatesTab({
           jobId={project.job_id}
           projectId={project.id}
           searchCriteria={project.search_criteria}
+          sourceBreakdown={sourceBreakdown}
         />
       </div>
 
