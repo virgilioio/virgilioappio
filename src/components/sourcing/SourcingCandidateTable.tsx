@@ -35,12 +35,19 @@ interface MatchedCandidate {
   location_city?: string
   location_state?: string
   location_country?: string
-  linkedin_url?: string  // Only available after enrichment
+  linkedin_url?: string
   match_score: number
   match_tier: 'excellent' | 'good' | 'fair' | 'minimal'
   skills?: string[]
   years_experience?: number
-  source: 'local' | 'apollo'
+  source: 'local' | 'apollo' | 'pdl'
+  // PDL-specific fields
+  is_preview?: boolean
+  needs_enrichment?: boolean
+  pdl_id?: string
+  summary?: string
+  full_name?: string
+  // Apollo-specific fields
   apollo_id?: string
   apollo_score?: number
   headline?: string
