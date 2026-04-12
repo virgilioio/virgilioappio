@@ -517,6 +517,25 @@ export function SourcingCandidateTable({
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-4 overflow-hidden">
+      {/* Source Breakdown Banner */}
+      {sourceBreakdown && !bannerDismissed && (sourceBreakdown.pdl > 0 || sourceBreakdown.apollo > 0) && (
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/50 border border-border rounded-lg text-sm shrink-0">
+          <Info className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+          <span className="text-muted-foreground">
+            Showing {candidates.length} results — {sourceBreakdown.full_data} with full contact info
+            <Badge variant="pastel-green" className="mx-1 text-[10px] px-1.5 py-0">PDL</Badge>
+            , {sourceBreakdown.preview_only} previews
+            <Badge variant="secondary" className="mx-1 text-[10px] px-1.5 py-0">Apollo</Badge>
+          </span>
+          <button 
+            onClick={() => setBannerDismissed(true)}
+            className="ml-auto text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Bulk Action Bar */}
       {selectedApolloIds.size > 0 && (
         <div className="sticky top-0 z-10 bg-muted/95 backdrop-blur border border-border rounded-lg px-4 py-3 flex items-center justify-between shadow-sm shrink-0">
