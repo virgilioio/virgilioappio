@@ -1040,7 +1040,14 @@ export function SourcingCandidateTable({
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-semibold text-sm">{candidate.candidate_name}</h3>
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="font-semibold text-sm">{candidate.candidate_name}</h3>
+                        {isPdl ? (
+                          <Badge variant="pastel-green" className="text-[10px] px-1.5 py-0 h-4">PDL</Badge>
+                        ) : candidate.source === 'apollo' ? (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">Apollo</Badge>
+                        ) : null}
+                      </div>
                       <Badge className={cn("text-xs", getMatchBadgeColor(candidate.match_tier))}>
                         {candidate.match_score}%
                       </Badge>
