@@ -120,7 +120,7 @@ export function useSourcingProjectCandidates({
     try {
       console.log(`🎯 Fetching matching candidates for sourcing project: ${projectId}`)
 
-      const { data, error } = await supabase.functions.invoke('get-job-matching-candidates', {
+      const { data, error } = await supabase.functions.invoke('sourcing-search', {
         body: {
           sourcing_project_id: projectId,
           limit
@@ -129,8 +129,19 @@ export function useSourcingProjectCandidates({
 
       if (error) throw error
 
-      console.log(`✅ Found ${data.candidates?.length || 0} matching candidates`)
-      setMatchingResult(data)
+      console.log(`✅ Found ${data.candidates?.length || 0} matching candidates (sources: PDL ${data.source_breakdown?.pdl ?? 0}, Apollo ${data.source_breakdown?.apollo ?? 0})`)
+      setMatchingResult({
+        candidates: data.candidates || [],
+        total_count: data.candidates?.length || 0,
+        breakdown: {
+          localCandidates: 0,
+          apolloCandidates: data.source_breakdown?.apollo ?? 0,
+          pdlCandidates: data.source_breakdown?.pdl ?? 0,
+          averageMatch: 0,
+        },
+        source_breakdown: data.source_breakdown,
+        search_metadata: data.search_metadata,
+      })
     } catch (err: any) {
       console.error('Error fetching matching candidates:', err)
       setError(err.message || 'Failed to fetch matching candidates')
