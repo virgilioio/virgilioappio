@@ -175,7 +175,7 @@ export function SourcingCandidateTable({
     if (currentIndex > 0) {
       const prevCandidate = sortedData[currentIndex - 1]
       
-      if (prevCandidate.candidate_id || prevCandidate.source === 'local') {
+      if (prevCandidate.source === 'pdl' || prevCandidate.candidate_id || prevCandidate.source === 'local') {
         setSelectedCandidateId(prevCandidate.id)
         setSelectedApolloId(null)
         setSelectedApolloData(null)
@@ -218,7 +218,7 @@ export function SourcingCandidateTable({
     if (currentIndex < sortedData.length - 1) {
       const nextCandidate = sortedData[currentIndex + 1]
       
-      if (nextCandidate.candidate_id || nextCandidate.source === 'local') {
+      if (nextCandidate.source === 'pdl' || nextCandidate.candidate_id || nextCandidate.source === 'local') {
         setSelectedCandidateId(nextCandidate.id)
         setSelectedApolloId(null)
         setSelectedApolloData(null)
