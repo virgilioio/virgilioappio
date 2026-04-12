@@ -30,6 +30,10 @@ import { cn } from '@/lib/utils'
 const getDisplayName = (c: { full_name?: string; candidate_name?: string }) =>
   c.full_name || c.candidate_name || 'Unknown'
 
+// Helper to safely build location string from candidate fields
+const getLocation = (c: { location?: string; location_city?: string; location_state?: string; location_country?: string }) =>
+  c.location || [c.location_city, c.location_state, c.location_country].filter(Boolean).join(', ') || undefined
+
 interface MatchedCandidate {
   id: string
   candidate_name?: string
