@@ -26,9 +26,13 @@ import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabaseClient'
 import { cn } from '@/lib/utils'
 
+// Helper to safely resolve display name across PDL (full_name) and Apollo (candidate_name) candidates
+const getDisplayName = (c: { full_name?: string; candidate_name?: string }) =>
+  c.full_name || c.candidate_name || 'Unknown'
+
 interface MatchedCandidate {
   id: string
-  candidate_name: string
+  candidate_name?: string
   current_role?: string
   current_company?: string
   location?: string  // Full location string (only available after enrichment)
