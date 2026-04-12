@@ -982,10 +982,11 @@ export function SourcingCandidateTable({
               key={candidate.id} 
               className={cn(
                 "shadow-calendly cursor-pointer hover:shadow-lg transition-shadow",
-                isSelected && "ring-2 ring-primary"
+                isSelected && "ring-2 ring-primary",
+                isPdl && "border-l-2 border-l-emerald-400"
               )}
               onClick={() => {
-                if (candidate.candidate_id || candidate.source === 'local') {
+                if (isPdl || candidate.candidate_id || candidate.source === 'local') {
                   // Full profile available
                   setSelectedCandidateId(candidate.id)
                   setSelectedApolloId(null)
