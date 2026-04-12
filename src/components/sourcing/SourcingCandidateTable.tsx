@@ -973,7 +973,8 @@ export function SourcingCandidateTable({
         {paginatedData.map(candidate => {
           const isAdded = addedCandidates.has(candidate.id)
           const isLoading = loadingCandidates.has(candidate.id)
-          const canSelect = candidate.source === 'apollo' && !candidate.candidate_id && candidate.apollo_id
+          const isPdl = isPdlCandidate(candidate)
+          const canSelect = !isPdl && candidate.source === 'apollo' && !candidate.candidate_id && candidate.apollo_id
           const isSelected = canSelect && selectedApolloIds.has(candidate.apollo_id!)
 
           return (
