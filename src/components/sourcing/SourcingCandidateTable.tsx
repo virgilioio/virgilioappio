@@ -103,6 +103,7 @@ export function SourcingCandidateTable({
   const [selectedApolloData, setSelectedApolloData] = useState<any>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const { isCollectDisabled } = useSourcingCreditWarnings()
+  const [bannerDismissed, setBannerDismissed] = useState(false)
   
   // Bulk selection state
   const [selectedApolloIds, setSelectedApolloIds] = useState<Set<string>>(new Set())
