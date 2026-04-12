@@ -52,6 +52,12 @@ interface CandidatesTabProps {
   onVisibilityToggle: (isPublic: boolean) => Promise<void>;
   onLinkToJob: (jobId: string) => Promise<void>;
   isRefreshing: boolean;
+  sourceBreakdown?: {
+    pdl: number;
+    apollo: number;
+    full_data: number;
+    preview_only: number;
+  };
 }
 
 export function CandidatesTab({
