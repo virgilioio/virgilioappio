@@ -1,52 +1,33 @@
 
 
-# Fix: Workspace Creation Error ("Hunting Happiness" Customer)
+# Fix: `Cannot read properties of undefined (reading 'split')` on Find page
 
 ## Root Cause
 
-**Line 406 of `supabase/functions/provision-tenant/index.ts`** references `trialEnd` — a variable that **does not exist**. The actual variable is `trialEndsAt` (defined on line 349), and only within an inner `else` block.
-
-When the function reaches the success response (line 401-409), `trialEnd` throws a **ReferenceError** in Deno's strict mode. This is caught by the catch block and returned as a 500 error.
-
-### What the customer experienced:
-1. Typed "Hunting Happiness" as workspace name, clicked Create
-2. The function **successfully** created the tenant, organization, member, and subscription
-3. But then **crashed** trying to serialize the response because of the undefined `trialEnd` variable
-4. Frontend received a 500 → showed error toast
-5. On hard refresh, the **idempotency check** (lines 76-98) found the existing active membership and returned 200 → everything worked
-
-The workspace name "Hunting Happiness" appeared in the error context because it was part of the failed function's logs/payload.
+PDL candidates return `full_name` but **not** `candidate_name`. The `SourcingCandidateTable` component accesses `candidate.candidate_name` (which is `undefined` for PDL results) and calls `.split()` on it, crashing the page.
 
 ## Fix
 
-In `supabase/functions/provision-tenant/index.ts`, line 406: remove `trialEnd` from the response (the frontend doesn't use it — line 72 of Onboarding.tsx only reads `workspaceId`).
+Create a display name helper that resolves `full_name || candidate_name || 'Unknown'` and use it everywhere `candidate_name` is referenced in `SourcingCandidateTable.tsx`. Also make `candidate_name` optional in the interface since PDL candidates don't have it.
 
-```typescript
-// Before (line 401-409):
-return new Response(
-  JSON.stringify({ 
-    status: "ok", 
-    workspaceId: tenantId,
-    tenantId,
-    trialEnd         // ← ReferenceError: not defined
-  }),
-  ...
-);
+### Changes to `src/components/sourcing/SourcingCandidateTable.tsx`
 
-// After:
-return new Response(
-  JSON.stringify({ 
-    status: "ok", 
-    workspaceId: tenantId,
-    tenantId,
-  }),
-  ...
-);
-```
+1. **Make `candidate_name` optional** in the `MatchedCandidate` interface (line 31): `candidate_name?: string`
 
-## Files changed
+2. **Add a helper** at the top of the component or file:
+   ```ts
+   const displayName = (c: MatchedCandidate) => c.full_name || c.candidate_name || 'Unknown'
+   ```
+
+3. **Replace all ~15 occurrences** of `candidate.candidate_name` with `displayName(candidate)` — this covers:
+   - Avatar initials (lines 681, 1038) — the `.split()` crash sites
+   - Name display (lines 686, 1044)
+   - Aria labels (lines 671, 1032)
+   - Toast messages (line 458)
+   - Apollo preview data (lines 186, 229, 642, 1000)
+   - Sort key reference (line 586) — keep as-is since it's a column key, not a value access
 
 | File | Change |
 |------|--------|
-| `supabase/functions/provision-tenant/index.ts` | Remove undefined `trialEnd` from success response (line 406) |
+| `src/components/sourcing/SourcingCandidateTable.tsx` | Add `displayName` helper; replace all `candidate.candidate_name` value accesses with it; make `candidate_name` optional |
 
