@@ -142,6 +142,7 @@ export function SourcingProjectView({
       if (filters.source && filters.source !== 'all') {
         if (filters.source === 'local' && candidate.source !== 'local') return false
         if (filters.source === 'apollo' && candidate.source !== 'apollo') return false
+        if (filters.source === 'pdl' && candidate.source !== 'pdl') return false
       }
 
       if (filters.hasEmail === true && !candidate.has_email) return false
@@ -384,6 +385,7 @@ export function SourcingProjectView({
             onVisibilityToggle={handleVisibilityToggle}
             onLinkToJob={handleLinkToJob}
             isRefreshing={isRefreshing}
+            sourceBreakdown={matchingResult?.source_breakdown}
           />
         </TabsContent>
         

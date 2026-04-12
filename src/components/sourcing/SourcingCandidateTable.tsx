@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronLeft, ChevronRight, Download, Mail, Phone, X } from 'lucide-react'
+import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronLeft, ChevronRight, Download, Mail, Phone, X, Info } from 'lucide-react'
 import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
 import emptyStateAvatar from '@/assets/empty-state-avatar.png'
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
@@ -35,12 +35,19 @@ interface MatchedCandidate {
   location_city?: string
   location_state?: string
   location_country?: string
-  linkedin_url?: string  // Only available after enrichment
+  linkedin_url?: string
   match_score: number
   match_tier: 'excellent' | 'good' | 'fair' | 'minimal'
   skills?: string[]
   years_experience?: number
-  source: 'local' | 'apollo'
+  source: 'local' | 'apollo' | 'pdl'
+  // PDL-specific fields
+  is_preview?: boolean
+  needs_enrichment?: boolean
+  pdl_id?: string
+  summary?: string
+  full_name?: string
+  // Apollo-specific fields
   apollo_id?: string
   apollo_score?: number
   headline?: string
@@ -70,6 +77,12 @@ interface SourcingCandidateTableProps {
   jobId?: string | null
   projectId?: string | null
   searchCriteria?: import('@/types/sourcing').SearchCriteria
+  sourceBreakdown?: {
+    pdl: number
+    apollo: number
+    full_data: number
+    preview_only: number
+  }
 }
 
 export function SourcingCandidateTable({ 
@@ -77,7 +90,8 @@ export function SourcingCandidateTable({
   isLoading,
   jobId,
   projectId,
-  searchCriteria
+  searchCriteria,
+  sourceBreakdown
 }: SourcingCandidateTableProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -89,6 +103,7 @@ export function SourcingCandidateTable({
   const [selectedApolloData, setSelectedApolloData] = useState<any>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const { isCollectDisabled } = useSourcingCreditWarnings()
+  const [bannerDismissed, setBannerDismissed] = useState(false)
   
   // Bulk selection state
   const [selectedApolloIds, setSelectedApolloIds] = useState<Set<string>>(new Set())
@@ -160,7 +175,7 @@ export function SourcingCandidateTable({
     if (currentIndex > 0) {
       const prevCandidate = sortedData[currentIndex - 1]
       
-      if (prevCandidate.candidate_id || prevCandidate.source === 'local') {
+      if (prevCandidate.source === 'pdl' || prevCandidate.candidate_id || prevCandidate.source === 'local') {
         setSelectedCandidateId(prevCandidate.id)
         setSelectedApolloId(null)
         setSelectedApolloData(null)
@@ -203,7 +218,7 @@ export function SourcingCandidateTable({
     if (currentIndex < sortedData.length - 1) {
       const nextCandidate = sortedData[currentIndex + 1]
       
-      if (nextCandidate.candidate_id || nextCandidate.source === 'local') {
+      if (nextCandidate.source === 'pdl' || nextCandidate.candidate_id || nextCandidate.source === 'local') {
         setSelectedCandidateId(nextCandidate.id)
         setSelectedApolloId(null)
         setSelectedApolloData(null)
@@ -457,6 +472,13 @@ export function SourcingCandidateTable({
     }
   }
 
+  // Helper: is this a PDL full-data candidate?
+  const isPdlCandidate = (c: MatchedCandidate) => c.source === 'pdl' || c.is_preview === false
+
+  // Helper: is this an Apollo preview candidate?
+  const isApolloPreview = (c: MatchedCandidate) => 
+    (c.source === 'apollo' || c.is_preview === true || c.needs_enrichment === true) && !isPdlCandidate(c)
+
   const getMatchBadgeColor = (tier: string) => {
     switch (tier) {
       case 'excellent': return 'bg-green-500 text-white hover:bg-green-600'
@@ -495,6 +517,25 @@ export function SourcingCandidateTable({
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-4 overflow-hidden">
+      {/* Source Breakdown Banner */}
+      {sourceBreakdown && !bannerDismissed && (sourceBreakdown.pdl > 0 || sourceBreakdown.apollo > 0) && (
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/50 border border-border rounded-lg text-sm shrink-0">
+          <Info className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+          <span className="text-muted-foreground">
+            Showing {candidates.length} results — {sourceBreakdown.full_data} with full contact info
+            <Badge variant="pastel-green" className="mx-1 text-[10px] px-1.5 py-0">PDL</Badge>
+            , {sourceBreakdown.preview_only} previews
+            <Badge variant="secondary" className="mx-1 text-[10px] px-1.5 py-0">Apollo</Badge>
+          </span>
+          <button 
+            onClick={() => setBannerDismissed(true)}
+            className="ml-auto text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Bulk Action Bar */}
       {selectedApolloIds.size > 0 && (
         <div className="sticky top-0 z-10 bg-muted/95 backdrop-blur border border-border rounded-lg px-4 py-3 flex items-center justify-between shadow-sm shrink-0">
@@ -567,7 +608,8 @@ export function SourcingCandidateTable({
                 const isAdded = addedCandidates.has(candidate.id)
                 const isLoading = loadingCandidates.has(candidate.id)
                 const isCollecting = candidate.apollo_id ? collectingProfiles.has(candidate.apollo_id) : false
-                const canSelect = candidate.source === 'apollo' && !candidate.candidate_id && candidate.apollo_id
+                const isPdl = isPdlCandidate(candidate)
+                const canSelect = !isPdl && candidate.source === 'apollo' && !candidate.candidate_id && candidate.apollo_id
                 const isSelected = canSelect && selectedApolloIds.has(candidate.apollo_id!)
 
                 // Check if this row is currently open in the preview
@@ -582,11 +624,12 @@ export function SourcingCandidateTable({
                     className={cn(
                       "cursor-pointer hover:bg-muted/50",
                       isSelected && "bg-muted/30",
-                      isActiveRow && "bg-primary/5 border-l-2 border-l-primary"
+                      isActiveRow && "bg-primary/5 border-l-2 border-l-primary",
+                      isPdl && !isActiveRow && "border-l-2 border-l-emerald-400"
                     )}
                     onClick={() => {
-                      if (candidate.candidate_id || candidate.source === 'local') {
-                        // Full profile available
+                      if (isPdl || candidate.candidate_id || candidate.source === 'local') {
+                        // Full profile available (PDL or local)
                         setSelectedCandidateId(candidate.id)
                         setSelectedApolloId(null)
                         setSelectedApolloData(null)
@@ -612,7 +655,6 @@ export function SourcingCandidateTable({
                           company_website: candidate.company_website,
                           company_industry: candidate.company_industry,
                           experience_location: candidate.experience_location,
-                          // Availability flags
                           has_email: candidate.has_email,
                           has_phone: candidate.has_phone,
                           has_location: candidate.has_location
@@ -642,20 +684,30 @@ export function SourcingCandidateTable({
                         <div className="flex flex-col gap-0.5">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-sm">{candidate.candidate_name}</span>
+                            {/* Source badge */}
+                            {isPdl ? (
+                              <Badge variant="pastel-green" className="text-[10px] px-1.5 py-0 h-4">
+                                PDL
+                              </Badge>
+                            ) : candidate.source === 'apollo' ? (
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                                Apollo
+                              </Badge>
+                            ) : null}
                             {/* Collected indicator badge */}
-                            {(candidate.candidate_id || collectedApolloIds.has(candidate.apollo_id || '')) && (
+                            {!isPdl && (candidate.candidate_id || collectedApolloIds.has(candidate.apollo_id || '')) && (
                               <Badge variant="collected" className="text-[10px] px-1.5 py-0 h-4">
                                 Collected
                               </Badge>
                             )}
-                            {/* Keyword match indicator - shows which keywords matched */}
+                            {/* Keyword match indicator */}
                             {candidate.matched_keywords && candidate.matched_keywords.length > 0 && (
                               <Badge variant="keyword-match" className="text-[10px] px-1.5 py-0 h-4">
                                 {candidate.matched_keywords.slice(0, 2).join(', ')}
                                 {candidate.matched_keywords.length > 2 && ` +${candidate.matched_keywords.length - 2}`}
                               </Badge>
                             )}
-                            {/* Only show LinkedIn icon if URL is available (after enrichment) */}
+                            {/* LinkedIn icon */}
                             {candidate.linkedin_url && (
                               <a 
                                 href={candidate.linkedin_url}
@@ -668,8 +720,31 @@ export function SourcingCandidateTable({
                               </a>
                             )}
                           </div>
+                          {/* PDL: show contact info directly */}
+                          {isPdl && (
+                            <div className="flex items-center gap-1.5">
+                              {candidate.email && (
+                                <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                                  <Mail className="h-2.5 w-2.5" />
+                                  {candidate.email}
+                                </span>
+                              )}
+                              {candidate.phone && (
+                                <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                                  <Phone className="h-2.5 w-2.5" />
+                                  {candidate.phone}
+                                </span>
+                              )}
+                              {(candidate.location_city || candidate.location_country) && (
+                                <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                                  <MapPin className="h-2.5 w-2.5" />
+                                  {[candidate.location_city, candidate.location_state, candidate.location_country].filter(Boolean).join(', ')}
+                                </span>
+                              )}
+                            </div>
+                          )}
                           {/* Apollo availability indicators - show what CAN be revealed */}
-                          {candidate.source === 'apollo' && !candidate.candidate_id && (
+                          {!isPdl && candidate.source === 'apollo' && !candidate.candidate_id && (
                             <div className="flex items-center gap-1.5">
                               {candidate.has_email && (
                                 <span className="flex items-center gap-0.5 text-[10px] text-green-600">
@@ -711,7 +786,30 @@ export function SourcingCandidateTable({
                       </div>
                     </TableCell>
                     <TableCell>
-                      {candidate.source === 'apollo' && candidate.headline ? (
+                      {/* PDL: show skills + years experience */}
+                      {isPdl ? (
+                        <div className="flex flex-wrap gap-1 items-center">
+                          {candidate.skills && candidate.skills.length > 0 ? (
+                            <>
+                              {candidate.skills.slice(0, 5).map(skill => (
+                                <Badge key={skill} variant="secondary" className="text-xs">
+                                  {skill}
+                                </Badge>
+                              ))}
+                              {candidate.skills.length > 5 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  +{candidate.skills.length - 5}
+                                </Badge>
+                              )}
+                            </>
+                          ) : null}
+                          {candidate.years_experience != null && (
+                            <span className="text-xs text-muted-foreground ml-1">
+                              {candidate.years_experience} yrs exp
+                            </span>
+                          )}
+                        </div>
+                      ) : candidate.source === 'apollo' && candidate.headline ? (
                         <div className="text-xs text-muted-foreground truncate max-w-[250px]" title={candidate.headline}>
                           {candidate.headline}
                         </div>
@@ -738,7 +836,42 @@ export function SourcingCandidateTable({
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                        {candidate.source === 'apollo' && !candidate.candidate_id ? (
+                        {/* PDL candidates: View + Add to pipeline (no Reveal) */}
+                        {isPdl ? (
+                          <>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedCandidateId(candidate.id)
+                                setSheetOpen(true)
+                              }}
+                            >
+                              <Eye className="h-3 w-3" />
+                            </Button>
+                            {isAdded ? (
+                              <Button size="sm" variant="secondary" disabled>
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                Added
+                              </Button>
+                            ) : (
+                              <Button 
+                                size="sm" 
+                                variant="default"
+                                onClick={(e) => handleAddToPipeline(candidate, e)}
+                                disabled={isLoading || !jobId}
+                              >
+                                {isLoading ? (
+                                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                ) : (
+                                  <Plus className="h-3 w-3 mr-1" />
+                                )}
+                                Add
+                              </Button>
+                            )}
+                          </>
+                        ) : candidate.source === 'apollo' && !candidate.candidate_id ? (
                           <Button 
                             size="sm" 
                             variant="outline"
@@ -840,7 +973,8 @@ export function SourcingCandidateTable({
         {paginatedData.map(candidate => {
           const isAdded = addedCandidates.has(candidate.id)
           const isLoading = loadingCandidates.has(candidate.id)
-          const canSelect = candidate.source === 'apollo' && !candidate.candidate_id && candidate.apollo_id
+          const isPdl = isPdlCandidate(candidate)
+          const canSelect = !isPdl && candidate.source === 'apollo' && !candidate.candidate_id && candidate.apollo_id
           const isSelected = canSelect && selectedApolloIds.has(candidate.apollo_id!)
 
           return (
@@ -848,10 +982,11 @@ export function SourcingCandidateTable({
               key={candidate.id} 
               className={cn(
                 "shadow-calendly cursor-pointer hover:shadow-lg transition-shadow",
-                isSelected && "ring-2 ring-primary"
+                isSelected && "ring-2 ring-primary",
+                isPdl && "border-l-2 border-l-emerald-400"
               )}
               onClick={() => {
-                if (candidate.candidate_id || candidate.source === 'local') {
+                if (isPdl || candidate.candidate_id || candidate.source === 'local') {
                   // Full profile available
                   setSelectedCandidateId(candidate.id)
                   setSelectedApolloId(null)
@@ -905,7 +1040,14 @@ export function SourcingCandidateTable({
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-semibold text-sm">{candidate.candidate_name}</h3>
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="font-semibold text-sm">{candidate.candidate_name}</h3>
+                        {isPdl ? (
+                          <Badge variant="pastel-green" className="text-[10px] px-1.5 py-0 h-4">PDL</Badge>
+                        ) : candidate.source === 'apollo' ? (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">Apollo</Badge>
+                        ) : null}
+                      </div>
                       <Badge className={cn("text-xs", getMatchBadgeColor(candidate.match_tier))}>
                         {candidate.match_score}%
                       </Badge>

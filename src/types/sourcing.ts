@@ -113,7 +113,7 @@ export interface SourcingProjectFilters {
   matchTiers?: ('excellent' | 'good' | 'fair' | 'minimal')[]
   minExperience?: number
   maxExperience?: number
-  source?: 'local' | 'apollo' | 'all'
+  source?: 'local' | 'apollo' | 'pdl' | 'all'
   hasEmail?: boolean
   hasPhone?: boolean
 }

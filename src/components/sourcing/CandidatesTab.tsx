@@ -32,7 +32,7 @@ interface Candidate {
   match_tier: 'excellent' | 'good' | 'fair' | 'minimal';
   skills?: string[];
   years_experience?: number;
-  source: 'local' | 'apollo';
+  source: 'local' | 'apollo' | 'pdl';
   apollo_id?: string;
   apollo_score?: number;
   headline?: string;
@@ -52,6 +52,12 @@ interface CandidatesTabProps {
   onVisibilityToggle: (isPublic: boolean) => Promise<void>;
   onLinkToJob: (jobId: string) => Promise<void>;
   isRefreshing: boolean;
+  sourceBreakdown?: {
+    pdl: number;
+    apollo: number;
+    full_data: number;
+    preview_only: number;
+  };
 }
 
 export function CandidatesTab({
@@ -64,6 +70,7 @@ export function CandidatesTab({
   onVisibilityToggle,
   onLinkToJob,
   isRefreshing,
+  sourceBreakdown,
 }: CandidatesTabProps) {
   const [showLinkJobDialog, setShowLinkJobDialog] = useState(false)
   const [showCreateJobDialog, setShowCreateJobDialog] = useState(false)
@@ -214,6 +221,7 @@ export function CandidatesTab({
           jobId={project.job_id}
           projectId={project.id}
           searchCriteria={project.search_criteria}
+          sourceBreakdown={sourceBreakdown}
         />
       </div>
 

@@ -17,7 +17,7 @@ export interface MatchedCandidate {
   match_score: number
   match_tier: 'excellent' | 'good' | 'fair' | 'minimal'
   profile_summary?: string | null
-  source: 'local' | 'apollo'
+  source: 'local' | 'apollo' | 'pdl'
   years_experience?: number
   experience_years?: number
   enriched_at?: string | null
@@ -25,6 +25,12 @@ export interface MatchedCandidate {
   current_role?: string
   created_at: string
   first_viewed_by?: Record<string, string> | null
+  // PDL-specific fields
+  is_preview?: boolean
+  needs_enrichment?: boolean
+  pdl_id?: string
+  summary?: string
+  full_name?: string
   // Apollo-specific fields
   apollo_id?: string
   apollo_score?: number
@@ -55,9 +61,17 @@ export interface SourcingProjectMatchingResult {
   breakdown: {
     localCandidates: number
     apolloCandidates: number
+    pdlCandidates?: number
     averageMatch: number
     creditsUsed?: number
     collectCreditsUsed?: number
+  }
+  // Source breakdown from API
+  source_breakdown?: {
+    pdl: number
+    apollo: number
+    full_data: number
+    preview_only: number
   }
   // TRANSPARENT SEARCH METADATA - shows keyword scoring results
   search_metadata?: {
