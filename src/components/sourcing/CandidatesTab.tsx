@@ -32,7 +32,7 @@ interface Candidate {
   match_tier: 'excellent' | 'good' | 'fair' | 'minimal';
   skills?: string[];
   years_experience?: number;
-  source: 'local' | 'apollo';
+  source: 'local' | 'apollo' | 'pdl';
   apollo_id?: string;
   apollo_score?: number;
   headline?: string;
