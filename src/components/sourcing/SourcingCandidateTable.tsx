@@ -39,7 +39,7 @@ interface MatchedCandidate {
   candidate_name?: string
   current_role?: string
   current_company?: string
-  location?: string  // Full location string (only available after enrichment)
+  location?: string
   location_city?: string
   location_state?: string
   location_country?: string
@@ -48,14 +48,14 @@ interface MatchedCandidate {
   match_tier: 'excellent' | 'good' | 'fair' | 'minimal'
   skills?: string[]
   years_experience?: number
+  experience_years?: number
   source: 'local' | 'apollo' | 'pdl'
-  // PDL-specific fields
   is_preview?: boolean
   needs_enrichment?: boolean
   pdl_id?: string
   summary?: string
+  profile_summary?: string | null
   full_name?: string
-  // Apollo-specific fields
   apollo_id?: string
   apollo_score?: number
   headline?: string
@@ -70,13 +70,12 @@ interface MatchedCandidate {
   company_website?: string
   company_industry?: string
   experience_location?: string
-  // Apollo availability indicators (indicate what CAN be revealed after collection)
   has_email?: boolean
   has_phone?: boolean
-  has_location?: boolean  // Indicates location is available after enrichment
-  // LOCAL KEYWORD SCORING - transparent matching
+  has_location?: boolean
   keyword_score?: number
   matched_keywords?: string[]
+  created_at?: string
 }
 
 interface SourcingCandidateTableProps {
