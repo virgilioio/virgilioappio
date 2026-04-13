@@ -1,48 +1,60 @@
 
 
-# Fix PDL Profile Sheet + Add Cost Cap
+# Upgrade PDL Profile Sheet to Match Independent Candidate Layout
 
-## What's already working
-- `sourcing-search` edge function is deployed (remotely) and returns PDL + Apollo results
-- Frontend renders PDL rows with green badges, full names, skills
-- `getDisplayName` helper already handles null-safe name resolution
+## Current State
 
-## What's broken
-When you click a PDL candidate row, it sets `selectedCandidateId` to the in-memory search ID. The `UniversalCandidateProfileSheet` routes to `IndependentCandidateProfileSheet`, which tries to fetch that ID from the `candidates` DB table. PDL candidates aren't in the DB yet, so the sheet opens empty/broken.
+The `PdlCandidateProfileSheet` is a narrow side drawer (`sm:max-w-lg`) with a simple vertical list of sections. The `IndependentCandidateProfileSheet` is a full-width sheet (`w-[96vw]`) with a two-column layout, accordion sections for work experience/education/certifications, career summary card, AI summary banner, and rich contact display.
 
-Also, `handleAddToPipeline` tries to insert a `job_candidate_associations` row using the in-memory ID as `candidate_id` — which doesn't exist in the `candidates` table, so it fails with a foreign key error.
+## What Changes
 
-## Changes
+Rebuild `PdlCandidateProfileSheet` to use the same full-width, two-column layout as `IndependentCandidateProfileSheet`, but sourced entirely from in-memory props (no DB fetch). Features that require DB persistence (edit, AI enrich, resume upload, attachments, URLs, job sidebar) are omitted or replaced with "Add to Pipeline" to unlock them.
 
-### 1. Create `PdlCandidateProfileSheet.tsx` (new file)
-A presentational sliding sheet that receives the full PDL candidate object as props — no DB fetch. Renders:
-- Header with full name, current role, company, location, LinkedIn button
-- Contact info (email, phone) — visible immediately
-- Summary text
-- Skills chips
-- Years of experience
-- "Add to Pipeline" button
+### 1. Expand `MatchedCandidate` type
 
-### 2. Update `UniversalCandidateProfileSheet.tsx`
-- Add `pdlData` prop (the full `MatchedCandidate` object)
-- Add third rendering branch: if `pdlData` is present, render `PdlCandidateProfileSheet`
+Add fields PDL already returns but the edge function currently discards:
 
-### 3. Update `SourcingCandidateTable.tsx`
-- Add `selectedPdlData` state to store the clicked PDL candidate's full data
-- On PDL row click: set `selectedPdlData` instead of just `selectedCandidateId`
-- Pass `pdlData={selectedPdlData}` to `UniversalCandidateProfileSheet`
-- Update `handleAddToPipeline`: for PDL candidates, upsert into `candidates` table first (mapping `full_name` → `candidate_name`, etc.), then create the `job_candidate_associations` row with the real DB ID
+- `experience`: array of `{ company, title, start_date, end_date, is_current, location, summary }`
+- `education`: array of `{ school, degree, field_of_study, start_date, end_date }`
+- `certifications`: array of `{ name, organization }` (if PDL provides)
+- `job_title_levels`: string[] (seniority indicators)
+- `industry`: string
+- `github_url`, `twitter_url`, `website_url`
+- `emails`: array of `{ address, type }` (PDL returns multiple)
+- `phones`: array of `{ number, type }`
 
-### 4. Add `pdl_limit` param to the search call
-- In `useSourcingProjectCandidates.ts`, pass `pdl_limit: 5` in the request body to `sourcing-search`
-- The deployed edge function should already respect this param (or we'll update it if needed)
+### 2. Update edge function mapping
+
+In the deployed `sourcing-search` (or `search-pdl-candidates`) edge function, pass through the full `experience[]`, `education[]`, and additional fields from the PDL API response instead of discarding them. This costs zero additional credits — the data is already in the response.
+
+### 3. Rebuild `PdlCandidateProfileSheet`
+
+Mirror the `IndependentCandidateProfileSheet` layout:
+
+- **Full-width sheet** (`w-[96vw]`)
+- **Header**: Name with purple period, LinkedIn button, "Add to Pipeline" button, prev/next nav, PDL badge
+- **Two-column layout**:
+  - **Left column**: 
+    - `CandidateNameCard` (email/phone display with copy buttons)
+    - Summary section (using `ProfileSummaryMarkdown` if available)
+    - Skills (using `EnhancedSkillBadge`)
+    - Work Experience (reuse `CandidateWorkExperienceComponent` — map PDL experience array to its interface)
+    - Education (reuse `CandidateEducationComponent`)
+  - **Right column**:
+    - Candidate Details card (emails, phones, LinkedIn, location)
+    - Career Summary card (current title, company, years experience, industry)
+
+Sections that don't apply to unsaved PDL candidates (resume, attachments, URLs, AI enrich, edit, job sidebar) are simply not rendered.
+
+### 4. Update `UniversalCandidateProfileSheet`
+
+No changes needed — already routes to `PdlCandidateProfileSheet` when `pdlData` is present.
 
 ## Files
 
 | File | Action |
 |------|--------|
-| `src/components/candidates/PdlCandidateProfileSheet.tsx` | **Create** — inline-data profile sheet |
-| `src/components/candidates/UniversalCandidateProfileSheet.tsx` | **Edit** — add `pdlData` prop + third branch |
-| `src/components/sourcing/SourcingCandidateTable.tsx` | **Edit** — add `selectedPdlData` state, wire click, fix `handleAddToPipeline` for PDL upsert |
-| `src/hooks/useSourcingProjectCandidates.ts` | **Edit** — pass `pdl_limit: 5` to edge function |
+| `src/hooks/useSourcingProjectCandidates.ts` | **Edit** — expand `MatchedCandidate` with experience/education/extra fields |
+| `src/components/candidates/PdlCandidateProfileSheet.tsx` | **Rewrite** — full-width two-column layout matching Independent sheet |
+| Edge function (deployed) | **Edit** — pass through experience[], education[], extra PDL fields |
 
