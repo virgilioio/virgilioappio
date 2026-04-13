@@ -1,43 +1,36 @@
 
 
-# Fix PDL Search Query — Invalid Query Format
+# Fix Double PDL Calls + Deploy Fixed Query
 
-## Problem
+## Problems
 
-The `search-pdl-candidates` function is sending ElasticSearch-style `match` queries with `fuzziness: 'AUTO'`, but PDL's Person Search API doesn't support that syntax. PDL returns 400: `"Query clause [query] not allowed or invalid field name."` Every search gets 0 PDL results.
+1. **Deployed code is stale**: The `search-pdl-candidates` function still uses `match` + `fuzziness: "AUTO"` syntax that PDL rejects with 400. The local fix (using `term`) was never deployed. Each failed call still burns credits on PDL's side.
 
-## Root Cause
+2. **Double invocation**: The `useEffect` in `useSourcingProjectCandidates.ts` fires `fetchMatchingCandidates` twice due to React re-renders causing the `useCallback` to get a new reference. The logs show two `sourcing-search` calls 5 seconds apart for the same project.
 
-PDL's search endpoint uses a **simplified SQL-like query string**, not raw ElasticSearch JSON. The `buildPdlQuery` function builds nested `bool/must/should/match` objects which PDL rejects.
+3. **Error handling**: The PDL function throws on 400 errors instead of returning a 200 with empty results, so the graceful fallback doesn't work.
 
-## Fix
+## Plan
 
-Rewrite `buildPdlQuery` in `supabase/functions/search-pdl-candidates/index.ts` to use PDL's actual query format:
+### 1. Deploy `search-pdl-candidates` with the fix already in the codebase
+The local code already has the correct `term`-based query. Just needs to be deployed.
 
-```json
-{
-  "query": {
-    "bool": {
-      "must": [
-        { "term": { "job_title": "Software Engineer" } }
-      ]
-    }
-  }
-}
-```
+### 2. Fix double-call in `useSourcingProjectCandidates.ts`
+- Add a `useRef` guard (`isFetching`) to prevent concurrent duplicate calls
+- Stabilize the `useCallback` dependencies so React strict mode / re-renders don't trigger it twice
 
-PDL supports `term` (exact) and `match` (simple string, NO `query`/`fuzziness` sub-object). The fix:
-
-- Replace `{ match: { field: { query: "val", fuzziness: "AUTO" } } }` with `{ term: { field: "val" } }` for all fields (`job_title`, `location_country`, `skills`, `job_company_name`)
-- This uses PDL's supported `term` clause which does case-insensitive matching
-
-Also: return a 200 with empty results on 400/500 errors instead of throwing (graceful fallback so Apollo results still show).
+### 3. Verify error handling in `search-pdl-candidates`
+- Ensure 400/500 PDL API responses return `{ candidates: [], total_count: 0 }` with status 200 (not throw)
+- Check current code handles this correctly; fix if not
 
 ## Files
 
 | File | Action |
 |------|--------|
-| `supabase/functions/search-pdl-candidates/index.ts` | **Edit** — rewrite `buildPdlQuery` to use `term` instead of `match` with `fuzziness` |
+| `supabase/functions/search-pdl-candidates/index.ts` | **Deploy** (already fixed locally) + verify error path returns 200 |
+| `src/hooks/useSourcingProjectCandidates.ts` | **Edit** — add fetch guard to prevent double invocation |
 
-## Single change, deploy, test.
+## Cost Impact
+- Eliminates double-call: 10 credits → 5 credits per search
+- Cache prevents repeat searches: subsequent loads = 0 credits
 
