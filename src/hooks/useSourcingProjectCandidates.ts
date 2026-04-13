@@ -123,7 +123,8 @@ export function useSourcingProjectCandidates({
       const { data, error } = await supabase.functions.invoke('sourcing-search', {
         body: {
           sourcing_project_id: projectId,
-          limit
+          limit,
+          pdl_limit: 5
         }
       })
 
