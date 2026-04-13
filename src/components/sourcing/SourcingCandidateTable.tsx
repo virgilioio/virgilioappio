@@ -479,25 +479,27 @@ export function SourcingCandidateTable({
 
         if (!profile?.organization_id) throw new Error('No organization found')
 
+        const insertData = {
+          candidate_name: candidate.full_name || candidate.candidate_name || 'Unknown',
+          email: candidate.email || null,
+          phone: candidate.phone || null,
+          linkedin_url: candidate.linkedin_url || null,
+          current_job_title: candidate.current_role || null,
+          company_current: candidate.current_company || null,
+          location_city: candidate.location_city || null,
+          location_state: candidate.location_state || null,
+          location_country: candidate.location_country || null,
+          profile_summary: candidate.summary || candidate.profile_summary || null,
+          skills: candidate.skills || null,
+          years_experience: candidate.years_experience || candidate.experience_years || null,
+          source: 'pdl' as const,
+          organization_id: profile.organization_id,
+          created_by: user!.id,
+        }
+
         const { data: newCandidate, error: insertError } = await supabase
           .from('candidates')
-          .insert({
-            candidate_name: candidate.full_name || candidate.candidate_name || 'Unknown',
-            email: candidate.email || null,
-            phone: candidate.phone || null,
-            linkedin_url: candidate.linkedin_url || null,
-            current_job_title: candidate.current_role || null,
-            company_current: candidate.current_company || null,
-            location_city: candidate.location_city || null,
-            location_state: candidate.location_state || null,
-            location_country: candidate.location_country || null,
-            profile_summary: candidate.summary || candidate.profile_summary || null,
-            skills: candidate.skills || null,
-            years_experience: candidate.years_experience || candidate.experience_years || null,
-            source: 'pdl',
-            organization_id: profile.organization_id,
-            created_by: user!.id,
-          })
+          .insert(insertData)
           .select('id')
           .single()
 
