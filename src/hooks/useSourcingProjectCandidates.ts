@@ -2,6 +2,31 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import type { SearchCriteria } from '@/types/sourcing'
 
+export interface PdlExperience {
+  company?: string
+  title?: string
+  start_date?: string
+  end_date?: string
+  is_current?: boolean
+  location?: string
+  summary?: string
+  company_size?: string
+  company_industry?: string
+}
+
+export interface PdlEducation {
+  school?: string
+  degree?: string
+  field_of_study?: string
+  start_date?: string
+  end_date?: string
+}
+
+export interface PdlCertification {
+  name?: string
+  organization?: string
+}
+
 export interface MatchedCandidate {
   id: string
   candidate_name?: string
@@ -31,6 +56,16 @@ export interface MatchedCandidate {
   pdl_id?: string
   summary?: string
   full_name?: string
+  // PDL rich data arrays
+  experience?: PdlExperience[]
+  education?: PdlEducation[]
+  certifications?: PdlCertification[]
+  job_title_levels?: string[]
+  github_url?: string
+  twitter_url?: string
+  website_url?: string
+  emails?: { address: string; type?: string }[]
+  phones?: { number: string; type?: string }[]
   // Apollo-specific fields
   apollo_id?: string
   apollo_score?: number
