@@ -24,12 +24,12 @@ interface SearchCriteria {
 function buildPdlQuery(criteria: SearchCriteria): Record<string, any> {
   const must: any[] = [];
 
-  // Title keywords → job_title (current)
+  // Title keywords → job_title
   if (criteria.title_keywords?.length) {
     must.push({
       bool: {
         should: criteria.title_keywords.map(title => ({
-          match: { job_title: { query: title, fuzziness: 'AUTO' } }
+          term: { job_title: title }
         })),
         minimum_should_match: 1
       }
@@ -42,28 +42,25 @@ function buildPdlQuery(criteria: SearchCriteria): Record<string, any> {
     for (const loc of criteria.locations) {
       const parts = loc.split(',').map((p: string) => p.trim());
       if (parts.length === 3) {
-        // City,State,Country
         locationClauses.push({
           bool: {
             must: [
-              { match: { location_locality: parts[0] } },
-              { match: { location_country: parts[2].toLowerCase() } }
+              { term: { location_locality: parts[0] } },
+              { term: { location_country: parts[2].toLowerCase() } }
             ]
           }
         });
       } else if (parts.length === 2) {
-        // State,Country
         locationClauses.push({
           bool: {
             must: [
-              { match: { location_region: parts[0] } },
-              { match: { location_country: parts[1].toLowerCase() } }
+              { term: { location_region: parts[0] } },
+              { term: { location_country: parts[1].toLowerCase() } }
             ]
           }
         });
       } else if (parts.length === 1) {
-        // Just country
-        locationClauses.push({ match: { location_country: parts[0].toLowerCase() } });
+        locationClauses.push({ term: { location_country: parts[0].toLowerCase() } });
       }
     }
     if (locationClauses.length) {
@@ -76,7 +73,7 @@ function buildPdlQuery(criteria: SearchCriteria): Record<string, any> {
     must.push({
       bool: {
         should: criteria.skills.map(skill => ({
-          match: { skills: { query: skill, fuzziness: 'AUTO' } }
+          term: { skills: skill }
         })),
         minimum_should_match: 1
       }
@@ -94,7 +91,7 @@ function buildPdlQuery(criteria: SearchCriteria): Record<string, any> {
     must.push({
       bool: {
         should: allCompanies.map(company => ({
-          match: { job_company_name: { query: company, fuzziness: 'AUTO' } }
+          term: { job_company_name: company }
         })),
         minimum_should_match: 1
       }
@@ -247,19 +244,16 @@ serve(async (req) => {
       const errorText = await response.text();
       console.error('❌ PDL API Error:', response.status, errorText);
       
-      // Don't throw on 404 (no results) - return empty
-      if (response.status === 404) {
-        return new Response(JSON.stringify({
-          candidates: [],
-          total_count: 0,
-          provider: 'pdl',
-        }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json', ...cors },
-        });
-      }
-      
-      throw new Error(`PDL API error: ${response.status} - ${errorText}`);
+      // Graceful fallback on any error — return empty so Apollo results still show
+      return new Response(JSON.stringify({
+        candidates: [],
+        total_count: 0,
+        provider: 'pdl',
+        error: `PDL API error: ${response.status}`,
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...cors },
+      });
     }
 
     const data = await response.json();
