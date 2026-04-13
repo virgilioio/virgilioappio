@@ -39,7 +39,7 @@ interface MatchedCandidate {
   candidate_name?: string
   current_role?: string
   current_company?: string
-  location?: string  // Full location string (only available after enrichment)
+  location?: string
   location_city?: string
   location_state?: string
   location_country?: string
@@ -48,14 +48,14 @@ interface MatchedCandidate {
   match_tier: 'excellent' | 'good' | 'fair' | 'minimal'
   skills?: string[]
   years_experience?: number
+  experience_years?: number
   source: 'local' | 'apollo' | 'pdl'
-  // PDL-specific fields
   is_preview?: boolean
   needs_enrichment?: boolean
   pdl_id?: string
   summary?: string
+  profile_summary?: string | null
   full_name?: string
-  // Apollo-specific fields
   apollo_id?: string
   apollo_score?: number
   headline?: string
@@ -70,13 +70,12 @@ interface MatchedCandidate {
   company_website?: string
   company_industry?: string
   experience_location?: string
-  // Apollo availability indicators (indicate what CAN be revealed after collection)
   has_email?: boolean
   has_phone?: boolean
-  has_location?: boolean  // Indicates location is available after enrichment
-  // LOCAL KEYWORD SCORING - transparent matching
+  has_location?: boolean
   keyword_score?: number
   matched_keywords?: string[]
+  created_at?: string
 }
 
 interface SourcingCandidateTableProps {
@@ -109,6 +108,7 @@ export function SourcingCandidateTable({
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
   const [selectedApolloId, setSelectedApolloId] = useState<string | null>(null)
   const [selectedApolloData, setSelectedApolloData] = useState<any>(null)
+  const [selectedPdlData, setSelectedPdlData] = useState<MatchedCandidate | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const { isCollectDisabled } = useSourcingCreditWarnings()
   const [bannerDismissed, setBannerDismissed] = useState(false)
@@ -173,6 +173,8 @@ export function SourcingCandidateTable({
   // Track current candidate index for navigation
   const currentIndex = selectedApolloId 
     ? sortedData.findIndex(c => c.apollo_id === selectedApolloId)
+    : selectedPdlData
+    ? sortedData.findIndex(c => c.id === selectedPdlData.id)
     : sortedData.findIndex(c => c.id === selectedCandidateId)
   
   const hasPrev = currentIndex > 0
@@ -183,12 +185,19 @@ export function SourcingCandidateTable({
     if (currentIndex > 0) {
       const prevCandidate = sortedData[currentIndex - 1]
       
-      if (prevCandidate.source === 'pdl' || prevCandidate.candidate_id || prevCandidate.source === 'local') {
+      if (isPdlCandidate(prevCandidate)) {
+        setSelectedPdlData(prevCandidate)
+        setSelectedCandidateId(null)
+        setSelectedApolloId(null)
+        setSelectedApolloData(null)
+      } else if (prevCandidate.candidate_id || prevCandidate.source === 'local') {
         setSelectedCandidateId(prevCandidate.id)
         setSelectedApolloId(null)
         setSelectedApolloData(null)
+        setSelectedPdlData(null)
       } else if (prevCandidate.source === 'apollo' && prevCandidate.apollo_id) {
         setSelectedCandidateId(null)
+        setSelectedPdlData(null)
         setSelectedApolloId(prevCandidate.apollo_id)
         setSelectedApolloData({
           candidate_name: getDisplayName(prevCandidate),
@@ -207,7 +216,6 @@ export function SourcingCandidateTable({
           company_website: prevCandidate.company_website,
           company_industry: prevCandidate.company_industry,
           experience_location: prevCandidate.experience_location,
-          // Availability flags
           has_email: prevCandidate.has_email,
           has_phone: prevCandidate.has_phone,
           has_location: prevCandidate.has_location
@@ -226,12 +234,19 @@ export function SourcingCandidateTable({
     if (currentIndex < sortedData.length - 1) {
       const nextCandidate = sortedData[currentIndex + 1]
       
-      if (nextCandidate.source === 'pdl' || nextCandidate.candidate_id || nextCandidate.source === 'local') {
+      if (isPdlCandidate(nextCandidate)) {
+        setSelectedPdlData(nextCandidate)
+        setSelectedCandidateId(null)
+        setSelectedApolloId(null)
+        setSelectedApolloData(null)
+      } else if (nextCandidate.candidate_id || nextCandidate.source === 'local') {
         setSelectedCandidateId(nextCandidate.id)
         setSelectedApolloId(null)
         setSelectedApolloData(null)
+        setSelectedPdlData(null)
       } else if (nextCandidate.source === 'apollo' && nextCandidate.apollo_id) {
         setSelectedCandidateId(null)
+        setSelectedPdlData(null)
         setSelectedApolloId(nextCandidate.apollo_id)
         setSelectedApolloData({
           candidate_name: getDisplayName(nextCandidate),
@@ -250,7 +265,6 @@ export function SourcingCandidateTable({
           company_website: nextCandidate.company_website,
           company_industry: nextCandidate.company_industry,
           experience_location: nextCandidate.experience_location,
-          // Availability flags
           has_email: nextCandidate.has_email,
           has_phone: nextCandidate.has_phone,
           has_location: nextCandidate.has_location
@@ -435,8 +449,8 @@ export function SourcingCandidateTable({
     }
   }
 
-  const handleAddToPipeline = async (candidate: MatchedCandidate, e: React.MouseEvent) => {
-    e.stopPropagation()
+  const handleAddToPipeline = async (candidate: MatchedCandidate, e?: React.MouseEvent) => {
+    e?.stopPropagation()
     
     if (!jobId) {
       toast({
@@ -450,11 +464,56 @@ export function SourcingCandidateTable({
     setLoadingCandidates(prev => new Set(prev).add(candidate.id))
 
     try {
+      let candidateDbId = candidate.id
+
+      // PDL candidates are in-memory only — upsert into candidates table first
+      if (isPdlCandidate(candidate) && !candidate.candidate_id) {
+        const { data: { user } } = await supabase.auth.getUser()
+        
+        // Get org id from user profile
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const client: any = supabase
+        const { data: profile } = await client
+          .from('profiles')
+          .select('organization_id')
+          .eq('id', user!.id)
+          .single()
+
+        if (!profile?.organization_id) throw new Error('No organization found')
+
+        const insertData = {
+          candidate_name: candidate.full_name || candidate.candidate_name || 'Unknown',
+          email: candidate.email || null,
+          phone: candidate.phone || null,
+          linkedin_url: candidate.linkedin_url || null,
+          current_job_title: candidate.current_role || null,
+          company_current: candidate.current_company || null,
+          location_city: candidate.location_city || null,
+          location_state: candidate.location_state || null,
+          location_country: candidate.location_country || null,
+          profile_summary: candidate.summary || candidate.profile_summary || null,
+          skills: candidate.skills || null,
+          years_experience: candidate.years_experience || candidate.experience_years || null,
+          source: 'pdl' as const,
+          organization_id: profile.organization_id,
+          created_by: user!.id,
+        }
+
+        const { data: newCandidate, error: insertError } = await supabase
+          .from('candidates')
+          .insert(insertData)
+          .select('id')
+          .single()
+
+        if (insertError) throw insertError
+        candidateDbId = newCandidate.id
+      }
+
       const { error } = await supabase
         .from('job_candidate_associations')
         .insert({
           job_id: jobId,
-          candidate_id: candidate.id,
+          candidate_id: candidateDbId,
           stage: 'sourced'
         })
 
@@ -623,7 +682,8 @@ export function SourcingCandidateTable({
                 // Check if this row is currently open in the preview
                 const isActiveRow = sheetOpen && (
                   (selectedCandidateId && candidate.id === selectedCandidateId) ||
-                  (selectedApolloId && candidate.apollo_id === selectedApolloId)
+                  (selectedApolloId && candidate.apollo_id === selectedApolloId) ||
+                  (selectedPdlData && candidate.id === selectedPdlData.id)
                 )
 
                 return (
@@ -636,15 +696,24 @@ export function SourcingCandidateTable({
                       isPdl && !isActiveRow && "border-l-2 border-l-emerald-400"
                     )}
                     onClick={() => {
-                      if (isPdl || candidate.candidate_id || candidate.source === 'local') {
-                        // Full profile available (PDL or local)
+                      if (isPdl) {
+                        // PDL full data — use in-memory profile sheet
+                        setSelectedPdlData(candidate)
+                        setSelectedCandidateId(null)
+                        setSelectedApolloId(null)
+                        setSelectedApolloData(null)
+                        setSheetOpen(true)
+                      } else if (candidate.candidate_id || candidate.source === 'local') {
+                        // DB candidate — use IndependentCandidateProfileSheet
                         setSelectedCandidateId(candidate.id)
                         setSelectedApolloId(null)
                         setSelectedApolloData(null)
+                        setSelectedPdlData(null)
                         setSheetOpen(true)
                       } else if (candidate.source === 'apollo' && candidate.apollo_id) {
                         // Apollo preview
                         setSelectedCandidateId(null)
+                        setSelectedPdlData(null)
                         setSelectedApolloId(candidate.apollo_id)
                         setSelectedApolloData({
                            candidate_name: getDisplayName(candidate),
@@ -994,11 +1063,17 @@ export function SourcingCandidateTable({
                 isPdl && "border-l-2 border-l-emerald-400"
               )}
               onClick={() => {
-                if (isPdl || candidate.candidate_id || candidate.source === 'local') {
-                  // Full profile available
+                if (isPdl) {
+                  setSelectedPdlData(candidate)
+                  setSelectedCandidateId(null)
+                  setSelectedApolloId(null)
+                  setSelectedApolloData(null)
+                  setSheetOpen(true)
+                } else if (candidate.candidate_id || candidate.source === 'local') {
                   setSelectedCandidateId(candidate.id)
                   setSelectedApolloId(null)
                   setSelectedApolloData(null)
+                  setSelectedPdlData(null)
                   setSheetOpen(true)
                 } else if (candidate.source === 'apollo' && candidate.apollo_id) {
                   // Apollo preview
@@ -1168,10 +1243,17 @@ export function SourcingCandidateTable({
       {/* Universal Candidate Profile Sheet */}
       <UniversalCandidateProfileSheet
         open={sheetOpen}
-        onOpenChange={setSheetOpen}
+        onOpenChange={(open) => {
+          setSheetOpen(open)
+          if (!open) setSelectedPdlData(null)
+        }}
         candidateId={selectedCandidateId}
         apolloId={selectedApolloId}
         apolloData={selectedApolloData}
+        pdlData={selectedPdlData as any}
+        onPdlAddToPipeline={selectedPdlData ? () => handleAddToPipeline(selectedPdlData) : undefined}
+        isPdlAdding={selectedPdlData ? loadingCandidates.has(selectedPdlData.id) : false}
+        isPdlAdded={selectedPdlData ? addedCandidates.has(selectedPdlData.id) : false}
         jobId={jobId}
         context="sourcing"
         hasPrev={hasPrev}

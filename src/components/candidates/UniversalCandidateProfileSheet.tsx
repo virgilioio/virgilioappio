@@ -1,7 +1,9 @@
 import CandidateProfileSheet from './CandidateProfileSheet'
 import { IndependentCandidateProfileSheet } from './IndependentCandidateProfileSheet'
 import { ApolloPreviewSheet } from './ApolloPreviewSheet'
+import { PdlCandidateProfileSheet } from './PdlCandidateProfileSheet'
 import type { SearchCriteria } from '@/types/sourcing'
+import type { MatchedCandidate } from '@/hooks/useSourcingProjectCandidates'
 
 interface UniversalCandidateProfileSheetProps {
   open: boolean
@@ -38,6 +40,10 @@ interface UniversalCandidateProfileSheetProps {
     has_phone?: boolean
     has_location?: boolean
   }
+  pdlData?: MatchedCandidate | null
+  onPdlAddToPipeline?: () => void
+  isPdlAdding?: boolean
+  isPdlAdded?: boolean
   searchCriteria?: SearchCriteria
   onCandidateCollected?: (candidateId: string, apolloId: string) => void
 }
@@ -46,6 +52,24 @@ export default function UniversalCandidateProfileSheet(props: UniversalCandidate
   // Auto-detect context if not provided
   const actualContext = props.context || (props.jobId ? 'job' : 'independent')
   
+  // PDL candidate (full in-memory data, no DB fetch needed)
+  if (props.pdlData) {
+    return (
+      <PdlCandidateProfileSheet
+        open={props.open}
+        onOpenChange={props.onOpenChange}
+        candidate={props.pdlData}
+        hasPrev={props.hasPrev}
+        hasNext={props.hasNext}
+        onNavigatePrev={props.onNavigatePrev}
+        onNavigateNext={props.onNavigateNext}
+        onAddToPipeline={props.onPdlAddToPipeline}
+        isAddingToPipeline={props.isPdlAdding}
+        isAlreadyAdded={props.isPdlAdded}
+      />
+    )
+  }
+
   // If Apollo preview (has apolloId but no candidateId)
   if (props.apolloId && !props.candidateId) {
     return (

@@ -377,7 +377,7 @@ export function SourcingProjectView({
         <TabsContent value="candidates" className="flex-1 min-h-0 overflow-hidden m-0">
           <CandidatesTab 
             project={project}
-            candidates={filteredCandidates}
+            candidates={filteredCandidates as any}
             isLoading={candidatesLoading}
             onRefresh={handleRefresh}
             onArchive={handleArchive}

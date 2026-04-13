@@ -4,7 +4,7 @@ import type { SearchCriteria } from '@/types/sourcing'
 
 export interface MatchedCandidate {
   id: string
-  candidate_name: string
+  candidate_name?: string
   skills?: string[]
   standardized_skills?: string[]
   location_country?: string | null
@@ -23,7 +23,7 @@ export interface MatchedCandidate {
   enriched_at?: string | null
   current_company?: string
   current_role?: string
-  created_at: string
+  created_at?: string
   first_viewed_by?: Record<string, string> | null
   // PDL-specific fields
   is_preview?: boolean
@@ -123,7 +123,8 @@ export function useSourcingProjectCandidates({
       const { data, error } = await supabase.functions.invoke('sourcing-search', {
         body: {
           sourcing_project_id: projectId,
-          limit
+          limit,
+          pdl_limit: 5
         }
       })
 
