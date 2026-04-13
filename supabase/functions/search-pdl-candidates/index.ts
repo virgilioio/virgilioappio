@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeadersOf, handlePreflight } from "../_shared/cors.ts";
+import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 
 const PDL_API_KEY = Deno.env.get('PDL_API_KEY');
 const PDL_SEARCH_URL = 'https://api.peopledatalabs.com/v5/person/search';
@@ -234,7 +234,7 @@ serve(async (req) => {
   if (pre) return pre;
 
   const origin = req.headers.get('Origin') ?? req.headers.get('origin') ?? undefined;
-  const cors = corsHeadersOf(origin);
+  const cors = corsHeadersFor(origin);
 
   try {
     const { criteria, limit = 5 } = await req.json();
