@@ -638,7 +638,8 @@ export function SourcingCandidateTable({
                 // Check if this row is currently open in the preview
                 const isActiveRow = sheetOpen && (
                   (selectedCandidateId && candidate.id === selectedCandidateId) ||
-                  (selectedApolloId && candidate.apollo_id === selectedApolloId)
+                  (selectedApolloId && candidate.apollo_id === selectedApolloId) ||
+                  (selectedPdlData && candidate.id === selectedPdlData.id)
                 )
 
                 return (
@@ -651,11 +652,19 @@ export function SourcingCandidateTable({
                       isPdl && !isActiveRow && "border-l-2 border-l-emerald-400"
                     )}
                     onClick={() => {
-                      if (isPdl || candidate.candidate_id || candidate.source === 'local') {
-                        // Full profile available (PDL or local)
+                      if (isPdl) {
+                        // PDL full data — use in-memory profile sheet
+                        setSelectedPdlData(candidate)
+                        setSelectedCandidateId(null)
+                        setSelectedApolloId(null)
+                        setSelectedApolloData(null)
+                        setSheetOpen(true)
+                      } else if (candidate.candidate_id || candidate.source === 'local') {
+                        // DB candidate — use IndependentCandidateProfileSheet
                         setSelectedCandidateId(candidate.id)
                         setSelectedApolloId(null)
                         setSelectedApolloData(null)
+                        setSelectedPdlData(null)
                         setSheetOpen(true)
                       } else if (candidate.source === 'apollo' && candidate.apollo_id) {
                         // Apollo preview
