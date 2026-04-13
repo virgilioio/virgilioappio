@@ -669,6 +669,7 @@ export function SourcingCandidateTable({
                       } else if (candidate.source === 'apollo' && candidate.apollo_id) {
                         // Apollo preview
                         setSelectedCandidateId(null)
+                        setSelectedPdlData(null)
                         setSelectedApolloId(candidate.apollo_id)
                         setSelectedApolloData({
                            candidate_name: getDisplayName(candidate),
