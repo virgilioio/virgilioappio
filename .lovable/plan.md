@@ -1,36 +1,79 @@
 
+## What I found
 
-# Fix Double PDL Calls + Deploy Fixed Query
+PDL is still being called. The logs show:
 
-## Problems
+- `🔍 PDL Search: limit=5...`
+- `📡 PDL query: ...`
+- `❌ PDL API Error: 404 {"message":"No records were found matching your search"}`
 
-1. **Deployed code is stale**: The `search-pdl-candidates` function still uses `match` + `fuzziness: "AUTO"` syntax that PDL rejects with 400. The local fix (using `term`) was never deployed. Each failed call still burns credits on PDL's side.
+So the issue is not "PDL never runs". The issue is:
 
-2. **Double invocation**: The `useEffect` in `useSourcingProjectCandidates.ts` fires `fetchMatchingCandidates` twice due to React re-renders causing the `useCallback` to get a new reference. The logs show two `sourcing-search` calls 5 seconds apart for the same project.
+1. `search-pdl-candidates` is building an overly strict query:
+   - top-level `bool.must`
+   - exact `term` matching on `job_title`
+   - exact `term` matching on `skills`
+   - location also required
+   - sometimes many filters are combined at once
 
-3. **Error handling**: The PDL function throws on 400 errors instead of returning a 200 with empty results, so the graceful fallback doesn't work.
+2. `sourcing-search` currently sets `pdl_cache_expires_at` even when PDL returns `0` candidates, so a bad empty result gets cached for 24 hours and later loads may skip PDL entirely.
+
+That explains both symptoms:
+- first request returns 0 from PDL
+- later requests appear to “not search PDL anymore” because the empty result was cached
 
 ## Plan
 
-### 1. Deploy `search-pdl-candidates` with the fix already in the codebase
-The local code already has the correct `term`-based query. Just needs to be deployed.
+### 1. Relax the PDL query strategy
+Update `supabase/functions/search-pdl-candidates/index.ts` so PDL search is broader and progressive instead of all-or-nothing.
 
-### 2. Fix double-call in `useSourcingProjectCandidates.ts`
-- Add a `useRef` guard (`isFetching`) to prevent concurrent duplicate calls
-- Stabilize the `useCallback` dependencies so React strict mode / re-renders don't trigger it twice
+Implementation approach:
+- stop requiring `title + location + skills` all in the same `must`
+- keep titles as the primary filter
+- make skills and company filters optional boosters / fallback filters instead of mandatory filters
+- make location optional or secondary
+- use broader supported matching for free-text fields instead of exact-only matching where appropriate
 
-### 3. Verify error handling in `search-pdl-candidates`
-- Ensure 400/500 PDL API responses return `{ candidates: [], total_count: 0 }` with status 200 (not throw)
-- Check current code handles this correctly; fix if not
+Suggested search order:
+1. titles + location
+2. titles only
+3. titles + keywords
+4. titles + optional skills
 
-## Files
+Return the first non-empty result set.
 
-| File | Action |
-|------|--------|
-| `supabase/functions/search-pdl-candidates/index.ts` | **Deploy** (already fixed locally) + verify error path returns 200 |
-| `src/hooks/useSourcingProjectCandidates.ts` | **Edit** — add fetch guard to prevent double invocation |
+### 2. Fix bad empty-result caching
+Update `supabase/functions/sourcing-search/index.ts` so we do **not** mark PDL cache as valid when:
+- the PDL call errors
+- PDL returns 0 candidates
+- there are no cached PDL rows to serve
 
-## Cost Impact
-- Eliminates double-call: 10 credits → 5 credits per search
-- Cache prevents repeat searches: subsequent loads = 0 credits
+Implementation details:
+- only write `pdl_cache_expires_at` after a successful non-empty PDL result
+- when checking cache, treat `pdl_cache_expires_at` as invalid if there are zero cached `source='pdl'` rows
+- keep Apollo cache behavior unchanged
 
+### 3. Clear stale empty PDL caches
+Some projects likely already have `pdl_cache_expires_at` set from empty responses. Those need to be reset so PDL can run again immediately.
+
+Scope:
+- affected `sourcing_projects` rows where `pdl_cache_expires_at` is set but there are no cached PDL candidates
+
+### 4. Validate with the current Find flow
+After implementation, test the current Find route again and confirm:
+- `search-pdl-candidates` logs show a broader query / fallback attempts
+- `sourcing-search` no longer caches empty PDL responses
+- repeated loads do not burn new credits when valid cached PDL rows exist
+- PDL source count becomes non-zero for at least one of the current projects, or logs clearly show the broader query exhausted before falling back
+
+## Files to update
+
+- `supabase/functions/search-pdl-candidates/index.ts` — relax query builder and add fallback search strategy
+- `supabase/functions/sourcing-search/index.ts` — fix PDL cache rules so empty/error responses are not cached
+- one-time data reset for stale `pdl_cache_expires_at` values on affected projects
+
+## Expected outcome
+
+- PDL searches actually return candidates again when matches exist
+- empty/failed PDL searches do not suppress future retries for 24 hours
+- valid PDL results remain cached so credits are still protected
