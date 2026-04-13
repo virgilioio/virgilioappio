@@ -470,13 +470,14 @@ export function SourcingCandidateTable({
       if (isPdlCandidate(candidate) && !candidate.candidate_id) {
         const { data: { user } } = await supabase.auth.getUser()
         
-        // Get org id from user profile  
-        const profileQuery = supabase
+        // Get org id from user profile
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const client: any = supabase
+        const { data: profile } = await client
           .from('profiles')
           .select('organization_id')
           .eq('id', user!.id)
           .single()
-        const { data: profile } = await (profileQuery as unknown as Promise<{ data: { organization_id: string } | null }>)
 
         if (!profile?.organization_id) throw new Error('No organization found')
 
