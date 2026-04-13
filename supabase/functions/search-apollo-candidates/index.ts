@@ -393,7 +393,8 @@ serve(async (req) => {
           const { data: cachedCandidates } = await supabase
             .from('sourcing_preview_candidates')
             .select('*')
-            .eq('sourcing_project_id', project_id);
+            .eq('sourcing_project_id', project_id)
+            .eq('source', 'apollo');
           
           const candidates = (cachedCandidates || []).map(c => ({
             apollo_id: c.apollo_id,
@@ -571,11 +572,12 @@ serve(async (req) => {
 
     // Store in cache if project_id provided
     if (project_id && candidates.length > 0) {
-      // Clear old cache
+      // Clear old Apollo cache only (preserve PDL cached rows)
       await supabase
         .from('sourcing_preview_candidates')
         .delete()
-        .eq('sourcing_project_id', project_id);
+        .eq('sourcing_project_id', project_id)
+        .eq('source', 'apollo');
 
       // Insert new candidates with availability flags (NOT actual values - those come from enrichment)
       // Increased limit to 300 to match multi-page fetching

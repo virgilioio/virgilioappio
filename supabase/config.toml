@@ -195,4 +195,10 @@ verify_jwt = true
 [functions.batch-re-enrich]
 verify_jwt = false
 
+[functions.search-pdl-candidates]
+verify_jwt = true
+
+[functions.sourcing-search]
+verify_jwt = true
+
 
