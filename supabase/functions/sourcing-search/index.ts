@@ -63,18 +63,27 @@ serve(async (req) => {
 
     // ── PDL: check cache or fetch ──
     let pdlCandidates: any[] = [];
-    const pdlCacheValid = project.pdl_cache_expires_at && new Date(project.pdl_cache_expires_at) > now;
+    let pdlCacheValid = project.pdl_cache_expires_at && new Date(project.pdl_cache_expires_at) > now;
 
     if (pdlCacheValid) {
-      console.log('✅ PDL cache hit — loading from DB');
+      console.log('✅ PDL cache timestamp valid — checking for cached rows');
       const { data: cached } = await supabase
         .from('sourcing_preview_candidates')
         .select('*')
         .eq('sourcing_project_id', sourcing_project_id)
         .eq('source', 'pdl');
 
-      pdlCandidates = (cached || []).map(mapCachedPdlCandidate);
-    } else {
+      if (cached && cached.length > 0) {
+        pdlCandidates = cached.map(mapCachedPdlCandidate);
+        console.log(`✅ PDL cache hit — loaded ${pdlCandidates.length} cached candidates`);
+      } else {
+        // Cache timestamp exists but no rows — treat as cache miss
+        console.log('⚠️ PDL cache timestamp set but 0 cached rows — treating as cache miss');
+        pdlCacheValid = false;
+      }
+    }
+
+    if (!pdlCacheValid) {
       console.log('🔄 PDL cache miss — calling search-pdl-candidates');
       try {
         const { data: pdlResult, error: pdlError } = await supabase.functions.invoke('search-pdl-candidates', {
@@ -86,9 +95,9 @@ serve(async (req) => {
           console.warn('⚠️ PDL search failed:', pdlError);
         } else {
           pdlCandidates = pdlResult?.candidates || [];
-          console.log(`✅ PDL returned ${pdlCandidates.length} candidates`);
+          console.log(`✅ PDL returned ${pdlCandidates.length} candidates (strategy: ${pdlResult?.winning_strategy || 'unknown'})`);
 
-          // Cache PDL results
+          // Only cache if we got actual results
           if (pdlCandidates.length > 0) {
             // Clear old PDL cache for this project
             await supabase
@@ -134,19 +143,21 @@ serve(async (req) => {
             if (insertError) {
               console.warn('⚠️ Failed to cache PDL results:', insertError);
             }
+
+            // Only set cache expiry when we have actual results
+            const pdlCacheExpiry = new Date();
+            pdlCacheExpiry.setHours(pdlCacheExpiry.getHours() + CACHE_TTL_HOURS);
+
+            await supabase
+              .from('sourcing_projects')
+              .update({
+                pdl_cache_expires_at: pdlCacheExpiry.toISOString(),
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', sourcing_project_id);
+          } else {
+            console.log('ℹ️ PDL returned 0 candidates — NOT caching empty result');
           }
-
-          // Set PDL cache expiry
-          const pdlCacheExpiry = new Date();
-          pdlCacheExpiry.setHours(pdlCacheExpiry.getHours() + CACHE_TTL_HOURS);
-
-          await supabase
-            .from('sourcing_projects')
-            .update({
-              pdl_cache_expires_at: pdlCacheExpiry.toISOString(),
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', sourcing_project_id);
         }
       } catch (pdlErr: any) {
         console.warn('⚠️ PDL search error (non-fatal):', pdlErr.message);

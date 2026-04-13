@@ -18,97 +18,110 @@ interface SearchCriteria {
   keywords?: string[];
 }
 
-/**
- * Build PDL ElasticSearch query from search criteria
- */
-function buildPdlQuery(criteria: SearchCriteria): Record<string, any> {
-  const must: any[] = [];
+// ── Query builders ──────────────────────────────────────────────
 
-  // Title keywords → job_title
-  if (criteria.title_keywords?.length) {
-    must.push({
-      bool: {
-        should: criteria.title_keywords.map(title => ({
-          term: { job_title: title }
-        }))
-      }
-    });
-  }
-
-  // Location filter
-  if (criteria.locations?.length) {
-    const locationClauses: any[] = [];
-    for (const loc of criteria.locations) {
-      const parts = loc.split(',').map((p: string) => p.trim());
-      if (parts.length === 3) {
-        locationClauses.push({
-          bool: {
-            must: [
-              { term: { location_locality: parts[0] } },
-              { term: { location_country: parts[2].toLowerCase() } }
-            ]
-          }
-        });
-      } else if (parts.length === 2) {
-        locationClauses.push({
-          bool: {
-            must: [
-              { term: { location_region: parts[0] } },
-              { term: { location_country: parts[1].toLowerCase() } }
-            ]
-          }
-        });
-      } else if (parts.length === 1) {
-        locationClauses.push({ term: { location_country: parts[0].toLowerCase() } });
-      }
+function titleClause(titles: string[]): Record<string, any> {
+  return {
+    bool: {
+      should: titles.map(t => ({ term: { job_title: t } }))
     }
-    if (locationClauses.length) {
-      must.push({ bool: { should: locationClauses } });
+  };
+}
+
+function locationClauses(locations: string[]): Record<string, any> | null {
+  const clauses: any[] = [];
+  for (const loc of locations) {
+    const parts = loc.split(',').map((p: string) => p.trim());
+    if (parts.length === 3) {
+      clauses.push({ bool: { must: [
+        { term: { location_locality: parts[0] } },
+        { term: { location_country: parts[2].toLowerCase() } }
+      ]}});
+    } else if (parts.length === 2) {
+      clauses.push({ bool: { must: [
+        { term: { location_region: parts[0] } },
+        { term: { location_country: parts[1].toLowerCase() } }
+      ]}});
+    } else if (parts.length === 1) {
+      clauses.push({ term: { location_country: parts[0].toLowerCase() } });
     }
   }
+  return clauses.length ? { bool: { should: clauses } } : null;
+}
 
-  // Skills
-  if (criteria.skills?.length) {
-    must.push({
-      bool: {
-        should: criteria.skills.map(skill => ({
-          term: { skills: skill }
-        }))
-      }
-    });
-  }
+function skillsClauses(skills: string[]): Record<string, any> {
+  return {
+    bool: {
+      should: skills.map(s => ({ term: { skills: s } }))
+    }
+  };
+}
 
-  // Company names (user + researched combined)
-  const allCompanies = [
+function companyClauses(criteria: SearchCriteria): Record<string, any> | null {
+  const all = [
     ...(criteria.user_company_names || []),
     ...(criteria.researched_companies || []),
     ...(criteria.company_names || [])
   ].filter(Boolean);
-  
-  if (allCompanies.length) {
-    must.push({
-      bool: {
-        should: allCompanies.map(company => ({
-          term: { job_company_name: company }
-        }))
-      }
+  if (!all.length) return null;
+  return {
+    bool: {
+      should: all.map(c => ({ term: { job_company_name: c } }))
+    }
+  };
+}
+
+/**
+ * Build progressive query attempts — return array of queries to try in order.
+ * First non-empty result wins.
+ */
+function buildQueryAttempts(criteria: SearchCriteria): Array<{ label: string; query: Record<string, any> }> {
+  const titles = criteria.title_keywords || [];
+  if (!titles.length) return [];
+
+  const attempts: Array<{ label: string; query: Record<string, any> }> = [];
+  const tc = titleClause(titles);
+  const lc = criteria.locations?.length ? locationClauses(criteria.locations!) : null;
+  const sc = criteria.skills?.length ? skillsClauses(criteria.skills!) : null;
+  const cc = companyClauses(criteria);
+
+  // Attempt 1: titles + location (if location provided)
+  if (lc) {
+    attempts.push({
+      label: 'titles+location',
+      query: { query: { bool: { must: [tc, lc] } } }
     });
   }
 
-  return {
-    query: {
-      bool: {
-        must: must.length > 0 ? must : [{ match_all: {} }]
-      }
-    }
-  };
+  // Attempt 2: titles only (broadest)
+  attempts.push({
+    label: 'titles_only',
+    query: { query: { bool: { must: [tc] } } }
+  });
+
+  // Attempt 3: titles + companies (if provided)
+  if (cc) {
+    attempts.push({
+      label: 'titles+companies',
+      query: { query: { bool: { must: [tc], should: [cc] } } }
+    });
+  }
+
+  // Attempt 4: titles + skills (if provided)
+  if (sc) {
+    attempts.push({
+      label: 'titles+skills',
+      query: { query: { bool: { must: [tc], should: [sc] } } }
+    });
+  }
+
+  return attempts;
 }
 
 /**
  * Map a PDL person result to our MatchedCandidate shape with ALL fields
  */
 function mapPdlCandidate(person: any): any {
-  // Build experience array
   const experience = (person.experience || []).map((exp: any) => ({
     company: exp.company?.name || null,
     title: exp.title?.name || null,
@@ -121,7 +134,6 @@ function mapPdlCandidate(person: any): any {
     company_industry: exp.company?.industry || null,
   }));
 
-  // Build education array
   const education = (person.education || []).map((edu: any) => ({
     school: edu.school?.name || null,
     degree: edu.degrees?.join(', ') || null,
@@ -130,27 +142,23 @@ function mapPdlCandidate(person: any): any {
     end_date: edu.end_date || null,
   }));
 
-  // Build certifications array
   const certifications = (person.certifications || []).map((cert: any) => ({
     name: cert.name || cert,
     organization: cert.organization || null,
   }));
 
-  // Build emails array
   const emails = (person.emails || []).map((e: any) => ({
     address: typeof e === 'string' ? e : (e.address || e),
     type: typeof e === 'object' ? e.type : null,
   }));
 
-  // Build phones array
-  const phones = (person.phone_numbers || person.mobile_phone ? 
+  const phones = (person.phone_numbers || person.mobile_phone ?
     [...(person.phone_numbers || []), person.mobile_phone].filter(Boolean) : []
   ).map((p: any) => ({
     number: typeof p === 'string' ? p : (p.number || p),
     type: typeof p === 'object' ? p.type : null,
   }));
 
-  // Current job info
   const currentExp = experience.find((e: any) => e.is_current) || experience[0];
 
   return {
@@ -175,16 +183,49 @@ function mapPdlCandidate(person: any): any {
     certifications,
     emails,
     phones,
-    // Availability flags (PDL always has full data)
     has_email: emails.length > 0,
     has_phone: phones.length > 0,
     has_location: !!(person.location_locality || person.location_region || person.location_country),
-    // PDL-specific flags
     source: 'pdl',
     is_preview: false,
     needs_enrichment: false,
     match_score: 100,
     match_tier: 'good',
+  };
+}
+
+/**
+ * Execute a single PDL search attempt
+ */
+async function executePdlSearch(
+  pdlQuery: Record<string, any>,
+  effectiveLimit: number
+): Promise<{ people: any[]; totalAvailable: number; status: number }> {
+  const response = await fetch(PDL_SEARCH_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Api-Key': PDL_API_KEY!,
+    },
+    body: JSON.stringify({
+      ...pdlQuery,
+      size: effectiveLimit,
+      dataset: 'all',
+      titlecase: true,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.warn(`⚠️ PDL API ${response.status}: ${errorText}`);
+    return { people: [], totalAvailable: 0, status: response.status };
+  }
+
+  const data = await response.json();
+  return {
+    people: data.data || [],
+    totalAvailable: data.total || 0,
+    status: response.status,
   };
 }
 
@@ -197,8 +238,6 @@ serve(async (req) => {
 
   try {
     const { criteria, limit = 5 } = await req.json();
-
-    // HARD CAP: Never exceed 10 results
     const effectiveLimit = Math.min(Math.max(limit, 1), ABSOLUTE_MAX_LIMIT);
 
     console.log(`🔍 PDL Search: limit=${effectiveLimit}, criteria:`, JSON.stringify(criteria));
@@ -219,71 +258,51 @@ serve(async (req) => {
       });
     }
 
-    // Build and execute PDL search
-    const pdlQuery = buildPdlQuery(criteria);
-    console.log('📡 PDL query:', JSON.stringify(pdlQuery));
+    // Build progressive query attempts
+    const attempts = buildQueryAttempts(criteria);
 
-    const response = await fetch(PDL_SEARCH_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Api-Key': PDL_API_KEY,
-      },
-      body: JSON.stringify({
-        ...pdlQuery,
-        size: effectiveLimit,
-        dataset: 'all',
-        titlecase: true,
-      }),
-    });
+    let winningLabel = 'none';
+    let winningPeople: any[] = [];
+    let winningTotal = 0;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ PDL API Error:', response.status, errorText);
-      
-      // Graceful fallback on any error — return empty so Apollo results still show
+    for (const attempt of attempts) {
+      console.log(`📡 PDL attempt [${attempt.label}]:`, JSON.stringify(attempt.query));
+
+      const result = await executePdlSearch(attempt.query, effectiveLimit);
+
+      if (result.people.length > 0) {
+        winningLabel = attempt.label;
+        winningPeople = result.people;
+        winningTotal = result.totalAvailable;
+        console.log(`✅ PDL [${attempt.label}] returned ${result.people.length} results (total: ${result.totalAvailable})`);
+        break; // First non-empty wins — stop to avoid burning more credits
+      }
+
+      console.log(`⚠️ PDL [${attempt.label}] returned 0 results, trying next...`);
+    }
+
+    if (winningPeople.length === 0) {
+      console.log('❌ PDL: all query attempts returned 0 results');
       return new Response(JSON.stringify({
         candidates: [],
         total_count: 0,
         provider: 'pdl',
-        error: `PDL API error: ${response.status}`,
+        winning_strategy: 'none',
+        message: 'No PDL results for any query strategy',
       }), {
         status: 200,
         headers: { 'Content-Type': 'application/json', ...cors },
       });
     }
 
-    const data = await response.json();
-    const totalAvailable = data.total || 0;
-    const people = data.data || [];
-
-    console.log(`✅ PDL returned ${people.length} results (total available: ${totalAvailable})`);
-
-    // Log sample for debugging
-    if (people.length > 0) {
-      const sample = people[0];
-      console.log('📦 Sample PDL result:', JSON.stringify({
-        id: sample.id,
-        full_name: sample.full_name,
-        job_title: sample.job_title,
-        job_company_name: sample.job_company_name,
-        linkedin_url: sample.linkedin_url,
-        skills_count: sample.skills?.length || 0,
-        experience_count: sample.experience?.length || 0,
-        education_count: sample.education?.length || 0,
-        emails_count: sample.emails?.length || 0,
-        phone_numbers_count: sample.phone_numbers?.length || 0,
-      }));
-    }
-
-    // Map ALL results with full field passthrough
-    const candidates = people.map(mapPdlCandidate);
+    const candidates = winningPeople.map(mapPdlCandidate);
 
     return new Response(JSON.stringify({
       candidates,
-      total_count: totalAvailable,
+      total_count: winningTotal,
       provider: 'pdl',
-      credits_used: people.length,  // PDL charges per result
+      credits_used: winningPeople.length,
+      winning_strategy: winningLabel,
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json', ...cors },
@@ -292,10 +311,12 @@ serve(async (req) => {
   } catch (error: any) {
     console.error('❌ PDL search error:', error);
     return new Response(JSON.stringify({
-      error: error.message,
+      candidates: [],
+      total_count: 0,
       provider: 'pdl',
+      error: error.message,
     }), {
-      status: 500,
+      status: 200, // Return 200 so orchestrator treats it as graceful fallback
       headers: { 'Content-Type': 'application/json', ...cors },
     });
   }
