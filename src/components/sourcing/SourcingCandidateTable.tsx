@@ -450,8 +450,8 @@ export function SourcingCandidateTable({
     }
   }
 
-  const handleAddToPipeline = async (candidate: MatchedCandidate, e: React.MouseEvent) => {
-    e.stopPropagation()
+  const handleAddToPipeline = async (candidate: MatchedCandidate, e?: React.MouseEvent) => {
+    e?.stopPropagation()
     
     if (!jobId) {
       toast({
@@ -465,11 +465,52 @@ export function SourcingCandidateTable({
     setLoadingCandidates(prev => new Set(prev).add(candidate.id))
 
     try {
+      let candidateDbId = candidate.id
+
+      // PDL candidates are in-memory only — upsert into candidates table first
+      if (isPdlCandidate(candidate) && !candidate.candidate_id) {
+        const { data: { user } } = await supabase.auth.getUser()
+        
+        // Get org id from user profile
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('organization_id')
+          .eq('id', user!.id)
+          .single()
+
+        if (!profile?.organization_id) throw new Error('No organization found')
+
+        const { data: newCandidate, error: insertError } = await supabase
+          .from('candidates')
+          .insert({
+            candidate_name: candidate.full_name || candidate.candidate_name || 'Unknown',
+            email: candidate.email || null,
+            phone: candidate.phone || null,
+            linkedin_url: candidate.linkedin_url || null,
+            current_job_title: candidate.current_role || null,
+            company_current: candidate.current_company || null,
+            location_city: candidate.location_city || null,
+            location_state: candidate.location_state || null,
+            location_country: candidate.location_country || null,
+            profile_summary: candidate.summary || candidate.profile_summary || null,
+            skills: candidate.skills || null,
+            years_experience: candidate.years_experience || candidate.experience_years || null,
+            source: 'pdl',
+            organization_id: profile.organization_id,
+            created_by: user!.id,
+          })
+          .select('id')
+          .single()
+
+        if (insertError) throw insertError
+        candidateDbId = newCandidate.id
+      }
+
       const { error } = await supabase
         .from('job_candidate_associations')
         .insert({
           job_id: jobId,
-          candidate_id: candidate.id,
+          candidate_id: candidateDbId,
           stage: 'sourced'
         })
 
@@ -1019,11 +1060,17 @@ export function SourcingCandidateTable({
                 isPdl && "border-l-2 border-l-emerald-400"
               )}
               onClick={() => {
-                if (isPdl || candidate.candidate_id || candidate.source === 'local') {
-                  // Full profile available
+                if (isPdl) {
+                  setSelectedPdlData(candidate)
+                  setSelectedCandidateId(null)
+                  setSelectedApolloId(null)
+                  setSelectedApolloData(null)
+                  setSheetOpen(true)
+                } else if (candidate.candidate_id || candidate.source === 'local') {
                   setSelectedCandidateId(candidate.id)
                   setSelectedApolloId(null)
                   setSelectedApolloData(null)
+                  setSelectedPdlData(null)
                   setSheetOpen(true)
                 } else if (candidate.source === 'apollo' && candidate.apollo_id) {
                   // Apollo preview
@@ -1193,10 +1240,17 @@ export function SourcingCandidateTable({
       {/* Universal Candidate Profile Sheet */}
       <UniversalCandidateProfileSheet
         open={sheetOpen}
-        onOpenChange={setSheetOpen}
+        onOpenChange={(open) => {
+          setSheetOpen(open)
+          if (!open) setSelectedPdlData(null)
+        }}
         candidateId={selectedCandidateId}
         apolloId={selectedApolloId}
         apolloData={selectedApolloData}
+        pdlData={selectedPdlData}
+        onPdlAddToPipeline={selectedPdlData ? () => handleAddToPipeline(selectedPdlData) : undefined}
+        isPdlAdding={selectedPdlData ? loadingCandidates.has(selectedPdlData.id) : false}
+        isPdlAdded={selectedPdlData ? addedCandidates.has(selectedPdlData.id) : false}
         jobId={jobId}
         context="sourcing"
         hasPrev={hasPrev}
