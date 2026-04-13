@@ -94,6 +94,7 @@ export function SourcingProjectView({
           search_criteria: newCriteria as any,
           updated_at: new Date().toISOString(),
           sourcing_cache_expires_at: null,
+          pdl_cache_expires_at: null,
           sourcing_candidate_count: 0,
         })
         .eq('id', projectId)
