@@ -142,6 +142,7 @@ export function useSourcingProjectCandidates({
   const [matchingResult, setMatchingResult] = useState<SourcingProjectMatchingResult | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const isFetchingRef = useRef(false)
 
   const fetchMatchingCandidates = useCallback(async () => {
     if (!enabled || !projectId) {
@@ -149,6 +150,13 @@ export function useSourcingProjectCandidates({
       return
     }
 
+    // Guard against concurrent/duplicate calls
+    if (isFetchingRef.current) {
+      console.log('⏳ Skipping duplicate sourcing-search call (already in progress)')
+      return
+    }
+
+    isFetchingRef.current = true
     setIsLoading(true)
     setError(null)
 
@@ -182,6 +190,7 @@ export function useSourcingProjectCandidates({
       console.error('Error fetching matching candidates:', err)
       setError(err.message || 'Failed to fetch matching candidates')
     } finally {
+      isFetchingRef.current = false
       setIsLoading(false)
     }
   }, [projectId, limit, enabled])
