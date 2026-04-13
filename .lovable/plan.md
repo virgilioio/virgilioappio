@@ -1,60 +1,58 @@
 
 
-# Upgrade PDL Profile Sheet to Match Independent Candidate Layout
+# Fix PDL Credit Burn + Pass Through Full Profile Data
 
-## Current State
+## Problem
 
-The `PdlCandidateProfileSheet` is a narrow side drawer (`sm:max-w-lg`) with a simple vertical list of sections. The `IndependentCandidateProfileSheet` is a full-width sheet (`w-[96vw]`) with a two-column layout, accordion sections for work experience/education/certifications, career summary card, AI summary banner, and rich contact display.
+1. **100 credits burned**: The deployed `sourcing-search` edge function ignores the `pdl_limit: 5` param the frontend sends. It returned 100 PDL results = $28 worth of credits gone.
+2. **Incomplete profile data**: The edge function strips `experience[]`, `education[]`, `certifications[]`, `emails[]`, `phones[]`, and social URLs before returning results. The `PdlCandidateProfileSheet` UI is ready to display them but gets empty arrays.
 
-## What Changes
+## Root Cause
 
-Rebuild `PdlCandidateProfileSheet` to use the same full-width, two-column layout as `IndependentCandidateProfileSheet`, but sourced entirely from in-memory props (no DB fetch). Features that require DB persistence (edit, AI enrich, resume upload, attachments, URLs, job sidebar) are omitted or replaced with "Add to Pipeline" to unlock them.
+Both `sourcing-search` and `search-pdl-candidates` edge functions were deployed externally (by Claude) and don't exist in `supabase/functions/`. We can't edit them without creating them locally first.
 
-### 1. Expand `MatchedCandidate` type
+## Plan
 
-Add fields PDL already returns but the edge function currently discards:
+### 1. Create `sourcing-search` edge function locally
 
-- `experience`: array of `{ company, title, start_date, end_date, is_current, location, summary }`
-- `education`: array of `{ school, degree, field_of_study, start_date, end_date }`
-- `certifications`: array of `{ name, organization }` (if PDL provides)
-- `job_title_levels`: string[] (seniority indicators)
-- `industry`: string
-- `github_url`, `twitter_url`, `website_url`
-- `emails`: array of `{ address, type }` (PDL returns multiple)
-- `phones`: array of `{ number, type }`
+Create `supabase/functions/sourcing-search/index.ts` — replaces the remote version. This function:
 
-### 2. Update edge function mapping
+- Reads `{ sourcing_project_id, limit, pdl_limit }` from request body
+- Fetches the project's `search_criteria` from DB
+- Calls `search-pdl-candidates` and `search-apollo-candidates` in parallel via `supabase.functions.invoke()`
+- **Enforces `pdl_limit`** (default 5, max 10) — caps what gets sent to the PDL function
+- Merges results, deduplicates by LinkedIn URL, PDL candidates first
+- Returns `{ candidates, source_breakdown, search_metadata }`
 
-In the deployed `sourcing-search` (or `search-pdl-candidates`) edge function, pass through the full `experience[]`, `education[]`, and additional fields from the PDL API response instead of discarding them. This costs zero additional credits — the data is already in the response.
+### 2. Create `search-pdl-candidates` edge function locally
 
-### 3. Rebuild `PdlCandidateProfileSheet`
+Create `supabase/functions/search-pdl-candidates/index.ts` — replaces the remote version:
 
-Mirror the `IndependentCandidateProfileSheet` layout:
+- Receives search criteria + `limit` (hard-capped at 10)
+- Calls PDL Person Search API
+- **Passes through ALL response fields** including `experience[]`, `education[]`, `certifications[]`, `emails[]`, `phones[]`, `github_url`, `twitter_url`, `job_title_levels[]`
+- Maps to the expanded `MatchedCandidate` shape
 
-- **Full-width sheet** (`w-[96vw]`)
-- **Header**: Name with purple period, LinkedIn button, "Add to Pipeline" button, prev/next nav, PDL badge
-- **Two-column layout**:
-  - **Left column**: 
-    - `CandidateNameCard` (email/phone display with copy buttons)
-    - Summary section (using `ProfileSummaryMarkdown` if available)
-    - Skills (using `EnhancedSkillBadge`)
-    - Work Experience (reuse `CandidateWorkExperienceComponent` — map PDL experience array to its interface)
-    - Education (reuse `CandidateEducationComponent`)
-  - **Right column**:
-    - Candidate Details card (emails, phones, LinkedIn, location)
-    - Career Summary card (current title, company, years experience, industry)
+### 3. Verify PDL_API_KEY secret
 
-Sections that don't apply to unsaved PDL candidates (resume, attachments, URLs, AI enrich, edit, job sidebar) are simply not rendered.
+Check if `PDL_API_KEY` is already set. If not, prompt you to add it before deploying.
 
-### 4. Update `UniversalCandidateProfileSheet`
+### 4. Deploy and test both functions
 
-No changes needed — already routes to `PdlCandidateProfileSheet` when `pdlData` is present.
+Deploy locally-managed versions which will replace the remote ones. Test with a small search to verify:
+- PDL results capped at 5
+- Full profile data (experience, education) comes through
+- Profile sheet displays the rich data
 
 ## Files
 
 | File | Action |
 |------|--------|
-| `src/hooks/useSourcingProjectCandidates.ts` | **Edit** — expand `MatchedCandidate` with experience/education/extra fields |
-| `src/components/candidates/PdlCandidateProfileSheet.tsx` | **Rewrite** — full-width two-column layout matching Independent sheet |
-| Edge function (deployed) | **Edit** — pass through experience[], education[], extra PDL fields |
+| `supabase/functions/sourcing-search/index.ts` | **Create** — orchestrator with enforced PDL cap |
+| `supabase/functions/search-pdl-candidates/index.ts` | **Create** — PDL API wrapper, full field passthrough |
+
+## Cost Impact
+
+- Before: 100 PDL results per search = ~$28
+- After: 5 PDL results per search = ~$1.40 (configurable up to 10 = $2.80)
 
