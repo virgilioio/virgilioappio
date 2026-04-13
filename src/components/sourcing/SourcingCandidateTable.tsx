@@ -470,12 +470,13 @@ export function SourcingCandidateTable({
       if (isPdlCandidate(candidate) && !candidate.candidate_id) {
         const { data: { user } } = await supabase.auth.getUser()
         
-        // Get org id from user profile
-        const { data: profile } = await (supabase
+        // Get org id from user profile  
+        const profileQuery = supabase
           .from('profiles')
           .select('organization_id')
           .eq('id', user!.id)
-          .single() as any)
+          .single()
+        const { data: profile } = await (profileQuery as unknown as Promise<{ data: { organization_id: string } | null }>)
 
         if (!profile?.organization_id) throw new Error('No organization found')
 
