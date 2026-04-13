@@ -471,11 +471,11 @@ export function SourcingCandidateTable({
         const { data: { user } } = await supabase.auth.getUser()
         
         // Get org id from user profile
-        const { data: profile } = await supabase
+        const { data: profile } = await (supabase
           .from('profiles')
           .select('organization_id')
           .eq('id', user!.id)
-          .single()
+          .single() as any)
 
         if (!profile?.organization_id) throw new Error('No organization found')
 
