@@ -1248,7 +1248,7 @@ export function SourcingCandidateTable({
         candidateId={selectedCandidateId}
         apolloId={selectedApolloId}
         apolloData={selectedApolloData}
-        pdlData={selectedPdlData}
+        pdlData={selectedPdlData as any}
         onPdlAddToPipeline={selectedPdlData ? () => handleAddToPipeline(selectedPdlData) : undefined}
         isPdlAdding={selectedPdlData ? loadingCandidates.has(selectedPdlData.id) : false}
         isPdlAdded={selectedPdlData ? addedCandidates.has(selectedPdlData.id) : false}

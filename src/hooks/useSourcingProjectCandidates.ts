@@ -23,7 +23,7 @@ export interface MatchedCandidate {
   enriched_at?: string | null
   current_company?: string
   current_role?: string
-  created_at: string
+  created_at?: string
   first_viewed_by?: Record<string, string> | null
   // PDL-specific fields
   is_preview?: boolean
