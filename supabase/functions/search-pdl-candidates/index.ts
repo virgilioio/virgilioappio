@@ -30,8 +30,7 @@ function buildPdlQuery(criteria: SearchCriteria): Record<string, any> {
       bool: {
         should: criteria.title_keywords.map(title => ({
           term: { job_title: title }
-        })),
-        minimum_should_match: 1
+        }))
       }
     });
   }
@@ -64,7 +63,7 @@ function buildPdlQuery(criteria: SearchCriteria): Record<string, any> {
       }
     }
     if (locationClauses.length) {
-      must.push({ bool: { should: locationClauses, minimum_should_match: 1 } });
+      must.push({ bool: { should: locationClauses } });
     }
   }
 
@@ -74,8 +73,7 @@ function buildPdlQuery(criteria: SearchCriteria): Record<string, any> {
       bool: {
         should: criteria.skills.map(skill => ({
           term: { skills: skill }
-        })),
-        minimum_should_match: 1
+        }))
       }
     });
   }
@@ -92,8 +90,7 @@ function buildPdlQuery(criteria: SearchCriteria): Record<string, any> {
       bool: {
         should: allCompanies.map(company => ({
           term: { job_company_name: company }
-        })),
-        minimum_should_match: 1
+        }))
       }
     });
   }
