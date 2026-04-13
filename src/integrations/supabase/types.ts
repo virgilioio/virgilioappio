@@ -4495,6 +4495,7 @@ export type Database = {
         Row: {
           apollo_id: string | null
           archived_at: string | null
+          certifications: Json | null
           collected_at: string | null
           company_industry: string | null
           company_url: string | null
@@ -4506,27 +4507,44 @@ export type Database = {
           created_at: string | null
           current_company: string | null
           current_title: string | null
+          education: Json | null
+          emails: Json | null
+          experience: Json | null
           experience_count: number | null
           experience_location: string | null
           first_name: string | null
           follower_count: number | null
           full_name: string
+          github_url: string | null
           has_email: boolean | null
           has_location: boolean | null
           has_phone: boolean | null
           headline: string | null
           id: string
           industry: string | null
+          job_title_levels: Json | null
           last_name_obfuscated: string | null
+          linkedin_url: string | null
           location: string | null
+          location_city: string | null
+          location_country: string | null
+          location_state: string | null
           match_score: number | null
+          pdl_id: string | null
+          phones: Json | null
           profile_url: string | null
+          skills: Json | null
+          source: string
           sourcing_project_id: string
           status: string
+          summary: string | null
+          twitter_url: string | null
+          website_url: string | null
         }
         Insert: {
           apollo_id?: string | null
           archived_at?: string | null
+          certifications?: Json | null
           collected_at?: string | null
           company_industry?: string | null
           company_url?: string | null
@@ -4538,27 +4556,44 @@ export type Database = {
           created_at?: string | null
           current_company?: string | null
           current_title?: string | null
+          education?: Json | null
+          emails?: Json | null
+          experience?: Json | null
           experience_count?: number | null
           experience_location?: string | null
           first_name?: string | null
           follower_count?: number | null
           full_name: string
+          github_url?: string | null
           has_email?: boolean | null
           has_location?: boolean | null
           has_phone?: boolean | null
           headline?: string | null
           id?: string
           industry?: string | null
+          job_title_levels?: Json | null
           last_name_obfuscated?: string | null
+          linkedin_url?: string | null
           location?: string | null
+          location_city?: string | null
+          location_country?: string | null
+          location_state?: string | null
           match_score?: number | null
+          pdl_id?: string | null
+          phones?: Json | null
           profile_url?: string | null
+          skills?: Json | null
+          source?: string
           sourcing_project_id: string
           status?: string
+          summary?: string | null
+          twitter_url?: string | null
+          website_url?: string | null
         }
         Update: {
           apollo_id?: string | null
           archived_at?: string | null
+          certifications?: Json | null
           collected_at?: string | null
           company_industry?: string | null
           company_url?: string | null
@@ -4570,23 +4605,39 @@ export type Database = {
           created_at?: string | null
           current_company?: string | null
           current_title?: string | null
+          education?: Json | null
+          emails?: Json | null
+          experience?: Json | null
           experience_count?: number | null
           experience_location?: string | null
           first_name?: string | null
           follower_count?: number | null
           full_name?: string
+          github_url?: string | null
           has_email?: boolean | null
           has_location?: boolean | null
           has_phone?: boolean | null
           headline?: string | null
           id?: string
           industry?: string | null
+          job_title_levels?: Json | null
           last_name_obfuscated?: string | null
+          linkedin_url?: string | null
           location?: string | null
+          location_city?: string | null
+          location_country?: string | null
+          location_state?: string | null
           match_score?: number | null
+          pdl_id?: string | null
+          phones?: Json | null
           profile_url?: string | null
+          skills?: Json | null
+          source?: string
           sourcing_project_id?: string
           status?: string
+          summary?: string | null
+          twitter_url?: string | null
+          website_url?: string | null
         }
         Relationships: [
           {
@@ -4615,6 +4666,7 @@ export type Database = {
           last_search_at: string | null
           name: string
           organization_id: string
+          pdl_cache_expires_at: string | null
           search_criteria: Json
           sourcing_cache_expires_at: string | null
           sourcing_candidate_count: number | null
@@ -4638,6 +4690,7 @@ export type Database = {
           last_search_at?: string | null
           name: string
           organization_id: string
+          pdl_cache_expires_at?: string | null
           search_criteria?: Json
           sourcing_cache_expires_at?: string | null
           sourcing_candidate_count?: number | null
@@ -4661,6 +4714,7 @@ export type Database = {
           last_search_at?: string | null
           name?: string
           organization_id?: string
+          pdl_cache_expires_at?: string | null
           search_criteria?: Json
           sourcing_cache_expires_at?: string | null
           sourcing_candidate_count?: number | null
