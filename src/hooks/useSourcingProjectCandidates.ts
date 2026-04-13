@@ -4,7 +4,7 @@ import type { SearchCriteria } from '@/types/sourcing'
 
 export interface MatchedCandidate {
   id: string
-  candidate_name: string
+  candidate_name?: string
   skills?: string[]
   standardized_skills?: string[]
   location_country?: string | null
