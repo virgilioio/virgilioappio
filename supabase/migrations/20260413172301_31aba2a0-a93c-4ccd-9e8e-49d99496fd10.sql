@@ -1,0 +1,1 @@
+UPDATE public.sourcing_projects SET pdl_cache_expires_at = NULL WHERE pdl_cache_expires_at IS NOT NULL;
