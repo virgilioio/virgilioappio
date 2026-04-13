@@ -109,6 +109,7 @@ export function SourcingCandidateTable({
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
   const [selectedApolloId, setSelectedApolloId] = useState<string | null>(null)
   const [selectedApolloData, setSelectedApolloData] = useState<any>(null)
+  const [selectedPdlData, setSelectedPdlData] = useState<MatchedCandidate | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const { isCollectDisabled } = useSourcingCreditWarnings()
   const [bannerDismissed, setBannerDismissed] = useState(false)
@@ -173,6 +174,8 @@ export function SourcingCandidateTable({
   // Track current candidate index for navigation
   const currentIndex = selectedApolloId 
     ? sortedData.findIndex(c => c.apollo_id === selectedApolloId)
+    : selectedPdlData
+    ? sortedData.findIndex(c => c.id === selectedPdlData.id)
     : sortedData.findIndex(c => c.id === selectedCandidateId)
   
   const hasPrev = currentIndex > 0
@@ -183,12 +186,19 @@ export function SourcingCandidateTable({
     if (currentIndex > 0) {
       const prevCandidate = sortedData[currentIndex - 1]
       
-      if (prevCandidate.source === 'pdl' || prevCandidate.candidate_id || prevCandidate.source === 'local') {
+      if (isPdlCandidate(prevCandidate)) {
+        setSelectedPdlData(prevCandidate)
+        setSelectedCandidateId(null)
+        setSelectedApolloId(null)
+        setSelectedApolloData(null)
+      } else if (prevCandidate.candidate_id || prevCandidate.source === 'local') {
         setSelectedCandidateId(prevCandidate.id)
         setSelectedApolloId(null)
         setSelectedApolloData(null)
+        setSelectedPdlData(null)
       } else if (prevCandidate.source === 'apollo' && prevCandidate.apollo_id) {
         setSelectedCandidateId(null)
+        setSelectedPdlData(null)
         setSelectedApolloId(prevCandidate.apollo_id)
         setSelectedApolloData({
           candidate_name: getDisplayName(prevCandidate),
@@ -207,7 +217,6 @@ export function SourcingCandidateTable({
           company_website: prevCandidate.company_website,
           company_industry: prevCandidate.company_industry,
           experience_location: prevCandidate.experience_location,
-          // Availability flags
           has_email: prevCandidate.has_email,
           has_phone: prevCandidate.has_phone,
           has_location: prevCandidate.has_location
@@ -226,12 +235,19 @@ export function SourcingCandidateTable({
     if (currentIndex < sortedData.length - 1) {
       const nextCandidate = sortedData[currentIndex + 1]
       
-      if (nextCandidate.source === 'pdl' || nextCandidate.candidate_id || nextCandidate.source === 'local') {
+      if (isPdlCandidate(nextCandidate)) {
+        setSelectedPdlData(nextCandidate)
+        setSelectedCandidateId(null)
+        setSelectedApolloId(null)
+        setSelectedApolloData(null)
+      } else if (nextCandidate.candidate_id || nextCandidate.source === 'local') {
         setSelectedCandidateId(nextCandidate.id)
         setSelectedApolloId(null)
         setSelectedApolloData(null)
+        setSelectedPdlData(null)
       } else if (nextCandidate.source === 'apollo' && nextCandidate.apollo_id) {
         setSelectedCandidateId(null)
+        setSelectedPdlData(null)
         setSelectedApolloId(nextCandidate.apollo_id)
         setSelectedApolloData({
           candidate_name: getDisplayName(nextCandidate),
@@ -250,7 +266,6 @@ export function SourcingCandidateTable({
           company_website: nextCandidate.company_website,
           company_industry: nextCandidate.company_industry,
           experience_location: nextCandidate.experience_location,
-          // Availability flags
           has_email: nextCandidate.has_email,
           has_phone: nextCandidate.has_phone,
           has_location: nextCandidate.has_location
