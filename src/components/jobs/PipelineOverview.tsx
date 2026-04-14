@@ -614,6 +614,19 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
         </div>
       )}
 
+      {/* Filter chips */}
+      <div className="flex flex-wrap items-center gap-2">
+        <FilterChipPopover
+          label="Favorite"
+          options={[
+            { value: 'yes', label: 'Favorites' },
+            { value: 'no', label: 'Not Favorites' },
+          ]}
+          selectedValues={favoriteFilter}
+          onSelectionChange={setFavoriteFilter}
+        />
+      </div>
+
       {/* Unified loading gate: show skeleton only on initial load; after first render, keep board mounted */}
       {(!hasRenderedOnce.current && (isLoadingPlan || isLoadingCandidates || isStatusLoading)) ? (
         <div className="flex gap-4 overflow-hidden pb-2">
