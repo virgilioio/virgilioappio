@@ -5970,7 +5970,6 @@ export type Database = {
         Args: { table_name: string; term_name: string }
         Returns: undefined
       }
-      is_child_organization: { Args: { org_id: string }; Returns: boolean }
       is_email_suppressed: { Args: { p_email: string }; Returns: boolean }
       is_org_owner: { Args: { p_org_id: string }; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
