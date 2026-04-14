@@ -288,6 +288,21 @@ const stageHasAutomation = useMemo(() => {
     await deleteAttachment(resumeAttachment.id, resumeAttachment.file_url)
   }
 
+  const handleToggleFavorite = async () => {
+    if (!associationId) return
+    const newValue = !isFavorite
+    setIsFavorite(newValue)
+    const { error } = await supabase
+      .from('job_candidate_associations')
+      .update({ is_favorite: newValue } as any)
+      .eq('id', associationId)
+    if (error) {
+      setIsFavorite(!newValue)
+      toast({ title: 'Error', description: 'Failed to update favorite status.', variant: 'destructive' })
+    }
+    onStageChanged?.()
+  }
+
   // WhatsApp template handler — first click per association resolves the template
   const handleWhatsAppClick = async (phone: string) => {
     // If no template, no association, or already sent — open plain URL
