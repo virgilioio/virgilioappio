@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { differenceInDays } from 'date-fns'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -321,6 +322,7 @@ export function JobsTable({
                       <TableHead>Job Title</TableHead>
                       <TableHead>Organization</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Days Open</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -343,6 +345,9 @@ export function JobsTable({
                           <Badge variant={getStatusBadgeVariant(job.status)}>
                             {job.status}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {differenceInDays(new Date(), new Date(job.created_at))}d
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center justify-end">
