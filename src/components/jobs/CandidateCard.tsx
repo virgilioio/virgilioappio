@@ -271,10 +271,10 @@ export default function CandidateCard(props: CandidateCardProps) {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 min-w-0">
+              <div className="font-medium text-sm text-text-primary truncate">{candidateName}</div>
               {props.isFavorite && (
                 <Heart className="h-3.5 w-3.5 fill-red-500 text-red-500 flex-shrink-0" />
               )}
-              <div className="font-medium text-sm text-text-primary truncate">{candidateName}</div>
             </div>
             <div className="flex flex-col gap-0.5 mt-1">
               {linkedinUrl ? (
