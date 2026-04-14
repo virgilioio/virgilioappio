@@ -120,6 +120,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
 
   const [activeId, setActiveId] = useState<string | null>(null)
   const [internalViewMode, setInternalViewMode] = useState<'board' | 'list'>('board')
+  const [favoriteFilter, setFavoriteFilter] = useState<string[]>([])
   const currentView = controlledView ?? internalViewMode
   const setCurrentView = onViewModeChange ?? setInternalViewMode
 
