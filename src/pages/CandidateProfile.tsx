@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMarkdown'
-import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, FileText, ChevronLeft, ChevronRight, Clock, Download, Briefcase } from 'lucide-react'
+import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, FileText, ChevronLeft, ChevronRight, Clock, Download, Briefcase, Heart } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
 // removed unused LinkedInFilled import (now handled inside CandidateNameCard)
 import { PermissionGate } from '@/components/auth/PermissionGate'
