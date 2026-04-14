@@ -17,7 +17,7 @@ import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import type { CandidateCertification } from '@/components/candidates/CandidateCertifications'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign, MessageSquare, UserRound } from 'lucide-react'
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign, MessageSquare, UserRound, Heart } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -1051,6 +1051,23 @@ const stageHasAutomation = useMemo(() => {
                     {candidate.candidate_name}
                     <span className="text-purple-period">.</span>
                   </h2>
+                  {jobId && (
+                    <button
+                      type="button"
+                      onClick={handleToggleFavorite}
+                      className="p-1 rounded-md hover:bg-muted transition-colors"
+                      title={isFavorite ? 'Remove from favorites' : 'Mark as favorite'}
+                    >
+                      <Heart
+                        className={cn(
+                          'h-5 w-5 transition-colors',
+                          isFavorite
+                            ? 'fill-red-500 text-red-500'
+                            : 'text-muted-foreground hover:text-red-400'
+                        )}
+                      />
+                    </button>
+                  )}
                    <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -1252,8 +1269,6 @@ const stageHasAutomation = useMemo(() => {
                      <CandidateNameCard
                        email={candidate.email}
                        phone={candidate.phone}
-                       isFavorite={isFavorite}
-                       onToggleFavorite={handleToggleFavorite}
                         tabs={[
                           ...((associationStatus === 'offer' || associationStatus === 'hired')
                             ? [{ value: 'offer', label: 'Offer', Icon: FileText }]
