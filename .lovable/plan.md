@@ -1,70 +1,38 @@
 
 
-# Fix Job Creation RLS Error for Workspace Owners
+# Fix Job Creation: Drop the Broken CHECK Constraint
 
-## Root Cause
+## Root Cause (confirmed live)
 
-The `check_org_hierarchy_role_access` function queries the `organizations` table directly to resolve parent/child relationships. Despite being `SECURITY DEFINER`, this triggers RLS evaluation errors on the `organizations` table during PostgREST's INSERT...RETURNING flow.
-
-Meanwhile, `user_is_workspace_owner` works fine because it uses **tenant-based matching** (`members.tenant_id = organizations.tenant_id`) instead of querying organization hierarchy.
-
-There's also a legacy `jobs_insert_by_org_roles` policy that only matches direct org membership (not child orgs), so it fails for workspace owners inserting jobs into child departments.
-
-## Who should be able to create jobs
-
-Per the approved permissions model:
-- **Platform admins** — yes (any org)
-- **Workspace owners** — yes (their tenant)
-- **Admins** (system_role = 'admin') — yes (their tenant)
-- **Regular members** — no (unless assigned recruiter role, but that's job-level, not creation-level)
-
-## Fix: One Migration
-
-### 1. Replace `check_org_hierarchy_role_access` with tenant-based logic
-
-Rewrite the function to use the same safe pattern as `user_is_workspace_owner` — join `members` to `organizations` via `tenant_id` instead of querying `organizations` for parent IDs:
+Claude's analysis is 100% correct. The real problem was never the RLS policies — it's a **CHECK constraint** on the `jobs` table:
 
 ```sql
-CREATE OR REPLACE FUNCTION public.check_org_hierarchy_role_access(
-  _organization_id uuid, _required_role text
-) RETURNS boolean
-LANGUAGE sql STABLE SECURITY DEFINER
-SET search_path TO 'public'
-AS $$
-  SELECT EXISTS (
-    SELECT 1
-    FROM public.members m
-    JOIN public.organizations o ON m.tenant_id = o.tenant_id
-    WHERE o.id = _organization_id
-      AND m.user_id = auth.uid()
-      AND m.user_status = 'active'
-      AND (
-        -- workspace_owner and platform_admin always pass
-        m.user_type IN ('workspace_owner', 'platform_admin')
-        OR (
-          CASE WHEN _required_role = 'admin'
-            THEN m.system_role = 'admin'
-            ELSE m.system_role IN ('admin', 'member')
-          END
-        )
-      )
-  )
-$$;
+CHECK (is_child_organization(organization_id))
 ```
 
-This eliminates all direct `organizations` queries that trigger RLS recursion.
+The helper `is_child_organization(org_id)` is:
+- **NOT** `SECURITY DEFINER` — runs as the caller
+- Queries `organizations` directly — subject to RLS
+- PostgreSQL refuses to evaluate a CHECK whose subquery crosses an RLS boundary for non-superusers → raises `42501`
 
-### 2. Drop legacy `jobs_insert_by_org_roles` policy
+The trigger `jobs_before_insert` already enforces the identical rule (`parent_organization_id IS NULL → raise exception`) and IS `SECURITY DEFINER`, so it works fine.
 
-This policy only matches direct org membership and doesn't support child departments. It's redundant with `jobs_insert_consolidated` and causes confusion.
+All previous patches (rewriting `check_org_hierarchy_role_access`, `user_is_member_of_org_hierarchy`, `organizations_select_consolidated`) were fixing the wrong thing.
 
-### 3. No changes needed to `jobs_insert_consolidated`, `jobs_select_consolidated`, or `jobs_update_consolidated`
+## Fix: One Migration, Two Statements
 
-They already call `check_org_hierarchy_role_access` — once that function is fixed, they'll all work correctly.
+```sql
+ALTER TABLE public.jobs DROP CONSTRAINT IF EXISTS jobs_must_reference_child_org;
+DROP FUNCTION IF EXISTS public.is_child_organization(uuid);
+```
 
-### 4. No frontend changes needed
+That's it. The trigger stays. No new code. No frontend changes.
+
+## About Bug B (tenants with zero child orgs)
+
+8 SaaS tenants have no child orgs. Even after this fix, the `jobs_before_insert` trigger will reject their inserts with error `23514` ("must reference a child organization"). This is a separate design decision — should we auto-create a default department during signup, or allow flat workspaces? We can address that as a follow-up once the immediate demo blocker is resolved.
 
 ## Scope
-- 1 database migration
+- 1 migration (2 SQL statements)
 - 0 frontend files changed
 
