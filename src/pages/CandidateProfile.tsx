@@ -349,6 +349,8 @@ export default function CandidateProfile() {
                   name={candidate.candidate_name}
                   linkedinUrl={candidate.linkedin_url}
                   badgeText={job?.title || undefined}
+                  isFavorite={isFavorite}
+                  onToggleFavorite={handleToggleFavorite}
                   tabs={[
                     { value: 'job', label: 'Job Overview', Icon: Briefcase },
                     { value: 'resume', label: 'Resume', Icon: FileText },
