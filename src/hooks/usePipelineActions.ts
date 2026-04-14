@@ -82,6 +82,7 @@ export function usePipelineActions() {
         status: (a as any).status ?? 'active',
         whatsapp_template_sent_at: (a as any).whatsapp_template_sent_at ?? null,
         ai_fit_score: (a as any).ai_fit_score ?? null,
+        is_favorite: (a as any).is_favorite ?? false,
       }
     })
 
