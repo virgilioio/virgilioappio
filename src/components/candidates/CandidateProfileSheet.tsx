@@ -1051,6 +1051,23 @@ const stageHasAutomation = useMemo(() => {
                     {candidate.candidate_name}
                     <span className="text-purple-period">.</span>
                   </h2>
+                  {jobId && (
+                    <button
+                      type="button"
+                      onClick={handleToggleFavorite}
+                      className="p-1 rounded-md hover:bg-muted transition-colors"
+                      title={isFavorite ? 'Remove from favorites' : 'Mark as favorite'}
+                    >
+                      <Heart
+                        className={cn(
+                          'h-5 w-5 transition-colors',
+                          isFavorite
+                            ? 'fill-red-500 text-red-500'
+                            : 'text-muted-foreground hover:text-red-400'
+                        )}
+                      />
+                    </button>
+                  )}
                    <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -1252,8 +1269,6 @@ const stageHasAutomation = useMemo(() => {
                      <CandidateNameCard
                        email={candidate.email}
                        phone={candidate.phone}
-                       isFavorite={isFavorite}
-                       onToggleFavorite={handleToggleFavorite}
                         tabs={[
                           ...((associationStatus === 'offer' || associationStatus === 'hired')
                             ? [{ value: 'offer', label: 'Offer', Icon: FileText }]

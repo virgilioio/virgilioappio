@@ -346,12 +346,29 @@ export default function CandidateProfile() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-lg">
               {/* Left Column - Header Card with Tab Bar and Independent Cards */}
               <div className="lg:col-span-2 space-y-md">
+                {/* Name header row */}
+                <div className="flex items-center gap-2 mb-md">
+                  <h1 className="font-poppins font-bold tracking-page-title text-text-primary text-4xl">
+                    {candidate.candidate_name}
+                    <span className="text-purple-period">.</span>
+                  </h1>
+                  <button
+                    type="button"
+                    onClick={handleToggleFavorite}
+                    className="p-1 rounded-md hover:bg-muted transition-colors"
+                    title={isFavorite ? 'Remove from favorites' : 'Mark as favorite'}
+                  >
+                    <Heart
+                      className={cn(
+                        'h-5 w-5 transition-colors',
+                        isFavorite
+                          ? 'fill-red-500 text-red-500'
+                          : 'text-muted-foreground hover:text-red-400'
+                      )}
+                    />
+                  </button>
+                </div>
                 <CandidateNameCard
-                  name={candidate.candidate_name}
-                  linkedinUrl={candidate.linkedin_url}
-                  badgeText={job?.title || undefined}
-                  isFavorite={isFavorite}
-                  onToggleFavorite={handleToggleFavorite}
                   tabs={[
                     { value: 'job', label: 'Job Overview', Icon: Briefcase },
                     { value: 'resume', label: 'Resume', Icon: FileText },
