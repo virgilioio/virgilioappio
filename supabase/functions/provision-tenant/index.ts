@@ -300,6 +300,30 @@ serve(async (req) => {
       userId: user.id 
     });
 
+    // 2b. Create default "General" department (child org) so jobs can be created
+    const deptId = crypto.randomUUID();
+    const { error: deptErr } = await supabase
+      .from("organizations")
+      .insert({
+        id: deptId,
+        name: "General",
+        org_kind: "department",
+        status: "active",
+        tenant_id: tenantId,
+        parent_organization_id: tenantId
+      });
+
+    if (deptErr) {
+      log(`❌ Failed to create default department [${requestId}]`, {
+        error: deptErr.message,
+        code: deptErr.code,
+        tenantId
+      });
+      throw new Error(`Failed to create default department: ${deptErr.message}`);
+    }
+
+    log(`✅ Created default department [${requestId}]`, { deptId, tenantId });
+
     // 3. Create first member using SECURITY DEFINER function (bypasses RLS)
     log(`👤 Creating first member via RPC [${requestId}]`, { 
       userId: user.id,
