@@ -2118,6 +2118,7 @@ export type Database = {
           hired_at: string | null
           hired_by: string | null
           id: string
+          is_favorite: boolean
           job_id: string
           notes: string | null
           offered_at: string | null
@@ -2150,6 +2151,7 @@ export type Database = {
           hired_at?: string | null
           hired_by?: string | null
           id?: string
+          is_favorite?: boolean
           job_id: string
           notes?: string | null
           offered_at?: string | null
@@ -2182,6 +2184,7 @@ export type Database = {
           hired_at?: string | null
           hired_by?: string | null
           id?: string
+          is_favorite?: boolean
           job_id?: string
           notes?: string | null
           offered_at?: string | null
