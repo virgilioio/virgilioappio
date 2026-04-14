@@ -426,15 +426,23 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     return statusA.sortTime - statusB.sortTime
   }, [statusMap])
 
+  // Filter by favorite
+  const filterByFavorite = useCallback((assoc: PipelineAssociation) => {
+    if (favoriteFilter.length === 0) return true
+    if (favoriteFilter.includes('yes') && assoc.is_favorite) return true
+    if (favoriteFilter.includes('no') && !assoc.is_favorite) return true
+    return false
+  }, [favoriteFilter])
+
   // Sorted candidates by stage (for board view rendering)
   const sortedByStage = useMemo(() => {
     const result: Record<string, PipelineAssociation[]> = {}
     for (const opt of stageOptions) {
-      const arr = (byStage[opt.jhsId] || []).slice().sort(sortByStatusPriority)
+      const arr = (byStage[opt.jhsId] || []).filter(filterByFavorite).slice().sort(sortByStatusPriority)
       result[opt.jhsId] = arr
     }
     return result
-  }, [byStage, stageOptions, sortByStatusPriority])
+  }, [byStage, stageOptions, sortByStatusPriority, filterByFavorite])
 
 
   // Flat list of candidates for list view
