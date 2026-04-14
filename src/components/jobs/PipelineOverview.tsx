@@ -451,6 +451,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   // List view helpers
   const [search, setSearch] = useState('')
   const [stageFilter, setStageFilter] = useState<string>('all')
+  const [favoriteFilter, setFavoriteFilter] = useState<string[]>([])
 
   const distinctStages = useMemo(() => {
     return Array.from(new Set(stageOptions.map(opt => opt.stage.stage_name))).filter(Boolean)
