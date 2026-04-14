@@ -16,6 +16,7 @@ export interface PipelineAssociation {
   status: 'active' | 'rejected' | 'hired' | 'offer' | string
   whatsapp_template_sent_at: string | null
   ai_fit_score?: number | null
+  is_favorite: boolean
 }
 
 /**
