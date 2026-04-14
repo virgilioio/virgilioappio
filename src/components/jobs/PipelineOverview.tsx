@@ -11,6 +11,8 @@ import DraggableCandidateCard from './DraggableCandidateCard'
 import DroppableStage from './DroppableStage'
 import CandidateProfileSheet from '@/components/candidates/CandidateProfileSheet'
 import { Button } from '@/components/ui/button'
+import { FilterChipPopover } from '@/components/ui/filter-chip-popover'
+import { MobileFilterDrawer } from '@/components/ui/mobile-filter-drawer'
 import { LayoutGrid, List, Zap } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { SortableHeader } from '@/components/ui/sortable-header'
@@ -118,6 +120,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
 
   const [activeId, setActiveId] = useState<string | null>(null)
   const [internalViewMode, setInternalViewMode] = useState<'board' | 'list'>('board')
+  const [favoriteFilter, setFavoriteFilter] = useState<string[]>([])
   const currentView = controlledView ?? internalViewMode
   const setCurrentView = onViewModeChange ?? setInternalViewMode
 
@@ -424,15 +427,23 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     return statusA.sortTime - statusB.sortTime
   }, [statusMap])
 
+  // Filter by favorite
+  const filterByFavorite = useCallback((assoc: PipelineAssociation) => {
+    if (favoriteFilter.length === 0) return true
+    if (favoriteFilter.includes('yes') && assoc.is_favorite) return true
+    if (favoriteFilter.includes('no') && !assoc.is_favorite) return true
+    return false
+  }, [favoriteFilter])
+
   // Sorted candidates by stage (for board view rendering)
   const sortedByStage = useMemo(() => {
     const result: Record<string, PipelineAssociation[]> = {}
     for (const opt of stageOptions) {
-      const arr = (byStage[opt.jhsId] || []).slice().sort(sortByStatusPriority)
+      const arr = (byStage[opt.jhsId] || []).filter(filterByFavorite).slice().sort(sortByStatusPriority)
       result[opt.jhsId] = arr
     }
     return result
-  }, [byStage, stageOptions, sortByStatusPriority])
+  }, [byStage, stageOptions, sortByStatusPriority, filterByFavorite])
 
 
   // Flat list of candidates for list view
@@ -603,6 +614,19 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
         </div>
       )}
 
+      {/* Filter chips */}
+      <div className="flex flex-wrap items-center gap-2">
+        <FilterChipPopover
+          label="Favorite"
+          options={[
+            { value: 'yes', label: 'Favorites', count: allAssociations.filter(a => a.is_favorite).length },
+            { value: 'no', label: 'Not Favorites', count: allAssociations.filter(a => !a.is_favorite).length },
+          ]}
+          selectedValues={favoriteFilter}
+          onSelectionChange={setFavoriteFilter}
+        />
+      </div>
+
       {/* Unified loading gate: show skeleton only on initial load; after first render, keep board mounted */}
       {(!hasRenderedOnce.current && (isLoadingPlan || isLoadingCandidates || isStatusLoading)) ? (
         <div className="flex gap-4 overflow-hidden pb-2">
@@ -728,6 +752,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                                 onCheckedChange={(v) => toggleSelect(assoc.id, !!v)}
                                 jobId={jobId}
                                 whatsappTemplateSentAt={assoc.whatsapp_template_sent_at}
+                                isFavorite={assoc.is_favorite}
                               />
                             </DraggableCandidateCard>
                           )

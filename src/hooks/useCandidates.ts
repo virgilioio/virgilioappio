@@ -51,6 +51,7 @@ export interface Candidate {
   notes: string | null
   job_id: string
   source: string | null
+  is_favorite: boolean
 }
 
 export interface CreateCandidateData {
@@ -91,6 +92,7 @@ async function fetchJobCandidates(jobId: string): Promise<Candidate[]> {
         current_stage_id,
         added_by,
         created_at,
+        is_favorite,
         candidates!inner (
           id,
           candidate_name,
@@ -151,7 +153,8 @@ async function fetchJobCandidates(jobId: string): Promise<Candidate[]> {
       first_viewed_by: null,
       notes: assoc.notes,
       job_id: jobId,
-      source: candidate.source || null
+      source: candidate.source || null,
+      is_favorite: (assoc as any).is_favorite ?? false,
     } as Candidate
   })
 }

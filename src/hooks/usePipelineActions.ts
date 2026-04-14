@@ -16,6 +16,7 @@ export interface PipelineAssociation {
   status: 'active' | 'rejected' | 'hired' | 'offer' | string
   whatsapp_template_sent_at: string | null
   ai_fit_score?: number | null
+  is_favorite: boolean
 }
 
 /**
@@ -29,7 +30,7 @@ export function usePipelineActions() {
     // 1) Load associations for job
     const { data: associations, error: assocError } = await supabase
       .from('job_candidate_associations')
-      .select('id, job_id, candidate_id, current_stage_id, pipeline_position, created_at, entered_stage_at, status, whatsapp_template_sent_at, ai_fit_score')
+      .select('id, job_id, candidate_id, current_stage_id, pipeline_position, created_at, entered_stage_at, status, whatsapp_template_sent_at, ai_fit_score, is_favorite')
       .eq('job_id', jobId)
       .order('pipeline_position', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false })
@@ -81,6 +82,7 @@ export function usePipelineActions() {
         status: (a as any).status ?? 'active',
         whatsapp_template_sent_at: (a as any).whatsapp_template_sent_at ?? null,
         ai_fit_score: (a as any).ai_fit_score ?? null,
+        is_favorite: (a as any).is_favorite ?? false,
       }
     })
 

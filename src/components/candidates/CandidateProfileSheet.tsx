@@ -146,6 +146,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const { updateAssociationStatus, moveAssociationToStage, createAssociationAndMove } = usePipelineActions()
   const [associationId, setAssociationId] = useState<string | null>(null)
   const [associationStatus, setAssociationStatus] = useState<'active' | 'rejected' | 'hired' | 'offer' | null>(null)
+  const [isFavorite, setIsFavorite] = useState(false)
   const [currentStageId, setCurrentStageId] = useState<string | null>(null)
   const [rejectionDetails, setRejectionDetails] = useState<{
     rejectedAt: string | null;
@@ -287,6 +288,21 @@ const stageHasAutomation = useMemo(() => {
     await deleteAttachment(resumeAttachment.id, resumeAttachment.file_url)
   }
 
+  const handleToggleFavorite = async () => {
+    if (!associationId) return
+    const newValue = !isFavorite
+    setIsFavorite(newValue)
+    const { error } = await supabase
+      .from('job_candidate_associations')
+      .update({ is_favorite: newValue } as any)
+      .eq('id', associationId)
+    if (error) {
+      setIsFavorite(!newValue)
+      toast({ title: 'Error', description: 'Failed to update favorite status.', variant: 'destructive' })
+    }
+    onStageChanged?.()
+  }
+
   // WhatsApp template handler — first click per association resolves the template
   const handleWhatsAppClick = async (phone: string) => {
     // If no template, no association, or already sent — open plain URL
@@ -354,6 +370,7 @@ const stageHasAutomation = useMemo(() => {
     setCandidate(null)
     setAssociationId(null)
     setAssociationStatus(null)
+    setIsFavorite(false)
     setCurrentStageId(null)
     setRejectionDetails(null)
     setOfferDetails(null)
@@ -477,7 +494,8 @@ const stageHasAutomation = useMemo(() => {
             offered_by,
             hired_at,
             hired_by,
-            whatsapp_template_sent_at
+            whatsapp_template_sent_at,
+            is_favorite
           `)
           .eq('job_id', jobId)
           .eq('candidate_id', candidateId)
@@ -486,6 +504,7 @@ const stageHasAutomation = useMemo(() => {
         setAssociationStatus((assoc?.status as any) ?? null)
         setCurrentStageId((assoc as any)?.current_stage_id ?? null)
         setWhatsAppTemplateSentAt((assoc as any)?.whatsapp_template_sent_at ?? null)
+        setIsFavorite((assoc as any)?.is_favorite ?? false)
         
         // Set rejection details if rejected
         if (assoc?.status === 'rejected' && assoc?.rejected_at) {
@@ -1233,6 +1252,8 @@ const stageHasAutomation = useMemo(() => {
                      <CandidateNameCard
                        email={candidate.email}
                        phone={candidate.phone}
+                       isFavorite={isFavorite}
+                       onToggleFavorite={handleToggleFavorite}
                         tabs={[
                           ...((associationStatus === 'offer' || associationStatus === 'hired')
                             ? [{ value: 'offer', label: 'Offer', Icon: FileText }]

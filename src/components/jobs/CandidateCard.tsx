@@ -4,7 +4,7 @@ import { format, parseISO, formatDistanceToNowStrict } from 'date-fns'
 import { Card } from '@/components/ui/card'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Calendar, Clock, FileText, CheckCircle, Send, Phone } from 'lucide-react'
+import { Calendar, Clock, FileText, CheckCircle, Send, Phone, Heart } from 'lucide-react'
 import { JobStage } from '@/hooks/useJobHiringPlan'
 import { Checkbox } from '@/components/ui/checkbox'
 import { supabase } from '@/lib/supabaseClient'
@@ -33,6 +33,7 @@ interface CandidateCardProps {
   onCheckedChange?: (checked: boolean) => void
   jobId?: string
   whatsappTemplateSentAt?: string | null
+  isFavorite?: boolean
 }
 
 export default function CandidateCard(props: CandidateCardProps) {
@@ -270,6 +271,9 @@ export default function CandidateCard(props: CandidateCardProps) {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 min-w-0">
+              {props.isFavorite && (
+                <Heart className="h-3.5 w-3.5 fill-red-500 text-red-500 flex-shrink-0" />
+              )}
               <div className="font-medium text-sm text-text-primary truncate">{candidateName}</div>
             </div>
             <div className="flex flex-col gap-0.5 mt-1">

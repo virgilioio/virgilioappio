@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
+import { Heart } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 
 export type CandidateNameCardTab = {
@@ -24,6 +25,8 @@ interface CandidateNameCardProps {
   email?: string | null
   phone?: string | null
   className?: string
+  isFavorite?: boolean
+  onToggleFavorite?: () => void
 }
 
 export function CandidateNameCard({
@@ -38,12 +41,34 @@ export function CandidateNameCard({
   email,
   phone,
   className,
+  isFavorite,
+  onToggleFavorite,
 }: CandidateNameCardProps) {
   return (
     <Card className={cn('bg-surface-primary border-border', className)}>
       <CardContent className="p-layout-md">
-        {rightActions && (
-          <div className="flex items-center justify-end gap-sm mb-6">{rightActions}</div>
+        {/* Favorite + Right Actions row */}
+        {(rightActions || onToggleFavorite) && (
+          <div className="flex items-center justify-between gap-sm mb-6">
+            {onToggleFavorite ? (
+              <button
+                type="button"
+                onClick={onToggleFavorite}
+                className="p-1 rounded-md hover:bg-muted transition-colors"
+                title={isFavorite ? 'Remove from favorites' : 'Mark as favorite'}
+              >
+                <Heart
+                  className={cn(
+                    'h-5 w-5 transition-colors',
+                    isFavorite
+                      ? 'fill-red-500 text-red-500'
+                      : 'text-muted-foreground hover:text-red-400'
+                  )}
+                />
+              </button>
+            ) : <div />}
+            {rightActions && <div className="flex items-center gap-sm">{rightActions}</div>}
+          </div>
         )}
 
         {/* Tabs */}

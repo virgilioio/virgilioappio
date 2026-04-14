@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMarkdown'
-import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, FileText, ChevronLeft, ChevronRight, Clock, Download, Briefcase } from 'lucide-react'
+import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, FileText, ChevronLeft, ChevronRight, Clock, Download, Briefcase, Heart } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
 // removed unused LinkedInFilled import (now handled inside CandidateNameCard)
 import { PermissionGate } from '@/components/auth/PermissionGate'
@@ -113,6 +113,7 @@ export default function CandidateProfile() {
           newCandidateName: foundCandidate.candidate_name
         })
         setCandidate(foundCandidate)
+        setLocalFavorite(null)
       }
     }
   }, [candidateId, candidates])
@@ -149,6 +150,21 @@ export default function CandidateProfile() {
     }
   }
 
+  const [localFavorite, setLocalFavorite] = useState<boolean | null>(null)
+  const isFavorite = localFavorite ?? candidate?.is_favorite ?? false
+
+  const handleToggleFavorite = async () => {
+    if (!candidate?.association_id) return
+    const newVal = !isFavorite
+    setLocalFavorite(newVal)
+    const { error } = await supabase
+      .from('job_candidate_associations')
+      .update({ is_favorite: newVal } as any)
+      .eq('id', candidate.association_id)
+    if (error) {
+      setLocalFavorite(!newVal)
+    }
+  }
 
   const handleEdit = () => {
     console.log('CandidateProfile - Edit button clicked:', {
@@ -334,6 +350,8 @@ export default function CandidateProfile() {
                   name={candidate.candidate_name}
                   linkedinUrl={candidate.linkedin_url}
                   badgeText={job?.title || undefined}
+                  isFavorite={isFavorite}
+                  onToggleFavorite={handleToggleFavorite}
                   tabs={[
                     { value: 'job', label: 'Job Overview', Icon: Briefcase },
                     { value: 'resume', label: 'Resume', Icon: FileText },
