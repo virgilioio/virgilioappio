@@ -149,8 +149,23 @@ export default function CandidateProfile() {
     }
   }
 
+  const [localFavorite, setLocalFavorite] = useState<boolean | null>(null)
+  const isFavorite = localFavorite ?? candidate?.is_favorite ?? false
 
-  const handleEdit = () => {
+  const handleToggleFavorite = async () => {
+    if (!candidate?.association_id) return
+    const newVal = !isFavorite
+    setLocalFavorite(newVal)
+    const { error } = await supabase
+      .from('job_candidate_associations')
+      .update({ is_favorite: newVal } as any)
+      .eq('id', candidate.association_id)
+    if (error) {
+      setLocalFavorite(!newVal)
+    }
+  }
+
+
     console.log('CandidateProfile - Edit button clicked:', {
       candidateId: candidateId,
       candidateFromState: candidate?.id,
