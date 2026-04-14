@@ -1,97 +1,70 @@
 
-## Immediate Fix Plan for the Still-Broken Job Creation Error
 
-## What I found
-The previous fix was incomplete.
+# Fix Job Creation RLS Error for Workspace Owners
 
-Live database state shows:
-- `organizations_select_consolidated` is already using the new `user_is_member_of_org_hierarchy(...)` helper.
-- But `jobs_insert_consolidated` is still using the older `check_org_hierarchy_role_access(organization_id, 'recruiter')`.
-- That older helper still queries `public.organizations` internally during the jobs insert permission check.
+## Root Cause
 
-So the failure is still happening in the job-create path because the jobs RLS logic is calling the old hierarchy helper, not because the UI is wrong.
+The `check_org_hierarchy_role_access` function queries the `organizations` table directly to resolve parent/child relationships. Despite being `SECURITY DEFINER`, this triggers RLS evaluation errors on the `organizations` table during PostgREST's INSERT...RETURNING flow.
 
-## Root cause
-The create flow in `useJobs.ts` inserts into `jobs`, and the active jobs INSERT policy evaluates:
+Meanwhile, `user_is_workspace_owner` works fine because it uses **tenant-based matching** (`members.tenant_id = organizations.tenant_id`) instead of querying organization hierarchy.
+
+There's also a legacy `jobs_insert_by_org_roles` policy that only matches direct org membership (not child orgs), so it fails for workspace owners inserting jobs into child departments.
+
+## Who should be able to create jobs
+
+Per the approved permissions model:
+- **Platform admins** — yes (any org)
+- **Workspace owners** — yes (their tenant)
+- **Admins** (system_role = 'admin') — yes (their tenant)
+- **Regular members** — no (unless assigned recruiter role, but that's job-level, not creation-level)
+
+## Fix: One Migration
+
+### 1. Replace `check_org_hierarchy_role_access` with tenant-based logic
+
+Rewrite the function to use the same safe pattern as `user_is_workspace_owner` — join `members` to `organizations` via `tenant_id` instead of querying `organizations` for parent IDs:
 
 ```sql
-check_org_hierarchy_role_access(organization_id, 'recruiter')
+CREATE OR REPLACE FUNCTION public.check_org_hierarchy_role_access(
+  _organization_id uuid, _required_role text
+) RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.members m
+    JOIN public.organizations o ON m.tenant_id = o.tenant_id
+    WHERE o.id = _organization_id
+      AND m.user_id = auth.uid()
+      AND m.user_status = 'active'
+      AND (
+        -- workspace_owner and platform_admin always pass
+        m.user_type IN ('workspace_owner', 'platform_admin')
+        OR (
+          CASE WHEN _required_role = 'admin'
+            THEN m.system_role = 'admin'
+            ELSE m.system_role IN ('admin', 'member')
+          END
+        )
+      )
+  )
+$$;
 ```
 
-That helper still depends on direct reads from `organizations`, which is exactly why the error remains:
+This eliminates all direct `organizations` queries that trigger RLS recursion.
 
-```text
-42501: query would be affected by row-level security policy for table "organizations"
-```
+### 2. Drop legacy `jobs_insert_by_org_roles` policy
 
-In short:
-- `organizations` policy was patched
-- `jobs` policy path was not fully patched
-- SaaS users still hit the old helper during job creation
+This policy only matches direct org membership and doesn't support child departments. It's redundant with `jobs_insert_consolidated` and causes confusion.
 
-## Fix to implement
+### 3. No changes needed to `jobs_insert_consolidated`, `jobs_select_consolidated`, or `jobs_update_consolidated`
 
-### 1. Patch the hierarchy helper used by jobs RLS
-Create a new migration that replaces `check_org_hierarchy_role_access(...)` with an RLS-safe version.
+They already call `check_org_hierarchy_role_access` — once that function is fixed, they'll all work correctly.
 
-New version should:
-- avoid querying `organizations` in a way that depends on caller RLS
-- rely on security-definer-safe membership/hierarchy logic
-- support current role model correctly:
-  - workspace owners
-  - admins
-  - members/recruiters as intended
-
-Best approach:
-- use `user_is_member_of_org_hierarchy(_organization_id)` for hierarchy reachability
-- query `members` once for the caller’s role/system role
-- evaluate role inheritance in the function itself
-- keep `SECURITY DEFINER` and explicit `search_path`
-
-### 2. Recreate the jobs policies to use the safe path consistently
-Update live `jobs` policies so they no longer depend on the broken helper behavior.
-
-Specifically review and recreate:
-- `jobs_insert_consolidated`
-- `jobs_select_consolidated`
-- `jobs_update_consolidated`
-
-Goal:
-- job creation in child departments works for SaaS workspace owners/admins
-- existing visibility/edit behavior does not regress
-
-### 3. Clean up stale overlapping policy/function behavior
-There are leftover overlapping policies/helpers on `organizations` and `jobs`.
-I’ll keep the urgent fix narrow, but I should also remove or normalize any stale policy pieces that can keep reintroducing confusion in future RLS evaluations.
-
-Priority cleanup candidate:
-- review whether `org_owners_can_view_orgs` should remain alongside `organizations_select_consolidated`
-
-### 4. Verify the exact failing scenarios after the migration
-Test the flows that matter most:
-- SaaS workspace owner creates a job in their root org
-- SaaS workspace owner creates a job in a child department
-- platform admin still creates jobs successfully
-- jobs list still loads after creation
-- no new 403/42501 errors in the wizard
-
-## Files / areas involved
-- New Supabase migration
-- possibly no frontend code changes required for the core fix
-- optional follow-up hardening in:
-  - `src/hooks/useJobs.ts`
-
-## Technical details
-Current live evidence:
-- `organizations_select_consolidated` already includes `user_is_member_of_org_hierarchy(id)`
-- `jobs_insert_consolidated` still uses:
-```sql
-check_org_hierarchy_role_access(organization_id, 'recruiter'::text)
-```
-- live `check_org_hierarchy_role_access(...)` still reads from `public.organizations`
-- the affected SaaS user is a `workspace_owner` in the Motive tenant, with child departments present, so this should work once the jobs helper is fixed
+### 4. No frontend changes needed
 
 ## Scope
-- 1 migration
-- likely no UI changes
-- focused RLS repair for the job creation path
+- 1 database migration
+- 0 frontend files changed
+
