@@ -165,7 +165,7 @@ export default function CandidateProfile() {
     }
   }
 
-
+  const handleEdit = () => {
     console.log('CandidateProfile - Edit button clicked:', {
       candidateId: candidateId,
       candidateFromState: candidate?.id,
