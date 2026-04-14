@@ -619,8 +619,8 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
         <FilterChipPopover
           label="Favorite"
           options={[
-            { value: 'yes', label: 'Favorites' },
-            { value: 'no', label: 'Not Favorites' },
+            { value: 'yes', label: 'Favorites', count: allAssociations.filter(a => a.is_favorite).length },
+            { value: 'no', label: 'Not Favorites', count: allAssociations.filter(a => !a.is_favorite).length },
           ]}
           selectedValues={favoriteFilter}
           onSelectionChange={setFavoriteFilter}
