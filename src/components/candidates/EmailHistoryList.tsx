@@ -102,7 +102,7 @@ export function EmailHistoryList({ candidateId, jobId, onReply, onForward }: Ema
       {emails.map((email) => (
         <EmailHistoryCard 
           key={email.id} 
-          email={email}
+          email={{...email, attachments: Array.isArray(email.attachments) ? email.attachments : null}}
           onReply={onReply}
           onForward={onForward}
         />
