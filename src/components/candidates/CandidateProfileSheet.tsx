@@ -1252,6 +1252,8 @@ const stageHasAutomation = useMemo(() => {
                      <CandidateNameCard
                        email={candidate.email}
                        phone={candidate.phone}
+                       isFavorite={isFavorite}
+                       onToggleFavorite={handleToggleFavorite}
                         tabs={[
                           ...((associationStatus === 'offer' || associationStatus === 'hired')
                             ? [{ value: 'offer', label: 'Offer', Icon: FileText }]

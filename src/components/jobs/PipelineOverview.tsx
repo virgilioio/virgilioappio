@@ -728,6 +728,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                                 onCheckedChange={(v) => toggleSelect(assoc.id, !!v)}
                                 jobId={jobId}
                                 whatsappTemplateSentAt={assoc.whatsapp_template_sent_at}
+                                isFavorite={assoc.is_favorite}
                               />
                             </DraggableCandidateCard>
                           )
