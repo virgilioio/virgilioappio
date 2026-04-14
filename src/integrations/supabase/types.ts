@@ -6097,6 +6097,10 @@ export type Database = {
         Args: { check_tenant_id: string }
         Returns: boolean
       }
+      user_is_member_of_org_hierarchy: {
+        Args: { target_org_id: string }
+        Returns: boolean
+      }
       user_is_workspace_owner: { Args: { org_id: string }; Returns: boolean }
       user_is_workspace_owner_in_tenant: {
         Args: { tenant_id_param: string }
