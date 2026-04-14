@@ -1,62 +1,30 @@
 
 
-# Add "Favorite" Candidate Feature (Job-Scoped)
+# Move Favorite Heart to Name Header Row
 
-## Summary
-Add a heart icon next to the candidate name on job-associated candidate profiles to mark/unmark favorites. This is per-job (stored on `job_candidate_associations`). Also add filter chips to the job pipeline view, including a "Favorites" filter.
+## Problem
+The heart icon is currently inside `CandidateNameCard` (the tab bar component). The user wants it next to the candidate name in the top header row, inline with the Independent Profile and LinkedIn buttons.
 
-## Database Change
-Add a `is_favorite` boolean column to `job_candidate_associations`, defaulting to `false`.
+## Changes
 
-```sql
-ALTER TABLE public.job_candidate_associations
-  ADD COLUMN is_favorite boolean NOT NULL DEFAULT false;
+### 1. `CandidateProfileSheet.tsx` — Add heart button to header row
+- In the header (around line 1049-1053), add a Heart button between the name and the UserRound (Independent Profile) button
+- Use the existing `isFavorite` / `handleToggleFavorite` state already in this component
+- Remove `isFavorite` and `onToggleFavorite` props from the `CandidateNameCard` usage (lines 1252-1256)
+
+Layout becomes:
+```text
+Name. [Heart] [UserRound] [LinkedIn]
 ```
 
-## Code Changes
+### 2. `CandidateNameCard.tsx` — Remove favorite logic from this component
+- Remove the `isFavorite` / `onToggleFavorite` props and the Heart rendering from CandidateNameCard
+- This component goes back to being purely about tabs
 
-### 1. Update `PipelineAssociation` interface and fetch query
-**File**: `src/hooks/usePipelineActions.ts`
-- Add `is_favorite: boolean` to the `PipelineAssociation` interface
-- Add `is_favorite` to the select query in `fetchAssociationsForJob`
-
-### 2. Add favorite toggle to `CandidateNameCard`
-**File**: `src/components/candidates/CandidateNameCard.tsx`
-- Add optional props: `isFavorite`, `onToggleFavorite`
-- Render a Heart icon (filled red when favorite, outline when not) next to the candidate name
-- Click toggles via `onToggleFavorite`
-
-### 3. Wire favorite toggle in `CandidateProfile` page
-**File**: `src/pages/CandidateProfile.tsx`
-- Fetch the association's `is_favorite` status (from the existing association data or a small query)
-- Pass `isFavorite` and `onToggleFavorite` to `CandidateNameCard`
-- `onToggleFavorite` updates `job_candidate_associations.is_favorite` via supabase
-
-### 4. Wire favorite toggle in `CandidateProfileSheet`
-**File**: `src/components/candidates/CandidateProfileSheet.tsx`
-- Same logic as above for the sheet-based candidate profile view
-
-### 5. Show favorite indicator on `CandidateCard` (pipeline board)
-**File**: `src/components/jobs/CandidateCard.tsx`
-- Add `isFavorite` prop
-- Show a small filled heart icon on favorite cards
-
-### 6. Pass `isFavorite` through pipeline rendering
-**File**: `src/components/jobs/PipelineOverview.tsx`
-- Pass `isFavorite` from association data to `CandidateCard`
-
-### 7. Add filter chips to PipelineOverview
-**File**: `src/components/jobs/PipelineOverview.tsx`
-- Add a filter bar above the board/list with `FilterChipPopover` components
-- Filters: **Favorite** (Yes/No), **Stage**, **Source**, **AI Fit Score** range
-- Filter the displayed associations client-side before rendering
-
-### 8. Update `Candidate` interface
-**File**: `src/hooks/useCandidates.ts`
-- Add `is_favorite` to the `Candidate` interface and the fetch query
+### 3. `CandidateProfile.tsx` (full page) — Same pattern
+- Add the heart button next to the candidate name in the page header
+- Remove favorite props from CandidateNameCard usage there too
 
 ## Scope
-- 1 migration (add column)
-- ~7 files modified
-- No edge function changes needed
+- 3 files modified, no database or migration changes
 
