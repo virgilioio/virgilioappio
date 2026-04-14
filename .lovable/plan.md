@@ -1,38 +1,33 @@
 
 
-# Fix Job Creation: Drop the Broken CHECK Constraint
+# Auto-Create Default Department During Signup
 
-## Root Cause (confirmed live)
+## Problem
+12 SaaS tenants have no child organizations. The `jobs_before_insert` trigger requires `parent_organization_id IS NOT NULL`, so these tenants cannot create jobs at all.
 
-Claude's analysis is 100% correct. The real problem was never the RLS policies — it's a **CHECK constraint** on the `jobs` table:
+## Fix: Two Changes
 
-```sql
-CHECK (is_child_organization(organization_id))
-```
+### 1. Add a default child org in `provision-tenant` edge function
+After the root organization is created (line 269), insert a child organization named "General" (or matching the workspace name) with `parent_organization_id = tenantId` and `org_kind = 'department'`.
 
-The helper `is_child_organization(org_id)` is:
-- **NOT** `SECURITY DEFINER` — runs as the caller
-- Queries `organizations` directly — subject to RLS
-- PostgreSQL refuses to evaluate a CHECK whose subquery crosses an RLS boundary for non-superusers → raises `42501`
+This ensures every new signup has at least one department to post jobs under.
 
-The trigger `jobs_before_insert` already enforces the identical rule (`parent_organization_id IS NULL → raise exception`) and IS `SECURITY DEFINER`, so it works fine.
-
-All previous patches (rewriting `check_org_hierarchy_role_access`, `user_is_member_of_org_hierarchy`, `organizations_select_consolidated`) were fixing the wrong thing.
-
-## Fix: One Migration, Two Statements
+### 2. Backfill existing tenants via migration
+A one-time migration creates a "General" child org for each of the 12 affected tenants that currently have zero children.
 
 ```sql
-ALTER TABLE public.jobs DROP CONSTRAINT IF EXISTS jobs_must_reference_child_org;
-DROP FUNCTION IF EXISTS public.is_child_organization(uuid);
+INSERT INTO organizations (id, name, org_kind, status, tenant_id, parent_organization_id)
+SELECT gen_random_uuid(), 'General', 'department', 'active', t.id, t.id
+FROM tenants t
+WHERE t.tenant_type = 'saas' AND t.status = 'active'
+  AND NOT EXISTS (
+    SELECT 1 FROM organizations o
+    WHERE o.tenant_id = t.id AND o.parent_organization_id IS NOT NULL
+  );
 ```
-
-That's it. The trigger stays. No new code. No frontend changes.
-
-## About Bug B (tenants with zero child orgs)
-
-8 SaaS tenants have no child orgs. Even after this fix, the `jobs_before_insert` trigger will reject their inserts with error `23514` ("must reference a child organization"). This is a separate design decision — should we auto-create a default department during signup, or allow flat workspaces? We can address that as a follow-up once the immediate demo blocker is resolved.
 
 ## Scope
-- 1 migration (2 SQL statements)
-- 0 frontend files changed
+- 1 edge function edit (`provision-tenant/index.ts` — ~10 lines added after root org creation)
+- 1 migration (backfill)
+- 0 frontend changes
 
