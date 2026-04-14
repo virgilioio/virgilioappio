@@ -113,6 +113,7 @@ export default function CandidateProfile() {
           newCandidateName: foundCandidate.candidate_name
         })
         setCandidate(foundCandidate)
+        setLocalFavorite(null)
       }
     }
   }, [candidateId, candidates])
