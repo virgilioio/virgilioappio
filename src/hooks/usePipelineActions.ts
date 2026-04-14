@@ -30,7 +30,7 @@ export function usePipelineActions() {
     // 1) Load associations for job
     const { data: associations, error: assocError } = await supabase
       .from('job_candidate_associations')
-      .select('id, job_id, candidate_id, current_stage_id, pipeline_position, created_at, entered_stage_at, status, whatsapp_template_sent_at, ai_fit_score')
+      .select('id, job_id, candidate_id, current_stage_id, pipeline_position, created_at, entered_stage_at, status, whatsapp_template_sent_at, ai_fit_score, is_favorite')
       .eq('job_id', jobId)
       .order('pipeline_position', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false })
