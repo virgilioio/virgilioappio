@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { SafeHtml } from '@/components/ui/safe-html';
 import { cn } from '@/lib/utils';
 import { fixMojibake } from '@/utils/fixMojibake';
+import { EmailAttachmentsList } from './EmailAttachmentsList';
 
 function decodeHtmlEntities(text: string): string {
   const textarea = document.createElement('textarea');
@@ -34,6 +35,7 @@ export interface EmailHistoryCardEmail {
   clicked_at?: string | null;
   replied_at?: string | null;
   error_message?: string | null;
+  attachments?: any[] | null;
 }
 
 interface EmailHistoryCardProps {
@@ -174,6 +176,11 @@ export function EmailHistoryCard({ email, onReply, onForward }: EmailHistoryCard
           <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 p-2 rounded mb-2">
             {email.error_message}
           </div>
+        )}
+
+        {/* Attachments */}
+        {email.attachments && email.attachments.length > 0 && (
+          <EmailAttachmentsList attachments={email.attachments} />
         )}
 
         {/* Body preview/expanded */}

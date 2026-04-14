@@ -11,6 +11,14 @@ interface SyncRequest {
   history_id?: string;
 }
 
+interface GoogleMessagePart {
+  mimeType?: string;
+  filename?: string;
+  body?: { data?: string; size?: number; attachmentId?: string };
+  parts?: GoogleMessagePart[];
+  headers?: Array<{ name: string; value: string }>;
+}
+
 interface GoogleMessage {
   id: string;
   threadId: string;
@@ -18,15 +26,19 @@ interface GoogleMessage {
   snippet?: string;
   payload?: {
     headers?: Array<{ name: string; value: string }>;
-    body?: { data?: string };
+    body?: { data?: string; size?: number; attachmentId?: string };
     mimeType?: string;
-    parts?: Array<{
-      mimeType?: string;
-      body?: { data?: string };
-      parts?: Array<{ mimeType?: string; body?: { data?: string } }>;
-    }>;
+    filename?: string;
+    parts?: GoogleMessagePart[];
   };
   internalDate?: string;
+}
+
+interface AttachmentMeta {
+  filename: string;
+  mimeType: string;
+  size: number;
+  storagePath: string;
 }
 
 interface SyncStats {
@@ -38,6 +50,7 @@ interface SyncStats {
   skipped: number;
   matched: number;
   errors: number;
+  attachments: number;
 }
 
 // Normalize email address: extract from "Name <email>" format and lowercase
@@ -101,6 +114,19 @@ function decodeBase64(str: string): string {
   }
 }
 
+function decodeBase64ToBytes(str: string): Uint8Array {
+  try {
+    const binaryStr = atob(str.replace(/-/g, '+').replace(/_/g, '/'));
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
+    }
+    return bytes;
+  } catch {
+    return new Uint8Array(0);
+  }
+}
+
 function getHeader(headers: Array<{ name: string; value: string }> | undefined, name: string): string {
   return headers?.find(h => h.name.toLowerCase() === name.toLowerCase())?.value || '';
 }
@@ -140,6 +166,123 @@ function extractEmailBody(message: GoogleMessage): { text: string; html: string 
   }
 
   return { text: textBody, html: htmlBody };
+}
+
+// Recursively find all attachment parts in a message
+function findAttachmentParts(parts: GoogleMessagePart[]): GoogleMessagePart[] {
+  const attachments: GoogleMessagePart[] = [];
+  for (const part of parts) {
+    // A part is an attachment if it has an attachmentId or a filename, and isn't text/plain or text/html body
+    if (part.body?.attachmentId && part.filename) {
+      attachments.push(part);
+    } else if (part.filename && part.filename.length > 0 && part.body?.size && part.body.size > 0) {
+      attachments.push(part);
+    }
+    // Recurse into nested parts
+    if (part.parts) {
+      attachments.push(...findAttachmentParts(part.parts));
+    }
+  }
+  return attachments;
+}
+
+// Download and store attachments for a message
+async function processAttachments(
+  supabase: any,
+  accessToken: string,
+  messageId: string,
+  mailIdentityId: string,
+  message: GoogleMessage,
+): Promise<AttachmentMeta[]> {
+  const allParts = message.payload?.parts || [];
+  // Also check the top-level payload itself
+  const topLevelPart: GoogleMessagePart = {
+    mimeType: message.payload?.mimeType,
+    filename: message.payload?.filename,
+    body: message.payload?.body,
+    parts: message.payload?.parts,
+  };
+  
+  let attachmentParts: GoogleMessagePart[] = [];
+  if (topLevelPart.body?.attachmentId && topLevelPart.filename) {
+    attachmentParts.push(topLevelPart);
+  }
+  attachmentParts.push(...findAttachmentParts(allParts));
+
+  if (attachmentParts.length === 0) return [];
+
+  const MAX_SIZE = 25 * 1024 * 1024; // 25MB
+  const results: AttachmentMeta[] = [];
+
+  for (const part of attachmentParts) {
+    try {
+      const filename = part.filename || 'unnamed';
+      const mimeType = part.mimeType || 'application/octet-stream';
+      const size = part.body?.size || 0;
+
+      // Skip oversized attachments
+      if (size > MAX_SIZE) {
+        console.log(`[Gmail Sync] Skipping large attachment: ${filename} (${size} bytes)`);
+        continue;
+      }
+
+      const attachmentId = part.body?.attachmentId;
+      if (!attachmentId) {
+        console.log(`[Gmail Sync] No attachmentId for part: ${filename}`);
+        continue;
+      }
+
+      // Fetch attachment data from Gmail API
+      const attachUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/attachments/${attachmentId}`;
+      const attachResponse = await fetch(attachUrl, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!attachResponse.ok) {
+        console.log(`[Gmail Sync] Failed to fetch attachment ${filename}: ${attachResponse.statusText}`);
+        continue;
+      }
+
+      const attachData = await attachResponse.json();
+      if (!attachData.data) {
+        console.log(`[Gmail Sync] No data in attachment response for ${filename}`);
+        continue;
+      }
+
+      // Decode base64url data
+      const fileBytes = decodeBase64ToBytes(attachData.data);
+
+      // Sanitize filename for storage path
+      const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const storagePath = `${mailIdentityId}/${messageId}/${safeFilename}`;
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('email-attachments')
+        .upload(storagePath, fileBytes, {
+          contentType: mimeType,
+          upsert: true,
+        });
+
+      if (uploadError) {
+        console.log(`[Gmail Sync] Upload error for ${filename}:`, uploadError.message);
+        continue;
+      }
+
+      results.push({
+        filename,
+        mimeType,
+        size: fileBytes.length,
+        storagePath,
+      });
+
+      console.log(`[Gmail Sync] Stored attachment: ${filename} (${fileBytes.length} bytes)`);
+    } catch (err) {
+      console.log(`[Gmail Sync] Error processing attachment:`, err);
+    }
+  }
+
+  return results;
 }
 
 // Find candidate by email - checks multiple emails, returns first match
@@ -185,6 +328,7 @@ const handler = async (req: Request): Promise<Response> => {
     skipped: 0,
     matched: 0,
     errors: 0,
+    attachments: 0,
   };
 
   try {
@@ -338,7 +482,7 @@ const handler = async (req: Request): Promise<Response> => {
         const to = getHeader(headers, 'To');
         const cc = getHeader(headers, 'Cc');
         const subject = getHeader(headers, 'Subject');
-        const rfc822MessageId = getHeader(headers, 'Message-ID') || null; // May be empty
+        const rfc822MessageId = getHeader(headers, 'Message-ID') || null;
         const inReplyTo = getHeader(headers, 'In-Reply-To') || null;
         const referencesHeader = getHeader(headers, 'References') || null;
         
@@ -362,29 +506,42 @@ const handler = async (req: Request): Promise<Response> => {
         // Extract body
         const { text, html } = extractEmailBody(fullMessage);
 
+        // Process attachments
+        let attachmentsMeta: AttachmentMeta[] = [];
+        try {
+          attachmentsMeta = await processAttachments(
+            supabase,
+            accessToken,
+            msg.id,
+            identity.id,
+            fullMessage,
+          );
+          stats.attachments += attachmentsMeta.length;
+        } catch (attachErr) {
+          console.log(`[Gmail Sync] Attachment processing error for ${msg.id}:`, attachErr);
+        }
+
         // Prepare upsert data
-        // CRITICAL: provider_message_id = Gmail msg.id (NOT RFC822 Message-ID)
         const emailData: Record<string, any> = {
           user_id: userId,
           tenant_id: identity.tenant_id,
           mail_identity_id: identity.id,
           direction: direction,
-          from_address: fromEmail || from, // Keep original if normalization failed
-          to_addresses: toEmails.length > 0 ? toEmails : [to], // Fallback to raw
+          from_address: fromEmail || from,
+          to_addresses: toEmails.length > 0 ? toEmails : [to],
           cc_addresses: ccEmails.length > 0 ? ccEmails : null,
           subject: subject || '(No Subject)',
           body_text: text,
           body_html: html,
           thread_id: fullMessage.threadId,
-          provider_message_id: msg.id, // Gmail message ID (e.g., "19b337d0d3e71af5")
-          rfc822_message_id: rfc822MessageId, // RFC822 Message-ID header (may be null)
+          provider_message_id: msg.id,
+          rfc822_message_id: rfc822MessageId,
           in_reply_to: inReplyTo,
           references_header: referencesHeader,
           snippet: fullMessage.snippet || null,
           is_read: !fullMessage.labelIds?.includes('UNREAD'),
           gmail_labels: fullMessage.labelIds || [],
           status: direction === 'sent' ? 'sent' : 'delivered',
-          // Store only headers in raw_message_data (not full body)
           raw_message_data: { 
             headers: headers.reduce((acc: Record<string, string>, h) => {
               acc[h.name] = h.value;
@@ -394,6 +551,11 @@ const handler = async (req: Request): Promise<Response> => {
             snippet: fullMessage.snippet,
           },
         };
+
+        // Add attachments metadata if any found
+        if (attachmentsMeta.length > 0) {
+          emailData.attachments = attachmentsMeta;
+        }
 
         // Set appropriate timestamp based on direction
         if (direction === 'sent') {
@@ -407,7 +569,7 @@ const handler = async (req: Request): Promise<Response> => {
           .from('email_logs')
           .upsert(emailData, {
             onConflict: 'mail_identity_id,provider_message_id',
-            ignoreDuplicates: false, // Update on conflict
+            ignoreDuplicates: false,
           });
 
         if (upsertError) {
@@ -419,19 +581,16 @@ const handler = async (req: Request): Promise<Response> => {
         stats.upserted++;
 
         // Candidate matching (after successful insert/update)
-        // Do NOT block ingestion on candidate matching failure
         try {
           let match: { candidateId: string; organizationId: string | null } | null = null;
           
           if (direction === 'received') {
-            // Inbound: candidate is the sender
             match = await findCandidateByEmails(
               supabase, 
               [fromEmail], 
               identity.tenant_id
             );
           } else {
-            // Outbound: candidate is in To (primary), then Cc
             match = await findCandidateByEmails(
               supabase, 
               [...toEmails, ...ccEmails], 
@@ -440,7 +599,6 @@ const handler = async (req: Request): Promise<Response> => {
           }
 
           if (match) {
-            // Update the email_log with candidate_id and organization_id (job folder)
             const updateData: Record<string, any> = { candidate_id: match.candidateId };
             if (match.organizationId) {
               updateData.organization_id = match.organizationId;
@@ -454,7 +612,6 @@ const handler = async (req: Request): Promise<Response> => {
             stats.matched++;
           }
         } catch (matchError) {
-          // Log but don't fail - candidate matching is best-effort
           console.log(`[Gmail Sync] Candidate matching error for message ${msg.id}:`, matchError);
         }
 
@@ -471,12 +628,10 @@ const handler = async (req: Request): Promise<Response> => {
       sync_status: 'active'
     };
     
-    // Store new historyId if we got one (from History API)
     if (newHistoryId) {
       updateData.history_id = newHistoryId;
       console.log(`[Gmail Sync] Storing new historyId: ${newHistoryId}`);
     } else if (messages.length > 0) {
-      // For full sync, get the current historyId from the last message processed
       const lastMessageId = messages[messages.length - 1].id;
       const lastMessageResponse = await fetch(
         `https://gmail.googleapis.com/gmail/v1/users/me/messages/${lastMessageId}?format=minimal`,
