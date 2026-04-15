@@ -315,7 +315,8 @@ export function FindFilterPanel({
                 maxExperience: 30,
                 source: 'all',
                 hasEmail: undefined,
-                hasPhone: undefined
+                hasPhone: undefined,
+                candidateSource: undefined
               })}
               className="h-6 px-2 text-[10px] rounded-md hover:bg-primary/10"
             >
@@ -345,6 +346,33 @@ export function FindFilterPanel({
                 />
                 <span className="text-xs text-foreground group-hover:text-primary transition-colors">Has Phone</span>
               </label>
+            </div>
+          </CollapsibleSection>
+
+          <CollapsibleSection label="Candidate Source" icon={Users}>
+            <div className="space-y-1.5">
+              {([
+                { value: 'internal' as const, label: 'Internal' },
+                { value: 'external' as const, label: 'External' },
+              ]).map(opt => {
+                const selected = resultFilters.candidateSource || []
+                const checked = selected.includes(opt.value)
+                return (
+                  <label key={opt.value} className="flex items-center gap-2 cursor-pointer group">
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={() => {
+                        const updated = checked
+                          ? selected.filter(v => v !== opt.value)
+                          : [...selected, opt.value]
+                        onResultFiltersChange({ ...resultFilters, candidateSource: updated.length > 0 ? updated : undefined })
+                      }}
+                      className="h-3.5 w-3.5"
+                    />
+                    <span className="text-xs text-foreground group-hover:text-primary transition-colors">{opt.label}</span>
+                  </label>
+                )
+              })}
             </div>
           </CollapsibleSection>
         </div>
