@@ -1,34 +1,42 @@
 
 
-# Fix Saved Tab + Unify Row Design
+# Increase Apollo Search Volume (Search is Free)
 
-## Problem 1: Candidates disappearing from "Saved" tab
+## Key Insight
 
-**Root cause**: The `useSavedCandidates` hook requires `collected_at IS NOT NULL` on `sourcing_preview_candidates` to show a candidate. But the `enrich-apollo-profile` edge function only sets `collected_at` **after** a successful candidate insert. If the insert fails (e.g., candidate with that `apollo_id` already exists from another project), the code hits `continue` and skips the `collected_at` update entirely.
+Apollo search is **completely free** — zero credits consumed. Credits are only used when enriching/revealing contact details. The current 500-candidate cap is artificially low and unnecessary. Apollo returns `total_entries` which can be tens of thousands for broad searches.
 
-Verified in your current project: 1 candidate exists in the `candidates` table with `apollo_collected_at` set, but the corresponding `sourcing_preview_candidates` row still has `collected_at = null`.
+## Current Bottlenecks
 
-**Fix**: In `enrich-apollo-profile/index.ts`, move the `collected_at` update to run **regardless** of whether the candidate insert succeeds or fails (duplicate). When the insert fails due to a duplicate, look up the existing candidate and still mark `collected_at` on the preview row.
+| Constraint | Current | Problem |
+|---|---|---|
+| `effectiveMaxResults` cap | 500 | Artificial ceiling |
+| Cache insert limit | 300 rows | Only caches 300 of 500 fetched |
+| `sourcing-search` passes `limit: 300` | 300 | Overrides even the 500 cap |
+| 24h cache TTL | No way to get fresh results | Stale after first search |
+| `useSourcingProjectCandidates` passes `limit: 500` | 500 | Client-side cap |
 
-## Problem 2: Row design inconsistency
+## Solution: Raise Limits + Auto-Paginate
 
-The Candidates tab uses a rich layout (source badge, match score badge, name with LinkedIn icon, role @ company, metadata chips for location/email/phone, action buttons). The Saved and Archived tabs use a simpler card-based layout with different spacing, icon sizes, and no badges.
+Since search is free, we raise the ceiling to **2,000 candidates** per project and let the multi-page fetcher do its job automatically (20 pages x 100/page). No manual "Find More" button needed — you just get a bigger pool on first search.
 
-**Fix**: Refactor `SavedCandidatesTab` and `ArchivedCandidatesTab` to use the same row structure as `SourcingCandidateTable`:
-- Source badge (show "Collected" in pastel-blue)
-- Name row with LinkedIn icon
-- Role at Company subtitle
-- Metadata chips (location, email, phone) in the same pill style
-- Right-side actions (archive/restore buttons)
-- Remove the current card-based layout and use a Table inside a Card, matching the Candidates tab
+## Changes
 
-## Files Modified
+### 1. `supabase/functions/search-apollo-candidates/index.ts`
+- Raise `max_results` default from 300 to 2000, max cap from 500 to 2000
+- Raise cache insert limit from 300 to 2000 rows
+- Increase delay between pages slightly (300ms) to respect rate limits at higher volume
 
-1. **`supabase/functions/enrich-apollo-profile/index.ts`** — After the candidate insert block, add a fallback: if insert fails with duplicate error, query the existing candidate by `apollo_id`, still update `collected_at` on the preview row, and return the existing candidate ID in results (with `already_collected: true`).
+### 2. `supabase/functions/sourcing-search/index.ts`
+- Change Apollo `limit` and `max_results` from `Math.min(limit, 300)` to `Math.min(limit, 2000)`
+- Update the default `limit` in `SearchRequest` from 300 to 2000
 
-2. **`src/components/sourcing/SavedCandidatesTab.tsx`** — Rewrite the candidate list to use Table/TableRow/TableCell with the same visual pattern as `SourcingCandidateTable`: badge + name + subtitle + metadata chips + actions.
+### 3. `src/hooks/useSourcingProjectCandidates.ts`
+- Raise default `limit` from 500 to 2000
 
-3. **`src/components/sourcing/ArchivedCandidatesTab.tsx`** — Same row redesign as SavedCandidatesTab, with restore button instead of archive.
+### 4. Keep "Refresh" as Cache-Buster
+- The existing Refresh button already clears cache and re-fetches. With higher volume, this effectively acts as "Find More" since Apollo returns results in a different order over time. No new button needed.
 
-4. **`src/hooks/useSavedCandidates.ts`** — Minor: also include candidates with status `shortlisted` (not just `active`) since shortlisted is still a "saved" state. The `not_a_fit` ones should stay hidden from the Saved tab.
+## Result
+First search automatically returns up to 2,000 candidates instead of 300-500. Zero extra cost. The table already handles large lists with virtual scrolling/pagination.
 
