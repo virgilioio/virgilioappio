@@ -135,6 +135,18 @@ export function SourcingProjectView({
       exposeUpdateSearchCriteria(project ? handleUpdateSearchCriteria : null)
     }
   }, [project, projectId])
+
+  useEffect(() => {
+    if (onExposeActions) {
+      onExposeActions(project ? {
+        onRefresh: handleRefresh,
+        onArchive: handleArchive,
+        onDelete: handleDelete,
+        onVisibilityToggle: handleVisibilityToggle,
+        onLinkToJob: handleLinkToJob,
+      } : null)
+    }
+  }, [project, projectId])
   
   const filteredCandidates = useMemo(() => {
     if (!candidates) return []
