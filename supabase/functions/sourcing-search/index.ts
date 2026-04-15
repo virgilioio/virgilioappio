@@ -39,7 +39,7 @@ serve(async (req) => {
     // Fetch project with cache timestamps
     const { data: project, error: projectError } = await supabase
       .from('sourcing_projects')
-      .select('id, organization_id, search_criteria, sourcing_cache_expires_at, pdl_cache_expires_at, organizations!inner(tenant_id)')
+      .select('id, organization_id, job_id, search_criteria, sourcing_cache_expires_at, pdl_cache_expires_at, organizations!inner(tenant_id)')
       .eq('id', sourcing_project_id)
       .single();
 
@@ -287,9 +287,24 @@ serve(async (req) => {
       }
     }
 
+    // ── Pipeline filter: exclude Internal candidates already in the linked job ──
+    let pipelineCandidateIds = new Set<string>();
+    if (project.job_id) {
+      const { data: assocs } = await supabase
+        .from('job_candidate_associations')
+        .select('candidate_id')
+        .eq('job_id', project.job_id);
+      pipelineCandidateIds = new Set((assocs || []).map((a: any) => a.candidate_id));
+      console.log(`🔍 Pipeline filter: ${pipelineCandidateIds.size} candidates already in job ${project.job_id}`);
+    }
+
     const enrichedApollo = dedupedApollo.map((c: any) => {
       const sameMatch = c.apollo_id ? sameTenantMap.get(c.apollo_id) : null;
       if (sameMatch) {
+        // Skip Internal candidates already in the linked job's pipeline
+        if (pipelineCandidateIds.has(sameMatch.id)) {
+          return null;
+        }
         // Same-tenant → Internal: full candidate_id access
         return {
           ...c,
@@ -335,7 +350,12 @@ serve(async (req) => {
       }
 
       return c;
-    });
+    }).filter(Boolean);
+
+    const pipelineFiltered = dedupedApollo.length - enrichedApollo.length;
+    if (pipelineFiltered > 0) {
+      console.log(`🚫 Filtered out ${pipelineFiltered} Internal candidates already in pipeline`);
+    }
 
     const allCandidates = [...pdlCandidates, ...enrichedApollo];
 
