@@ -45,7 +45,7 @@ export function useSourcingProjectCollaborators(projectId: string, createdBy?: s
       const { data: members } = await supabase
         .from('members')
         .select('user_id, invited_email')
-        .in('user_id', userIds)
+        .in('user_id', userIds) as { data: any[] | null }
 
       // Get profiles for names/avatars
       const { data: profiles } = await supabase
