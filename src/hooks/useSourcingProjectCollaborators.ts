@@ -32,7 +32,7 @@ export function useSourcingProjectCollaborators(projectId: string, createdBy?: s
     queryKey: ['sourcing-project-collaborators', projectId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('sourcing_project_collaborators')
+        .from('sourcing_project_collaborators' as any)
         .select('*')
         .eq('sourcing_project_id', projectId)
 
