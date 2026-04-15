@@ -51,7 +51,7 @@ export function useSourcingProjectCollaborators(projectId: string, createdBy?: s
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, first_name, last_name, avatar_url, email')
-        .in('id', userIds)
+        .in('id', userIds) as { data: any[] | null }
 
       const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
       const memberMap = new Map((members || []).map((m: any) => [m.user_id, m]))
