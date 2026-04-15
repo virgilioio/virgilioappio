@@ -983,10 +983,11 @@ export function SourcingCandidateTable({
           const isSelected = canSelect && selectedApolloIds.has(candidate.apollo_id!)
 
           const isInternal = isCollectedApollo(candidate)
-          const isApollo = !isInternal && candidate.source === 'apollo' && !candidate.candidate_id
+          const isGio = isGioSourced(candidate)
+          const isApollo = !isInternal && !isGio && candidate.source === 'apollo' && !candidate.candidate_id
           const location = getLocation(candidate)
-          const badgeVariant = isInternal ? 'pastel-blue' as const : isPdl ? 'pastel-green' as const : 'secondary' as const
-          const badgeLabel = isInternal ? 'Internal' : isPdl ? 'PDL' : 'Apollo'
+          const badgeVariant = isInternal ? 'pastel-blue' as const : isGio ? 'pastel-purple' as const : isPdl ? 'pastel-green' as const : 'secondary' as const
+          const badgeLabel = isInternal ? 'Internal' : isGio ? 'Gio' : isPdl ? 'PDL' : 'Apollo'
 
           const handleCardClick = () => {
             if (isInternal) {
@@ -1001,15 +1002,16 @@ export function SourcingCandidateTable({
               setSelectedApolloId(null)
               setSelectedApolloData(null)
               setSheetOpen(true)
+            } else if (isGio || (candidate.source === 'apollo' && candidate.apollo_id)) {
+              setSelectedCandidateId(null)
+              setSelectedApolloId(candidate.apollo_id || null)
+              setSelectedApolloData(candidate)
+              setSelectedPdlData(null)
+              setSheetOpen(true)
             } else if (candidate.candidate_id || candidate.source === 'local') {
               setSelectedCandidateId(candidate.candidate_id || candidate.id)
               setSelectedApolloId(null)
               setSelectedApolloData(null)
-              setSelectedPdlData(null)
-              setSheetOpen(true)
-            } else if (candidate.source === 'apollo' && candidate.apollo_id) {
-              setSelectedCandidateId(null)
-              setSelectedApolloId(candidate.apollo_id)
               setSelectedApolloData({
                 candidate_name: getDisplayName(candidate),
                 headline: candidate.headline,
