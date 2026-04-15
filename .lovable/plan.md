@@ -1,38 +1,32 @@
 
 
-# Fix Critical Privilege Escalation Vulnerability
+# Show Previously Collected Apollo Candidates as Unblocked
 
-## The Problem
-Any authenticated user can escalate to `platform_admin` by calling:
-```js
-supabase.auth.updateUser({ data: { user_type: 'platform_admin' } })
-```
-This writes to `raw_user_meta_data`, which all three permission functions trust as the **first check**, short-circuiting the database lookup entirely.
+## Problem
+Apollo search results always come back with `is_preview: true` and obfuscated names, even when you've already collected (unblocked) those candidates. The sliding sheet shows the full data, but the results list still shows them as blocked.
 
-## The Fix — 1 Migration
+## Fix
 
-Rewrite all three functions to remove the `raw_user_meta_data` / JWT metadata shortcut and determine `platform_admin` status exclusively from the `members` table.
+### 1. Cross-reference in `sourcing-search` edge function
+After merging PDL and Apollo results, query the `candidates` table for any matching `apollo_id` values. For matches, overlay the collected candidate's real data (full name, email, phone, LinkedIn, location) onto the Apollo result and flip `is_preview` to `false`.
 
-### `get_user_type_secure()` (SECURITY DEFINER)
-- Remove the `IF EXISTS (SELECT 1 FROM auth.users WHERE raw_user_meta_data->>'user_type' = 'platform_admin')` block
-- Keep the existing `members` table query (already present as fallback)
-- The `members.user_type` column already stores `'platform_admin'` for real admins
+**In `supabase/functions/sourcing-search/index.ts`** (~20 lines added after the merge/dedup block):
+- Collect all `apollo_id` values from the deduplicated Apollo results
+- Query `candidates` table: `SELECT id, apollo_id, candidate_name, email, phone, linkedin_url, location_city, location_state, location_country, company_current, role_current FROM candidates WHERE apollo_id IN (...) AND apollo_collected_at IS NOT NULL`
+- For each match, update the Apollo candidate in the merged list: set `candidate_id`, `candidate_name`/`full_name`, contact fields, `is_preview: false`, `needs_enrichment: false`
 
-### `get_user_type()` (SECURITY DEFINER)
-- Remove the `IF (auth.jwt()->'user_metadata'->>'user_type') = 'platform_admin'` block
-- Keep the existing `members` table query
+### 2. No frontend changes needed
+The table already handles the `candidate_id` and `is_preview` flags correctly:
+- Line 775: Shows "Collected" badge when `candidate_id` is set
+- Line 763: `getDisplayName` uses `full_name` which we'll populate
+- Line 824: Contact indicators only show for `!candidate_id` Apollo rows
+- Line 679: Selection checkbox disabled for collected candidates
 
-### `check_tenant_member_role()`
-- Remove the `IF (SELECT raw_user_meta_data->>'user_type' = 'platform_admin' FROM auth.users)` block
-- Add a `members` table check for `platform_admin` user_type instead
-
-All three functions are already `SECURITY DEFINER`, so querying the `members` table bypasses RLS — no recursive policy issues.
+### 3. Redeploy edge function
+Deploy the updated `sourcing-search` function.
 
 ## Scope
-- 1 database migration (rewrites 3 functions)
+- 1 edge function edit (~20 lines)
+- 0 migrations
 - 0 frontend changes
-- 0 edge function changes
-
-## Risk
-Low. The `members` table is already the source of truth and the fallback path. We're just removing the unsafe shortcut that runs before it.
 
