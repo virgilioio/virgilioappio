@@ -29,7 +29,7 @@ interface SearchRequest {
   project_id?: string;
   criteria: SearchCriteria;
   limit?: number;
-  max_results?: number;  // Max total results to fetch (default: 300, max: 500)
+  max_results?: number;  // Max total results to fetch (default: 2000, max: 2000)
   organization_id?: string;
 }
 
@@ -348,10 +348,10 @@ serve(async (req) => {
   const cors = corsHeadersFor(origin);
 
   try {
-    const { project_id, criteria, limit = 100, max_results = 300, organization_id }: SearchRequest = await req.json();
+    const { project_id, criteria, limit = 100, max_results = 2000, organization_id }: SearchRequest = await req.json();
 
-    // Clamp max_results between 100 and 500
-    const effectiveMaxResults = Math.min(Math.max(max_results, 100), 500);
+    // Clamp max_results between 100 and 2000
+    const effectiveMaxResults = Math.min(Math.max(max_results, 100), 2000);
     
     console.log('🚀 Apollo Search Request:', { project_id, criteria, limit, max_results: effectiveMaxResults });
 
@@ -441,7 +441,7 @@ serve(async (req) => {
     // Multi-page fetching configuration
     const PER_PAGE = 100;  // Apollo max is 100 per page
     const MAX_PAGES = Math.ceil(effectiveMaxResults / PER_PAGE);
-    const DELAY_BETWEEN_PAGES = 200;  // ms - respect rate limits
+    const DELAY_BETWEEN_PAGES = 300;  // ms - respect rate limits at higher volume
 
     // Fetch first page
     const page1Url = buildApolloSearchUrl(criteria, PER_PAGE, 1);
@@ -580,8 +580,8 @@ serve(async (req) => {
         .eq('source', 'apollo');
 
       // Insert new candidates with availability flags (NOT actual values - those come from enrichment)
-      // Increased limit to 300 to match multi-page fetching
-      const candidatesToInsert = candidates.slice(0, 300).map((c: any) => ({
+      // Cache up to 2000 candidates from multi-page fetching
+      const candidatesToInsert = candidates.slice(0, 2000).map((c: any) => ({
         sourcing_project_id: project_id,
         apollo_id: c.apollo_id,
         full_name: c.full_name,
