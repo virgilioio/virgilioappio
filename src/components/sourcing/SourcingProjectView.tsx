@@ -19,6 +19,14 @@ import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 
+export interface SourcingProjectActions {
+  onRefresh: () => Promise<void>
+  onArchive: () => Promise<void>
+  onDelete: () => Promise<void>
+  onVisibilityToggle: (isPublic: boolean) => Promise<void>
+  onLinkToJob: (jobId: string) => Promise<void>
+}
+
 interface SourcingProjectViewProps {
   projectId: string
   filters: SourcingProjectFilters
@@ -27,6 +35,7 @@ interface SourcingProjectViewProps {
   setIsRefreshing: (v: boolean) => void
   onProjectLoaded?: (project: any) => void
   onUpdateSearchCriteria?: (fn: ((criteria: SearchCriteria) => Promise<void>) | null) => void
+  onExposeActions?: (actions: SourcingProjectActions | null) => void
 }
 
 
@@ -37,7 +46,8 @@ export function SourcingProjectView({
   isRefreshing,
   setIsRefreshing,
   onProjectLoaded,
-  onUpdateSearchCriteria: exposeUpdateSearchCriteria
+  onUpdateSearchCriteria: exposeUpdateSearchCriteria,
+  onExposeActions
 }: SourcingProjectViewProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
