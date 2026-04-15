@@ -1069,7 +1069,7 @@ export function SourcingCandidateTable({
               className={cn(
                 "shadow-calendly cursor-pointer hover:shadow-lg transition-shadow",
                 isSelected && "ring-2 ring-primary",
-                isPdl && "border-l-2 border-l-emerald-400"
+                isPdl && !isCollectedApollo(candidate) && "border-l-2 border-l-emerald-400"
               )}
               onClick={() => {
                 if (isPdl) {
