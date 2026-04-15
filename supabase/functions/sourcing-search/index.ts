@@ -317,7 +317,7 @@ serve(async (req) => {
       headers: { 'Content-Type': 'application/json', ...cors },
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('❌ Sourcing search error:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
