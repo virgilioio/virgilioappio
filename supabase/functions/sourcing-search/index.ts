@@ -48,7 +48,6 @@ serve(async (req) => {
     }
 
     const projectTenantId = (project as any).organizations?.tenant_id;
-    }
 
     const criteria = project.search_criteria;
     if (!criteria?.title_keywords?.length) {
