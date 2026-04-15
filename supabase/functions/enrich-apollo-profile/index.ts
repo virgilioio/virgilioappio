@@ -428,19 +428,36 @@ serve(async (req) => {
         .select('id')
         .single();
 
+      let candidateId: string | null = null;
+
       if (candidateError) {
-        console.error('Failed to create candidate:', candidateError);
-        results.push({
-          apollo_id: person.id,
-          error: candidateError.message,
-          already_collected: false
-        });
-        continue;
+        // Check if it's a duplicate — look up existing candidate
+        console.warn('Candidate insert failed, checking for existing:', candidateError.message);
+        const { data: existingCandidate } = await supabase
+          .from('candidates')
+          .select('id')
+          .eq('apollo_id', person.id)
+          .eq('tenant_id', tenantId)
+          .maybeSingle();
+        
+        if (existingCandidate) {
+          candidateId = existingCandidate.id;
+          console.log('✅ Found existing candidate:', candidateId);
+        } else {
+          console.error('Failed to create candidate and no existing found:', candidateError);
+          results.push({
+            apollo_id: person.id,
+            error: candidateError.message,
+            already_collected: false
+          });
+          continue;
+        }
+      } else {
+        candidateId = newCandidate.id;
+        console.log('✅ Candidate created:', candidateId);
       }
 
-      console.log('✅ Candidate created:', newCandidate.id);
-
-      // Mark as collected in the sourcing project
+      // Mark as collected in the sourcing project — always runs
       if (sourcing_project_id) {
         const { error: previewUpdateError } = await supabase
           .from('sourcing_preview_candidates')
