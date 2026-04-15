@@ -1,29 +1,75 @@
 
 
-# Fix: "Unknown" Members in Add Collaborators Dropdown
+# Move Project Controls to Top Header Bar
 
-## Root Cause
+## What Changes
 
-The `useSourcingProjectCollaborators` hook queries the `profiles` table using `.in('id', userIds)`, but the `profiles` table has no `id` column — its primary key is `user_id`. This causes the profile lookup to return zero results, so every member renders as "Unknown".
+Move the collaborators button, Link to Job, Gio's interpretation, Refresh, and three-dot dropdown menu from their current positions (inside `SourcingProjectView` and `CandidatesTab`) up to the top header bar in `Find.tsx` — the same row where the Saved Search selector chip sits. These controls only appear when a project is loaded.
 
-This affects both:
-1. The **collaborator list** (existing collaborators show as unknown)
-2. The **tenant members dropdown** (invite search shows unknowns)
+## Current Layout
+```text
+┌─────────────────────────────────────────────┐
+│ [Searches ▾]                                │  ← top bar (Find.tsx)
+├─────────────────────────────────────────────┤
+│ [+ Collaborators avatars]                   │  ← SourcingProjectView
+├─────────────────────────────────────────────┤
+│ [Chat] [Candidates] [Saved] [Archived]      │  ← tabs
+├─────────────────────────────────────────────┤
+│ [Link to Job] [Gio's interp]  [Refresh] [⋯] │  ← CandidatesTab toolbar
+```
 
-## Fix — 1 file change
+## Target Layout
+```text
+┌──────────────────────────────────────────────────────────────┐
+│ [Searches ▾] [+👤] [Link to Job] [Gio's interp]  [⟳] [⋯]  │  ← top bar
+├──────────────────────────────────────────────────────────────┤
+│ [Chat] [Candidates] [Saved] [Archived]                       │  ← tabs
+├──────────────────────────────────────────────────────────────┤
+│ (candidate table — no toolbar row)                           │
+```
 
-In `src/hooks/useSourcingProjectCollaborators.ts`, replace all `.in('id', userIds)` with `.in('user_id', userIds)` and update the profile map to key on `p.user_id` instead of `p.id`.
+## Implementation
 
-**Three locations to fix:**
+### 1. Lift action props and state to `Find.tsx`
 
-1. **Line ~50** (collaborator enrichment): `.in('id', userIds)` → `.in('user_id', userIds)`
-2. **Line ~53**: `profileMap` keyed on `p.id` → `p.user_id`
-3. **Line ~102** (tenant members): `.in('id', userIds)` → `.in('user_id', userIds)`
-4. **Line ~107**: profile map keyed on `p.id` → `p.user_id`
+`Find.tsx` already has `currentProject`. Add the necessary action handlers (refresh, archive, delete, visibility toggle, link-to-job) and dialog state that currently live in `SourcingProjectView` and `CandidatesTab`. These will be passed down or used directly in the header bar.
 
-Also update the select from `'id, first_name, ...'` to `'user_id, first_name, ...'` in both queries.
+### 2. Create a `SourcingProjectActions` component
 
-## Scope
-- 1 file edit (`src/hooks/useSourcingProjectCollaborators.ts`)
-- No database changes needed
+A new component rendered in the top header bar of `Find.tsx` (next to `SavedSearchSelector`) that contains:
+- `SourcingProjectCollaborators` (the "+" avatar row)
+- Link to Job button / linked job label
+- Gio's interpretation button
+- Refresh button
+- Three-dot dropdown (visibility toggle, create job from spec, archive, delete)
+
+This component receives `currentProject`, action callbacks, and `isRefreshing` as props.
+
+### 3. Remove controls from inner components
+
+- **`SourcingProjectView`**: Remove the collaborators row (lines 339-342)
+- **`CandidatesTab`**: Remove the entire toolbar row (lines 86-200ish), keeping only the candidate table. Remove the associated dialog state and props that move up.
+
+### 4. Update `Find.tsx` header bar
+
+```tsx
+<div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
+  <SavedSearchSelector ... />
+  {mode === 'project' && currentProject && (
+    <SourcingProjectActions
+      project={currentProject}
+      projectId={projectId}
+      isRefreshing={isRefreshing}
+      onRefresh={handleRefresh}
+      ... 
+    />
+  )}
+</div>
+```
+
+### Files Modified
+- `src/pages/Find.tsx` — add action handlers, render `SourcingProjectActions` in header
+- `src/components/sourcing/SourcingProjectActions.tsx` — **new** component with all controls
+- `src/components/sourcing/SourcingProjectView.tsx` — remove collaborators row, expose refetch via callback
+- `src/components/sourcing/CandidatesTab.tsx` — remove toolbar row and associated props/state
 
