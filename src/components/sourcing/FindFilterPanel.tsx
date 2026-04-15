@@ -353,6 +353,7 @@ export function FindFilterPanel({
             <div className="space-y-1.5">
               {([
                 { value: 'internal' as const, label: 'Internal' },
+                { value: 'gio' as const, label: 'Gio' },
                 { value: 'external' as const, label: 'External' },
               ]).map(opt => {
                 const selected = resultFilters.candidateSource || []
