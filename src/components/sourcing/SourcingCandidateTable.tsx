@@ -691,6 +691,128 @@ export function SourcingCandidateTable({
                   (selectedPdlData && candidate.id === selectedPdlData.id)
                 )
 
+                // Enriched row for previously collected Apollo candidates
+                if (isCollectedApollo(candidate)) {
+                  const location = getLocation(candidate)
+                  return (
+                    <TableRow
+                      key={candidate.apollo_id || candidate.id}
+                      className={cn(
+                        "cursor-pointer hover:bg-muted/40",
+                        isActiveRow && "bg-primary/5 border-l-2 border-l-primary"
+                      )}
+                      onClick={() => {
+                        setSelectedCandidateId(candidate.id)
+                        setSelectedApolloId(null)
+                        setSelectedApolloData(null)
+                        setSelectedPdlData(null)
+                        setSheetOpen(true)
+                      }}
+                    >
+                      <TableCell colSpan={5} className="py-3 px-4">
+                        <div className="flex items-start gap-3">
+                          {/* Checkbox placeholder */}
+                          <div className="pt-0.5">
+                            <div className="w-4 h-4" />
+                          </div>
+                          {/* Main content */}
+                          <div className="flex-1 min-w-0 space-y-1.5">
+                            {/* Top: badge + match */}
+                            <div className="flex items-center justify-between">
+                              <Badge variant="pastel-blue" className="text-[10px] px-1.5 py-0 h-4">
+                                Internal
+                              </Badge>
+                              <Badge className={cn("text-xs", getMatchBadgeColor(candidate.match_tier))}>
+                                {candidate.match_score}%
+                              </Badge>
+                            </div>
+                            {/* Name */}
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-sm">{getDisplayName(candidate)}</span>
+                              {candidate.linkedin_url && (
+                                <a
+                                  href={candidate.linkedin_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-blue-600 hover:text-blue-700"
+                                >
+                                  <Linkedin className="h-3 w-3" />
+                                </a>
+                              )}
+                            </div>
+                            {/* Subtitle: role @ company */}
+                            {(candidate.current_role || candidate.current_company) && (
+                              <p className="text-xs text-muted-foreground">
+                                {candidate.current_role}
+                                {candidate.current_role && candidate.current_company && ' at '}
+                                {candidate.current_company}
+                              </p>
+                            )}
+                            {/* Metadata chips row */}
+                            <div className="flex items-center gap-3 flex-wrap">
+                              {location && (
+                                <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
+                                  <MapPin className="h-2.5 w-2.5" />
+                                  {location}
+                                </span>
+                              )}
+                              {candidate.email && (
+                                <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
+                                  <Mail className="h-2.5 w-2.5" />
+                                  {candidate.email}
+                                </span>
+                              )}
+                              {candidate.phone && (
+                                <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
+                                  <Phone className="h-2.5 w-2.5" />
+                                  {candidate.phone}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {/* Right: View Profile action */}
+                          <div className="flex items-center gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+                            {isAdded ? (
+                              <Button size="sm" variant="secondary" disabled>
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                Added
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={(e) => handleAddToPipeline(candidate, e)}
+                                disabled={isLoading || !jobId}
+                              >
+                                {isLoading ? (
+                                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                ) : (
+                                  <Plus className="h-3 w-3 mr-1" />
+                                )}
+                                Add
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-muted-foreground"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedCandidateId(candidate.id)
+                                setSheetOpen(true)
+                              }}
+                            >
+                              View
+                              <ChevronRight className="h-3 w-3 ml-0.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                }
+
                 return (
                   <TableRow 
                     key={candidate.apollo_id || candidate.id}
@@ -698,7 +820,7 @@ export function SourcingCandidateTable({
                       "cursor-pointer hover:bg-muted/50",
                       isSelected && "bg-muted/30",
                       isActiveRow && "bg-primary/5 border-l-2 border-l-primary",
-                      isPdl && !isActiveRow && !isCollectedApollo(candidate) && "border-l-2 border-l-emerald-400"
+                      isPdl && !isActiveRow && "border-l-2 border-l-emerald-400"
                     )}
                     onClick={() => {
                       if (isPdl) {
@@ -718,12 +840,11 @@ export function SourcingCandidateTable({
                       } else if (candidate.source === 'apollo' && candidate.apollo_id) {
                         // Apollo preview
                         setSelectedCandidateId(null)
-                        setSelectedPdlData(null)
                         setSelectedApolloId(candidate.apollo_id)
                         setSelectedApolloData({
-                           candidate_name: getDisplayName(candidate),
+                          candidate_name: getDisplayName(candidate),
                           headline: candidate.headline,
-                           location: getLocation(candidate),
+                          location: getLocation(candidate),
                           current_company: candidate.current_company,
                           current_role: candidate.current_role,
                           linkedin_url: candidate.linkedin_url,
@@ -767,11 +888,7 @@ export function SourcingCandidateTable({
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-sm">{getDisplayName(candidate)}</span>
                             {/* Source badge */}
-                            {isCollectedApollo(candidate) ? (
-                              <Badge variant="pastel-blue" className="text-[10px] px-1.5 py-0 h-4">
-                                Internal
-                              </Badge>
-                            ) : isPdl ? (
+                            {isPdl ? (
                               <Badge variant="pastel-green" className="text-[10px] px-1.5 py-0 h-4">
                                 PDL
                               </Badge>
