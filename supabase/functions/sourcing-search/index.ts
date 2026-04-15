@@ -311,7 +311,7 @@ serve(async (req) => {
 
       const crossMatch = c.apollo_id ? crossTenantMap.get(c.apollo_id) : null;
       if (crossMatch) {
-        // Cross-tenant → Gio: enriched display data but NO candidate_id
+        // Cross-tenant → Gio: rich display data but NO candidate_id
         return {
           ...c,
           is_gio_sourced: true,
@@ -324,8 +324,13 @@ serve(async (req) => {
           location_country: crossMatch.location_country,
           current_company: crossMatch.company_current || c.current_company,
           current_role: crossMatch.role_current || c.current_role,
-          is_preview: true,
-          needs_enrichment: true,
+          skills: crossMatch.skills || [],
+          summary: crossMatch.profile_summary || c.summary,
+          years_experience: crossMatch.years_experience,
+          experience: crossMatch._experience || [],
+          education: crossMatch._education || [],
+          is_preview: false,
+          needs_enrichment: false,
         };
       }
 
