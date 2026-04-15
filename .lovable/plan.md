@@ -1,48 +1,37 @@
 
-# Add Sourcing Project Shortcut to Job Floating Sidebar
 
-## What Changes
+# Fix Inconsistent Keyword Badges on Cached Results
 
-When a job has a linked sourcing project, a new icon button (Search/Telescope icon) appears at the bottom of the floating sidebar pill, visually separated by a thin divider line. Clicking it navigates directly to `/find/<projectId>`.
+## Root Cause
+
+The keyword badges (e.g., "SAP, ERP") only appear on the **first** search when Apollo results are fetched fresh. On every subsequent load, results come from the 24-hour cache — and the cache path in `search-apollo-candidates` **skips keyword scoring entirely**.
 
 ```text
-  ┌───────┐
-  │  📊   │  Job Dashboard
-  │  👥   │  All Candidates
-  │  📋   │  Pipeline
-  │  ⚙️   │  Job Setup
-  │ ───── │  divider
-  │  🔍   │  Sourcing Project (link out)
-  └───────┘
+Fresh fetch path:  Apollo API → mapApolloSearchCandidate(c, keywords) → keyword_score ✅, matched_keywords ✅
+Cache path:        sourcing_preview_candidates → raw map → keyword_score ❌, matched_keywords ❌
 ```
 
-The icon only appears when a sourcing project is linked — otherwise the sidebar looks exactly as it does today. Since this navigates away from the job (to `/find`), it uses `useNavigate` rather than `onTabChange`.
+The cache table doesn't store `keyword_score` or `matched_keywords` columns either, so there's no data to map even if we tried.
 
-## Technical Details
+## Fix
 
-### 1. Query sourcing project by job ID
+Re-apply keyword scoring to cached candidates before returning them. The `criteria` object (containing `keywords`) is already available in the function since it's passed from `sourcing-search`.
 
-Create a small hook `useJobSourcingProject(jobId)` that queries:
-```sql
-SELECT id, name FROM sourcing_projects WHERE job_id = :jobId AND status = 'active' LIMIT 1
-```
-Returns `{ sourcingProjectId, sourcingProjectName, isLoading }`.
+## Changes
 
-### 2. Update `JobDetailFloatingSidebar`
+### `supabase/functions/search-apollo-candidates/index.ts`
 
-- Accept new optional prop `sourcingProjectId?: string`
-- If present, render a divider (`<div className="w-6 border-t border-border" />`) after the nav tabs
-- Below divider, render a button with `Search` icon that calls `navigate(\`/find/${sourcingProjectId}\`)`
-- Tooltip: "Sourcing Project"
-- Style: same circular button as others, but no active state (it's always a link-out)
+In the cache hit path (around line 399), after mapping cached rows, re-run keyword scoring on each candidate using the same logic as the fresh path:
 
-### 3. Wire it up in `JobDetail.tsx`
+1. Accept `criteria` from the request body (already parsed but not used in cache path)
+2. For each cached candidate, build a mini corpus from `headline` + `current_company` + `current_title`
+3. Match against `criteria.keywords` — same loop as `mapApolloSearchCandidate`
+4. Attach `keyword_score` and `matched_keywords` to each cached candidate
+5. Re-sort by `keyword_score` descending (same as fresh path)
 
-- Import and call `useJobSourcingProject(id)` 
-- Pass `sourcingProjectId` to `JobDetailFloatingSidebar`
+This is lightweight — just string matching against 2-3 fields per candidate. No API calls, no DB writes.
 
-## Files Modified
+## Result
 
-1. **`src/hooks/useJobSourcingProject.ts`** — New hook querying `sourcing_projects` by `job_id`
-2. **`src/components/jobs/JobDetailFloatingSidebar.tsx`** — Add sourcing shortcut button with divider
-3. **`src/pages/JobDetail.tsx`** — Wire the hook and pass prop to sidebar
+Keyword badges will appear consistently whether results come from cache or fresh fetch. The scoring is deterministic and uses the same keywords, so badges will be identical across loads.
+
