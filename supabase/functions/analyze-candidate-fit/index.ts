@@ -344,6 +344,34 @@ serve(async (req) => {
     analysis.data_sources_used = dataSources;
     analysis.data_sources_missing = dataMissing;
 
+    // Enforce null scores for dimensions where data is deterministically missing
+    if (dataMissing.includes('salary') && analysis.dimensions) {
+      const salaryDim = analysis.dimensions.find(
+        (d: any) => d.name?.toLowerCase().includes('salary')
+      );
+      if (salaryDim && salaryDim.score !== null) {
+        salaryDim.score = null;
+        salaryDim.insight = 'No salary data available for this candidate.';
+        salaryDim.matches = [];
+        salaryDim.gaps = [];
+      }
+    }
+
+    // Recalculate overall_score excluding null dimensions
+    if (analysis.dimensions) {
+      let totalWeight = 0;
+      let weightedSum = 0;
+      for (const dim of analysis.dimensions) {
+        if (dim.score !== null && dim.score !== undefined) {
+          totalWeight += dim.weight || 0;
+          weightedSum += (dim.score * (dim.weight || 0));
+        }
+      }
+      if (totalWeight > 0) {
+        analysis.overall_score = Math.round(weightedSum / totalWeight);
+      }
+    }
+
     // Store in database
     const currentVersion = association.ai_fit_version || 0;
     const { error: updateError } = await sb
