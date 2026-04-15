@@ -337,6 +337,9 @@ export function SourcingProjectView({
       >
         {/* Colorful pipeline-style tabs — exact match to JobDetail */}
         <div className="border-b bg-background shrink-0 px-4 py-3">
+          <div className="flex items-center justify-between mb-2">
+            <SourcingProjectCollaborators projectId={projectId} createdBy={project.created_by} />
+          </div>
           <TabsList className="grid w-full h-14 p-2 gap-1 grid-cols-4">
             <TabsTrigger 
               value="conversation"
