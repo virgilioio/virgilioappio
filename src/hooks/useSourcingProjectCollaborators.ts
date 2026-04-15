@@ -50,10 +50,10 @@ export function useSourcingProjectCollaborators(projectId: string, createdBy?: s
       // Get profiles for names/avatars
       const { data: profiles } = await (supabase
         .from('profiles')
-        .select('id, first_name, last_name, avatar_url, email') as any)
-        .in('id', userIds)
+        .select('user_id, first_name, last_name, avatar_url, email') as any)
+        .in('user_id', userIds)
 
-      const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]))
       const memberMap = new Map((members || []).map((m: any) => [m.user_id, m]))
 
       return data.map((c: any) => {
@@ -101,10 +101,10 @@ export function useSourcingProjectCollaborators(projectId: string, createdBy?: s
       const userIds = members.map((m: any) => m.user_id).filter(Boolean)
       const { data: profiles } = await (supabase
         .from('profiles')
-        .select('id, first_name, last_name, avatar_url, email') as any)
-        .in('id', userIds)
+        .select('user_id, first_name, last_name, avatar_url, email') as any)
+        .in('user_id', userIds)
 
-      const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]))
 
       return members
         .filter((m: any) => m.user_id && m.user_id !== user.id && m.user_id !== createdBy)
