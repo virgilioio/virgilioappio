@@ -116,5 +116,5 @@ export interface SourcingProjectFilters {
   source?: 'local' | 'apollo' | 'pdl' | 'all'
   hasEmail?: boolean
   hasPhone?: boolean
-  candidateSource?: ('internal' | 'external')[]
+  candidateSource?: ('internal' | 'external' | 'gio')[]
 }

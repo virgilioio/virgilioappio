@@ -53,6 +53,7 @@ export interface MatchedCandidate {
   // PDL-specific fields
   is_preview?: boolean
   needs_enrichment?: boolean
+  is_gio_sourced?: boolean
   pdl_id?: string
   summary?: string
   full_name?: string

@@ -52,6 +52,7 @@ interface MatchedCandidate {
   source: 'local' | 'apollo' | 'pdl'
   is_preview?: boolean
   needs_enrichment?: boolean
+  is_gio_sourced?: boolean
   pdl_id?: string
   summary?: string
   profile_summary?: string | null
@@ -539,13 +540,16 @@ export function SourcingCandidateTable({
     }
   }
 
-  // Helper: is this a collected Apollo candidate (already unblocked)?
+  // Helper: is this a collected Apollo candidate (already unblocked, same tenant)?
   const isCollectedApollo = (c: MatchedCandidate) =>
-    c.source === 'apollo' && c.is_preview === false && !!c.candidate_id
+    c.source === 'apollo' && c.is_preview === false && !!c.candidate_id && !c.is_gio_sourced
+
+  // Helper: is this a Gio-sourced candidate (cross-tenant enriched)?
+  const isGioSourced = (c: MatchedCandidate) => c.is_gio_sourced === true
 
   // Helper: is this a PDL full-data candidate?
   const isPdlCandidate = (c: MatchedCandidate) =>
-    (c.source === 'pdl' || c.is_preview === false) && !isCollectedApollo(c)
+    (c.source === 'pdl' || c.is_preview === false) && !isCollectedApollo(c) && !isGioSourced(c)
 
   // Helper: is this an Apollo preview candidate?
   const isApolloPreview = (c: MatchedCandidate) => 
@@ -693,12 +697,13 @@ export function SourcingCandidateTable({
 
                 // Determine candidate type for unified rendering
                 const isInternal = isCollectedApollo(candidate)
-                const isApollo = !isInternal && candidate.source === 'apollo' && !candidate.candidate_id
+                const isGio = isGioSourced(candidate)
+                const isApollo = !isInternal && !isGio && candidate.source === 'apollo' && !candidate.candidate_id
                 const location = getLocation(candidate)
 
                 // Badge config per type
-                const badgeVariant = isInternal ? 'pastel-blue' as const : isPdl ? 'pastel-green' as const : 'secondary' as const
-                const badgeLabel = isInternal ? 'Internal' : isPdl ? 'PDL' : 'Apollo'
+                const badgeVariant = isInternal ? 'pastel-blue' as const : isGio ? 'pastel-purple' as const : isPdl ? 'pastel-green' as const : 'secondary' as const
+                const badgeLabel = isInternal ? 'Internal' : isGio ? 'Gio' : isPdl ? 'PDL' : 'Apollo'
 
                 // Click handler per type
                 const handleRowClick = () => {
@@ -713,6 +718,13 @@ export function SourcingCandidateTable({
                     setSelectedCandidateId(null)
                     setSelectedApolloId(null)
                     setSelectedApolloData(null)
+                    setSheetOpen(true)
+                  } else if (isGio || (candidate.source === 'apollo' && candidate.apollo_id)) {
+                    // Gio and Apollo candidates both open as Apollo preview
+                    setSelectedCandidateId(null)
+                    setSelectedApolloId(candidate.apollo_id || null)
+                    setSelectedApolloData(candidate)
+                    setSelectedPdlData(null)
                     setSheetOpen(true)
                   } else if (candidate.candidate_id || candidate.source === 'local') {
                     setSelectedCandidateId(candidate.candidate_id || candidate.id)
@@ -971,10 +983,11 @@ export function SourcingCandidateTable({
           const isSelected = canSelect && selectedApolloIds.has(candidate.apollo_id!)
 
           const isInternal = isCollectedApollo(candidate)
-          const isApollo = !isInternal && candidate.source === 'apollo' && !candidate.candidate_id
+          const isGio = isGioSourced(candidate)
+          const isApollo = !isInternal && !isGio && candidate.source === 'apollo' && !candidate.candidate_id
           const location = getLocation(candidate)
-          const badgeVariant = isInternal ? 'pastel-blue' as const : isPdl ? 'pastel-green' as const : 'secondary' as const
-          const badgeLabel = isInternal ? 'Internal' : isPdl ? 'PDL' : 'Apollo'
+          const badgeVariant = isInternal ? 'pastel-blue' as const : isGio ? 'pastel-purple' as const : isPdl ? 'pastel-green' as const : 'secondary' as const
+          const badgeLabel = isInternal ? 'Internal' : isGio ? 'Gio' : isPdl ? 'PDL' : 'Apollo'
 
           const handleCardClick = () => {
             if (isInternal) {
@@ -989,15 +1002,16 @@ export function SourcingCandidateTable({
               setSelectedApolloId(null)
               setSelectedApolloData(null)
               setSheetOpen(true)
+            } else if (isGio || (candidate.source === 'apollo' && candidate.apollo_id)) {
+              setSelectedCandidateId(null)
+              setSelectedApolloId(candidate.apollo_id || null)
+              setSelectedApolloData(candidate)
+              setSelectedPdlData(null)
+              setSheetOpen(true)
             } else if (candidate.candidate_id || candidate.source === 'local') {
               setSelectedCandidateId(candidate.candidate_id || candidate.id)
               setSelectedApolloId(null)
               setSelectedApolloData(null)
-              setSelectedPdlData(null)
-              setSheetOpen(true)
-            } else if (candidate.source === 'apollo' && candidate.apollo_id) {
-              setSelectedCandidateId(null)
-              setSelectedApolloId(candidate.apollo_id)
               setSelectedApolloData({
                 candidate_name: getDisplayName(candidate),
                 headline: candidate.headline,
