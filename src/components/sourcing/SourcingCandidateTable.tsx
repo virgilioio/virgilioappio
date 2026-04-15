@@ -662,7 +662,7 @@ export function SourcingCandidateTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedData.map(candidate => {
+              {paginatedData.map((candidate, pIdx) => {
                 const isAdded = addedCandidates.has(candidate.id)
                 const isLoading = loadingCandidates.has(candidate.id)
                 const isCollecting = candidate.apollo_id ? collectingProfiles.has(candidate.apollo_id) : false
@@ -752,7 +752,7 @@ export function SourcingCandidateTable({
 
                 return (
                   <TableRow
-                    key={candidate.apollo_id || candidate.id}
+                    key={`${candidate.apollo_id || candidate.id}-${pIdx}`}
                     className={cn(
                       "cursor-pointer hover:bg-muted/40",
                       isSelected && "bg-muted/30",
@@ -964,7 +964,7 @@ export function SourcingCandidateTable({
 
       {/* Mobile Card List */}
       <div className="md:hidden space-y-3">
-        {paginatedData.map(candidate => {
+        {paginatedData.map((candidate, pIdx) => {
           const isAdded = addedCandidates.has(candidate.id)
           const isLoading = loadingCandidates.has(candidate.id)
           const isPdl = isPdlCandidate(candidate)
@@ -1029,7 +1029,7 @@ export function SourcingCandidateTable({
 
           return (
             <Card
-              key={candidate.apollo_id || candidate.id}
+              key={`${candidate.apollo_id || candidate.id}-${pIdx}`}
               className={cn(
                 "shadow-calendly cursor-pointer hover:shadow-lg transition-shadow",
                 isSelected && "ring-2 ring-primary"
