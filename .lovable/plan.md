@@ -1,37 +1,38 @@
 
 
-# Fix Inconsistent Keyword Badges on Cached Results
+# Fix: Collected Candidates Showing as Apollo Preview
 
 ## Root Cause
 
-The keyword badges (e.g., "SAP, ERP") only appear on the **first** search when Apollo results are fetched fresh. On every subsequent load, results come from the 24-hour cache — and the cache path in `search-apollo-candidates` **skips keyword scoring entirely**.
+Two bugs working together:
 
-```text
-Fresh fetch path:  Apollo API → mapApolloSearchCandidate(c, keywords) → keyword_score ✅, matched_keywords ✅
-Cache path:        sourcing_preview_candidates → raw map → keyword_score ❌, matched_keywords ❌
+### Bug 1: Cache query silently capped at 1000 rows
+In `search-apollo-candidates/index.ts` (line 393-397), the cache query has no `.limit()`:
+```typescript
+const { data: cachedCandidates } = await supabase
+  .from('sourcing_preview_candidates')
+  .select('*')
+  .eq('sourcing_project_id', project_id)
+  .eq('source', 'apollo');
+// ← Supabase default limit = 1000, but 2000 rows exist
 ```
 
-The cache table doesn't store `keyword_score` or `matched_keywords` columns either, so there's no data to map even if we tried.
+Logs confirm: "Apollo returned 1000 candidates (cached: true)" vs "Apollo returned 2000 candidates (cached: false)" for fresh fetches. Half the candidates vanish on cache hits, and some collected ones may be in the lost half.
 
-## Fix
-
-Re-apply keyword scoring to cached candidates before returning them. The `criteria` object (containing `keywords`) is already available in the function since it's passed from `sourcing-search`.
+### Bug 2: Cross-reference may also be capped
+In `sourcing-search/index.ts` (line 228-232), the query to find collected candidates uses `.in('apollo_id', apolloIds)` with up to 2000 IDs. While the response won't exceed 1000 rows by default, the current tenant only has ~254 collected candidates so this isn't actively breaking — but it's a ticking time bomb.
 
 ## Changes
 
-### `supabase/functions/search-apollo-candidates/index.ts`
+### 1. `supabase/functions/search-apollo-candidates/index.ts`
+- Add `.limit(2000)` to the cache query at line 393-397
 
-In the cache hit path (around line 399), after mapping cached rows, re-run keyword scoring on each candidate using the same logic as the fresh path:
+### 2. `supabase/functions/sourcing-search/index.ts`
+- Add `.limit(2000)` to the collected candidates cross-reference query (line 228-232) as a safety measure
+- Add `.limit(2000)` to the PDL cache query (line 72-76) for consistency
 
-1. Accept `criteria` from the request body (already parsed but not used in cache path)
-2. For each cached candidate, build a mini corpus from `headline` + `current_company` + `current_title`
-3. Match against `criteria.keywords` — same loop as `mapApolloSearchCandidate`
-4. Attach `keyword_score` and `matched_keywords` to each cached candidate
-5. Re-sort by `keyword_score` descending (same as fresh path)
-
-This is lightweight — just string matching against 2-3 fields per candidate. No API calls, no DB writes.
+Both functions redeployed.
 
 ## Result
-
-Keyword badges will appear consistently whether results come from cache or fresh fetch. The scoring is deterministic and uses the same keywords, so badges will be identical across loads.
+All 2000 cached candidates are returned, cross-referenced correctly against collected candidates, and displayed with the proper "Internal" badge.
 
