@@ -224,6 +224,20 @@ export default function Find() {
                     onSelectProject={(id) => navigate(`/find/${id}`)}
                     onNewSearch={() => navigate('/find')}
                   />
+                  {mode === 'project' && currentProject && (
+                    <>
+                      <div className="flex-1" />
+                      <SourcingProjectActions
+                        project={currentProject}
+                        isRefreshing={isRefreshing}
+                        onRefresh={() => setIsRefreshing(true)}
+                        onArchive={() => {}}
+                        onDelete={() => {}}
+                        onVisibilityToggle={async () => {}}
+                        onLinkToJob={async () => {}}
+                      />
+                    </>
+                  )}
                 </div>
                 
                 <div className="flex-1 min-h-0 overflow-hidden">
