@@ -6006,6 +6006,10 @@ export type Database = {
       is_org_owner: { Args: { p_org_id: string }; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
       is_public_email_domain: { Args: { domain: string }; Returns: boolean }
+      is_sourcing_project_creator: {
+        Args: { _project_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_trial_expired: { Args: { tenant_id_param: string }; Returns: boolean }
       is_user_assigned_to_job: {
         Args: { job_id_param: string; user_id_param?: string }
