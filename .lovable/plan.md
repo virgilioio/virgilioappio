@@ -1,23 +1,26 @@
 
 
-# Fix Internal Candidate Source Filter
+# Fix Internal Candidate Click in Sourcing Results
 
 ## Problem
-The "Internal" filter checks `candidate.source === 'local'`, but collected Apollo candidates (which display the "Internal" badge) have `source === 'apollo'` with `is_preview === false` and a `candidate_id`. The filter logic doesn't match the badge logic, so filtering to "Internal" returns 0 results.
+When clicking an "Internal" (collected Apollo) candidate row, the profile sheet shows loading skeletons forever. The click handler on line 706 sets `selectedCandidateId = candidate.id`, but for collected Apollo candidates `candidate.id` is the Apollo/sourcing result ID — not the actual database record ID. The real DB ID lives in `candidate.candidate_id`. The sheet then tries to fetch a non-existent candidate from the DB, resulting in an endless loading state.
 
 ## Fix — 1 file
 
-**`src/components/sourcing/SourcingProjectView.tsx`** (~line 152-157)
+**`src/components/sourcing/SourcingCandidateTable.tsx`** (line 706)
 
-Replace the simple `source === 'local'` check with the same logic used by `isCollectedApollo` in the table component:
-
+Change:
 ```ts
-const isInternal = candidate.source === 'local' || 
-  (candidate.source === 'apollo' && candidate.is_preview === false && !!candidate.candidate_id)
+setSelectedCandidateId(candidate.id)
+```
+To:
+```ts
+setSelectedCandidateId(candidate.candidate_id || candidate.id)
 ```
 
-This matches candidates that are either directly local OR collected Apollo candidates (already in the database) — exactly the ones that get the "Internal" badge.
+This ensures the sheet receives the correct database ID for collected Apollo candidates, while falling back to `candidate.id` for truly local candidates where the ID is already correct.
 
 ## Scope
 - 1 line change in 1 file
+- 0 backend changes
 
