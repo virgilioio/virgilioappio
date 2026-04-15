@@ -6,7 +6,7 @@ import { AppContainer } from '@/components/layout/AppContainer'
 import { Card } from '@/components/ui/card'
 import { AIJobAssistant } from '@/components/dashboard/AIJobAssistant'
 import { FindFilterPanel } from '@/components/sourcing/FindFilterPanel'
-import { SourcingProjectView } from '@/components/sourcing/SourcingProjectView'
+import { SourcingProjectView, SourcingProjectActions as SourcingProjectActionsType } from '@/components/sourcing/SourcingProjectView'
 import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
 import { RoleGate } from '@/components/auth/RoleGate'
 import { useUserJobRoles } from '@/hooks/useUserJobRoles'
@@ -19,6 +19,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { toast } from '@/hooks/use-toast'
 import gioAvatar from '@/assets/gio-avatar.png'
 import { SavedSearchSelector } from '@/components/sourcing/SavedSearchSelector'
+import { SourcingProjectActions } from '@/components/sourcing/SourcingProjectActions'
 
 export default function Find() {
   const { projectId } = useParams<{ projectId?: string }>()
@@ -39,6 +40,7 @@ export default function Find() {
   
   const [editableCriteria, setEditableCriteria] = useState<SearchCriteria | null>(null)
   const updateSearchCriteriaRef = useRef<((criteria: SearchCriteria) => Promise<void>) | null>(null)
+  const projectActionsRef = useRef<SourcingProjectActionsType | null>(null)
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
   const isInitialSyncRef = useRef(true)
   
@@ -176,6 +178,10 @@ export default function Find() {
     updateSearchCriteriaRef.current = fn
   }, [])
 
+  const handleExposeActions = useCallback((actions: SourcingProjectActionsType | null) => {
+    projectActionsRef.current = actions
+  }, [])
+
   const handleCriteriaChange = useCallback((updates: Partial<SearchCriteria>) => {
     setEditableCriteria(prev => {
       const base = prev || {
@@ -223,6 +229,20 @@ export default function Find() {
                     onSelectProject={(id) => navigate(`/find/${id}`)}
                     onNewSearch={() => navigate('/find')}
                   />
+                  {mode === 'project' && currentProject && (
+                    <>
+                      <div className="flex-1" />
+                      <SourcingProjectActions
+                        project={currentProject}
+                        isRefreshing={isRefreshing}
+                        onRefresh={() => projectActionsRef.current?.onRefresh()}
+                        onArchive={() => projectActionsRef.current?.onArchive()}
+                        onDelete={() => projectActionsRef.current?.onDelete()}
+                        onVisibilityToggle={(v) => projectActionsRef.current?.onVisibilityToggle(v) ?? Promise.resolve()}
+                        onLinkToJob={(id) => projectActionsRef.current?.onLinkToJob(id) ?? Promise.resolve()}
+                      />
+                    </>
+                  )}
                 </div>
                 
                 <div className="flex-1 min-h-0 overflow-hidden">
@@ -271,6 +291,7 @@ export default function Find() {
                       setIsRefreshing={setIsRefreshing}
                       onProjectLoaded={handleProjectLoaded}
                       onUpdateSearchCriteria={handleExposeUpdateSearchCriteria}
+                      onExposeActions={handleExposeActions}
                     />
                   )}
                 </div>

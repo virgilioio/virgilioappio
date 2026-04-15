@@ -6,8 +6,6 @@ import { ConversationTab } from './ConversationTab'
 import { SavedCandidatesTab } from './SavedCandidatesTab'
 import { ArchivedCandidatesTab } from './ArchivedCandidatesTab'
 import { AddCollectedToPipelineDialog } from './AddCollectedToPipelineDialog'
-import { SourcingProjectCollaborators } from './SourcingProjectCollaborators'
-import { SavedSearchSelector } from './SavedSearchSelector'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { useSourcingProject } from '@/hooks/useSourcingProject'
@@ -19,6 +17,14 @@ import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 
+export interface SourcingProjectActions {
+  onRefresh: () => Promise<void>
+  onArchive: () => Promise<void>
+  onDelete: () => Promise<void>
+  onVisibilityToggle: (isPublic: boolean) => Promise<void>
+  onLinkToJob: (jobId: string) => Promise<void>
+}
+
 interface SourcingProjectViewProps {
   projectId: string
   filters: SourcingProjectFilters
@@ -27,6 +33,7 @@ interface SourcingProjectViewProps {
   setIsRefreshing: (v: boolean) => void
   onProjectLoaded?: (project: any) => void
   onUpdateSearchCriteria?: (fn: ((criteria: SearchCriteria) => Promise<void>) | null) => void
+  onExposeActions?: (actions: SourcingProjectActions | null) => void
 }
 
 
@@ -37,7 +44,8 @@ export function SourcingProjectView({
   isRefreshing,
   setIsRefreshing,
   onProjectLoaded,
-  onUpdateSearchCriteria: exposeUpdateSearchCriteria
+  onUpdateSearchCriteria: exposeUpdateSearchCriteria,
+  onExposeActions
 }: SourcingProjectViewProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -123,6 +131,18 @@ export function SourcingProjectView({
   useEffect(() => {
     if (exposeUpdateSearchCriteria) {
       exposeUpdateSearchCriteria(project ? handleUpdateSearchCriteria : null)
+    }
+  }, [project, projectId])
+
+  useEffect(() => {
+    if (onExposeActions) {
+      onExposeActions(project ? {
+        onRefresh: handleRefresh,
+        onArchive: handleArchive,
+        onDelete: handleDelete,
+        onVisibilityToggle: handleVisibilityToggle,
+        onLinkToJob: handleLinkToJob,
+      } : null)
     }
   }, [project, projectId])
   
@@ -337,9 +357,6 @@ export function SourcingProjectView({
       >
         {/* Colorful pipeline-style tabs — exact match to JobDetail */}
         <div className="border-b bg-background shrink-0 px-4 py-3">
-          <div className="flex items-center justify-between mb-2">
-            <SourcingProjectCollaborators projectId={projectId} createdBy={project.created_by} />
-          </div>
           <TabsList className="grid w-full h-14 p-2 gap-1 grid-cols-4">
             <TabsTrigger 
               value="conversation"
@@ -398,12 +415,9 @@ export function SourcingProjectView({
             project={project}
             candidates={filteredCandidates as any}
             isLoading={candidatesLoading}
-            onRefresh={handleRefresh}
-            onArchive={handleArchive}
-            onDelete={handleDelete}
-            onVisibilityToggle={handleVisibilityToggle}
-            onLinkToJob={handleLinkToJob}
-            isRefreshing={isRefreshing}
+            jobId={project.job_id}
+            projectId={project.id}
+            searchCriteria={project.search_criteria}
             sourceBreakdown={matchingResult?.source_breakdown}
           />
         </TabsContent>
