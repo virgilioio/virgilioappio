@@ -178,6 +178,10 @@ export default function Find() {
     updateSearchCriteriaRef.current = fn
   }, [])
 
+  const handleExposeActions = useCallback((actions: SourcingProjectActionsType | null) => {
+    projectActionsRef.current = actions
+  }, [])
+
   const handleCriteriaChange = useCallback((updates: Partial<SearchCriteria>) => {
     setEditableCriteria(prev => {
       const base = prev || {
