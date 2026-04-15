@@ -752,7 +752,7 @@ export function SourcingCandidateTable({
 
                 return (
                   <TableRow
-                    key={candidate.apollo_id || candidate.id}
+                    key={`${candidate.apollo_id || candidate.id}-${startIndex + index}`}
                     className={cn(
                       "cursor-pointer hover:bg-muted/40",
                       isSelected && "bg-muted/30",
@@ -1029,7 +1029,7 @@ export function SourcingCandidateTable({
 
           return (
             <Card
-              key={candidate.apollo_id || candidate.id}
+              key={`${candidate.apollo_id || candidate.id}-${index}`}
               className={cn(
                 "shadow-calendly cursor-pointer hover:shadow-lg transition-shadow",
                 isSelected && "ring-2 ring-primary"

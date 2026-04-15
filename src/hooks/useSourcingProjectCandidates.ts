@@ -174,10 +174,19 @@ export function useSourcingProjectCandidates({
 
       if (error) throw error
 
-      console.log(`✅ Found ${data.candidates?.length || 0} matching candidates (sources: PDL ${data.source_breakdown?.pdl ?? 0}, Apollo ${data.source_breakdown?.apollo ?? 0})`)
+      // Deduplicate candidates by apollo_id/pdl_id/id to prevent React key collisions
+      const seen = new Set<string>()
+      const dedupedCandidates = (data.candidates || []).filter((c: any) => {
+        const key = c.apollo_id || c.pdl_id || c.id
+        if (!key || seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+
+      console.log(`✅ Found ${dedupedCandidates.length} unique candidates (${(data.candidates?.length || 0) - dedupedCandidates.length} duplicates removed) (sources: PDL ${data.source_breakdown?.pdl ?? 0}, Apollo ${data.source_breakdown?.apollo ?? 0})`)
       setMatchingResult({
-        candidates: data.candidates || [],
-        total_count: data.candidates?.length || 0,
+        candidates: dedupedCandidates,
+        total_count: dedupedCandidates.length,
         breakdown: {
           localCandidates: 0,
           apolloCandidates: data.source_breakdown?.apollo ?? 0,
