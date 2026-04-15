@@ -125,7 +125,7 @@ export function useSourcingProjectCollaborators(projectId: string, createdBy?: s
   const addCollaborator = useMutation({
     mutationFn: async (userId: string) => {
       const { error } = await supabase
-        .from('sourcing_project_collaborators')
+        .from('sourcing_project_collaborators' as any)
         .insert({
           sourcing_project_id: projectId,
           user_id: userId,
@@ -141,7 +141,7 @@ export function useSourcingProjectCollaborators(projectId: string, createdBy?: s
   const removeCollaborator = useMutation({
     mutationFn: async (collaboratorId: string) => {
       const { error } = await supabase
-        .from('sourcing_project_collaborators')
+        .from('sourcing_project_collaborators' as any)
         .delete()
         .eq('id', collaboratorId)
       if (error) throw error
