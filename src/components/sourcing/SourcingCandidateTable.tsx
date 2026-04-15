@@ -539,8 +539,13 @@ export function SourcingCandidateTable({
     }
   }
 
+  // Helper: is this a collected Apollo candidate (already unblocked)?
+  const isCollectedApollo = (c: MatchedCandidate) =>
+    c.source === 'apollo' && c.is_preview === false && !!c.candidate_id
+
   // Helper: is this a PDL full-data candidate?
-  const isPdlCandidate = (c: MatchedCandidate) => c.source === 'pdl' || c.is_preview === false
+  const isPdlCandidate = (c: MatchedCandidate) =>
+    (c.source === 'pdl' || c.is_preview === false) && !isCollectedApollo(c)
 
   // Helper: is this an Apollo preview candidate?
   const isApolloPreview = (c: MatchedCandidate) => 
@@ -693,7 +698,7 @@ export function SourcingCandidateTable({
                       "cursor-pointer hover:bg-muted/50",
                       isSelected && "bg-muted/30",
                       isActiveRow && "bg-primary/5 border-l-2 border-l-primary",
-                      isPdl && !isActiveRow && "border-l-2 border-l-emerald-400"
+                      isPdl && !isActiveRow && !isCollectedApollo(candidate) && "border-l-2 border-l-emerald-400"
                     )}
                     onClick={() => {
                       if (isPdl) {
@@ -762,7 +767,11 @@ export function SourcingCandidateTable({
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-sm">{getDisplayName(candidate)}</span>
                             {/* Source badge */}
-                            {isPdl ? (
+                            {isCollectedApollo(candidate) ? (
+                              <Badge variant="pastel-blue" className="text-[10px] px-1.5 py-0 h-4">
+                                Internal
+                              </Badge>
+                            ) : isPdl ? (
                               <Badge variant="pastel-green" className="text-[10px] px-1.5 py-0 h-4">
                                 PDL
                               </Badge>
@@ -1060,7 +1069,7 @@ export function SourcingCandidateTable({
               className={cn(
                 "shadow-calendly cursor-pointer hover:shadow-lg transition-shadow",
                 isSelected && "ring-2 ring-primary",
-                isPdl && "border-l-2 border-l-emerald-400"
+                isPdl && !isCollectedApollo(candidate) && "border-l-2 border-l-emerald-400"
               )}
               onClick={() => {
                 if (isPdl) {
