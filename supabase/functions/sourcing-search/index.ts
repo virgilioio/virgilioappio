@@ -212,7 +212,50 @@ serve(async (req) => {
     });
 
     const deduplicated = apolloCandidates.length - dedupedApollo.length;
-    const allCandidates = [...pdlCandidates, ...dedupedApollo];
+
+    // ── Cross-reference Apollo results with already-collected candidates ──
+    const apolloIds = dedupedApollo
+      .map((c: any) => c.apollo_id)
+      .filter(Boolean);
+
+    let collectedMap = new Map<string, any>();
+    if (apolloIds.length > 0) {
+      const { data: collected } = await supabase
+        .from('candidates')
+        .select('id, apollo_id, candidate_name, email, phone, linkedin_url, location_city, location_state, location_country, company_current, role_current')
+        .in('apollo_id', apolloIds)
+        .not('apollo_collected_at', 'is', null);
+
+      if (collected) {
+        for (const c of collected) {
+          collectedMap.set(c.apollo_id, c);
+        }
+        console.log(`✅ Found ${collectedMap.size} already-collected Apollo candidates`);
+      }
+    }
+
+    const enrichedApollo = dedupedApollo.map((c: any) => {
+      const match = c.apollo_id ? collectedMap.get(c.apollo_id) : null;
+      if (!match) return c;
+      return {
+        ...c,
+        candidate_id: match.id,
+        candidate_name: match.candidate_name,
+        full_name: match.candidate_name,
+        email: match.email,
+        phone: match.phone,
+        linkedin_url: match.linkedin_url || c.linkedin_url,
+        location_city: match.location_city,
+        location_state: match.location_state,
+        location_country: match.location_country,
+        current_company: match.company_current || c.current_company,
+        current_role: match.role_current || c.current_role,
+        is_preview: false,
+        needs_enrichment: false,
+      };
+    });
+
+    const allCandidates = [...pdlCandidates, ...enrichedApollo];
 
     const sourceBreakdown = {
       pdl: pdlCandidates.length,
