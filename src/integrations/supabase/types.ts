@@ -4652,6 +4652,38 @@ export type Database = {
           },
         ]
       }
+      sourcing_project_collaborators: {
+        Row: {
+          added_by: string
+          created_at: string
+          id: string
+          sourcing_project_id: string
+          user_id: string
+        }
+        Insert: {
+          added_by: string
+          created_at?: string
+          id?: string
+          sourcing_project_id: string
+          user_id: string
+        }
+        Update: {
+          added_by?: string
+          created_at?: string
+          id?: string
+          sourcing_project_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sourcing_project_collaborators_sourcing_project_id_fkey"
+            columns: ["sourcing_project_id"]
+            isOneToOne: false
+            referencedRelation: "sourcing_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sourcing_projects: {
         Row: {
           coresignal_cache_expires_at: string | null
