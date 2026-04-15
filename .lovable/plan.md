@@ -1,33 +1,23 @@
 
 
-# Add Candidate Source Filter (Internal / External)
+# Fix Internal Candidate Source Filter
 
-## What
-Add a new collapsible "Candidate Source" section below "Contact Info" in the Result Filters area, with two checkboxes: **Internal** (previously collected candidates already in the database) and **External** (Apollo previews and PDL results from external providers).
+## Problem
+The "Internal" filter checks `candidate.source === 'local'`, but collected Apollo candidates (which display the "Internal" badge) have `source === 'apollo'` with `is_preview === false` and a `candidate_id`. The filter logic doesn't match the badge logic, so filtering to "Internal" returns 0 results.
 
-## Changes — 2 files
+## Fix — 1 file
 
-### 1. `src/types/sourcing.ts`
-Replace the single-select `source` field with a new multi-select field:
+**`src/components/sourcing/SourcingProjectView.tsx`** (~line 152-157)
+
+Replace the simple `source === 'local'` check with the same logic used by `isCollectedApollo` in the table component:
+
 ```ts
-candidateSource?: ('internal' | 'external')[]
+const isInternal = candidate.source === 'local' || 
+  (candidate.source === 'apollo' && candidate.is_preview === false && !!candidate.candidate_id)
 ```
-Keep the old `source` field for backward compat or remove it if unused elsewhere.
 
-### 2. `src/components/sourcing/FindFilterPanel.tsx`
-After the "Contact Info" `CollapsibleSection` (~line 349), add a new collapsible:
-- **Label**: "Candidate Source", **Icon**: `Users` (already imported)
-- Two checkboxes: "Internal" and "External"
-- Toggle logic writes to `resultFilters.candidateSource` array
-- Include in the Reset button's default state (`candidateSource: []`)
-
-### 3. `src/components/sourcing/SourcingProjectView.tsx`
-Update the filtering logic (~line 143) to handle the new `candidateSource` filter:
-- If `candidateSource` includes only `'internal'`: show only candidates where `isCollectedApollo(candidate)` is true
-- If `candidateSource` includes only `'external'`: show only candidates where `isCollectedApollo(candidate)` is false
-- If both or empty: show all (no filtering)
+This matches candidates that are either directly local OR collected Apollo candidates (already in the database) — exactly the ones that get the "Internal" badge.
 
 ## Scope
-- 3 file edits, ~25 lines net
-- 0 backend changes
+- 1 line change in 1 file
 
