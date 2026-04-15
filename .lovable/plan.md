@@ -1,43 +1,34 @@
 
 
-# Enriched Table Row for Internal (Collected Apollo) Candidates
+# Unify All Candidate Rows to Enriched Card Layout
 
-## Inspiration
-The reference image shows a card structure with: category badge at top-left, bold name, description line, then a bottom row of icon+text metadata chips (type, location, salary), with a "View →" action on the right.
+## What changes
+Make **every** candidate row (Apollo preview, PDL, and Internal) use the same enriched colSpan layout that Internal candidates already have. The only differences between row types will be:
 
-## Approach
-For rows where `isCollectedApollo(candidate)` is true, render a special enriched layout that spans the full row using `colSpan`. This gives us vertical freedom within the table without breaking the table structure for other candidate types.
+1. **Badge**: "Internal" (pastel-blue), "PDL" (pastel-green), or "Apollo" (secondary)
+2. **Metadata chips**: 
+   - **Internal/PDL**: Show actual values (email address, phone number, city name)
+   - **Apollo preview**: Show placeholder labels ("Email", "Phone", "Location") in the same pill style — indicating availability without revealing data
+3. **Name**: Internal/PDL show real name; Apollo shows obfuscated name
+4. **Checkbox**: Only shown for uncollected Apollo candidates (existing logic)
+5. **Right actions**: Apollo gets "Collect" button, Internal/PDL get "Add to Pipeline"
 
-### Layout inside the enriched row
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│ [☐]  Internal (badge)                                          │
-│      **Jane Smith**                                             │
-│      Senior Product Designer at Acme Corp                      │
-│      🏢 Current Role  ·  📍 City, State  ·  ✉ email  · 📞 phone │
-│                                              View Profile →    │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Changes — 1 file
+## Implementation — 1 file
 
 **`src/components/sourcing/SourcingCandidateTable.tsx`**
 
-1. **Add a conditional branch** inside the `.map()` loop (~line 694): when `isCollectedApollo(candidate)` is true, render a distinct `<TableRow>` with a single `<TableCell colSpan={5}>` containing the enriched card layout.
+Remove the `if (isCollectedApollo)` early-return block and the standard `<TableRow>` block. Replace both with a **single unified enriched row renderer** used for all candidates:
 
-2. **Enriched layout contents:**
-   - Top line: Checkbox (left) + "Internal" pastel-blue badge
-   - Name: bold, slightly larger (`text-sm font-semibold`)
-   - Subtitle: `current_role` at `current_company` (muted text)
-   - Bottom metadata row: icon chips for location (`MapPin`), email (`Mail`), phone (`Phone`), LinkedIn icon — using the same `text-[10px]` chip style but with subtle background pills
-   - Right-aligned: "View Profile →" text link (uses `ChevronRight` icon), triggers the existing click handler to open the profile sheet
+- Delete the separate code paths (~lines 694-814 for Internal, ~lines 816-1050 for standard)
+- Replace with one enriched `<TableRow>` + `<TableCell colSpan={5}>` block that handles all three source types via conditionals for badge, name display, metadata content, and actions
+- Remove the emerald left-border for PDL rows (no longer needed — badge handles identification)
+- Apollo preview rows: metadata chips show `"Email"`, `"Phone"`, `"Location"` as placeholder text (same rounded pill style) based on `has_email`, `has_phone`, `has_location` flags
+- PDL rows: metadata chips show actual `candidate.email`, `candidate.phone`, and location string
+- Keep existing click handlers per source type (PDL opens PDL sheet, Apollo opens Apollo preview sheet, Internal opens candidate profile)
 
-3. **Styling:** Subtle `bg-muted/20` background, no left border accent, rounded inner container with `p-3` padding. Keeps the restrained, premium feel.
-
-4. **Mobile card view** (~line 1066): Apply similar enriched layout for `isCollectedApollo` cards — show the metadata chips row at bottom.
+The mobile card view (~line 1066+) will also be updated to match the same unified structure.
 
 ## Scope
-- 1 frontend file edit (~40 lines changed)
+- 1 frontend file (~80 lines net change, mostly consolidation)
 - 0 backend changes
 
