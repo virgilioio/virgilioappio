@@ -39,12 +39,15 @@ serve(async (req) => {
     // Fetch project with cache timestamps
     const { data: project, error: projectError } = await supabase
       .from('sourcing_projects')
-      .select('id, organization_id, search_criteria, sourcing_cache_expires_at, pdl_cache_expires_at')
+      .select('id, organization_id, search_criteria, sourcing_cache_expires_at, pdl_cache_expires_at, organizations!inner(tenant_id)')
       .eq('id', sourcing_project_id)
       .single();
 
     if (projectError || !project) {
       throw new Error('Project not found');
+    }
+
+    const projectTenantId = (project as any).organizations?.tenant_id;
     }
 
     const criteria = project.search_criteria;
@@ -214,45 +217,79 @@ serve(async (req) => {
     const deduplicated = apolloCandidates.length - dedupedApollo.length;
 
     // ── Cross-reference Apollo results with already-collected candidates ──
+    // SECURITY: scope by tenant_id to prevent cross-tenant data leakage
     const apolloIds = dedupedApollo
       .map((c: any) => c.apollo_id)
       .filter(Boolean);
 
-    let collectedMap = new Map<string, any>();
+    let sameTenantMap = new Map<string, any>();
+    let crossTenantMap = new Map<string, any>();
+
     if (apolloIds.length > 0) {
       const { data: collected } = await supabase
         .from('candidates')
-        .select('id, apollo_id, candidate_name, email, phone, linkedin_url, location_city, location_state, location_country, company_current, role_current')
+        .select('id, apollo_id, tenant_id, candidate_name, email, phone, linkedin_url, location_city, location_state, location_country, company_current, role_current')
         .in('apollo_id', apolloIds)
         .not('apollo_collected_at', 'is', null);
 
       if (collected) {
         for (const c of collected) {
-          collectedMap.set(c.apollo_id, c);
+          if (projectTenantId && c.tenant_id === projectTenantId) {
+            sameTenantMap.set(c.apollo_id, c);
+          } else {
+            // Cross-tenant: only keep if not already matched by same-tenant
+            if (!sameTenantMap.has(c.apollo_id)) {
+              crossTenantMap.set(c.apollo_id, c);
+            }
+          }
         }
-        console.log(`✅ Found ${collectedMap.size} already-collected Apollo candidates`);
+        console.log(`✅ Collected matches: ${sameTenantMap.size} same-tenant (Internal), ${crossTenantMap.size} cross-tenant (Gio)`);
       }
     }
 
     const enrichedApollo = dedupedApollo.map((c: any) => {
-      const match = c.apollo_id ? collectedMap.get(c.apollo_id) : null;
-      if (!match) return c;
-      return {
-        ...c,
-        candidate_id: match.id,
-        candidate_name: match.candidate_name,
-        full_name: match.candidate_name,
-        email: match.email,
-        phone: match.phone,
-        linkedin_url: match.linkedin_url || c.linkedin_url,
-        location_city: match.location_city,
-        location_state: match.location_state,
-        location_country: match.location_country,
-        current_company: match.company_current || c.current_company,
-        current_role: match.role_current || c.current_role,
-        is_preview: false,
-        needs_enrichment: false,
-      };
+      const sameMatch = c.apollo_id ? sameTenantMap.get(c.apollo_id) : null;
+      if (sameMatch) {
+        // Same-tenant → Internal: full candidate_id access
+        return {
+          ...c,
+          candidate_id: sameMatch.id,
+          candidate_name: sameMatch.candidate_name,
+          full_name: sameMatch.candidate_name,
+          email: sameMatch.email,
+          phone: sameMatch.phone,
+          linkedin_url: sameMatch.linkedin_url || c.linkedin_url,
+          location_city: sameMatch.location_city,
+          location_state: sameMatch.location_state,
+          location_country: sameMatch.location_country,
+          current_company: sameMatch.company_current || c.current_company,
+          current_role: sameMatch.role_current || c.current_role,
+          is_preview: false,
+          needs_enrichment: false,
+        };
+      }
+
+      const crossMatch = c.apollo_id ? crossTenantMap.get(c.apollo_id) : null;
+      if (crossMatch) {
+        // Cross-tenant → Gio: enriched display data but NO candidate_id
+        return {
+          ...c,
+          is_gio_sourced: true,
+          candidate_id: null, // SECURITY: never expose cross-tenant DB IDs
+          candidate_name: crossMatch.candidate_name,
+          full_name: crossMatch.candidate_name,
+          linkedin_url: crossMatch.linkedin_url || c.linkedin_url,
+          location_city: crossMatch.location_city,
+          location_state: crossMatch.location_state,
+          location_country: crossMatch.location_country,
+          current_company: crossMatch.company_current || c.current_company,
+          current_role: crossMatch.role_current || c.current_role,
+          is_preview: true,
+          needs_enrichment: true,
+        };
+      }
+
+      return c;
     });
 
     const allCandidates = [...pdlCandidates, ...enrichedApollo];

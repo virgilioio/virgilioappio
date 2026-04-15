@@ -52,6 +52,7 @@ interface MatchedCandidate {
   source: 'local' | 'apollo' | 'pdl'
   is_preview?: boolean
   needs_enrichment?: boolean
+  is_gio_sourced?: boolean
   pdl_id?: string
   summary?: string
   profile_summary?: string | null
@@ -539,13 +540,16 @@ export function SourcingCandidateTable({
     }
   }
 
-  // Helper: is this a collected Apollo candidate (already unblocked)?
+  // Helper: is this a collected Apollo candidate (already unblocked, same tenant)?
   const isCollectedApollo = (c: MatchedCandidate) =>
-    c.source === 'apollo' && c.is_preview === false && !!c.candidate_id
+    c.source === 'apollo' && c.is_preview === false && !!c.candidate_id && !c.is_gio_sourced
+
+  // Helper: is this a Gio-sourced candidate (cross-tenant enriched)?
+  const isGioSourced = (c: MatchedCandidate) => c.is_gio_sourced === true
 
   // Helper: is this a PDL full-data candidate?
   const isPdlCandidate = (c: MatchedCandidate) =>
-    (c.source === 'pdl' || c.is_preview === false) && !isCollectedApollo(c)
+    (c.source === 'pdl' || c.is_preview === false) && !isCollectedApollo(c) && !isGioSourced(c)
 
   // Helper: is this an Apollo preview candidate?
   const isApolloPreview = (c: MatchedCandidate) => 
