@@ -149,12 +149,18 @@ export function SourcingProjectView({
       if (filters.hasEmail === true && !candidate.has_email) return false
       if (filters.hasPhone === true && !candidate.has_phone) return false
 
-      if (filters.candidateSource && filters.candidateSource.length > 0 && filters.candidateSource.length < 2) {
+      if (filters.candidateSource && filters.candidateSource.length > 0 && filters.candidateSource.length < 3) {
         const wantInternal = filters.candidateSource.includes('internal')
+        const wantGio = filters.candidateSource.includes('gio')
+        const wantExternal = filters.candidateSource.includes('external')
+        
         const isInternal = candidate.source === 'local' || 
-          (candidate.source === 'apollo' && candidate.is_preview === false && !!candidate.candidate_id)
-        if (wantInternal && !isInternal) return false
-        if (!wantInternal && isInternal) return false
+          (candidate.source === 'apollo' && candidate.is_preview === false && !!candidate.candidate_id && !candidate.is_gio_sourced)
+        const isGio = candidate.is_gio_sourced === true
+        const isExternal = !isInternal && !isGio
+        
+        const matches = (wantInternal && isInternal) || (wantGio && isGio) || (wantExternal && isExternal)
+        if (!matches) return false
       }
       
       return true
