@@ -970,235 +970,174 @@ export function SourcingCandidateTable({
           const canSelect = !isPdl && candidate.source === 'apollo' && !candidate.candidate_id && candidate.apollo_id
           const isSelected = canSelect && selectedApolloIds.has(candidate.apollo_id!)
 
-          if (isCollectedApollo(candidate)) {
-            const location = getLocation(candidate)
-            return (
-              <Card
-                key={candidate.id}
-                className="shadow-calendly cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => {
-                  setSelectedCandidateId(candidate.id)
-                  setSelectedApolloId(null)
-                  setSelectedApolloData(null)
-                  setSelectedPdlData(null)
-                  setSheetOpen(true)
-                }}
-              >
-                <CardContent className="p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Badge variant="pastel-blue" className="text-[10px] px-1.5 py-0 h-4">Internal</Badge>
-                    <Badge className={cn("text-xs", getMatchBadgeColor(candidate.match_tier))}>
-                      {candidate.match_score}%
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-sm">{getDisplayName(candidate)}</h3>
-                    {candidate.linkedin_url && (
-                      <a href={candidate.linkedin_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-600 hover:text-blue-700">
-                        <Linkedin className="h-3 w-3" />
-                      </a>
-                    )}
-                  </div>
-                  {(candidate.current_role || candidate.current_company) && (
-                    <p className="text-xs text-muted-foreground">
-                      {candidate.current_role}{candidate.current_role && candidate.current_company && ' at '}{candidate.current_company}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {location && (
-                      <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
-                        <MapPin className="h-2.5 w-2.5" />{location}
-                      </span>
-                    )}
-                    {candidate.email && (
-                      <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
-                        <Mail className="h-2.5 w-2.5" />{candidate.email}
-                      </span>
-                    )}
-                    {candidate.phone && (
-                      <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
-                        <Phone className="h-2.5 w-2.5" />{candidate.phone}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex gap-2 pt-2 border-t border-border" onClick={(e) => e.stopPropagation()}>
-                    <Button size="sm" variant="outline" className="flex-1" onClick={(e) => { e.stopPropagation(); setSelectedCandidateId(candidate.id); setSheetOpen(true) }}>
-                      <Eye className="h-3 w-3 mr-1" />View
-                    </Button>
-                    {isAdded ? (
-                      <Button size="sm" variant="secondary" className="flex-1" disabled>
-                        <CheckCircle2 className="h-3 w-3 mr-1" />Added
-                      </Button>
-                    ) : (
-                      <Button size="sm" variant="default" className="flex-1" onClick={(e) => handleAddToPipeline(candidate, e)} disabled={isLoading || !jobId}>
-                        {isLoading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Plus className="h-3 w-3 mr-1" />}
-                        Add
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )
+          const isInternal = isCollectedApollo(candidate)
+          const isApollo = !isInternal && candidate.source === 'apollo' && !candidate.candidate_id
+          const location = getLocation(candidate)
+          const badgeVariant = isInternal ? 'pastel-blue' as const : isPdl ? 'pastel-green' as const : 'secondary' as const
+          const badgeLabel = isInternal ? 'Internal' : isPdl ? 'PDL' : 'Apollo'
+
+          const handleCardClick = () => {
+            if (isInternal) {
+              setSelectedCandidateId(candidate.id)
+              setSelectedApolloId(null)
+              setSelectedApolloData(null)
+              setSelectedPdlData(null)
+              setSheetOpen(true)
+            } else if (isPdl) {
+              setSelectedPdlData(candidate)
+              setSelectedCandidateId(null)
+              setSelectedApolloId(null)
+              setSelectedApolloData(null)
+              setSheetOpen(true)
+            } else if (candidate.candidate_id || candidate.source === 'local') {
+              setSelectedCandidateId(candidate.id)
+              setSelectedApolloId(null)
+              setSelectedApolloData(null)
+              setSelectedPdlData(null)
+              setSheetOpen(true)
+            } else if (candidate.source === 'apollo' && candidate.apollo_id) {
+              setSelectedCandidateId(null)
+              setSelectedApolloId(candidate.apollo_id)
+              setSelectedApolloData({
+                candidate_name: getDisplayName(candidate),
+                headline: candidate.headline,
+                location: getLocation(candidate),
+                current_company: candidate.current_company,
+                current_role: candidate.current_role,
+                linkedin_url: candidate.linkedin_url,
+                apollo_score: candidate.apollo_score,
+                email: candidate.email,
+                phone: candidate.phone,
+                industry: candidate.industry,
+                connections_count: candidate.connections_count,
+                follower_count: candidate.follower_count,
+                company_url: candidate.company_url,
+                company_website: candidate.company_website,
+                company_industry: candidate.company_industry,
+                experience_location: candidate.experience_location,
+                has_email: candidate.has_email,
+                has_phone: candidate.has_phone,
+                has_location: candidate.has_location
+              })
+              setSelectedPdlData(null)
+              setSheetOpen(true)
+            }
           }
 
           return (
-            <Card 
-              key={candidate.id} 
+            <Card
+              key={candidate.apollo_id || candidate.id}
               className={cn(
                 "shadow-calendly cursor-pointer hover:shadow-lg transition-shadow",
-                isSelected && "ring-2 ring-primary",
-                isPdl && "border-l-2 border-l-emerald-400"
+                isSelected && "ring-2 ring-primary"
               )}
-              onClick={() => {
-                if (isPdl) {
-                  setSelectedPdlData(candidate)
-                  setSelectedCandidateId(null)
-                  setSelectedApolloId(null)
-                  setSelectedApolloData(null)
-                  setSheetOpen(true)
-                } else if (candidate.candidate_id || candidate.source === 'local') {
-                  setSelectedCandidateId(candidate.id)
-                  setSelectedApolloId(null)
-                  setSelectedApolloData(null)
-                  setSelectedPdlData(null)
-                  setSheetOpen(true)
-                } else if (candidate.source === 'apollo' && candidate.apollo_id) {
-                  setSelectedCandidateId(null)
-                  setSelectedApolloId(candidate.apollo_id)
-                  setSelectedApolloData({
-                    candidate_name: getDisplayName(candidate),
-                    headline: candidate.headline,
-                    location: getLocation(candidate),
-                    current_company: candidate.current_company,
-                    current_role: candidate.current_role,
-                    linkedin_url: candidate.linkedin_url,
-                    apollo_score: candidate.apollo_score,
-                    email: candidate.email,
-                    phone: candidate.phone,
-                    industry: candidate.industry,
-                    connections_count: candidate.connections_count,
-                    follower_count: candidate.follower_count,
-                    company_url: candidate.company_url,
-                    company_website: candidate.company_website,
-                    company_industry: candidate.company_industry,
-                    experience_location: candidate.experience_location,
-                    has_email: candidate.has_email,
-                    has_phone: candidate.has_phone,
-                    has_location: candidate.has_location
-                  })
-                  setSheetOpen(true)
-                }
-              }}
+              onClick={handleCardClick}
             >
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  {canSelect && (
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={() => toggleSelectApollo(candidate.apollo_id!)}
-                        aria-label={`Select ${getDisplayName(candidate)}`}
-                      />
-                    </div>
-                  )}
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-accent/20 text-accent-foreground font-semibold text-sm">
-                      {getDisplayName(candidate).split(' ').map(n => n[0]).join('').slice(0, 2)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <h3 className="font-semibold text-sm">{getDisplayName(candidate)}</h3>
-                        {isPdl ? (
-                          <Badge variant="pastel-green" className="text-[10px] px-1.5 py-0 h-4">PDL</Badge>
-                        ) : candidate.source === 'apollo' ? (
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">Apollo</Badge>
-                        ) : null}
-                      </div>
-                      <Badge className={cn("text-xs", getMatchBadgeColor(candidate.match_tier))}>
-                        {candidate.match_score}%
-                      </Badge>
-                    </div>
-                    {candidate.current_role && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {candidate.current_role}
-                        {candidate.current_company && ` @ ${candidate.current_company}`}
-                      </p>
-                    )}
-                    {getLocation(candidate) && (
-                      <div className="flex items-center gap-1 mt-1">
-                        <MapPin className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">
-                          {getLocation(candidate)}
-                        </span>
+              <CardContent className="p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    {canSelect && (
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleSelectApollo(candidate.apollo_id!)}
+                          aria-label={`Select ${getDisplayName(candidate)}`}
+                        />
                       </div>
                     )}
+                    <Badge variant={badgeVariant} className="text-[10px] px-1.5 py-0 h-4">
+                      {badgeLabel}
+                    </Badge>
                   </div>
+                  <Badge className={cn("text-xs", getMatchBadgeColor(candidate.match_tier))}>
+                    {candidate.match_score}%
+                  </Badge>
                 </div>
-
-                {candidate.skills && candidate.skills.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {candidate.skills.slice(0, 3).map(skill => (
-                      <Badge key={skill} variant="secondary" className="text-xs">
-                        {skill}
-                      </Badge>
-                    ))}
-                    {candidate.skills.length > 3 && (
-                      <Badge variant="secondary" className="text-xs">
-                        +{candidate.skills.length - 3}
-                      </Badge>
-                    )}
-                  </div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-sm">{getDisplayName(candidate)}</h3>
+                  {candidate.linkedin_url && (
+                    <a href={candidate.linkedin_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-600 hover:text-blue-700">
+                      <Linkedin className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
+                {(candidate.current_role || candidate.current_company) && (
+                  <p className="text-xs text-muted-foreground">
+                    {candidate.current_role}{candidate.current_role && candidate.current_company && ' at '}{candidate.current_company}
+                  </p>
                 )}
-
+                {/* Metadata chips */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {(isInternal || isPdl) && location ? (
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
+                      <MapPin className="h-2.5 w-2.5" />{location}
+                    </span>
+                  ) : isApollo && candidate.has_location ? (
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
+                      <MapPin className="h-2.5 w-2.5" />Location
+                    </span>
+                  ) : null}
+                  {(isInternal || isPdl) && candidate.email ? (
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
+                      <Mail className="h-2.5 w-2.5" />{candidate.email}
+                    </span>
+                  ) : isApollo && candidate.has_email ? (
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
+                      <Mail className="h-2.5 w-2.5" />Email
+                    </span>
+                  ) : null}
+                  {(isInternal || isPdl) && candidate.phone ? (
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
+                      <Phone className="h-2.5 w-2.5" />{candidate.phone}
+                    </span>
+                  ) : isApollo && candidate.has_phone ? (
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
+                      <Phone className="h-2.5 w-2.5" />Phone
+                    </span>
+                  ) : null}
+                </div>
+                {/* Actions */}
                 <div className="flex gap-2 pt-2 border-t border-border" onClick={(e) => e.stopPropagation()}>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    className="flex-1"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setSelectedCandidateId(candidate.id)
-                      setSheetOpen(true)
-                    }}
-                  >
-                    <Eye className="h-3 w-3 mr-1" />
-                    View
-                  </Button>
-                  
-                  {isAdded ? (
-                    <Button 
-                      size="sm" 
-                      variant="secondary"
+                  {isApollo ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
                       className="flex-1"
-                      disabled
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleCollectProfile(candidate.apollo_id!)
+                      }}
+                      disabled={collectingProfiles.has(candidate.apollo_id || '') || isCollectDisabled}
                     >
-                      <CheckCircle2 className="h-3 w-3 mr-1" />
-                      Added
-                    </Button>
-                  ) : (
-                    <Button 
-                      size="sm" 
-                      variant="default"
-                      className="flex-1"
-                      onClick={(e) => handleAddToPipeline(candidate, e)}
-                      disabled={isLoading || !jobId}
-                    >
-                      {isLoading ? (
+                      {collectingProfiles.has(candidate.apollo_id || '') ? (
                         <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                       ) : (
-                        <Plus className="h-3 w-3 mr-1" />
+                        <Download className="h-3 w-3 mr-1" />
                       )}
-                      Add
+                      Reveal (1 credit)
                     </Button>
+                  ) : (
+                    <>
+                      <Button size="sm" variant="outline" className="flex-1" onClick={(e) => { e.stopPropagation(); handleCardClick() }}>
+                        <Eye className="h-3 w-3 mr-1" />View
+                      </Button>
+                      {isAdded ? (
+                        <Button size="sm" variant="secondary" className="flex-1" disabled>
+                          <CheckCircle2 className="h-3 w-3 mr-1" />Added
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="default" className="flex-1" onClick={(e) => handleAddToPipeline(candidate, e)} disabled={isLoading || !jobId}>
+                          {isLoading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Plus className="h-3 w-3 mr-1" />}
+                          Add
+                        </Button>
+                      )}
+                    </>
                   )}
                 </div>
               </CardContent>
             </Card>
           )
         })}
-
         {/* Mobile Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-2 pt-4">
