@@ -12,7 +12,7 @@ const CACHE_TTL_HOURS = 24;
 
 interface SearchRequest {
   sourcing_project_id: string;
-  limit?: number;       // Apollo limit (default 300)
+  limit?: number;       // Apollo limit (default 2000)
   pdl_limit?: number;   // PDL limit (default 5, max 10)
 }
 
@@ -25,7 +25,7 @@ serve(async (req) => {
   const authHeader = req.headers.get('Authorization');
 
   try {
-    const { sourcing_project_id, limit = 300, pdl_limit: rawPdlLimit }: SearchRequest = await req.json();
+    const { sourcing_project_id, limit = 2000, pdl_limit: rawPdlLimit }: SearchRequest = await req.json();
 
     if (!sourcing_project_id) {
       throw new Error('sourcing_project_id is required');
@@ -176,8 +176,8 @@ serve(async (req) => {
         body: {
           project_id: sourcing_project_id,
           criteria,
-          limit: Math.min(limit, 300),
-          max_results: Math.min(limit, 300),
+          limit: Math.min(limit, 2000),
+          max_results: Math.min(limit, 2000),
           organization_id: project.organization_id,
         },
         headers: authHeader ? { Authorization: authHeader } : undefined,

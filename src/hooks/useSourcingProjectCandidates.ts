@@ -137,7 +137,7 @@ interface UseSourcingProjectCandidatesParams {
 
 export function useSourcingProjectCandidates({
   projectId,
-  limit = 500,
+  limit = 2000,
   enabled = true
 }: UseSourcingProjectCandidatesParams) {
   const [matchingResult, setMatchingResult] = useState<SourcingProjectMatchingResult | null>(null)
