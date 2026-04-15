@@ -186,8 +186,8 @@ export function useIndependentCandidates() {
       }
 
       return {
-        ...newCandidate,
-        auto_generated_skills: (newCandidate.auto_generated_skills as any) || null
+        ...(newCandidate as any),
+        auto_generated_skills: ((newCandidate as any).auto_generated_skills) || null
       } as IndependentCandidate
     } catch (err) {
       const errorMessage = extractErrorMessage(err)
