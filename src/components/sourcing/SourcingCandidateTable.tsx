@@ -1180,13 +1180,84 @@ export function SourcingCandidateTable({
           const canSelect = !isPdl && candidate.source === 'apollo' && !candidate.candidate_id && candidate.apollo_id
           const isSelected = canSelect && selectedApolloIds.has(candidate.apollo_id!)
 
+          if (isCollectedApollo(candidate)) {
+            const location = getLocation(candidate)
+            return (
+              <Card
+                key={candidate.id}
+                className="shadow-calendly cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => {
+                  setSelectedCandidateId(candidate.id)
+                  setSelectedApolloId(null)
+                  setSelectedApolloData(null)
+                  setSelectedPdlData(null)
+                  setSheetOpen(true)
+                }}
+              >
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Badge variant="pastel-blue" className="text-[10px] px-1.5 py-0 h-4">Internal</Badge>
+                    <Badge className={cn("text-xs", getMatchBadgeColor(candidate.match_tier))}>
+                      {candidate.match_score}%
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-sm">{getDisplayName(candidate)}</h3>
+                    {candidate.linkedin_url && (
+                      <a href={candidate.linkedin_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-600 hover:text-blue-700">
+                        <Linkedin className="h-3 w-3" />
+                      </a>
+                    )}
+                  </div>
+                  {(candidate.current_role || candidate.current_company) && (
+                    <p className="text-xs text-muted-foreground">
+                      {candidate.current_role}{candidate.current_role && candidate.current_company && ' at '}{candidate.current_company}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {location && (
+                      <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
+                        <MapPin className="h-2.5 w-2.5" />{location}
+                      </span>
+                    )}
+                    {candidate.email && (
+                      <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
+                        <Mail className="h-2.5 w-2.5" />{candidate.email}
+                      </span>
+                    )}
+                    {candidate.phone && (
+                      <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
+                        <Phone className="h-2.5 w-2.5" />{candidate.phone}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-2 pt-2 border-t border-border" onClick={(e) => e.stopPropagation()}>
+                    <Button size="sm" variant="outline" className="flex-1" onClick={(e) => { e.stopPropagation(); setSelectedCandidateId(candidate.id); setSheetOpen(true) }}>
+                      <Eye className="h-3 w-3 mr-1" />View
+                    </Button>
+                    {isAdded ? (
+                      <Button size="sm" variant="secondary" className="flex-1" disabled>
+                        <CheckCircle2 className="h-3 w-3 mr-1" />Added
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="default" className="flex-1" onClick={(e) => handleAddToPipeline(candidate, e)} disabled={isLoading || !jobId}>
+                        {isLoading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Plus className="h-3 w-3 mr-1" />}
+                        Add
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          }
+
           return (
             <Card 
               key={candidate.id} 
               className={cn(
                 "shadow-calendly cursor-pointer hover:shadow-lg transition-shadow",
                 isSelected && "ring-2 ring-primary",
-                isPdl && !isCollectedApollo(candidate) && "border-l-2 border-l-emerald-400"
+                isPdl && "border-l-2 border-l-emerald-400"
               )}
               onClick={() => {
                 if (isPdl) {
@@ -1202,7 +1273,6 @@ export function SourcingCandidateTable({
                   setSelectedPdlData(null)
                   setSheetOpen(true)
                 } else if (candidate.source === 'apollo' && candidate.apollo_id) {
-                  // Apollo preview
                   setSelectedCandidateId(null)
                   setSelectedApolloId(candidate.apollo_id)
                   setSelectedApolloData({
@@ -1222,7 +1292,6 @@ export function SourcingCandidateTable({
                     company_website: candidate.company_website,
                     company_industry: candidate.company_industry,
                     experience_location: candidate.experience_location,
-                    // Availability flags
                     has_email: candidate.has_email,
                     has_phone: candidate.has_phone,
                     has_location: candidate.has_location
