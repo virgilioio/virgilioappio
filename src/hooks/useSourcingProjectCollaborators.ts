@@ -109,7 +109,7 @@ export function useSourcingProjectCollaborators(projectId: string, createdBy?: s
       return members
         .filter((m: any) => m.user_id && m.user_id !== user.id && m.user_id !== createdBy)
         .map((m: any) => {
-          const profile = profileMap.get(m.user_id)
+          const profile = profileMap.get(m.user_id) as any
           return {
             user_id: m.user_id,
             email: profile?.email || m.invited_email || '',
