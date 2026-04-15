@@ -16,15 +16,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
+import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { 
   Mail, 
   Phone, 
-  Linkedin, 
   MapPin, 
-  Building2, 
-  Briefcase,
-  ExternalLink,
   Archive,
   CheckSquare,
   X,
@@ -34,6 +39,7 @@ import {
 import gioFaceEmpty from '@/assets/gio-face-empty.png'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
 
 interface SavedCandidatesTabProps {
   projectId: string
@@ -63,21 +69,17 @@ export function SavedCandidatesTab({ projectId, jobId }: SavedCandidatesTabProps
 
   const selectedCandidate = selectedIndex !== null ? savedCandidates[selectedIndex] : null
 
-  // Load stages when entering selection mode (if project is linked to a job)
   const handleEnterSelectionMode = async () => {
     if (!jobId) {
       toast.error('No job linked', { description: 'Link this search to a job first to move candidates to a pipeline.' })
       return
     }
-    
     setSelectionMode(true)
     setLoadingStages(true)
     try {
       const options = await loadHiringPlanInstances(jobId)
       setStageOptions(options || [])
-      if (options && options.length > 0) {
-        setSelectedStageId(options[0].jhsId)
-      }
+      if (options && options.length > 0) setSelectedStageId(options[0].jhsId)
     } finally {
       setLoadingStages(false)
     }
@@ -92,71 +94,41 @@ export function SavedCandidatesTab({ projectId, jobId }: SavedCandidatesTabProps
   const handleToggleSelection = (e: React.MouseEvent, candidateId: string) => {
     e.stopPropagation()
     setSelectedIds(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(candidateId)) {
-        newSet.delete(candidateId)
-      } else {
-        newSet.add(candidateId)
-      }
-      return newSet
+      const next = new Set(prev)
+      next.has(candidateId) ? next.delete(candidateId) : next.add(candidateId)
+      return next
     })
   }
 
   const handleSelectAll = () => {
-    if (selectedIds.size === savedCandidates.length) {
-      setSelectedIds(new Set())
-    } else {
-      setSelectedIds(new Set(savedCandidates.map(c => c.id)))
-    }
+    setSelectedIds(prev =>
+      prev.size === savedCandidates.length ? new Set() : new Set(savedCandidates.map(c => c.id))
+    )
   }
 
   const handleMoveToPipeline = async () => {
     if (!jobId || !selectedStageId || selectedIds.size === 0) return
-    
     setIsMovingToPipeline(true)
-    let successCount = 0
-    let failCount = 0
-    
-    const candidatesToMove = savedCandidates.filter(c => selectedIds.has(c.id))
-    
-    for (const candidate of candidatesToMove) {
+    let successCount = 0, failCount = 0
+    for (const candidate of savedCandidates.filter(c => selectedIds.has(c.id))) {
       try {
         await createAssociationAndMove(jobId, candidate.id, selectedStageId)
         successCount++
-      } catch (error) {
-        console.error('Failed to move candidate:', error)
+      } catch {
         failCount++
       }
     }
-    
-    if (successCount > 0) {
-      toast.success(`Moved ${successCount} candidate${successCount !== 1 ? 's' : ''} to pipeline`)
-    }
-    if (failCount > 0) {
-      toast.error(`Failed to move ${failCount} candidate${failCount !== 1 ? 's' : ''}`)
-    }
-    
+    if (successCount > 0) toast.success(`Moved ${successCount} candidate${successCount !== 1 ? 's' : ''} to pipeline`)
+    if (failCount > 0) toast.error(`Failed to move ${failCount} candidate${failCount !== 1 ? 's' : ''}`)
     handleExitSelectionMode()
     refetch()
     setIsMovingToPipeline(false)
   }
 
   const handleCandidateClick = (index: number) => {
-    if (selectionMode) return // Don't open sheet in selection mode
+    if (selectionMode) return
     setSelectedIndex(index)
     setSheetOpen(true)
-  }
-
-  const handleNavigatePrev = () => {
-    if (selectedIndex !== null && selectedIndex > 0) {
-      setSelectedIndex(selectedIndex - 1)
-    }
-  }
-
-  const handleNavigateNext = () => {
-    if (selectedIndex !== null && selectedIndex < savedCandidates.length - 1) {
-      setSelectedIndex(selectedIndex + 1)
-    }
   }
 
   const handleArchive = (e: React.MouseEvent, candidate: SavedCandidate) => {
@@ -164,34 +136,31 @@ export function SavedCandidatesTab({ projectId, jobId }: SavedCandidatesTabProps
     archiveCandidate({ apolloId: candidate.apollo_id!, projectId })
   }
 
-  const formatLocation = (candidate: SavedCandidate) => {
-    const parts = [
-      candidate.location_city,
-      candidate.location_state,
-      candidate.location_country
-    ].filter(Boolean)
-    return parts.join(', ') || null
-  }
+  const formatLocation = (c: SavedCandidate) =>
+    [c.location_city, c.location_state, c.location_country].filter(Boolean).join(', ') || null
 
   if (isLoading) {
     return (
       <Card className="shadow-calendly m-4">
-        <CardContent className="p-4">
-          <div className="space-y-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
-                <Skeleton className="h-10 w-10 rounded-full flex-shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-1/2" />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Skeleton className="h-5 w-16 rounded-full" />
-                  <Skeleton className="h-8 w-8 rounded-md" />
-                </div>
-              </div>
-            ))}
-          </div>
+        <CardContent className="p-0">
+          <Table>
+            <TableBody>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell colSpan={5} className="py-3 px-4">
+                    <div className="flex items-start gap-3">
+                      <Skeleton className="h-4 w-4 mt-0.5" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-16 rounded-full" />
+                        <Skeleton className="h-4 w-48" />
+                        <Skeleton className="h-3 w-36" />
+                      </div>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     )
@@ -200,14 +169,8 @@ export function SavedCandidatesTab({ projectId, jobId }: SavedCandidatesTabProps
   if (savedCandidates.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center p-8">
-        <img 
-          src={gioFaceEmpty} 
-          alt="No saved candidates" 
-          className="w-24 h-24 mb-4"
-        />
-        <h3 className="text-lg font-semibold text-foreground mb-2">
-          No candidates collected yet
-        </h3>
+        <img src={gioFaceEmpty} alt="No saved candidates" className="w-24 h-24 mb-4" />
+        <h3 className="text-lg font-semibold text-foreground mb-2">No candidates collected yet</h3>
         <p className="text-muted-foreground max-w-md">
           Candidates you reveal from the search results will appear here. 
           Go to the Candidates tab and click "Reveal Full Profile" to collect candidates.
@@ -218,210 +181,172 @@ export function SavedCandidatesTab({ projectId, jobId }: SavedCandidatesTabProps
 
   return (
     <>
-      <ScrollArea className="h-full">
-        <div className="container mx-auto p-4">
-          {/* Toolbar */}
-          <div className="flex items-center justify-between mb-4">
-            {selectionMode ? (
-              <div className="flex items-center gap-3 flex-wrap">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleExitSelectionMode}
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Cancel
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSelectAll}
-                >
-                  {selectedIds.size === savedCandidates.length ? 'Deselect All' : 'Select All'}
-                </Button>
-                <span className="text-sm text-muted-foreground">
-                  {selectedIds.size} selected
-                </span>
-                <div className="flex items-center gap-2">
-                  <Select
-                    value={selectedStageId}
-                    onValueChange={setSelectedStageId}
-                    disabled={loadingStages || stageOptions.length === 0}
-                  >
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue
-                        placeholder={
-                          loadingStages
-                            ? 'Loading...'
-                            : stageOptions.length
-                              ? 'Select stage'
-                              : 'No stages'
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {stageOptions.map((opt) => (
-                        <SelectItem key={opt.jhsId} value={opt.jhsId}>
-                          {opt.stage.stage_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    size="sm"
-                    onClick={handleMoveToPipeline}
-                    disabled={selectedIds.size === 0 || !selectedStageId || isMovingToPipeline}
-                  >
-                    {isMovingToPipeline ? (
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                    ) : (
-                      <ArrowRight className="h-4 w-4 mr-1" />
-                    )}
-                    Move to Pipeline
-                  </Button>
-                </div>
-              </div>
-            ) : (
+      <div className="h-full min-h-0 flex flex-col overflow-hidden">
+        {/* Toolbar */}
+        <div className="flex items-center justify-between px-4 py-2 shrink-0">
+          {selectionMode ? (
+            <div className="flex items-center gap-3 flex-wrap">
+              <Button variant="ghost" size="sm" onClick={handleExitSelectionMode}>
+                <X className="h-4 w-4 mr-1" />Cancel
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleSelectAll}>
+                {selectedIds.size === savedCandidates.length ? 'Deselect All' : 'Select All'}
+              </Button>
+              <span className="text-sm text-muted-foreground">{selectedIds.size} selected</span>
               <div className="flex items-center gap-2">
-                {jobId && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleEnterSelectionMode}
-                  >
-                    <CheckSquare className="h-4 w-4 mr-1" />
-                    Select Candidates
-                  </Button>
-                )}
+                <Select value={selectedStageId} onValueChange={setSelectedStageId} disabled={loadingStages || stageOptions.length === 0}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder={loadingStages ? 'Loading...' : stageOptions.length ? 'Select stage' : 'No stages'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stageOptions.map((opt) => (
+                      <SelectItem key={opt.jhsId} value={opt.jhsId}>{opt.stage.stage_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button size="sm" onClick={handleMoveToPipeline} disabled={selectedIds.size === 0 || !selectedStageId || isMovingToPipeline}>
+                  {isMovingToPipeline ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <ArrowRight className="h-4 w-4 mr-1" />}
+                  Move to Pipeline
+                </Button>
               </div>
-            )}
-          </div>
-
-          {/* Candidate List */}
-          <div className="space-y-2">
-            {savedCandidates.map((candidate, index) => (
-              <div
-                key={candidate.id}
-                className={`flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/50 cursor-pointer transition-colors ${
-                  selectionMode && selectedIds.has(candidate.id) ? 'ring-2 ring-primary' : ''
-                }`}
-                onClick={() => selectionMode ? handleToggleSelection({ stopPropagation: () => {} } as React.MouseEvent, candidate.id) : handleCandidateClick(index)}
-              >
-                {/* Checkbox for selection mode */}
-                {selectionMode && (
-                  <div className="mr-3" onClick={(e) => handleToggleSelection(e, candidate.id)}>
-                    <Checkbox
-                      checked={selectedIds.has(candidate.id)}
-                      onCheckedChange={() => {}}
-                    />
-                  </div>
-                )}
-
-                <div className="flex-1 min-w-0">
-                  {/* Name and Role */}
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-medium text-foreground truncate">
-                      {candidate.candidate_name}
-                    </h4>
-                    {candidate.linkedin_url && (
-                      <a
-                        href={candidate.linkedin_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-virgilio-purple hover:text-virgilio-purple/80"
-                      >
-                        <Linkedin className="h-4 w-4" />
-                      </a>
-                    )}
-                  </div>
-                  
-                  {/* Current Position */}
-                  {(candidate.role_current || candidate.company_current) && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                      {candidate.role_current && (
-                        <span className="flex items-center gap-1">
-                          <Briefcase className="h-3 w-3" />
-                          {candidate.role_current}
-                        </span>
-                      )}
-                      {candidate.company_current && (
-                        <span className="flex items-center gap-1">
-                          <Building2 className="h-3 w-3" />
-                          {candidate.company_current}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Contact & Location */}
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                    {candidate.email && (
-                      <span className="flex items-center gap-1">
-                        <Mail className="h-3 w-3" />
-                        {candidate.email}
-                      </span>
-                    )}
-                    {candidate.phone && (
-                      <span className="flex items-center gap-1">
-                        <Phone className="h-3 w-3" />
-                        {candidate.phone}
-                      </span>
-                    )}
-                    {formatLocation(candidate) && (
-                      <span className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {formatLocation(candidate)}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Job Associations */}
-                  {candidate.job_associations.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {candidate.job_associations.map((assoc, i) => (
-                        <Badge 
-                          key={i} 
-                          variant="secondary" 
-                          className="text-xs"
-                        >
-                          {assoc.job_title}
-                          {assoc.stage_name && (
-                            <span className="ml-1 opacity-70">• {assoc.stage_name}</span>
-                          )}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Right Side - Date & Action */}
-                {!selectionMode && (
-                  <div className="flex items-center gap-2 ml-4 flex-shrink-0">
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      {format(new Date(candidate.apollo_collected_at), 'MMM d, yyyy')}
-                    </span>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={(e) => handleArchive(e, candidate)}
-                      disabled={isArchiving}
-                      title="Archive candidate"
-                    >
-                      <Archive className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm">
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              {jobId && (
+                <Button variant="outline" size="sm" onClick={handleEnterSelectionMode}>
+                  <CheckSquare className="h-4 w-4 mr-1" />Select Candidates
+                </Button>
+              )}
+            </div>
+          )}
         </div>
-      </ScrollArea>
 
-      {/* Candidate Profile Sheet */}
+        {/* Table */}
+        <Card className="shadow-calendly mx-4 flex-1 min-h-0 flex flex-col overflow-hidden">
+          <CardContent className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-full">Candidate</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {savedCandidates.map((candidate, index) => {
+                    const isSelected = selectedIds.has(candidate.id)
+                    const isActiveRow = sheetOpen && selectedIndex === index
+                    const location = formatLocation(candidate)
+
+                    return (
+                      <TableRow
+                        key={candidate.id}
+                        className={cn(
+                          "cursor-pointer hover:bg-muted/40",
+                          isSelected && "bg-muted/30",
+                          isActiveRow && "bg-primary/5 border-l-2 border-l-primary"
+                        )}
+                        onClick={() => selectionMode
+                          ? handleToggleSelection({ stopPropagation: () => {} } as React.MouseEvent, candidate.id)
+                          : handleCandidateClick(index)
+                        }
+                      >
+                        <TableCell colSpan={1} className="py-3 px-4">
+                          <div className="flex items-start gap-3">
+                            {/* Checkbox */}
+                            {selectionMode && (
+                              <div className="pt-0.5" onClick={(e) => handleToggleSelection(e, candidate.id)}>
+                                <Checkbox checked={isSelected} onCheckedChange={() => {}} />
+                              </div>
+                            )}
+                            {/* Main content */}
+                            <div className="flex-1 min-w-0 space-y-1.5">
+                              {/* Badge row */}
+                              <div className="flex items-center justify-between">
+                                <Badge variant="pastel-blue" className="text-[10px] px-1.5 py-0 h-4">Collected</Badge>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {format(new Date(candidate.apollo_collected_at), 'MMM d, yyyy')}
+                                </span>
+                              </div>
+                              {/* Name */}
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-sm">{candidate.candidate_name}</span>
+                                {candidate.linkedin_url && (
+                                  <a
+                                    href={candidate.linkedin_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="text-blue-600 hover:text-blue-700"
+                                  >
+                                    <LinkedInFilled className="h-3 w-3" />
+                                  </a>
+                                )}
+                              </div>
+                              {/* Role @ Company */}
+                              {(candidate.role_current || candidate.company_current) && (
+                                <p className="text-xs text-muted-foreground">
+                                  {candidate.role_current}
+                                  {candidate.role_current && candidate.company_current && ' at '}
+                                  {candidate.company_current}
+                                </p>
+                              )}
+                              {/* Metadata chips */}
+                              <div className="flex items-center gap-3 flex-wrap">
+                                {location && (
+                                  <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
+                                    <MapPin className="h-2.5 w-2.5" />{location}
+                                  </span>
+                                )}
+                                {candidate.email && (
+                                  <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
+                                    <Mail className="h-2.5 w-2.5" />{candidate.email}
+                                  </span>
+                                )}
+                                {candidate.phone && (
+                                  <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
+                                    <Phone className="h-2.5 w-2.5" />{candidate.phone}
+                                  </span>
+                                )}
+                              </div>
+                              {/* Job associations */}
+                              {candidate.job_associations.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {candidate.job_associations.map((assoc, i) => (
+                                    <Badge key={i} variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                                      {assoc.job_title}
+                                      {assoc.stage_name && <span className="ml-1 opacity-70">• {assoc.stage_name}</span>}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            {/* Actions */}
+                            {!selectionMode && (
+                              <div className="flex items-center gap-1 pt-0.5 shrink-0">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0"
+                                  onClick={(e) => handleArchive(e, candidate)}
+                                  disabled={isArchiving}
+                                  title="Archive candidate"
+                                >
+                                  <Archive className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <UniversalCandidateProfileSheet
         open={sheetOpen}
         onOpenChange={setSheetOpen}
@@ -430,8 +355,8 @@ export function SavedCandidatesTab({ projectId, jobId }: SavedCandidatesTabProps
         context={selectedCandidate?.job_associations.length ? 'job' : 'independent'}
         hasPrev={selectedIndex !== null && selectedIndex > 0}
         hasNext={selectedIndex !== null && selectedIndex < savedCandidates.length - 1}
-        onNavigatePrev={handleNavigatePrev}
-        onNavigateNext={handleNavigateNext}
+        onNavigatePrev={() => selectedIndex !== null && selectedIndex > 0 && setSelectedIndex(selectedIndex - 1)}
+        onNavigateNext={() => selectedIndex !== null && selectedIndex < savedCandidates.length - 1 && setSelectedIndex(selectedIndex + 1)}
       />
     </>
   )
