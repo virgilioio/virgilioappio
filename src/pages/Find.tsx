@@ -235,11 +235,11 @@ export default function Find() {
                       <SourcingProjectActions
                         project={currentProject}
                         isRefreshing={isRefreshing}
-                        onRefresh={() => setIsRefreshing(true)}
-                        onArchive={() => {}}
-                        onDelete={() => {}}
-                        onVisibilityToggle={async () => {}}
-                        onLinkToJob={async () => {}}
+                        onRefresh={() => projectActionsRef.current?.onRefresh()}
+                        onArchive={() => projectActionsRef.current?.onArchive()}
+                        onDelete={() => projectActionsRef.current?.onDelete()}
+                        onVisibilityToggle={(v) => projectActionsRef.current?.onVisibilityToggle(v) ?? Promise.resolve()}
+                        onLinkToJob={(id) => projectActionsRef.current?.onLinkToJob(id) ?? Promise.resolve()}
                       />
                     </>
                   )}
@@ -291,6 +291,7 @@ export default function Find() {
                       setIsRefreshing={setIsRefreshing}
                       onProjectLoaded={handleProjectLoaded}
                       onUpdateSearchCriteria={handleExposeUpdateSearchCriteria}
+                      onExposeActions={handleExposeActions}
                     />
                   )}
                 </div>
