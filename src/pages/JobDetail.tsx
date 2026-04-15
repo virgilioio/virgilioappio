@@ -324,6 +324,9 @@ export default function JobDetail() {
     isLoading: assignmentsLoading
   } = useJobAssignments(id!)
 
+  // Sourcing project shortcut
+  const { sourcingProjectId } = useJobSourcingProject(id)
+
   // Candidates hook with new functions
   const {
     candidates,
@@ -1299,7 +1302,7 @@ export default function JobDetail() {
                 onTabChange={setActiveTab}
                 jobTitle={job.title}
                 isRestrictedViewer={isRestrictedViewer}
-                
+                sourcingProjectId={sourcingProjectId}
               />
               
               {/* Main content */}
