@@ -8,6 +8,7 @@ import { useJobRole } from '@/hooks/useJobRole'
 import { useCandidates } from '@/hooks/useCandidates'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { useJobs } from '@/hooks/useJobs'
+import { useJobSourcingProject } from '@/hooks/useJobSourcingProject'
 import { JobDetailFloatingSidebar } from '@/components/jobs/JobDetailFloatingSidebar'
 
 import { JobDetailMobileHeader } from '@/components/jobs/JobDetailMobileHeader'
@@ -322,6 +323,9 @@ export default function JobDetail() {
     removeUserFromJob,
     isLoading: assignmentsLoading
   } = useJobAssignments(id!)
+
+  // Sourcing project shortcut
+  const { sourcingProjectId } = useJobSourcingProject(id)
 
   // Candidates hook with new functions
   const {
@@ -1298,7 +1302,7 @@ export default function JobDetail() {
                 onTabChange={setActiveTab}
                 jobTitle={job.title}
                 isRestrictedViewer={isRestrictedViewer}
-                
+                sourcingProjectId={sourcingProjectId}
               />
               
               {/* Main content */}
