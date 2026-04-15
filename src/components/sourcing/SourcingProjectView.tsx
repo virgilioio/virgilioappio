@@ -359,9 +359,6 @@ export function SourcingProjectView({
       >
         {/* Colorful pipeline-style tabs — exact match to JobDetail */}
         <div className="border-b bg-background shrink-0 px-4 py-3">
-          <div className="flex items-center justify-between mb-2">
-            <SourcingProjectCollaborators projectId={projectId} createdBy={project.created_by} />
-          </div>
           <TabsList className="grid w-full h-14 p-2 gap-1 grid-cols-4">
             <TabsTrigger 
               value="conversation"
@@ -420,12 +417,9 @@ export function SourcingProjectView({
             project={project}
             candidates={filteredCandidates as any}
             isLoading={candidatesLoading}
-            onRefresh={handleRefresh}
-            onArchive={handleArchive}
-            onDelete={handleDelete}
-            onVisibilityToggle={handleVisibilityToggle}
-            onLinkToJob={handleLinkToJob}
-            isRefreshing={isRefreshing}
+            jobId={project.job_id}
+            projectId={project.id}
+            searchCriteria={project.search_criteria}
             sourceBreakdown={matchingResult?.source_breakdown}
           />
         </TabsContent>
