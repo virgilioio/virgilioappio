@@ -148,6 +148,13 @@ export function SourcingProjectView({
 
       if (filters.hasEmail === true && !candidate.has_email) return false
       if (filters.hasPhone === true && !candidate.has_phone) return false
+
+      if (filters.candidateSource && filters.candidateSource.length > 0 && filters.candidateSource.length < 2) {
+        const wantInternal = filters.candidateSource.includes('internal')
+        const isInternal = candidate.source === 'local'
+        if (wantInternal && !isInternal) return false
+        if (!wantInternal && isInternal) return false
+      }
       
       return true
     })
