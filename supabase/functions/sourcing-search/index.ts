@@ -73,7 +73,8 @@ serve(async (req) => {
         .from('sourcing_preview_candidates')
         .select('*')
         .eq('sourcing_project_id', sourcing_project_id)
-        .eq('source', 'pdl');
+        .eq('source', 'pdl')
+        .limit(2000);
 
       if (cached && cached.length > 0) {
         pdlCandidates = cached.map(mapCachedPdlCandidate);
@@ -229,7 +230,8 @@ serve(async (req) => {
         .from('candidates')
         .select('id, apollo_id, tenant_id, candidate_name, email, phone, linkedin_url, location_city, location_state, location_country, company_current, role_current, skills, profile_summary, years_experience')
         .in('apollo_id', apolloIds)
-        .not('apollo_collected_at', 'is', null);
+        .not('apollo_collected_at', 'is', null)
+        .limit(2000);
 
       if (collected) {
         for (const c of collected) {

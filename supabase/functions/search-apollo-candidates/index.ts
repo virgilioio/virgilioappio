@@ -394,7 +394,8 @@ serve(async (req) => {
             .from('sourcing_preview_candidates')
             .select('*')
             .eq('sourcing_project_id', project_id)
-            .eq('source', 'apollo');
+            .eq('source', 'apollo')
+            .limit(2000);
           
           // Re-apply keyword scoring to cached candidates (keywords are scored locally, not stored in cache)
           const cachedKeywords = criteria?.keywords || [];
