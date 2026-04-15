@@ -703,7 +703,7 @@ export function SourcingCandidateTable({
                 // Click handler per type
                 const handleRowClick = () => {
                   if (isInternal) {
-                    setSelectedCandidateId(candidate.id)
+                    setSelectedCandidateId(candidate.candidate_id || candidate.id)
                     setSelectedApolloId(null)
                     setSelectedApolloData(null)
                     setSelectedPdlData(null)
@@ -715,7 +715,7 @@ export function SourcingCandidateTable({
                     setSelectedApolloData(null)
                     setSheetOpen(true)
                   } else if (candidate.candidate_id || candidate.source === 'local') {
-                    setSelectedCandidateId(candidate.id)
+                    setSelectedCandidateId(candidate.candidate_id || candidate.id)
                     setSelectedApolloId(null)
                     setSelectedApolloData(null)
                     setSelectedPdlData(null)
@@ -978,7 +978,7 @@ export function SourcingCandidateTable({
 
           const handleCardClick = () => {
             if (isInternal) {
-              setSelectedCandidateId(candidate.id)
+              setSelectedCandidateId(candidate.candidate_id || candidate.id)
               setSelectedApolloId(null)
               setSelectedApolloData(null)
               setSelectedPdlData(null)
@@ -990,7 +990,7 @@ export function SourcingCandidateTable({
               setSelectedApolloData(null)
               setSheetOpen(true)
             } else if (candidate.candidate_id || candidate.source === 'local') {
-              setSelectedCandidateId(candidate.id)
+              setSelectedCandidateId(candidate.candidate_id || candidate.id)
               setSelectedApolloId(null)
               setSelectedApolloData(null)
               setSelectedPdlData(null)
