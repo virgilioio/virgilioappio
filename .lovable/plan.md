@@ -1,41 +1,33 @@
 
 
-# Improve Duplicate Candidate Error Handling
+# Add Candidate Source Filter (Internal / External)
 
-## Problem
-When a user tries to create a candidate that already exists, they sometimes get a generic error toast instead of the merge dialog. This happens when the DB unique constraint `(email, candidate_name, tenant_id)` fires — either because the duplicate check missed the match (different org within the same tenant) or due to a race condition. The error message is unhelpful and "freaks users out."
+## What
+Add a new collapsible "Candidate Source" section below "Contact Info" in the Result Filters area, with two checkboxes: **Internal** (previously collected candidates already in the database) and **External** (Apollo previews and PDL results from external providers).
 
-## Root Cause
-The duplicate check in `checkForDuplicateCandidate` queries by `email + organization_id`, but the DB constraint is on `email + candidate_name + tenant_id`. When a candidate exists in a different org within the same tenant, the check passes but the INSERT fails with a `23505` unique violation error, which surfaces as a raw DB error in a destructive toast.
+## Changes — 2 files
 
-## Fix — 2 files
-
-### 1. `src/lib/candidateHelpers.ts` — Catch unique constraint violations
-In `createCandidate`, catch error code `23505` (unique_violation) specifically. Instead of throwing a generic error, fetch the existing candidate and return a structured duplicate result so the caller can show the merge dialog.
-
+### 1. `src/types/sourcing.ts`
+Replace the single-select `source` field with a new multi-select field:
 ```ts
-if (createError.code === '23505') {
-  // Unique constraint hit — find the existing candidate and return duplicate info
-  const existing = await findExistingCandidate(candidateData, tenantId)
-  if (existing) {
-    return { isDuplicate: true, existingCandidate: existing, mergedData: smartMerge(existing, candidateData) }
-  }
-}
+candidateSource?: ('internal' | 'external')[]
 ```
+Keep the old `source` field for backward compat or remove it if unused elsewhere.
 
-### 2. `src/hooks/useIndependentCandidates.ts` — Handle constraint-based duplicates
-In `addCandidate`, after calling `createCandidate`, check if the result contains `isDuplicate` (from the new constraint catch). If so, return it as a `DuplicateResult` instead of treating it as a normal candidate — this lets the existing merge dialog flow in `Candidates.tsx` and `CandidateFormSheet` handle it gracefully.
+### 2. `src/components/sourcing/FindFilterPanel.tsx`
+After the "Contact Info" `CollapsibleSection` (~line 349), add a new collapsible:
+- **Label**: "Candidate Source", **Icon**: `Users` (already imported)
+- Two checkboxes: "Internal" and "External"
+- Toggle logic writes to `resultFilters.candidateSource` array
+- Include in the Reset button's default state (`candidateSource: []`)
 
-### 3. `src/hooks/useCandidates.ts` — Same fix for job-context flow
-Apply the same handling in the job-scoped `addCandidate` so the merge dialog works from both the Candidates page and the Job Detail page.
-
-## Result
-- No more generic error toasts for duplicate candidates
-- The merge dialog appears in all cases — whether caught by the pre-check or by the DB constraint
-- Zero UI changes needed — the existing `CandidateMergeDialog` handles everything
+### 3. `src/components/sourcing/SourcingProjectView.tsx`
+Update the filtering logic (~line 143) to handle the new `candidateSource` filter:
+- If `candidateSource` includes only `'internal'`: show only candidates where `isCollectedApollo(candidate)` is true
+- If `candidateSource` includes only `'external'`: show only candidates where `isCollectedApollo(candidate)` is false
+- If both or empty: show all (no filtering)
 
 ## Scope
-- 3 file edits (~30 lines total)
-- 0 migrations
-- 0 new components
+- 3 file edits, ~25 lines net
+- 0 backend changes
 
