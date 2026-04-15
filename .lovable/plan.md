@@ -1,37 +1,48 @@
 
+# Add Sourcing Project Shortcut to Job Floating Sidebar
 
-# Fix Checkbox Selection on Duplicate Candidates
+## What Changes
 
-## Problem
+When a job has a linked sourcing project, a new icon button (Search/Telescope icon) appears at the bottom of the floating sidebar pill, visually separated by a thin divider line. Clicking it navigates directly to `/find/<projectId>`.
 
-The console shows: `Encountered two children with the same key 6363a463617d030001e1d122`. With the volume increase to 2,000 candidates, Apollo is returning duplicate entries (same `apollo_id`). React can't distinguish rows with identical keys, so clicking the checkbox on the first occurrence silently fails or targets the wrong DOM element.
-
-Two fixes needed:
-
-## 1. Deduplicate candidates in `useSourcingProjectCandidates.ts`
-
-Before setting state, filter out duplicate `apollo_id` entries (keep the first occurrence). This is the proper fix — duplicates shouldn't reach the table at all.
-
-```typescript
-// After receiving data.candidates, before setMatchingResult:
-const seen = new Set<string>()
-const dedupedCandidates = (data.candidates || []).filter(c => {
-  const key = c.apollo_id || c.pdl_id || c.id
-  if (seen.has(key)) return false
-  seen.add(key)
-  return true
-})
+```text
+  ┌───────┐
+  │  📊   │  Job Dashboard
+  │  👥   │  All Candidates
+  │  📋   │  Pipeline
+  │  ⚙️   │  Job Setup
+  │ ───── │  divider
+  │  🔍   │  Sourcing Project (link out)
+  └───────┘
 ```
 
-## 2. Defensive unique keys in `SourcingCandidateTable.tsx`
+The icon only appears when a sourcing project is linked — otherwise the sidebar looks exactly as it does today. Since this navigates away from the job (to `/find`), it uses `useNavigate` rather than `onTabChange`.
 
-Change `key={candidate.apollo_id || candidate.id}` to include the array index as a tiebreaker, ensuring React never sees duplicate keys even if dedup misses something:
+## Technical Details
 
-- Line 755: `key={\`${candidate.apollo_id || candidate.id}-${startIndex + index}\`}`
-- Line 1032: same pattern for the card view
+### 1. Query sourcing project by job ID
+
+Create a small hook `useJobSourcingProject(jobId)` that queries:
+```sql
+SELECT id, name FROM sourcing_projects WHERE job_id = :jobId AND status = 'active' LIMIT 1
+```
+Returns `{ sourcingProjectId, sourcingProjectName, isLoading }`.
+
+### 2. Update `JobDetailFloatingSidebar`
+
+- Accept new optional prop `sourcingProjectId?: string`
+- If present, render a divider (`<div className="w-6 border-t border-border" />`) after the nav tabs
+- Below divider, render a button with `Search` icon that calls `navigate(\`/find/${sourcingProjectId}\`)`
+- Tooltip: "Sourcing Project"
+- Style: same circular button as others, but no active state (it's always a link-out)
+
+### 3. Wire it up in `JobDetail.tsx`
+
+- Import and call `useJobSourcingProject(id)` 
+- Pass `sourcingProjectId` to `JobDetailFloatingSidebar`
 
 ## Files Modified
 
-1. **`src/hooks/useSourcingProjectCandidates.ts`** — deduplicate candidates by `apollo_id`/`pdl_id`/`id` before storing
-2. **`src/components/sourcing/SourcingCandidateTable.tsx`** — use unique composite keys on TableRow and Card elements (2 locations)
-
+1. **`src/hooks/useJobSourcingProject.ts`** — New hook querying `sourcing_projects` by `job_id`
+2. **`src/components/jobs/JobDetailFloatingSidebar.tsx`** — Add sourcing shortcut button with divider
+3. **`src/pages/JobDetail.tsx`** — Wire the hook and pass prop to sidebar
