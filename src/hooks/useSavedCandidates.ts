@@ -38,7 +38,7 @@ export function useSavedCandidates({ projectId, enabled = true, status = 'active
         .from('sourcing_preview_candidates')
         .select('apollo_id')
         .eq('sourcing_project_id', projectId)
-        .eq('status', status)
+        .in('status', status === 'active' ? ['active', 'shortlisted'] : ['archived'])
         .not('apollo_id', 'is', null)
         .not('collected_at', 'is', null)  // Only include candidates actually collected in THIS project
 

@@ -260,6 +260,16 @@ serve(async (req) => {
             });
         }
       }
+
+      // Also ensure collected_at is set for this project
+      if (sourcing_project_id && existing.apollo_id) {
+        await supabase
+          .from('sourcing_preview_candidates')
+          .update({ collected_at: new Date().toISOString() })
+          .eq('apollo_id', existing.apollo_id)
+          .eq('sourcing_project_id', sourcing_project_id)
+          .is('collected_at', null);
+      }
       
       results.push({
         apollo_id: existing.apollo_id,
@@ -428,19 +438,36 @@ serve(async (req) => {
         .select('id')
         .single();
 
+      let candidateId: string | null = null;
+
       if (candidateError) {
-        console.error('Failed to create candidate:', candidateError);
-        results.push({
-          apollo_id: person.id,
-          error: candidateError.message,
-          already_collected: false
-        });
-        continue;
+        // Check if it's a duplicate — look up existing candidate
+        console.warn('Candidate insert failed, checking for existing:', candidateError.message);
+        const { data: existingCandidate } = await supabase
+          .from('candidates')
+          .select('id')
+          .eq('apollo_id', person.id)
+          .eq('tenant_id', tenantId)
+          .maybeSingle();
+        
+        if (existingCandidate) {
+          candidateId = existingCandidate.id;
+          console.log('✅ Found existing candidate:', candidateId);
+        } else {
+          console.error('Failed to create candidate and no existing found:', candidateError);
+          results.push({
+            apollo_id: person.id,
+            error: candidateError.message,
+            already_collected: false
+          });
+          continue;
+        }
+      } else {
+        candidateId = newCandidate.id;
+        console.log('✅ Candidate created:', candidateId);
       }
 
-      console.log('✅ Candidate created:', newCandidate.id);
-
-      // Mark as collected in the sourcing project
+      // Mark as collected in the sourcing project — always runs
       if (sourcing_project_id) {
         const { error: previewUpdateError } = await supabase
           .from('sourcing_preview_candidates')
@@ -453,10 +480,10 @@ serve(async (req) => {
         }
       }
 
-      // Store work experience if available
-      if (person.employment_history && person.employment_history.length > 0) {
+      // Store work experience if available (only for newly created candidates)
+      if (newCandidate && person.employment_history && person.employment_history.length > 0) {
         const experienceRecords = person.employment_history.map((exp: any) => ({
-          candidate_id: newCandidate.id,
+          candidate_id: candidateId!,
           company_name: exp.organization_name || 'Unknown Company',
           job_title: exp.title || 'Unknown Title',
           start_date: exp.start_date ? new Date(exp.start_date).toISOString().split('T')[0] : null,
@@ -493,7 +520,7 @@ serve(async (req) => {
         const { error: assocError } = await supabase
           .from('job_candidate_associations')
           .insert({
-            candidate_id: newCandidate.id,
+            candidate_id: candidateId!,
             job_id: job_id,
             current_stage_id: targetStageId,
             status: 'active',
@@ -507,7 +534,7 @@ serve(async (req) => {
 
       results.push({
         apollo_id: person.id,
-        candidate_id: newCandidate.id,
+        candidate_id: candidateId,
         already_collected: false,
         email: person.email,
         phone: phone
