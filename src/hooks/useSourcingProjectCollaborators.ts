@@ -42,16 +42,16 @@ export function useSourcingProjectCollaborators(projectId: string, createdBy?: s
       if (!data || data.length === 0) return []
 
       const userIds = data.map((c: any) => c.user_id)
-      const { data: members } = await supabase
+      const { data: members } = await (supabase
         .from('members')
-        .select('user_id, invited_email')
-        .in('user_id', userIds) as { data: any[] | null }
+        .select('user_id, invited_email') as any)
+        .in('user_id', userIds)
 
       // Get profiles for names/avatars
-      const { data: profiles } = await supabase
+      const { data: profiles } = await (supabase
         .from('profiles')
-        .select('id, first_name, last_name, avatar_url, email')
-        .in('id', userIds) as { data: any[] | null }
+        .select('id, first_name, last_name, avatar_url, email') as any)
+        .in('id', userIds)
 
       const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
       const memberMap = new Map((members || []).map((m: any) => [m.user_id, m]))
