@@ -1,14 +1,17 @@
 
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, Settings, Kanban, Users } from 'lucide-react'
+import { LayoutDashboard, Settings, Kanban, Users, Search } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface JobDetailFloatingSidebarProps {
   currentTab: string
   onTabChange: (tab: string) => void
   jobTitle: string
   isRestrictedViewer?: boolean
+  sourcingProjectId?: string | null
   className?: string
 }
 
@@ -17,8 +20,10 @@ export function JobDetailFloatingSidebar({
   onTabChange, 
   jobTitle,
   isRestrictedViewer = false,
+  sourcingProjectId,
   className 
 }: JobDetailFloatingSidebarProps) {
+  const navigate = useNavigate()
   const restrictedTabIds = ['all-candidates', 'job-setup']
   const allTabs = [
     {
@@ -76,6 +81,31 @@ export function JobDetailFloatingSidebar({
             )
           })}
         </nav>
+
+        {sourcingProjectId && (
+          <>
+            <div className="w-6 border-t border-border my-3" />
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-12 h-12 aspect-square !rounded-full p-0 flex items-center justify-center border border-border text-muted-foreground hover:bg-transparent hover:text-inherit hover:scale-100 active:scale-100"
+                    onClick={() => navigate(`/find/${sourcingProjectId}`)}
+                    aria-label="Sourcing Project"
+                  >
+                    <Search className="h-5 w-5" />
+                    <span className="sr-only">Sourcing Project</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>Sourcing Project</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </>
+        )}
       </div>
     </div>
   )
