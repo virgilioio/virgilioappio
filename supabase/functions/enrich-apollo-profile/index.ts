@@ -260,6 +260,16 @@ serve(async (req) => {
             });
         }
       }
+
+      // Also ensure collected_at is set for this project
+      if (sourcing_project_id && existing.apollo_id) {
+        await supabase
+          .from('sourcing_preview_candidates')
+          .update({ collected_at: new Date().toISOString() })
+          .eq('apollo_id', existing.apollo_id)
+          .eq('sourcing_project_id', sourcing_project_id)
+          .is('collected_at', null);
+      }
       
       results.push({
         apollo_id: existing.apollo_id,
