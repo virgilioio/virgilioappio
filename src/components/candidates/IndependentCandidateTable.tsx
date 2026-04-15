@@ -174,16 +174,7 @@ export function IndependentCandidateTable({
     const added = new Date(dateString)
     const diffMs = now.getTime() - added.getTime()
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-    
-    if (diffDays < 30) {
-      return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`
-    } else if (diffDays < 365) {
-      const months = Math.floor(diffDays / 30)
-      return `${months} month${months !== 1 ? 's' : ''} ago`
-    } else {
-      const years = (diffDays / 365).toFixed(1)
-      return `${years} year${parseFloat(years) !== 1 ? 's' : ''} ago`
-    }
+    return `${diffDays}d`
   }
 
   // Filter logic — use context-based filters + search
