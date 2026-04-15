@@ -214,6 +214,19 @@ export async function createCandidate(candidateData: CandidateData) {
   if (createError) {
     log.error('Error creating candidate:', createError)
     
+    // Handle unique constraint violation — return duplicate info instead of throwing
+    if (createError.code === '23505') {
+      log.debug('Unique constraint hit, finding existing candidate for merge dialog')
+      const existing = await findExistingCandidateForMerge(candidateData, tenantId)
+      if (existing) {
+        return {
+          isDuplicate: true,
+          existingCandidate: existing,
+          mergedData: smartMerge(existing, candidateData)
+        }
+      }
+    }
+    
     // Provide more helpful error messages for RLS violations
     if (createError.code === '42501') {
       throw new Error('Permission denied: You do not have the required permissions to create candidates in this organization. Please verify you are an active recruiter or admin.')
@@ -224,6 +237,34 @@ export async function createCandidate(candidateData: CandidateData) {
 
   log.debug('Created candidate:', newCandidate.id)
   return newCandidate
+}
+
+/**
+ * Find an existing candidate by email or name+tenant for merge dialog after constraint violation
+ */
+async function findExistingCandidateForMerge(
+  candidateData: CandidateData,
+  tenantId: string | null
+): Promise<ExistingCandidate | null> {
+  try {
+    let query = supabase.from('candidates').select('*')
+    
+    if (candidateData.email) {
+      query = query.eq('email', candidateData.email)
+    } else {
+      query = query.eq('candidate_name', candidateData.candidate_name)
+    }
+    
+    if (tenantId) {
+      query = query.eq('tenant_id', tenantId)
+    }
+    
+    const { data, error } = await query.limit(1)
+    if (error || !data?.length) return null
+    return data[0] as ExistingCandidate
+  } catch {
+    return null
+  }
 }
 
 /**

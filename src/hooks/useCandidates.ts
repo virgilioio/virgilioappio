@@ -241,6 +241,17 @@ export function useCandidates(jobId: string) {
         source: 'direct'
       })
 
+      // Handle constraint-based duplicate (23505 caught inside createCandidate)
+      if (newCandidate && (newCandidate as any).isDuplicate) {
+        return {
+          isDuplicate: true,
+          existingCandidate: (newCandidate as any).existingCandidate,
+          incomingData: candidateData,
+          mergedData: (newCandidate as any).mergedData,
+          jobId
+        } as DuplicateResult
+      }
+
       await createJobAssociation(jobId, newCandidate.id, candidateData.notes, candidateData.assignedStageId, 'active', user.id)
 
       toast({ title: 'Success', description: 'Candidate added. You can attach a resume from the candidate panel.' })
