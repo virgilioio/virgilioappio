@@ -396,28 +396,47 @@ serve(async (req) => {
             .eq('sourcing_project_id', project_id)
             .eq('source', 'apollo');
           
-          const candidates = (cachedCandidates || []).map(c => ({
-            apollo_id: c.apollo_id,
-            full_name: c.full_name,
-            first_name: c.first_name,
-            last_name_obfuscated: c.last_name_obfuscated,
-            headline: c.headline,
-            current_company: c.current_company,
-            current_title: c.current_title,
-            // ✅ Availability flags from cache
-            has_email: c.has_email ?? false,
-            has_phone: c.has_phone ?? false,
-            has_location: c.has_location ?? false,
-            // ❌ These are NULL in search results - only available after enrichment
-            profile_url: null,
-            linkedin_url: null,
-            location: null,
-            email: null,
-            phone: null,
-            is_preview: true,
-            needs_enrichment: true,
-            _score: c.match_score
-          }));
+          // Re-apply keyword scoring to cached candidates (keywords are scored locally, not stored in cache)
+          const cachedKeywords = criteria?.keywords || [];
+          const candidates = (cachedCandidates || []).map(c => {
+            let keywordScore = 0;
+            const matchedKeywords: string[] = [];
+            
+            if (cachedKeywords.length > 0) {
+              const searchableText = [c.headline, c.current_company, c.current_title]
+                .filter(Boolean).join(' ').toLowerCase();
+              for (const keyword of cachedKeywords) {
+                const kw = keyword.toLowerCase().trim();
+                if (kw && searchableText.includes(kw)) {
+                  keywordScore += 25;
+                  matchedKeywords.push(keyword);
+                }
+              }
+            }
+
+            return {
+              apollo_id: c.apollo_id,
+              full_name: c.full_name,
+              first_name: c.first_name,
+              last_name_obfuscated: c.last_name_obfuscated,
+              headline: c.headline,
+              current_company: c.current_company,
+              current_title: c.current_title,
+              has_email: c.has_email ?? false,
+              has_phone: c.has_phone ?? false,
+              has_location: c.has_location ?? false,
+              profile_url: null,
+              linkedin_url: null,
+              location: null,
+              email: null,
+              phone: null,
+              is_preview: true,
+              needs_enrichment: true,
+              keyword_score: keywordScore,
+              matched_keywords: matchedKeywords,
+              _score: (c.match_score || 100) + keywordScore
+            };
+          }).sort((a, b) => (b._score || 0) - (a._score || 0));
           
           return new Response(JSON.stringify({
             candidates,
