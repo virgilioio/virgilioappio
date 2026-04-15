@@ -470,10 +470,10 @@ serve(async (req) => {
         }
       }
 
-      // Store work experience if available
-      if (person.employment_history && person.employment_history.length > 0) {
+      // Store work experience if available (only for newly created candidates)
+      if (newCandidate && person.employment_history && person.employment_history.length > 0) {
         const experienceRecords = person.employment_history.map((exp: any) => ({
-          candidate_id: newCandidate.id,
+          candidate_id: candidateId!,
           company_name: exp.organization_name || 'Unknown Company',
           job_title: exp.title || 'Unknown Title',
           start_date: exp.start_date ? new Date(exp.start_date).toISOString().split('T')[0] : null,
@@ -510,7 +510,7 @@ serve(async (req) => {
         const { error: assocError } = await supabase
           .from('job_candidate_associations')
           .insert({
-            candidate_id: newCandidate.id,
+            candidate_id: candidateId!,
             job_id: job_id,
             current_stage_id: targetStageId,
             status: 'active',
@@ -524,7 +524,7 @@ serve(async (req) => {
 
       results.push({
         apollo_id: person.id,
-        candidate_id: newCandidate.id,
+        candidate_id: candidateId,
         already_collected: false,
         email: person.email,
         phone: phone
