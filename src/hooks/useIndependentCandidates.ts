@@ -167,6 +167,16 @@ export function useIndependentCandidates() {
         source: candidateData.source || 'direct'
       })
 
+      // Handle constraint-based duplicate (23505 caught inside createCandidate)
+      if (newCandidate && (newCandidate as any).isDuplicate) {
+        return {
+          isDuplicate: true,
+          existingCandidate: (newCandidate as any).existingCandidate as IndependentCandidate,
+          incomingData: candidateData,
+          mergedData: (newCandidate as any).mergedData
+        }
+      }
+
       if (!options?.silent) {
         toast({ title: 'Success', description: 'Candidate added successfully' })
       }
@@ -176,8 +186,8 @@ export function useIndependentCandidates() {
       }
 
       return {
-        ...newCandidate,
-        auto_generated_skills: (newCandidate.auto_generated_skills as any) || null
+        ...(newCandidate as any),
+        auto_generated_skills: ((newCandidate as any).auto_generated_skills) || null
       } as IndependentCandidate
     } catch (err) {
       const errorMessage = extractErrorMessage(err)

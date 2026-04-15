@@ -241,14 +241,25 @@ export function useCandidates(jobId: string) {
         source: 'direct'
       })
 
-      await createJobAssociation(jobId, newCandidate.id, candidateData.notes, candidateData.assignedStageId, 'active', user.id)
+      // Handle constraint-based duplicate (23505 caught inside createCandidate)
+      if (newCandidate && (newCandidate as any).isDuplicate) {
+        return {
+          isDuplicate: true,
+          existingCandidate: (newCandidate as any).existingCandidate,
+          incomingData: candidateData,
+          mergedData: (newCandidate as any).mergedData,
+          jobId
+        } as DuplicateResult
+      }
+
+      await createJobAssociation(jobId, (newCandidate as any).id, candidateData.notes, candidateData.assignedStageId, 'active', user.id)
 
       toast({ title: 'Success', description: 'Candidate added. You can attach a resume from the candidate panel.' })
 
       queryClient.invalidateQueries({ queryKey: ['job-candidates', jobId] })
       refreshOnboardingProgress(queryClient, user?.id, tenant?.id)
 
-      return { id: newCandidate.id, wasMerged: false, existingData: null, mergedData: null }
+      return { id: (newCandidate as any).id, wasMerged: false, existingData: null, mergedData: null }
     } catch (err) {
       const errorMessage = extractErrorMessage(err)
       toast({ title: 'Error', description: errorMessage, variant: 'destructive' })
