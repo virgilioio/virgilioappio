@@ -719,8 +719,15 @@ export function SourcingCandidateTable({
                     setSelectedApolloId(null)
                     setSelectedApolloData(null)
                     setSheetOpen(true)
-                  } else if (isGio || (candidate.source === 'apollo' && candidate.apollo_id)) {
-                    // Gio and Apollo candidates both open as Apollo preview
+                  } else if (isGio) {
+                    // Gio candidates have rich data — open PDL-style sheet
+                    setSelectedPdlData(candidate)
+                    setSelectedCandidateId(null)
+                    setSelectedApolloId(null)
+                    setSelectedApolloData(null)
+                    setSheetOpen(true)
+                  } else if (candidate.source === 'apollo' && candidate.apollo_id) {
+                    // Apollo candidates open as Apollo preview
                     setSelectedCandidateId(null)
                     setSelectedApolloId(candidate.apollo_id || null)
                     setSelectedApolloData(candidate)
