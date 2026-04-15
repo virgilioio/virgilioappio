@@ -697,12 +697,13 @@ export function SourcingCandidateTable({
 
                 // Determine candidate type for unified rendering
                 const isInternal = isCollectedApollo(candidate)
-                const isApollo = !isInternal && candidate.source === 'apollo' && !candidate.candidate_id
+                const isGio = isGioSourced(candidate)
+                const isApollo = !isInternal && !isGio && candidate.source === 'apollo' && !candidate.candidate_id
                 const location = getLocation(candidate)
 
                 // Badge config per type
-                const badgeVariant = isInternal ? 'pastel-blue' as const : isPdl ? 'pastel-green' as const : 'secondary' as const
-                const badgeLabel = isInternal ? 'Internal' : isPdl ? 'PDL' : 'Apollo'
+                const badgeVariant = isInternal ? 'pastel-blue' as const : isGio ? 'pastel-purple' as const : isPdl ? 'pastel-green' as const : 'secondary' as const
+                const badgeLabel = isInternal ? 'Internal' : isGio ? 'Gio' : isPdl ? 'PDL' : 'Apollo'
 
                 // Click handler per type
                 const handleRowClick = () => {
@@ -717,6 +718,13 @@ export function SourcingCandidateTable({
                     setSelectedCandidateId(null)
                     setSelectedApolloId(null)
                     setSelectedApolloData(null)
+                    setSheetOpen(true)
+                  } else if (isGio || (candidate.source === 'apollo' && candidate.apollo_id)) {
+                    // Gio and Apollo candidates both open as Apollo preview
+                    setSelectedCandidateId(null)
+                    setSelectedApolloId(candidate.apollo_id || null)
+                    setSelectedApolloData(candidate)
+                    setSelectedPdlData(null)
                     setSheetOpen(true)
                   } else if (candidate.candidate_id || candidate.source === 'local') {
                     setSelectedCandidateId(candidate.candidate_id || candidate.id)
