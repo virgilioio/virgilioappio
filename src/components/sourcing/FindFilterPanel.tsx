@@ -315,7 +315,8 @@ export function FindFilterPanel({
                 maxExperience: 30,
                 source: 'all',
                 hasEmail: undefined,
-                hasPhone: undefined
+                hasPhone: undefined,
+                candidateSource: undefined
               })}
               className="h-6 px-2 text-[10px] rounded-md hover:bg-primary/10"
             >
