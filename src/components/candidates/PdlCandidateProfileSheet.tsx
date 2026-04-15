@@ -88,7 +88,9 @@ export function PdlCandidateProfileSheet({
                       {displayName}
                       <span className="text-purple-period">.</span>
                     </h2>
-                    <Badge variant="pastel-green" className="text-xs">PDL · Full Data</Badge>
+                    <Badge variant={candidate.is_gio_sourced ? "pastel-purple" : "pastel-green"} className="text-xs">
+                      {candidate.is_gio_sourced ? "Gio · Enriched" : "PDL · Full Data"}
+                    </Badge>
                     {candidate.linkedin_url && (
                       <Button
                         variant="outline"
@@ -166,7 +168,7 @@ export function PdlCandidateProfileSheet({
                         <img src={gioAiBannerIcon} alt="Gio AI" className="h-10 shrink-0" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-foreground">Profile Summary</p>
-                          <p className="text-xs text-muted-foreground">Based on PDL candidate data</p>
+                          <p className="text-xs text-muted-foreground">{candidate.is_gio_sourced ? "Based on Gio enriched candidate data" : "Based on PDL candidate data"}</p>
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">
                           <Button
