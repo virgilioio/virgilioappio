@@ -40,6 +40,7 @@ export default function Find() {
   
   const [editableCriteria, setEditableCriteria] = useState<SearchCriteria | null>(null)
   const updateSearchCriteriaRef = useRef<((criteria: SearchCriteria) => Promise<void>) | null>(null)
+  const projectActionsRef = useRef<SourcingProjectActionsType | null>(null)
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
   const isInitialSyncRef = useRef(true)
   
