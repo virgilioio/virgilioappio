@@ -1,60 +1,81 @@
 
 
-# Fix: Enforce Null Score for Salary Dimension When Data Is Missing
+# Collaborative Sourcing Projects
 
 ## Problem
-The AI fit analysis for candidate Isaac J gives **Salary Alignment: 100/100** with "Expected salary aligns with job range" — but the candidate has **no salary data** (`salary_amount` is NULL). The AI even correctly lists `salary` in `data_sources_missing`, yet still hallucinated a perfect score.
+When you share a sourcing project URL with a teammate, it loads forever because the RLS SELECT policy only allows:
+1. The **creator** (`created_by = auth.uid()`)
+2. **Public** projects (`is_public = true`) — but all projects default to `is_public = false`
 
-The prompt already instructs the AI to return `null` for salary when data is missing (line 120, 150), but the LLM ignores it. There is no code-level enforcement after receiving the AI response.
+There's no concept of inviting collaborators to a specific project.
 
-## Fix — 1 file
+## Solution: Collaborators Table + Visibility Toggle
 
-### `supabase/functions/analyze-candidate-fit/index.ts`
+Two pieces:
 
-After line 341 (`const analysis = JSON.parse(...)`), add a post-processing guardrail:
+### 1. Database: `sourcing_project_collaborators` table
 
-```ts
-// Enforce null scores for dimensions where data is missing
-if (dataMissing.includes('salary') && analysis.dimensions) {
-  const salaryDim = analysis.dimensions.find(
-    (d: any) => d.name?.toLowerCase().includes('salary')
+A lightweight join table allowing the creator to add teammates:
+
+```
+sourcing_project_collaborators
+├── id (UUID, PK)
+├── sourcing_project_id (FK → sourcing_projects)
+├── user_id (FK → auth.users)
+├── added_by (FK → auth.users)
+├── created_at
+└── UNIQUE(sourcing_project_id, user_id)
+```
+
+RLS on this table: collaborators can view their own rows; project creator can INSERT/DELETE.
+
+### 2. Database: Update sourcing_projects SELECT policy
+
+Add a third condition — user is a collaborator:
+
+```sql
+DROP POLICY "Users can view own or public org projects" ON sourcing_projects;
+
+CREATE POLICY "Users can view own, public, or collaborated projects"
+  ON sourcing_projects FOR SELECT
+  USING (
+    created_by = auth.uid()
+    OR (is_public = true AND user_has_org_hierarchy_access(organization_id))
+    OR get_user_type_secure() = 'platform_admin'
+    OR EXISTS (
+      SELECT 1 FROM sourcing_project_collaborators spc
+      WHERE spc.sourcing_project_id = id
+        AND spc.user_id = auth.uid()
+    )
   );
-  if (salaryDim && salaryDim.score !== null) {
-    salaryDim.score = null;
-    salaryDim.insight = 'No salary data available for this candidate.';
-    salaryDim.matches = [];
-    salaryDim.gaps = [];
-  }
-}
 ```
 
-This ensures that regardless of what the LLM returns, if we **know** salary data is missing (tracked deterministically on lines 239-244), the score is forced to `null`.
+Also update the UPDATE policy so collaborators can update (not just the creator).
 
-Additionally, recalculate `overall_score` excluding null dimensions so the weighted average isn't inflated:
+### 3. UI: Collaborator Management
 
-```ts
-// Recalculate overall_score excluding null dimensions
-if (analysis.dimensions) {
-  let totalWeight = 0;
-  let weightedSum = 0;
-  for (const dim of analysis.dimensions) {
-    if (dim.score !== null && dim.score !== undefined) {
-      totalWeight += dim.weight || 0;
-      weightedSum += (dim.score * (dim.weight || 0));
-    }
-  }
-  if (totalWeight > 0) {
-    analysis.overall_score = Math.round(weightedSum / totalWeight);
-  }
-}
-```
+In the `SourcingProjectView` header area (near the saved search selector), add a small **avatar group + invite button**:
 
-## What this fixes
-- Salary alignment no longer shows a hallucinated score when candidate has no salary data
-- Overall score is recalculated honestly, excluding dimensions with no data
-- Pattern is extensible — can add similar guards for education or other missing sources
+- Shows the creator's avatar + any collaborator avatars (stacked, like GitHub)
+- A "+" button opens a popover to search and add team members (from the same tenant)
+- Collaborators can be removed by the creator
+- When a project has collaborators, they see it in their saved searches list too
+
+### 4. Update `useSourcingProjects` list hook
+
+The list query already uses tenant-scoped access, but the RLS change above will automatically make collaborated projects appear in the list query results. No code change needed — the RLS handles visibility.
+
+## Files
+
+| File | Change |
+|------|--------|
+| New migration | Create `sourcing_project_collaborators` table + updated RLS policies |
+| `src/components/sourcing/SourcingProjectCollaborators.tsx` | New — avatar group + invite popover |
+| `src/components/sourcing/SourcingProjectView.tsx` | Add collaborator component to header |
+| `src/hooks/useSourcingProjectCollaborators.ts` | New — CRUD hook for collaborators |
 
 ## Scope
-- 1 edge function edit (~20 lines)
-- Deploy + test
+- 1 migration (table + RLS updates)
+- 2 new files (component + hook)
+- 1 existing file edit (SourcingProjectView header)
 
