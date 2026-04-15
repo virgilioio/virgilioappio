@@ -57,8 +57,8 @@ export function useSourcingProjectCollaborators(projectId: string, createdBy?: s
       const memberMap = new Map((members || []).map((m: any) => [m.user_id, m]))
 
       return data.map((c: any) => {
-        const profile = profileMap.get(c.user_id)
-        const member = memberMap.get(c.user_id)
+        const profile = profileMap.get(c.user_id) as any
+        const member = memberMap.get(c.user_id) as any
         return {
           ...c,
           user_email: profile?.email || member?.invited_email || '',
@@ -99,10 +99,10 @@ export function useSourcingProjectCollaborators(projectId: string, createdBy?: s
       if (!members) return []
 
       const userIds = members.map((m: any) => m.user_id).filter(Boolean)
-      const { data: profiles } = await supabase
+      const { data: profiles } = await (supabase
         .from('profiles')
-        .select('id, first_name, last_name, avatar_url, email')
-        .in('id', userIds) as { data: any[] | null }
+        .select('id, first_name, last_name, avatar_url, email') as any)
+        .in('id', userIds)
 
       const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
 
