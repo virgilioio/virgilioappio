@@ -1,34 +1,41 @@
 
 
-# Unify All Candidate Rows to Enriched Card Layout
+# Improve Duplicate Candidate Error Handling
 
-## What changes
-Make **every** candidate row (Apollo preview, PDL, and Internal) use the same enriched colSpan layout that Internal candidates already have. The only differences between row types will be:
+## Problem
+When a user tries to create a candidate that already exists, they sometimes get a generic error toast instead of the merge dialog. This happens when the DB unique constraint `(email, candidate_name, tenant_id)` fires — either because the duplicate check missed the match (different org within the same tenant) or due to a race condition. The error message is unhelpful and "freaks users out."
 
-1. **Badge**: "Internal" (pastel-blue), "PDL" (pastel-green), or "Apollo" (secondary)
-2. **Metadata chips**: 
-   - **Internal/PDL**: Show actual values (email address, phone number, city name)
-   - **Apollo preview**: Show placeholder labels ("Email", "Phone", "Location") in the same pill style — indicating availability without revealing data
-3. **Name**: Internal/PDL show real name; Apollo shows obfuscated name
-4. **Checkbox**: Only shown for uncollected Apollo candidates (existing logic)
-5. **Right actions**: Apollo gets "Collect" button, Internal/PDL get "Add to Pipeline"
+## Root Cause
+The duplicate check in `checkForDuplicateCandidate` queries by `email + organization_id`, but the DB constraint is on `email + candidate_name + tenant_id`. When a candidate exists in a different org within the same tenant, the check passes but the INSERT fails with a `23505` unique violation error, which surfaces as a raw DB error in a destructive toast.
 
-## Implementation — 1 file
+## Fix — 2 files
 
-**`src/components/sourcing/SourcingCandidateTable.tsx`**
+### 1. `src/lib/candidateHelpers.ts` — Catch unique constraint violations
+In `createCandidate`, catch error code `23505` (unique_violation) specifically. Instead of throwing a generic error, fetch the existing candidate and return a structured duplicate result so the caller can show the merge dialog.
 
-Remove the `if (isCollectedApollo)` early-return block and the standard `<TableRow>` block. Replace both with a **single unified enriched row renderer** used for all candidates:
+```ts
+if (createError.code === '23505') {
+  // Unique constraint hit — find the existing candidate and return duplicate info
+  const existing = await findExistingCandidate(candidateData, tenantId)
+  if (existing) {
+    return { isDuplicate: true, existingCandidate: existing, mergedData: smartMerge(existing, candidateData) }
+  }
+}
+```
 
-- Delete the separate code paths (~lines 694-814 for Internal, ~lines 816-1050 for standard)
-- Replace with one enriched `<TableRow>` + `<TableCell colSpan={5}>` block that handles all three source types via conditionals for badge, name display, metadata content, and actions
-- Remove the emerald left-border for PDL rows (no longer needed — badge handles identification)
-- Apollo preview rows: metadata chips show `"Email"`, `"Phone"`, `"Location"` as placeholder text (same rounded pill style) based on `has_email`, `has_phone`, `has_location` flags
-- PDL rows: metadata chips show actual `candidate.email`, `candidate.phone`, and location string
-- Keep existing click handlers per source type (PDL opens PDL sheet, Apollo opens Apollo preview sheet, Internal opens candidate profile)
+### 2. `src/hooks/useIndependentCandidates.ts` — Handle constraint-based duplicates
+In `addCandidate`, after calling `createCandidate`, check if the result contains `isDuplicate` (from the new constraint catch). If so, return it as a `DuplicateResult` instead of treating it as a normal candidate — this lets the existing merge dialog flow in `Candidates.tsx` and `CandidateFormSheet` handle it gracefully.
 
-The mobile card view (~line 1066+) will also be updated to match the same unified structure.
+### 3. `src/hooks/useCandidates.ts` — Same fix for job-context flow
+Apply the same handling in the job-scoped `addCandidate` so the merge dialog works from both the Candidates page and the Job Detail page.
+
+## Result
+- No more generic error toasts for duplicate candidates
+- The merge dialog appears in all cases — whether caught by the pre-check or by the DB constraint
+- Zero UI changes needed — the existing `CandidateMergeDialog` handles everything
 
 ## Scope
-- 1 frontend file (~80 lines net change, mostly consolidation)
-- 0 backend changes
+- 3 file edits (~30 lines total)
+- 0 migrations
+- 0 new components
 
