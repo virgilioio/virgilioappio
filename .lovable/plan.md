@@ -1,93 +1,91 @@
 
 
-# Sourcing Results: `display_source` Badge Overhaul
+# Plan: Ensure Ingest Email is Auto-Accepted on Rescheduled Interviews
 
-## Summary
+## What I found
 
-Adopt the new `display_source` field from the backend across the entire sourcing frontend — badges, filters, preview sheet, source breakdown, and auto-enrichment on candidate creation.
+Reschedules — both **internal** (recruiter sheet) and **public** (candidate booking page) — go through the same `create-booking` edge function. There is no separate "update-booking" path. The reschedule branch:
 
-## Changes
+1. Deletes the old Google Calendar event(s)
+2. Cancels the old `scheduled_bookings` row
+3. Falls through into the normal "create new event" code, which is the same code that runs for first-time bookings
 
-### 1. Backend: Add `display_source` to `sourcing-search` response
+The new event creation block (line 384) does include the ingest email with `responseStatus: 'accepted'`:
 
-The edge function currently does NOT emit `display_source`. Add it to the mapping in `sourcing-search/index.ts`:
-
-- Same-tenant match → `display_source: 'internal'`
-- Cross-tenant match → `display_source: 'gio'`
-- Unmatched Apollo → `display_source: 'apollo'`
-- PDL candidates → `display_source: 'pdl'`
-
-Also update `source_breakdown` to include `internal` and `gio` counts.
-
-### 2. Frontend type: Add `display_source` to `MatchedCandidate`
-
-In `SourcingCandidateTable.tsx`, add `display_source?: 'internal' | 'gio' | 'apollo' | 'pdl'` to the interface. Update `sourceBreakdown` interface in both `SourcingCandidateTable.tsx` and `CandidatesTab.tsx` to include `internal` and `gio` counts.
-
-### 3. Replace badge classification helpers
-
-Replace `isCollectedApollo`, `isGioSourced`, `isPdlCandidate`, `isApolloPreview` with a single helper:
-
-```typescript
-const getDisplaySource = (c: MatchedCandidate) =>
-  c.display_source || // trust backend
-  (c.source === 'apollo' && c.is_preview === false && !!c.candidate_id && !c.is_gio_sourced ? 'internal' :
-   c.is_gio_sourced ? 'gio' :
-   c.source === 'pdl' ? 'pdl' : 'apollo')
+```ts
+attendees: [
+  { email: profile.email },
+  ...(transcriptIngestEmail ? [{ email: transcriptIngestEmail, responseStatus: 'accepted' }] : []),
+  ...(guest_emails || []).map((ge: string) => ({ email: ge })),
+],
 ```
 
-Badge colors change:
-- **Internal** → `bg-green-100 text-green-700` (was pastel-blue)
-- **Gio** → `bg-violet-100 text-violet-700` (was pastel-purple, stays brand)
-- **Apollo** → `bg-blue-100 text-blue-700` (was secondary gray)
-- **PDL** → `bg-teal-100 text-teal-700` (was pastel-green)
+So the code path is correct on paper. But the user is observing the ingest attendee showing as **not accepted** on a public-reschedule event.
 
-Update both desktop table rows and mobile card rows.
+## Most likely cause
 
-### 4. Fix preview sheet: Remove secondary DB lookup
+There are 3 plausible reasons for what the user saw, in order of likelihood:
 
-In `ApolloPreviewSheet.tsx`, the `checkIfCollected` effect (lines 260-300) queries the candidates table independently. Remove this lookup. Instead, pass `display_source` and the pre-classified data from the table row into the sheet. When `display_source === 'internal'`, show "Already in your library" using the data already on the row (no extra query needed).
+### 1. The event is created via the **candidate's** booking flow without the interviewer's OAuth token (most likely)
 
-Update `UniversalCandidateProfileSheet` and `ApolloPreviewSheet` to accept and use `display_source`.
+Public reschedules from the candidate's side run with whatever OAuth token is associated with the booking config. If `accessToken` or `calendarIdentity` is missing/expired at reschedule time (e.g. interviewer's Google token was revoked), the **entire calendar event creation block is skipped** (`if (accessToken && calendarIdentity)`). In that case the booking row exists but no Google event is recreated → no attendees → no ingest email at all on the invite.
 
-### 5. Update filter logic in `SourcingProjectView.tsx`
+### 2. Google silently ignores `responseStatus: 'accepted'` for non-resource attendees on insert in some cases
 
-Replace the `isInternal`/`isGio`/`isExternal` filter classification (lines 173-184) with:
+When Google Calendar's `events.insert` is called on behalf of the interviewer, attendees outside the organizer's domain are sometimes downgraded to `needsAction`. This can happen on reschedules if the previous event left a residual attendee status cache. The fix is to issue a follow-up `events.patch` that re-asserts `responseStatus: 'accepted'` for the ingest address only (Google honors organizer-set status for attendees on subsequent patch calls).
 
-```typescript
-const ds = candidate.display_source || /* fallback */
-const isInternal = ds === 'internal'
-const isGio = ds === 'gio'
-const isExternal = ds === 'apollo' || ds === 'pdl'
-```
+### 3. The new event is created but `sendUpdates` causes Google to reset attendee statuses
 
-### 6. Auto-enrichment on candidate creation (edge functions)
+Currently the insert call doesn't pass `sendUpdates`. The default behavior can trigger an attendee-state recompute in some calendars. Explicitly setting `sendUpdates=externalOnly` along with re-patching the ingest attendee status guarantees the "accepted" state sticks.
 
-Add non-blocking `enrich-by-linkedin` calls after candidate INSERT in:
+## Verification I want to run before fixing
 
-- **`chrome-api-candidates/index.ts`** (after line 317, new candidate path)
-- **`public-submit-application/index.ts`** (after line 267, new candidate path)
+I need to look at the actual Google Calendar API response for the user's most recent reschedule event to know which of the 3 it is. I'll use Edge Function logs for `create-booking` filtered to the affected booking, and also inspect the resulting `scheduled_bookings` row to see if `google_event_id` is populated (rules out cause #1).
 
-```typescript
-if (newCandidate.id && linkedin_url && !apollo_id) {
-  supabase.functions.invoke('enrich-by-linkedin', {
-    body: { candidate_ids: [newCandidate.id], skip_credit_check: true, trigger_source: 'on_candidate_create' }
-  }).catch(err => console.warn('Auto-enrich failed:', err))
+## Proposed fix (covers all 3 causes defensively)
+
+In `supabase/functions/create-booking/index.ts`, after the new interviewer event is successfully created, add a follow-up `events.patch` call that re-asserts the ingest attendee's `responseStatus: 'accepted'` and explicitly sets `sendUpdates=externalOnly`. This is a small, idempotent guarantee that runs for both first bookings and reschedules.
+
+```ts
+// After successful insert, re-assert ingest acceptance
+if (transcriptIngestEmail && googleEventId) {
+  await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/primary/events/${googleEventId}?sendUpdates=externalOnly`,
+    {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        attendees: [
+          { email: profile.email },
+          { email: transcriptIngestEmail, responseStatus: 'accepted' },
+          ...(guest_emails || []).map((ge: string) => ({ email: ge })),
+        ],
+      }),
+    }
+  );
 }
 ```
 
-### 7. Source breakdown summary
+Also add a clear log line if the calendar event creation block is skipped (cause #1) so this is debuggable next time:
 
-Update the source breakdown display (if rendered) to show `"12 Internal · 3 Gio · 5 PDL · 1,847 Apollo"` using the new counts.
+```ts
+if (!accessToken || !calendarIdentity) {
+  console.warn('[create-booking] No interviewer OAuth token — skipping calendar event creation. Ingest email will NOT be on the invite.');
+}
+```
 
-## Files Modified
+## Files to change
 
-1. `supabase/functions/sourcing-search/index.ts` — Add `display_source` field + updated breakdown
-2. `src/components/sourcing/SourcingCandidateTable.tsx` — New type field, simplified classification, new badge colors
-3. `src/components/sourcing/SourcingProjectView.tsx` — Filter logic uses `display_source`
-4. `src/components/sourcing/CandidatesTab.tsx` — Updated `sourceBreakdown` type
-5. `src/components/candidates/ApolloPreviewSheet.tsx` — Remove secondary DB lookup, use passed `display_source`
-6. `src/components/candidates/UniversalCandidateProfileSheet.tsx` — Accept and forward `display_source`
-7. `supabase/functions/chrome-api-candidates/index.ts` — Auto-enrich after creation
-8. `supabase/functions/public-submit-application/index.ts` — Auto-enrich after creation
-9. `src/types/sourcing.ts` — No change needed (filter types already support the categories)
+- `supabase/functions/create-booking/index.ts` — add the follow-up patch and the missing-token warning. No other files touched.
 
+## Out of scope
+
+- No DB schema changes
+- No frontend changes
+- The internal reschedule flow already uses the same code path, so the fix covers it automatically
+
+<lov-actions>
+<lov-suggestion message="Apply the fix and then test by rescheduling an interview from the public booking page end-to-end, then check that the ingest email appears as Accepted on the new Google Calendar invite.">Apply fix and test reschedule end-to-end</lov-suggestion>
+<lov-suggestion message="Before applying the fix, pull the create-booking edge function logs for my most recent rescheduled booking so we can confirm exactly which of the 3 causes hit me.">Check logs for my recent reschedule first</lov-suggestion>
+<lov-suggestion message="Add a backfill script that scans recent rescheduled bookings, finds ones where the Google event is missing the ingest attendee or where it isn't accepted, and patches them.">Backfill ingest acceptance on past reschedules</lov-suggestion>
+</lov-actions>
