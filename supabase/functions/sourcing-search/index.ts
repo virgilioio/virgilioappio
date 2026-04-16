@@ -216,7 +216,7 @@ serve(async (req) => {
 
     const deduplicated = apolloCandidates.length - dedupedApollo.length;
 
-    // ── Cross-reference Apollo results with already-collected candidates ──
+    // ── Cross-reference Apollo results with existing Apollo-linked candidates ──
     // SECURITY: scope by tenant_id to prevent cross-tenant data leakage
     const apolloIds = dedupedApollo
       .map((c: any) => c.apollo_id)
@@ -230,7 +230,6 @@ serve(async (req) => {
         .from('candidates')
         .select('id, apollo_id, tenant_id, candidate_name, email, phone, linkedin_url, location_city, location_state, location_country, company_current, role_current, skills, profile_summary, years_experience')
         .in('apollo_id', apolloIds)
-        .not('apollo_collected_at', 'is', null)
         .limit(2000);
 
       if (collected) {
