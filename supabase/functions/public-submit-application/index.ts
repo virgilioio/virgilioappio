@@ -311,6 +311,20 @@ serve(async (req) => {
         }
       } else {
         globalCandidateId = newGlobalCandidate.id;
+
+        // Auto-enrich in background if LinkedIn URL present
+        const linkedinUrl = body.linkedin_url?.trim() || body.linkedin_sync?.trim();
+        if (linkedinUrl) {
+          supabase.functions.invoke('enrich-by-linkedin', {
+            body: {
+              candidate_ids: [globalCandidateId],
+              skip_credit_check: true,
+              trigger_source: 'on_candidate_create'
+            }
+          }).catch((err: any) => {
+            console.warn('⚠️ Auto-enrich failed (non-blocking):', err);
+          });
+        }
       }
     }
 
