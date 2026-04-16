@@ -299,6 +299,10 @@ serve(async (req) => {
       console.log(`🔍 Pipeline filter: ${pipelineCandidateIds.size} candidates already in job ${project.job_id}`);
     }
 
+    let internalCount = 0;
+    let gioCount = 0;
+    let apolloPreviewCount = 0;
+
     const enrichedApollo = dedupedApollo.map((c: any) => {
       const sameMatch = c.apollo_id ? sameTenantMap.get(c.apollo_id) : null;
       if (sameMatch) {
@@ -306,9 +310,11 @@ serve(async (req) => {
         if (pipelineCandidateIds.has(sameMatch.id)) {
           return null;
         }
+        internalCount++;
         // Same-tenant → Internal: full candidate_id access
         return {
           ...c,
+          display_source: 'internal',
           candidate_id: sameMatch.id,
           candidate_name: sameMatch.candidate_name,
           full_name: sameMatch.candidate_name,
@@ -327,9 +333,11 @@ serve(async (req) => {
 
       const crossMatch = c.apollo_id ? crossTenantMap.get(c.apollo_id) : null;
       if (crossMatch) {
+        gioCount++;
         // Cross-tenant → Gio: rich display data but NO candidate_id
         return {
           ...c,
+          display_source: 'gio',
           is_gio_sourced: true,
           candidate_id: null, // SECURITY: never expose cross-tenant DB IDs
           candidate_name: crossMatch.candidate_name,
@@ -350,7 +358,8 @@ serve(async (req) => {
         };
       }
 
-      return c;
+      apolloPreviewCount++;
+      return { ...c, display_source: 'apollo' };
     }).filter(Boolean);
 
     const pipelineFiltered = dedupedApollo.length - enrichedApollo.length;
@@ -358,13 +367,18 @@ serve(async (req) => {
       console.log(`🚫 Filtered out ${pipelineFiltered} Internal candidates already in pipeline`);
     }
 
-    const allCandidates = [...pdlCandidates, ...enrichedApollo];
+    // Tag PDL candidates with display_source
+    const taggedPdl = pdlCandidates.map((c: any) => ({ ...c, display_source: 'pdl' }));
+
+    const allCandidates = [...taggedPdl, ...enrichedApollo];
 
     const sourceBreakdown = {
+      internal: internalCount,
+      gio: gioCount,
       pdl: pdlCandidates.length,
-      apollo: dedupedApollo.length,
-      full_data: pdlCandidates.length,
-      preview_only: dedupedApollo.length,
+      apollo: apolloPreviewCount,
+      full_data: internalCount + gioCount + pdlCandidates.length,
+      preview_only: apolloPreviewCount,
       deduplicated,
     };
 

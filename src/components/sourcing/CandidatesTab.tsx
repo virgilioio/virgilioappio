@@ -31,6 +31,8 @@ interface CandidatesTabProps {
   projectId: string;
   searchCriteria?: SearchCriteria;
   sourceBreakdown?: {
+    internal?: number;
+    gio?: number;
     pdl: number;
     apollo: number;
     full_data: number;

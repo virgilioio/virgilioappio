@@ -50,6 +50,7 @@ interface MatchedCandidate {
   years_experience?: number
   experience_years?: number
   source: 'local' | 'apollo' | 'pdl'
+  display_source?: 'internal' | 'gio' | 'apollo' | 'pdl'
   is_preview?: boolean
   needs_enrichment?: boolean
   is_gio_sourced?: boolean
@@ -86,6 +87,8 @@ interface SourcingCandidateTableProps {
   projectId?: string | null
   searchCriteria?: import('@/types/sourcing').SearchCriteria
   sourceBreakdown?: {
+    internal?: number
+    gio?: number
     pdl: number
     apollo: number
     full_data: number
@@ -540,20 +543,18 @@ export function SourcingCandidateTable({
     }
   }
 
-  // Helper: is this a collected Apollo candidate (already unblocked, same tenant)?
-  const isCollectedApollo = (c: MatchedCandidate) =>
-    c.source === 'apollo' && c.is_preview === false && !!c.candidate_id && !c.is_gio_sourced
+  // Unified display source helper — trusts backend `display_source`, falls back to legacy flags
+  const getDisplaySource = (c: MatchedCandidate): 'internal' | 'gio' | 'apollo' | 'pdl' =>
+    c.display_source ||
+    (c.source === 'apollo' && c.is_preview === false && !!c.candidate_id && !c.is_gio_sourced ? 'internal' :
+     c.is_gio_sourced ? 'gio' :
+     c.source === 'pdl' ? 'pdl' : 'apollo')
 
-  // Helper: is this a Gio-sourced candidate (cross-tenant enriched)?
-  const isGioSourced = (c: MatchedCandidate) => c.is_gio_sourced === true
-
-  // Helper: is this a PDL full-data candidate?
-  const isPdlCandidate = (c: MatchedCandidate) =>
-    (c.source === 'pdl' || c.is_preview === false) && !isCollectedApollo(c) && !isGioSourced(c)
-
-  // Helper: is this an Apollo preview candidate?
-  const isApolloPreview = (c: MatchedCandidate) => 
-    (c.source === 'apollo' || c.is_preview === true || c.needs_enrichment === true) && !isPdlCandidate(c)
+  // Legacy helpers now derived from getDisplaySource
+  const isCollectedApollo = (c: MatchedCandidate) => getDisplaySource(c) === 'internal'
+  const isGioSourced = (c: MatchedCandidate) => getDisplaySource(c) === 'gio'
+  const isPdlCandidate = (c: MatchedCandidate) => getDisplaySource(c) === 'pdl'
+  const isApolloPreview = (c: MatchedCandidate) => getDisplaySource(c) === 'apollo'
 
   const getMatchBadgeColor = (tier: string) => {
     switch (tier) {
@@ -684,7 +685,7 @@ export function SourcingCandidateTable({
                 const location = getLocation(candidate)
 
                 // Badge config per type
-                const badgeVariant = isInternal ? 'pastel-blue' as const : isGio ? 'pastel-purple' as const : isPdl ? 'pastel-green' as const : 'secondary' as const
+                const badgeClass = isInternal ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : isGio ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400' : isPdl ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
                 const badgeLabel = isInternal ? 'Internal' : isGio ? 'Gio' : isPdl ? 'PDL' : 'Apollo'
 
                 // Click handler per type
@@ -779,7 +780,7 @@ export function SourcingCandidateTable({
                           {/* Top: badge + match */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-1.5">
-                              <Badge variant={badgeVariant} className="text-[10px] px-1.5 py-0 h-4">
+                              <Badge className={cn("text-[10px] px-1.5 py-0 h-4 border-0", badgeClass)}>
                                 {badgeLabel}
                               </Badge>
                               {/* Keyword match indicator */}
@@ -975,7 +976,7 @@ export function SourcingCandidateTable({
           const isGio = isGioSourced(candidate)
           const isApollo = !isInternal && !isGio && candidate.source === 'apollo' && !candidate.candidate_id
           const location = getLocation(candidate)
-          const badgeVariant = isInternal ? 'pastel-blue' as const : isGio ? 'pastel-purple' as const : isPdl ? 'pastel-green' as const : 'secondary' as const
+          const badgeClass = isInternal ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : isGio ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400' : isPdl ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
           const badgeLabel = isInternal ? 'Internal' : isGio ? 'Gio' : isPdl ? 'PDL' : 'Apollo'
 
           const handleCardClick = () => {
@@ -1048,7 +1049,7 @@ export function SourcingCandidateTable({
                         />
                       </div>
                     )}
-                    <Badge variant={badgeVariant} className="text-[10px] px-1.5 py-0 h-4">
+                    <Badge className={cn("text-[10px] px-1.5 py-0 h-4 border-0", badgeClass)}>
                       {badgeLabel}
                     </Badge>
                   </div>

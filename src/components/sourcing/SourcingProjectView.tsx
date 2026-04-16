@@ -175,10 +175,13 @@ export function SourcingProjectView({
         const wantGio = filters.candidateSource.includes('gio')
         const wantExternal = filters.candidateSource.includes('external')
         
-        const isInternal = candidate.source === 'local' || 
-          (candidate.source === 'apollo' && candidate.is_preview === false && !!candidate.candidate_id && !candidate.is_gio_sourced)
-        const isGio = candidate.is_gio_sourced === true
-        const isExternal = !isInternal && !isGio
+        const ds = (candidate as any).display_source ||
+          (candidate.source === 'apollo' && candidate.is_preview === false && !!candidate.candidate_id && !candidate.is_gio_sourced ? 'internal' :
+           candidate.is_gio_sourced ? 'gio' :
+           candidate.source === 'pdl' ? 'pdl' : 'apollo')
+        const isInternal = ds === 'internal'
+        const isGio = ds === 'gio'
+        const isExternal = ds === 'apollo' || ds === 'pdl'
         
         const matches = (wantInternal && isInternal) || (wantGio && isGio) || (wantExternal && isExternal)
         if (!matches) return false
