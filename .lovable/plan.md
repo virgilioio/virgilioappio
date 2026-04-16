@@ -1,38 +1,18 @@
 
 
-# Fix: Collected Candidates Showing as Apollo Preview
+# Fix: Redeploy Edge Functions with .limit(2000)
 
-## Root Cause
+## Problem
 
-Two bugs working together:
+The `.limit(2000)` fixes were added to the codebase but the deployed edge functions are still running the old code. The logs confirm this — "Apollo returned 1000 candidates (cached: true)" means the cache query is still hitting Supabase's default 1000-row cap.
 
-### Bug 1: Cache query silently capped at 1000 rows
-In `search-apollo-candidates/index.ts` (line 393-397), the cache query has no `.limit()`:
-```typescript
-const { data: cachedCandidates } = await supabase
-  .from('sourcing_preview_candidates')
-  .select('*')
-  .eq('sourcing_project_id', project_id)
-  .eq('source', 'apollo');
-// ← Supabase default limit = 1000, but 2000 rows exist
-```
+This causes collected candidates in the "lost" half (rows 1001–2000) to never get cross-referenced, so they appear as Apollo previews instead of "Internal."
 
-Logs confirm: "Apollo returned 1000 candidates (cached: true)" vs "Apollo returned 2000 candidates (cached: false)" for fresh fetches. Half the candidates vanish on cache hits, and some collected ones may be in the lost half.
+## Fix
 
-### Bug 2: Cross-reference may also be capped
-In `sourcing-search/index.ts` (line 228-232), the query to find collected candidates uses `.in('apollo_id', apolloIds)` with up to 2000 IDs. While the response won't exceed 1000 rows by default, the current tenant only has ~254 collected candidates so this isn't actively breaking — but it's a ticking time bomb.
+Redeploy both edge functions. No code changes needed — the code is already correct.
 
-## Changes
-
-### 1. `supabase/functions/search-apollo-candidates/index.ts`
-- Add `.limit(2000)` to the cache query at line 393-397
-
-### 2. `supabase/functions/sourcing-search/index.ts`
-- Add `.limit(2000)` to the collected candidates cross-reference query (line 228-232) as a safety measure
-- Add `.limit(2000)` to the PDL cache query (line 72-76) for consistency
-
-Both functions redeployed.
-
-## Result
-All 2000 cached candidates are returned, cross-referenced correctly against collected candidates, and displayed with the proper "Internal" badge.
+1. Deploy `search-apollo-candidates`
+2. Deploy `sourcing-search`
+3. Test by invoking `sourcing-search` for project `663dfa1a-790a-42e0-aa2d-597275eeb4c8` and verifying the Apollo count is ~2000 instead of 1000
 
