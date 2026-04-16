@@ -212,12 +212,33 @@ serve(async (req) => {
     // Check which candidates already exist
     const { data: existingCandidates } = await supabase
       .from('candidates')
-      .select('id, apollo_id')
+      .select('id, apollo_id, apollo_collected_at')
       .in('apollo_id', idsToEnrich)
       .eq('tenant_id', tenantId);
 
     const existingApolloIds = new Set((existingCandidates || []).map(c => c.apollo_id));
     const newApolloIds = idsToEnrich.filter(id => !existingApolloIds.has(id));
+
+    const collectedAtIso = new Date().toISOString();
+
+    const existingCandidateIdsMissingCollectedAt = (existingCandidates || [])
+      .filter((candidate) => !candidate.apollo_collected_at)
+      .map((candidate) => candidate.id)
+      .filter(Boolean);
+
+    if (existingCandidateIdsMissingCollectedAt.length > 0) {
+      const { error: backfillCollectedAtError } = await supabase
+        .from('candidates')
+        .update({ apollo_collected_at: collectedAtIso })
+        .in('id', existingCandidateIdsMissingCollectedAt)
+        .is('apollo_collected_at', null);
+
+      if (backfillCollectedAtError) {
+        console.warn('Failed to backfill apollo_collected_at for existing Apollo candidates:', backfillCollectedAtError);
+      } else {
+        console.log(`✅ Backfilled apollo_collected_at for ${existingCandidateIdsMissingCollectedAt.length} existing Apollo candidates`);
+      }
+    }
 
     console.log(`📊 ${existingApolloIds.size} already collected, ${newApolloIds.length} new to enrich`);
 
@@ -265,7 +286,7 @@ serve(async (req) => {
       if (sourcing_project_id && existing.apollo_id) {
         await supabase
           .from('sourcing_preview_candidates')
-          .update({ collected_at: new Date().toISOString() })
+          .update({ collected_at: collectedAtIso })
           .eq('apollo_id', existing.apollo_id)
           .eq('sourcing_project_id', sourcing_project_id)
           .is('collected_at', null);
@@ -433,7 +454,7 @@ serve(async (req) => {
           organization_id: organizationId,
           tenant_id: tenantId,
           created_by: user_id,
-          apollo_collected_at: new Date().toISOString()
+          apollo_collected_at: collectedAtIso
         })
         .select('id')
         .single();
