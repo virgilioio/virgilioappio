@@ -1294,6 +1294,7 @@ export type Database = {
           id: string
           job_board_source: string | null
           last_skills_generation: string | null
+          linkedin_slug: string | null
           linkedin_url: string | null
           location_city: string | null
           location_country: string | null
@@ -1353,6 +1354,7 @@ export type Database = {
           id?: string
           job_board_source?: string | null
           last_skills_generation?: string | null
+          linkedin_slug?: string | null
           linkedin_url?: string | null
           location_city?: string | null
           location_country?: string | null
@@ -1412,6 +1414,7 @@ export type Database = {
           id?: string
           job_board_source?: string | null
           last_skills_generation?: string | null
+          linkedin_slug?: string | null
           linkedin_url?: string | null
           location_city?: string | null
           location_country?: string | null
@@ -5820,6 +5823,7 @@ export type Database = {
           user_type: string
         }[]
       }
+      decode_percent_encoded: { Args: { raw_url: string }; Returns: string }
       decrypt_refresh_token: {
         Args: { encrypted_token: string }
         Returns: string
@@ -5844,6 +5848,7 @@ export type Database = {
       encrypt_refresh_token: { Args: { token: string }; Returns: string }
       execute_candidate_sync: { Args: never; Returns: undefined }
       extract_domain_from_email: { Args: { email: string }; Returns: string }
+      extract_linkedin_slug: { Args: { raw_url: string }; Returns: string }
       generate_invite_token: { Args: never; Returns: string }
       get_all_feature_flags: {
         Args: never
@@ -6044,6 +6049,7 @@ export type Database = {
         }
         Returns: string
       }
+      normalize_linkedin_slug: { Args: { raw_url: string }; Returns: string }
       organization_has_active_public_posting: {
         Args: { org_id_param: string }
         Returns: boolean
