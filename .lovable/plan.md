@@ -1,91 +1,61 @@
 
 
-# Plan: Ensure Ingest Email is Auto-Accepted on Rescheduled Interviews
+## Current behavior (the bug)
 
-## What I found
+`useJobSourcingProject` calls `.maybeSingle()` on `sourcing_projects` filtered by `job_id` + `status='active'`. If a job has 2+ active sourcing projects:
+- Supabase returns a "more than one row" error
+- The hook returns `null`
+- The Search shortcut in `JobDetailFloatingSidebar` **disappears entirely**
 
-Reschedules — both **internal** (recruiter sheet) and **public** (candidate booking page) — go through the same `create-booking` edge function. There is no separate "update-booking" path. The reschedule branch:
+So right now, the more sourcing projects a job has, the *less* discoverable they are from the job. That's backwards.
 
-1. Deletes the old Google Calendar event(s)
-2. Cancels the old `scheduled_bookings` row
-3. Falls through into the normal "create new event" code, which is the same code that runs for first-time bookings
+## Proposed fix — Popover menu when there are multiple
 
-The new event creation block (line 384) does include the ingest email with `responseStatus: 'accepted'`:
+Mirror the pattern Ashby/Greenhouse use for "linked entities" — one entry point in the rail, expanded into a list when there's more than one.
 
-```ts
-attendees: [
-  { email: profile.email },
-  ...(transcriptIngestEmail ? [{ email: transcriptIngestEmail, responseStatus: 'accepted' }] : []),
-  ...(guest_emails || []).map((ge: string) => ({ email: ge })),
-],
-```
+**Single project (unchanged behavior):**
+Click the Search icon → navigate directly to `/find/{projectId}`. Tooltip shows the project name.
 
-So the code path is correct on paper. But the user is observing the ingest attendee showing as **not accepted** on a public-reschedule event.
+**Multiple projects:**
+Click the Search icon → opens a Popover anchored to the right of the rail, listing all active sourcing projects for the job. Each row shows:
+- Project name
+- Small meta line: candidate count + "Updated Xd ago" (uses existing concise time format)
+- Click → navigates to `/find/{projectId}`
 
-## Most likely cause
+A small numeric badge (e.g. "3") sits on the icon when count > 1, so the user knows there are multiple without opening it.
 
-There are 3 plausible reasons for what the user saw, in order of likelihood:
+**Zero projects:** icon is hidden (current behavior preserved).
 
-### 1. The event is created via the **candidate's** booking flow without the interviewer's OAuth token (most likely)
+## Why a popover (not a dropdown / not a second sidebar item)
 
-Public reschedules from the candidate's side run with whatever OAuth token is associated with the booking config. If `accessToken` or `calendarIdentity` is missing/expired at reschedule time (e.g. interviewer's Google token was revoked), the **entire calendar event creation block is skipped** (`if (accessToken && calendarIdentity)`). In that case the booking row exists but no Google event is recreated → no attendees → no ingest email at all on the invite.
+- Keeps the floating rail visually clean — still one circular icon, consistent with the rest
+- Popover anchored `side="right"` matches the existing tooltip pattern in the same component
+- Avoids navigating to a "list page" which would be one extra click for the common case
+- A numeric badge gives instant signal that more than one exists
 
-### 2. Google silently ignores `responseStatus: 'accepted'` for non-resource attendees on insert in some cases
+## Implementation
 
-When Google Calendar's `events.insert` is called on behalf of the interviewer, attendees outside the organizer's domain are sometimes downgraded to `needsAction`. This can happen on reschedules if the previous event left a residual attendee status cache. The fix is to issue a follow-up `events.patch` that re-asserts `responseStatus: 'accepted'` for the ingest address only (Google honors organizer-set status for attendees on subsequent patch calls).
+### 1. `src/hooks/useJobSourcingProject.ts` — return a list
+- Replace `.maybeSingle()` with a normal select, ordered by `updated_at desc`
+- Return `{ projects: [{id, name, total_candidates, updated_at}], isLoading }`
+- Keep `sourcingProjectId` / `sourcingProjectName` as derived getters of the first item for any other consumers (none found, but safe)
 
-### 3. The new event is created but `sendUpdates` causes Google to reset attendee statuses
+### 2. `src/components/jobs/JobDetailFloatingSidebar.tsx`
+- Change prop from `sourcingProjectId` to `sourcingProjects: Array<{id, name, total_candidates, updated_at}>`
+- If `length === 0` → render nothing (unchanged)
+- If `length === 1` → render existing button, direct navigate (unchanged)
+- If `length > 1` → wrap the Search button in a `Popover`:
+  - `PopoverTrigger`: same circular icon + small absolute-positioned count badge (top-right, `bg-foreground text-background`, w-4 h-4, rounded-full, text-[10px])
+  - `PopoverContent side="right" align="start"`: vertical list of project rows, each a button that navigates and closes the popover
 
-Currently the insert call doesn't pass `sendUpdates`. The default behavior can trigger an attendee-state recompute in some calendars. Explicitly setting `sendUpdates=externalOnly` along with re-patching the ingest attendee status guarantees the "accepted" state sticks.
+### 3. `src/pages/JobDetail.tsx`
+- Update the destructure from `useJobSourcingProject` to pass `projects` through
 
-## Verification I want to run before fixing
+## Files touched
 
-I need to look at the actual Google Calendar API response for the user's most recent reschedule event to know which of the 3 it is. I'll use Edge Function logs for `create-booking` filtered to the affected booking, and also inspect the resulting `scheduled_bookings` row to see if `google_event_id` is populated (rules out cause #1).
+1. `src/hooks/useJobSourcingProject.ts` — return list instead of single
+2. `src/components/jobs/JobDetailFloatingSidebar.tsx` — popover + badge for multi case
+3. `src/pages/JobDetail.tsx` — pass new prop shape
 
-## Proposed fix (covers all 3 causes defensively)
+No DB, no edge functions, no schema changes. ~50 lines of UI.
 
-In `supabase/functions/create-booking/index.ts`, after the new interviewer event is successfully created, add a follow-up `events.patch` call that re-asserts the ingest attendee's `responseStatus: 'accepted'` and explicitly sets `sendUpdates=externalOnly`. This is a small, idempotent guarantee that runs for both first bookings and reschedules.
-
-```ts
-// After successful insert, re-assert ingest acceptance
-if (transcriptIngestEmail && googleEventId) {
-  await fetch(
-    `https://www.googleapis.com/calendar/v3/calendars/primary/events/${googleEventId}?sendUpdates=externalOnly`,
-    {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        attendees: [
-          { email: profile.email },
-          { email: transcriptIngestEmail, responseStatus: 'accepted' },
-          ...(guest_emails || []).map((ge: string) => ({ email: ge })),
-        ],
-      }),
-    }
-  );
-}
-```
-
-Also add a clear log line if the calendar event creation block is skipped (cause #1) so this is debuggable next time:
-
-```ts
-if (!accessToken || !calendarIdentity) {
-  console.warn('[create-booking] No interviewer OAuth token — skipping calendar event creation. Ingest email will NOT be on the invite.');
-}
-```
-
-## Files to change
-
-- `supabase/functions/create-booking/index.ts` — add the follow-up patch and the missing-token warning. No other files touched.
-
-## Out of scope
-
-- No DB schema changes
-- No frontend changes
-- The internal reschedule flow already uses the same code path, so the fix covers it automatically
-
-<lov-actions>
-<lov-suggestion message="Apply the fix and then test by rescheduling an interview from the public booking page end-to-end, then check that the ingest email appears as Accepted on the new Google Calendar invite.">Apply fix and test reschedule end-to-end</lov-suggestion>
-<lov-suggestion message="Before applying the fix, pull the create-booking edge function logs for my most recent rescheduled booking so we can confirm exactly which of the 3 causes hit me.">Check logs for my recent reschedule first</lov-suggestion>
-<lov-suggestion message="Add a backfill script that scans recent rescheduled bookings, finds ones where the Google event is missing the ingest attendee or where it isn't accepted, and patches them.">Backfill ingest acceptance on past reschedules</lov-suggestion>
-</lov-actions>
