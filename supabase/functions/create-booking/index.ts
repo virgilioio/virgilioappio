@@ -357,6 +357,10 @@ serve(async (req) => {
     const transcriptIngestEmail = isJobSpecificBooking ? `int_${transcriptIngestCode}@ingest.gogio.io` : null;
     console.log('[create-booking] Transcript ingest:', isJobSpecificBooking ? transcriptIngestEmail : 'disabled (simple booking)');
 
+    if (!accessToken || !calendarIdentity) {
+      console.warn('[create-booking] No interviewer OAuth token or calendar identity — skipping Google Calendar event creation. Ingest email will NOT be on the invite. accessToken present:', !!accessToken, 'calendarIdentity present:', !!calendarIdentity);
+    }
+
     if (accessToken && calendarIdentity) {
       try {
         // 1. Create interviewer's calendar event (always created)
@@ -425,7 +429,38 @@ serve(async (req) => {
           const conferenceData = interviewerEventData.conferenceData; // Capture full conference data for candidate event
           
           console.log('[create-booking] Interviewer calendar event created successfully:', googleEventId);
-          
+
+          // Re-assert ingest attendee acceptance via PATCH (Google sometimes downgrades responseStatus on insert)
+          if (transcriptIngestEmail && googleEventId) {
+            try {
+              const patchResponse = await fetch(
+                `https://www.googleapis.com/calendar/v3/calendars/primary/events/${googleEventId}?sendUpdates=externalOnly`,
+                {
+                  method: 'PATCH',
+                  headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    attendees: [
+                      { email: profile.email },
+                      { email: transcriptIngestEmail, responseStatus: 'accepted' },
+                      ...(guest_emails || []).map((ge: string) => ({ email: ge })),
+                    ],
+                  }),
+                }
+              );
+              if (!patchResponse.ok) {
+                const patchErr = await patchResponse.text();
+                console.warn('[create-booking] Ingest acceptance PATCH failed:', patchResponse.status, patchErr);
+              } else {
+                console.log('[create-booking] Re-asserted ingest email acceptance via PATCH');
+              }
+            } catch (patchEx) {
+              console.warn('[create-booking] Ingest acceptance PATCH threw:', patchEx);
+            }
+          }
+
           await supabase
             .from('calendar_identities')
             .update({ 
