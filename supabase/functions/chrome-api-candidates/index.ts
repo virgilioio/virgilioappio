@@ -316,6 +316,19 @@ serve(async (req) => {
 
       candidateId = newCandidate.id;
       console.log(`✨ Created new candidate: ${candidateId}`);
+
+      // Auto-enrich in background if LinkedIn URL present
+      if (linkedin_url) {
+        supabase.functions.invoke('enrich-by-linkedin', {
+          body: {
+            candidate_ids: [candidateId],
+            skip_credit_check: true,
+            trigger_source: 'on_candidate_create'
+          }
+        }).catch((err: any) => {
+          console.warn('⚠️ Auto-enrich failed (non-blocking):', err);
+        });
+      }
     }
 
     // Check if association already exists
