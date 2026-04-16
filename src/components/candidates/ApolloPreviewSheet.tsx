@@ -541,7 +541,7 @@ export function ApolloPreviewSheet({
   const hasEmailAvailable = apolloData?.has_email ?? false
   const hasPhoneAvailable = apolloData?.has_phone ?? false
   const isCollected = !!enrichedData
-  const displayName = enrichedData?.candidate_name || apolloData?.candidate_name || 'Unknown Candidate'
+  const displayName = enrichedData?.candidate_name || apolloData?.candidate_name || (apolloData as any)?.full_name || 'Unknown Candidate'
   
   const enrichedLocation = enrichedData 
     ? [enrichedData.location_city, enrichedData.location_state, enrichedData.location_country]
