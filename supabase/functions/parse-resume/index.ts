@@ -1,10 +1,9 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/cors.ts";
+import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-const corsHeaders = createSecureCorsHeaders();
 
 // Country name/keyword → phone country code (for inferring when resume lacks +prefix)
 const COUNTRY_PHONE_CODES: Record<string, string> = {
@@ -408,7 +407,10 @@ Return ONLY JSON. Do not include markdown fences or commentary.`;
 }
 
 serve(async (req) => {
-  const preflightResponse = handleSecureCorsPreFlight(req, corsHeaders);
+  const origin = req.headers.get('Origin') ?? req.headers.get('origin') ?? undefined;
+  const corsHeaders = corsHeadersFor(origin);
+
+  const preflightResponse = handlePreflight(req);
   if (preflightResponse) return preflightResponse;
 
   try {
