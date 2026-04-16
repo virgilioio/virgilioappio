@@ -1,28 +1,39 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 
+export interface JobSourcingProjectSummary {
+  id: string
+  name: string
+  total_candidates: number | null
+  updated_at: string
+}
+
 export function useJobSourcingProject(jobId: string | undefined) {
   const query = useQuery({
     queryKey: ['job-sourcing-project', jobId],
-    queryFn: async () => {
-      if (!jobId) return null
+    queryFn: async (): Promise<JobSourcingProjectSummary[]> => {
+      if (!jobId) return []
 
       const { data, error } = await supabase
         .from('sourcing_projects')
-        .select('id, name')
+        .select('id, name, total_candidates, updated_at')
         .eq('job_id', jobId)
         .eq('status', 'active')
-        .maybeSingle()
+        .order('updated_at', { ascending: false })
 
       if (error) throw error
-      return data
+      return (data ?? []) as JobSourcingProjectSummary[]
     },
     enabled: !!jobId,
   })
 
+  const projects = query.data ?? []
+  const first = projects[0] ?? null
+
   return {
-    sourcingProjectId: query.data?.id ?? null,
-    sourcingProjectName: query.data?.name ?? null,
+    projects,
+    sourcingProjectId: first?.id ?? null,
+    sourcingProjectName: first?.name ?? null,
     isLoading: query.isLoading,
   }
 }
