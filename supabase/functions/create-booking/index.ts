@@ -357,6 +357,10 @@ serve(async (req) => {
     const transcriptIngestEmail = isJobSpecificBooking ? `int_${transcriptIngestCode}@ingest.gogio.io` : null;
     console.log('[create-booking] Transcript ingest:', isJobSpecificBooking ? transcriptIngestEmail : 'disabled (simple booking)');
 
+    if (!accessToken || !calendarIdentity) {
+      console.warn('[create-booking] No interviewer OAuth token or calendar identity — skipping Google Calendar event creation. Ingest email will NOT be on the invite. accessToken present:', !!accessToken, 'calendarIdentity present:', !!calendarIdentity);
+    }
+
     if (accessToken && calendarIdentity) {
       try {
         // 1. Create interviewer's calendar event (always created)
