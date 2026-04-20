@@ -1,55 +1,41 @@
 
 
-## Bug: No availability shown when candidate reschedules
+## Bug: Saving hiring plan fails with duplicate position constraint violation
 
 ### Root cause
 
-This is a **regression from the availability-gating fix** deployed earlier today. Line 209 in `PublicBookingPage.tsx`:
+The `saveHiringPlan` function in `src/hooks/useJobHiringPlan.ts` uses a 4-phase approach: (1) move kept rows to temp positions 10001+, (2) insert new rows at 20001+, (3) delete removed rows, (4) finalize all to 1..n.
 
-```ts
-const availabilityConfigId = (eventTypes.length > 0 && !selectedEventType) ? undefined : config?.id;
-```
+The problem: **if any previous save crashes between Phase 1 and Phase 4** (network error, browser close, timeout), rows are left stranded at positions 10001–10005, 20001, etc. On the next save attempt, Phase 1 tries to move rows to 10001, 10002 … — but those positions are **already occupied by other rows** from the dirty state. Result: `23505 duplicate key violation` on `job_hiring_stages_job_position_unique`.
 
-When a candidate clicks "Reschedule" from the existing booking view:
-1. `rescheduleBookingId` is set → hides the existing booking view, shows the calendar
-2. The reschedule link is contextual (`hasContextualLink = true`), so `showEventPicker` is `false` — the event type picker is never shown
-3. No event type is auto-selected because the existing booking data doesn't carry `event_type_id`
-4. So `selectedEventType` remains `null` while `eventTypes.length > 0` → `availabilityConfigId` becomes `undefined` → availability query is disabled → **no slots shown**
-
-The candidate sees an empty calendar with no way to pick a time.
+Confirmed by inspecting the active Arqademy "Growth & GTM Marketing Specialist" job (`ab605dd1`): its 6 stages are currently at positions `10001, 10002, 10003, 10004, 10005, 20001` — a textbook dirty state from a prior interrupted save.
 
 ### Fix
 
-**`src/pages/PublicBookingPage.tsx`** — two changes:
+**`src/hooks/useJobHiringPlan.ts`** — two changes:
 
-1. **Bypass the event-type gate for reschedule flows and contextual links.** When the candidate arrived via a contextual token (which already encodes the job/stage context), we should not block availability on event type selection — the token already scoped the booking. Change line 209 to:
+1. **Phase 0 (new): Normalize ALL current rows to a unique temp range before doing anything.** Instead of only moving `toKeep` rows, move every row in `currentPlan` to a timestamp-seeded temp range (`Date.now() + index`). This guarantees the 10000+ and 20000+ ranges are clear regardless of prior state. After Phase 0, the kept/inserted temp positions use a different offset block (10000+ and 20000+) that is now guaranteed empty.
 
+   Concretely:
    ```ts
-   const availabilityConfigId = (eventTypes.length > 0 && !selectedEventType && !hasContextualLink)
-     ? undefined
-     : config?.id;
+   // Phase 0: Clear all current positions to a unique high range
+   const epoch = Date.now()
+   for (let i = 0; i < (currentPlan || []).length; i++) {
+     await supabase
+       .from('job_hiring_stages')
+       .update({ position: epoch + i })
+       .eq('id', currentPlan[i].id)
+   }
    ```
 
-   This restores availability for all contextual flows (reschedule, direct candidate links) while still gating the general/public link path that caused the original bug.
+2. **Batch the final position updates** in Phase 4 to reduce the number of sequential writes (minor perf improvement).
 
-2. **Auto-select event type from existing booking when rescheduling** (defense in depth). In the `handleReschedule` handler, if the existing booking has an `event_type_id` and it matches one of the loaded event types, pre-select it:
-
-   ```ts
-   const handleReschedule = () => {
-     if (existingBooking) {
-       setRescheduleBookingId(existingBooking.id);
-       // Try to restore the original event type
-       if ((existingBooking as any).event_type_id && eventTypes.length > 0) {
-         const match = eventTypes.find((et: any) => et.id === (existingBooking as any).event_type_id);
-         if (match) setSelectedEventType(match);
-       }
-     }
-   };
-   ```
+**Data repair**: Also fix the currently-stuck job by updating its 6 rows to positions 1–6 so the user doesn't have to re-save to recover.
 
 ### Files touched
 
-1. `src/pages/PublicBookingPage.tsx` — 2 small edits (availability gate condition + handleReschedule)
+1. `src/hooks/useJobHiringPlan.ts` — add Phase 0 normalization before Phase 1
+2. Data fix (one-time): update the 6 rows for job `ab605dd1` to positions 1–6
 
-No DB, edge function, or backend changes.
+No DB schema changes.
 
