@@ -145,6 +145,18 @@ export function useJobHiringPlan() {
 
       const toDelete = (currentPlan || []).filter((row) => !incomingStageIds.has(row.stage_id))
 
+      // Phase 0: Normalize ALL current rows to a unique timestamp-seeded temp range.
+      // This clears the 10000+ and 20000+ blocks even if a prior save crashed mid-way
+      // and left rows stranded there (which would otherwise cause 23505 duplicate-key errors).
+      const epoch = Date.now()
+      for (let i = 0; i < (currentPlan || []).length; i++) {
+        const { error: normErr } = await supabase
+          .from('job_hiring_stages')
+          .update({ position: epoch + i })
+          .eq('id', currentPlan[i].id)
+        if (normErr) throw normErr
+      }
+
       // Phase 1: Move kept rows to temporary unique positions to avoid unique (job_id, position) conflicts
       // Use a high offset block (10000 + index) guaranteed unique within this save operation
       for (let i = 0; i < toKeep.length; i++) {
