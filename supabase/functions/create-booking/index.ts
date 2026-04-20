@@ -6,6 +6,97 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface DayConfig { enabled: boolean; start: string; end: string }
+type WeeklySchedule = Record<string, DayConfig>;
+
+function getWallClockInTz(date: Date, tz: string): { dayName: string; minutesFromMidnight: number } {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false,
+  });
+  const parts = fmt.formatToParts(date);
+  const weekday = parts.find(p => p.type === 'weekday')?.value || '';
+  let hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+  const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
+  if (hour === 24) hour = 0;
+  const dayMap: Record<string, string> = {
+    Sun: 'sunday', Mon: 'monday', Tue: 'tuesday', Wed: 'wednesday',
+    Thu: 'thursday', Fri: 'friday', Sat: 'saturday',
+  };
+  return { dayName: dayMap[weekday] || weekday.toLowerCase(), minutesFromMidnight: hour * 60 + minute };
+}
+
+function parseHHMM(s: string): number {
+  const [h, m] = s.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+interface ValidationParams {
+  scheduledStart: Date;
+  scheduledEnd: Date;
+  effectiveTimezone: string;
+  effectiveSchedule: WeeklySchedule;
+  effectiveBuffer: number;
+  effectiveMinNotice: number;
+  effectiveMaxDays: number;
+  effectiveDuration: number;
+}
+
+function validateRequestedSlot(p: ValidationParams): { ok: true } | { ok: false; code: string; message: string } {
+  const { scheduledStart, scheduledEnd, effectiveTimezone, effectiveSchedule,
+    effectiveBuffer, effectiveMinNotice, effectiveMaxDays, effectiveDuration } = p;
+
+  if (isNaN(scheduledStart.getTime()) || isNaN(scheduledEnd.getTime())) {
+    return { ok: false, code: 'SLOT_INVALID', message: 'Invalid scheduled_start or scheduled_end.' };
+  }
+
+  const actualDurationMin = (scheduledEnd.getTime() - scheduledStart.getTime()) / 60000;
+  if (Math.abs(actualDurationMin - effectiveDuration) > 1) {
+    return { ok: false, code: 'SLOT_DURATION_MISMATCH',
+      message: `Slot duration (${actualDurationMin}min) does not match event duration (${effectiveDuration}min).` };
+  }
+
+  const now = new Date();
+  const minStart = new Date(now.getTime() + effectiveMinNotice * 60 * 60 * 1000);
+  if (scheduledStart < minStart) {
+    return { ok: false, code: 'SLOT_TOO_SOON',
+      message: `Bookings require at least ${effectiveMinNotice} hours notice.` };
+  }
+
+  const maxStart = new Date(now.getTime() + effectiveMaxDays * 24 * 60 * 60 * 1000);
+  if (scheduledStart > maxStart) {
+    return { ok: false, code: 'SLOT_TOO_FAR',
+      message: `Bookings cannot be scheduled more than ${effectiveMaxDays} days ahead.` };
+  }
+
+  const { dayName, minutesFromMidnight: startMin } = getWallClockInTz(scheduledStart, effectiveTimezone);
+  const dayConfig = effectiveSchedule?.[dayName];
+  if (!dayConfig || !dayConfig.enabled) {
+    return { ok: false, code: 'SLOT_OUTSIDE_SCHEDULE',
+      message: `The host is not available on ${dayName}.` };
+  }
+
+  const dayStart = parseHHMM(dayConfig.start);
+  const dayEnd = parseHHMM(dayConfig.end);
+  const endTzInfo = getWallClockInTz(scheduledEnd, effectiveTimezone);
+  const endMin = endTzInfo.dayName === dayName ? endTzInfo.minutesFromMidnight : dayEnd + 1;
+
+  if (startMin < dayStart || endMin > dayEnd) {
+    return { ok: false, code: 'SLOT_OUTSIDE_SCHEDULE',
+      message: `Slot is outside the host's working hours (${dayConfig.start}–${dayConfig.end} ${effectiveTimezone}).` };
+  }
+
+  const stride = effectiveDuration + (effectiveBuffer || 0);
+  if (stride > 0) {
+    const offset = startMin - dayStart;
+    if (offset % stride !== 0) {
+      return { ok: false, code: 'SLOT_NOT_ALIGNED',
+        message: `Slot does not align with the available time grid.` };
+    }
+  }
+
+  return { ok: true };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -32,6 +123,8 @@ serve(async (req) => {
       job_candidate_association_id,
       job_hiring_stage_id,
       booked_by_user_id,
+      // Event type for slot validation overrides
+      event_type_id = null,
       // Meeting location preferences
       meeting_type_preference = 'google_meet', // 'google_meet' or 'custom'
       custom_meeting_location = null,
@@ -132,6 +225,65 @@ serve(async (req) => {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // ============================================================
+    // SLOT VALIDATION — authoritative server-side guard.
+    // Bypassed only for internal scheduling (recruiter manually books).
+    // ============================================================
+    const isInternalScheduling = !!booked_by_user_id;
+    if (!isInternalScheduling) {
+      let eventType: any = null;
+      if (event_type_id) {
+        const { data: et } = await supabase
+          .from('booking_event_types')
+          .select('*')
+          .eq('id', event_type_id)
+          .eq('booking_config_id', booking_config_id)
+          .eq('is_active', true)
+          .maybeSingle();
+        eventType = et;
+        if (!eventType) {
+          console.warn('[create-booking] event_type_id provided but not found/active:', event_type_id);
+        }
+      }
+
+      const effectiveTimezone = eventType?.timezone || config.timezone;
+      const effectiveSchedule = (eventType?.weekly_schedule || config.weekly_schedule) as WeeklySchedule;
+      const effectiveBuffer = eventType?.buffer_time_minutes ?? config.buffer_time_minutes ?? 0;
+      const effectiveMinNotice = eventType?.min_notice_hours ?? config.min_notice_hours ?? 24;
+      const effectiveMaxDays = eventType?.max_days_ahead ?? config.max_days_ahead ?? 30;
+      const effectiveDuration = eventType?.duration_minutes ?? config.duration_minutes;
+
+      const validation = validateRequestedSlot({
+        scheduledStart: new Date(scheduled_start),
+        scheduledEnd: new Date(scheduled_end),
+        effectiveTimezone,
+        effectiveSchedule,
+        effectiveBuffer,
+        effectiveMinNotice,
+        effectiveMaxDays,
+        effectiveDuration,
+      });
+
+      if (!validation.ok) {
+        console.warn('[create-booking] Slot validation rejected:', validation.code, validation.message, {
+          scheduled_start, scheduled_end, effectiveTimezone, effectiveDuration,
+          effectiveBuffer, effectiveMinNotice, effectiveMaxDays,
+          event_type_id, booking_config_id,
+        });
+        return new Response(JSON.stringify({
+          error: validation.message,
+          code: validation.code,
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      console.log('[create-booking] Slot validated against', eventType ? 'event type' : 'config', 'rules.');
+    } else {
+      console.log('[create-booking] Internal scheduling — skipping slot validation.');
     }
 
     // Generate interview title based on booking type

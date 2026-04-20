@@ -202,9 +202,14 @@ export default function PublicBookingPage() {
   // Fetch availability for the current month
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
-  
+
+  // Gate availability: if event types exist for this config, wait until one is resolved
+  // before fetching slots. Otherwise we'd display the parent config's wider schedule
+  // and let candidates book outside the chosen event type's stricter rules.
+  const availabilityConfigId = (eventTypes.length > 0 && !selectedEventType) ? undefined : config?.id;
+
   const { data: availabilityData, isLoading: isLoadingAvailability } = useBookingAvailability(
-    config?.id,
+    availabilityConfigId,
     monthStart,
     monthEnd,
     activeDuration,
