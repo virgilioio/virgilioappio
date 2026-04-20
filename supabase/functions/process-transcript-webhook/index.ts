@@ -278,6 +278,7 @@ serve(async (req) => {
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const webhookSecret = Deno.env.get('RESEND_INBOUND_WEBHOOK_SECRET')!;
   const resendApiKey = Deno.env.get('RESEND_API_KEY')!;
+  const openaiApiKey = Deno.env.get('OPENAI_API_KEY') || '';
 
   try {
     // Get raw payload for signature verification
