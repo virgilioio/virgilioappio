@@ -32,6 +32,8 @@ serve(async (req) => {
       job_candidate_association_id,
       job_hiring_stage_id,
       booked_by_user_id,
+      // Event type for slot validation overrides
+      event_type_id = null,
       // Meeting location preferences
       meeting_type_preference = 'google_meet', // 'google_meet' or 'custom'
       custom_meeting_location = null,
