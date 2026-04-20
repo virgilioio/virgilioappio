@@ -1,90 +1,66 @@
 
 
-## Why the PDF transcript ingest didn't analyze
+## Bug: candidates can book WAY outside the configured times
 
-I checked the edge function logs for the period around Alfonso's transcript. The **text-body** email at 18:04 succeeded (35,745 chars extracted, scorecard generated). The **earlier PDF email never produced a single log line** in either `process-candidate-reply-webhook` or `process-transcript-webhook` — meaning either Resend never delivered it, or the function crashed at boot/parse before logging.
+### Root cause
+`supabase/functions/create-booking/index.ts` accepts whatever `scheduled_start` / `scheduled_end` the client posts and **only checks that the slot doesn't overlap an existing booking**. There is **no server-side validation** that the requested time falls inside:
 
-Looking at the code in `supabase/functions/process-transcript-webhook/index.ts`, there are **three real failure modes** for PDF attachments:
+- the event type's (or config's) **weekly_schedule**
+- the event type's **min_notice_hours** / **max_days_ahead** window
+- the event type's **buffer_time_minutes** spacing
+- the event type's **duration**
 
-### 1. `pdf-parse@1.1.1` is broken on Deno (most likely cause)
-```ts
-import pdfParse from "npm:pdf-parse@1.1.1";
-```
-This library has a notorious "debug mode" side effect: at module load it executes `if (!module.parent)` which tries to read a hardcoded test file (`./test/data/05-versions-space.pdf`). In Deno's `npm:` shim the `module.parent` check evaluates falsy, the test-file read throws `ENOENT`, and the function boot crashes — silently from the user's POV (Resend gets a 5xx, no app-level log). Confirmed by the fact that we have **zero PDF-path log lines ever** in the transcript webhook history.
+So any caller (including a stale browser tab, a re-used quick-link, a manually crafted POST, or a UI flow that loaded availability before an event type with a stricter schedule was picked) can write a booking far outside the host's configured hours. This matches what you saw.
 
-### 2. Resend doesn't inline base64 attachment bytes in the webhook payload
-The code does:
-```ts
-const pdfBytes = Uint8Array.from(atob(attachment.content), c => c.charCodeAt(0));
-```
-But Resend's inbound webhook payload omits `attachment.content` for anything beyond a few KB. Real PDF bytes must be fetched separately from Resend's receiving API:
-```
-GET https://api.resend.com/emails/receiving/{email_id}/attachments/{attachment_id}
-```
-Today we only call the receiving API for the **email body** (line 311) — never for attachment binaries. So even if pdf-parse worked, `attachment.content` would be `undefined` for any real-world AI notetaker PDF.
+A second contributing factor in `src/pages/PublicBookingPage.tsx`: when no `selectedEventType` is set yet, `useBookingAvailability` is called with `event_type_overrides: undefined`, so the **parent config's** wider schedule is used to generate slots. If the user later proceeds (e.g. via a quick-select or a contextual link path that bypasses the event picker), those wider slots can get booked even though the chosen event type has a much narrower schedule.
 
-### 3. No fallback when extraction yields nothing
-If PDF extraction silently returns empty, we fall through to the 100-char "too short" rejection with no diagnostic about why the PDF failed, and no OCR fallback for image-based PDFs (same gap we discussed for resume parsing).
+### Fix — server-side authoritative validation in `create-booking`
 
-## The fix
+Add a single `validateRequestedSlot()` helper at the top of the request handler, run **before** the conflict check. It will:
 
-### A. Replace `pdf-parse` with a Deno-friendly extractor
-Switch to `unpdf` (`npm:unpdf@0.12.1`) — a Deno/edge-runtime-friendly fork of pdf.js with no filesystem side effects. Same API shape, works under Supabase Edge Runtime. Used by other Lovable projects without issue.
+1. Load `booking_configurations` (already loaded today) and, if `event_type_id` is provided in the body, load the matching row from `booking_event_types` and resolve the **effective** settings exactly the same way `get-booking-availability` does:
+   - `effectiveTimezone = eventType.timezone ?? config.timezone`
+   - `effectiveSchedule = eventType.weekly_schedule ?? config.weekly_schedule`
+   - `effectiveBuffer = eventType.buffer_time_minutes ?? config.buffer_time_minutes ?? 0`
+   - `effectiveMinNotice = eventType.min_notice_hours ?? config.min_notice_hours ?? 24`
+   - `effectiveMaxDays = eventType.max_days_ahead ?? config.max_days_ahead ?? 30`
+   - `effectiveDuration = eventType.duration_minutes ?? config.duration_minutes`
 
-```ts
-import { extractText, getDocumentProxy } from 'npm:unpdf@0.12.1';
+2. Validate `scheduled_start` / `scheduled_end` against those settings:
+   - `(scheduled_end - scheduled_start)` must equal `effectiveDuration` (±1 min tolerance for ms drift)
+   - `scheduled_start >= now + effectiveMinNotice`
+   - `scheduled_start <= now + effectiveMaxDays`
+   - The **day-of-week** (in `effectiveTimezone`) must be `enabled` in `effectiveSchedule`
+   - The slot's **wall-clock start** in `effectiveTimezone` must be `>= dayConfig.start` AND its end `<= dayConfig.end`
+   - The slot must align to the schedule's slot grid: `minutes_from_day_start % (effectiveDuration + effectiveBuffer) === 0` (so a 30-min event with a 15-min buffer can only start every 45 min from the day's start time)
 
-async function extractTextFromPdfBytes(pdfBytes: Uint8Array): Promise<string> {
-  const pdf = await getDocumentProxy(pdfBytes);
-  const { text } = await extractText(pdf, { mergePages: true });
-  return (text || '').trim();
-}
-```
+3. If any check fails, return `400` with a clear error code (`SLOT_OUTSIDE_SCHEDULE` / `SLOT_TOO_SOON` / `SLOT_TOO_FAR` / `SLOT_DURATION_MISMATCH` / `SLOT_NOT_ALIGNED`) and a human-readable message. The UI already handles 4xx from this function.
 
-### B. Fetch attachment bytes from Resend receiving API when missing
-In `extractTranscriptContent`, when an attachment has no inline `content` but has an `id` (or filename), fetch it:
-```
-GET https://api.resend.com/emails/receiving/{email_id}/attachments/{attachment_id}
-Authorization: Bearer ${RESEND_API_KEY}
-```
-Returns `{ content: base64, content_type, filename }`. Cache the email_id from the payload (already used for body fetch on line 311). Add the `RESEND_API_KEY` env check (already configured per logs).
+4. **Bypass** these checks only when the request is an internal-scheduling create call (i.e. `booked_by_user_id` is set AND the caller is an authenticated workspace member — same intent as `internal_scheduling=true` in the availability function). This preserves the existing internal "overbooking" capability documented in the `internal-scheduling-flexibility` memory.
 
-### C. Add OCR fallback for image-only PDFs (notetaker scans/exports)
-If `unpdf` extraction returns < 100 chars on a PDF that exists, rasterize the first 5 pages and OCR via GPT-4o vision (same approach we agreed for resume parsing). Reuses the `OPENAI_API_KEY` secret. Capped at 5 pages to control cost — transcript PDFs are rarely scans, but Fireflies/Otter occasionally exports as image PDFs.
+### Fix — client cleanup in `PublicBookingPage.tsx`
 
-### D. Better diagnostics + graceful errors
-- Log `attachments` array structure (filenames, content_types, sizes, has_content_bool) on every transcript email
-- If PDF parse fails, log the actual error instead of a generic warning
-- If still empty after all extraction paths, return a 200 with `status: "ingested_empty"` and store a tombstone row in `scheduled_bookings` with `transcript_metadata.extraction_error` so we can see it in the UI instead of Resend retrying forever
+Two small changes to remove the second contributor:
 
-### E. Optional but recommended: notify the recruiter when extraction fails
-Send a one-time email back to the original sender (the AI notetaker forwarder) saying *"We received the transcript for {candidate} but couldn't extract text from the attachment. Please paste the transcript inline or send as .txt/.vtt."* Uses `send-user-email` with the candidate's recruiter as the to-address. This closes the loop instead of silently failing.
+- **Don't fetch availability until `selectedEventType` is resolved** when the config has any event types. Right now availability runs immediately on the parent config, which produces slots that can be wider than the chosen event allows.
+- When a booking is created, also pass `event_type_id` (already passed) — confirm the create payload always carries it when an event type is selected. ✅ (already correct in code, just re-validate.)
 
-## Files touched
+### Out of scope for this fix
+- Reschedule path (`reschedule_booking_id`): same `validateRequestedSlot()` will run for reschedules — no extra work.
+- Backfill / cleanup of past invalid bookings: I can list them via a read-only query after deploy if you want, but won't auto-cancel.
+- Admin/internal scheduling overrides — explicitly preserved.
 
-1. `supabase/functions/process-transcript-webhook/index.ts`
-   - Swap `pdf-parse` → `unpdf`
-   - Add `fetchAttachmentBytesFromResend(email_id, attachment_id)` helper
-   - Wire OCR fallback (`ocrPdfWithVision`) when text extraction yields < 100 chars
-   - Improve attachment logging
-   - Optionally: trigger recruiter-notify on extraction failure
+### Files touched
+1. `supabase/functions/create-booking/index.ts` — add `validateRequestedSlot()` and call it after config load, before the overlap check.
+2. `src/pages/PublicBookingPage.tsx` — gate `useBookingAvailability` on `selectedEventType` being resolved when event types exist.
 
-2. `supabase/functions/_shared/` (if present) — small `pdf-extract.ts` shared helper if we want to reuse for resume parsing later
+No DB changes. No new secrets.
 
-No DB schema changes. No new secrets (uses existing `RESEND_API_KEY` and `OPENAI_API_KEY`).
-
-## Test plan
-
-After deploy, ask the user to forward the same Alfonso PDF transcript again to the same `int_h8vpfzdh@ingest.gogio.io` address. Expect logs:
-```
-[Transcript Webhook] Attachments: [{filename: "...pdf", content_type: "application/pdf", size: 123456, has_inline_content: false}]
-[Transcript Webhook] Fetching attachment bytes from Resend receiving API...
-[Transcript Webhook] Extracted PDF text via unpdf, length: 28432
-[Transcript Webhook] Transcript stored, triggering scorecard generation...
-```
-
-## Out of scope
-
-- Migrating the resume parser to `unpdf` (separate task — PDF in the resume flow runs in the **browser** via pdfjs, different code path)
-- Bulk re-processing of past failed PDF transcripts (we have no record they arrived; would need Resend's retention API)
+### Test plan after deploy
+1. Public link, single event type with `Mon–Fri 9–5`, `min_notice 24h` — try to POST a Sunday 6 AM slot via curl → expect `400 SLOT_OUTSIDE_SCHEDULE`.
+2. Same link, post a slot 1h from now → expect `400 SLOT_TOO_SOON`.
+3. Same link, post a slot 90 days out → expect `400 SLOT_TOO_FAR`.
+4. Normal in-hours slot via the UI → succeeds.
+5. Internal scheduling (recruiter manually books outside hours from the candidate sheet) → still succeeds.
+6. Reschedule via candidate link to an out-of-hours slot → blocked.
 
