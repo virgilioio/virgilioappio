@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { Webhook } from "npm:svix@1.24.0";
-import pdfParse from "npm:pdf-parse@1.1.1";
+import { extractText, getDocumentProxy } from "npm:unpdf@0.12.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
