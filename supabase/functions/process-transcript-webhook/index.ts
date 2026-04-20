@@ -426,7 +426,7 @@ serve(async (req) => {
     }
 
     // Extract transcript content
-    let { content, metadata } = await extractTranscriptContent(emailData);
+    let { content, metadata } = await extractTranscriptContent(emailData, { resendApiKey, openaiApiKey });
 
     // If no content from webhook payload, fetch from Resend receiving API
     if ((!content || content.trim().length < 100) && emailData.email_id && resendApiKey) {
@@ -446,7 +446,8 @@ serve(async (req) => {
               text: fullEmail.text || emailData.text,
               html: fullEmail.html || emailData.html,
               attachments: fullEmail.attachments || emailData.attachments,
-            });
+              email_id: emailData.email_id || fullEmail.id,
+            }, { resendApiKey, openaiApiKey });
             content = enriched.content;
             metadata = { ...enriched.metadata, resend_fetch: true, resend_attempt: attempt + 1 };
             break;
