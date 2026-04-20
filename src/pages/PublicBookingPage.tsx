@@ -206,7 +206,7 @@ export default function PublicBookingPage() {
   // Gate availability: if event types exist for this config, wait until one is resolved
   // before fetching slots. Otherwise we'd display the parent config's wider schedule
   // and let candidates book outside the chosen event type's stricter rules.
-  const availabilityConfigId = (eventTypes.length > 0 && !selectedEventType) ? undefined : config?.id;
+  const availabilityConfigId = (eventTypes.length > 0 && !selectedEventType && !hasContextualLink) ? undefined : config?.id;
 
   const { data: availabilityData, isLoading: isLoadingAvailability } = useBookingAvailability(
     availabilityConfigId,
@@ -371,6 +371,11 @@ export default function PublicBookingPage() {
   const handleReschedule = () => {
     if (existingBooking) {
       setRescheduleBookingId(existingBooking.id);
+      // Try to restore the original event type for proper availability filtering
+      if ((existingBooking as any).event_type_id && eventTypes.length > 0) {
+        const match = eventTypes.find((et: any) => et.id === (existingBooking as any).event_type_id);
+        if (match) setSelectedEventType(match);
+      }
     }
   };
 
