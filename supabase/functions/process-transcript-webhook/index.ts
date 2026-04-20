@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { Webhook } from "npm:svix@1.24.0";
-import pdfParse from "npm:pdf-parse@1.1.1";
+import { extractText, getDocumentProxy } from "npm:unpdf@0.12.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -70,14 +70,90 @@ function findIngestCodeInRecipients(emailData: any): { code: string | null; foun
   return { code: null, foundIn: '' };
 }
 
-// Extract text from PDF bytes
+// Extract text from PDF bytes using unpdf (Deno-friendly, no fs side effects)
 async function extractTextFromPdfBytes(pdfBytes: Uint8Array): Promise<string> {
-  const result = await pdfParse(Buffer.from(pdfBytes));
-  return (result.text || '').trim();
+  try {
+    const pdf = await getDocumentProxy(pdfBytes);
+    const { text } = await extractText(pdf, { mergePages: true });
+    const out = Array.isArray(text) ? text.join('\n') : (text || '');
+    return (typeof out === 'string' ? out : String(out)).trim();
+  } catch (err) {
+    console.error('[Transcript Webhook] unpdf extraction error:', err);
+    return '';
+  }
+}
+
+// OCR fallback for image-only PDFs using GPT-4o vision
+async function ocrPdfWithVision(pdfBytes: Uint8Array, openaiApiKey: string): Promise<string> {
+  try {
+    let binary = '';
+    const chunkSize = 0x8000;
+    for (let i = 0; i < pdfBytes.length; i += chunkSize) {
+      binary += String.fromCharCode.apply(null, Array.from(pdfBytes.subarray(i, i + chunkSize)));
+    }
+    const base64Pdf = btoa(binary);
+
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Extract ALL text from this interview transcript PDF. Return only the raw extracted text, preserving speaker labels and structure. No commentary.' },
+            { type: 'image_url', image_url: { url: `data:application/pdf;base64,${base64Pdf}` } },
+          ],
+        }],
+        max_tokens: 8000,
+      }),
+    });
+
+    if (!res.ok) {
+      console.error('[Transcript Webhook] OCR vision API error:', res.status, await res.text());
+      return '';
+    }
+    const data = await res.json();
+    return (data.choices?.[0]?.message?.content || '').trim();
+  } catch (err) {
+    console.error('[Transcript Webhook] OCR vision error:', err);
+    return '';
+  }
+}
+
+// Fetch a single attachment's bytes from Resend receiving API
+async function fetchAttachmentBytesFromResend(
+  emailId: string,
+  attachmentId: string,
+  resendApiKey: string,
+): Promise<{ bytes: Uint8Array | null; content_type?: string; filename?: string }> {
+  try {
+    const res = await fetch(
+      `https://api.resend.com/emails/receiving/${emailId}/attachments/${attachmentId}`,
+      { headers: { Authorization: `Bearer ${resendApiKey}` } },
+    );
+    if (!res.ok) {
+      console.error(`[Transcript Webhook] Resend attachment fetch ${res.status}: ${await res.text()}`);
+      return { bytes: null };
+    }
+    const data = await res.json();
+    if (!data.content) return { bytes: null, content_type: data.content_type, filename: data.filename };
+    const bytes = Uint8Array.from(atob(data.content), (c: string) => c.charCodeAt(0));
+    return { bytes, content_type: data.content_type, filename: data.filename };
+  } catch (err) {
+    console.error('[Transcript Webhook] Resend attachment fetch error:', err);
+    return { bytes: null };
+  }
 }
 
 // Extract transcript content from email
-async function extractTranscriptContent(emailData: any): Promise<{ content: string; metadata: any }> {
+async function extractTranscriptContent(
+  emailData: any,
+  opts?: { resendApiKey?: string; openaiApiKey?: string },
+): Promise<{ content: string; metadata: any }> {
   let content = '';
   const metadata: any = {
     from: emailData.from,
@@ -90,53 +166,97 @@ async function extractTranscriptContent(emailData: any): Promise<{ content: stri
     content = emailData.text;
     metadata.content_source = 'text_body';
   } else if (emailData.html) {
-    // Strip HTML tags for plain text
     content = emailData.html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     metadata.content_source = 'html_body';
   }
 
-  // Check for attachments (some note-takers send transcript as attachment)
+  // Check for attachments
   if (emailData.attachments && emailData.attachments.length > 0) {
     metadata.attachments = emailData.attachments.map((a: any) => ({
       filename: a.filename,
       content_type: a.content_type,
       size: a.size,
+      has_inline_content: !!a.content,
+      id: a.id,
     }));
+    console.log('[Transcript Webhook] Attachments:', JSON.stringify(metadata.attachments));
 
-    // Look for text attachments (skip calendar files)
     for (const attachment of emailData.attachments) {
-      // Skip calendar attachments
-      if (attachment.content_type === 'text/calendar' || 
+      if (attachment.content_type === 'text/calendar' ||
           attachment.content_type === 'application/ics' ||
           attachment.filename?.endsWith('.ics')) {
         continue;
       }
 
-      // Handle PDF attachments (Fireflies sends transcripts as PDF)
-      if (attachment.content_type === 'application/pdf' || 
+      // Handle PDF attachments
+      if (attachment.content_type === 'application/pdf' ||
           attachment.filename?.endsWith('.pdf')) {
         try {
-          const pdfBytes = Uint8Array.from(atob(attachment.content), (c: string) => c.charCodeAt(0));
-          const pdfText = await extractTextFromPdfBytes(pdfBytes);
-          console.log('[Transcript Webhook] Extracted PDF text, length:', pdfText.length);
+          let pdfBytes: Uint8Array | null = null;
+
+          if (attachment.content) {
+            pdfBytes = Uint8Array.from(atob(attachment.content), (c: string) => c.charCodeAt(0));
+          } else if (emailData.email_id && attachment.id && opts?.resendApiKey) {
+            console.log(`[Transcript Webhook] Fetching attachment "${attachment.filename}" bytes from Resend receiving API...`);
+            const fetched = await fetchAttachmentBytesFromResend(
+              emailData.email_id,
+              attachment.id,
+              opts.resendApiKey,
+            );
+            pdfBytes = fetched.bytes;
+          } else {
+            console.warn('[Transcript Webhook] PDF attachment missing inline content and no email_id/attachment_id to fetch:', attachment.filename);
+            continue;
+          }
+
+          if (!pdfBytes) {
+            console.warn('[Transcript Webhook] No PDF bytes available for:', attachment.filename);
+            continue;
+          }
+
+          let pdfText = await extractTextFromPdfBytes(pdfBytes);
+          console.log('[Transcript Webhook] Extracted PDF text via unpdf, length:', pdfText.length);
+
+          // OCR fallback for image-only PDFs
+          if (pdfText.length < 100 && opts?.openaiApiKey) {
+            console.log('[Transcript Webhook] PDF text < 100 chars, attempting OCR vision fallback...');
+            const ocrText = await ocrPdfWithVision(pdfBytes, opts.openaiApiKey);
+            console.log('[Transcript Webhook] OCR vision text length:', ocrText.length);
+            if (ocrText.length > pdfText.length) {
+              pdfText = ocrText;
+              metadata.ocr_used = true;
+            }
+          }
+
           if (pdfText.length > content.length) {
             content = pdfText;
             metadata.content_source = `attachment:${attachment.filename}`;
           }
         } catch (e) {
-          console.warn('[Transcript Webhook] Failed to parse PDF attachment:', e);
+          console.error('[Transcript Webhook] Failed to parse PDF attachment:', attachment.filename, e);
+          metadata.pdf_parse_error = String(e);
         }
         continue;
       }
-      
-      if (attachment.content_type?.includes('text') || 
+
+      if (attachment.content_type?.includes('text') ||
           attachment.filename?.endsWith('.txt') ||
           attachment.filename?.endsWith('.vtt') ||
           attachment.filename?.endsWith('.srt')) {
         try {
-          const attachmentContent = atob(attachment.content);
-          if (attachmentContent.length > content.length) {
-            content = attachmentContent;
+          let txtContent = '';
+          if (attachment.content) {
+            txtContent = atob(attachment.content);
+          } else if (emailData.email_id && attachment.id && opts?.resendApiKey) {
+            const fetched = await fetchAttachmentBytesFromResend(
+              emailData.email_id,
+              attachment.id,
+              opts.resendApiKey,
+            );
+            if (fetched.bytes) txtContent = new TextDecoder().decode(fetched.bytes);
+          }
+          if (txtContent.length > content.length) {
+            content = txtContent;
             metadata.content_source = `attachment:${attachment.filename}`;
           }
         } catch (e) {
@@ -158,6 +278,7 @@ serve(async (req) => {
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const webhookSecret = Deno.env.get('RESEND_INBOUND_WEBHOOK_SECRET')!;
   const resendApiKey = Deno.env.get('RESEND_API_KEY')!;
+  const openaiApiKey = Deno.env.get('OPENAI_API_KEY') || '';
 
   try {
     // Get raw payload for signature verification
@@ -305,7 +426,7 @@ serve(async (req) => {
     }
 
     // Extract transcript content
-    let { content, metadata } = await extractTranscriptContent(emailData);
+    let { content, metadata } = await extractTranscriptContent(emailData, { resendApiKey, openaiApiKey });
 
     // If no content from webhook payload, fetch from Resend receiving API
     if ((!content || content.trim().length < 100) && emailData.email_id && resendApiKey) {
@@ -325,7 +446,8 @@ serve(async (req) => {
               text: fullEmail.text || emailData.text,
               html: fullEmail.html || emailData.html,
               attachments: fullEmail.attachments || emailData.attachments,
-            });
+              email_id: emailData.email_id || fullEmail.id,
+            }, { resendApiKey, openaiApiKey });
             content = enriched.content;
             metadata = { ...enriched.metadata, resend_fetch: true, resend_attempt: attempt + 1 };
             break;
