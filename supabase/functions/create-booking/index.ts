@@ -227,6 +227,65 @@ serve(async (req) => {
       });
     }
 
+    // ============================================================
+    // SLOT VALIDATION — authoritative server-side guard.
+    // Bypassed only for internal scheduling (recruiter manually books).
+    // ============================================================
+    const isInternalScheduling = !!booked_by_user_id;
+    if (!isInternalScheduling) {
+      let eventType: any = null;
+      if (event_type_id) {
+        const { data: et } = await supabase
+          .from('booking_event_types')
+          .select('*')
+          .eq('id', event_type_id)
+          .eq('booking_config_id', booking_config_id)
+          .eq('is_active', true)
+          .maybeSingle();
+        eventType = et;
+        if (!eventType) {
+          console.warn('[create-booking] event_type_id provided but not found/active:', event_type_id);
+        }
+      }
+
+      const effectiveTimezone = eventType?.timezone || config.timezone;
+      const effectiveSchedule = (eventType?.weekly_schedule || config.weekly_schedule) as WeeklySchedule;
+      const effectiveBuffer = eventType?.buffer_time_minutes ?? config.buffer_time_minutes ?? 0;
+      const effectiveMinNotice = eventType?.min_notice_hours ?? config.min_notice_hours ?? 24;
+      const effectiveMaxDays = eventType?.max_days_ahead ?? config.max_days_ahead ?? 30;
+      const effectiveDuration = eventType?.duration_minutes ?? config.duration_minutes;
+
+      const validation = validateRequestedSlot({
+        scheduledStart: new Date(scheduled_start),
+        scheduledEnd: new Date(scheduled_end),
+        effectiveTimezone,
+        effectiveSchedule,
+        effectiveBuffer,
+        effectiveMinNotice,
+        effectiveMaxDays,
+        effectiveDuration,
+      });
+
+      if (!validation.ok) {
+        console.warn('[create-booking] Slot validation rejected:', validation.code, validation.message, {
+          scheduled_start, scheduled_end, effectiveTimezone, effectiveDuration,
+          effectiveBuffer, effectiveMinNotice, effectiveMaxDays,
+          event_type_id, booking_config_id,
+        });
+        return new Response(JSON.stringify({
+          error: validation.message,
+          code: validation.code,
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      console.log('[create-booking] Slot validated against', eventType ? 'event type' : 'config', 'rules.');
+    } else {
+      console.log('[create-booking] Internal scheduling — skipping slot validation.');
+    }
+
     // Generate interview title based on booking type
     let interviewTitle: string;
     if (isJobSpecificBooking) {
