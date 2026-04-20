@@ -70,11 +70,11 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
       id: 'workspace', 
       label: 'Workspace', 
       icon: Layers, 
-      show: permissions.isPlatformAdmin || (userType === 'workspace_owner' && !!organizationId),
+      show: permissions.isPlatformAdmin || permissions.isAdmin || (userType === 'workspace_owner' && !!organizationId),
       submenu: [
         { id: 'organization', label: 'Company Profile', icon: Building, show: permissions.canManageOrganization },
         { id: 'members', label: 'Members', icon: Users, show: permissions.canViewMembers },
-        { id: 'workspace-job-settings', label: 'Job Settings', icon: SettingsIcon, show: permissions.isPlatformAdmin || (userType === 'workspace_owner' && !!organizationId) },
+        { id: 'workspace-job-settings', label: 'Job Settings', icon: SettingsIcon, show: permissions.isPlatformAdmin || permissions.isAdmin || (userType === 'workspace_owner' && !!organizationId) },
         { id: 'integrations', label: 'Integrations', icon: Plug, show: true },
       ]
     },
