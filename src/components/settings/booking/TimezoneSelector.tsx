@@ -1,7 +1,8 @@
 import { Label } from '@/components/ui/label';
 import { SearchableSelect } from '@/components/ui/searchable-select';
-import { useEffect, useState } from 'react';
-import { format } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { useEffect, useMemo, useState } from 'react';
+import { Globe, X } from 'lucide-react';
 
 interface TimezoneSelectorProps {
   value: string;
@@ -65,6 +66,18 @@ const ALL_TIMEZONE_OPTIONS = TIMEZONE_GROUPS.flatMap((group) =>
 
 export function TimezoneSelector({ value, onChange }: TimezoneSelectorProps) {
   const [currentTime, setCurrentTime] = useState<string>('');
+  const [dismissed, setDismissed] = useState<boolean>(false);
+
+  const browserTz = useMemo(() => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch {
+      return '';
+    }
+  }, []);
+
+  const showMismatch =
+    !!browserTz && !!value && browserTz !== value && !dismissed;
 
   useEffect(() => {
     const updateTime = () => {
@@ -91,6 +104,32 @@ export function TimezoneSelector({ value, onChange }: TimezoneSelectorProps) {
   return (
     <div className="space-y-2">
       <Label htmlFor="timezone">Timezone</Label>
+      {showMismatch && (
+        <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+          <Globe className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+          <div className="flex-1">
+            <p className="text-foreground">
+              Your browser is set to <strong>{browserTz}</strong>.
+            </p>
+            <Button
+              type="button"
+              variant="link"
+              className="h-auto p-0 text-primary"
+              onClick={() => onChange(browserTz)}
+            >
+              Use this timezone
+            </Button>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDismissed(true)}
+            className="text-muted-foreground hover:text-foreground"
+            aria-label="Dismiss"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
       <SearchableSelect
         options={ALL_TIMEZONE_OPTIONS}
         value={value}

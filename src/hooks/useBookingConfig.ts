@@ -206,7 +206,7 @@ export function useBookingConfig() {
           first_name: profile.first_name!,
           last_name: profile.last_name!,
           organization_id: organizationId,
-          timezone: profile.timezone || undefined,
+          timezone: profile.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
         });
       }
       return null;
