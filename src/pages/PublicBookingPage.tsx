@@ -62,6 +62,8 @@ export default function PublicBookingPage() {
   const [tokenStatus, setTokenStatus] = useState<'active' | 'expired' | null>(null);
   const [rescheduleBookingId, setRescheduleBookingId] = useState<string | null>(null);
   const [bookingCancelled, setBookingCancelled] = useState(false);
+  const [groupBookingConfigIds, setGroupBookingConfigIds] = useState<string[] | null>(null);
+  const [groupInterviewerNames, setGroupInterviewerNames] = useState<string[]>([]);
   const autoAdvanceCountRef = useRef(0);
   const hasAutoSelectedRef = useRef(false);
   const [selectedEventType, setSelectedEventType] = useState<any>(null);
@@ -88,6 +90,9 @@ export default function PublicBookingPage() {
               setTokenStatus(result.token_status);
               if (result.existing_booking) {
                 setExistingBooking(result.existing_booking as ExistingBookingData);
+              }
+              if (result.scheduling_mode === 'group' && result.booking_config_ids?.length) {
+                setGroupBookingConfigIds(result.booking_config_ids);
               }
             } else {
               setTokenStatus('expired');
@@ -206,7 +211,10 @@ export default function PublicBookingPage() {
   // Gate availability: if event types exist for this config, wait until one is resolved
   // before fetching slots. Otherwise we'd display the parent config's wider schedule
   // and let candidates book outside the chosen event type's stricter rules.
-  const availabilityConfigId = (eventTypes.length > 0 && !selectedEventType && !hasContextualLink) ? undefined : config?.id;
+  const isGroupBooking = !!(groupBookingConfigIds && groupBookingConfigIds.length > 1);
+  const availabilityConfigId = isGroupBooking
+    ? config?.id // any config works as the "primary" trigger; ids are passed via groupBookingConfigIds
+    : ((eventTypes.length > 0 && !selectedEventType && !hasContextualLink) ? undefined : config?.id);
 
   const { data: availabilityData, isLoading: isLoadingAvailability } = useBookingAvailability(
     availabilityConfigId,
@@ -215,7 +223,8 @@ export default function PublicBookingPage() {
     activeDuration,
     candidateTimezone,
     false,
-    eventTypeOverrides
+    isGroupBooking ? undefined : eventTypeOverrides,
+    isGroupBooking ? groupBookingConfigIds! : undefined,
   );
 
   // Extract available dates from availability data
