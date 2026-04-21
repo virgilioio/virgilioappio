@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from '@/hooks/use-toast';
-import { AlertCircle, Calendar, CheckCircle2, Clock, User, MapPin } from 'lucide-react';
+import { AlertCircle, Calendar, CheckCircle2, Clock, User, Users, MapPin } from 'lucide-react';
 import googleMeetIcon from '@/assets/google-meet-icon.png';
 import { startOfMonth, endOfMonth, isSameDay, parseISO } from 'date-fns';
 import { useBookingAvailability } from '@/hooks/useBookingAvailability';
@@ -310,6 +310,24 @@ export function ScheduleInterviewSheet({
   const [guestEmails, setGuestEmails] = useState<string[]>([]);
   const candidateTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
+  // Fetch stage scheduling mode (any | all)
+  const { data: stageMeta } = useQuery({
+    queryKey: ['stage-meta', jhsId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('job_hiring_stages')
+        .select('id, interviewer_scheduling_mode')
+        .eq('id', jhsId)
+        .single();
+      if (error) throw error;
+      return data as { id: string; interviewer_scheduling_mode: 'any' | 'all' };
+    },
+    enabled: open && !!jhsId,
+  });
+
+  const schedulingMode: 'any' | 'all' = (stageMeta?.interviewer_scheduling_mode as 'any' | 'all') || 'any';
+  const isGroupMode = schedulingMode === 'all';
+
   // Fetch stage interviewer assignments
   const { data: interviewers, isLoading: loadingInterviewers } = useQuery({
     queryKey: ['stage-interviewers', jhsId],
@@ -392,24 +410,48 @@ export function ScheduleInterviewSheet({
       }));
   }, [interviewers]);
 
-  // Auto-select if only one interviewer
+  // Group-mode interviewers (AND): all eligible (active config, not backup)
+  const groupInterviewers = useMemo(() => {
+    return isGroupMode ? availableInterviewers : [];
+  }, [isGroupMode, availableInterviewers]);
+
+  const groupConfigIds = useMemo(
+    () => groupInterviewers.map(i => i.booking_configurations!.id).filter(Boolean),
+    [groupInterviewers]
+  );
+
+  const formatNamesList = (names: string[]) => {
+    if (names.length === 0) return '';
+    if (names.length === 1) return names[0];
+    if (names.length === 2) return `${names[0]} & ${names[1]}`;
+    return `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`;
+  };
+
+  const groupNames = useMemo(
+    () => groupInterviewers.map(i => `${i.profiles?.first_name || ''} ${i.profiles?.last_name || ''}`.trim() || 'Unknown'),
+    [groupInterviewers]
+  );
+
+  // Auto-select if only one interviewer (OR-mode only)
   useMemo(() => {
-    if (availableInterviewers.length === 1 && !selectedInterviewer) {
+    if (!isGroupMode && availableInterviewers.length === 1 && !selectedInterviewer) {
       setSelectedInterviewer(availableInterviewers[0]);
     }
-  }, [availableInterviewers, selectedInterviewer]);
+  }, [availableInterviewers, selectedInterviewer, isGroupMode]);
 
-  // Fetch availability for selected interviewer
+  // Fetch availability for selected interviewer or group
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
 
   const { data: availabilityData, isLoading: isLoadingAvailability } = useBookingAvailability(
-    selectedInterviewer?.booking_configurations?.id,
+    isGroupMode ? undefined : selectedInterviewer?.booking_configurations?.id,
     monthStart,
     monthEnd,
     selectedDuration,
     candidateTimezone,
-    true // internal_scheduling = true
+    true,
+    undefined,
+    isGroupMode ? groupConfigIds : undefined
   );
 
   // Extract available dates
@@ -437,12 +479,20 @@ export function ScheduleInterviewSheet({
 
   // Handle form confirmation
   const handleConfirmBooking = async (formData: FormData, sendInvitation: boolean) => {
-    if (!selectedSlot || !selectedInterviewer?.booking_configurations) {
+    if (!selectedSlot) {
+      throw new Error('Missing required data');
+    }
+    if (isGroupMode) {
+      if (groupConfigIds.length < 2) throw new Error('Need at least 2 interviewers for group scheduling');
+    } else if (!selectedInterviewer?.booking_configurations) {
       throw new Error('Missing required data');
     }
 
+    const primaryConfigId = isGroupMode ? groupConfigIds[0] : selectedInterviewer!.booking_configurations!.id;
+
     const bookingData = {
-      booking_config_id: selectedInterviewer.booking_configurations.id,
+      booking_config_id: primaryConfigId,
+      ...(isGroupMode && { booking_config_ids: groupConfigIds }),
       candidate_name: formData.candidate_name,
       candidate_email: formData.candidate_email,
       candidate_phone: formData.candidate_phone || null,
@@ -477,9 +527,12 @@ export function ScheduleInterviewSheet({
       return data;
     },
     onSuccess: async () => {
+      const successName = isGroupMode
+        ? formatNamesList(groupNames)
+        : (selectedInterviewer?.profiles?.first_name || 'interviewer');
       toast({
         title: 'Interview Scheduled',
-        description: `Interview scheduled with ${selectedInterviewer?.profiles?.first_name || 'interviewer'} for ${stageName}.`,
+        description: `Interview scheduled with ${successName} for ${stageName}.`,
       });
       
       // If this was a reschedule, cancel the old booking now
@@ -545,7 +598,7 @@ export function ScheduleInterviewSheet({
       setSelectedSlot(null);
     } else if (selectedDate) {
       setSelectedDate(null);
-    } else if (selectedInterviewer && availableInterviewers.length > 1) {
+    } else if (!isGroupMode && selectedInterviewer && availableInterviewers.length > 1) {
       setSelectedInterviewer(null);
     }
   };
@@ -586,13 +639,24 @@ export function ScheduleInterviewSheet({
               <Skeleton className="h-20 w-full" />
               <Skeleton className="h-20 w-full" />
             </div>
-          ) : !selectedInterviewer && (!availableInterviewers || availableInterviewers.length === 0) ? (
+          ) : !isGroupMode && !selectedInterviewer && (!availableInterviewers || availableInterviewers.length === 0) ? (
           <ManualInterviewerSelector
               jobId={jobId}
               organizationId={organizationId}
               onSelect={setSelectedInterviewer}
               unavailableInterviewers={interviewersWithoutBookingConfig}
             />
+          ) : isGroupMode && groupConfigIds.length < 2 ? (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Group scheduling (AND-mode)</strong> requires at least 2 interviewers with active booking links.
+                {interviewersWithoutBookingConfig.length > 0 && (
+                  <> Configure availability for: <strong>{interviewersWithoutBookingConfig.map(i => i.name).join(', ')}</strong>.</>
+                )}
+                {' '}You can manage interviewers and booking links in the stage settings.
+              </AlertDescription>
+            </Alert>
           ) : !candidateEmail ? (
             <Alert>
               <AlertCircle className="h-4 w-4" />
@@ -603,7 +667,7 @@ export function ScheduleInterviewSheet({
           ) : (
             <>
               {/* Step 1: Select Interviewer (if multiple) */}
-              {!selectedInterviewer && availableInterviewers.length > 1 && (
+              {!isGroupMode && !selectedInterviewer && availableInterviewers.length > 1 && (
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Select Interviewer</h3>
                   <div className="space-y-3">
@@ -643,32 +707,57 @@ export function ScheduleInterviewSheet({
               )}
 
               {/* Step 2: Select Date & Time */}
-              {selectedInterviewer && !selectedSlot && (
+              {((isGroupMode && groupConfigIds.length >= 2) || (!isGroupMode && selectedInterviewer)) && !selectedSlot && (
                 <div className="space-y-4">
-                  {availableInterviewers.length > 1 && (
+                  {!isGroupMode && availableInterviewers.length > 1 && (
                     <Button variant="ghost" size="sm" onClick={handleBack}>
                       ← Back to interviewers
                     </Button>
                   )}
-                  
-                  <div className="flex items-center gap-3 p-4 bg-secondary/30 rounded-lg">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={selectedInterviewer.profiles?.avatar_url || undefined} />
-                      <AvatarFallback>
-                        {selectedInterviewer.profiles?.first_name?.[0] || 'I'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="font-medium text-sm">
-                        {selectedInterviewer.profiles?.first_name}{' '}
-                        {selectedInterviewer.profiles?.last_name}
+
+                  {isGroupMode ? (
+                    <div className="flex items-center gap-3 p-4 bg-secondary/30 rounded-lg">
+                      <div className="flex -space-x-2">
+                        {groupInterviewers.slice(0, 4).map((i) => (
+                          <Avatar key={i.id} className="h-9 w-9 border-2 border-background">
+                            <AvatarImage src={i.profiles?.avatar_url || undefined} />
+                            <AvatarFallback>
+                              {i.profiles?.first_name?.[0] || 'I'}
+                              {i.profiles?.last_name?.[0] || ''}
+                            </AvatarFallback>
+                          </Avatar>
+                        ))}
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-text-secondary">
-                        <Clock className="h-3 w-3" />
-                        {selectedInterviewer.booking_configurations?.duration_minutes} minutes
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm">
+                          Interview with <strong>{formatNamesList(groupNames)}</strong>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-text-secondary">
+                          <Users className="h-3 w-3" />
+                          Group scheduling — combined availability
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex items-center gap-3 p-4 bg-secondary/30 rounded-lg">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={selectedInterviewer!.profiles?.avatar_url || undefined} />
+                        <AvatarFallback>
+                          {selectedInterviewer!.profiles?.first_name?.[0] || 'I'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">
+                          {selectedInterviewer!.profiles?.first_name}{' '}
+                          {selectedInterviewer!.profiles?.last_name}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-text-secondary">
+                          <Clock className="h-3 w-3" />
+                          {selectedInterviewer!.booking_configurations?.duration_minutes} minutes
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <h3 className="text-lg font-semibold">Select Date & Time</h3>
                   
@@ -719,7 +808,12 @@ export function ScheduleInterviewSheet({
                     </Card>
 
                     <Card>
-                      <CardContent className="p-6">
+                      <CardContent className="p-6 space-y-2">
+                        {isGroupMode && (
+                          <div className="text-xs font-medium text-text-secondary">
+                            Combined busy times across interviewers
+                          </div>
+                        )}
                         <DayCalendarEvents
                           selectedDate={selectedDate}
                           busyEvents={availabilityData?.busy_events || []}
