@@ -310,6 +310,24 @@ export function ScheduleInterviewSheet({
   const [guestEmails, setGuestEmails] = useState<string[]>([]);
   const candidateTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
+  // Fetch stage scheduling mode (any | all)
+  const { data: stageMeta } = useQuery({
+    queryKey: ['stage-meta', jhsId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('job_hiring_stages')
+        .select('id, interviewer_scheduling_mode')
+        .eq('id', jhsId)
+        .single();
+      if (error) throw error;
+      return data as { id: string; interviewer_scheduling_mode: 'any' | 'all' };
+    },
+    enabled: open && !!jhsId,
+  });
+
+  const schedulingMode: 'any' | 'all' = (stageMeta?.interviewer_scheduling_mode as 'any' | 'all') || 'any';
+  const isGroupMode = schedulingMode === 'all';
+
   // Fetch stage interviewer assignments
   const { data: interviewers, isLoading: loadingInterviewers } = useQuery({
     queryKey: ['stage-interviewers', jhsId],
