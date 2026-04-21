@@ -410,24 +410,48 @@ export function ScheduleInterviewSheet({
       }));
   }, [interviewers]);
 
-  // Auto-select if only one interviewer
+  // Group-mode interviewers (AND): all eligible (active config, not backup)
+  const groupInterviewers = useMemo(() => {
+    return isGroupMode ? availableInterviewers : [];
+  }, [isGroupMode, availableInterviewers]);
+
+  const groupConfigIds = useMemo(
+    () => groupInterviewers.map(i => i.booking_configurations!.id).filter(Boolean),
+    [groupInterviewers]
+  );
+
+  const formatNamesList = (names: string[]) => {
+    if (names.length === 0) return '';
+    if (names.length === 1) return names[0];
+    if (names.length === 2) return `${names[0]} & ${names[1]}`;
+    return `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`;
+  };
+
+  const groupNames = useMemo(
+    () => groupInterviewers.map(i => `${i.profiles?.first_name || ''} ${i.profiles?.last_name || ''}`.trim() || 'Unknown'),
+    [groupInterviewers]
+  );
+
+  // Auto-select if only one interviewer (OR-mode only)
   useMemo(() => {
-    if (availableInterviewers.length === 1 && !selectedInterviewer) {
+    if (!isGroupMode && availableInterviewers.length === 1 && !selectedInterviewer) {
       setSelectedInterviewer(availableInterviewers[0]);
     }
-  }, [availableInterviewers, selectedInterviewer]);
+  }, [availableInterviewers, selectedInterviewer, isGroupMode]);
 
-  // Fetch availability for selected interviewer
+  // Fetch availability for selected interviewer or group
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
 
   const { data: availabilityData, isLoading: isLoadingAvailability } = useBookingAvailability(
-    selectedInterviewer?.booking_configurations?.id,
+    isGroupMode ? undefined : selectedInterviewer?.booking_configurations?.id,
     monthStart,
     monthEnd,
     selectedDuration,
     candidateTimezone,
-    true // internal_scheduling = true
+    true,
+    undefined,
+    isGroupMode ? groupConfigIds : undefined
   );
 
   // Extract available dates
