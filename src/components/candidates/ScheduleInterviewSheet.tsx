@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from '@/hooks/use-toast';
-import { AlertCircle, Calendar, CheckCircle2, Clock, User, MapPin } from 'lucide-react';
+import { AlertCircle, Calendar, CheckCircle2, Clock, User, Users, MapPin } from 'lucide-react';
 import googleMeetIcon from '@/assets/google-meet-icon.png';
 import { startOfMonth, endOfMonth, isSameDay, parseISO } from 'date-fns';
 import { useBookingAvailability } from '@/hooks/useBookingAvailability';
