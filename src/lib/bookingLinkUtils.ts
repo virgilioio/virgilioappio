@@ -240,6 +240,7 @@ export async function resolveBookingToken(token: string): Promise<ResolvedTokenR
       scheduling_mode: data?.scheduling_mode || 'single',
       booking_config_ids: data?.booking_config_ids || null,
       primary_short_code: data?.primary_short_code || null,
+      group_interviewers: data?.group_interviewers || null,
     };
   } catch (e) {
     console.error('Failed to resolve booking token:', e);
