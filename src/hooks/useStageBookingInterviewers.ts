@@ -2,7 +2,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
-import { createShortBookingToken, generateShortBookingLink, generateContextualBookingLink, BookingContext } from '@/lib/bookingLinkUtils';
+import { createShortBookingToken, generateShortBookingLink, generateContextualBookingLink, createGroupBookingToken, generateGroupBookingLink, BookingContext } from '@/lib/bookingLinkUtils';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { primeClipboard, copyToClipboardSilent } from '@/utils/clipboard';
 
@@ -297,10 +297,90 @@ export function useStageBookingInterviewers(params: UseStageBookingInterviewersP
     }
   }, [params, toast, prebuiltLinks]);
 
+  const [isCopyingGroup, setIsCopyingGroup] = useState(false);
+
+  const copyGroupLink = useCallback(async (eligibleInterviewers: InterviewerBookingInfo[]) => {
+    if (!params || eligibleInterviewers.length < 2) return;
+
+    setIsCopyingGroup(true);
+    try {
+      await primeClipboard();
+
+      const context: BookingContext = {
+        jobId: params.jobId,
+        candidateId: params.candidateId,
+        jhsId: params.jhsId,
+        associationId: params.associationId,
+        candidateName: params.candidateName,
+        candidateEmail: params.candidateEmail,
+        jobTitle: params.jobTitle,
+        stageName: params.stageName,
+      };
+
+      // Stable order: by assignment priority then memberId
+      const ordered = [...eligibleInterviewers].sort((a, b) => {
+        const pa = ASSIGNMENT_PRIORITY[a.assignmentType] || 99;
+        const pb = ASSIGNMENT_PRIORITY[b.assignmentType] || 99;
+        if (pa !== pb) return pa - pb;
+        return a.memberId.localeCompare(b.memberId);
+      });
+
+      const primary = ordered[0];
+      const bookingConfigIds = ordered.map(i => i.bookingConfig.id);
+
+      const token = await createGroupBookingToken({
+        context,
+        bookingConfigIds,
+        primaryShortCode: primary.bookingConfig.short_code,
+      });
+
+      if (!token) {
+        toast({
+          title: 'Error',
+          description: 'Failed to create group booking link.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const link = generateGroupBookingLink({
+        primaryShortCode: primary.bookingConfig.short_code,
+        token,
+      });
+
+      const success = await copyToClipboardSilent(link);
+      const names = ordered.map(i => i.fullName).join(', ');
+
+      if (success) {
+        toast({
+          title: 'Group Link Copied',
+          description: `Booking link for ${names} copied to clipboard.`,
+        });
+      } else {
+        toast({
+          title: 'Copy the link manually',
+          description: link,
+          duration: 15000,
+        });
+      }
+    } catch (error) {
+      console.error('Error copying group booking link:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to generate group booking link. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCopyingGroup(false);
+    }
+  }, [params, toast]);
+
   return {
     interviewers,
     isLoading,
     copyLinkForInterviewer,
     copyingInterviewerId,
+    copyGroupLink,
+    isCopyingGroup,
   };
 }
