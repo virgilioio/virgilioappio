@@ -808,7 +808,12 @@ export function ScheduleInterviewSheet({
                     </Card>
 
                     <Card>
-                      <CardContent className="p-6">
+                      <CardContent className="p-6 space-y-2">
+                        {isGroupMode && (
+                          <div className="text-xs font-medium text-text-secondary">
+                            Combined busy times across interviewers
+                          </div>
+                        )}
                         <DayCalendarEvents
                           selectedDate={selectedDate}
                           busyEvents={availabilityData?.busy_events || []}
