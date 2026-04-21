@@ -93,6 +93,11 @@ export default function PublicBookingPage() {
               }
               if (result.scheduling_mode === 'group' && result.booking_config_ids?.length) {
                 setGroupBookingConfigIds(result.booking_config_ids);
+                if (result.group_interviewers?.length) {
+                  setGroupInterviewerNames(
+                    result.group_interviewers.map(p => `${p.first_name} ${p.last_name}`.trim())
+                  );
+                }
               }
             } else {
               setTokenStatus('expired');
