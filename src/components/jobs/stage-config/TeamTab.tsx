@@ -12,6 +12,7 @@ import { useMembers } from '@/hooks/useMembers'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { getOrganizationTree } from '@/lib/organizationHelpers'
 import { User, UserPlus, Users, Trash2, Info, Loader2, AlertTriangle } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface TeamTabProps {
   jhsId: string
@@ -28,7 +29,7 @@ export function TeamTab({ jhsId, jobId, organizationId }: TeamTabProps) {
   const { members } = useMembers()
   const { assignments } = useJobAssignments(jobId)
   
-  const { interviewers: rawInterviewers, isLoading, addInterviewer, removeInterviewer, updateAssignmentType } = 
+  const { interviewers: rawInterviewers, isLoading, addInterviewer, removeInterviewer, updateAssignmentType, schedulingMode, updateSchedulingMode } =
     useStageInterviewerAssignments(jhsId)
   
   // Enrich interviewers with member details from useMembers
@@ -137,7 +138,71 @@ export function TeamTab({ jhsId, jobId, organizationId }: TeamTabProps) {
           Assign team members who will conduct interviews at this stage
         </p>
       </section>
-      
+
+      {/* Scheduling mode toggle */}
+      <section aria-labelledby="scheduling-mode" className="rounded-lg border border-border bg-card p-4 space-y-3">
+        <div>
+          <h4 id="scheduling-mode" className="text-sm font-medium">Scheduling mode</h4>
+          <p className="text-xs text-muted-foreground mt-1">
+            How candidates schedule when this stage has multiple interviewers.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => updateSchedulingMode.mutate({ jhsId, mode: 'any' })}
+            disabled={updateSchedulingMode.isPending}
+            className={cn(
+              'rounded-md border p-3 text-left transition-colors',
+              schedulingMode === 'any'
+                ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                : 'border-border bg-background hover:bg-muted/50'
+            )}
+          >
+            <div className="text-sm font-medium">Any of these (OR)</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              Candidate picks one interviewer's calendar
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => updateSchedulingMode.mutate({ jhsId, mode: 'all' })}
+            disabled={updateSchedulingMode.isPending}
+            className={cn(
+              'rounded-md border p-3 text-left transition-colors',
+              schedulingMode === 'all'
+                ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                : 'border-border bg-background hover:bg-muted/50'
+            )}
+          >
+            <div className="text-sm font-medium">All together (AND)</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              Single time that works for everyone
+            </div>
+          </button>
+        </div>
+        {schedulingMode === 'all' && (() => {
+          const eligible = interviewers.filter(i => i.assignment_type !== 'backup')
+          const missing = eligible.filter(i => {
+            const status = i.user_id ? bookingConfigMap.get(i.user_id) : null
+            return !(status?.hasConfig && status?.isActive)
+          })
+          if (missing.length === 0) return null
+          return (
+            <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  Group availability requires every interviewer to have an active booking link.{' '}
+                  <strong>{missing.map(m => m.member_name).join(', ')}</strong>{' '}
+                  {missing.length === 1 ? "doesn't have one configured." : "don't have one configured."}
+                </p>
+              </div>
+            </div>
+          )
+        })()}
+      </section>
+
       {/* Add Interviewer Form */}
       <section aria-labelledby="add-interviewer" className="rounded-lg border border-border bg-card p-4 space-y-4">
         <h4 id="add-interviewer" className="text-sm font-medium">Add Interviewer</h4>

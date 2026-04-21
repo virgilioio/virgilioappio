@@ -36,16 +36,22 @@ export function useBookingAvailability(
   durationMinutes: number,
   candidateTimezone: string,
   internalScheduling = false,
-  eventTypeOverrides?: EventTypeOverrides
+  eventTypeOverrides?: EventTypeOverrides,
+  bookingConfigIds?: string[]
 ) {
+  const isGroup = !!(bookingConfigIds && bookingConfigIds.length > 1);
+  const groupKey = isGroup ? bookingConfigIds!.join(',') : null;
+
   return useQuery({
-    queryKey: ['booking-availability', bookingConfigId, startDate.toISOString(), endDate.toISOString(), durationMinutes, candidateTimezone, internalScheduling, eventTypeOverrides],
+    queryKey: ['booking-availability', bookingConfigId, groupKey, startDate.toISOString(), endDate.toISOString(), durationMinutes, candidateTimezone, internalScheduling, eventTypeOverrides],
     queryFn: async () => {
-      if (!bookingConfigId) throw new Error('Booking config ID is required');
+      if (!isGroup && !bookingConfigId) throw new Error('Booking config ID is required');
 
       const { data, error } = await supabase.functions.invoke('get-booking-availability', {
         body: {
-          booking_config_id: bookingConfigId,
+          ...(isGroup
+            ? { booking_config_ids: bookingConfigIds }
+            : { booking_config_id: bookingConfigId }),
           start_date: startDate.toISOString(),
           end_date: endDate.toISOString(),
           duration_minutes: durationMinutes,
@@ -60,6 +66,6 @@ export function useBookingAvailability(
     },
     refetchInterval: 60000,
     staleTime: 30000,
-    enabled: !!bookingConfigId,
+    enabled: isGroup ? bookingConfigIds!.length > 0 : !!bookingConfigId,
   });
 }

@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { useContextualBookingLink } from '@/hooks/useContextualBookingLink';
 import { useStageBookingInterviewers } from '@/hooks/useStageBookingInterviewers';
-import { Link2, Loader2, ChevronDown, User } from 'lucide-react';
+import { useStageInterviewerAssignments } from '@/hooks/useStageInterviewerAssignments';
+import { Link2, Loader2, ChevronDown, User, Users } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -43,12 +44,17 @@ export function GenerateBookingLinkButton({
   size = 'sm',
   showLabel = true,
 }: GenerateBookingLinkButtonProps) {
+  // Read the stage's scheduling mode (any vs all)
+  const { schedulingMode } = useStageInterviewerAssignments(jhsId);
+
   // Fetch all interviewers with active booking configs for the stage
   const {
     interviewers,
     isLoading: isLoadingInterviewers,
     copyLinkForInterviewer,
     copyingInterviewerId,
+    copyGroupLink,
+    isCopyingGroup,
   } = useStageBookingInterviewers({
     jhsId,
     jobId,
@@ -77,6 +83,8 @@ export function GenerateBookingLinkButton({
   });
 
   const isLoading = isLoadingInterviewers || isLoadingUserConfig;
+  // For group mode: only required + optional count, exclude backups
+  const groupEligible = interviewers.filter(i => i.assignmentType !== 'backup');
   const hasMultipleInterviewers = interviewers.length > 1;
   const hasSingleInterviewer = interviewers.length === 1;
   const hasAnyBookingConfig = interviewers.length > 0 || hasUserBookingConfig;
@@ -108,6 +116,57 @@ export function GenerateBookingLinkButton({
             <p>
               Neither the assigned interviewer nor you have an active booking link. Configure your booking settings first.
             </p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  // AND mode: single group link if eligible
+  if (schedulingMode === 'all') {
+    if (groupEligible.length < 2) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <Button variant={variant} size={size} disabled className="opacity-60">
+                  <Users className="h-4 w-4" />
+                  {showLabel && <span className="ml-2">Group link unavailable</span>}
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>
+                Group availability requires at least 2 interviewers with active booking links.
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
+    const names = groupEligible.map(i => i.fullName).join(', ');
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant={variant}
+              size={size}
+              onClick={() => copyGroupLink(groupEligible)}
+              disabled={isCopyingGroup}
+            >
+              {isCopyingGroup ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Users className="h-4 w-4" />
+              )}
+              {showLabel && <span className="ml-2">Copy Group Booking Link</span>}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Shows times that work for {names}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

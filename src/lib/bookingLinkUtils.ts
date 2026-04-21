@@ -49,6 +49,9 @@ export interface ResolvedTokenResult {
   context: BookingContext | null;
   existing_booking: ExistingBookingInfo | null;
   token_status: 'active' | 'expired';
+  scheduling_mode?: 'single' | 'group';
+  booking_config_ids?: string[] | null;
+  primary_short_code?: string | null;
 }
 
 /**
@@ -156,6 +159,54 @@ export function generateShortBookingLink(params: {
 }
 
 /**
+ * Create a group booking token for multiple interviewers (AND-mode availability).
+ */
+export async function createGroupBookingToken(params: {
+  context: BookingContext;
+  bookingConfigIds: string[];
+  primaryShortCode: string;
+}): Promise<string | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke('create-group-booking-token', {
+      body: {
+        job_id: params.context.jobId,
+        candidate_id: params.context.candidateId,
+        jhs_id: params.context.jhsId,
+        association_id: params.context.associationId,
+        candidate_name: params.context.candidateName,
+        candidate_email: params.context.candidateEmail,
+        job_title: params.context.jobTitle,
+        stage_name: params.context.stageName,
+        booking_config_ids: params.bookingConfigIds,
+        primary_short_code: params.primaryShortCode,
+      },
+    });
+    if (error) {
+      console.error('Failed to create group booking token:', error);
+      return null;
+    }
+    return data?.token || null;
+  } catch (e) {
+    console.error('Failed to create group booking token:', e);
+    return null;
+  }
+}
+
+/**
+ * Generate a short URL for a group booking. The URL still uses the primary
+ * interviewer's short_code so the public page can resolve a base config,
+ * and the token tells the page to switch to group/intersection mode.
+ */
+export function generateGroupBookingLink(params: {
+  primaryShortCode: string;
+  token: string;
+  baseUrl?: string;
+}): string {
+  const { primaryShortCode, token, baseUrl = window.location.origin } = params;
+  return `${baseUrl}/schedule/${primaryShortCode}?t=${token}`;
+}
+
+/**
  * Resolve a short token to booking context via the edge function.
  * Now also returns existing_booking and token_status.
  */
@@ -185,6 +236,9 @@ export async function resolveBookingToken(token: string): Promise<ResolvedTokenR
       context: data?.context || null,
       existing_booking: data?.existing_booking || null,
       token_status: data?.token_status || 'active',
+      scheduling_mode: data?.scheduling_mode || 'single',
+      booking_config_ids: data?.booking_config_ids || null,
+      primary_short_code: data?.primary_short_code || null,
     };
   } catch (e) {
     console.error('Failed to resolve booking token:', e);
