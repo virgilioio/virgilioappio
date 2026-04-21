@@ -313,6 +313,7 @@ export default function PublicBookingPage() {
       const { data, error } = await supabase.functions.invoke('create-booking', {
         body: {
           booking_config_id: config.id,
+          ...(isGroupBooking && { booking_config_ids: groupBookingConfigIds }),
           candidate_name: formData.candidate_name,
           candidate_email: formData.candidate_email,
           candidate_phone: formData.candidate_phone || null,
@@ -320,8 +321,8 @@ export default function PublicBookingPage() {
           scheduled_start: selectedSlot.start,
           scheduled_end: selectedSlot.end,
           notes: formData.notes || null,
-          // Pass event type data if selected
-          ...(selectedEventType && {
+          // Pass event type data if selected (skip in group mode)
+          ...(!isGroupBooking && selectedEventType && {
             event_type_id: selectedEventType.id,
             meeting_location: selectedEventType.meeting_location,
             custom_event_title: selectedEventType.custom_event_title,
