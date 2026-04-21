@@ -667,7 +667,7 @@ export function ScheduleInterviewSheet({
           ) : (
             <>
               {/* Step 1: Select Interviewer (if multiple) */}
-              {!selectedInterviewer && availableInterviewers.length > 1 && (
+              {!isGroupMode && !selectedInterviewer && availableInterviewers.length > 1 && (
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Select Interviewer</h3>
                   <div className="space-y-3">
