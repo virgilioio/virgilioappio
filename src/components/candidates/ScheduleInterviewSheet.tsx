@@ -527,9 +527,12 @@ export function ScheduleInterviewSheet({
       return data;
     },
     onSuccess: async () => {
+      const successName = isGroupMode
+        ? formatNamesList(groupNames)
+        : (selectedInterviewer?.profiles?.first_name || 'interviewer');
       toast({
         title: 'Interview Scheduled',
-        description: `Interview scheduled with ${selectedInterviewer?.profiles?.first_name || 'interviewer'} for ${stageName}.`,
+        description: `Interview scheduled with ${successName} for ${stageName}.`,
       });
       
       // If this was a reschedule, cancel the old booking now
