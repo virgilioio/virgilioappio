@@ -500,14 +500,16 @@ serve(async (req) => {
       }
     }
 
-    // Check if slot is still available (strict overlap check - back-to-back bookings are allowed)
+    // Check if slot is still available across ALL involved configs (group-aware).
+    // Strict overlap (existing_start < new_end AND existing_end > new_start). Back-to-back is OK.
+    const conflictConfigIds = isGroupBooking ? booking_config_ids : [booking_config_id];
     const { data: conflictingBookings } = await supabase
       .from('scheduled_bookings')
-      .select('id')
-      .eq('booking_config_id', booking_config_id)
+      .select('id, booking_config_id')
+      .in('booking_config_id', conflictConfigIds)
       .eq('status', 'confirmed')
-      .lt('scheduled_start', scheduled_end)    // existing_start < new_end
-      .gt('scheduled_end', scheduled_start)    // existing_end > new_start
+      .lt('scheduled_start', scheduled_end)
+      .gt('scheduled_end', scheduled_start)
       .limit(1);
 
     if (conflictingBookings && conflictingBookings.length > 0) {
