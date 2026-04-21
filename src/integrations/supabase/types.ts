@@ -593,6 +593,7 @@ export type Database = {
       booking_link_tokens: {
         Row: {
           association_id: string | null
+          booking_config_ids: string[] | null
           candidate_email: string | null
           candidate_id: string | null
           candidate_name: string | null
@@ -603,12 +604,14 @@ export type Database = {
           jhs_id: string | null
           job_id: string | null
           job_title: string | null
-          short_code: string
+          scheduling_mode: string
+          short_code: string | null
           stage_name: string | null
           token: string
         }
         Insert: {
           association_id?: string | null
+          booking_config_ids?: string[] | null
           candidate_email?: string | null
           candidate_id?: string | null
           candidate_name?: string | null
@@ -619,12 +622,14 @@ export type Database = {
           jhs_id?: string | null
           job_id?: string | null
           job_title?: string | null
-          short_code: string
+          scheduling_mode?: string
+          short_code?: string | null
           stage_name?: string | null
           token: string
         }
         Update: {
           association_id?: string | null
+          booking_config_ids?: string[] | null
           candidate_email?: string | null
           candidate_id?: string | null
           candidate_name?: string | null
@@ -635,7 +640,8 @@ export type Database = {
           jhs_id?: string | null
           job_id?: string | null
           job_title?: string | null
-          short_code?: string
+          scheduling_mode?: string
+          short_code?: string | null
           stage_name?: string | null
           token?: string
         }
@@ -2292,6 +2298,7 @@ export type Database = {
           created_by: string | null
           custom_stage_name: string | null
           id: string
+          interviewer_scheduling_mode: string
           job_id: string
           position: number
           stage_id: string
@@ -2302,6 +2309,7 @@ export type Database = {
           created_by?: string | null
           custom_stage_name?: string | null
           id?: string
+          interviewer_scheduling_mode?: string
           job_id: string
           position: number
           stage_id: string
@@ -2312,6 +2320,7 @@ export type Database = {
           created_by?: string | null
           custom_stage_name?: string | null
           id?: string
+          interviewer_scheduling_mode?: string
           job_id?: string
           position?: number
           stage_id?: string
@@ -4022,6 +4031,38 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scheduled_booking_attendees: {
+        Row: {
+          booking_id: string
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_booking_attendees_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_bookings"
             referencedColumns: ["id"]
           },
         ]
