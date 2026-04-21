@@ -793,6 +793,23 @@ serve(async (req) => {
 
     console.log('[create-booking] Booking created successfully:', booking.id);
 
+    // Insert group attendees (one row per interviewer including primary)
+    if (isGroupBooking && groupConfigs.length > 0) {
+      const attendeeRows = groupConfigs.map((c: any) => ({
+        booking_id: booking.id,
+        user_id: c.user_id,
+        role: 'interviewer' as const,
+      }));
+      const { error: attendeesError } = await supabase
+        .from('scheduled_booking_attendees')
+        .insert(attendeeRows);
+      if (attendeesError) {
+        console.error('[create-booking] Failed to insert group attendees:', attendeesError);
+      } else {
+        console.log('[create-booking] Inserted', attendeeRows.length, 'group attendees');
+      }
+    }
+
     // Generate ICS file content
     const formatDateForICS = (date: Date): string => {
       return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
