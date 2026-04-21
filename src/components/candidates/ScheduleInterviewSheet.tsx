@@ -479,12 +479,20 @@ export function ScheduleInterviewSheet({
 
   // Handle form confirmation
   const handleConfirmBooking = async (formData: FormData, sendInvitation: boolean) => {
-    if (!selectedSlot || !selectedInterviewer?.booking_configurations) {
+    if (!selectedSlot) {
+      throw new Error('Missing required data');
+    }
+    if (isGroupMode) {
+      if (groupConfigIds.length < 2) throw new Error('Need at least 2 interviewers for group scheduling');
+    } else if (!selectedInterviewer?.booking_configurations) {
       throw new Error('Missing required data');
     }
 
+    const primaryConfigId = isGroupMode ? groupConfigIds[0] : selectedInterviewer!.booking_configurations!.id;
+
     const bookingData = {
-      booking_config_id: selectedInterviewer.booking_configurations.id,
+      booking_config_id: primaryConfigId,
+      ...(isGroupMode && { booking_config_ids: groupConfigIds }),
       candidate_name: formData.candidate_name,
       candidate_email: formData.candidate_email,
       candidate_phone: formData.candidate_phone || null,
