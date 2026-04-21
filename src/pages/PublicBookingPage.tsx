@@ -575,8 +575,18 @@ export default function PublicBookingPage() {
           {rescheduleBookingId ? 'Reschedule Your Interview' : 'Select a Date & Time'}<span className="text-virgilio-purple">.</span>
         </h1>
 
-        {/* Selected event type info */}
-        {selectedEventType && !bookingContext?.jobTitle && (
+        {/* Group booking — show all interviewer names */}
+        {isGroupBooking && groupInterviewerNames.length > 0 && (
+          <div className="mb-6 flex items-center gap-2 text-virgilio-text">
+            <span className="font-medium">Interview with</span>
+            <span className="text-virgilio-purple font-semibold">
+              {formatNamesList(groupInterviewerNames)}
+            </span>
+          </div>
+        )}
+
+        {/* Selected event type info — hidden for group bookings */}
+        {selectedEventType && !bookingContext?.jobTitle && !isGroupBooking && (
           <div className="mb-6 flex items-center gap-2">
             <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: selectedEventType.color || '#7c3aed' }} />
             <span className="font-medium text-virgilio-text">{selectedEventType.title}</span>
