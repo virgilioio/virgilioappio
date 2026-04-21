@@ -707,32 +707,57 @@ export function ScheduleInterviewSheet({
               )}
 
               {/* Step 2: Select Date & Time */}
-              {selectedInterviewer && !selectedSlot && (
+              {((isGroupMode && groupConfigIds.length >= 2) || (!isGroupMode && selectedInterviewer)) && !selectedSlot && (
                 <div className="space-y-4">
-                  {availableInterviewers.length > 1 && (
+                  {!isGroupMode && availableInterviewers.length > 1 && (
                     <Button variant="ghost" size="sm" onClick={handleBack}>
                       ← Back to interviewers
                     </Button>
                   )}
-                  
-                  <div className="flex items-center gap-3 p-4 bg-secondary/30 rounded-lg">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={selectedInterviewer.profiles?.avatar_url || undefined} />
-                      <AvatarFallback>
-                        {selectedInterviewer.profiles?.first_name?.[0] || 'I'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="font-medium text-sm">
-                        {selectedInterviewer.profiles?.first_name}{' '}
-                        {selectedInterviewer.profiles?.last_name}
+
+                  {isGroupMode ? (
+                    <div className="flex items-center gap-3 p-4 bg-secondary/30 rounded-lg">
+                      <div className="flex -space-x-2">
+                        {groupInterviewers.slice(0, 4).map((i) => (
+                          <Avatar key={i.id} className="h-9 w-9 border-2 border-background">
+                            <AvatarImage src={i.profiles?.avatar_url || undefined} />
+                            <AvatarFallback>
+                              {i.profiles?.first_name?.[0] || 'I'}
+                              {i.profiles?.last_name?.[0] || ''}
+                            </AvatarFallback>
+                          </Avatar>
+                        ))}
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-text-secondary">
-                        <Clock className="h-3 w-3" />
-                        {selectedInterviewer.booking_configurations?.duration_minutes} minutes
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm">
+                          Interview with <strong>{formatNamesList(groupNames)}</strong>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-text-secondary">
+                          <Users className="h-3 w-3" />
+                          Group scheduling — combined availability
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex items-center gap-3 p-4 bg-secondary/30 rounded-lg">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={selectedInterviewer!.profiles?.avatar_url || undefined} />
+                        <AvatarFallback>
+                          {selectedInterviewer!.profiles?.first_name?.[0] || 'I'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">
+                          {selectedInterviewer!.profiles?.first_name}{' '}
+                          {selectedInterviewer!.profiles?.last_name}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-text-secondary">
+                          <Clock className="h-3 w-3" />
+                          {selectedInterviewer!.booking_configurations?.duration_minutes} minutes
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <h3 className="text-lg font-semibold">Select Date & Time</h3>
                   
