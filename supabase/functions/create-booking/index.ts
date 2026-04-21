@@ -750,7 +750,7 @@ serve(async (req) => {
       .from('scheduled_bookings')
       .insert({
         id: bookingId,
-        booking_config_id,
+        booking_config_id: primaryBookingConfigId,
         interviewer_id: config.user_id,
         organization_id: config.organization_id,
         candidate_name,
