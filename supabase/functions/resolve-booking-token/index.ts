@@ -128,7 +128,14 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ context, existing_booking: existingBooking, token_status: tokenStatus }),
+      JSON.stringify({
+        context,
+        existing_booking: existingBooking,
+        token_status: tokenStatus,
+        scheduling_mode: tokenData.scheduling_mode || 'single',
+        booking_config_ids: tokenData.booking_config_ids || null,
+        primary_short_code: tokenData.short_code || null,
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

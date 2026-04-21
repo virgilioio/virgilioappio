@@ -23,7 +23,8 @@ interface EventTypeOverrides {
 }
 
 interface GetAvailabilityRequest {
-  booking_config_id: string;
+  booking_config_id?: string;
+  booking_config_ids?: string[];
   start_date: string;
   end_date: string;
   duration_minutes: number;
@@ -44,6 +45,7 @@ serve(async (req) => {
 
     const {
       booking_config_id,
+      booking_config_ids,
       start_date,
       end_date,
       duration_minutes,
@@ -51,6 +53,126 @@ serve(async (req) => {
       internal_scheduling = false,
       event_type_overrides,
     }: GetAvailabilityRequest = await req.json();
+
+    const isGroup = Array.isArray(booking_config_ids) && booking_config_ids.length > 1;
+
+    // === GROUP MODE: intersect availability across multiple configs ===
+    if (isGroup) {
+      console.log('[get-booking-availability] GROUP mode for', booking_config_ids!.length, 'configs');
+
+      const { data: configs, error: configsError } = await supabase
+        .from('booking_configurations')
+        .select('*')
+        .in('id', booking_config_ids!)
+        .eq('is_active', true);
+
+      if (configsError || !configs || configs.length !== booking_config_ids!.length) {
+        return new Response(JSON.stringify({
+          error: 'One or more booking configurations not found or inactive',
+        }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      // Effective windowing rules: max of min_notice, min of max_days
+      const minNotices = configs.map(c => c.min_notice_hours ?? 24);
+      const maxDays = configs.map(c => c.max_days_ahead ?? 30);
+      const effectiveMinNotice = Math.max(...minNotices);
+      const effectiveMaxDays = Math.min(...maxDays);
+
+      // Build per-config potential slot sets and intersect
+      let intersected: Array<{ start: Date; end: Date }> | null = null;
+
+      for (const cfg of configs) {
+        const tz = cfg.timezone;
+        const sched = cfg.weekly_schedule as WeeklySchedule;
+        const buf = cfg.buffer_time_minutes ?? 0;
+        const slots = generatePotentialSlots(
+          new Date(start_date), new Date(end_date), sched,
+          duration_minutes, buf, tz
+        );
+
+        const keys = new Set(slots.map(s => `${s.start.toISOString()}|${s.end.toISOString()}`));
+
+        if (intersected === null) {
+          intersected = slots;
+        } else {
+          intersected = intersected.filter(s =>
+            keys.has(`${s.start.toISOString()}|${s.end.toISOString()}`)
+          );
+        }
+      }
+
+      let filteredSlots = intersected || [];
+
+      // Apply min_notice / max_days_ahead
+      const now = new Date();
+      const minStartTime = new Date(now.getTime() + effectiveMinNotice * 60 * 60 * 1000);
+      const maxDate = new Date(now.getTime() + effectiveMaxDays * 24 * 60 * 60 * 1000);
+      filteredSlots = filteredSlots.filter(s => s.start >= minStartTime && s.start <= maxDate);
+
+      // Fetch each user's Google Calendar busy slots in parallel
+      const busyResults = await Promise.all(configs.map(async (cfg) => {
+        try {
+          const r = await fetch(`${supabaseUrl}/functions/v1/check-calendar-availability`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              user_id: cfg.user_id,
+              start_date, end_date,
+              timezone: cfg.timezone,
+            }),
+          });
+          if (!r.ok) return [];
+          const j = await r.json();
+          return (j?.busy_slots || []).map((s: any) => ({
+            start: new Date(s.start), end: new Date(s.end),
+          }));
+        } catch {
+          return [];
+        }
+      }));
+
+      const allBusy = busyResults.flat();
+
+      // Existing bookings on any of these configs
+      const { data: existingBookings } = await supabase
+        .from('scheduled_bookings')
+        .select('scheduled_start, scheduled_end')
+        .in('booking_config_id', booking_config_ids!)
+        .eq('status', 'confirmed')
+        .gte('scheduled_start', start_date)
+        .lte('scheduled_end', end_date);
+
+      const bookedSlots = (existingBookings || []).map(b => ({
+        start: new Date(b.scheduled_start), end: new Date(b.scheduled_end),
+      }));
+
+      const blockers = [...allBusy, ...bookedSlots];
+
+      const availableSlots = filteredSlots.filter(slot =>
+        !blockers.some(b => slot.start < b.end && slot.end > b.start)
+      );
+
+      const formattedSlots = availableSlots.map(s => ({
+        start: s.start.toISOString(), end: s.end.toISOString(),
+      }));
+
+      console.log('[get-booking-availability] GROUP final:', formattedSlots.length, 'slots');
+
+      return new Response(JSON.stringify({
+        available_slots: formattedSlots,
+        total_slots: formattedSlots.length,
+        date_range: { start: start_date, end: end_date },
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // === SINGLE MODE (original behavior) ===
+    if (!booking_config_id) {
+      return new Response(JSON.stringify({ error: 'booking_config_id is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
 
     console.log('[get-booking-availability] Request:', {
       booking_config_id, start_date, end_date, duration_minutes,
