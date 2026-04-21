@@ -639,13 +639,24 @@ export function ScheduleInterviewSheet({
               <Skeleton className="h-20 w-full" />
               <Skeleton className="h-20 w-full" />
             </div>
-          ) : !selectedInterviewer && (!availableInterviewers || availableInterviewers.length === 0) ? (
+          ) : !isGroupMode && !selectedInterviewer && (!availableInterviewers || availableInterviewers.length === 0) ? (
           <ManualInterviewerSelector
               jobId={jobId}
               organizationId={organizationId}
               onSelect={setSelectedInterviewer}
               unavailableInterviewers={interviewersWithoutBookingConfig}
             />
+          ) : isGroupMode && groupConfigIds.length < 2 ? (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Group scheduling (AND-mode)</strong> requires at least 2 interviewers with active booking links.
+                {interviewersWithoutBookingConfig.length > 0 && (
+                  <> Configure availability for: <strong>{interviewersWithoutBookingConfig.map(i => i.name).join(', ')}</strong>.</>
+                )}
+                {' '}You can manage interviewers and booking links in the stage settings.
+              </AlertDescription>
+            </Alert>
           ) : !candidateEmail ? (
             <Alert>
               <AlertCircle className="h-4 w-4" />
