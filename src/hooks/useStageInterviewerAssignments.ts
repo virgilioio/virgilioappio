@@ -225,6 +225,8 @@ export function useStageInterviewerAssignments(jhsId?: string) {
     isLoading,
     addInterviewer,
     removeInterviewer,
-    updateAssignmentType
+    updateAssignmentType,
+    schedulingMode,
+    updateSchedulingMode,
   }
 }
