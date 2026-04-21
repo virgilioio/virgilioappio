@@ -819,10 +819,32 @@ serve(async (req) => {
       return text.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
     };
 
+    // Helper: format names list as "Alice, Bob & Carol"
+    const formatNamesList = (names: string[]): string => {
+      const filtered = names.filter(Boolean);
+      if (filtered.length === 0) return '';
+      if (filtered.length === 1) return filtered[0];
+      if (filtered.length === 2) return `${filtered[0]} & ${filtered[1]}`;
+      return `${filtered.slice(0, -1).join(', ')} & ${filtered[filtered.length - 1]}`;
+    };
+
+    // Build interviewer display strings (used for both ICS and emails below)
+    const allInterviewerNames = isGroupBooking
+      ? [`${profile.first_name} ${profile.last_name}`, ...groupAttendeeProfiles
+          .filter(p => p.user_id !== profile.user_id)
+          .map(p => `${p.first_name} ${p.last_name}`)]
+      : [`${profile.first_name} ${profile.last_name}`];
+    const interviewersDisplay = formatNamesList(allInterviewerNames);
+
     // Only include candidate in ICS if send_invitation is true
     const icsAttendees = [
       ...(send_invitation 
         ? [`ATTENDEE;CN=${escapeICSText(candidate_name)};RSVP=TRUE:mailto:${candidate_email}`]
+        : []),
+      ...(isGroupBooking
+        ? groupAttendeeProfiles
+            .filter(p => p.user_id !== profile.user_id && p.email)
+            .map(p => `ATTENDEE;CN=${escapeICSText(`${p.first_name} ${p.last_name}`)};RSVP=TRUE:mailto:${p.email}`)
         : []),
       ...(guest_emails || []).map((ge: string) => `ATTENDEE;RSVP=TRUE:mailto:${ge}`),
     ].join('\r\n');
@@ -875,7 +897,7 @@ serve(async (req) => {
         const meetingDetails = [
           `<strong>Date & Time:</strong> ${formattedDate}`,
           `<strong>Duration:</strong> ${config.duration_minutes} minutes`,
-          `<strong>Interviewer:</strong> ${profile.first_name} ${profile.last_name}`,
+          `<strong>${isGroupBooking ? 'Interviewers' : 'Interviewer'}:</strong> ${interviewersDisplay}`,
         ];
 
         if (googleMeetLink) {
@@ -887,7 +909,7 @@ serve(async (req) => {
         }
 
         let emailContent = `
-          <p>Your interview with <strong>${profile.first_name} ${profile.last_name}</strong> has been confirmed!</p>
+          <p>Your interview with <strong>${interviewersDisplay}</strong> has been confirmed!</p>
           <div class="divider"></div>
           <p><strong>Interview Details:</strong></p>
           ${formatEmailList(meetingDetails)}
@@ -925,7 +947,7 @@ serve(async (req) => {
       console.log('[create-booking] Skipping candidate email (send_invitation=false)');
     }
 
-    // Send notification email to interviewer
+    // Send notification email to interviewer(s)
     try {
       const { createEmailTemplate, formatEmailList } = await import('../_shared/emailTemplate.ts');
       const formattedDateInterviewer = new Date(scheduled_start).toLocaleString('en-US', { 
@@ -947,67 +969,89 @@ serve(async (req) => {
         candidateDetails.push(`<strong>Phone:</strong> ${candidate_phone}`);
       }
 
-      const interviewDetails = [
-        `<strong>Date & Time:</strong> ${formattedDateInterviewer}`,
-        `<strong>Duration:</strong> ${config.duration_minutes} minutes`,
-      ];
-
-      if (googleMeetLink) {
-        interviewDetails.push(`<strong>Location:</strong> <a href="${googleMeetLink}" style="color: #6366f1;">Google Meet (Click to Join)</a>`);
-      } else if (config.meeting_location) {
-        interviewDetails.push(`<strong>Location:</strong> ${config.meeting_location}`);
-      }
-
       const candidateNotificationNote = send_invitation 
         ? '' 
         : '<p style="margin-top: 16px; padding: 12px; background-color: #fef3c7; border-left: 4px solid: #f59e0b; color: #92400e;"><strong>Note:</strong> The candidate has not been notified yet. You may need to send them the interview details separately.</p>';
 
-      let interviewerContent = `
-        <p>A candidate has scheduled an interview with you!</p>
-        ${candidateNotificationNote}
-        <div class="divider"></div>
-        <p><strong>Candidate Information:</strong></p>
-        ${formatEmailList(candidateDetails)}
-        <p style="margin-top: 24px;"><strong>Interview Details:</strong></p>
-        ${formatEmailList(interviewDetails)}
-        ${notes ? `<p style="margin-top: 24px;"><strong>Candidate Notes:</strong><br/>${notes}</p>` : ''}
-        ${candidateProfileUrl ? `
-          <div style="margin-top: 24px; padding: 16px; background-color: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 4px;">
-            <p style="margin: 0; color: #1e40af;"><strong>📝 Submit Scorecard:</strong></p>
-            <p style="margin: 8px 0 0 0;">
-              <a href="${candidateProfileUrl}" style="color: #2563eb; text-decoration: none; font-weight: 500;">
-                View candidate profile and submit your scorecard →
-              </a>
-            </p>
-          </div>
-        ` : ''}
-        <p style="margin-top: 24px;">The calendar invite is attached. ${googleEventId ? 'This interview has also been added to your Google Calendar.' : ''}</p>
-      `;
+      // Build the recipient list. Primary first, then group attendees (de-duped, with email).
+      type InterviewerRecipient = { email: string; first_name: string; last_name: string; user_id: string };
+      const interviewerRecipients: InterviewerRecipient[] = isGroupBooking
+        ? [
+            { email: profile.email, first_name: profile.first_name, last_name: profile.last_name, user_id: profile.user_id },
+            ...groupAttendeeProfiles
+              .filter(p => p.user_id !== profile.user_id && p.email)
+              .map(p => ({ email: p.email, first_name: p.first_name, last_name: p.last_name, user_id: p.user_id })),
+          ]
+        : [{ email: profile.email, first_name: profile.first_name, last_name: profile.last_name, user_id: profile.user_id }];
 
-      const interviewerEmailBody = createEmailTemplate({
-        recipientName: profile.first_name,
-        preheaderText: `New interview scheduled with ${candidate_name}`,
-        title: `New Interview: ${stageName} with ${candidate_name}${jobTitle}`,
-        content: interviewerContent,
-        ctaText: candidateProfileUrl ? 'View Candidate Profile' : 'View in Dashboard',
-        ctaUrl: candidateProfileUrl || `${frontendUrl}/settings`,
-      });
+      for (const recipient of interviewerRecipients) {
+        const interviewDetails = [
+          `<strong>Date & Time:</strong> ${formattedDateInterviewer}`,
+          `<strong>Duration:</strong> ${config.duration_minutes} minutes`,
+        ];
 
-      await supabase.functions.invoke('send-user-email', {
-        body: {
-          from_email: 'noreply@app.gogio.io',
-          to: [profile.email],
-          subject: `New Interview Scheduled: ${stageName} with ${candidate_name}${jobTitle}`,
-          body_html: interviewerEmailBody,
-          attachments: [{
-            filename: 'interview.ics',
-            content: icsBase64,
-            content_type: 'text/calendar',
-          }],
-        },
-      });
+        if (isGroupBooking) {
+          const coInterviewerNames = allInterviewerNames.filter(
+            n => n !== `${recipient.first_name} ${recipient.last_name}`
+          );
+          if (coInterviewerNames.length > 0) {
+            interviewDetails.push(`<strong>Co-interviewers:</strong> ${formatNamesList(coInterviewerNames)}`);
+          }
+        }
 
-      console.log('[create-booking] Interviewer notification email sent');
+        if (googleMeetLink) {
+          interviewDetails.push(`<strong>Location:</strong> <a href="${googleMeetLink}" style="color: #6366f1;">Google Meet (Click to Join)</a>`);
+        } else if (config.meeting_location) {
+          interviewDetails.push(`<strong>Location:</strong> ${config.meeting_location}`);
+        }
+
+        const interviewerContent = `
+          <p>A candidate has scheduled an interview with you!</p>
+          ${candidateNotificationNote}
+          <div class="divider"></div>
+          <p><strong>Candidate Information:</strong></p>
+          ${formatEmailList(candidateDetails)}
+          <p style="margin-top: 24px;"><strong>Interview Details:</strong></p>
+          ${formatEmailList(interviewDetails)}
+          ${notes ? `<p style="margin-top: 24px;"><strong>Candidate Notes:</strong><br/>${notes}</p>` : ''}
+          ${candidateProfileUrl ? `
+            <div style="margin-top: 24px; padding: 16px; background-color: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 4px;">
+              <p style="margin: 0; color: #1e40af;"><strong>📝 Submit Scorecard:</strong></p>
+              <p style="margin: 8px 0 0 0;">
+                <a href="${candidateProfileUrl}" style="color: #2563eb; text-decoration: none; font-weight: 500;">
+                  View candidate profile and submit your scorecard →
+                </a>
+              </p>
+            </div>
+          ` : ''}
+          <p style="margin-top: 24px;">The calendar invite is attached. ${googleEventId ? 'This interview has also been added to your Google Calendar.' : ''}</p>
+        `;
+
+        const interviewerEmailBody = createEmailTemplate({
+          recipientName: recipient.first_name,
+          preheaderText: `New interview scheduled with ${candidate_name}`,
+          title: `New Interview: ${stageName} with ${candidate_name}${jobTitle}`,
+          content: interviewerContent,
+          ctaText: candidateProfileUrl ? 'View Candidate Profile' : 'View in Dashboard',
+          ctaUrl: candidateProfileUrl || `${frontendUrl}/settings`,
+        });
+
+        await supabase.functions.invoke('send-user-email', {
+          body: {
+            from_email: 'noreply@app.gogio.io',
+            to: [recipient.email],
+            subject: `New Interview Scheduled: ${stageName} with ${candidate_name}${jobTitle}`,
+            body_html: interviewerEmailBody,
+            attachments: [{
+              filename: 'interview.ics',
+              content: icsBase64,
+              content_type: 'text/calendar',
+            }],
+          },
+        });
+      }
+
+      console.log('[create-booking] Interviewer notification email(s) sent to', interviewerRecipients.length, 'recipient(s)');
     } catch (emailError) {
       console.error('[create-booking] Failed to send interviewer email:', emailError);
     }
