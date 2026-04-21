@@ -109,6 +109,7 @@ serve(async (req) => {
 
     const {
       booking_config_id,
+      booking_config_ids = null, // Group booking: array of config IDs (AND mode)
       candidate_name,
       candidate_email,
       candidate_phone,
@@ -209,11 +210,47 @@ serve(async (req) => {
       }
     }
 
-    // Load booking config
+    // ==========================================================
+    // GROUP BOOKING resolution: when booking_config_ids is passed,
+    // validate every config is active and pick a deterministic primary.
+    // ==========================================================
+    const isGroupBooking = Array.isArray(booking_config_ids) && booking_config_ids.length > 1;
+    let groupConfigs: any[] = [];
+    let groupAttendeeProfiles: Array<{ user_id: string; email: string; first_name: string; last_name: string }> = [];
+    let primaryBookingConfigId: string = booking_config_id;
+
+    if (isGroupBooking) {
+      const { data: gConfigs, error: gErr } = await supabase
+        .from('booking_configurations')
+        .select('*')
+        .in('id', booking_config_ids)
+        .eq('is_active', true);
+
+      if (gErr || !gConfigs || gConfigs.length !== booking_config_ids.length) {
+        console.error('[create-booking] Group config lookup failed or incomplete:', gErr, 'expected', booking_config_ids.length, 'got', gConfigs?.length);
+        return new Response(JSON.stringify({
+          error: 'One or more interviewer booking configurations are unavailable.',
+        }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      groupConfigs = gConfigs;
+      // Deterministic primary: first id in the array passed by the client
+      primaryBookingConfigId = booking_config_ids[0];
+
+      const userIds = groupConfigs.map(c => c.user_id);
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('user_id, email, first_name, last_name')
+        .in('user_id', userIds);
+      groupAttendeeProfiles = (profilesData || []) as any;
+
+      console.log('[create-booking] Group booking with', groupConfigs.length, 'interviewers. Primary:', primaryBookingConfigId);
+    }
+
+    // Load PRIMARY booking config (single-host or group primary)
     const { data: config, error: configError } = await supabase
       .from('booking_configurations')
       .select('*')
-      .eq('id', booking_config_id)
+      .eq('id', primaryBookingConfigId)
       .eq('is_active', true)
       .single();
 
@@ -463,14 +500,16 @@ serve(async (req) => {
       }
     }
 
-    // Check if slot is still available (strict overlap check - back-to-back bookings are allowed)
+    // Check if slot is still available across ALL involved configs (group-aware).
+    // Strict overlap (existing_start < new_end AND existing_end > new_start). Back-to-back is OK.
+    const conflictConfigIds = isGroupBooking ? booking_config_ids : [booking_config_id];
     const { data: conflictingBookings } = await supabase
       .from('scheduled_bookings')
-      .select('id')
-      .eq('booking_config_id', booking_config_id)
+      .select('id, booking_config_id')
+      .in('booking_config_id', conflictConfigIds)
       .eq('status', 'confirmed')
-      .lt('scheduled_start', scheduled_end)    // existing_start < new_end
-      .gt('scheduled_end', scheduled_start)    // existing_end > new_start
+      .lt('scheduled_start', scheduled_end)
+      .gt('scheduled_end', scheduled_start)
       .limit(1);
 
     if (conflictingBookings && conflictingBookings.length > 0) {
@@ -538,7 +577,13 @@ serve(async (req) => {
                 timeZone: config.timezone,
               },
               attendees: [
-                { email: profile.email }, // Interviewer
+                { email: profile.email }, // Primary interviewer
+                // Additional group interviewers (excluding primary)
+                ...(isGroupBooking
+                  ? groupAttendeeProfiles
+                      .filter(p => p.email && p.email !== profile.email)
+                      .map(p => ({ email: p.email }))
+                  : []),
                 // Only add transcript ingest for job-specific bookings
                 ...(transcriptIngestEmail ? [{ email: transcriptIngestEmail, responseStatus: 'accepted' }] : []),
                 // Add guest emails as attendees
@@ -596,6 +641,11 @@ serve(async (req) => {
                   body: JSON.stringify({
                     attendees: [
                       { email: profile.email },
+                      ...(isGroupBooking
+                        ? groupAttendeeProfiles
+                            .filter(p => p.email && p.email !== profile.email)
+                            .map(p => ({ email: p.email }))
+                        : []),
                       { email: transcriptIngestEmail, responseStatus: 'accepted' },
                       ...(guest_emails || []).map((ge: string) => ({ email: ge })),
                     ],
@@ -700,7 +750,7 @@ serve(async (req) => {
       .from('scheduled_bookings')
       .insert({
         id: bookingId,
-        booking_config_id,
+        booking_config_id: primaryBookingConfigId,
         interviewer_id: config.user_id,
         organization_id: config.organization_id,
         candidate_name,
@@ -742,6 +792,23 @@ serve(async (req) => {
     if (insertError) throw insertError;
 
     console.log('[create-booking] Booking created successfully:', booking.id);
+
+    // Insert group attendees (one row per interviewer including primary)
+    if (isGroupBooking && groupConfigs.length > 0) {
+      const attendeeRows = groupConfigs.map((c: any) => ({
+        booking_id: booking.id,
+        user_id: c.user_id,
+        role: 'interviewer' as const,
+      }));
+      const { error: attendeesError } = await supabase
+        .from('scheduled_booking_attendees')
+        .insert(attendeeRows);
+      if (attendeesError) {
+        console.error('[create-booking] Failed to insert group attendees:', attendeesError);
+      } else {
+        console.log('[create-booking] Inserted', attendeeRows.length, 'group attendees');
+      }
+    }
 
     // Generate ICS file content
     const formatDateForICS = (date: Date): string => {

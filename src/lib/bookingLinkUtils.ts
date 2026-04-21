@@ -52,6 +52,7 @@ export interface ResolvedTokenResult {
   scheduling_mode?: 'single' | 'group';
   booking_config_ids?: string[] | null;
   primary_short_code?: string | null;
+  group_interviewers?: Array<{ first_name: string; last_name: string; avatar_url: string | null }> | null;
 }
 
 /**
@@ -239,6 +240,7 @@ export async function resolveBookingToken(token: string): Promise<ResolvedTokenR
       scheduling_mode: data?.scheduling_mode || 'single',
       booking_config_ids: data?.booking_config_ids || null,
       primary_short_code: data?.primary_short_code || null,
+      group_interviewers: data?.group_interviewers || null,
     };
   } catch (e) {
     console.error('Failed to resolve booking token:', e);

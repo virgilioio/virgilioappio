@@ -127,6 +127,31 @@ serve(async (req) => {
       }
     }
 
+    // For group tokens, fetch interviewer names so the public page can render
+    // "Interview with Alice, Bob & Carol" without an extra round-trip.
+    let groupInterviewers: Array<{ first_name: string; last_name: string; avatar_url: string | null }> | null = null;
+    if (tokenData.scheduling_mode === 'group' && Array.isArray(tokenData.booking_config_ids) && tokenData.booking_config_ids.length > 0) {
+      const { data: groupConfigs } = await supabase
+        .from('booking_configurations')
+        .select('user_id')
+        .in('id', tokenData.booking_config_ids);
+
+      const userIds = (groupConfigs || []).map(c => c.user_id);
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, first_name, last_name, avatar_url')
+          .in('user_id', userIds);
+
+        // Preserve order matching booking_config_ids
+        const profileByUser = new Map((profiles || []).map(p => [p.user_id, p]));
+        groupInterviewers = (groupConfigs || [])
+          .map(c => profileByUser.get(c.user_id))
+          .filter(Boolean)
+          .map((p: any) => ({ first_name: p.first_name, last_name: p.last_name, avatar_url: p.avatar_url }));
+      }
+    }
+
     return new Response(
       JSON.stringify({
         context,
@@ -135,6 +160,7 @@ serve(async (req) => {
         scheduling_mode: tokenData.scheduling_mode || 'single',
         booking_config_ids: tokenData.booking_config_ids || null,
         primary_short_code: tokenData.short_code || null,
+        group_interviewers: groupInterviewers,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

@@ -44,6 +44,13 @@ const COMMON_TIMEZONES = [
   { value: 'Australia/Sydney', label: 'Sydney' },
 ];
 
+function formatNamesList(names: string[]): string {
+  if (names.length === 0) return '';
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} & ${names[1]}`;
+  return `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`;
+}
+
 export default function PublicBookingPage() {
   const { shortCode, eventSlug } = useParams<{ shortCode: string; eventSlug?: string }>();
   const navigate = useNavigate();
@@ -93,6 +100,11 @@ export default function PublicBookingPage() {
               }
               if (result.scheduling_mode === 'group' && result.booking_config_ids?.length) {
                 setGroupBookingConfigIds(result.booking_config_ids);
+                if (result.group_interviewers?.length) {
+                  setGroupInterviewerNames(
+                    result.group_interviewers.map(p => `${p.first_name} ${p.last_name}`.trim())
+                  );
+                }
               }
             } else {
               setTokenStatus('expired');
@@ -570,8 +582,18 @@ export default function PublicBookingPage() {
           {rescheduleBookingId ? 'Reschedule Your Interview' : 'Select a Date & Time'}<span className="text-virgilio-purple">.</span>
         </h1>
 
-        {/* Selected event type info */}
-        {selectedEventType && !bookingContext?.jobTitle && (
+        {/* Group booking — show all interviewer names */}
+        {isGroupBooking && groupInterviewerNames.length > 0 && (
+          <div className="mb-6 flex items-center gap-2 text-virgilio-text">
+            <span className="font-medium">Interview with</span>
+            <span className="text-virgilio-purple font-semibold">
+              {formatNamesList(groupInterviewerNames)}
+            </span>
+          </div>
+        )}
+
+        {/* Selected event type info — hidden for group bookings */}
+        {selectedEventType && !bookingContext?.jobTitle && !isGroupBooking && (
           <div className="mb-6 flex items-center gap-2">
             <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: selectedEventType.color || '#7c3aed' }} />
             <span className="font-medium text-virgilio-text">{selectedEventType.title}</span>
