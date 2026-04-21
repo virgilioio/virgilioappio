@@ -577,7 +577,13 @@ serve(async (req) => {
                 timeZone: config.timezone,
               },
               attendees: [
-                { email: profile.email }, // Interviewer
+                { email: profile.email }, // Primary interviewer
+                // Additional group interviewers (excluding primary)
+                ...(isGroupBooking
+                  ? groupAttendeeProfiles
+                      .filter(p => p.email && p.email !== profile.email)
+                      .map(p => ({ email: p.email }))
+                  : []),
                 // Only add transcript ingest for job-specific bookings
                 ...(transcriptIngestEmail ? [{ email: transcriptIngestEmail, responseStatus: 'accepted' }] : []),
                 // Add guest emails as attendees
