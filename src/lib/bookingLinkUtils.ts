@@ -52,6 +52,7 @@ export interface ResolvedTokenResult {
   scheduling_mode?: 'single' | 'group';
   booking_config_ids?: string[] | null;
   primary_short_code?: string | null;
+  group_interviewers?: Array<{ first_name: string; last_name: string; avatar_url: string | null }> | null;
 }
 
 /**
