@@ -44,6 +44,13 @@ const COMMON_TIMEZONES = [
   { value: 'Australia/Sydney', label: 'Sydney' },
 ];
 
+function formatNamesList(names: string[]): string {
+  if (names.length === 0) return '';
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} & ${names[1]}`;
+  return `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`;
+}
+
 export default function PublicBookingPage() {
   const { shortCode, eventSlug } = useParams<{ shortCode: string; eventSlug?: string }>();
   const navigate = useNavigate();
