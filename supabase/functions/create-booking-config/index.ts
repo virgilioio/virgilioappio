@@ -59,7 +59,7 @@ serve(async (req) => {
       first_name,
       last_name,
       organization_id,
-      timezone = 'America/New_York'
+      timezone = 'UTC'
     } = body;
 
     if (!first_name?.trim() || !last_name?.trim()) {
