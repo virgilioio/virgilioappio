@@ -210,11 +210,47 @@ serve(async (req) => {
       }
     }
 
-    // Load booking config
+    // ==========================================================
+    // GROUP BOOKING resolution: when booking_config_ids is passed,
+    // validate every config is active and pick a deterministic primary.
+    // ==========================================================
+    const isGroupBooking = Array.isArray(booking_config_ids) && booking_config_ids.length > 1;
+    let groupConfigs: any[] = [];
+    let groupAttendeeProfiles: Array<{ user_id: string; email: string; first_name: string; last_name: string }> = [];
+    let primaryBookingConfigId: string = booking_config_id;
+
+    if (isGroupBooking) {
+      const { data: gConfigs, error: gErr } = await supabase
+        .from('booking_configurations')
+        .select('*')
+        .in('id', booking_config_ids)
+        .eq('is_active', true);
+
+      if (gErr || !gConfigs || gConfigs.length !== booking_config_ids.length) {
+        console.error('[create-booking] Group config lookup failed or incomplete:', gErr, 'expected', booking_config_ids.length, 'got', gConfigs?.length);
+        return new Response(JSON.stringify({
+          error: 'One or more interviewer booking configurations are unavailable.',
+        }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      groupConfigs = gConfigs;
+      // Deterministic primary: first id in the array passed by the client
+      primaryBookingConfigId = booking_config_ids[0];
+
+      const userIds = groupConfigs.map(c => c.user_id);
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('user_id, email, first_name, last_name')
+        .in('user_id', userIds);
+      groupAttendeeProfiles = (profilesData || []) as any;
+
+      console.log('[create-booking] Group booking with', groupConfigs.length, 'interviewers. Primary:', primaryBookingConfigId);
+    }
+
+    // Load PRIMARY booking config (single-host or group primary)
     const { data: config, error: configError } = await supabase
       .from('booking_configurations')
       .select('*')
-      .eq('id', booking_config_id)
+      .eq('id', primaryBookingConfigId)
       .eq('is_active', true)
       .single();
 
