@@ -12,6 +12,7 @@ import { useMembers } from '@/hooks/useMembers'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { getOrganizationTree } from '@/lib/organizationHelpers'
 import { User, UserPlus, Users, Trash2, Info, Loader2, AlertTriangle } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface TeamTabProps {
   jhsId: string
@@ -28,7 +29,7 @@ export function TeamTab({ jhsId, jobId, organizationId }: TeamTabProps) {
   const { members } = useMembers()
   const { assignments } = useJobAssignments(jobId)
   
-  const { interviewers: rawInterviewers, isLoading, addInterviewer, removeInterviewer, updateAssignmentType } = 
+  const { interviewers: rawInterviewers, isLoading, addInterviewer, removeInterviewer, updateAssignmentType, schedulingMode, updateSchedulingMode } =
     useStageInterviewerAssignments(jhsId)
   
   // Enrich interviewers with member details from useMembers
