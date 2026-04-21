@@ -11,8 +11,49 @@ export interface StageInterviewerAssignment {
   updated_at: string
 }
 
+export type SchedulingMode = 'any' | 'all'
+
 export function useStageInterviewerAssignments(jhsId?: string) {
   const queryClient = useQueryClient()
+
+  // Load the stage's scheduling mode
+  const { data: stageMeta } = useQuery({
+    queryKey: ['stage-meta', jhsId],
+    queryFn: async () => {
+      if (!jhsId) return null
+      const { data, error } = await supabase
+        .from('job_hiring_stages')
+        .select('id, interviewer_scheduling_mode')
+        .eq('id', jhsId)
+        .single()
+      if (error) throw error
+      return data as { id: string; interviewer_scheduling_mode: SchedulingMode }
+    },
+    enabled: !!jhsId,
+  })
+
+  const schedulingMode: SchedulingMode = (stageMeta?.interviewer_scheduling_mode as SchedulingMode) || 'any'
+
+  const updateSchedulingMode = useMutation({
+    mutationFn: async ({ jhsId, mode }: { jhsId: string; mode: SchedulingMode }) => {
+      const { error } = await supabase
+        .from('job_hiring_stages')
+        .update({ interviewer_scheduling_mode: mode })
+        .eq('id', jhsId)
+      if (error) throw error
+      return { jhsId, mode }
+    },
+    onSuccess: ({ jhsId }) => {
+      queryClient.invalidateQueries({ queryKey: ['stage-meta', jhsId] })
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to update scheduling mode',
+        variant: 'destructive',
+      })
+    },
+  })
   
   // Load interviewers for this stage
   const { data: interviewers = [], isLoading } = useQuery({
