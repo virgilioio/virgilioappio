@@ -641,6 +641,11 @@ serve(async (req) => {
                   body: JSON.stringify({
                     attendees: [
                       { email: profile.email },
+                      ...(isGroupBooking
+                        ? groupAttendeeProfiles
+                            .filter(p => p.email && p.email !== profile.email)
+                            .map(p => ({ email: p.email }))
+                        : []),
                       { email: transcriptIngestEmail, responseStatus: 'accepted' },
                       ...(guest_emails || []).map((ge: string) => ({ email: ge })),
                     ],
