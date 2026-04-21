@@ -54,6 +54,23 @@ export function useUserProfile() {
 
       console.log('Fetched profile:', data)
       
+      // Auto-populate timezone from browser if missing (Calendly-style)
+      if (!data.timezone) {
+        try {
+          const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone
+          if (browserTz) {
+            console.log('[Profile] Auto-populating timezone:', browserTz)
+            await supabase
+              .from('profiles')
+              .update({ timezone: browserTz, updated_at: new Date().toISOString() })
+              .eq('user_id', user.id)
+            data.timezone = browserTz
+          }
+        } catch (tzErr) {
+          console.warn('[Profile] Failed to auto-populate timezone:', tzErr)
+        }
+      }
+      
       // Enhanced profile data with Google OAuth fallbacks
       const profileData: UserProfile = {
         ...data,
