@@ -109,6 +109,7 @@ serve(async (req) => {
 
     const {
       booking_config_id,
+      booking_config_ids = null, // Group booking: array of config IDs (AND mode)
       candidate_name,
       candidate_email,
       candidate_phone,
