@@ -598,7 +598,7 @@ export function ScheduleInterviewSheet({
       setSelectedSlot(null);
     } else if (selectedDate) {
       setSelectedDate(null);
-    } else if (selectedInterviewer && availableInterviewers.length > 1) {
+    } else if (!isGroupMode && selectedInterviewer && availableInterviewers.length > 1) {
       setSelectedInterviewer(null);
     }
   };
