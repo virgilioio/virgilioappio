@@ -616,46 +616,44 @@ export default function PublicJobPosting() {
               <div className="order-2 lg:order-1 lg:col-span-2 space-y-8">
                 <section aria-labelledby="job-description">
                   {(tenantAbout || posting.description) && (
-                    <Card>
-                      <CardContent className="space-y-6">
-                        {/* Tenant About comes first for company context */}
-                        {tenantAbout && (
-                          <div className="space-y-3">
-                            <h3 className="text-lg font-semibold text-text-primary">
-                              About {organizationName}
-                            </h3>
-                            <SafeHtml 
-                              content={tenantAbout} 
-                              className="prose prose-sm text-text-secondary max-w-none [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-3 [&_li]:my-1 [&_p]:my-2" 
-                            />
-                          </div>
-                        )}
-                        
-                        {/* Subtle separator if both exist */}
-                        {tenantAbout && posting.description && (
-                          <div className="border-t border-border/50 my-6" />
-                        )}
-                        
-                        {/* Job description */}
-                        {posting.description && (
+                    <div className="space-y-6">
+                      {/* Tenant About comes first for company context */}
+                      {tenantAbout && (
+                        <div className="space-y-3">
+                          <h3 className="text-lg font-semibold text-text-primary">
+                            About {organizationName}
+                          </h3>
                           <SafeHtml 
-                            content={posting.description} 
+                            content={tenantAbout} 
                             className="prose prose-sm text-text-secondary max-w-none [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-3 [&_li]:my-1 [&_p]:my-2" 
                           />
-                        )}
-                      </CardContent>
-                    </Card>
+                        </div>
+                      )}
+                      
+                      {/* Subtle separator if both exist */}
+                      {tenantAbout && posting.description && (
+                        <div className="border-t border-border/50 my-6" />
+                      )}
+                      
+                      {/* Job description */}
+                      {posting.description && (
+                        <SafeHtml 
+                          content={posting.description} 
+                          className="prose prose-sm text-text-secondary max-w-none [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-3 [&_li]:my-1 [&_p]:my-2" 
+                        />
+                      )}
+                    </div>
                   )}
                 </section>
-                <div className="pt-2">
+                <div className="pt-4">
                   <Button onClick={handleApplyClick} className="w-full sm:w-auto" aria-label="Apply for this job">
                     Apply for this job
                   </Button>
                 </div>
               </div>
 
-              <aside className="order-1 lg:order-2 lg:col-span-1 lg:sticky lg:top-20 space-y-4">
-                <JobDetailsCard details={details} />
+              <aside className="order-1 lg:order-2 lg:col-span-1 lg:sticky lg:top-24 space-y-4 self-start">
+                <JobDetailsCard details={details} className="border-border/60 shadow-none rounded-xl" />
               </aside>
             </div>
           </TabsContent>
