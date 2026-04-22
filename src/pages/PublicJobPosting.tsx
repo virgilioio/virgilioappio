@@ -574,7 +574,7 @@ export default function PublicJobPosting() {
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header with logo and back button */}
       <header className={`fixed top-0 left-0 right-0 z-50 border-b border-border transition-shadow supports-[backdrop-filter]:bg-surface-primary/60 bg-surface-primary/90 backdrop-blur ${scrolled ? 'shadow-sm' : ''}`}>
-        <div className="max-w-4xl mx-auto flex items-center justify-between px-md py-3 sm:px-lg">
+        <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-3 sm:px-8">
           <div className="flex items-center gap-4">
             {companySlug && (
               <button
