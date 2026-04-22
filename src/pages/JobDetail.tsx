@@ -1395,7 +1395,7 @@ export default function JobDetail() {
                        </CardHeader>
                      </Card>
                     )}
-                    <Card className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
+                    <Card className="w-full flex flex-col flex-1 min-h-0 overflow-hidden border-0 rounded-none bg-transparent shadow-none sm:border sm:rounded-lg sm:bg-card sm:shadow-sm">
                       <CardHeader className="hidden sm:block sticky top-0 z-10 bg-surface-primary/80 backdrop-blur supports-[backdrop-filter]:bg-surface-primary/60 border-b border-border">
                         <div className="flex items-start justify-between">
                           <div>
