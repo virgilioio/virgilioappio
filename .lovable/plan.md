@@ -1,69 +1,61 @@
 
 
-## Public job posting + application form polish (revised — keep brand signature)
+## Shareable scorecard URLs
 
-A polish, not a makeover. We **keep our pill tab style**, brand colors, and overall component identity. We only adjust spacing, sizes, density, and remove the two elements that read as "AI-generated" on the public-facing page.
+### Goal
+Make the scorecard view directly addressable so it can be linked, refreshed, and shared. Format:
 
-### File: `src/pages/PublicJobPosting.tsx`
+```
+/jobs/:jobId?candidate=:candidateId&scorecard=:scorecardId
+```
 
-#### 1. Tighten the content column
-- Main wrapper: `max-w-5xl` → `max-w-4xl` (~896px).
-- Application tab: drop the 3-column grid; render the form in a single centered column `max-w-2xl mx-auto` (~672px).
-- Overview tab: keep the 2-column split, increase gap from `gap-8` to `gap-12`, sidebar pinned at ~280px sticky.
+When opening a stage that has no scorecard yet (new entry), use:
 
-#### 2. Title block + meta
-- Wrap H1 area in `pt-12 pb-8`.
-- H1: `text-3xl font-semibold` → `text-3xl sm:text-[40px] leading-[1.15] font-semibold tracking-tight`.
-- Add a single inline meta line under H1 (location · employment type · department) as `text-sm text-text-secondary`.
-- Gap H1 → tabs: `mt-4` → `mt-8`.
+```
+/jobs/:jobId?candidate=:candidateId&open=scorecard&stage=:stageInstanceId
+```
 
-#### 3. Tabs — KEEP our signature pill style
-No changes to `<TabsList>` / `<TabsTrigger>` styling. Our rounded-xl Poppins lilac active tab stays exactly as-is — it's a brand signature across the app.
+The second form already exists for AI notification deep-links — we keep it for the "no scorecard yet" case and add the new `scorecard=:id` form for opening an existing one.
 
-#### 4. Application form — remove only the two "AI-generated" tells
-- **Resume dropzone**: add `variant?: 'default' | 'minimal'` to `EnhancedResumeDropzone`. Public form passes `variant="minimal"`: plain dashed border, no purple gradient, no Sparkles icon, no "watch some magic!" copy. Replace with a neutral dropzone + "Upload File" button + "or drag and drop" helper. **In-app dashboard usage stays unchanged** (default variant keeps the magic).
-- **Application Limits Alert**: demote from a colored alert card to a one-line `text-xs text-text-secondary` note under the form title. Keep the info, lose the visual weight.
-- Keep the `<Card>` wrapper around the form (it's our standard surface treatment) but remove the redundant `Application Form` `CardTitle` since the tab already says it.
+### Behavior
+1. Opening any scorecard from the candidate profile (clicking a card in `ExpandableScoreDisplay` or the AI draft banner) writes `?scorecard=<id>` to the URL alongside `?candidate=<id>`.
+2. Closing the scorecard removes only the `scorecard` / `open` / `stage` params and keeps the candidate sheet open with `?candidate=<id>`.
+3. Closing the candidate sheet removes all three params (current behavior).
+4. Loading the page with `?candidate=X&scorecard=Y` opens the candidate sheet and then the scorecard for ID Y on the correct stage automatically.
+5. Browser back/forward navigates the URL stack: scorecard open → scorecard closed → sheet closed.
 
-#### 5. Field, label, spacing spec
+### File changes
 
-| Element | Current | Target |
-|---|---|---|
-| Label → input gap | `mt-1` | `mt-2` |
-| Field-to-field gap | `space-y-4` | `space-y-6` |
-| Section-to-section gap | `space-y-8` | `space-y-12` |
-| Input height | ~40px | `h-11` (44px — matches our app standard, not 48px) |
-| Input font size | `text-sm` | `text-[15px]` |
-| Input radius | unchanged (`rounded-lg` from our `Input` component) | unchanged |
-| Label | `text-sm font-medium` | `text-[13px] font-semibold text-text-primary` |
-| Required indicator | `<Badge>Required</Badge>` chip | red `*` after label (`<span className="text-destructive ml-1">*</span>`) |
-| Submit button | default | `h-11 px-8 text-base font-semibold w-full sm:w-auto` |
+**`src/pages/JobDetail.tsx`**
+- Extend `updateCandidateUrl` (or add a sibling `updateScorecardUrl(scorecardId | null, stageId?)`) that writes/clears `scorecard`, `open`, `stage` while preserving `candidate`.
+- Add reading `scorecard` query param in the existing URL effect (line ~566). When present, set new state `autoOpenScorecardId` and pass it into `<CandidateProfileSheet>`.
+- Pass two new props down: `autoOpenScorecardId` and `onScorecardChange(scorecardId | null, stageInstanceId?)`.
+- In the `onOpenChange={(open) => …}` of the sheet, also clear `scorecard` param when closing.
 
-Note: `h-11` (44px) matches our existing app-wide input standard from the core memory rule — we don't push to 48px just for this page.
+**`src/components/candidates/CandidateProfileSheet.tsx`**
+- Accept `autoOpenScorecardId?: string | null` and `onScorecardChange?: (scorecardId: string | null, stageInstanceId?: string | null) => void`.
+- New effect: when `autoOpenScorecardId` is set and `planStages` are loaded, look up the scorecard's stage from `useAllStageScorecards` results across all stages (or fetch the single row from `job_stage_scorecards` to get its `stage_instance_id`), then set `scoreStageInstId`, `scoreStageName`, `viewingScorecardId`, and open the sheet.
+- In the existing `onOpenFullSheet` callbacks (lines ~1341), call `onScorecardChange(scorecardId, opt.jhsId)` so the URL is written when the user opens a scorecard from within the sheet.
+- In the `ScorecardSheet`'s `onOpenChange`, when closing, call `onScorecardChange(null)` to drop the param.
+- Keep the existing `autoOpenScorecard` + `autoOpenScorecardStageId` flow for the "create new scorecard for stage X" case (used by AI notification emails) — unchanged.
 
-#### 6. Custom fields
-- On the public page, force all custom fields to full width (drop the `md:grid-cols-4` + `column_span` math). Stack them in the same `space-y-6` rhythm as core fields.
-- Column-span layout stays in the in-app builder preview, untouched.
+**`src/components/candidates/ScorecardSheet.tsx`**
+- No prop changes needed; the parent already controls `open`. We rely on `onOpenChange` already wired in the parent.
 
-#### 7. Header polish
-- Header padding `py-2` → `py-3`; logo `h-6` → `h-7`.
-- "Back to Careers Page" button: `variant="ghost"` with icon → plain text link `text-sm text-text-secondary hover:text-text-primary` with just the arrow.
-
-### Files touched
-- `src/pages/PublicJobPosting.tsx` — widths, H1 + meta, form spacing/sizing, label red `*`, demote Alert, header polish, single-column form
-- `src/components/candidates/EnhancedResumeDropzone.tsx` — add `variant?: 'default' | 'minimal'` prop; minimal = plain dashed dropzone, no gradient/sparkles/magic copy. Default unchanged.
+### Edge cases
+- `?scorecard=<id>` for a scorecard the user can't see (private + not author + not admin): silently ignore and just open the candidate sheet on the Scorecards tab. No error toast.
+- `?scorecard=<id>` for a scorecard whose candidate doesn't match `?candidate=<id>` (link tampering): ignore the scorecard param, keep candidate sheet open.
+- Refresh in the middle of an unsaved new-scorecard draft: covered by existing `?open=scorecard&stage=X` flow; we don't try to URL-persist unsaved draft state.
 
 ### Out of scope
-- Tabs styling (kept as brand signature).
-- Card surface treatment (kept).
-- Brand colors / Poppins typography (kept).
-- In-app dashboard dropzone (kept with full magic treatment).
-- Careers index page and tenant logo/brand customization (separate pass).
+- Path-style URL (`/jobs/X/candidates/Y/scorecards/Z`). Keep query params to preserve the existing tab/communications/offer query-string scheme already in use across the app (`?tab=communications`, `?tab=offer`).
+- Linking to specific scorecard tabs inside the scorecard sheet.
+- Updating every place that links to a candidate (`StaleCandidates`, `PendingActivities`, etc.) — they already use the same query-param scheme and continue to work.
 
-### Verification (1280–1440px desktop)
-1. Title reads as a hero (~40px) with breathing room before tabs; meta line under H1.
-2. Tabs look identical to today (lilac pill, Poppins).
-3. Application form sits in a centered ~672px column; fields 44px tall, 24px between, red `*` instead of "Required" chip.
-4. Resume upload on the public page is a plain dashed rectangle with neutral upload button — no gradient, no sparkles. In-app dashboard upload still has the full magic treatment.
-5. "Application Limits" is a small helper line, not a colored card.
+### Verification
+1. Open a candidate → click a submitted scorecard. URL becomes `?candidate=X&scorecard=Y`. Refresh — same scorecard reopens.
+2. Copy the URL, paste in a new tab — candidate sheet opens, then scorecard opens on the correct stage.
+3. Close scorecard → URL drops to `?candidate=X`, sheet stays open. Back button reopens the scorecard.
+4. AI notification link `?candidate=X&open=scorecard&stage=S` still works (creates/opens a draft on stage S).
+5. Linking to a scorecard the current user lacks visibility for opens the candidate sheet only, no error.
 
