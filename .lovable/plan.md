@@ -1,53 +1,50 @@
 
 
-## Mobile pipeline: strip non-consultation chrome + fix bottom cutoff
+## Mobile pipeline: match Notion's edge-to-edge feel
 
-### Part A — Hide create/filter/view chrome on mobile (consultation-only view)
+### Diagnosis (what's missing vs Notion)
+Side-by-side, the issue isn't height — it's **wrapper bloat and width**. Notion shows the stage column nearly edge-to-edge with breathing room only at the very edge. Ours wraps the kanban in:
 
-**File: `src/pages/JobDetail.tsx`** (the mobile pipeline branch around lines 989–1114)
+1. An outer **`Card` with border + rounded corners** (the empty white frame visible around the stage in your screenshot)
+2. A `CardContent` 
+3. A scroll wrapper with `p-layout-md` (~24px padding on every side)
+4. PipelineOverview's own internal stage `Card` using `w-[calc(100vw-3rem)]`
 
-1. Hide the entire `<CardHeader>` of the main Pipeline Overview card on mobile. The cleanest fix is to add `hidden sm:block` to that `<CardHeader>` so on `<640px` it disappears entirely, removing:
-   - "Pipeline Overview" title
-   - "Add Candidate" / "Review Applications" buttons
-   - "Select" button + bulk actions
-   - Board / List view toggle
-2. Since the second pipeline render block (lines ~1527+) mirrors this layout, apply the same `hidden sm:block` to its `<CardHeader>` so behavior stays consistent across both branches.
-3. The mobile section selector card (the small one above with "Recruiting Process… 15") **stays** — it's read-only navigation between Recruiting / Application / Suggested / Rejected, which is consultation, not creation.
+That's **3 nested containers + 24px padding** before the stage card even renders. Combined with the stage card's own `calc(100vw - 3rem)` width, the stage ends up sitting inside a visible empty frame with awkward gaps top/left/right — exactly what your screenshot shows.
 
-**File: `src/components/jobs/PipelineOverview.tsx`** (lines 617–628)
+Notion has no outer card. The columns sit directly in the scroll viewport, full width, with just enough side padding to breathe.
 
-4. Hide the internal filter chips row (the `Favorite` `FilterChipPopover` block) on mobile by wrapping it with `hidden sm:flex` (currently `flex flex-wrap items-center gap-2`). On mobile the user sees only the stages and candidate cards.
+### Fix — strip the mobile wrapper card and reclaim width
 
-This guarantees the mobile pipeline tab shows: section selector → stages + candidate cards. Nothing else.
+**File: `src/pages/JobDetail.tsx`** (both pipeline branches: ~lines 989–1132 and ~1527+)
 
-### Part B — Fix the remaining bottom cutoff
+1. **Remove the outer `Card` shell on mobile** for the main Pipeline Overview card. On mobile only, render its children without the `Card`/`CardContent` wrapper so the kanban sits directly inside the `TabsContent` flex column. Keep the `Card` wrapper for `sm:` and up (desktop unchanged).
+   - Implementation: split the JSX so the mobile branch returns just the scroll wrapper + PipelineOverview, and the desktop branch keeps the full `Card` > `CardHeader` > `CardContent` structure. Or wrap the `Card` in `hidden sm:flex` and add a parallel `sm:hidden` plain `<div className="flex-1 min-h-0 flex flex-col">` for mobile.
 
-The bottom of the last candidate card in a stage is still hidden behind the mobile bottom nav because the inner mobile scroll wrapper has no bottom padding to clear the fixed nav (~64px + safe-area inset).
+2. **Reduce mobile padding** on the scroll wrapper from `p-layout-md` to `px-3 py-3` (12px) so the stage column gets ~24px more horizontal room. Keep `pb-[calc(env(safe-area-inset-bottom,0px)+96px)]` for bottom-nav clearance.
 
-**File: `src/pages/JobDetail.tsx`** (both mobile pipeline scroll wrappers, lines 1119 and 1528)
+3. **Tighten the section selector card spacing** — change its wrapper Card from `mb-4` to `mb-3` and the `CardHeader` from `py-3` to `py-2` so it doesn't dominate the top of the viewport. The selector should feel like a compact pill, not a hero card.
 
-5. Update:
-   ```tsx
-   <div className="h-full min-h-[52dvh] w-full overflow-y-auto sm:hidden p-layout-md">
-   ```
-   to:
-   ```tsx
-   <div className="h-full min-h-[52dvh] w-full overflow-y-auto sm:hidden p-layout-md pb-[calc(env(safe-area-inset-bottom,0px)+96px)]">
-   ```
-   The 96px floor = mobile bottom nav (~72px) + breathing room (~24px) so the last card in a stage is fully visible above the nav. `safe-area-inset-bottom` handles iPhone notch/home-indicator devices.
+**File: `src/components/jobs/PipelineOverview.tsx`** (line ~671)
 
-### Out of scope
-- Desktop layout (untouched — `CardHeader` only hides on `<640px`).
-- The mobile section selector card (kept — it's read-only navigation).
-- The candidate profile sheet (separate, already addressed).
-- `PipelineOverviewTable.tsx` analytics (unrelated).
+4. **Widen the stage column on mobile** from `w-[calc(100vw-3rem)]` to `w-[calc(100vw-1.5rem)]` so it uses the reclaimed horizontal space (matching Notion's edge-to-edge feel). Desktop `sm:w-72` stays untouched.
+
+5. **Hide the empty filter chips wrapper on mobile entirely** — the existing `<div className="hidden sm:flex …">` already hides the Favorite chip, but the empty `div` still emits no markup so this is fine. Verify by also wrapping any sibling empty containers in `sm:` only.
+
+### Result on 390×844
+- Section selector becomes a compact 40px pill at top (not a 60px card)
+- Stage column ("Final Candidate Review") spans **near-full viewport width** — no visible empty outer frame around it, matching Notion
+- Candidate cards inside the stage are wider, not squeezed
+- Vertical space is fully used by the kanban, no wasted top/bottom card chrome
+- Desktop layout: completely unchanged (all chrome lives behind `sm:` breakpoint)
 
 ### Files touched
-- `src/pages/JobDetail.tsx`
-- `src/components/jobs/PipelineOverview.tsx`
+- `src/pages/JobDetail.tsx` — split mobile vs desktop wrapper, tighten spacing (both pipeline blocks)
+- `src/components/jobs/PipelineOverview.tsx` — widen stage column on mobile
 
-### Verification on 390×844
-1. Pipeline tab shows: tabs → small "Recruiting Proce… 15" selector → stage column with candidate cards. No "Pipeline Overview" title, no Add Candidate / Select / view toggle, no Favorite filter chip.
-2. The last candidate in a stage scrolls above the bottom nav with breathing room.
-3. Desktop pipeline view is visually unchanged.
+### Out of scope
+- Desktop pipeline (untouched)
+- Stage column visual design (header colors, badges — already fine)
+- Candidate card internals
+- The mobile section selector content (kept as-is, just tighter)
 
