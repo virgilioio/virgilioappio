@@ -1,53 +1,55 @@
 
 
-## Mobile pipeline: strip non-consultation chrome + fix bottom cutoff
+## Fix "out of range for type integer" when saving the Hiring Plan
 
-### Part A — Hide create/filter/view chrome on mobile (consultation-only view)
+### Root cause
+`useJobHiringPlan.ts` Phase 0 normalization seeds temporary positions with `Date.now()` (~1.77 trillion). The DB column `job_hiring_stages.position` is `integer` (max 2,147,483,647). Postgres rejects with `22003` and the whole save aborts.
 
-**File: `src/pages/JobDetail.tsx`** (the mobile pipeline branch around lines 989–1114)
+The intent of Phase 0 is correct (clear stale temp blocks left by prior crashes so Phase 1 / Phase 2 don't collide on the unique `(job_id, position)`). The seed value just needs to fit in an int4.
 
-1. Hide the entire `<CardHeader>` of the main Pipeline Overview card on mobile. The cleanest fix is to add `hidden sm:block` to that `<CardHeader>` so on `<640px` it disappears entirely, removing:
-   - "Pipeline Overview" title
-   - "Add Candidate" / "Review Applications" buttons
-   - "Select" button + bulk actions
-   - Board / List view toggle
-2. Since the second pipeline render block (lines ~1527+) mirrors this layout, apply the same `hidden sm:block` to its `<CardHeader>` so behavior stays consistent across both branches.
-3. The mobile section selector card (the small one above with "Recruiting Process… 15") **stays** — it's read-only navigation between Recruiting / Application / Suggested / Rejected, which is consultation, not creation.
+### Fix — single file: `src/hooks/useJobHiringPlan.ts`
 
-**File: `src/components/jobs/PipelineOverview.tsx`** (lines 617–628)
+Replace the `Date.now()`-seeded loop in Phase 0 with a safe in-range temp block. Use a high but valid offset that cannot collide with Phase 1 (`10000+`), Phase 2 (`20000+`), or final (`1..n`) blocks.
 
-4. Hide the internal filter chips row (the `Favorite` `FilterChipPopover` block) on mobile by wrapping it with `hidden sm:flex` (currently `flex flex-wrap items-center gap-2`). On mobile the user sees only the stages and candidate cards.
+Change:
+```ts
+const epoch = Date.now()
+for (let i = 0; i < (currentPlan || []).length; i++) {
+  const { error: normErr } = await supabase
+    .from('job_hiring_stages')
+    .update({ position: epoch + i })
+    .eq('id', currentPlan[i].id)
+  if (normErr) throw normErr
+}
+```
+to:
+```ts
+// Phase 0: park all current rows in a unique temp block (30000+) that fits in int4
+// and cannot collide with Phase 1 (10000+), Phase 2 (20000+), or final (1..n).
+for (let i = 0; i < (currentPlan || []).length; i++) {
+  const { error: normErr } = await supabase
+    .from('job_hiring_stages')
+    .update({ position: 30000 + i + 1 })
+    .eq('id', currentPlan[i].id)
+  if (normErr) throw normErr
+}
+```
 
-This guarantees the mobile pipeline tab shows: section selector → stages + candidate cards. Nothing else.
+30000 + N stays well under int4 max even with thousands of stages and is disjoint from the other two temp blocks already used by the function.
 
-### Part B — Fix the remaining bottom cutoff
-
-The bottom of the last candidate card in a stage is still hidden behind the mobile bottom nav because the inner mobile scroll wrapper has no bottom padding to clear the fixed nav (~64px + safe-area inset).
-
-**File: `src/pages/JobDetail.tsx`** (both mobile pipeline scroll wrappers, lines 1119 and 1528)
-
-5. Update:
-   ```tsx
-   <div className="h-full min-h-[52dvh] w-full overflow-y-auto sm:hidden p-layout-md">
-   ```
-   to:
-   ```tsx
-   <div className="h-full min-h-[52dvh] w-full overflow-y-auto sm:hidden p-layout-md pb-[calc(env(safe-area-inset-bottom,0px)+96px)]">
-   ```
-   The 96px floor = mobile bottom nav (~72px) + breathing room (~24px) so the last card in a stage is fully visible above the nav. `safe-area-inset-bottom` handles iPhone notch/home-indicator devices.
+### Why not change the column to `bigint`?
+Not needed. Positions are small ordinals (1..n per job). The bug is purely the temp seed value. Keeping `integer` avoids a migration, avoids touching every dependent query/type, and the existing block-based scheme already guarantees uniqueness within a single save.
 
 ### Out of scope
-- Desktop layout (untouched — `CardHeader` only hides on `<640px`).
-- The mobile section selector card (kept — it's read-only navigation).
-- The candidate profile sheet (separate, already addressed).
-- `PipelineOverviewTable.tsx` analytics (unrelated).
+- DB schema changes (no migration needed).
+- Refactoring the 4-phase save into a single RPC (separate hardening task).
+- `loadHiringPlan` / `loadHiringPlanInstances` / candidate reassignment logic — unaffected.
 
 ### Files touched
-- `src/pages/JobDetail.tsx`
-- `src/components/jobs/PipelineOverview.tsx`
+- `src/hooks/useJobHiringPlan.ts` (one loop, ~6 lines)
 
-### Verification on 390×844
-1. Pipeline tab shows: tabs → small "Recruiting Proce… 15" selector → stage column with candidate cards. No "Pipeline Overview" title, no Add Candidate / Select / view toggle, no Favorite filter chip.
-2. The last candidate in a stage scrolls above the bottom nav with breathing room.
-3. Desktop pipeline view is visually unchanged.
+### Verification
+1. Open a job → Hiring Plan → add/remove/reorder stages → Save. Toast: "Hiring Plan Saved".
+2. Re-open: order persists, candidates remain on their stages (or are moved to the previous stage when a stage is removed).
+3. Save again immediately (no page reload) — still succeeds (proves Phase 0 properly clears prior temp positions).
 
