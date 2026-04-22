@@ -1008,9 +1008,13 @@ export default function PublicJobPosting() {
                         )}
                       </Button>
                     </div>
-                  </CardContent>
-                </Card>
-              </section>
+                  </div>
+                </section>
+              </div>
+
+              <aside className="order-1 lg:order-2 lg:col-span-1 lg:sticky lg:top-24 space-y-4 self-start">
+                <JobDetailsCard details={details} className="border-border/60 shadow-none rounded-xl" />
+              </aside>
             </div>
           </TabsContent>
         </Tabs>
