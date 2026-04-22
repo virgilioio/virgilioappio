@@ -120,10 +120,12 @@ interface CandidateProfileSheetProps {
   onStageChanged?: () => void
   autoOpenScorecard?: boolean
   autoOpenScorecardStageId?: string | null
+  autoOpenScorecardId?: string | null
   onScorecardOpened?: () => void
+  onScorecardChange?: (scorecardId: string | null, stageInstanceId?: string | null) => void
 }
 
-export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, autoOpenScorecardStageId, onScorecardOpened }: CandidateProfileSheetProps) {
+export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, autoOpenScorecardStageId, autoOpenScorecardId, onScorecardOpened, onScorecardChange }: CandidateProfileSheetProps) {
   const { canEditCandidates, isAdmin, isWorkspaceOwner, isPlatformAdmin } = usePermissions()
   const navigate = useNavigate()
   
