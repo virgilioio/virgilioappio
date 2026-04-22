@@ -615,7 +615,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
       )}
 
       {/* Filter chips */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="hidden sm:flex flex-wrap items-center gap-2">
         <FilterChipPopover
           label="Favorite"
           options={[
