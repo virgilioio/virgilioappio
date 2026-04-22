@@ -592,8 +592,8 @@ export default function PublicJobPosting() {
       </header>
 
       {/* Main content */}
-      <main className="max-w-4xl mx-auto px-6 pt-20 pb-10 flex-1 w-full">
-        <section aria-labelledby="job-title" className="pt-12 pb-8">
+      <main className="max-w-6xl mx-auto px-6 sm:px-8 pt-20 pb-10 flex-1 w-full">
+        <section aria-labelledby="job-title" className="pt-12 pb-6">
           <h1 id="job-title" className="text-3xl sm:text-[40px] leading-[1.15] font-semibold tracking-tight text-text-primary">{posting.title}</h1>
           {(details.location || details.employmentType || details.locationType) && (
             <p className="mt-3 text-sm text-text-secondary">
@@ -605,7 +605,7 @@ export default function PublicJobPosting() {
             </p>
           )}
         </section>
-        <Tabs value={tab} onValueChange={(v) => setTab(v as 'overview' | 'application')} className="space-y-6 mt-8">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as 'overview' | 'application')} className="space-y-8 mt-8">
           <TabsList>
             <TabsTrigger value="overview">Job Overview</TabsTrigger>
             <TabsTrigger value="application">Application</TabsTrigger>
