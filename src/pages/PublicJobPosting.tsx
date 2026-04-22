@@ -661,123 +661,111 @@ export default function PublicJobPosting() {
           </TabsContent>
 
           <TabsContent value="application">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="order-2 lg:order-1 lg:col-span-2 space-y-6">
-                {/* Application Limits Banner */}
-                <Alert className="border-info bg-info/5">
-                  <Shield className="h-4 w-4" />
-                  <AlertDescription className="text-sm">
-                    <strong>Application Limits:</strong> To ensure candidates select the most relevant positions, we have set limits:
-                    <ul className="mt-2 space-y-1 list-disc list-inside text-xs">
-                      <li>Maximum 3 applications per 60 days</li>
-                      <li>Cannot re-apply to same role within 90 days</li>
-                      <li>30-day cooldown after rejection before applying to other roles</li>
-                    </ul>
-                  </AlertDescription>
-                </Alert>
+            <div className="max-w-2xl mx-auto">
+              <section aria-labelledby="application-form">
+                <Card>
+                  <CardContent className="space-y-12 pt-6">
+                    {/* Application limits — demoted to a small helper line */}
+                    <p id="application-form" className="text-xs text-text-secondary">
+                      Application limits: max 3 applications per 60 days · cannot re-apply to the same role within 90 days · 30-day cooldown after rejection.
+                    </p>
 
-                <section aria-labelledby="application-form">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle id="application-form">Application Form</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-8">
-                      {/* Core Fields Section */}
-                      <div>
-                        <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
-                        <div className="space-y-4">
-                          {/* Resume Upload Field - FIRST */}
-                          <div>
-                            <label className="text-sm font-medium">
-                              Resume/CV <Badge variant="secondary" className="ml-2">Required</Badge>
-                            </label>
-                            <div className="mt-1">
-                              <EnhancedResumeDropzone
-                                onParsed={handleParsedData}
-                                isUploading={false}
-                                autoGenerateSkills={false}
-                                showUpload={false}
-                                parseOnly={true}
-                                useTwoStageAI={true}
-                                onFileCaptured={(file) => setUploadedFiles([file])}
-                                onResumeTextCaptured={(text) => setCapturedResumeText(text)}
-                              />
-                              {uploadedFiles[0] && (
-                                <p className="mt-2 text-xs text-text-secondary">Selected: {uploadedFiles[0].name}</p>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Name Field */}
-                          <div>
-                            <label className="text-sm font-medium">
-                              Full Name <Badge variant="secondary" className="ml-2">Required</Badge>
-                            </label>
-                            <Input
-                              placeholder="Your full name"
-                              value={coreFieldValues.candidate_name}
-                              onChange={(e) => setCoreFieldValues(prev => ({ ...prev, candidate_name: e.target.value }))}
+                    {/* Core Fields Section */}
+                    <div>
+                      <h3 className="text-[13px] font-semibold uppercase tracking-wide text-text-secondary mb-6">Basic Information</h3>
+                      <div className="space-y-6">
+                        {/* Resume Upload Field - FIRST */}
+                        <div>
+                          <label className="text-[13px] font-semibold text-text-primary">
+                            Resume/CV<span className="text-destructive ml-1">*</span>
+                          </label>
+                          <div className="mt-2">
+                            <EnhancedResumeDropzone
+                              variant="minimal"
+                              onParsed={handleParsedData}
+                              isUploading={false}
+                              autoGenerateSkills={false}
+                              showUpload={false}
+                              parseOnly={true}
+                              useTwoStageAI={true}
+                              onFileCaptured={(file) => setUploadedFiles([file])}
+                              onResumeTextCaptured={(text) => setCapturedResumeText(text)}
                             />
-                          </div>
-                          
-                          {/* Email Field */}
-                          <div>
-                            <label className="text-sm font-medium">
-                              Email <Badge variant="secondary" className="ml-2">Required</Badge>
-                            </label>
-                            <Input
-                              type="email"
-                              placeholder="your.email@example.com"
-                              value={coreFieldValues.email}
-                              onChange={(e) => setCoreFieldValues(prev => ({ ...prev, email: e.target.value }))}
-                              className={coreFieldValues.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(coreFieldValues.email.trim()) ? 'border-destructive focus-visible:ring-destructive' : ''}
-                            />
-                            {coreFieldValues.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(coreFieldValues.email.trim()) && (
-                              <p className="text-xs text-destructive mt-1">Please enter a valid email address</p>
+                            {uploadedFiles[0] && (
+                              <p className="mt-2 text-xs text-text-secondary">Selected: {uploadedFiles[0].name}</p>
                             )}
                           </div>
-                          
-                          {/* Phone Field */}
-                          <div>
-                            <label className="text-sm font-medium">Phone</label>
-                            <Input
-                              type="tel"
-                              placeholder="Your phone number"
-                              value={coreFieldValues.phone}
-                              onChange={(e) => setCoreFieldValues(prev => ({ ...prev, phone: e.target.value }))}
-                            />
-                          </div>
-                          
-                          {/* LinkedIn Field */}
-                          <div>
-                            <label className="text-sm font-medium">LinkedIn Profile</label>
-                            <Input
-                              type="url"
-                              placeholder="https://linkedin.com/in/yourprofile"
-                              value={coreFieldValues.linkedin_url}
-                              onChange={(e) => setCoreFieldValues(prev => ({ ...prev, linkedin_url: e.target.value }))}
-                            />
-                          </div>
-                          
+                        </div>
+
+                        {/* Name Field */}
+                        <div>
+                          <label className="text-[13px] font-semibold text-text-primary">
+                            Full Name<span className="text-destructive ml-1">*</span>
+                          </label>
+                          <Input
+                            placeholder="Your full name"
+                            value={coreFieldValues.candidate_name}
+                            onChange={(e) => setCoreFieldValues(prev => ({ ...prev, candidate_name: e.target.value }))}
+                            className="mt-2 h-11 text-[15px]"
+                          />
+                        </div>
+
+                        {/* Email Field */}
+                        <div>
+                          <label className="text-[13px] font-semibold text-text-primary">
+                            Email<span className="text-destructive ml-1">*</span>
+                          </label>
+                          <Input
+                            type="email"
+                            placeholder="your.email@example.com"
+                            value={coreFieldValues.email}
+                            onChange={(e) => setCoreFieldValues(prev => ({ ...prev, email: e.target.value }))}
+                            className={`mt-2 h-11 text-[15px] ${coreFieldValues.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(coreFieldValues.email.trim()) ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                          />
+                          {coreFieldValues.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(coreFieldValues.email.trim()) && (
+                            <p className="text-xs text-destructive mt-1">Please enter a valid email address</p>
+                          )}
+                        </div>
+
+                        {/* Phone Field */}
+                        <div>
+                          <label className="text-[13px] font-semibold text-text-primary">Phone</label>
+                          <Input
+                            type="tel"
+                            placeholder="Your phone number"
+                            value={coreFieldValues.phone}
+                            onChange={(e) => setCoreFieldValues(prev => ({ ...prev, phone: e.target.value }))}
+                            className="mt-2 h-11 text-[15px]"
+                          />
+                        </div>
+
+                        {/* LinkedIn Field */}
+                        <div>
+                          <label className="text-[13px] font-semibold text-text-primary">LinkedIn Profile</label>
+                          <Input
+                            type="url"
+                            placeholder="https://linkedin.com/in/yourprofile"
+                            value={coreFieldValues.linkedin_url}
+                            onChange={(e) => setCoreFieldValues(prev => ({ ...prev, linkedin_url: e.target.value }))}
+                            className="mt-2 h-11 text-[15px]"
+                          />
                         </div>
                       </div>
+                    </div>
 
-                      {/* Custom Fields Section */}
-                      {customFields.length > 0 && (
-                        <div>
-                          <h3 className="text-lg font-semibold mb-4">Additional Questions</h3>
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            {customFields.filter(field => field.field_type !== 'recruiter').map((field) => (
-                              <div
-                                key={field.id}
-                                style={{ gridColumn: `span ${field.column_span || 4} / span ${field.column_span || 4}` }}
-                              >
-                                <Label className="text-sm font-medium">
-                                  {field.field_label}
-                                  {field.is_required && <Badge variant="secondary" className="ml-2">Required</Badge>}
-                                </Label>
-                                <div className="mt-1">
-                                  {field.field_type === 'text' && (
+                    {/* Custom Fields Section */}
+                    {customFields.length > 0 && (
+                      <div>
+                        <h3 className="text-[13px] font-semibold uppercase tracking-wide text-text-secondary mb-6">Additional Questions</h3>
+                        <div className="space-y-6">
+                          {customFields.filter(field => field.field_type !== 'recruiter').map((field) => (
+                            <div key={field.id}>
+                              <Label className="text-[13px] font-semibold text-text-primary">
+                                {field.field_label}
+                                {field.is_required && <span className="text-destructive ml-1">*</span>}
+                              </Label>
+                              <div className="mt-2">
+                                {field.field_type === 'text' && (
                                     <Input
                                       placeholder={field.placeholder_text || ''}
                                       value={customFieldResponses[field.id] || ''}
