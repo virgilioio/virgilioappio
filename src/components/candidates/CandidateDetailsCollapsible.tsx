@@ -33,20 +33,20 @@ export function CandidateDetailsCollapsible({ candidate, whatsAppEnabled, handle
     <Card className="bg-surface-primary border-border">
       <Collapsible open={open} onOpenChange={setOpen}>
         <CollapsibleTrigger className="w-full">
-          <div className="px-6 py-4 flex items-center justify-between">
-            <CardTitle>Candidate Details</CardTitle>
-            <div className="flex items-center gap-3">
-              {/* Collapsed summary: show email + phone inline */}
+          <div className="px-6 py-4 flex items-center justify-between gap-3 min-w-0">
+            <CardTitle className="truncate">Candidate Details</CardTitle>
+            <div className="flex items-center gap-3 min-w-0">
+              {/* Collapsed summary: show email + phone inline (desktop only) */}
               {!open && (
-                <div className="flex items-center gap-3 text-xs text-text-secondary" onClick={(e) => e.stopPropagation()}>
+                <div className="hidden sm:flex items-center gap-3 text-xs text-text-secondary min-w-0 max-w-[60%]" onClick={(e) => e.stopPropagation()}>
                   {primaryEmail && (
-                    <div className="flex items-center gap-1">
-                      <Mail className="h-3 w-3 text-text-tertiary" />
+                    <div className="flex items-center gap-1 min-w-0">
+                      <Mail className="h-3 w-3 text-text-tertiary shrink-0" />
                       <span className="max-w-[140px] truncate">{primaryEmail}</span>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-5 w-5 p-0"
+                        className="h-5 w-5 p-0 shrink-0"
                         onClick={(e) => { e.stopPropagation(); copyToClipboard(primaryEmail, 'Email copied') }}
                       >
                         <Copy className="h-3 w-3" />
@@ -54,9 +54,9 @@ export function CandidateDetailsCollapsible({ candidate, whatsAppEnabled, handle
                     </div>
                   )}
                   {primaryPhone && (
-                    <div className="flex items-center gap-1">
-                      <Phone className="h-3 w-3 text-text-tertiary" />
-                      <span>{formatE164Display(primaryPhone)}</span>
+                    <div className="flex items-center gap-1 min-w-0">
+                      <Phone className="h-3 w-3 text-text-tertiary shrink-0" />
+                      <span className="max-w-[120px] truncate">{formatE164Display(primaryPhone)}</span>
                       {whatsAppEnabled && buildWhatsAppUrl(primaryPhone) && (
                         <Button
                           variant="ghost"

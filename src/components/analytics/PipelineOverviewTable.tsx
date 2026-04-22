@@ -47,7 +47,7 @@ export function PipelineOverviewTable({ jobIds, isLoading: externalLoading }: Pi
   }
 
   return (
-    <Card className="border-virgilio-border">
+    <Card className="border-virgilio-border h-full sm:h-auto flex flex-col">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -71,8 +71,8 @@ export function PipelineOverviewTable({ jobIds, isLoading: externalLoading }: Pi
           )}
         </div>
       </CardHeader>
-      <CardContent className="p-0">
-        <div className="max-h-[400px] overflow-auto">
+      <CardContent className="p-0 flex-1 min-h-0">
+        <div className="h-full max-h-[60vh] sm:max-h-[400px] overflow-auto">
           <Table>
             <TableHeader className="sticky top-0 z-10 bg-background">
               <TableRow className="hover:bg-transparent">
