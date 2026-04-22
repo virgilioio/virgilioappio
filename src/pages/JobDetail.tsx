@@ -111,17 +111,34 @@ export default function JobDetail() {
   // Auto-open scorecard from URL parameter (for AI note-taker notifications)
   const [autoOpenScorecard, setAutoOpenScorecard] = useState(false)
   const [autoOpenScorecardStageId, setAutoOpenScorecardStageId] = useState<string | null>(null)
+  // Auto-open existing scorecard by ID from URL (?scorecard=<id>)
+  const [autoOpenScorecardId, setAutoOpenScorecardId] = useState<string | null>(null)
 
-  // Helper to update URL with candidate parameter
+  // Helper to update URL with candidate parameter (preserves scorecard param)
   const updateCandidateUrl = (candidateId: string | null) => {
+    const newParams = new URLSearchParams(searchParams)
     if (candidateId) {
-      setSearchParams({ candidate: candidateId }, { replace: true })
+      newParams.set('candidate', candidateId)
     } else {
-      // Remove candidate param when closing
-      const newParams = new URLSearchParams(searchParams)
       newParams.delete('candidate')
-      setSearchParams(newParams, { replace: true })
+      newParams.delete('scorecard')
+      newParams.delete('open')
+      newParams.delete('stage')
     }
+    setSearchParams(newParams, { replace: true })
+  }
+
+  // Helper to update URL with scorecard parameter (preserves candidate)
+  const updateScorecardUrl = (scorecardId: string | null) => {
+    const newParams = new URLSearchParams(searchParams)
+    if (scorecardId) {
+      newParams.set('scorecard', scorecardId)
+      newParams.delete('open')
+      newParams.delete('stage')
+    } else {
+      newParams.delete('scorecard')
+    }
+    setSearchParams(newParams, { replace: true })
   }
 
   // Helper to get candidate ID from URL
