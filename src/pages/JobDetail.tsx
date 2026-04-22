@@ -1814,12 +1814,28 @@ export default function JobDetail() {
                 updateCandidateUrl(null)
                 setAutoOpenScorecard(false)
                 setAutoOpenScorecardStageId(null)
+                setAutoOpenScorecardId(null)
               }
             }}
             candidateId={profileCandidateId}
             jobId={id!}
             hasPrev={hasPrev}
             hasNext={hasNext}
+            onNavigatePrev={handleNavigatePrev}
+            onNavigateNext={handleNavigateNext}
+            onStageChanged={() => setPipelineRefresh((v) => v + 1)}
+            autoOpenScorecard={autoOpenScorecard}
+            autoOpenScorecardStageId={autoOpenScorecardStageId}
+            autoOpenScorecardId={autoOpenScorecardId}
+            onScorecardOpened={() => {
+              setAutoOpenScorecard(false)
+              setAutoOpenScorecardStageId(null)
+            }}
+            onScorecardChange={(scorecardId) => {
+              updateScorecardUrl(scorecardId)
+              if (!scorecardId) setAutoOpenScorecardId(null)
+            }}
+          />
             onNavigatePrev={handleNavigatePrev}
             onNavigateNext={handleNavigateNext}
             onStageChanged={() => setPipelineRefresh((v) => v + 1)}
