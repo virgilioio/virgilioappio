@@ -213,6 +213,49 @@ export function EnhancedResumeDropzone({
     e.currentTarget.value = ''
   }
 
+  if (variant === 'minimal') {
+    return (
+      <div className={`relative ${className}`}>
+        <div
+          className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${dragOver ? 'border-text-secondary bg-surface-secondary/50' : 'border-border hover:border-text-secondary/60 bg-surface-primary'}`}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          aria-busy={isActive}
+          aria-live="polite"
+        >
+          <input
+            ref={inputRef}
+            type="file"
+            className="hidden"
+            onChange={handleFileInputChange}
+            accept={accept}
+          />
+          <Upload className="h-6 w-6 mx-auto text-text-secondary mb-3" />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => inputRef.current?.click()}
+            disabled={isActive}
+            className="gap-2"
+          >
+            {isActive ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {isParsing ? 'Analyzing…' : isUploading ? 'Uploading…' : 'Processing…'}
+              </>
+            ) : (
+              'Upload File'
+            )}
+          </Button>
+          <p className="text-xs text-text-secondary mt-3">
+            or drag and drop here · {accept.includes('.jpg') ? 'PDF, DOC, DOCX, TXT or images' : 'PDF, DOC, DOCX, TXT'} up to {maxSizeMb}MB
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={`relative group ${className}`}>
       <div className={`pointer-events-none absolute -inset-[2px] rounded-lg bg-gradient-to-r from-pastel-purple via-pastel-blue to-info blur-md transition-opacity duration-300 ${dragOver ? 'opacity-80' : 'opacity-50'} pulse`} />
