@@ -574,37 +574,45 @@ export default function PublicJobPosting() {
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header with logo and back button */}
       <header className={`fixed top-0 left-0 right-0 z-50 border-b border-border transition-shadow supports-[backdrop-filter]:bg-surface-primary/60 bg-surface-primary/90 backdrop-blur ${scrolled ? 'shadow-sm' : ''}`}>
-        <div className="max-w-5xl mx-auto flex items-center justify-between px-md py-2 sm:px-lg">
+        <div className="max-w-4xl mx-auto flex items-center justify-between px-md py-3 sm:px-lg">
           <div className="flex items-center gap-4">
             {companySlug && (
-              <Button
-                variant="ghost"
-                size="sm"
+              <button
+                type="button"
                 onClick={() => navigate(`/careers/${companySlug}`)}
-                className="gap-2"
+                className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back to Careers Page
-              </Button>
+              </button>
             )}
           </div>
-          <GoGioLogo className="h-6 w-auto" />
+          <GoGioLogo className="h-7 w-auto" />
         </div>
       </header>
 
       {/* Main content */}
-      <main className="max-w-5xl mx-auto px-6 pt-20 pb-10 flex-1 w-full">
-        <section aria-labelledby="job-title">
-          <h1 id="job-title" className="text-3xl font-semibold text-text-primary">{posting.title}</h1>
+      <main className="max-w-4xl mx-auto px-6 pt-20 pb-10 flex-1 w-full">
+        <section aria-labelledby="job-title" className="pt-12 pb-8">
+          <h1 id="job-title" className="text-3xl sm:text-[40px] leading-[1.15] font-semibold tracking-tight text-text-primary">{posting.title}</h1>
+          {(details.location || details.employmentType || details.locationType) && (
+            <p className="mt-3 text-sm text-text-secondary">
+              {[
+                details.location,
+                formatLabel(details.locationType),
+                formatLabel(details.employmentType)
+              ].filter(Boolean).join(' · ')}
+            </p>
+          )}
         </section>
-        <Tabs value={tab} onValueChange={(v) => setTab(v as 'overview' | 'application')} className="space-y-6 mt-4">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as 'overview' | 'application')} className="space-y-6 mt-8">
           <TabsList>
             <TabsTrigger value="overview">Job Overview</TabsTrigger>
             <TabsTrigger value="application">Application</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
               <div className="order-2 lg:order-1 lg:col-span-2 space-y-8">
                 <section aria-labelledby="job-description">
                   {(tenantAbout || posting.description) && (
@@ -653,123 +661,111 @@ export default function PublicJobPosting() {
           </TabsContent>
 
           <TabsContent value="application">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="order-2 lg:order-1 lg:col-span-2 space-y-6">
-                {/* Application Limits Banner */}
-                <Alert className="border-info bg-info/5">
-                  <Shield className="h-4 w-4" />
-                  <AlertDescription className="text-sm">
-                    <strong>Application Limits:</strong> To ensure candidates select the most relevant positions, we have set limits:
-                    <ul className="mt-2 space-y-1 list-disc list-inside text-xs">
-                      <li>Maximum 3 applications per 60 days</li>
-                      <li>Cannot re-apply to same role within 90 days</li>
-                      <li>30-day cooldown after rejection before applying to other roles</li>
-                    </ul>
-                  </AlertDescription>
-                </Alert>
+            <div className="max-w-2xl mx-auto">
+              <section aria-labelledby="application-form">
+                <Card>
+                  <CardContent className="space-y-12 pt-6">
+                    {/* Application limits — demoted to a small helper line */}
+                    <p id="application-form" className="text-xs text-text-secondary">
+                      Application limits: max 3 applications per 60 days · cannot re-apply to the same role within 90 days · 30-day cooldown after rejection.
+                    </p>
 
-                <section aria-labelledby="application-form">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle id="application-form">Application Form</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-8">
-                      {/* Core Fields Section */}
-                      <div>
-                        <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
-                        <div className="space-y-4">
-                          {/* Resume Upload Field - FIRST */}
-                          <div>
-                            <label className="text-sm font-medium">
-                              Resume/CV <Badge variant="secondary" className="ml-2">Required</Badge>
-                            </label>
-                            <div className="mt-1">
-                              <EnhancedResumeDropzone
-                                onParsed={handleParsedData}
-                                isUploading={false}
-                                autoGenerateSkills={false}
-                                showUpload={false}
-                                parseOnly={true}
-                                useTwoStageAI={true}
-                                onFileCaptured={(file) => setUploadedFiles([file])}
-                                onResumeTextCaptured={(text) => setCapturedResumeText(text)}
-                              />
-                              {uploadedFiles[0] && (
-                                <p className="mt-2 text-xs text-text-secondary">Selected: {uploadedFiles[0].name}</p>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Name Field */}
-                          <div>
-                            <label className="text-sm font-medium">
-                              Full Name <Badge variant="secondary" className="ml-2">Required</Badge>
-                            </label>
-                            <Input
-                              placeholder="Your full name"
-                              value={coreFieldValues.candidate_name}
-                              onChange={(e) => setCoreFieldValues(prev => ({ ...prev, candidate_name: e.target.value }))}
+                    {/* Core Fields Section */}
+                    <div>
+                      <h3 className="text-[13px] font-semibold uppercase tracking-wide text-text-secondary mb-6">Basic Information</h3>
+                      <div className="space-y-6">
+                        {/* Resume Upload Field - FIRST */}
+                        <div>
+                          <label className="text-[13px] font-semibold text-text-primary">
+                            Resume/CV<span className="text-destructive ml-1">*</span>
+                          </label>
+                          <div className="mt-2">
+                            <EnhancedResumeDropzone
+                              variant="minimal"
+                              onParsed={handleParsedData}
+                              isUploading={false}
+                              autoGenerateSkills={false}
+                              showUpload={false}
+                              parseOnly={true}
+                              useTwoStageAI={true}
+                              onFileCaptured={(file) => setUploadedFiles([file])}
+                              onResumeTextCaptured={(text) => setCapturedResumeText(text)}
                             />
-                          </div>
-                          
-                          {/* Email Field */}
-                          <div>
-                            <label className="text-sm font-medium">
-                              Email <Badge variant="secondary" className="ml-2">Required</Badge>
-                            </label>
-                            <Input
-                              type="email"
-                              placeholder="your.email@example.com"
-                              value={coreFieldValues.email}
-                              onChange={(e) => setCoreFieldValues(prev => ({ ...prev, email: e.target.value }))}
-                              className={coreFieldValues.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(coreFieldValues.email.trim()) ? 'border-destructive focus-visible:ring-destructive' : ''}
-                            />
-                            {coreFieldValues.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(coreFieldValues.email.trim()) && (
-                              <p className="text-xs text-destructive mt-1">Please enter a valid email address</p>
+                            {uploadedFiles[0] && (
+                              <p className="mt-2 text-xs text-text-secondary">Selected: {uploadedFiles[0].name}</p>
                             )}
                           </div>
-                          
-                          {/* Phone Field */}
-                          <div>
-                            <label className="text-sm font-medium">Phone</label>
-                            <Input
-                              type="tel"
-                              placeholder="Your phone number"
-                              value={coreFieldValues.phone}
-                              onChange={(e) => setCoreFieldValues(prev => ({ ...prev, phone: e.target.value }))}
-                            />
-                          </div>
-                          
-                          {/* LinkedIn Field */}
-                          <div>
-                            <label className="text-sm font-medium">LinkedIn Profile</label>
-                            <Input
-                              type="url"
-                              placeholder="https://linkedin.com/in/yourprofile"
-                              value={coreFieldValues.linkedin_url}
-                              onChange={(e) => setCoreFieldValues(prev => ({ ...prev, linkedin_url: e.target.value }))}
-                            />
-                          </div>
-                          
+                        </div>
+
+                        {/* Name Field */}
+                        <div>
+                          <label className="text-[13px] font-semibold text-text-primary">
+                            Full Name<span className="text-destructive ml-1">*</span>
+                          </label>
+                          <Input
+                            placeholder="Your full name"
+                            value={coreFieldValues.candidate_name}
+                            onChange={(e) => setCoreFieldValues(prev => ({ ...prev, candidate_name: e.target.value }))}
+                            className="mt-2 h-11 text-[15px]"
+                          />
+                        </div>
+
+                        {/* Email Field */}
+                        <div>
+                          <label className="text-[13px] font-semibold text-text-primary">
+                            Email<span className="text-destructive ml-1">*</span>
+                          </label>
+                          <Input
+                            type="email"
+                            placeholder="your.email@example.com"
+                            value={coreFieldValues.email}
+                            onChange={(e) => setCoreFieldValues(prev => ({ ...prev, email: e.target.value }))}
+                            className={`mt-2 h-11 text-[15px] ${coreFieldValues.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(coreFieldValues.email.trim()) ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                          />
+                          {coreFieldValues.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(coreFieldValues.email.trim()) && (
+                            <p className="text-xs text-destructive mt-1">Please enter a valid email address</p>
+                          )}
+                        </div>
+
+                        {/* Phone Field */}
+                        <div>
+                          <label className="text-[13px] font-semibold text-text-primary">Phone</label>
+                          <Input
+                            type="tel"
+                            placeholder="Your phone number"
+                            value={coreFieldValues.phone}
+                            onChange={(e) => setCoreFieldValues(prev => ({ ...prev, phone: e.target.value }))}
+                            className="mt-2 h-11 text-[15px]"
+                          />
+                        </div>
+
+                        {/* LinkedIn Field */}
+                        <div>
+                          <label className="text-[13px] font-semibold text-text-primary">LinkedIn Profile</label>
+                          <Input
+                            type="url"
+                            placeholder="https://linkedin.com/in/yourprofile"
+                            value={coreFieldValues.linkedin_url}
+                            onChange={(e) => setCoreFieldValues(prev => ({ ...prev, linkedin_url: e.target.value }))}
+                            className="mt-2 h-11 text-[15px]"
+                          />
                         </div>
                       </div>
+                    </div>
 
-                      {/* Custom Fields Section */}
-                      {customFields.length > 0 && (
-                        <div>
-                          <h3 className="text-lg font-semibold mb-4">Additional Questions</h3>
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            {customFields.filter(field => field.field_type !== 'recruiter').map((field) => (
-                              <div
-                                key={field.id}
-                                style={{ gridColumn: `span ${field.column_span || 4} / span ${field.column_span || 4}` }}
-                              >
-                                <Label className="text-sm font-medium">
-                                  {field.field_label}
-                                  {field.is_required && <Badge variant="secondary" className="ml-2">Required</Badge>}
-                                </Label>
-                                <div className="mt-1">
-                                  {field.field_type === 'text' && (
+                    {/* Custom Fields Section */}
+                    {customFields.length > 0 && (
+                      <div>
+                        <h3 className="text-[13px] font-semibold uppercase tracking-wide text-text-secondary mb-6">Additional Questions</h3>
+                        <div className="space-y-6">
+                          {customFields.filter(field => field.field_type !== 'recruiter').map((field) => (
+                            <div key={field.id}>
+                              <Label className="text-[13px] font-semibold text-text-primary">
+                                {field.field_label}
+                                {field.is_required && <span className="text-destructive ml-1">*</span>}
+                              </Label>
+                              <div className="mt-2">
+                                {field.field_type === 'text' && (
                                     <Input
                                       placeholder={field.placeholder_text || ''}
                                       value={customFieldResponses[field.id] || ''}
@@ -996,37 +992,33 @@ export default function PublicJobPosting() {
                         </div>
                       )}
 
-                      <div className="pt-4">
-                        <Button 
-                          type="button" 
-                          onClick={handleSubmitApplication} 
-                          className="w-full sm:w-auto" 
-                          aria-label="Submit application" 
-                          disabled={isSubmitting}
-                        >
-                          {isSubmitting ? (
-                            <span className="inline-flex items-center gap-2">
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              Submitting…
-                            </span>
-                          ) : (
-                            'Submit Application'
-                          )}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </section>
-              </div>
-              <aside className="order-1 lg:order-2 lg:col-span-1 lg:sticky lg:top-20 space-y-4">
-                <JobDetailsCard details={details} />
-              </aside>
+                    <div className="pt-4">
+                      <Button 
+                        type="button" 
+                        onClick={handleSubmitApplication} 
+                        className="w-full sm:w-auto h-11 px-8 text-base font-semibold" 
+                        aria-label="Submit application" 
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? (
+                          <span className="inline-flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Submitting…
+                          </span>
+                        ) : (
+                          'Submit Application'
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </section>
             </div>
           </TabsContent>
         </Tabs>
       </main>
       <footer className="border-t border-border bg-surface-primary">
-        <div className="max-w-5xl mx-auto px-6 sm:px-lg py-6 flex items-center">
+        <div className="max-w-4xl mx-auto px-6 sm:px-lg py-6 flex items-center">
           <span className="text-sm text-muted-foreground mr-3">Powered by</span>
           <GoGioLogo className="h-5 w-auto" />
         </div>
