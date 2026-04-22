@@ -592,11 +592,20 @@ export default function PublicJobPosting() {
       </header>
 
       {/* Main content */}
-      <main className="max-w-5xl mx-auto px-6 pt-20 pb-10 flex-1 w-full">
-        <section aria-labelledby="job-title">
-          <h1 id="job-title" className="text-3xl font-semibold text-text-primary">{posting.title}</h1>
+      <main className="max-w-4xl mx-auto px-6 pt-20 pb-10 flex-1 w-full">
+        <section aria-labelledby="job-title" className="pt-12 pb-8">
+          <h1 id="job-title" className="text-3xl sm:text-[40px] leading-[1.15] font-semibold tracking-tight text-text-primary">{posting.title}</h1>
+          {(details.location || details.employmentType || details.locationType) && (
+            <p className="mt-3 text-sm text-text-secondary">
+              {[
+                details.location,
+                formatLabel(details.locationType),
+                formatLabel(details.employmentType)
+              ].filter(Boolean).join(' · ')}
+            </p>
+          )}
         </section>
-        <Tabs value={tab} onValueChange={(v) => setTab(v as 'overview' | 'application')} className="space-y-6 mt-4">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as 'overview' | 'application')} className="space-y-6 mt-8">
           <TabsList>
             <TabsTrigger value="overview">Job Overview</TabsTrigger>
             <TabsTrigger value="application">Application</TabsTrigger>
