@@ -1,55 +1,69 @@
 
 
-## Fix "out of range for type integer" when saving the Hiring Plan
+## Public job posting + application form polish (revised — keep brand signature)
 
-### Root cause
-`useJobHiringPlan.ts` Phase 0 normalization seeds temporary positions with `Date.now()` (~1.77 trillion). The DB column `job_hiring_stages.position` is `integer` (max 2,147,483,647). Postgres rejects with `22003` and the whole save aborts.
+A polish, not a makeover. We **keep our pill tab style**, brand colors, and overall component identity. We only adjust spacing, sizes, density, and remove the two elements that read as "AI-generated" on the public-facing page.
 
-The intent of Phase 0 is correct (clear stale temp blocks left by prior crashes so Phase 1 / Phase 2 don't collide on the unique `(job_id, position)`). The seed value just needs to fit in an int4.
+### File: `src/pages/PublicJobPosting.tsx`
 
-### Fix — single file: `src/hooks/useJobHiringPlan.ts`
+#### 1. Tighten the content column
+- Main wrapper: `max-w-5xl` → `max-w-4xl` (~896px).
+- Application tab: drop the 3-column grid; render the form in a single centered column `max-w-2xl mx-auto` (~672px).
+- Overview tab: keep the 2-column split, increase gap from `gap-8` to `gap-12`, sidebar pinned at ~280px sticky.
 
-Replace the `Date.now()`-seeded loop in Phase 0 with a safe in-range temp block. Use a high but valid offset that cannot collide with Phase 1 (`10000+`), Phase 2 (`20000+`), or final (`1..n`) blocks.
+#### 2. Title block + meta
+- Wrap H1 area in `pt-12 pb-8`.
+- H1: `text-3xl font-semibold` → `text-3xl sm:text-[40px] leading-[1.15] font-semibold tracking-tight`.
+- Add a single inline meta line under H1 (location · employment type · department) as `text-sm text-text-secondary`.
+- Gap H1 → tabs: `mt-4` → `mt-8`.
 
-Change:
-```ts
-const epoch = Date.now()
-for (let i = 0; i < (currentPlan || []).length; i++) {
-  const { error: normErr } = await supabase
-    .from('job_hiring_stages')
-    .update({ position: epoch + i })
-    .eq('id', currentPlan[i].id)
-  if (normErr) throw normErr
-}
-```
-to:
-```ts
-// Phase 0: park all current rows in a unique temp block (30000+) that fits in int4
-// and cannot collide with Phase 1 (10000+), Phase 2 (20000+), or final (1..n).
-for (let i = 0; i < (currentPlan || []).length; i++) {
-  const { error: normErr } = await supabase
-    .from('job_hiring_stages')
-    .update({ position: 30000 + i + 1 })
-    .eq('id', currentPlan[i].id)
-  if (normErr) throw normErr
-}
-```
+#### 3. Tabs — KEEP our signature pill style
+No changes to `<TabsList>` / `<TabsTrigger>` styling. Our rounded-xl Poppins lilac active tab stays exactly as-is — it's a brand signature across the app.
 
-30000 + N stays well under int4 max even with thousands of stages and is disjoint from the other two temp blocks already used by the function.
+#### 4. Application form — remove only the two "AI-generated" tells
+- **Resume dropzone**: add `variant?: 'default' | 'minimal'` to `EnhancedResumeDropzone`. Public form passes `variant="minimal"`: plain dashed border, no purple gradient, no Sparkles icon, no "watch some magic!" copy. Replace with a neutral dropzone + "Upload File" button + "or drag and drop" helper. **In-app dashboard usage stays unchanged** (default variant keeps the magic).
+- **Application Limits Alert**: demote from a colored alert card to a one-line `text-xs text-text-secondary` note under the form title. Keep the info, lose the visual weight.
+- Keep the `<Card>` wrapper around the form (it's our standard surface treatment) but remove the redundant `Application Form` `CardTitle` since the tab already says it.
 
-### Why not change the column to `bigint`?
-Not needed. Positions are small ordinals (1..n per job). The bug is purely the temp seed value. Keeping `integer` avoids a migration, avoids touching every dependent query/type, and the existing block-based scheme already guarantees uniqueness within a single save.
+#### 5. Field, label, spacing spec
 
-### Out of scope
-- DB schema changes (no migration needed).
-- Refactoring the 4-phase save into a single RPC (separate hardening task).
-- `loadHiringPlan` / `loadHiringPlanInstances` / candidate reassignment logic — unaffected.
+| Element | Current | Target |
+|---|---|---|
+| Label → input gap | `mt-1` | `mt-2` |
+| Field-to-field gap | `space-y-4` | `space-y-6` |
+| Section-to-section gap | `space-y-8` | `space-y-12` |
+| Input height | ~40px | `h-11` (44px — matches our app standard, not 48px) |
+| Input font size | `text-sm` | `text-[15px]` |
+| Input radius | unchanged (`rounded-lg` from our `Input` component) | unchanged |
+| Label | `text-sm font-medium` | `text-[13px] font-semibold text-text-primary` |
+| Required indicator | `<Badge>Required</Badge>` chip | red `*` after label (`<span className="text-destructive ml-1">*</span>`) |
+| Submit button | default | `h-11 px-8 text-base font-semibold w-full sm:w-auto` |
+
+Note: `h-11` (44px) matches our existing app-wide input standard from the core memory rule — we don't push to 48px just for this page.
+
+#### 6. Custom fields
+- On the public page, force all custom fields to full width (drop the `md:grid-cols-4` + `column_span` math). Stack them in the same `space-y-6` rhythm as core fields.
+- Column-span layout stays in the in-app builder preview, untouched.
+
+#### 7. Header polish
+- Header padding `py-2` → `py-3`; logo `h-6` → `h-7`.
+- "Back to Careers Page" button: `variant="ghost"` with icon → plain text link `text-sm text-text-secondary hover:text-text-primary` with just the arrow.
 
 ### Files touched
-- `src/hooks/useJobHiringPlan.ts` (one loop, ~6 lines)
+- `src/pages/PublicJobPosting.tsx` — widths, H1 + meta, form spacing/sizing, label red `*`, demote Alert, header polish, single-column form
+- `src/components/candidates/EnhancedResumeDropzone.tsx` — add `variant?: 'default' | 'minimal'` prop; minimal = plain dashed dropzone, no gradient/sparkles/magic copy. Default unchanged.
 
-### Verification
-1. Open a job → Hiring Plan → add/remove/reorder stages → Save. Toast: "Hiring Plan Saved".
-2. Re-open: order persists, candidates remain on their stages (or are moved to the previous stage when a stage is removed).
-3. Save again immediately (no page reload) — still succeeds (proves Phase 0 properly clears prior temp positions).
+### Out of scope
+- Tabs styling (kept as brand signature).
+- Card surface treatment (kept).
+- Brand colors / Poppins typography (kept).
+- In-app dashboard dropzone (kept with full magic treatment).
+- Careers index page and tenant logo/brand customization (separate pass).
+
+### Verification (1280–1440px desktop)
+1. Title reads as a hero (~40px) with breathing room before tabs; meta line under H1.
+2. Tabs look identical to today (lilac pill, Poppins).
+3. Application form sits in a centered ~672px column; fields 44px tall, 24px between, red `*` instead of "Required" chip.
+4. Resume upload on the public page is a plain dashed rectangle with neutral upload button — no gradient, no sparkles. In-app dashboard upload still has the full magic treatment.
+5. "Application Limits" is a small helper line, not a colored card.
 
