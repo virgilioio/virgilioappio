@@ -574,21 +574,20 @@ export default function PublicJobPosting() {
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header with logo and back button */}
       <header className={`fixed top-0 left-0 right-0 z-50 border-b border-border transition-shadow supports-[backdrop-filter]:bg-surface-primary/60 bg-surface-primary/90 backdrop-blur ${scrolled ? 'shadow-sm' : ''}`}>
-        <div className="max-w-5xl mx-auto flex items-center justify-between px-md py-2 sm:px-lg">
+        <div className="max-w-4xl mx-auto flex items-center justify-between px-md py-3 sm:px-lg">
           <div className="flex items-center gap-4">
             {companySlug && (
-              <Button
-                variant="ghost"
-                size="sm"
+              <button
+                type="button"
                 onClick={() => navigate(`/careers/${companySlug}`)}
-                className="gap-2"
+                className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back to Careers Page
-              </Button>
+              </button>
             )}
           </div>
-          <GoGioLogo className="h-6 w-auto" />
+          <GoGioLogo className="h-7 w-auto" />
         </div>
       </header>
 
