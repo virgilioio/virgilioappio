@@ -599,6 +599,14 @@ export default function JobDetail() {
       setSearchParams(newParams, { replace: true })
     }
     
+    // Handle ?scorecard=<id> parameter (open existing scorecard by ID)
+    const scorecardParam = searchParams.get('scorecard')
+    if (scorecardParam && candidateIdFromUrl) {
+      setAutoOpenScorecardId(scorecardParam)
+    } else if (!scorecardParam) {
+      setAutoOpenScorecardId(null)
+    }
+
     if (candidateIdFromUrl && candidateIdFromUrl !== profileCandidateId) {
       // Check if candidate exists in any of the candidate lists
       const allLists = [
@@ -627,6 +635,7 @@ export default function JobDetail() {
       // URL has no candidate param but sheet is open - this means user pressed back
       setProfileOpen(false)
       setAutoOpenScorecard(false) // Reset scorecard auto-open when profile closes
+      setAutoOpenScorecardId(null)
     }
   }, [searchParams, applicationReviewCandidates, matchingCandidates, offersCandidates, hiredCandidates, rejectedCandidates, profileCandidateId, profileOpen])
 
