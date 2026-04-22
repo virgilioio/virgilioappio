@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Sparkles, Loader2 } from 'lucide-react'
+import { Sparkles, Loader2, Upload } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { useResumeParsing } from '@/hooks/useResumeParsing'
 import { useSkillsGeneration } from '@/hooks/useSkillsGeneration'
