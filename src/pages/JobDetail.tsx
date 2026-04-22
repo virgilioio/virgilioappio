@@ -1836,16 +1836,6 @@ export default function JobDetail() {
               if (!scorecardId) setAutoOpenScorecardId(null)
             }}
           />
-            onNavigatePrev={handleNavigatePrev}
-            onNavigateNext={handleNavigateNext}
-            onStageChanged={() => setPipelineRefresh((v) => v + 1)}
-            autoOpenScorecard={autoOpenScorecard}
-            autoOpenScorecardStageId={autoOpenScorecardStageId}
-            onScorecardOpened={() => {
-              setAutoOpenScorecard(false)
-              setAutoOpenScorecardStageId(null)
-            }}
-          />
         )}
 
         <BulkRejectionDialog
