@@ -145,14 +145,12 @@ export function useJobHiringPlan() {
 
       const toDelete = (currentPlan || []).filter((row) => !incomingStageIds.has(row.stage_id))
 
-      // Phase 0: Normalize ALL current rows to a unique timestamp-seeded temp range.
-      // This clears the 10000+ and 20000+ blocks even if a prior save crashed mid-way
-      // and left rows stranded there (which would otherwise cause 23505 duplicate-key errors).
-      const epoch = Date.now()
+      // Phase 0: park all current rows in a unique temp block (30000+) that fits in int4
+      // and cannot collide with Phase 1 (10000+), Phase 2 (20000+), or final (1..n).
       for (let i = 0; i < (currentPlan || []).length; i++) {
         const { error: normErr } = await supabase
           .from('job_hiring_stages')
-          .update({ position: epoch + i })
+          .update({ position: 30000 + i + 1 })
           .eq('id', currentPlan[i].id)
         if (normErr) throw normErr
       }
