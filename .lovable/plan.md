@@ -1,61 +1,52 @@
 
 
-## Shareable scorecard URLs
+## Public job posting — width, structure, and breathing room polish
 
-### Goal
-Make the scorecard view directly addressable so it can be linked, refreshed, and shared. Format:
+A second-pass polish to align Overview and Application tabs, expose Job Details on both tabs, widen the page, and let the content breathe (less card chrome, more whitespace) — inspired by the SiteMinder/Konfio references.
 
-```
-/jobs/:jobId?candidate=:candidateId&scorecard=:scorecardId
-```
+### File: `src/pages/PublicJobPosting.tsx`
 
-When opening a stage that has no scorecard yet (new entry), use:
+#### 1. Unify tab widths and overall page width
+- Main wrapper: `max-w-4xl` → `max-w-6xl` (~1152px). Still centered with healthy side margins on 1347px viewports, but uses the empty side space.
+- Increase horizontal padding: `px-6` → `px-8` on desktop (`sm:px-8`).
 
-```
-/jobs/:jobId?candidate=:candidateId&open=scorecard&stage=:stageInstanceId
-```
+#### 2. Same structure across both tabs (2-column with sticky Job Details sidebar)
+- **Overview tab**: keep current 2-column grid `lg:grid-cols-3` (content `col-span-2` + sidebar `col-span-1`), gap stays `gap-12`.
+- **Application tab**: switch from single centered `max-w-2xl` to the **same** 2-column grid as Overview. The form goes in `lg:col-span-2`; the **same `<JobDetailsCard>`** renders in `lg:col-span-1` sticky sidebar.
+- Result: identical column widths, identical Job Details placement, identical scroll behavior across tabs — no jarring layout shift when switching tabs.
 
-The second form already exists for AI notification deep-links — we keep it for the "no scorecard yet" case and add the new `scorecard=:id` form for opening an existing one.
+#### 3. Remove the card chrome around content (more "air to breathe")
+- **Overview content**: drop the `<Card>`/`<CardContent>` wrapper around the About + description (lines ~619–648). Render directly on the page background. Keep the inner `space-y-6` rhythm and the subtle `border-t` separator between About and description.
+- **Application form**: drop the `<Card>`/`<CardContent>` wrapper (lines ~666–667). Render the form sections directly on the page background with `space-y-12` between sections.
+- Keep the **Job Details sidebar as a Card** — that's the one surface that benefits from being visually grouped (mirrors Konfio's right-rail card).
 
-### Behavior
-1. Opening any scorecard from the candidate profile (clicking a card in `ExpandableScoreDisplay` or the AI draft banner) writes `?scorecard=<id>` to the URL alongside `?candidate=<id>`.
-2. Closing the scorecard removes only the `scorecard` / `open` / `stage` params and keeps the candidate sheet open with `?candidate=<id>`.
-3. Closing the candidate sheet removes all three params (current behavior).
-4. Loading the page with `?candidate=X&scorecard=Y` opens the candidate sheet and then the scorecard for ID Y on the correct stage automatically.
-5. Browser back/forward navigates the URL stack: scorecard open → scorecard closed → sheet closed.
+#### 4. Sidebar Job Details — slight refinement
+- Soften the sidebar card: `border-border/60`, `shadow-none` (or `shadow-xs`), `rounded-xl`. Removes the heavy elevation that currently competes with the (now card-less) main content.
+- Sticky offset: `lg:top-24` so it sits below the fixed header without hugging it.
 
-### File changes
+#### 5. Spacing breathing room
+- Title section bottom padding: `pb-8` → `pb-6` (the meta line already provides separation; tabs sit `mt-8` below).
+- Tabs → content gap: `space-y-6` on Tabs root → `space-y-8`.
+- Apply button on Overview: keep, but wrap in `pt-4` instead of `pt-2` for more separation from the description block.
 
-**`src/pages/JobDetail.tsx`**
-- Extend `updateCandidateUrl` (or add a sibling `updateScorecardUrl(scorecardId | null, stageId?)`) that writes/clears `scorecard`, `open`, `stage` while preserving `candidate`.
-- Add reading `scorecard` query param in the existing URL effect (line ~566). When present, set new state `autoOpenScorecardId` and pass it into `<CandidateProfileSheet>`.
-- Pass two new props down: `autoOpenScorecardId` and `onScorecardChange(scorecardId | null, stageInstanceId?)`.
-- In the `onOpenChange={(open) => …}` of the sheet, also clear `scorecard` param when closing.
+#### 6. Application form — keep the polish from the previous pass
+- Keep `space-y-12` between sections, `space-y-6` between fields, `h-11` inputs, `text-[15px]`, red `*` indicator, minimal dropzone variant — all unchanged.
+- Just remove the surrounding Card and let the form sit on the page background, matching the Overview tab's now-card-less treatment.
 
-**`src/components/candidates/CandidateProfileSheet.tsx`**
-- Accept `autoOpenScorecardId?: string | null` and `onScorecardChange?: (scorecardId: string | null, stageInstanceId?: string | null) => void`.
-- New effect: when `autoOpenScorecardId` is set and `planStages` are loaded, look up the scorecard's stage from `useAllStageScorecards` results across all stages (or fetch the single row from `job_stage_scorecards` to get its `stage_instance_id`), then set `scoreStageInstId`, `scoreStageName`, `viewingScorecardId`, and open the sheet.
-- In the existing `onOpenFullSheet` callbacks (lines ~1341), call `onScorecardChange(scorecardId, opt.jhsId)` so the URL is written when the user opens a scorecard from within the sheet.
-- In the `ScorecardSheet`'s `onOpenChange`, when closing, call `onScorecardChange(null)` to drop the param.
-- Keep the existing `autoOpenScorecard` + `autoOpenScorecardStageId` flow for the "create new scorecard for stage X" case (used by AI notification emails) — unchanged.
+### What does NOT change
+- Tabs styling (signature pill — kept as-is).
+- Brand colors, Poppins typography, `EnhancedResumeDropzone` minimal variant.
+- Header polish (logo size, back link).
+- In-app dashboard (zero impact — only the public page changes).
 
-**`src/components/candidates/ScorecardSheet.tsx`**
-- No prop changes needed; the parent already controls `open`. We rely on `onOpenChange` already wired in the parent.
+### Files touched
+- `src/pages/PublicJobPosting.tsx` — widen wrapper, unify 2-col layout across both tabs, render Job Details sidebar on Application tab, drop Card wrappers around Overview content + Application form, soften sidebar card, minor spacing tweaks.
 
-### Edge cases
-- `?scorecard=<id>` for a scorecard the user can't see (private + not author + not admin): silently ignore and just open the candidate sheet on the Scorecards tab. No error toast.
-- `?scorecard=<id>` for a scorecard whose candidate doesn't match `?candidate=<id>` (link tampering): ignore the scorecard param, keep candidate sheet open.
-- Refresh in the middle of an unsaved new-scorecard draft: covered by existing `?open=scorecard&stage=X` flow; we don't try to URL-persist unsaved draft state.
-
-### Out of scope
-- Path-style URL (`/jobs/X/candidates/Y/scorecards/Z`). Keep query params to preserve the existing tab/communications/offer query-string scheme already in use across the app (`?tab=communications`, `?tab=offer`).
-- Linking to specific scorecard tabs inside the scorecard sheet.
-- Updating every place that links to a candidate (`StaleCandidates`, `PendingActivities`, etc.) — they already use the same query-param scheme and continue to work.
-
-### Verification
-1. Open a candidate → click a submitted scorecard. URL becomes `?candidate=X&scorecard=Y`. Refresh — same scorecard reopens.
-2. Copy the URL, paste in a new tab — candidate sheet opens, then scorecard opens on the correct stage.
-3. Close scorecard → URL drops to `?candidate=X`, sheet stays open. Back button reopens the scorecard.
-4. AI notification link `?candidate=X&open=scorecard&stage=S` still works (creates/opens a draft on stage S).
-5. Linking to a scorecard the current user lacks visibility for opens the candidate sheet only, no error.
+### Verification (1347px viewport)
+1. Page content sits in a ~1152px column with comfortable side gutters (no longer feels narrow).
+2. Switching Overview ↔ Application: column widths identical, Job Details card stays in the same right-rail spot, no layout jump.
+3. Job Details (Location, Employment Type, etc.) is visible on **both** tabs as a sticky right-rail card.
+4. Overview description and Application form sit directly on the page background — no enclosing card, no shadow squeezing the content.
+5. Sidebar Job Details card has a light, refined border (no heavy shadow).
+6. Mobile (<lg): sidebar stacks above content (Overview) / above form (Application) as before.
 
