@@ -1347,9 +1347,9 @@ export default function JobDetail() {
 
                 {/* Pipeline Tab */}
                 <TabsContent value="pipeline" className="flex-1 min-h-0 overflow-hidden">
-                  <div className="h-full overflow-auto">
+                  <div className="flex h-full min-h-0 flex-col">
                     {!isRestrictedViewer && (
-                    <Card className="mb-4">
+                    <Card className="mb-4 shrink-0">
                        <CardHeader className="py-3">
                          <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
                            <TabsList className="w-full h-14 p-2 gap-1 grid grid-cols-6">
