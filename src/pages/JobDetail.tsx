@@ -864,10 +864,10 @@ export default function JobDetail() {
                 />
               </TabsContent>
               )}
-               <TabsContent value="pipeline" className="flex-1 min-h-0 overflow-auto data-[state=inactive]:hidden mt-0">
-                 <div className="flex-1 min-h-0 overflow-auto">
+               <TabsContent value="pipeline" className="flex-1 min-h-0 overflow-hidden data-[state=inactive]:hidden mt-0">
+                 <div className="flex h-full min-h-0 flex-col">
                    {!isRestrictedViewer && (
-                   <Card className="mb-4">
+                   <Card className="mb-4 shrink-0">
                       <CardHeader className="py-3">
                          <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
                            {/* Mobile: Dropdown selector */}
