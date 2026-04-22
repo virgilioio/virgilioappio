@@ -169,7 +169,7 @@ export default function PublicCareersPage() {
                 </div>
               )}
             </div>
-            {settings.show_company_name && tenantInfo && (
+            {settings.show_company_name && !settings.logo_url && tenantInfo && (
               <div className="flex">
                 <PageTitle as="h1">
                   {tenantInfo.name}
