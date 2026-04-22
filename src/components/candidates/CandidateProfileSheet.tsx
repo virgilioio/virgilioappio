@@ -120,10 +120,12 @@ interface CandidateProfileSheetProps {
   onStageChanged?: () => void
   autoOpenScorecard?: boolean
   autoOpenScorecardStageId?: string | null
+  autoOpenScorecardId?: string | null
   onScorecardOpened?: () => void
+  onScorecardChange?: (scorecardId: string | null, stageInstanceId?: string | null) => void
 }
 
-export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, autoOpenScorecardStageId, onScorecardOpened }: CandidateProfileSheetProps) {
+export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, autoOpenScorecardStageId, autoOpenScorecardId, onScorecardOpened, onScorecardChange }: CandidateProfileSheetProps) {
   const { canEditCandidates, isAdmin, isWorkspaceOwner, isPlatformAdmin } = usePermissions()
   const navigate = useNavigate()
   
@@ -457,6 +459,30 @@ const stageHasAutomation = useMemo(() => {
       }
     }
   }, [open, planStages, currentStageId, autoOpenScorecard, autoOpenScorecardStageId, associationId])
+
+  // Auto-open existing scorecard from URL ?scorecard=<id>
+  useEffect(() => {
+    if (!open || !autoOpenScorecardId || !associationId || planStages.length === 0) return
+    if (scoreOpen && viewingScorecardId === autoOpenScorecardId) return
+    let cancelled = false
+    ;(async () => {
+      const { data, error } = await supabase
+        .from('job_stage_scorecards')
+        .select('id, stage_instance_id, candidate_id')
+        .eq('id', autoOpenScorecardId)
+        .maybeSingle()
+      if (cancelled || error || !data) return
+      // Tampering / cross-candidate guard
+      if (candidateId && data.candidate_id && data.candidate_id !== candidateId) return
+      const targetStage = planStages.find(s => s.jhsId === data.stage_instance_id)
+      if (!targetStage || !supportsScorecard(targetStage.stage.stage_type)) return
+      setScoreStageInstId(data.stage_instance_id)
+      setScoreStageName(targetStage.stage.stage_name)
+      setViewingScorecardId(autoOpenScorecardId)
+      setScoreOpen(true)
+    })()
+    return () => { cancelled = true }
+  }, [open, autoOpenScorecardId, associationId, planStages, candidateId])
 
   // Remove CoreSignal enrichment - work experience and education will be empty arrays for now
 
@@ -1343,6 +1369,7 @@ const stageHasAutomation = useMemo(() => {
                   setScoreStageName(opt.stage.stage_name)
                   setViewingScorecardId(scorecardId)
                   setScoreOpen(true)
+                  onScorecardChange?.(scorecardId, opt.jhsId)
                 }}
                 onDismissAiDraft={handleDismissAiDraft}
               />
@@ -1865,6 +1892,7 @@ const stageHasAutomation = useMemo(() => {
                 if (!o) {
                   setScoreStageInstId(null)
                   setViewingScorecardId(null)
+                  onScorecardChange?.(null)
                 }
               }}
               stageName={scoreStageName}

@@ -111,17 +111,34 @@ export default function JobDetail() {
   // Auto-open scorecard from URL parameter (for AI note-taker notifications)
   const [autoOpenScorecard, setAutoOpenScorecard] = useState(false)
   const [autoOpenScorecardStageId, setAutoOpenScorecardStageId] = useState<string | null>(null)
+  // Auto-open existing scorecard by ID from URL (?scorecard=<id>)
+  const [autoOpenScorecardId, setAutoOpenScorecardId] = useState<string | null>(null)
 
-  // Helper to update URL with candidate parameter
+  // Helper to update URL with candidate parameter (preserves scorecard param)
   const updateCandidateUrl = (candidateId: string | null) => {
+    const newParams = new URLSearchParams(searchParams)
     if (candidateId) {
-      setSearchParams({ candidate: candidateId }, { replace: true })
+      newParams.set('candidate', candidateId)
     } else {
-      // Remove candidate param when closing
-      const newParams = new URLSearchParams(searchParams)
       newParams.delete('candidate')
-      setSearchParams(newParams, { replace: true })
+      newParams.delete('scorecard')
+      newParams.delete('open')
+      newParams.delete('stage')
     }
+    setSearchParams(newParams, { replace: true })
+  }
+
+  // Helper to update URL with scorecard parameter (preserves candidate)
+  const updateScorecardUrl = (scorecardId: string | null) => {
+    const newParams = new URLSearchParams(searchParams)
+    if (scorecardId) {
+      newParams.set('scorecard', scorecardId)
+      newParams.delete('open')
+      newParams.delete('stage')
+    } else {
+      newParams.delete('scorecard')
+    }
+    setSearchParams(newParams, { replace: true })
   }
 
   // Helper to get candidate ID from URL
@@ -582,6 +599,14 @@ export default function JobDetail() {
       setSearchParams(newParams, { replace: true })
     }
     
+    // Handle ?scorecard=<id> parameter (open existing scorecard by ID)
+    const scorecardParam = searchParams.get('scorecard')
+    if (scorecardParam && candidateIdFromUrl) {
+      setAutoOpenScorecardId(scorecardParam)
+    } else if (!scorecardParam) {
+      setAutoOpenScorecardId(null)
+    }
+
     if (candidateIdFromUrl && candidateIdFromUrl !== profileCandidateId) {
       // Check if candidate exists in any of the candidate lists
       const allLists = [
@@ -610,6 +635,7 @@ export default function JobDetail() {
       // URL has no candidate param but sheet is open - this means user pressed back
       setProfileOpen(false)
       setAutoOpenScorecard(false) // Reset scorecard auto-open when profile closes
+      setAutoOpenScorecardId(null)
     }
   }, [searchParams, applicationReviewCandidates, matchingCandidates, offersCandidates, hiredCandidates, rejectedCandidates, profileCandidateId, profileOpen])
 
@@ -1788,6 +1814,7 @@ export default function JobDetail() {
                 updateCandidateUrl(null)
                 setAutoOpenScorecard(false)
                 setAutoOpenScorecardStageId(null)
+                setAutoOpenScorecardId(null)
               }
             }}
             candidateId={profileCandidateId}
@@ -1799,9 +1826,14 @@ export default function JobDetail() {
             onStageChanged={() => setPipelineRefresh((v) => v + 1)}
             autoOpenScorecard={autoOpenScorecard}
             autoOpenScorecardStageId={autoOpenScorecardStageId}
+            autoOpenScorecardId={autoOpenScorecardId}
             onScorecardOpened={() => {
               setAutoOpenScorecard(false)
               setAutoOpenScorecardStageId(null)
+            }}
+            onScorecardChange={(scorecardId) => {
+              updateScorecardUrl(scorecardId)
+              if (!scorecardId) setAutoOpenScorecardId(null)
             }}
           />
         )}
