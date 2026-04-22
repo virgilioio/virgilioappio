@@ -1020,7 +1020,7 @@ export default function PublicJobPosting() {
         </Tabs>
       </main>
       <footer className="border-t border-border bg-surface-primary">
-        <div className="max-w-4xl mx-auto px-6 sm:px-lg py-6 flex items-center">
+        <div className="max-w-6xl mx-auto px-6 sm:px-8 py-6 flex items-center">
           <span className="text-sm text-muted-foreground mr-3">Powered by</span>
           <GoGioLogo className="h-5 w-auto" />
         </div>
