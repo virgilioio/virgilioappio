@@ -842,7 +842,7 @@ export default function JobDetail() {
                 </TabsList>
               
               
-              <TabsContent value="candidates">
+              <TabsContent value="candidates" className="flex-1 min-h-0 overflow-auto data-[state=inactive]:hidden mt-0">
                 <JobAnalyticsDashboard 
                   jobId={id!}
                   candidates={allAssociatedCandidates.length ? allAssociatedCandidates : applicationReviewCandidates}
@@ -851,7 +851,7 @@ export default function JobDetail() {
               </TabsContent>
               
               {!isRestrictedViewer && (
-               <TabsContent value="job-setup">
+               <TabsContent value="job-setup" className="flex-1 min-h-0 overflow-auto data-[state=inactive]:hidden mt-0">
                 <JobSetupPanel
                   jobId={id!}
                   jobTitle={job.title}
@@ -864,7 +864,7 @@ export default function JobDetail() {
                 />
               </TabsContent>
               )}
-               <TabsContent value="pipeline">
+               <TabsContent value="pipeline" className="flex-1 min-h-0 overflow-auto data-[state=inactive]:hidden mt-0">
                  <div className="flex-1 min-h-0 overflow-auto">
                    {!isRestrictedViewer && (
                    <Card className="mb-4">
