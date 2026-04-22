@@ -992,37 +992,33 @@ export default function PublicJobPosting() {
                         </div>
                       )}
 
-                      <div className="pt-4">
-                        <Button 
-                          type="button" 
-                          onClick={handleSubmitApplication} 
-                          className="w-full sm:w-auto" 
-                          aria-label="Submit application" 
-                          disabled={isSubmitting}
-                        >
-                          {isSubmitting ? (
-                            <span className="inline-flex items-center gap-2">
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              Submitting…
-                            </span>
-                          ) : (
-                            'Submit Application'
-                          )}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </section>
-              </div>
-              <aside className="order-1 lg:order-2 lg:col-span-1 lg:sticky lg:top-20 space-y-4">
-                <JobDetailsCard details={details} />
-              </aside>
+                    <div className="pt-4">
+                      <Button 
+                        type="button" 
+                        onClick={handleSubmitApplication} 
+                        className="w-full sm:w-auto h-11 px-8 text-base font-semibold" 
+                        aria-label="Submit application" 
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? (
+                          <span className="inline-flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Submitting…
+                          </span>
+                        ) : (
+                          'Submit Application'
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </section>
             </div>
           </TabsContent>
         </Tabs>
       </main>
       <footer className="border-t border-border bg-surface-primary">
-        <div className="max-w-5xl mx-auto px-6 sm:px-lg py-6 flex items-center">
+        <div className="max-w-4xl mx-auto px-6 sm:px-lg py-6 flex items-center">
           <span className="text-sm text-muted-foreground mr-3">Powered by</span>
           <GoGioLogo className="h-5 w-auto" />
         </div>
