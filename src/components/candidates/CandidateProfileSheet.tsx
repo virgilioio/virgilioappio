@@ -1369,6 +1369,7 @@ const stageHasAutomation = useMemo(() => {
                   setScoreStageName(opt.stage.stage_name)
                   setViewingScorecardId(scorecardId)
                   setScoreOpen(true)
+                  onScorecardChange?.(scorecardId, opt.jhsId)
                 }}
                 onDismissAiDraft={handleDismissAiDraft}
               />
@@ -1891,6 +1892,7 @@ const stageHasAutomation = useMemo(() => {
                 if (!o) {
                   setScoreStageInstId(null)
                   setViewingScorecardId(null)
+                  onScorecardChange?.(null)
                 }
               }}
               stageName={scoreStageName}
