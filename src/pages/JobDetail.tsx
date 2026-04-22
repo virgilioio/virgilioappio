@@ -864,10 +864,10 @@ export default function JobDetail() {
                 />
               </TabsContent>
               )}
-               <TabsContent value="pipeline" className="flex-1 min-h-0 overflow-auto data-[state=inactive]:hidden mt-0">
-                 <div className="flex-1 min-h-0 overflow-auto">
+               <TabsContent value="pipeline" className="flex-1 min-h-0 overflow-hidden data-[state=inactive]:hidden mt-0">
+                 <div className="flex h-full min-h-0 flex-col">
                    {!isRestrictedViewer && (
-                   <Card className="mb-4">
+                   <Card className="mb-4 shrink-0">
                       <CardHeader className="py-3">
                          <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
                            {/* Mobile: Dropdown selector */}
@@ -986,7 +986,7 @@ export default function JobDetail() {
                        </CardHeader>
                      </Card>
                    )}
-                   <Card className="h-full w-full overflow-hidden flex flex-col">
+                    <Card className="w-full flex flex-col flex-1 min-h-[60dvh] sm:min-h-0 overflow-hidden">
                     <CardHeader className="sticky top-0 z-10 bg-surface-primary/80 backdrop-blur supports-[backdrop-filter]:bg-surface-primary/60 border-b border-border">
                       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                         <div>
@@ -1112,11 +1112,11 @@ export default function JobDetail() {
                         </div>
                           </div>
                         </CardHeader>
-                      <CardContent className="p-0 h-0 flex-1">
+                      <CardContent className="p-0 flex-1 min-h-0">
                         {pipelineSectionTab === 'recruiting' && pipelineView === 'board' ? (
                           <>
                             {/* Mobile: native scroll with snap */}
-                            <div className="h-full w-full overflow-y-auto sm:hidden p-layout-md">
+                            <div className="h-full min-h-[52dvh] w-full overflow-y-auto sm:hidden p-layout-md">
                               <PipelineOverview
                                 jobId={id!}
                                 showHeader={false}
@@ -1347,9 +1347,9 @@ export default function JobDetail() {
 
                 {/* Pipeline Tab */}
                 <TabsContent value="pipeline" className="flex-1 min-h-0 overflow-hidden">
-                  <div className="h-full overflow-auto">
+                  <div className="flex h-full min-h-0 flex-col">
                     {!isRestrictedViewer && (
-                    <Card className="mb-4">
+                    <Card className="mb-4 shrink-0">
                        <CardHeader className="py-3">
                          <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
                            <TabsList className="w-full h-14 p-2 gap-1 grid grid-cols-6">
@@ -1395,7 +1395,7 @@ export default function JobDetail() {
                        </CardHeader>
                      </Card>
                     )}
-                    <Card className="h-full w-full overflow-hidden flex flex-col">
+                    <Card className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
                       <CardHeader className="sticky top-0 z-10 bg-surface-primary/80 backdrop-blur supports-[backdrop-filter]:bg-surface-primary/60 border-b border-border">
                         <div className="flex items-start justify-between">
                           <div>
@@ -1521,7 +1521,7 @@ export default function JobDetail() {
                           </div>
                         </div>
                       </CardHeader>
-                      <CardContent className="p-0 h-0 flex-1">
+                      <CardContent className="p-0 flex-1 min-h-0">
                         {pipelineSectionTab === 'recruiting' && pipelineView === 'board' ? (
                           <>
                             {/* Mobile: native scroll with snap */}
