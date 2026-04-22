@@ -867,10 +867,10 @@ export default function JobDetail() {
                <TabsContent value="pipeline" className="flex-1 min-h-0 overflow-hidden data-[state=inactive]:hidden mt-0">
                  <div className="flex h-full min-h-0 flex-col">
                    {!isRestrictedViewer && (
-                    <Card className="mb-3 sm:mb-4 shrink-0">
-                       <CardHeader className="py-2 sm:py-3">
-                          <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
-                            {/* Mobile: Dropdown selector */}
+                   <Card className="mb-4 shrink-0">
+                      <CardHeader className="py-3">
+                         <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
+                           {/* Mobile: Dropdown selector */}
                            <div className="md:hidden">
                              <Select value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
                                <SelectTrigger className="w-full h-12">
@@ -986,8 +986,8 @@ export default function JobDetail() {
                        </CardHeader>
                      </Card>
                    )}
-                     <Card className="w-full flex flex-col flex-1 min-h-[60dvh] sm:min-h-0 overflow-hidden border-0 rounded-none bg-transparent shadow-none sm:border sm:rounded-lg sm:bg-card sm:shadow-sm">
-                     <CardHeader className="hidden sm:block sticky top-0 z-10 bg-surface-primary/80 backdrop-blur supports-[backdrop-filter]:bg-surface-primary/60 border-b border-border">
+                    <Card className="w-full flex flex-col flex-1 min-h-[60dvh] sm:min-h-0 overflow-hidden">
+                    <CardHeader className="hidden sm:block sticky top-0 z-10 bg-surface-primary/80 backdrop-blur supports-[backdrop-filter]:bg-surface-primary/60 border-b border-border">
                        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                          <div>
                            <h1 className="text-xl font-semibold text-text-primary">Pipeline Overview</h1>
@@ -1116,7 +1116,7 @@ export default function JobDetail() {
                         {pipelineSectionTab === 'recruiting' && pipelineView === 'board' ? (
                           <>
                             {/* Mobile: native scroll with snap */}
-                            <div className="h-full min-h-[52dvh] w-full overflow-y-auto sm:hidden px-3 py-3 pb-[calc(env(safe-area-inset-bottom,0px)+96px)]">
+                            <div className="h-full min-h-[52dvh] w-full overflow-y-auto sm:hidden p-layout-md pb-[calc(env(safe-area-inset-bottom,0px)+96px)]">
                               <PipelineOverview
                                 jobId={id!}
                                 showHeader={false}
@@ -1349,10 +1349,10 @@ export default function JobDetail() {
                 <TabsContent value="pipeline" className="flex-1 min-h-0 overflow-hidden">
                   <div className="flex h-full min-h-0 flex-col">
                     {!isRestrictedViewer && (
-                    <Card className="mb-3 sm:mb-4 shrink-0">
-                        <CardHeader className="py-2 sm:py-3">
-                          <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
-                            <TabsList className="w-full h-14 p-2 gap-1 grid grid-cols-6">
+                    <Card className="mb-4 shrink-0">
+                       <CardHeader className="py-3">
+                         <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
+                           <TabsList className="w-full h-14 p-2 gap-1 grid grid-cols-6">
                              <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-text-primary data-[state=active]:from-blue-500 data-[state=active]:to-purple-500 data-[state=active]:text-white border border-blue-500/20 data-[state=active]:border-blue-500 data-[state=active]:shadow-[0_0_20px_rgba(59,130,246,0.5),0_0_40px_rgba(147,51,234,0.3)] data-[state=active]:animate-pulse" value="suggested">
                                <span className="flex items-center gap-1 truncate">
                                  <Sparkles className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
@@ -1395,7 +1395,7 @@ export default function JobDetail() {
                        </CardHeader>
                      </Card>
                     )}
-                    <Card className="w-full flex flex-col flex-1 min-h-0 overflow-hidden border-0 rounded-none bg-transparent shadow-none sm:border sm:rounded-lg sm:bg-card sm:shadow-sm">
+                    <Card className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
                       <CardHeader className="hidden sm:block sticky top-0 z-10 bg-surface-primary/80 backdrop-blur supports-[backdrop-filter]:bg-surface-primary/60 border-b border-border">
                         <div className="flex items-start justify-between">
                           <div>
@@ -1525,7 +1525,7 @@ export default function JobDetail() {
                         {pipelineSectionTab === 'recruiting' && pipelineView === 'board' ? (
                           <>
                             {/* Mobile: native scroll with snap */}
-                            <div className="h-full min-h-[52dvh] w-full overflow-y-auto sm:hidden px-3 py-3 pb-[calc(env(safe-area-inset-bottom,0px)+96px)]">
+                            <div className="h-full min-h-[52dvh] w-full overflow-y-auto sm:hidden p-layout-md pb-[calc(env(safe-area-inset-bottom,0px)+96px)]">
                               <PipelineOverview
                                 jobId={id!}
                                 showHeader={false}

@@ -668,7 +668,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
 
               {/* Render columns with candidate cards */}
               {stageOptions.map((opt) => (
-                <Card key={opt.jhsId} className="w-[calc(100vw-1.5rem)] sm:w-72 flex-shrink-0 h-full flex flex-col snap-center sm:snap-align-none">
+                <Card key={opt.jhsId} className="w-[calc(100vw-3rem)] sm:w-72 flex-shrink-0 h-full flex flex-col snap-center sm:snap-align-none">
                   <CardHeader className={`pb-2 rounded-t-md shrink-0 ${getHeaderBgClass(opt.stage.stage_type)}`}>
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2 min-w-0">
