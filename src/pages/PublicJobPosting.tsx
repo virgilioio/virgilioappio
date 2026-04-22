@@ -117,6 +117,8 @@ export default function PublicJobPosting() {
   const [showConfirmationDialog, setShowConfirmationDialog] = useState(false)
   const [organizationName, setOrganizationName] = useState<string>('')
   const [companySlug, setCompanySlug] = useState<string | null>(null)
+  const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null)
+  const [companyWebsiteUrl, setCompanyWebsiteUrl] = useState<string | null>(null)
   const [tenantAbout, setTenantAbout] = useState<string | null>(null)
   
   const { coreFields } = useCoreFields()
@@ -181,13 +183,15 @@ export default function PublicJobPosting() {
       // Fetch company slug from careers page settings
       const { data: careersSettings } = await supabase
         .from('careers_page_settings')
-        .select('company_slug')
+        .select('company_slug, logo_url, company_website_url')
         .eq('tenant_id', (p as any).tenant_id)
         .eq('is_active', true)
         .maybeSingle()
       
       if (careersSettings) {
         setCompanySlug(careersSettings.company_slug)
+        setCompanyLogoUrl((careersSettings as any).logo_url ?? null)
+        setCompanyWebsiteUrl((careersSettings as any).company_website_url ?? null)
       }
 
       const { data: f } = await supabase
@@ -587,7 +591,30 @@ export default function PublicJobPosting() {
               </button>
             )}
           </div>
-          <GoGioLogo className="h-7 w-auto" />
+          {companyLogoUrl ? (
+            companyWebsiteUrl || companySlug ? (
+              <a
+                href={companyWebsiteUrl || `/careers/${companySlug}`}
+                target={companyWebsiteUrl ? '_blank' : undefined}
+                rel={companyWebsiteUrl ? 'noopener noreferrer' : undefined}
+                className="inline-flex items-center"
+              >
+                <img
+                  src={companyLogoUrl}
+                  alt={organizationName || 'Company logo'}
+                  className="max-h-7 w-auto object-contain"
+                />
+              </a>
+            ) : (
+              <img
+                src={companyLogoUrl}
+                alt={organizationName || 'Company logo'}
+                className="max-h-7 w-auto object-contain"
+              />
+            )
+          ) : (
+            <GoGioLogo className="h-7 w-auto" />
+          )}
         </div>
       </header>
 
