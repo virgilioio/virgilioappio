@@ -612,7 +612,7 @@ export default function PublicJobPosting() {
           </TabsList>
 
           <TabsContent value="overview">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
               <div className="order-2 lg:order-1 lg:col-span-2 space-y-8">
                 <section aria-labelledby="job-description">
                   {(tenantAbout || posting.description) && (
