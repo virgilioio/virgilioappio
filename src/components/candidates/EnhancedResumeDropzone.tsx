@@ -56,7 +56,8 @@ export function EnhancedResumeDropzone({
   parseOnly = false,
   onFileCaptured,
   useTwoStageAI = false,
-  onResumeTextCaptured
+  onResumeTextCaptured,
+  variant = 'default'
 }: EnhancedResumeDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
