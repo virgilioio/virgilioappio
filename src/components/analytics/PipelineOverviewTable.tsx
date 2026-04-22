@@ -47,7 +47,7 @@ export function PipelineOverviewTable({ jobIds, isLoading: externalLoading }: Pi
   }
 
   return (
-    <Card className="border-virgilio-border">
+    <Card className="border-virgilio-border h-full sm:h-auto flex flex-col">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
