@@ -33,12 +33,12 @@ export function CandidateDetailsCollapsible({ candidate, whatsAppEnabled, handle
     <Card className="bg-surface-primary border-border">
       <Collapsible open={open} onOpenChange={setOpen}>
         <CollapsibleTrigger className="w-full">
-          <div className="px-6 py-4 flex items-center justify-between">
-            <CardTitle>Candidate Details</CardTitle>
-            <div className="flex items-center gap-3">
-              {/* Collapsed summary: show email + phone inline */}
+          <div className="px-6 py-4 flex items-center justify-between gap-3 min-w-0">
+            <CardTitle className="truncate">Candidate Details</CardTitle>
+            <div className="flex items-center gap-3 min-w-0">
+              {/* Collapsed summary: show email + phone inline (desktop only) */}
               {!open && (
-                <div className="flex items-center gap-3 text-xs text-text-secondary" onClick={(e) => e.stopPropagation()}>
+                <div className="hidden sm:flex items-center gap-3 text-xs text-text-secondary min-w-0 max-w-[60%]" onClick={(e) => e.stopPropagation()}>
                   {primaryEmail && (
                     <div className="flex items-center gap-1">
                       <Mail className="h-3 w-3 text-text-tertiary" />
