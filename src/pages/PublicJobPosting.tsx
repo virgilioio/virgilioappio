@@ -276,9 +276,9 @@ export default function PublicJobPosting() {
     })
   }
 
-  function JobDetailsCard({ details }: { details: { location: string | null; employmentType: string | null; locationType: string | null; salaryCurrency: string | null; salaryAmount: number | null; salaryPeriod: string | null; showSalary: boolean; hasCommissions: boolean; commissionsCurrency: string | null; commissionsAmount: number | null; } }) {
+  function JobDetailsCard({ details, className }: { className?: string; details: { location: string | null; employmentType: string | null; locationType: string | null; salaryCurrency: string | null; salaryAmount: number | null; salaryPeriod: string | null; showSalary: boolean; hasCommissions: boolean; commissionsCurrency: string | null; commissionsAmount: number | null; } }) {
     return (
-      <Card>
+      <Card className={className}>
         <CardHeader>
           <CardTitle>Job Details</CardTitle>
         </CardHeader>
