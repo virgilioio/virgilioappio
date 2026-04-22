@@ -1,41 +1,46 @@
 
 
-## Fix mobile job detail page — content cut off
+## Fix mobile horizontal scroll in candidate profile sheet + Pipeline Overview height on mobile job detail
 
-### Problem
-On mobile, opening a job (`/jobs/:id`) shows the header, tabs, and the top of the "Pipeline Overview" card, but everything below is cut off. The mobile bottom nav also overlaps content. Two compounding bugs:
+### Part 1 — Candidate profile sheet horizontal scroll
 
-1. **No scrollable content area.** `JobDetail` wraps everything in `h-[100dvh] ... overflow-hidden`, but the `<TabsContent>` panels for **Job Dashboard**, **Pipeline**, and **Setup** don't have `flex-1 min-h-0 overflow-auto`, so they can't fill or scroll inside the fixed viewport. The Pipeline tab tries to do this with an inner wrapper, but `<TabsContent>` itself isn't a flex child that grows — so the inner `h-full` collapses.
-2. **Mobile bottom nav overlap.** The fixed `MobileBottomNav` (~64px + safe-area inset) sits on top of the page, but `JobDetail` doesn't reserve bottom space for it on mobile, so the last ~80px of any scrollable area is hidden behind the nav.
+**Problem.** On mobile, the **Candidate Details** card (when collapsed) renders an inline preview row with email + phone + WhatsApp + copy buttons next to the title and chevron. With a long email/phone the row exceeds the 390px viewport and forces the entire profile sheet into horizontal scroll.
 
-### Fix (single file: `src/pages/JobDetail.tsx`)
+**Fix — single file: `src/components/candidates/CandidateDetailsCollapsible.tsx`**
 
-**1. Make the Tabs root and each TabsContent a proper flex column on mobile**
-- The `<Tabs>` already has `flex-1 min-h-0 flex flex-col overflow-hidden` ✅
-- Add to each mobile `<TabsContent value="candidates|pipeline|job-setup">`:
-  ```tsx
-  className="flex-1 min-h-0 overflow-auto data-[state=inactive]:hidden mt-0"
-  ```
-  (Radix's TabsContent has `display: none` when inactive; we need the active one to be a real flex child that grows. The `data-[state=inactive]:hidden` keeps that behavior; `mt-0` removes the default margin that breaks the flex layout.)
+1. **Hide the inline collapsed preview on mobile.** Wrap the existing `{!open && (<div … email+phone …/>)}` block with `hidden sm:flex` so it only shows at `≥640px`. On mobile, the collapsed state shows just the title and chevron — tap to expand reveals full details.
+2. **Tighten the desktop preview as a safety net** so it can never push the row wide:
+   - Add `min-w-0 max-w-[60%]` to the inline preview wrapper.
+   - Add `truncate` to the email span (already partially present) and wrap the phone display in `max-w-[120px] truncate`.
+3. **Belt-and-suspenders on the trigger row** — add `min-w-0` to the outer trigger flex container and `truncate` to the `CardTitle`.
 
-**2. Reserve bottom space for the mobile bottom nav**
-- Update the outer wrapper on mobile only:
-  ```tsx
-  <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col bg-background overflow-hidden pb-[calc(env(safe-area-inset-bottom,0px)+72px)] sm:pb-0">
-  ```
-  This adds ~72px of bottom padding (nav height + breathing room) on mobile, mirroring the safe-area pattern already used in `MobileBottomNav`.
+No behavior change when expanded — full email/phone list still renders inside `CollapsibleContent`.
 
-**3. Remove the redundant `mb-6` wrapper around the mobile header**
-- `<div className="mb-6">` around `JobDetailMobileHeader` adds 24px gap. Reduce to `mb-3` so more content fits in the constrained mobile viewport.
+### Part 2 — Pipeline Overview card too short on mobile
 
-**4. Pipeline tab inner Card height fix**
-- Inside the Pipeline TabsContent, the `<Card className="h-full ...">` will now correctly fill because its parent (TabsContent) is a flex child with `flex-1 min-h-0`. No additional change needed once step 1 lands.
+**Problem.** On mobile, inside a job's **Pipeline** tab, the `PipelineOverviewTable` card uses `max-h-[400px]` on its inner scroll wrapper. After the recent JobDetail mobile fix (`flex-1 min-h-0 overflow-auto` on `TabsContent`), the parent now offers full available height, but the card caps itself at 400px — which on a 390×844 viewport means the table only shows ~3 rows and the user has to scroll inside a tiny window to see the pipeline. Feels broken.
 
-### Out of scope
-- Desktop layout (works fine — only the mobile branch is affected).
-- Restructuring the Pipeline section selector or the Card header.
-- Mobile menu drawer behind the hamburger icon (`onMenuToggle={() => {}}` is currently a no-op — separate ticket if we want to add a drawer with sourcing/assignments shortcuts).
+**Fix — single file: `src/components/analytics/PipelineOverviewTable.tsx`**
+
+1. **Make the inner scroll wrapper responsive**: change
+   ```tsx
+   <div className="max-h-[400px] overflow-auto">
+   ```
+   to
+   ```tsx
+   <div className="max-h-[60vh] sm:max-h-[400px] overflow-auto">
+   ```
+   On mobile the table can grow up to 60% of viewport height (~500px on a typical phone), giving 7–8 visible rows. Desktop behavior unchanged.
+2. **Let the Card itself stretch on mobile** so it fills the available `TabsContent` space rather than hugging its content: add `h-full sm:h-auto flex flex-col` to the outer `<Card>` and `flex-1 min-h-0 p-0` to the `<CardContent>` (replacing current `p-0`). Inner scroll wrapper becomes `h-full overflow-auto` on mobile via the same responsive max-height above.
+
+No empty-state, sticky-header, totals-row, or desktop visual changes.
 
 ### Files touched
-- `src/pages/JobDetail.tsx` — only file. No new components, no CSS, no DB.
+- `src/components/candidates/CandidateDetailsCollapsible.tsx`
+- `src/components/analytics/PipelineOverviewTable.tsx`
+
+### Out of scope
+- Restructuring the Pipeline section selector or Card header.
+- Auditing other profile-sheet cards for overflow (separate pass if reported).
+- Default collapsed/expanded state on mobile (stays collapsed — matches user preference).
 
