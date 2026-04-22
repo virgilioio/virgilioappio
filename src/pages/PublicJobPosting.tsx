@@ -659,10 +659,10 @@ export default function PublicJobPosting() {
           </TabsContent>
 
           <TabsContent value="application">
-            <div className="max-w-2xl mx-auto">
-              <section aria-labelledby="application-form">
-                <Card>
-                  <CardContent className="space-y-12 pt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+              <div className="order-2 lg:order-1 lg:col-span-2">
+                <section aria-labelledby="application-form">
+                  <div className="space-y-12">
                     {/* Application limits — demoted to a small helper line */}
                     <p id="application-form" className="text-xs text-text-secondary">
                       Application limits: max 3 applications per 60 days · cannot re-apply to the same role within 90 days · 30-day cooldown after rejection.
