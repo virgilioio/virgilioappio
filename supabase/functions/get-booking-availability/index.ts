@@ -318,6 +318,10 @@ serve(async (req) => {
 
       return new Response(JSON.stringify({
         available_slots: formattedSlots,
+        busy_events: allBusy.map(s => ({
+          start: s.start.toISOString(),
+          end: s.end.toISOString(),
+        })),
         total_slots: formattedSlots.length,
         date_range: { start: start_date, end: end_date },
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
