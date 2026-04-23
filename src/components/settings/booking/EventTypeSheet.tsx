@@ -39,6 +39,8 @@ interface EventTypeSheetProps {
   onDelete?: (id: string) => void;
   isSaving: boolean;
   isDeleting?: boolean;
+  /** Parent booking config timezone — used as the default for new event types. */
+  parentTimezone?: string;
 }
 
 export function EventTypeSheet({
@@ -49,8 +51,10 @@ export function EventTypeSheet({
   onDelete,
   isSaving,
   isDeleting,
+  parentTimezone,
 }: EventTypeSheetProps) {
   const isNew = !eventType;
+  const defaultTz = parentTimezone || 'UTC';
 
   // Form state
   const [title, setTitle] = useState('');
@@ -58,7 +62,7 @@ export function EventTypeSheet({
   const [color, setColor] = useState('#7c3aed');
   const [isActive, setIsActive] = useState(true);
   const [weeklySchedule, setWeeklySchedule] = useState<WeeklySchedule>(getDefaultWeeklySchedule());
-  const [timezone, setTimezone] = useState('America/New_York');
+  const [timezone, setTimezone] = useState(defaultTz);
   const [durationMinutes, setDurationMinutes] = useState(30);
   const [bufferMinutes, setBufferMinutes] = useState(15);
   const [minNoticeHours, setMinNoticeHours] = useState(24);
@@ -74,7 +78,7 @@ export function EventTypeSheet({
       setColor(eventType.color || '#7c3aed');
       setIsActive(eventType.is_active);
       setWeeklySchedule(eventType.weekly_schedule || getDefaultWeeklySchedule());
-      setTimezone(eventType.timezone || 'America/New_York');
+      setTimezone(eventType.timezone || defaultTz);
       setDurationMinutes(eventType.duration_minutes || 30);
       setBufferMinutes(eventType.buffer_time_minutes || 15);
       setMinNoticeHours(eventType.min_notice_hours || 24);
@@ -88,7 +92,7 @@ export function EventTypeSheet({
       setColor('#7c3aed');
       setIsActive(true);
       setWeeklySchedule(getDefaultWeeklySchedule());
-      setTimezone('America/New_York');
+      setTimezone(defaultTz);
       setDurationMinutes(30);
       setBufferMinutes(15);
       setMinNoticeHours(24);
