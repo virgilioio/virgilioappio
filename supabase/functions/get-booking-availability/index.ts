@@ -353,13 +353,11 @@ function generatePotentialSlots(
   durationMinutes: number, bufferMinutes: number, timezone: string
 ): Array<{ start: Date; end: Date }> {
   const slots: Array<{ start: Date; end: Date }> = [];
-  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  let currentDate = new Date(startDate);
-  while (currentDate <= endDate) {
-    const dayName = dayNames[currentDate.getDay()];
-    const dayConfig = weeklySchedule[dayName];
+  let cursor = new Date(startDate);
+  while (cursor <= endDate) {
+    const { dateStr, weekday } = getDatePartsInTz(cursor, timezone);
+    const dayConfig = weeklySchedule[weekday];
     if (dayConfig && dayConfig.enabled) {
-      const dateStr = currentDate.toISOString().split('T')[0];
       const slotStart = createDateInTimezone(dateStr, dayConfig.start, timezone);
       const dayEnd = createDateInTimezone(dateStr, dayConfig.end, timezone);
       let currentSlot = new Date(slotStart);
@@ -369,7 +367,7 @@ function generatePotentialSlots(
         currentSlot = new Date(currentSlot.getTime() + (durationMinutes + bufferMinutes) * 60 * 1000);
       }
     }
-    currentDate.setDate(currentDate.getDate() + 1);
+    cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
   }
   return slots;
 }
@@ -378,9 +376,9 @@ function generateUnrestrictedSlots(
   startDate: Date, endDate: Date, durationMinutes: number, timezone: string
 ): Array<{ start: Date; end: Date }> {
   const slots: Array<{ start: Date; end: Date }> = [];
-  let currentDate = new Date(startDate);
-  while (currentDate <= endDate) {
-    const dateStr = currentDate.toISOString().split('T')[0];
+  let cursor = new Date(startDate);
+  while (cursor <= endDate) {
+    const { dateStr } = getDatePartsInTz(cursor, timezone);
     for (let hour = 8; hour < 20; hour++) {
       for (let minute = 0; minute < 60; minute += 15) {
         const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
@@ -392,7 +390,7 @@ function generateUnrestrictedSlots(
         }
       }
     }
-    currentDate.setDate(currentDate.getDate() + 1);
+    cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
   }
   return slots;
 }
