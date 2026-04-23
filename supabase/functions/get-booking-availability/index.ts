@@ -306,19 +306,46 @@ serve(async (req) => {
   }
 });
 
-function createDateInTimezone(dateStr: string, timeStr: string, tz: string): Date {
-  const localISO = `${dateStr}T${timeStr}:00`;
-  const utcDate = new Date(localISO + 'Z');
+// Returns minutes that the target tz is ahead of UTC at the given instant.
+// e.g. America/Chicago in CDT => -300 (UTC is 300 min ahead-of-tz wall-clock means tz = UTC-5).
+// Convention here: offsetMinutes such that wallClockUTC - trueUTC = offsetMinutes.
+// So trueUTC = naiveUTCFromWallClock - offsetMinutes.
+function getTimezoneOffsetMinutes(instant: Date, tz: string): number {
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', hour12: false,
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
   });
-  const parts = formatter.formatToParts(utcDate);
-  const tzHour = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
-  const tzMinute = parseInt(parts.find(p => p.type === 'minute')?.value || '0');
-  const [wantedHour, wantedMinute] = timeStr.split(':').map(Number);
-  const diffMinutes = (wantedHour * 60 + wantedMinute) - (tzHour * 60 + tzMinute);
-  return new Date(utcDate.getTime() + diffMinutes * 60 * 1000);
+  const parts = formatter.formatToParts(instant);
+  const get = (t: string) => parseInt(parts.find(p => p.type === t)?.value || '0');
+  let hour = get('hour');
+  if (hour === 24) hour = 0;
+  const asUTC = Date.UTC(get('year'), get('month') - 1, get('day'), hour, get('minute'), get('second'));
+  return (asUTC - instant.getTime()) / 60000;
+}
+
+function createDateInTimezone(dateStr: string, timeStr: string, tz: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const [hh, mm] = timeStr.split(':').map(Number);
+  const naiveUTC = Date.UTC(y, m - 1, d, hh, mm, 0);
+  // First pass
+  let offset = getTimezoneOffsetMinutes(new Date(naiveUTC), tz);
+  let trueUTC = naiveUTC - offset * 60000;
+  // Second pass to self-correct around DST transitions
+  offset = getTimezoneOffsetMinutes(new Date(trueUTC), tz);
+  trueUTC = naiveUTC - offset * 60000;
+  return new Date(trueUTC);
+}
+
+function getDatePartsInTz(instant: Date, tz: string): { dateStr: string; weekday: string } {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'long',
+  });
+  const parts = formatter.formatToParts(instant);
+  const get = (t: string) => parts.find(p => p.type === t)?.value || '';
+  return {
+    dateStr: `${get('year')}-${get('month')}-${get('day')}`,
+    weekday: get('weekday').toLowerCase(),
+  };
 }
 
 function generatePotentialSlots(
