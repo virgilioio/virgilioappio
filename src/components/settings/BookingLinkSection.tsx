@@ -310,6 +310,7 @@ export function BookingLinkSection() {
         onDelete={handleDelete}
         isSaving={isCreatingEventType || isUpdatingEventType}
         isDeleting={isDeletingEventType}
+        parentTimezone={config?.timezone}
       />
     </>
   );

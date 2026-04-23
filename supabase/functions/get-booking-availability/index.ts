@@ -7,11 +7,7 @@ const corsHeaders = {
 };
 
 interface WeeklySchedule {
-  [key: string]: {
-    enabled: boolean;
-    start: string;
-    end: string;
-  };
+  [key: string]: { enabled: boolean; start: string; end: string };
 }
 
 interface EventTypeOverrides {
@@ -32,6 +28,158 @@ interface GetAvailabilityRequest {
   internal_scheduling?: boolean;
   event_type_overrides?: EventTypeOverrides;
 }
+
+// =============================================================
+// Timezone helpers (Intl-based, DST-safe)
+// =============================================================
+
+/**
+ * Returns the offset in minutes that the given timezone is from UTC at the given instant.
+ * Convention: offset such that wallClockAsIfUTC - trueUTC = offsetMinutes.
+ * For America/Chicago in CDT (UTC-5), this returns -300.
+ */
+function getTzOffsetMinutes(instant: Date, tz: string): number {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  });
+  const parts = fmt.formatToParts(instant);
+  const get = (t: string) => parseInt(parts.find(p => p.type === t)?.value || '0');
+  let hour = get('hour');
+  if (hour === 24) hour = 0;
+  const asUTC = Date.UTC(get('year'), get('month') - 1, get('day'), hour, get('minute'), get('second'));
+  return (asUTC - instant.getTime()) / 60000;
+}
+
+/**
+ * Convert a wall-clock (date + time) in the given timezone to a true UTC Date.
+ * Two-pass to self-correct around DST transitions.
+ */
+function wallClockToUTC(dateStr: string, timeStr: string, tz: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const [hh, mm] = timeStr.split(':').map(Number);
+  const naive = Date.UTC(y, m - 1, d, hh, mm, 0);
+  let offset = getTzOffsetMinutes(new Date(naive), tz);
+  let utc = naive - offset * 60000;
+  offset = getTzOffsetMinutes(new Date(utc), tz);
+  utc = naive - offset * 60000;
+  return new Date(utc);
+}
+
+/**
+ * Get YYYY-MM-DD and lowercase weekday name as observed in the given timezone.
+ */
+function getDatePartsInTz(instant: Date, tz: string): { dateStr: string; weekday: string } {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'long',
+  });
+  const parts = fmt.formatToParts(instant);
+  const get = (t: string) => parts.find(p => p.type === t)?.value || '';
+  return {
+    dateStr: `${get('year')}-${get('month')}-${get('day')}`,
+    weekday: get('weekday').toLowerCase(),
+  };
+}
+
+// =============================================================
+// Timezone resolution
+// =============================================================
+
+/**
+ * Resolves the effective host timezone using profile as the source of truth.
+ * Override values are only honored when explicitly different from the profile tz.
+ */
+function resolveEffectiveTz(opts: {
+  profileTz?: string | null;
+  configTz?: string | null;
+  eventTypeTz?: string | null;
+}): string {
+  const { profileTz, configTz, eventTypeTz } = opts;
+  const profile = profileTz && profileTz.trim() ? profileTz : null;
+
+  // Event type override only wins if explicitly different from profile
+  if (eventTypeTz && eventTypeTz !== profile) return eventTypeTz;
+  // Config override only wins if explicitly different from profile
+  if (configTz && configTz !== profile) return configTz;
+  if (profile) return profile;
+  if (configTz) return configTz;
+  if (eventTypeTz) return eventTypeTz;
+  return 'UTC';
+}
+
+// =============================================================
+// Slot generators
+// =============================================================
+
+function generatePotentialSlots(
+  startDate: Date, endDate: Date, weeklySchedule: WeeklySchedule,
+  durationMinutes: number, bufferMinutes: number, timezone: string
+): Array<{ start: Date; end: Date }> {
+  const slots: Array<{ start: Date; end: Date }> = [];
+  let cursor = new Date(startDate);
+  while (cursor <= endDate) {
+    const { dateStr, weekday } = getDatePartsInTz(cursor, timezone);
+    const dayConfig = weeklySchedule[weekday];
+    if (dayConfig && dayConfig.enabled) {
+      const slotStart = wallClockToUTC(dateStr, dayConfig.start, timezone);
+      const dayEnd = wallClockToUTC(dateStr, dayConfig.end, timezone);
+      let cur = new Date(slotStart);
+      while (cur.getTime() + durationMinutes * 60000 <= dayEnd.getTime()) {
+        const end = new Date(cur.getTime() + durationMinutes * 60000);
+        slots.push({ start: new Date(cur), end });
+        cur = new Date(cur.getTime() + (durationMinutes + bufferMinutes) * 60000);
+      }
+    }
+    cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
+  }
+  return slots;
+}
+
+/**
+ * Internal scheduling: generates the FULL 24h window per day, host-local.
+ * No weekly schedule, no buffer, no min notice, no max days ahead.
+ * Recruiters see everything, then we just subtract Google FreeBusy.
+ */
+function generateFull24hSlots(
+  startDate: Date, endDate: Date, durationMinutes: number, timezone: string
+): Array<{ start: Date; end: Date }> {
+  const slots: Array<{ start: Date; end: Date }> = [];
+  let cursor = new Date(startDate);
+  while (cursor <= endDate) {
+    const { dateStr } = getDatePartsInTz(cursor, timezone);
+    const dayStart = wallClockToUTC(dateStr, '00:00', timezone);
+    // Use the next-day 00:00 to handle DST cleanly (23 or 25 hour days).
+    const nextCursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
+    const { dateStr: nextDateStr } = getDatePartsInTz(nextCursor, timezone);
+    const dayEnd = wallClockToUTC(nextDateStr, '00:00', timezone);
+    let cur = new Date(dayStart);
+    while (cur.getTime() + durationMinutes * 60000 <= dayEnd.getTime()) {
+      slots.push({ start: new Date(cur), end: new Date(cur.getTime() + durationMinutes * 60000) });
+      // Step every 15 minutes
+      cur = new Date(cur.getTime() + 15 * 60000);
+    }
+    cursor = nextCursor;
+  }
+  return slots;
+}
+
+// =============================================================
+// Profile timezone fetcher
+// =============================================================
+
+async function fetchProfileTz(supabase: any, userId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('timezone')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data.timezone || null;
+}
+
+// =============================================================
+// Main handler
+// =============================================================
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -56,7 +204,9 @@ serve(async (req) => {
 
     const isGroup = Array.isArray(booking_config_ids) && booking_config_ids.length > 1;
 
-    // === GROUP MODE: intersect availability across multiple configs ===
+    // ============================================================
+    // GROUP MODE
+    // ============================================================
     if (isGroup) {
       console.log('[get-booking-availability] GROUP mode for', booking_config_ids!.length, 'configs');
 
@@ -72,23 +222,34 @@ serve(async (req) => {
         }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
-      // Effective windowing rules: max of min_notice, min of max_days
-      const minNotices = configs.map(c => c.min_notice_hours ?? 24);
-      const maxDays = configs.map(c => c.max_days_ahead ?? 30);
+      // Resolve effective tz per host using profile as source of truth
+      const profileTzs = await Promise.all(configs.map((c: any) => fetchProfileTz(supabase, c.user_id)));
+      const effectiveTzs = configs.map((c: any, i: number) =>
+        resolveEffectiveTz({ profileTz: profileTzs[i], configTz: c.timezone })
+      );
+      configs.forEach((c: any, i: number) => {
+        console.log('[get-booking-availability] GROUP host', c.user_id, {
+          profileTz: profileTzs[i], configTz: c.timezone, effectiveTz: effectiveTzs[i],
+        });
+      });
+
+      const minNotices = configs.map((c: any) => c.min_notice_hours ?? 24);
+      const maxDays = configs.map((c: any) => c.max_days_ahead ?? 30);
       const effectiveMinNotice = Math.max(...minNotices);
       const effectiveMaxDays = Math.min(...maxDays);
 
-      // Build per-config potential slot sets and intersect
       let intersected: Array<{ start: Date; end: Date }> | null = null;
 
-      for (const cfg of configs) {
-        const tz = cfg.timezone;
-        const sched = cfg.weekly_schedule as WeeklySchedule;
-        const buf = cfg.buffer_time_minutes ?? 0;
-        const slots = generatePotentialSlots(
-          new Date(start_date), new Date(end_date), sched,
-          duration_minutes, buf, tz
-        );
+      for (let i = 0; i < configs.length; i++) {
+        const cfg = configs[i];
+        const tz = effectiveTzs[i];
+        const slots = internal_scheduling
+          ? generateFull24hSlots(new Date(start_date), new Date(end_date), duration_minutes, tz)
+          : generatePotentialSlots(
+              new Date(start_date), new Date(end_date),
+              cfg.weekly_schedule as WeeklySchedule,
+              duration_minutes, cfg.buffer_time_minutes ?? 0, tz
+            );
 
         const keys = new Set(slots.map(s => `${s.start.toISOString()}|${s.end.toISOString()}`));
 
@@ -103,14 +264,14 @@ serve(async (req) => {
 
       let filteredSlots = intersected || [];
 
-      // Apply min_notice / max_days_ahead
-      const now = new Date();
-      const minStartTime = new Date(now.getTime() + effectiveMinNotice * 60 * 60 * 1000);
-      const maxDate = new Date(now.getTime() + effectiveMaxDays * 24 * 60 * 60 * 1000);
-      filteredSlots = filteredSlots.filter(s => s.start >= minStartTime && s.start <= maxDate);
+      if (!internal_scheduling) {
+        const now = new Date();
+        const minStartTime = new Date(now.getTime() + effectiveMinNotice * 60 * 60 * 1000);
+        const maxDate = new Date(now.getTime() + effectiveMaxDays * 24 * 60 * 60 * 1000);
+        filteredSlots = filteredSlots.filter(s => s.start >= minStartTime && s.start <= maxDate);
+      }
 
-      // Fetch each user's Google Calendar busy slots in parallel
-      const busyResults = await Promise.all(configs.map(async (cfg) => {
+      const busyResults = await Promise.all(configs.map(async (cfg: any, i: number) => {
         try {
           const r = await fetch(`${supabaseUrl}/functions/v1/check-calendar-availability`, {
             method: 'POST',
@@ -119,9 +280,7 @@ serve(async (req) => {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              user_id: cfg.user_id,
-              start_date, end_date,
-              timezone: cfg.timezone,
+              user_id: cfg.user_id, start_date, end_date, timezone: effectiveTzs[i],
             }),
           });
           if (!r.ok) return [];
@@ -129,14 +288,11 @@ serve(async (req) => {
           return (j?.busy_slots || []).map((s: any) => ({
             start: new Date(s.start), end: new Date(s.end),
           }));
-        } catch {
-          return [];
-        }
+        } catch { return []; }
       }));
 
       const allBusy = busyResults.flat();
 
-      // Existing bookings on any of these configs
       const { data: existingBookings } = await supabase
         .from('scheduled_bookings')
         .select('scheduled_start, scheduled_end')
@@ -145,12 +301,11 @@ serve(async (req) => {
         .gte('scheduled_start', start_date)
         .lte('scheduled_end', end_date);
 
-      const bookedSlots = (existingBookings || []).map(b => ({
+      const bookedSlots = (existingBookings || []).map((b: any) => ({
         start: new Date(b.scheduled_start), end: new Date(b.scheduled_end),
       }));
 
       const blockers = [...allBusy, ...bookedSlots];
-
       const availableSlots = filteredSlots.filter(slot =>
         !blockers.some(b => slot.start < b.end && slot.end > b.start)
       );
@@ -168,19 +323,14 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // === SINGLE MODE (original behavior) ===
+    // ============================================================
+    // SINGLE MODE
+    // ============================================================
     if (!booking_config_id) {
       return new Response(JSON.stringify({ error: 'booking_config_id is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    console.log('[get-booking-availability] Request:', {
-      booking_config_id, start_date, end_date, duration_minutes,
-      candidate_timezone, internal_scheduling,
-      has_overrides: !!event_type_overrides,
-    });
-
-    // Load booking configuration
     const { data: config, error: configError } = await supabase
       .from('booking_configurations')
       .select('*')
@@ -191,71 +341,132 @@ serve(async (req) => {
     if (configError || !config) {
       return new Response(JSON.stringify({
         error: 'Booking configuration not found or inactive',
-      }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Resolve effective settings: event type overrides take priority over parent config
-    const effectiveTimezone = event_type_overrides?.timezone || config.timezone;
+    // Profile timezone is the source of truth
+    const profileTz = await fetchProfileTz(supabase, config.user_id);
+    const effectiveTimezone = resolveEffectiveTz({
+      profileTz,
+      configTz: config.timezone,
+      eventTypeTz: event_type_overrides?.timezone,
+    });
+
+    console.log('[get-booking-availability] tz resolution:', {
+      booking_config_id, internal_scheduling,
+      profileTz, configTz: config.timezone,
+      eventTypeTz: event_type_overrides?.timezone,
+      effectiveTimezone,
+    });
+
+    // ============================================================
+    // INTERNAL SCHEDULING BRANCH (full 24h, no rules)
+    // ============================================================
+    if (internal_scheduling) {
+      const potentialSlots = generateFull24hSlots(
+        new Date(start_date), new Date(end_date), duration_minutes, effectiveTimezone
+      );
+      console.log('[get-booking-availability] INTERNAL generated', potentialSlots.length, 'slots');
+
+      let googleBusySlots: Array<{ start: Date; end: Date }> = [];
+      try {
+        const r = await fetch(`${supabaseUrl}/functions/v1/check-calendar-availability`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            user_id: config.user_id, start_date, end_date, timezone: effectiveTimezone,
+          }),
+        });
+        if (r.ok) {
+          const j = await r.json();
+          if (j?.busy_slots) {
+            googleBusySlots = j.busy_slots.map((s: any) => ({
+              start: new Date(s.start), end: new Date(s.end),
+            }));
+          }
+        }
+      } catch (e) {
+        console.warn('[get-booking-availability] FreeBusy fetch failed (internal):', e);
+      }
+
+      const { data: existingBookings } = await supabase
+        .from('scheduled_bookings')
+        .select('scheduled_start, scheduled_end')
+        .eq('booking_config_id', booking_config_id)
+        .eq('status', 'confirmed')
+        .gte('scheduled_start', start_date)
+        .lte('scheduled_end', end_date);
+
+      const bookedSlots = (existingBookings || []).map((b: any) => ({
+        start: new Date(b.scheduled_start), end: new Date(b.scheduled_end),
+      }));
+
+      // Internal flow: only filter out actual existing bookings, not FreeBusy
+      // (recruiter still sees the busy events as informational).
+      const availableSlots = potentialSlots.filter(slot =>
+        !bookedSlots.some(b => slot.start < b.end && slot.end > b.start)
+      );
+
+      console.log('[get-booking-availability] INTERNAL final:', availableSlots.length, 'slots');
+
+      return new Response(JSON.stringify({
+        available_slots: availableSlots.map(s => ({
+          start: s.start.toISOString(), end: s.end.toISOString(),
+        })),
+        busy_events: googleBusySlots.map(s => ({
+          start: s.start.toISOString(), end: s.end.toISOString(),
+        })),
+        total_slots: availableSlots.length,
+        date_range: { start: start_date, end: end_date },
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // ============================================================
+    // PUBLIC BOOKING BRANCH
+    // ============================================================
     const effectiveSchedule = (event_type_overrides?.weekly_schedule || config.weekly_schedule) as WeeklySchedule;
     const effectiveBuffer = event_type_overrides?.buffer_time_minutes ?? config.buffer_time_minutes ?? 0;
     const effectiveMinNotice = event_type_overrides?.min_notice_hours ?? config.min_notice_hours ?? 24;
     const effectiveMaxDays = event_type_overrides?.max_days_ahead ?? config.max_days_ahead ?? 30;
 
-    // Generate potential time slots
-    const potentialSlots = internal_scheduling
-      ? generateUnrestrictedSlots(new Date(start_date), new Date(end_date), duration_minutes, effectiveTimezone)
-      : generatePotentialSlots(new Date(start_date), new Date(end_date), effectiveSchedule, duration_minutes, effectiveBuffer, effectiveTimezone);
+    const potentialSlots = generatePotentialSlots(
+      new Date(start_date), new Date(end_date),
+      effectiveSchedule, duration_minutes, effectiveBuffer, effectiveTimezone
+    );
+    console.log('[get-booking-availability] PUBLIC generated', potentialSlots.length, 'slots');
 
-    console.log('[get-booking-availability] Generated', potentialSlots.length, 'potential slots');
+    const now = new Date();
+    const minStartTime = new Date(now.getTime() + effectiveMinNotice * 60 * 60 * 1000);
+    const maxDate = new Date(now.getTime() + effectiveMaxDays * 24 * 60 * 60 * 1000);
+    let filteredSlots = potentialSlots.filter(s => s.start >= minStartTime && s.start <= maxDate);
 
-    // Apply booking rules (skip if internal scheduling)
-    let filteredSlots = potentialSlots;
-    if (!internal_scheduling) {
-      const now = new Date();
-      const minStartTime = new Date(now.getTime() + effectiveMinNotice * 60 * 60 * 1000);
-      const maxDate = new Date(now.getTime() + effectiveMaxDays * 24 * 60 * 60 * 1000);
-      filteredSlots = potentialSlots.filter(slot => slot.start >= minStartTime && slot.start <= maxDate);
-    }
-
-    console.log('[get-booking-availability] After booking rules:', filteredSlots.length, 'slots');
-
-    // Fetch Google Calendar busy times
     let googleBusySlots: Array<{ start: Date; end: Date }> = [];
     try {
-      const calendarResponse = await fetch(`${supabaseUrl}/functions/v1/check-calendar-availability`, {
+      const r = await fetch(`${supabaseUrl}/functions/v1/check-calendar-availability`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${supabaseServiceKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          user_id: config.user_id,
-          start_date, end_date,
-          timezone: effectiveTimezone,
+          user_id: config.user_id, start_date, end_date, timezone: effectiveTimezone,
         }),
       });
-
-      if (calendarResponse.ok) {
-        const busyData = await calendarResponse.json();
-        if (busyData?.busy_slots) {
-          googleBusySlots = busyData.busy_slots.map((slot: any) => ({
-            start: new Date(slot.start),
-            end: new Date(slot.end),
+      if (r.ok) {
+        const j = await r.json();
+        if (j?.busy_slots) {
+          googleBusySlots = j.busy_slots.map((s: any) => ({
+            start: new Date(s.start), end: new Date(s.end),
           }));
-          console.log('[get-booking-availability] Google Calendar:', googleBusySlots.length, 'busy slots');
         }
-      } else {
-        const errorText = await calendarResponse.text();
-        console.warn('[get-booking-availability] Calendar availability error:', calendarResponse.status, errorText);
       }
-    } catch (error) {
-      console.warn('[get-booking-availability] Failed to fetch Google Calendar, continuing...', error);
+    } catch (e) {
+      console.warn('[get-booking-availability] FreeBusy fetch failed (public):', e);
     }
 
-    // Fetch existing bookings
     const { data: existingBookings } = await supabase
       .from('scheduled_bookings')
       .select('scheduled_start, scheduled_end')
@@ -264,38 +475,24 @@ serve(async (req) => {
       .gte('scheduled_start', start_date)
       .lte('scheduled_end', end_date);
 
-    const bookedSlots = (existingBookings || []).map(b => ({
-      start: new Date(b.scheduled_start),
-      end: new Date(b.scheduled_end),
+    const bookedSlots = (existingBookings || []).map((b: any) => ({
+      start: new Date(b.scheduled_start), end: new Date(b.scheduled_end),
     }));
 
-    console.log('[get-booking-availability] Existing bookings:', bookedSlots.length);
-
-    const filterBusySlots = internal_scheduling ? bookedSlots : [...googleBusySlots, ...bookedSlots];
-
+    const blockers = [...googleBusySlots, ...bookedSlots];
     const availableSlots = filteredSlots.filter(slot =>
-      !filterBusySlots.some(busy => slot.start < busy.end && slot.end > busy.start)
+      !blockers.some(b => slot.start < b.end && slot.end > b.start)
     );
 
-    console.log('[get-booking-availability] Final available slots:', availableSlots.length);
-
-    const formattedSlots = availableSlots.map(slot => ({
-      start: slot.start.toISOString(),
-      end: slot.end.toISOString(),
-    }));
-
-    const formattedBusyEvents = internal_scheduling
-      ? googleBusySlots.map(slot => ({ start: slot.start.toISOString(), end: slot.end.toISOString() }))
-      : undefined;
+    console.log('[get-booking-availability] PUBLIC final:', availableSlots.length, 'slots');
 
     return new Response(JSON.stringify({
-      available_slots: formattedSlots,
-      total_slots: formattedSlots.length,
+      available_slots: availableSlots.map(s => ({
+        start: s.start.toISOString(), end: s.end.toISOString(),
+      })),
+      total_slots: availableSlots.length,
       date_range: { start: start_date, end: end_date },
-      ...(formattedBusyEvents && { busy_events: formattedBusyEvents }),
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error: any) {
     console.error('[get-booking-availability] Error:', error);
@@ -305,92 +502,3 @@ serve(async (req) => {
     });
   }
 });
-
-// Returns minutes that the target tz is ahead of UTC at the given instant.
-// e.g. America/Chicago in CDT => -300 (UTC is 300 min ahead-of-tz wall-clock means tz = UTC-5).
-// Convention here: offsetMinutes such that wallClockUTC - trueUTC = offsetMinutes.
-// So trueUTC = naiveUTCFromWallClock - offsetMinutes.
-function getTimezoneOffsetMinutes(instant: Date, tz: string): number {
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
-  });
-  const parts = formatter.formatToParts(instant);
-  const get = (t: string) => parseInt(parts.find(p => p.type === t)?.value || '0');
-  let hour = get('hour');
-  if (hour === 24) hour = 0;
-  const asUTC = Date.UTC(get('year'), get('month') - 1, get('day'), hour, get('minute'), get('second'));
-  return (asUTC - instant.getTime()) / 60000;
-}
-
-function createDateInTimezone(dateStr: string, timeStr: string, tz: string): Date {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const [hh, mm] = timeStr.split(':').map(Number);
-  const naiveUTC = Date.UTC(y, m - 1, d, hh, mm, 0);
-  // First pass
-  let offset = getTimezoneOffsetMinutes(new Date(naiveUTC), tz);
-  let trueUTC = naiveUTC - offset * 60000;
-  // Second pass to self-correct around DST transitions
-  offset = getTimezoneOffsetMinutes(new Date(trueUTC), tz);
-  trueUTC = naiveUTC - offset * 60000;
-  return new Date(trueUTC);
-}
-
-function getDatePartsInTz(instant: Date, tz: string): { dateStr: string; weekday: string } {
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'long',
-  });
-  const parts = formatter.formatToParts(instant);
-  const get = (t: string) => parts.find(p => p.type === t)?.value || '';
-  return {
-    dateStr: `${get('year')}-${get('month')}-${get('day')}`,
-    weekday: get('weekday').toLowerCase(),
-  };
-}
-
-function generatePotentialSlots(
-  startDate: Date, endDate: Date, weeklySchedule: WeeklySchedule,
-  durationMinutes: number, bufferMinutes: number, timezone: string
-): Array<{ start: Date; end: Date }> {
-  const slots: Array<{ start: Date; end: Date }> = [];
-  let cursor = new Date(startDate);
-  while (cursor <= endDate) {
-    const { dateStr, weekday } = getDatePartsInTz(cursor, timezone);
-    const dayConfig = weeklySchedule[weekday];
-    if (dayConfig && dayConfig.enabled) {
-      const slotStart = createDateInTimezone(dateStr, dayConfig.start, timezone);
-      const dayEnd = createDateInTimezone(dateStr, dayConfig.end, timezone);
-      let currentSlot = new Date(slotStart);
-      while (currentSlot.getTime() + durationMinutes * 60 * 1000 <= dayEnd.getTime()) {
-        const slotEnd = new Date(currentSlot.getTime() + durationMinutes * 60 * 1000);
-        slots.push({ start: new Date(currentSlot), end: slotEnd });
-        currentSlot = new Date(currentSlot.getTime() + (durationMinutes + bufferMinutes) * 60 * 1000);
-      }
-    }
-    cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
-  }
-  return slots;
-}
-
-function generateUnrestrictedSlots(
-  startDate: Date, endDate: Date, durationMinutes: number, timezone: string
-): Array<{ start: Date; end: Date }> {
-  const slots: Array<{ start: Date; end: Date }> = [];
-  let cursor = new Date(startDate);
-  while (cursor <= endDate) {
-    const { dateStr } = getDatePartsInTz(cursor, timezone);
-    for (let hour = 8; hour < 20; hour++) {
-      for (let minute = 0; minute < 60; minute += 15) {
-        const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-        const slotStart = createDateInTimezone(dateStr, timeStr, timezone);
-        const slotEnd = new Date(slotStart.getTime() + durationMinutes * 60 * 1000);
-        const dayEnd = createDateInTimezone(dateStr, '20:00', timezone);
-        if (slotEnd <= dayEnd) {
-          slots.push({ start: new Date(slotStart), end: slotEnd });
-        }
-      }
-    }
-    cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
-  }
-  return slots;
-}
