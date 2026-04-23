@@ -1,47 +1,52 @@
 
 
-## Show tenant logo on job post + hide company name when logo is set
+## Fix booking availability starting at 3:00 AM (timezone bug)
 
-Two small public-facing polish items:
+### Root cause
 
-### 1. Public job posting — show tenant company logo (Ashby-style)
+In `supabase/functions/get-booking-availability/index.ts`, the helper `createDateInTimezone(dateStr, "09:00", "America/Chicago")` is broken:
 
-**File:** `src/pages/PublicJobPosting.tsx`
+1. It builds `2026-04-23T09:00:00Z` (treats the local time as UTC).
+2. Formats that instant in Chicago → gets `04:00`.
+3. Computes diff = `9*60 − 4*60 = +300 min` and **adds** it → ends up at `14:00 UTC` = **09:00 UTC**, which is **04:00 Chicago** (or 03:00 in DST).
 
-- In the data-load effect (line ~182), expand the `careers_page_settings` query to also select `logo_url` and `company_website_url`. Store both in new state: `companyLogoUrl`, `companyWebsiteUrl`.
-- In the header (line ~590), replace the right-side `<GoGioLogo />` with:
-  - If `companyLogoUrl` exists → render the tenant logo (`<img src={companyLogoUrl} className="max-h-7 w-auto object-contain" />`), wrapped in an anchor to `companyWebsiteUrl` (or to `/careers/{companySlug}` as fallback) when available.
-  - Otherwise → keep `<GoGioLogo />` as today (graceful fallback for tenants without a custom logo).
-- Footer (line ~1023–1027) stays as "Powered by GoGio" — that's the platform attribution, not the tenant brand.
+That's exactly why every interviewer's availability begins at ~3:00 AM regardless of their configured "9:00 AM" start. The compounding bug:
 
-Result: matches Ashby/SiteMinder reference where the tenant's brand sits at the top of the job post.
+- `dateStr = currentDate.toISOString().split('T')[0]` uses the UTC date when iterating days, so for users in negative offsets the day boundary slips by one near midnight.
 
-### 2. Public careers page — hide company name when a logo is uploaded
+Both `generatePotentialSlots` and `generateUnrestrictedSlots` call this helper, so the issue affects the candidate scheduling sheet **and** the public booking link, which matches the reported symptoms.
 
-**File:** `src/pages/PublicCareersPage.tsx` (lines ~165–171)
+### Fix
 
-Current behavior: the page always renders the tenant name as an H1 below the logo when the `show_company_name` setting is on, even when the logo already conveys the brand — visually redundant.
+**File:** `supabase/functions/get-booking-availability/index.ts`
 
-Change: only render the company name H1 when **either** of these is true:
-- `settings.show_company_name === true` **AND** `!settings.logo_url` (no logo uploaded → name acts as the brand).
+1. **Rewrite `createDateInTimezone`** to compute the correct UTC instant for a wall-clock time in a given IANA timezone, using a robust two-pass offset approach:
+   - Build a "naive UTC" Date from `${dateStr}T${timeStr}:00Z`.
+   - Format it in the target tz to derive the tz's offset at that instant (handles DST).
+   - Subtract that offset from the naive UTC to get the true UTC instant. Re-run once more to self-correct around DST transitions (standard trick).
+   - Return the corrected `Date`.
 
-In other words: if a logo is present, suppress the H1 regardless of the `show_company_name` toggle. The toggle continues to control name visibility for tenants that haven't uploaded a logo yet.
+2. **Fix the day iteration in `generatePotentialSlots` and `generateUnrestrictedSlots`** so `dateStr` is the calendar date **in the host's timezone**, not in UTC. Use an `Intl.DateTimeFormat` with `timeZone: timezone` and `year/month/day` parts to derive `YYYY-MM-DD`. Same change in both functions.
 
-No schema changes, no settings UI changes — purely a render-time rule. The existing toggle in `CareersPageTab` keeps its label; we just stop honoring it when a logo makes it redundant.
+3. **Use the host tz (not UTC) when comparing `dayName`** as well — derive `weekday` from `Intl.DateTimeFormat` with the host tz, so Sunday/Monday boundaries match the schedule the host configured.
 
-### What does NOT change
-- `careers_page_settings` schema, `CareersPageTab` settings UI, or the `show_company_name` toggle behavior in storage.
-- Footer "Powered by GoGio" attribution on both public pages.
-- In-app dashboard, all other pages.
-
-### Files touched
-- `src/pages/PublicJobPosting.tsx` — fetch + render tenant logo in header (fallback to GoGioLogo).
-- `src/pages/PublicCareersPage.tsx` — suppress company name H1 when `logo_url` is set.
+4. **No client changes.** `AvailabilityCalendar` and `useBookingAvailability` already serialize/deserialize ISO strings correctly; once slots come back at the right instants, they will render at the host's intended local times in the candidate's browser.
 
 ### Verification
-1. Open a public job post for a tenant that has uploaded a logo → header shows their logo (top-right), clickable if `company_website_url` is set.
-2. Open a public job post for a tenant **without** a logo → header still shows the GoGio logo (no regression).
-3. Open the careers page for a tenant with a logo → only the logo is shown (no duplicate company name below).
-4. Open the careers page for a tenant without a logo, with "Show Company Name" on → company name H1 appears as today.
-5. Footer on both public pages still reads "Powered by GoGio".
+
+1. Open a candidate profile → Schedule Interview → pick an interviewer in `America/Chicago` whose schedule is 9:00–17:00. Slots now start at **9:00 AM Chicago** (not 3:00 AM).
+2. Open the public booking link as a candidate in a different tz (e.g., `Europe/Madrid`). Slots show the host's 9:00 AM Chicago shifted into Madrid time correctly (~16:00–17:00 CEST, depending on DST).
+3. Group/AND mode (`booking_config_ids`) returns the same correct base slots before intersection.
+4. Spot-check a DST transition week (e.g., March/November US DST boundary) — slots remain at 9:00 local on both sides of the transition.
+5. Internal scheduling (unrestricted 8 AM–8 PM) starts at 8:00 host-local, not 2:00–3:00 AM.
+
+### What does NOT change
+
+- Frontend rendering, hooks, calendar component.
+- DB schema, RLS, booking configs.
+- `check-calendar-availability` and Google FreeBusy logic (already passes ISO instants correctly).
+
+### Files touched
+
+- `supabase/functions/get-booking-availability/index.ts` — rewrite `createDateInTimezone`, fix tz-aware day/weekday derivation in both slot generators.
 
