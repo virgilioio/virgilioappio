@@ -59,8 +59,22 @@ serve(async (req) => {
       first_name,
       last_name,
       organization_id,
-      timezone = 'UTC'
+      timezone: requestedTimezone,
     } = body;
+
+    // Resolve timezone: prefer profile.timezone, then request body, then UTC as last resort
+    let timezone = 'UTC';
+    const { data: profileRow } = await supabase
+      .from('profiles')
+      .select('timezone')
+      .eq('user_id', user_id)
+      .maybeSingle();
+    if (profileRow?.timezone && profileRow.timezone.trim()) {
+      timezone = profileRow.timezone;
+    } else if (requestedTimezone && requestedTimezone.trim()) {
+      timezone = requestedTimezone;
+    }
+    log("Resolved timezone for new booking config", { profileTz: profileRow?.timezone, requestedTimezone, resolved: timezone });
 
     if (!first_name?.trim() || !last_name?.trim()) {
       throw new Error("first_name and last_name are required");
