@@ -109,11 +109,47 @@ export function usePipelineCandidateStatuses(jobId: string, associations: { id: 
     const map = new Map<string, CandidateStatusInfo>()
     const now = Date.now()
 
-    // Index scorecards by association_id + stage_instance_id
+    // Index scorecards by association_id + stage_instance_id, also collect authors
     const scorecardsByAssocStage = new Map<string, boolean>()
+    const scorecardAuthorsByAssocStage = new Map<string, Set<string>>()
     for (const sc of scorecards || []) {
       const key = `${sc.association_id}:${sc.stage_instance_id}`
       scorecardsByAssocStage.set(key, true)
+      if ((sc as any).created_by) {
+        const set = scorecardAuthorsByAssocStage.get(key) || new Set<string>()
+        set.add((sc as any).created_by)
+        scorecardAuthorsByAssocStage.set(key, set)
+      }
+    }
+
+    // Index attendees by booking_id
+    const attendeesByBooking = new Map<string, string[]>()
+    for (const a of attendees || []) {
+      if (!a.user_id) continue
+      const arr = attendeesByBooking.get(a.booking_id) || []
+      arr.push(a.user_id)
+      attendeesByBooking.set(a.booking_id, arr)
+    }
+
+    // Index primary interviewer + assoc/stage by booking_id
+    const primaryByBooking = new Map<string, { interviewer_id: string | null; assoc: string | null; stage: string | null }>()
+    for (const bp of bookingPrimary || []) {
+      primaryByBooking.set(bp.id, {
+        interviewer_id: bp.interviewer_id,
+        assoc: bp.job_candidate_association_id,
+        stage: bp.job_hiring_stage_id,
+      })
+    }
+
+    // Build expected interviewer set per (assoc, stage), unioning across all bookings for that pair
+    const expectedByAssocStage = new Map<string, Set<string>>()
+    for (const bp of bookingPrimary || []) {
+      if (!bp.job_candidate_association_id || !bp.job_hiring_stage_id) continue
+      const key = `${bp.job_candidate_association_id}:${bp.job_hiring_stage_id}`
+      const set = expectedByAssocStage.get(key) || new Set<string>()
+      if (bp.interviewer_id) set.add(bp.interviewer_id)
+      for (const uid of attendeesByBooking.get(bp.id) || []) set.add(uid)
+      expectedByAssocStage.set(key, set)
     }
 
     // Index bookings by candidate_id + stage_id
@@ -135,13 +171,18 @@ export function usePipelineCandidateStatuses(jobId: string, associations: { id: 
     for (const assoc of associations) {
       const stageId = assoc.current_stage_id
       if (!stageId) {
-        // No stage - lowest priority
         map.set(assoc.id, { priority: 5, sortTime: new Date(assoc.entered_stage_at || assoc.created_at).getTime() })
         continue
       }
 
       const key = `${assoc.id}:${stageId}`
-      const hasScorecard = scorecardsByAssocStage.get(key) || false
+      const hasAnyScorecard = scorecardsByAssocStage.get(key) || false
+
+      // Determine if ALL expected interviewers have submitted
+      const expected = expectedByAssocStage.get(key)
+      const authors = scorecardAuthorsByAssocStage.get(key) || new Set<string>()
+      const allSubmitted = !!expected && expected.size > 0 &&
+        [...expected].every(uid => authors.has(uid))
 
       const candidateStageKey = `${assoc.candidate_id}:${stageId}`
       const stageBookings = bookingsByCandidateStage.get(candidateStageKey) || []
@@ -149,57 +190,53 @@ export function usePipelineCandidateStatuses(jobId: string, associations: { id: 
       const bookingLinkSentAt = bookingLinkSentByAssoc.get(assoc.id)
       const enteredStageTime = new Date(assoc.entered_stage_at || assoc.created_at).getTime()
 
-      // Check for completed interviews
       const completedInterview = stageBookings.find(b =>
         b.status === 'completed' ||
         b.status === 'no_show' ||
         (b.status === 'confirmed' && new Date(b.scheduled_start).getTime() < now)
       )
 
-      // Check for upcoming scheduled interview
       const upcomingInterview = stageBookings.find(b =>
         (b.status === 'confirmed' || b.status === 'rescheduled') &&
         new Date(b.scheduled_start).getTime() >= now
       )
 
-      // Check for pending booking link
       const pendingBookingLink = stageBookings.find(b =>
         b.status === 'pending' ||
         (b.candidate_confirmation_status === 'pending' && b.status !== 'cancelled')
       )
 
-      // Priority 1: Has human scorecard for current stage -> Needs Decision
-      if (hasScorecard) {
+      // Priority 1: ALL expected interviewers submitted -> Needs Decision
+      if (allSubmitted) {
         map.set(assoc.id, { priority: 1, sortTime: enteredStageTime })
         continue
       }
 
-      // Priority 2: Completed interview, no scorecard -> Pending Scorecard
-      if (completedInterview) {
-        map.set(assoc.id, { priority: 2, sortTime: new Date(completedInterview.scheduled_start).getTime() })
+      // Priority 2: Completed interview but not all scorecards in -> Pending Scorecard
+      // (also covers "some submitted, some still pending" in multi-interviewer)
+      if (completedInterview || (hasAnyScorecard && !allSubmitted)) {
+        const sortRef = completedInterview ? new Date(completedInterview.scheduled_start).getTime() : enteredStageTime
+        map.set(assoc.id, { priority: 2, sortTime: sortRef })
         continue
       }
 
-      // Priority 3: Upcoming scheduled interview -> In [time]
       if (upcomingInterview) {
         map.set(assoc.id, { priority: 3, sortTime: new Date(upcomingInterview.scheduled_start).getTime() })
         continue
       }
 
-      // Priority 4: No booking link sent yet -> Pending Schedule
       if (!bookingLinkSentAt && !pendingBookingLink) {
         map.set(assoc.id, { priority: 4, sortTime: enteredStageTime })
         continue
       }
 
-      // Priority 5: Booking link sent, waiting on candidate -> Booking Link Sent
       map.set(assoc.id, { priority: 5, sortTime: bookingLinkSentAt ? new Date(bookingLinkSentAt).getTime() : enteredStageTime })
     }
 
     return map
-  }, [associations, scorecards, bookings, associationsData])
+  }, [associations, scorecards, bookings, associationsData, attendees, bookingPrimary])
 
-  // isLoading is true until all three queries have returned data
+  // isLoading is true until all queries that we need have returned data
   const isLoading = !scorecards || !bookings || !associationsData
 
   return { statusMap, isLoading }
