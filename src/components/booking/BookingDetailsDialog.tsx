@@ -323,6 +323,34 @@ export function BookingDetailsDialog({
               </CardContent>
             </Card>
 
+            {/* Interviewers (multi-interviewer support) */}
+            {(booking as any).interviewers && (booking as any).interviewers.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">
+                    Interviewers ({(booking as any).interviewers.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {((booking as any).interviewers as Array<any>).map((iv) => {
+                    const name = `${iv.first_name || ''} ${iv.last_name || ''}`.trim() || iv.email || 'Interviewer'
+                    return (
+                      <div key={iv.user_id} className="flex items-center gap-3">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{name}</p>
+                          {iv.email && <p className="text-xs text-muted-foreground">{iv.email}</p>}
+                        </div>
+                        {iv.is_primary && (
+                          <Badge variant="secondary" className="text-[10px]">Primary</Badge>
+                        )}
+                      </div>
+                    )
+                  })}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Candidate Information */}
             <Card>
               <CardHeader>
