@@ -31,7 +31,7 @@ export function usePipelineCandidateStatuses(jobId: string, associations: { id: 
       if (associationIds.length === 0) return []
       const { data, error } = await supabase
         .from('job_stage_scorecards')
-        .select('id, association_id, stage_instance_id')
+        .select('id, association_id, stage_instance_id, created_by')
         .eq('job_id', jobId)
         .eq('is_ai_draft', false)
         .in('association_id', associationIds)
