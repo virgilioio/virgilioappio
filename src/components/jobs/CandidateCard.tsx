@@ -237,26 +237,47 @@ export default function CandidateCard(props: CandidateCardProps) {
   // Get status badge based on priority
   const getStatusBadge = () => {
     if (!candidateStatus) return null
-    const { hasScorecard, completedInterview, upcomingInterview, pendingBookingLink, bookingLinkSentAt } = candidateStatus
-    
-    if (hasScorecard) {
+    const {
+      hasAnyScorecard,
+      allSubmitted,
+      expectedCount,
+      submittedCount,
+      completedInterview,
+      upcomingInterview,
+      pendingBookingLink,
+      bookingLinkSentAt,
+    } = candidateStatus
+
+    // All expected interviewers submitted -> Needs Decision
+    if (allSubmitted) {
       return { label: 'Needs Decision', variant: 'purple' as const, Icon: CheckCircle }
     }
-    
-    if (completedInterview) {
-      return { label: 'Pending Scorecard', variant: 'warning' as const, Icon: FileText }
+
+    // Some submitted but not all (multi-interviewer) -> Pending Scorecard with progress
+    if (hasAnyScorecard && expectedCount > 1) {
+      return {
+        label: `Pending Scorecard (${submittedCount}/${expectedCount})`,
+        variant: 'warning' as const,
+        Icon: FileText,
+      }
     }
-    
+
+    if (completedInterview) {
+      const label = expectedCount > 1
+        ? `Pending Scorecard (${submittedCount}/${expectedCount})`
+        : 'Pending Scorecard'
+      return { label, variant: 'warning' as const, Icon: FileText }
+    }
+
     if (upcomingInterview) {
       const timeUntil = formatDistanceToNowStrict(new Date(upcomingInterview.scheduled_start), { addSuffix: false })
       return { label: `In ${timeUntil}`, variant: 'info' as const, Icon: Calendar }
     }
-    
-    // Check both: pending booking in scheduled_bookings OR explicit booking link sent via email
+
     if (pendingBookingLink || bookingLinkSentAt) {
       return { label: 'Booking Link Sent', variant: 'secondary' as const, Icon: Send }
     }
-    
+
     return { label: 'Pending Schedule', variant: 'pastel-yellow' as const, Icon: Clock }
   }
 
