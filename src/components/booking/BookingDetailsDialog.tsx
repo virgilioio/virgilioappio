@@ -78,16 +78,45 @@ export function BookingDetailsDialog({
       if (error) throw error
       if (!data) return null
 
-      // Fetch interviewer profile separately
-      const { data: profile } = await supabase
+      // Fetch attendees for the booking (multi-interviewer support)
+      const { data: attendees } = await supabase
+        .from('scheduled_booking_attendees')
+        .select('user_id, role')
+        .eq('booking_id', bookingId)
+
+      // Build expected interviewer set (primary + attendees)
+      const interviewerIds = new Set<string>()
+      if (data.interviewer_id) interviewerIds.add(data.interviewer_id)
+      for (const a of attendees || []) {
+        if (a.user_id) interviewerIds.add(a.user_id)
+      }
+
+      // Fetch profiles for all
+      const allIds = [...interviewerIds]
+      const { data: profiles } = await supabase
         .from('profiles')
         .select('user_id, first_name, last_name, email, avatar_url')
-        .eq('user_id', data.interviewer_id)
-        .single()
+        .in('user_id', allIds)
+
+      const profileMap = new Map((profiles || []).map(p => [p.user_id, p]))
+      const primaryProfile = profileMap.get(data.interviewer_id)
+
+      const interviewers = allIds.map(uid => {
+        const p = profileMap.get(uid)
+        return {
+          user_id: uid,
+          first_name: p?.first_name ?? null,
+          last_name: p?.last_name ?? null,
+          email: p?.email ?? null,
+          avatar_url: p?.avatar_url ?? null,
+          is_primary: uid === data.interviewer_id,
+        }
+      })
 
       return {
         ...data,
-        interviewer_profile: profile || undefined,
+        interviewer_profile: primaryProfile || undefined,
+        interviewers,
         candidate: data.candidates || undefined,
         job: data.jobs || undefined,
         stage: data.job_hiring_stages?.job_stages ? {
@@ -293,6 +322,34 @@ export function BookingDetailsDialog({
                 )}
               </CardContent>
             </Card>
+
+            {/* Interviewers (multi-interviewer support) */}
+            {(booking as any).interviewers && (booking as any).interviewers.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">
+                    Interviewers ({(booking as any).interviewers.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {((booking as any).interviewers as Array<any>).map((iv) => {
+                    const name = `${iv.first_name || ''} ${iv.last_name || ''}`.trim() || iv.email || 'Interviewer'
+                    return (
+                      <div key={iv.user_id} className="flex items-center gap-3">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{name}</p>
+                          {iv.email && <p className="text-xs text-muted-foreground">{iv.email}</p>}
+                        </div>
+                        {iv.is_primary && (
+                          <Badge variant="secondary" className="text-[10px]">Primary</Badge>
+                        )}
+                      </div>
+                    )
+                  })}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Candidate Information */}
             <Card>

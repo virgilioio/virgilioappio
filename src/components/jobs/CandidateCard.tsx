@@ -71,23 +71,46 @@ export default function CandidateCard(props: CandidateCardProps) {
     queryFn: async () => {
       if (!candidateId || !associationId || !currentStageJhsId) return null
       
-      // Fetch scorecards for this association + stage (only human-submitted)
+      // Fetch scorecards for this association + stage (only human-submitted) with authors
       const { data: scorecards } = await supabase
         .from('job_stage_scorecards')
-        .select('id')
+        .select('id, created_by')
         .eq('association_id', associationId)
         .eq('stage_instance_id', currentStageJhsId)
         .eq('is_ai_draft', false)
-        .limit(1)
       
       // Fetch all bookings for this candidate in this stage
       const { data: bookings } = await supabase
         .from('scheduled_bookings')
-        .select('id, scheduled_start, status, candidate_confirmation_status')
+        .select('id, scheduled_start, status, candidate_confirmation_status, interviewer_id')
         .eq('candidate_id', candidateId)
         .eq('job_hiring_stage_id', currentStageJhsId)
         .in('status', ['pending', 'confirmed', 'rescheduled', 'completed', 'no_show'])
         .order('scheduled_start', { ascending: true })
+
+      // Fetch attendees for these bookings to derive expected interviewer set
+      const bookingIds = (bookings || []).map(b => b.id)
+      let attendees: { booking_id: string; user_id: string }[] = []
+      if (bookingIds.length > 0) {
+        const { data } = await supabase
+          .from('scheduled_booking_attendees')
+          .select('booking_id, user_id')
+          .in('booking_id', bookingIds)
+        attendees = (data || []) as any
+      }
+
+      // Build expected interviewer set across all bookings for this stage
+      const expected = new Set<string>()
+      for (const b of bookings || []) {
+        if (b.interviewer_id) expected.add(b.interviewer_id)
+      }
+      for (const a of attendees) {
+        if (a.user_id) expected.add(a.user_id)
+      }
+
+      const authors = new Set((scorecards || []).map(s => s.created_by).filter(Boolean) as string[])
+      const hasAnyScorecard = (scorecards?.length ?? 0) > 0
+      const allSubmitted = expected.size > 0 && [...expected].every(uid => authors.has(uid))
       
       // Fetch booking_link_sent_at from the association
       const { data: association } = await supabase
@@ -96,32 +119,36 @@ export default function CandidateCard(props: CandidateCardProps) {
         .eq('id', associationId)
         .single()
       
-      const hasScorecard = (scorecards?.length ?? 0) > 0
       const now = new Date()
       
-      // Check for completed interviews (completed status OR confirmed but past)
       const completedInterview = bookings?.find(b => 
         b.status === 'completed' || 
         b.status === 'no_show' ||
         (b.status === 'confirmed' && new Date(b.scheduled_start) < now)
       )
       
-      // Check for upcoming scheduled interview
       const upcomingInterview = bookings?.find(b => 
         (b.status === 'confirmed' || b.status === 'rescheduled') && 
         new Date(b.scheduled_start) >= now
       )
       
-      // Check for pending booking link (sent but not confirmed by candidate)
       const pendingBookingLink = bookings?.find(b => 
         b.status === 'pending' || 
         (b.candidate_confirmation_status === 'pending' && b.status !== 'cancelled')
       )
       
-      // Check if a booking link was explicitly sent via email
       const bookingLinkSentAt = association?.booking_link_sent_at
       
-      return { hasScorecard, completedInterview, upcomingInterview, pendingBookingLink, bookingLinkSentAt }
+      return {
+        hasAnyScorecard,
+        allSubmitted,
+        expectedCount: expected.size,
+        submittedCount: [...expected].filter(uid => authors.has(uid)).length,
+        completedInterview,
+        upcomingInterview,
+        pendingBookingLink,
+        bookingLinkSentAt,
+      }
     },
     enabled: !!candidateId && !!associationId && !!currentStageJhsId,
   })
@@ -210,26 +237,47 @@ export default function CandidateCard(props: CandidateCardProps) {
   // Get status badge based on priority
   const getStatusBadge = () => {
     if (!candidateStatus) return null
-    const { hasScorecard, completedInterview, upcomingInterview, pendingBookingLink, bookingLinkSentAt } = candidateStatus
-    
-    if (hasScorecard) {
+    const {
+      hasAnyScorecard,
+      allSubmitted,
+      expectedCount,
+      submittedCount,
+      completedInterview,
+      upcomingInterview,
+      pendingBookingLink,
+      bookingLinkSentAt,
+    } = candidateStatus
+
+    // All expected interviewers submitted -> Needs Decision
+    if (allSubmitted) {
       return { label: 'Needs Decision', variant: 'purple' as const, Icon: CheckCircle }
     }
-    
-    if (completedInterview) {
-      return { label: 'Pending Scorecard', variant: 'warning' as const, Icon: FileText }
+
+    // Some submitted but not all (multi-interviewer) -> Pending Scorecard with progress
+    if (hasAnyScorecard && expectedCount > 1) {
+      return {
+        label: `Pending Scorecard (${submittedCount}/${expectedCount})`,
+        variant: 'warning' as const,
+        Icon: FileText,
+      }
     }
-    
+
+    if (completedInterview) {
+      const label = expectedCount > 1
+        ? `Pending Scorecard (${submittedCount}/${expectedCount})`
+        : 'Pending Scorecard'
+      return { label, variant: 'warning' as const, Icon: FileText }
+    }
+
     if (upcomingInterview) {
       const timeUntil = formatDistanceToNowStrict(new Date(upcomingInterview.scheduled_start), { addSuffix: false })
       return { label: `In ${timeUntil}`, variant: 'info' as const, Icon: Calendar }
     }
-    
-    // Check both: pending booking in scheduled_bookings OR explicit booking link sent via email
+
     if (pendingBookingLink || bookingLinkSentAt) {
       return { label: 'Booking Link Sent', variant: 'secondary' as const, Icon: Send }
     }
-    
+
     return { label: 'Pending Schedule', variant: 'pastel-yellow' as const, Icon: Clock }
   }
 

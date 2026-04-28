@@ -74,7 +74,7 @@ export function usePendingScorecards() {
         bookingsQuery = bookingsQuery.eq('interviewer_id', user.id);
       }
 
-      const { data: bookings, error: bookingsError } = await bookingsQuery;
+      let { data: bookings, error: bookingsError } = await bookingsQuery;
 
       if (bookingsError) {
         console.error('Error fetching bookings:', bookingsError);
@@ -82,6 +82,60 @@ export function usePendingScorecards() {
       }
 
       if (!bookings || bookings.length === 0) return [];
+
+      // Fetch attendees so we can include co-interviewers (admins) and
+      // restrict non-admin queries to bookings where the user is an attendee.
+      const allBookingIds = bookings.map(b => b.id);
+      const { data: allAttendees } = await supabase
+        .from('scheduled_booking_attendees')
+        .select('booking_id, user_id')
+        .in('booking_id', allBookingIds);
+
+      const attendeesByBooking = new Map<string, string[]>();
+      for (const a of allAttendees || []) {
+        if (!a.user_id) continue;
+        const arr = attendeesByBooking.get(a.booking_id) || [];
+        arr.push(a.user_id);
+        attendeesByBooking.set(a.booking_id, arr);
+      }
+
+      // For non-admins, also include bookings where the user is an attendee (not just primary)
+      if (!isAdmin) {
+        const { data: attendeeBookings } = await supabase
+          .from('scheduled_booking_attendees')
+          .select(`
+            booking_id,
+            scheduled_bookings!inner(
+              id, scheduled_start, scheduled_end, status, interviewer_id,
+              job_hiring_stage_id, job_candidate_association_id, candidate_id, job_id,
+              job_candidate_associations(
+                id, candidate_id, job_id, status,
+                candidates(id, candidate_name),
+                jobs(id, title)
+              ),
+              job_hiring_stages(id, job_stages(stage_name))
+            )
+          `)
+          .eq('user_id', user.id)
+          .lt('scheduled_bookings.scheduled_start', new Date().toISOString())
+          .gte('scheduled_bookings.scheduled_start', thirtyDaysAgo.toISOString())
+          .not('scheduled_bookings.status', 'eq', 'cancelled')
+          .not('scheduled_bookings.candidate_id', 'is', null)
+          .not('scheduled_bookings.job_hiring_stage_id', 'is', null);
+
+        const seen = new Set(bookings.map(b => b.id));
+        for (const ab of attendeeBookings || []) {
+          const sb = (ab as any).scheduled_bookings;
+          if (sb && !seen.has(sb.id)) {
+            bookings.push(sb);
+            seen.add(sb.id);
+            // Track this user as attendee for that booking
+            const arr = attendeesByBooking.get(sb.id) || [];
+            if (!arr.includes(user.id)) arr.push(user.id);
+            attendeesByBooking.set(sb.id, arr);
+          }
+        }
+      }
 
       // Get association IDs from past bookings to check for rescheduled interviews
       const associationIds = [...new Set(
@@ -103,8 +157,21 @@ export function usePendingScorecards() {
         )
       );
 
-      // Fetch interviewer profiles separately
-      const interviewerIds = [...new Set(bookings.map(b => b.interviewer_id).filter(Boolean))];
+      // Build expected interviewer set per booking (primary + attendees)
+      const expectedByBooking = new Map<string, Set<string>>();
+      for (const b of bookings) {
+        const set = new Set<string>();
+        if (b.interviewer_id) set.add(b.interviewer_id);
+        for (const uid of attendeesByBooking.get(b.id) || []) set.add(uid);
+        expectedByBooking.set(b.id, set);
+      }
+
+      // Fetch interviewer profiles separately (include attendees)
+      const interviewerIds = [
+        ...new Set(
+          [...expectedByBooking.values()].flatMap(s => [...s])
+        ),
+      ];
       const { data: profiles } = await supabase
         .from('profiles')
         .select('user_id, first_name, last_name')
@@ -113,13 +180,6 @@ export function usePendingScorecards() {
       const profileMap = new Map(
         (profiles || []).map(p => [p.user_id, p])
       );
-
-      if (bookingsError) {
-        console.error('Error fetching bookings:', bookingsError);
-        throw bookingsError;
-      }
-
-      if (!bookings || bookings.length === 0) return [];
 
       // Fetch scorecards - for admins get all, for others just their own
       let scorecardsQuery = supabase
@@ -142,52 +202,56 @@ export function usePendingScorecards() {
         (scorecards || []).map(sc => `${sc.association_id}:${sc.stage_instance_id}:${sc.created_by}`)
       );
 
-      // Filter bookings that don't have a scorecard from the interviewer
+      // Expand each booking into one pending entry per expected interviewer who has not submitted
       const pendingScorecards: PendingScorecard[] = [];
-      
+      const dedupKeys = new Set<string>();
+
       for (const booking of bookings) {
         const association = booking.job_candidate_associations as any;
         const stage = booking.job_hiring_stages as any;
-        
-        if (!association || !stage) continue;
-        
-        // Skip if candidate is no longer active (rejected, hired, etc.)
-        if (association.status !== 'active' && association.status !== 'offer') continue;
-        
-        // Key includes interviewer_id to check if THAT interviewer submitted
-        const key = `${association.id}:${booking.job_hiring_stage_id}:${booking.interviewer_id}`;
-        
-        // Skip if scorecard already exists from this interviewer
-        if (scorecardKeys.has(key)) continue;
 
-        // Skip if there's a future booking for the same candidate+stage+interviewer (rescheduled)
-        const rescheduledKey = `${association.id}:${booking.job_hiring_stage_id}:${booking.interviewer_id}`;
-        if (futureBookingKeys.has(rescheduledKey)) continue;
-        
-        const profile = profileMap.get(booking.interviewer_id);
-        const interviewerName = profile 
-          ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Unknown'
-          : 'Unknown';
-        
-        pendingScorecards.push({
-          bookingId: booking.id,
-          candidateId: association.candidates?.id || association.candidate_id,
-          candidateName: association.candidates?.candidate_name || 'Unknown',
-          jobId: association.jobs?.id || association.job_id,
-          jobTitle: association.jobs?.title || 'Unknown Job',
-          stageName: stage.job_stages?.stage_name || 'Interview',
-          stageInstanceId: booking.job_hiring_stage_id,
-          associationId: association.id,
-          scheduledStart: booking.scheduled_start,
-          interviewerId: booking.interviewer_id,
-          interviewerName,
-          isOwnTask: booking.interviewer_id === user.id,
-        });
+        if (!association || !stage) continue;
+        if (association.status !== 'active' && association.status !== 'offer') continue;
+
+        const expected = expectedByBooking.get(booking.id) || new Set<string>();
+
+        for (const interviewerId of expected) {
+          // Non-admins only care about their own pending tasks
+          if (!isAdmin && interviewerId !== user.id) continue;
+
+          const key = `${association.id}:${booking.job_hiring_stage_id}:${interviewerId}`;
+          if (scorecardKeys.has(key)) continue;
+          if (futureBookingKeys.has(key)) continue;
+
+          const dedup = `${booking.id}:${interviewerId}`;
+          if (dedupKeys.has(dedup)) continue;
+          dedupKeys.add(dedup);
+
+          const profile = profileMap.get(interviewerId);
+          const interviewerName = profile
+            ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Unknown'
+            : 'Unknown';
+
+          pendingScorecards.push({
+            bookingId: booking.id,
+            candidateId: association.candidates?.id || association.candidate_id,
+            candidateName: association.candidates?.candidate_name || 'Unknown',
+            jobId: association.jobs?.id || association.job_id,
+            jobTitle: association.jobs?.title || 'Unknown Job',
+            stageName: stage.job_stages?.stage_name || 'Interview',
+            stageInstanceId: booking.job_hiring_stage_id,
+            associationId: association.id,
+            scheduledStart: booking.scheduled_start,
+            interviewerId,
+            interviewerName,
+            isOwnTask: interviewerId === user.id,
+          });
+        }
       }
 
       return pendingScorecards;
     },
     enabled: !!user?.id,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5,
   });
 }

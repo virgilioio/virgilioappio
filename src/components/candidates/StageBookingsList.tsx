@@ -86,28 +86,73 @@ export function StageBookingsList({ jhsId, candidateId, onReschedule }: StageBoo
       </div>
       
       {bookings.map((booking) => {
-        const interviewerInitials = `${booking.interviewer_profile?.first_name?.[0] || ''}${booking.interviewer_profile?.last_name?.[0] || ''}`;
-        
+        const interviewers = (booking as any).interviewers as Array<{
+          user_id: string;
+          first_name: string | null;
+          last_name: string | null;
+          email: string | null;
+          avatar_url: string | null;
+          is_primary: boolean;
+          has_scorecard: boolean;
+        }> | undefined;
+        const submittedCount = (booking as any).scorecard_submitted_count ?? 0;
+        const expectedCount = (booking as any).scorecard_expected_count ?? 0;
+        const isMulti = (interviewers?.length ?? 0) > 1;
+
         return (
           <Card key={booking.id} className="p-3">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-3 flex-1">
-                {/* Interviewer Info */}
-                <div className="flex items-center gap-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={booking.interviewer_profile?.avatar_url || undefined} />
-                    <AvatarFallback className="text-xs">{interviewerInitials}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">
-                        {booking.interviewer_profile?.first_name} {booking.interviewer_profile?.last_name}
-                      </span>
-                      <ConfirmationBadge status={(booking.interviewer_confirmation_status || 'pending') as 'pending' | 'confirmed' | 'declined'} />
+                {/* Interviewer(s) Info */}
+                {isMulti && interviewers ? (
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-text-secondary">
+                      Interviewers ({interviewers.length})
                     </div>
-                    <div className="text-xs text-text-tertiary">Interviewer</div>
+                    {interviewers.map((iv) => {
+                      const initials = `${iv.first_name?.[0] || ''}${iv.last_name?.[0] || ''}`;
+                      const name = `${iv.first_name || ''} ${iv.last_name || ''}`.trim() || iv.email || 'Interviewer';
+                      return (
+                        <div key={iv.user_id} className="flex items-center gap-2">
+                          <Avatar className="h-7 w-7">
+                            <AvatarImage src={iv.avatar_url || undefined} />
+                            <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 flex items-center gap-2">
+                            <span className="text-sm font-medium">{name}</span>
+                            {iv.is_primary && (
+                              <span className="text-[10px] uppercase tracking-wide text-text-tertiary">Primary</span>
+                            )}
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${iv.has_scorecard ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                              {iv.has_scorecard ? 'Scorecard ✓' : 'Pending'}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div className="text-xs text-text-secondary">
+                      Scorecards: {submittedCount}/{expectedCount} submitted
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={booking.interviewer_profile?.avatar_url || undefined} />
+                      <AvatarFallback className="text-xs">
+                        {`${booking.interviewer_profile?.first_name?.[0] || ''}${booking.interviewer_profile?.last_name?.[0] || ''}`}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">
+                          {booking.interviewer_profile?.first_name} {booking.interviewer_profile?.last_name}
+                        </span>
+                        <ConfirmationBadge status={(booking.interviewer_confirmation_status || 'pending') as 'pending' | 'confirmed' | 'declined'} />
+                      </div>
+                      <div className="text-xs text-text-tertiary">Interviewer</div>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Date & Time */}
                 <div className="flex items-center gap-2 text-sm text-text-secondary">
