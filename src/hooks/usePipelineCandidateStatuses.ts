@@ -58,6 +58,37 @@ export function usePipelineCandidateStatuses(jobId: string, associations: { id: 
     enabled: !!jobId && candidateIds.length > 0 && stageIds.length > 0,
   })
 
+  // Batch fetch attendees for the bookings (to derive expected interviewer set)
+  const bookingIds = useMemo(() => (bookings || []).map(b => b.id), [bookings])
+  const { data: attendees } = useQuery({
+    queryKey: ['pipeline-booking-attendees', bookingIds],
+    queryFn: async () => {
+      if (bookingIds.length === 0) return []
+      const { data, error } = await supabase
+        .from('scheduled_booking_attendees')
+        .select('booking_id, user_id')
+        .in('booking_id', bookingIds)
+      if (error) throw error
+      return data || []
+    },
+    enabled: bookingIds.length > 0,
+  })
+
+  // Batch fetch primary interviewers from bookings (full record incl. interviewer_id)
+  const { data: bookingPrimary } = useQuery({
+    queryKey: ['pipeline-booking-primary', bookingIds],
+    queryFn: async () => {
+      if (bookingIds.length === 0) return []
+      const { data, error } = await supabase
+        .from('scheduled_bookings')
+        .select('id, interviewer_id, job_candidate_association_id, job_hiring_stage_id')
+        .in('id', bookingIds)
+      if (error) throw error
+      return data || []
+    },
+    enabled: bookingIds.length > 0,
+  })
+
   // Batch fetch booking_link_sent_at for all associations
   const { data: associationsData } = useQuery({
     queryKey: ['pipeline-associations-booking-sent', associationIds],
