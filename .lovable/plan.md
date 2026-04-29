@@ -1,103 +1,62 @@
-## Fix: empty request body + invisible errors when scheduling with a manually-picked interviewer
+## Root cause: the previous "fix" is what's now sending an empty body
 
-### What I found in your logs
+I read the source of `@supabase/functions-js` (v2.4.4, used by supabase-js 2.50.0). The relevant block in `FunctionsClient.invoke()`:
 
-I traced your exact failed click in `create-booking` logs. **The function received an empty body** and threw before any of its own code ran:
-
+```js
+let body: any
+if (
+  functionArgs &&
+  ((headers && !Object.prototype.hasOwnProperty.call(headers, 'Content-Type')) || !headers)
+) {
+  // ... assigns body here based on type ...
+}
+// fetch(... body)  // body is still `undefined` if the condition above was false
 ```
-ERROR [create-booking] Error: SyntaxError: Unexpected end of JSON input
-    at Request.json (ext:deno_fetch/22_body.js:346:16)
-    at Server.<anonymous> (.../create-booking/index.ts:123:73)
-```
 
-Edge-runtime trace shows the sequence: an `OPTIONS` preflight succeeded (200), then the `POST` arrived with `Content-Length: 0`, the function called `await req.json()`, that threw, and the runtime returned 400 — all *before* any `console.log` we added would fire. That's why earlier log inspection showed no breadcrumbs from your click.
-
-### Why the body is empty
-
-The submit code sends:
+**The condition is false whenever the caller passes `Content-Type` in `headers`.** That's exactly what we did in the last fix:
 
 ```ts
-await supabase.functions.invoke('create-booking', { body: bookingData });
-```
-
-Several keys in `bookingData` come from React Query/props and can be `undefined` for the manual-interviewer flow:
-
-- `job_id`, `candidate_id`, `job_candidate_association_id` — undefined when scheduling outside a job context
-- `guest_emails: guestEmails.length > 0 ? guestEmails : undefined` — explicitly undefined
-- `booked_by_user_id: user?.id` — undefined briefly while auth context is loading
-
-`supabase.functions.invoke` chooses how to encode the body by inspecting it. When the `body` object contains any non-plain values or the SDK can't decide on a serializer, it has, in this SDK version (`^2.50.0`), been observed to fall back to `new Blob([])` and send a zero-byte payload. That matches exactly what we see: `Content-Length: 0`, `SyntaxError`, no app logs.
-
-### Fix
-
-Three small changes that together solve the symptom *and* make sure any future failure is visible.
-
-**1. Send the body as a pre-stringified JSON string (both schedule sheets)**
-
-In `src/components/candidates/ScheduleInterviewSheet.tsx` and `src/components/candidates/SimpleScheduleInterviewSheet.tsx`, change the invoke call to:
-
-```ts
-const { data, error } = await supabase.functions.invoke('create-booking', {
+await supabase.functions.invoke('create-booking', {
   body: JSON.stringify(bookingData),
   headers: { 'Content-Type': 'application/json' },
 });
 ```
 
-Stringifying first guarantees a non-empty `application/json` body regardless of what's inside `bookingData` and bypasses the SDK's serializer auto-detection that's failing here. `JSON.stringify` correctly drops `undefined` properties.
+Result: the SDK skips the body assignment entirely, `body` stays `undefined`, fetch sends a request with `Content-Length: 0`, and the edge function's defensive `req.json()` now correctly returns `"Empty or invalid request body"`. So the toast the recruiter sees is real — the request really is empty, but the cause is our own header.
 
-**2. Surface the real server error in the toast**
+The original 400 (before any of these fixes) was a different symptom of the same family: the SDK's serialization auto-detection in some edge case. The right shape for v2.50.0 is to pass the raw object and let the SDK stringify and set the header itself. `JSON.stringify` already drops `undefined` properties, so `guest_emails: undefined`, `job_id: undefined`, etc. are not a problem.
 
-Right after the invoke call, if `error` is set, read `error.context` (which is the underlying `Response`) and try to parse the JSON body to recover the real `{ error, code }` from `create-booking`:
+## Fix
 
+Change both schedule sheets back to passing the object — but **without** an explicit `Content-Type` header — so the SDK's JSON branch runs:
+
+`src/components/candidates/ScheduleInterviewSheet.tsx` (around line 522):
 ```ts
-if (error) {
-  let serverMessage = error.message;
-  try {
-    const body = await (error as any).context?.json?.();
-    if (body?.error) serverMessage = body.error;
-  } catch (_) { /* keep generic */ }
-  throw new Error(serverMessage);
-}
+const { data, error } = await supabase.functions.invoke('create-booking', {
+  body: bookingData,
+});
 ```
 
-The mutation's `onError` already pipes `error.message` into the toast, so you'll now see `"Custom meeting location is required…"`, `"One or more interviewer booking configurations are unavailable."`, `"This time slot is no longer available."`, etc.
+`src/components/candidates/SimpleScheduleInterviewSheet.tsx` (around line 369): same change.
 
-**3. Defensive log + 400 in `create-booking` for empty bodies**
+Keep the existing error-extraction block that reads `error.context?.json()` so any future server-side validation message (e.g. "Custom meeting location is required") still surfaces in the toast.
 
-In `supabase/functions/create-booking/index.ts`, wrap the `await req.json()` (line ~123) in a try/catch that logs the inputs and returns a clear JSON 400 instead of an unhandled `SyntaxError`:
+Also keep the defensive `try/catch` around `req.json()` in `supabase/functions/create-booking/index.ts` — it's harmless and will keep producing clean 400s with logs if anything similar happens again.
 
-```ts
-let payload: any;
-try {
-  payload = await req.json();
-} catch (e) {
-  console.error('[create-booking] Invalid/empty JSON body. content-length=',
-    req.headers.get('content-length'),
-    'content-type=', req.headers.get('content-type'));
-  return new Response(JSON.stringify({ error: 'Empty or invalid request body' }),
-    { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-}
-const { booking_config_id, /* …all destructured fields… */ } = payload;
-```
+## Why this works for the manual-interviewer + custom-location + guest case
 
-This won't matter once fix #1 ships, but it prevents the function from ever silently 400-ing again with no breadcrumbs.
+With the object form:
+- SDK enters the `else` branch, sets `Content-Type: application/json`, runs `JSON.stringify(bookingData)`.
+- `undefined` keys (`job_id`, `candidate_id`, `job_candidate_association_id`, `guest_emails` when empty) are dropped by `JSON.stringify`.
+- The non-empty payload reaches the function, `req.json()` succeeds, validation passes (custom location is present, guest emails are an array), booking is created.
 
-### Cleanup
+## Files touched
 
-Delete the two test bookings I created while reproducing this:
-
-- `643c67e1-02bb-4e5f-a8bb-ba2b14312f78`
-- `1ea9d24f-28fb-42f7-850c-9e7d77f88953`
-
-Done in one migration that removes them (cascades to `scheduled_booking_attendees`).
-
-### Files touched
-
-- `src/components/candidates/ScheduleInterviewSheet.tsx` — stringify body, surface server error.
+- `src/components/candidates/ScheduleInterviewSheet.tsx` — drop `JSON.stringify` and `Content-Type` header from the `create-booking` invoke.
 - `src/components/candidates/SimpleScheduleInterviewSheet.tsx` — same.
-- `supabase/functions/create-booking/index.ts` — guarded `req.json()` with logged 400.
-- `supabase/migrations/<new>.sql` — delete the two test bookings.
 
-### Expected outcome
+No edge function or DB changes.
 
-Click "Schedule Interview" with a manually picked interviewer → request body is non-empty → function runs end to end → booking succeeds. If anything else is wrong with the data, the toast now tells you exactly what.
+## Verification after deploy
+
+Recruiter flow: open a candidate → Schedule Interview at a stage with no configured interviewer → pick interviewer manually → custom meeting location → add guest email → Schedule. Expected: toast "Interview Scheduled", booking visible in the candidate profile. If anything else is wrong server-side, the toast will now show the specific reason from the function response instead of "Empty or invalid request body".
