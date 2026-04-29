@@ -1,73 +1,103 @@
-## Multi-interviewer correctness: profile preview + scorecard completion
+## Fix: empty request body + invisible errors when scheduling with a manually-picked interviewer
 
-### Problem
+### What I found in your logs
 
-When a stage is configured with **2+ interviewers** (group / AND booking), the app stores:
-- One row in `scheduled_bookings` with the **primary** `interviewer_id`
-- One row per interviewer in `scheduled_booking_attendees` (`booking_id`, `user_id`, `role='interviewer'`)
+I traced your exact failed click in `create-booking` logs. **The function received an empty body** and threw before any of its own code ran:
 
-That second table is correctly populated by `create-booking` but is **read by almost nothing**, so the rest of the app behaves as if there is only one interviewer. Two concrete symptoms the user reported:
+```
+ERROR [create-booking] Error: SyntaxError: Unexpected end of JSON input
+    at Request.json (ext:deno_fetch/22_body.js:346:16)
+    at Server.<anonymous> (.../create-booking/index.ts:123:73)
+```
 
-1. **Candidate profile event preview** (`StageBookingsList`, `BookingDetailsDialog`) shows a single avatar + name + confirmation badge — the second interviewer is invisible.
-2. **Scorecard completion is per-interviewer**, but the rest of the app treats "any one scorecard exists" as done:
-   - Kanban candidate card flips to "Needs Decision" the moment one of two interviewers submits.
-   - Pipeline status sort (`usePipelineCandidateStatuses`) does the same — clears "Pending Scorecard" too early.
-   - Dashboard "Pending Scorecards" task list (`usePendingScorecards`) only ever surfaces the primary interviewer; secondary interviewers never see their own pending task.
+Edge-runtime trace shows the sequence: an `OPTIONS` preflight succeeded (200), then the `POST` arrived with `Content-Length: 0`, the function called `await req.json()`, that threw, and the runtime returned 400 — all *before* any `console.log` we added would fire. That's why earlier log inspection showed no breadcrumbs from your click.
 
-### Source-of-truth rule (to apply everywhere)
+### Why the body is empty
 
-For a booking `b`:
-- `expected_scorecard_user_ids = scheduled_booking_attendees.user_id where booking_id = b.id and role='interviewer'`
-- If `attendees` is empty (legacy / single-interviewer bookings) → fall back to `[b.interviewer_id]`
-- A booking is "fully scored" only when `job_stage_scorecards.created_by` covers **every** id in that set (matched by `association_id` + `stage_instance_id` + `is_ai_draft=false`).
-- Per-user pending: a user owes a scorecard if they're in `expected_scorecard_user_ids` AND they have no row in `job_stage_scorecards` for that assoc+stage authored by them.
+The submit code sends:
 
-This matches what `create-booking` already inserts and what `usePendingScorecards` half-does today.
+```ts
+await supabase.functions.invoke('create-booking', { body: bookingData });
+```
 
-### Changes
+Several keys in `bookingData` come from React Query/props and can be `undefined` for the manual-interviewer flow:
 
-**1. `src/hooks/useStageBookings.ts`** — fetch attendees alongside the booking; expose `attendees: { user_id, profile }[]` on each returned row. One extra query: `from('scheduled_booking_attendees').select('booking_id, user_id, role').in('booking_id', bookingIds)`, then merge profiles into the existing profile map (extend the `interviewerIds` set with all attendee user_ids before the profiles fetch).
+- `job_id`, `candidate_id`, `job_candidate_association_id` — undefined when scheduling outside a job context
+- `guest_emails: guestEmails.length > 0 ? guestEmails : undefined` — explicitly undefined
+- `booked_by_user_id: user?.id` — undefined briefly while auth context is loading
 
-**2. `src/components/candidates/StageBookingsList.tsx`** — when `attendees.length > 1`, render an avatar stack + a vertical list of "Name · ConfirmationBadge" rows under "Interviewers ({n})" instead of the single-avatar header. For single-interviewer (or legacy bookings with no attendees), keep the current layout. Also surface scorecard progress badge: "Scorecards: 1/2 submitted" using the same expected-set logic (small query for `job_stage_scorecards` filtered by association+stage, count of distinct `created_by` ∩ expected set).
+`supabase.functions.invoke` chooses how to encode the body by inspecting it. When the `body` object contains any non-plain values or the SDK can't decide on a serializer, it has, in this SDK version (`^2.50.0`), been observed to fall back to `new Blob([])` and send a zero-byte payload. That matches exactly what we see: `Content-Length: 0`, `SyntaxError`, no app logs.
 
-**3. `src/components/booking/BookingDetailsDialog.tsx`** — same treatment: list all attendees with their individual confirmation status (today only `interviewer_confirmation_status` exists at the booking level, which is fine to keep showing for the primary; secondary attendees show as "Invited" until per-attendee status is tracked — out of scope for this fix). Use the attendees list for display only.
+### Fix
 
-**4. `src/hooks/usePipelineCandidateStatuses.ts`** — change the "fully scored" check:
-  - Also fetch `scheduled_booking_attendees` for the bookings retrieved.
-  - Build `expectedByAssocStage: Map<assoc:stage, Set<user_id>>` from the most-recent completed booking per assoc+stage (attendees if present, else `[interviewer_id]`).
-  - Build `submittedByAssocStage: Map<assoc:stage, Set<created_by>>` from scorecards.
-  - `hasScorecard` (used for "Needs Decision") becomes `expected.size > 0 && expected ⊆ submitted`.
-  - "Pending Scorecard" still triggers on completed interview present, but only when the expected set is **not yet fully covered**. (Today the code already treats those as mutually exclusive via `continue`.)
+Three small changes that together solve the symptom *and* make sure any future failure is visible.
 
-**5. `src/components/jobs/CandidateCard.tsx`** — same fix in the inline `candidate-status` query: fetch attendees for the bookings in this stage, compute expected user-id set, fetch `created_by` from scorecards (not just count), require full coverage before flipping to "Needs Decision". Optional: badge label can become "Pending Scorecard (1/2)" when partially submitted — keeps the user informed without a new variant.
+**1. Send the body as a pre-stringified JSON string (both schedule sheets)**
 
-**6. `src/hooks/usePendingScorecards.ts`** — generate one pending row per (booking × expected interviewer) instead of per booking:
-  - After fetching past bookings, fetch `scheduled_booking_attendees` for those `booking_id`s.
-  - For each booking, expected user-ids = attendees[booking.id] ?? [booking.interviewer_id].
-  - Skip non-admin's pending task only if `user.id` is not in the expected set (admins still see all).
-  - Existing `scorecardKeys` already keys on `created_by`, so a row stays pending per interviewer until that specific interviewer submits.
-  - The `rescheduledKey` future-booking check should be relaxed to `assoc:stage` level (any future booking for the same assoc+stage cancels the pending task for everyone), since rescheduling replaces the whole interview, not per-interviewer.
+In `src/components/candidates/ScheduleInterviewSheet.tsx` and `src/components/candidates/SimpleScheduleInterviewSheet.tsx`, change the invoke call to:
 
-### Out of scope (call out, don't ship)
+```ts
+const { data, error } = await supabase.functions.invoke('create-booking', {
+  body: JSON.stringify(bookingData),
+  headers: { 'Content-Type': 'application/json' },
+});
+```
 
-- Per-attendee `interviewer_confirmation_status` (today there's a single column on `scheduled_bookings`). Adding one would need a column on `scheduled_booking_attendees` + writes from the calendar sync function. Worth a follow-up if confirmation tracking matters per interviewer.
-- AND-vs-OR semantics. Today every attendee row is treated as required. If we ever introduce "optional" attendees for scorecards, the expected-set query needs a role/required filter.
+Stringifying first guarantees a non-empty `application/json` body regardless of what's inside `bookingData` and bypasses the SDK's serializer auto-detection that's failing here. `JSON.stringify` correctly drops `undefined` properties.
 
-### Verification
+**2. Surface the real server error in the toast**
 
-1. Stage with 2 interviewers, schedule a group interview → candidate profile shows both avatars + names; both rows appear under "Pending Scorecards" on each interviewer's dashboard.
-2. One interviewer submits a scorecard → Kanban card stays on "Pending Scorecard" (or shows "1/2"); other interviewer still has the pending task; pipeline sort still treats it as Pending Scorecard.
-3. Both submit → card flips to "Needs Decision"; pending tasks disappear for both.
-4. Single-interviewer stage (no attendees rows) → behavior unchanged (fallback to `interviewer_id`).
-5. Reschedule a multi-interviewer booking → all per-interviewer pending tasks for the old booking clear (assoc+stage future-booking check).
+Right after the invoke call, if `error` is set, read `error.context` (which is the underlying `Response`) and try to parse the JSON body to recover the real `{ error, code }` from `create-booking`:
+
+```ts
+if (error) {
+  let serverMessage = error.message;
+  try {
+    const body = await (error as any).context?.json?.();
+    if (body?.error) serverMessage = body.error;
+  } catch (_) { /* keep generic */ }
+  throw new Error(serverMessage);
+}
+```
+
+The mutation's `onError` already pipes `error.message` into the toast, so you'll now see `"Custom meeting location is required…"`, `"One or more interviewer booking configurations are unavailable."`, `"This time slot is no longer available."`, etc.
+
+**3. Defensive log + 400 in `create-booking` for empty bodies**
+
+In `supabase/functions/create-booking/index.ts`, wrap the `await req.json()` (line ~123) in a try/catch that logs the inputs and returns a clear JSON 400 instead of an unhandled `SyntaxError`:
+
+```ts
+let payload: any;
+try {
+  payload = await req.json();
+} catch (e) {
+  console.error('[create-booking] Invalid/empty JSON body. content-length=',
+    req.headers.get('content-length'),
+    'content-type=', req.headers.get('content-type'));
+  return new Response(JSON.stringify({ error: 'Empty or invalid request body' }),
+    { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+}
+const { booking_config_id, /* …all destructured fields… */ } = payload;
+```
+
+This won't matter once fix #1 ships, but it prevents the function from ever silently 400-ing again with no breadcrumbs.
+
+### Cleanup
+
+Delete the two test bookings I created while reproducing this:
+
+- `643c67e1-02bb-4e5f-a8bb-ba2b14312f78`
+- `1ea9d24f-28fb-42f7-850c-9e7d77f88953`
+
+Done in one migration that removes them (cascades to `scheduled_booking_attendees`).
 
 ### Files touched
 
-- `src/hooks/useStageBookings.ts`
-- `src/components/candidates/StageBookingsList.tsx`
-- `src/components/booking/BookingDetailsDialog.tsx`
-- `src/hooks/usePipelineCandidateStatuses.ts`
-- `src/components/jobs/CandidateCard.tsx`
-- `src/hooks/usePendingScorecards.ts`
+- `src/components/candidates/ScheduleInterviewSheet.tsx` — stringify body, surface server error.
+- `src/components/candidates/SimpleScheduleInterviewSheet.tsx` — same.
+- `supabase/functions/create-booking/index.ts` — guarded `req.json()` with logged 400.
+- `supabase/migrations/<new>.sql` — delete the two test bookings.
 
-No DB migrations and no edge function changes — `create-booking` already writes `scheduled_booking_attendees` correctly.
+### Expected outcome
+
+Click "Schedule Interview" with a manually picked interviewer → request body is non-empty → function runs end to end → booking succeeds. If anything else is wrong with the data, the toast now tells you exactly what.

@@ -520,10 +520,18 @@ export function ScheduleInterviewSheet({
   const createBookingMutation = useMutation({
     mutationFn: async (bookingData: any) => {
       const { data, error } = await supabase.functions.invoke('create-booking', {
-        body: bookingData,
+        body: JSON.stringify(bookingData),
+        headers: { 'Content-Type': 'application/json' },
       });
 
-      if (error) throw error;
+      if (error) {
+        let serverMessage = error.message;
+        try {
+          const body = await (error as any).context?.json?.();
+          if (body?.error) serverMessage = body.error;
+        } catch (_) { /* keep generic */ }
+        throw new Error(serverMessage);
+      }
       return data;
     },
     onSuccess: async () => {

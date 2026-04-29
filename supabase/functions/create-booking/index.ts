@@ -107,6 +107,25 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Defensive parse: surface clear 400 (with logs) instead of an unhandled SyntaxError
+    let payload: any;
+    try {
+      payload = await req.json();
+    } catch (parseErr) {
+      console.error(
+        '[create-booking] Invalid/empty JSON body. content-length=',
+        req.headers.get('content-length'),
+        'content-type=',
+        req.headers.get('content-type'),
+        'err=',
+        (parseErr as Error)?.message,
+      );
+      return new Response(JSON.stringify({ error: 'Empty or invalid request body' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const {
       booking_config_id,
       booking_config_ids = null, // Group booking: array of config IDs (AND mode)
@@ -136,7 +155,7 @@ serve(async (req) => {
       // Reschedule support: cancel old booking atomically
       reschedule_booking_id = null,
       reschedule_token = null,
-    } = await req.json();
+    } = payload;
 
     // Validate custom location if specified
     if (meeting_type_preference === 'custom' && (!custom_meeting_location || custom_meeting_location.trim() === '')) {
