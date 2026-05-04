@@ -156,6 +156,17 @@ export function useCalendarIdentities() {
                   console.log('[Calendar] Webhook setup successful for bidirectional sync');
                 }
 
+                // Auto-sync timezone from Google Calendar (frontend fallback)
+                try {
+                  await supabase.functions.invoke('sync-calendar-timezone', {
+                    body: { calendar_identity_id: calendarIdentity.id },
+                  });
+                  queryClient.invalidateQueries({ queryKey: ['booking-config'] });
+                  queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+                } catch (tzError) {
+                  console.warn('[Calendar] Timezone sync failed (non-blocking):', tzError);
+                }
+
                 // Booking config should now be auto-activated by database trigger
                 // But let's verify and notify the user
                 const { data: bookingConfig, error: bcError } = await supabase
