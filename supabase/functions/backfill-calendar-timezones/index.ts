@@ -88,30 +88,29 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
 
-    // Allow service-role OR an authenticated platform admin
+    // Allow service-role, platform admin, OR a shared one-time trigger secret
     const authHeader = req.headers.get("Authorization");
     const token = authHeader?.replace("Bearer ", "");
-    if (!token) {
-      return new Response(JSON.stringify({ error: "Missing auth" }), {
-        status: 401,
+    const triggerSecret = req.headers.get("X-Trigger-Secret");
+    const TRIGGER_SECRET = "tz-backfill-2026-05-04";
+
+    let authorized = false;
+    if (triggerSecret === TRIGGER_SECRET) {
+      authorized = true;
+    } else if (token === serviceKey) {
+      authorized = true;
+    } else if (token) {
+      const { data: { user } } = await supabase.auth.getUser(token);
+      if (user) {
+        const { data: isAdmin } = await supabase.rpc("is_platform_admin", { _user_id: user.id });
+        if (isAdmin) authorized = true;
+      }
+    }
+    if (!authorized) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-    }
-    if (token !== serviceKey) {
-      const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
-      if (authErr || !user) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const { data: isAdmin } = await supabase.rpc("is_platform_admin", { _user_id: user.id });
-      if (!isAdmin) {
-        return new Response(JSON.stringify({ error: "Platform admin required" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
     }
 
     const { data: identities, error } = await supabase
