@@ -88,14 +88,30 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
 
-    // Require service-role auth to prevent abuse
+    // Allow service-role OR an authenticated platform admin
     const authHeader = req.headers.get("Authorization");
     const token = authHeader?.replace("Bearer ", "");
-    if (token !== serviceKey) {
-      return new Response(JSON.stringify({ error: "Service role required" }), {
-        status: 403,
+    if (!token) {
+      return new Response(JSON.stringify({ error: "Missing auth" }), {
+        status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+    if (token !== serviceKey) {
+      const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+      if (authErr || !user) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: isAdmin } = await supabase.rpc("is_platform_admin", { _user_id: user.id });
+      if (!isAdmin) {
+        return new Response(JSON.stringify({ error: "Platform admin required" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const { data: identities, error } = await supabase
