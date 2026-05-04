@@ -281,6 +281,31 @@ const handler = async (req: Request): Promise<Response> => {
           console.error('[mail-oauth-callback] Error setting up calendar watch:', watchError);
           // Don't fail the whole flow if watch setup fails
         }
+
+        // Auto-sync the user's Google Calendar timezone into profile + booking config
+        try {
+          console.log('[mail-oauth-callback] Syncing calendar timezone...');
+          const tzResponse = await fetch(
+            `${supabaseUrl}/functions/v1/sync-calendar-timezone`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                calendar_identity_id: calendarResult.data.id,
+              }),
+            }
+          );
+          if (tzResponse.ok) {
+            console.log('[mail-oauth-callback] Timezone sync result:', await tzResponse.json());
+          } else {
+            console.error('[mail-oauth-callback] Timezone sync failed:', await tzResponse.text());
+          }
+        } catch (tzError) {
+          console.error('[mail-oauth-callback] Error syncing timezone:', tzError);
+        }
       }
     } else {
       console.warn('[OAuth] Skipping calendar identity creation due to missing calendar scopes');
