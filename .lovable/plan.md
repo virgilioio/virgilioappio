@@ -1,62 +1,55 @@
-## Root cause: the previous "fix" is what's now sending an empty body
+## Goal
 
-I read the source of `@supabase/functions-js` (v2.4.4, used by supabase-js 2.50.0). The relevant block in `FunctionsClient.invoke()`:
+Make booking link timezone reflect the user's actual Google Calendar timezone, automatically — both for new connections and as a one-time backfill for existing users.
 
-```js
-let body: any
-if (
-  functionArgs &&
-  ((headers && !Object.prototype.hasOwnProperty.call(headers, 'Content-Type')) || !headers)
-) {
-  // ... assigns body here based on type ...
-}
-// fetch(... body)  // body is still `undefined` if the condition above was false
-```
+## Current state
 
-**The condition is false whenever the caller passes `Content-Type` in `headers`.** That's exactly what we did in the last fix:
+- 25+ users have an active Google calendar (`calendar_identities.is_active = true`) but their `booking_configurations.timezone` is still `UTC` (e.g. mayela@huntinghappiness, constancio…, malena@virgilio, support@virgilio, zaraid@…). Their `profiles.timezone` is also `UTC`.
+- `create-booking-config` only resolves timezone from `profiles.timezone` → request body → `UTC`. It never asks Google.
+- `mail-oauth-callback` stores the calendar identity but doesn't capture the user's calendar timezone.
+- Result: every booking config defaults to UTC unless the user manually changes it in settings.
 
-```ts
-await supabase.functions.invoke('create-booking', {
-  body: JSON.stringify(bookingData),
-  headers: { 'Content-Type': 'application/json' },
-});
-```
+## Plan
 
-Result: the SDK skips the body assignment entirely, `body` stays `undefined`, fetch sends a request with `Content-Length: 0`, and the edge function's defensive `req.json()` now correctly returns `"Empty or invalid request body"`. So the toast the recruiter sees is real — the request really is empty, but the cause is our own header.
+### 1. New edge function: `sync-calendar-timezone`
 
-The original 400 (before any of these fixes) was a different symptom of the same family: the SDK's serialization auto-detection in some edge case. The right shape for v2.50.0 is to pass the raw object and let the SDK stringify and set the header itself. `JSON.stringify` already drops `undefined` properties, so `guest_emails: undefined`, `job_id: undefined`, etc. are not a problem.
+- Input: `calendar_identity_id` (or resolves the active one for the caller).
+- Loads the calendar identity, refreshes the access token if needed (reuse the existing refresh helper used by `check-calendar-availability` / `get-booking-availability`).
+- Calls Google: `GET https://www.googleapis.com/calendar/v3/users/me/settings/timezone` → returns `{ value: "America/Mexico_City" }`.
+- Updates:
+  - `profiles.timezone` (only if currently `UTC`/null, so we don't overwrite explicit user choices).
+  - `booking_configurations.timezone` for that user (only if currently `UTC`/null, same reason).
+- Returns the resolved timezone.
 
-## Fix
+### 2. Wire it into the OAuth flow (automatic for new connects)
 
-Change both schedule sheets back to passing the object — but **without** an explicit `Content-Type` header — so the SDK's JSON branch runs:
+In `mail-oauth-callback`, right after the calendar identity is upserted and the watch is set up, invoke `sync-calendar-timezone` with the new identity id. This way every freshly connected Google account gets the right timezone with no user action.
 
-`src/components/candidates/ScheduleInterviewSheet.tsx` (around line 522):
-```ts
-const { data, error } = await supabase.functions.invoke('create-booking', {
-  body: bookingData,
-});
-```
+Optional safety net: `useCalendarIdentities.connectGoogleCalendar` already runs post-connect setup in the popup handler — we'll also invoke `sync-calendar-timezone` there as a fallback in case the server-side call fails.
 
-`src/components/candidates/SimpleScheduleInterviewSheet.tsx` (around line 369): same change.
+### 3. One-time backfill for existing users
 
-Keep the existing error-extraction block that reads `error.context?.json()` so any future server-side validation message (e.g. "Custom meeting location is required") still surfaces in the toast.
+Add a small admin-triggered backfill path:
+- A new edge function `backfill-calendar-timezones` (service-role, no caller auth) that iterates every active `calendar_identities` row, calls the same logic as #1 per identity, and logs results.
+- We invoke it once via the Supabase function curl tool right after deploy. No DB migration needed because the data lives in `profiles` + `booking_configurations` and the function uses the standard update path (only fills UTC/null values, preserves anything custom).
 
-Also keep the defensive `try/catch` around `req.json()` in `supabase/functions/create-booking/index.ts` — it's harmless and will keep producing clean 400s with logs if anything similar happens again.
+### 4. UX guardrails (preserve user intent)
 
-## Why this works for the manual-interviewer + custom-location + guest case
+- Never overwrite a non-UTC timezone — if a user (or admin) already picked something, we leave it alone.
+- The existing `TimezoneSelector` "browser timezone differs" banner stays, so users can still adjust manually after the fact.
 
-With the object form:
-- SDK enters the `else` branch, sets `Content-Type: application/json`, runs `JSON.stringify(bookingData)`.
-- `undefined` keys (`job_id`, `candidate_id`, `job_candidate_association_id`, `guest_emails` when empty) are dropped by `JSON.stringify`.
-- The non-empty payload reaches the function, `req.json()` succeeds, validation passes (custom location is present, guest emails are an array), booking is created.
+## Files
 
-## Files touched
+Edge functions (new):
+- `supabase/functions/sync-calendar-timezone/index.ts`
+- `supabase/functions/backfill-calendar-timezones/index.ts`
 
-- `src/components/candidates/ScheduleInterviewSheet.tsx` — drop `JSON.stringify` and `Content-Type` header from the `create-booking` invoke.
-- `src/components/candidates/SimpleScheduleInterviewSheet.tsx` — same.
+Edge functions (edit):
+- `supabase/functions/mail-oauth-callback/index.ts` — invoke `sync-calendar-timezone` after calendar identity upsert.
 
-No edge function or DB changes.
+Frontend (edit, optional fallback):
+- `src/hooks/useCalendarIdentities.ts` — invoke `sync-calendar-timezone` after successful OAuth, then invalidate `booking-config` query so the UI shows the new timezone immediately.
 
-## Verification after deploy
+### Execution
 
-Recruiter flow: open a candidate → Schedule Interview at a stage with no configured interviewer → pick interviewer manually → custom meeting location → add guest email → Schedule. Expected: toast "Interview Scheduled", booking visible in the candidate profile. If anything else is wrong server-side, the toast will now show the specific reason from the function response instead of "Empty or invalid request body".
+After deploy, run `backfill-calendar-timezones` once to fix the ~25 existing affected accounts. From then on, the OAuth callback handles it automatically.
