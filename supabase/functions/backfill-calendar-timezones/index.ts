@@ -112,7 +112,6 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    }
 
     const { data: identities, error } = await supabase
       .from("calendar_identities")
