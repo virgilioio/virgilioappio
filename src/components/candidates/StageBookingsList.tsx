@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { format } from 'date-fns';
 import { Calendar, CalendarIcon, Eye, MoreVertical, XCircle, RefreshCw } from 'lucide-react';
+import { BookingDetailsDialog } from '@/components/booking/BookingDetailsDialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -27,6 +29,7 @@ interface StageBookingsListProps {
 export function StageBookingsList({ jhsId, candidateId, onReschedule }: StageBookingsListProps) {
   const { data: bookings, isLoading } = useStageBookings(jhsId, candidateId);
   const queryClient = useQueryClient();
+  const [detailsBookingId, setDetailsBookingId] = useState<string | null>(null);
 
   const refreshStatusMutation = useMutation({
     mutationFn: async (bookingId: string) => {
@@ -207,7 +210,7 @@ export function StageBookingsList({ jhsId, candidateId, onReschedule }: StageBoo
                     Refresh Status
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setDetailsBookingId(booking.id)}>
                     <Eye className="h-4 w-4 mr-2" />
                     View Details
                   </DropdownMenuItem>
@@ -235,6 +238,13 @@ export function StageBookingsList({ jhsId, candidateId, onReschedule }: StageBoo
           </Card>
         );
       })}
+
+      <BookingDetailsDialog
+        bookingId={detailsBookingId}
+        open={!!detailsBookingId}
+        onOpenChange={(o) => !o && setDetailsBookingId(null)}
+        onBookingUpdated={() => queryClient.invalidateQueries({ queryKey: ['stage-bookings'] })}
+      />
     </div>
   );
 }
