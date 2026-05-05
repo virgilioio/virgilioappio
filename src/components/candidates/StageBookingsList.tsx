@@ -29,6 +29,7 @@ interface StageBookingsListProps {
 export function StageBookingsList({ jhsId, candidateId, onReschedule }: StageBookingsListProps) {
   const { data: bookings, isLoading } = useStageBookings(jhsId, candidateId);
   const queryClient = useQueryClient();
+  const [detailsBookingId, setDetailsBookingId] = useState<string | null>(null);
 
   const refreshStatusMutation = useMutation({
     mutationFn: async (bookingId: string) => {
