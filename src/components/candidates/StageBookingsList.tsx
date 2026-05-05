@@ -238,6 +238,13 @@ export function StageBookingsList({ jhsId, candidateId, onReschedule }: StageBoo
           </Card>
         );
       })}
+
+      <BookingDetailsDialog
+        bookingId={detailsBookingId}
+        open={!!detailsBookingId}
+        onOpenChange={(o) => !o && setDetailsBookingId(null)}
+        onBookingUpdated={() => queryClient.invalidateQueries({ queryKey: ['stage-bookings'] })}
+      />
     </div>
   );
 }
