@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { format } from 'date-fns';
 import { Calendar, CalendarIcon, Eye, MoreVertical, XCircle, RefreshCw } from 'lucide-react';
+import { BookingDetailsDialog } from '@/components/booking/BookingDetailsDialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
