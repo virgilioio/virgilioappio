@@ -210,7 +210,7 @@ export function StageBookingsList({ jhsId, candidateId, onReschedule }: StageBoo
                     Refresh Status
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setDetailsBookingId(booking.id)}>
                     <Eye className="h-4 w-4 mr-2" />
                     View Details
                   </DropdownMenuItem>
