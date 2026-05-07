@@ -371,6 +371,25 @@ serve(async (req) => {
       });
     }
 
+    // Resolve booker email (recruiter who manually scheduled). Included as
+    // attendee on the interviewer event so they see the meeting on their own calendar.
+    let bookerEmail: string | null = null;
+    if (booked_by_user_id) {
+      const { data: bookerProfile } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('user_id', booked_by_user_id)
+        .maybeSingle();
+      const candidateEmail = bookerProfile?.email?.toLowerCase() || null;
+      const interviewerEmails = new Set<string>([
+        profile.email.toLowerCase(),
+        ...groupAttendeeProfiles.map(p => p.email?.toLowerCase()).filter(Boolean) as string[],
+      ]);
+      if (candidateEmail && !interviewerEmails.has(candidateEmail)) {
+        bookerEmail = bookerProfile!.email;
+      }
+    }
+
     // Fetch and refresh calendar token if needed
     let accessToken: string | null = null;
     let calendarIdentity: any = null;
@@ -607,6 +626,8 @@ serve(async (req) => {
                 ...(transcriptIngestEmail ? [{ email: transcriptIngestEmail, responseStatus: 'accepted' }] : []),
                 // Add guest emails as attendees
                 ...(guest_emails || []).map((ge: string) => ({ email: ge })),
+                // Booker (recruiter who manually scheduled), so it shows on their calendar
+                ...(bookerEmail ? [{ email: bookerEmail, responseStatus: 'accepted' }] : []),
               ],
               conferenceData: meeting_type_preference === 'google_meet' ? {
                 createRequest: {
@@ -667,6 +688,7 @@ serve(async (req) => {
                         : []),
                       { email: transcriptIngestEmail, responseStatus: 'accepted' },
                       ...(guest_emails || []).map((ge: string) => ({ email: ge })),
+                      ...(bookerEmail ? [{ email: bookerEmail, responseStatus: 'accepted' }] : []),
                     ],
                   }),
                 }
