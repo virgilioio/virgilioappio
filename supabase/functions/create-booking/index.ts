@@ -626,6 +626,8 @@ serve(async (req) => {
                 ...(transcriptIngestEmail ? [{ email: transcriptIngestEmail, responseStatus: 'accepted' }] : []),
                 // Add guest emails as attendees
                 ...(guest_emails || []).map((ge: string) => ({ email: ge })),
+                // Booker (recruiter who manually scheduled), so it shows on their calendar
+                ...(bookerEmail ? [{ email: bookerEmail, responseStatus: 'accepted' }] : []),
               ],
               conferenceData: meeting_type_preference === 'google_meet' ? {
                 createRequest: {
