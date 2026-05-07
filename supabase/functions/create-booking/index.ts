@@ -688,6 +688,7 @@ serve(async (req) => {
                         : []),
                       { email: transcriptIngestEmail, responseStatus: 'accepted' },
                       ...(guest_emails || []).map((ge: string) => ({ email: ge })),
+                      ...(bookerEmail ? [{ email: bookerEmail, responseStatus: 'accepted' }] : []),
                     ],
                   }),
                 }
