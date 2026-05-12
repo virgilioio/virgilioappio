@@ -174,7 +174,7 @@ export function OrganizationsTable({
               {permissions.canCreateOrganizations && onCreateNew && (
                 <Button onClick={onCreateNew} className="gap-2 whitespace-nowrap">
                   <Plus className="h-4 w-4" />
-                  Create Department
+                  Create Company
                 </Button>
               )}
             </div>
