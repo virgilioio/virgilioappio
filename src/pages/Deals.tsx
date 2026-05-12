@@ -38,21 +38,27 @@ export default function Deals() {
     <div className="h-[100dvh] flex flex-col">
       <Section className="flex-1 min-h-0 flex flex-col">
         <AppContainer variant="default" className="flex-1 min-h-0 flex flex-col">
-          <PageHeader title="Deals">
-            <FilterChipSelect
-              label="Amount"
-              value={amountMode}
-              options={AMOUNT_MODE_OPTIONS}
-              onChange={(value) => setAmountMode(value as DealAmountMode)}
-            />
-            <Button onClick={() => setCreating(true)} size="sm" className="gap-1.5 h-8 whitespace-nowrap">
-              <Plus className="h-3.5 w-3.5" />
-              New Deal
-            </Button>
-          </PageHeader>
+          <PageHeader title="Deals" />
 
           <div className="flex-1 min-h-0 mt-4">
-            <DealsKanbanBoard onOpenDeal={setOpenDealId} amountMode={amountMode} />
+            <DealsKanbanBoard
+              onOpenDeal={setOpenDealId}
+              amountMode={amountMode}
+              headerLeft={
+                <FilterChipSelect
+                  label="Amount"
+                  value={amountMode}
+                  options={AMOUNT_MODE_OPTIONS}
+                  onChange={(value) => setAmountMode(value as DealAmountMode)}
+                />
+              }
+              headerRight={
+                <Button onClick={() => setCreating(true)} className="gap-2 whitespace-nowrap">
+                  <Plus className="h-4 w-4" />
+                  New Deal
+                </Button>
+              }
+            />
           </div>
         </AppContainer>
       </Section>
