@@ -250,11 +250,11 @@ export function DealFormSheet({ open, onOpenChange, deal }: DealFormSheetProps) 
                 <FormItem>
                   <FormLabel>Expected close date</FormLabel>
                   <FormControl>
-                    <Input
-                      type="date"
-                      className="h-11 focus-visible:ring-virgilio-purple"
-                      {...field}
-                      value={field.value ?? ''}
+                    <DatePickerVirgilio
+                      value={field.value ? parseISO(field.value) : undefined}
+                      onChange={(d) => field.onChange(format(d, 'yyyy-MM-dd'))}
+                      placeholder="Pick a close date"
+                      className="w-full h-11"
                     />
                   </FormControl>
                   <FormMessage />
