@@ -7,9 +7,18 @@ import { GioEmptyState } from '@/components/ui/GioEmptyState'
 import DroppableStage from '@/components/jobs/DroppableStage'
 import { useDealStages, type DealStage } from '@/hooks/useDealStages'
 import { useDeals, useDealMutations, type Deal } from '@/hooks/useDeals'
+import { useDealPaymentsTotals } from '@/hooks/useDealPaymentsTotals'
 import { CURRENCY_SYMBOLS } from '@/constants/currencies'
 import { DealCard } from './DealCard'
 import { DraggableDealCard } from './KanbanPrimitives'
+
+export type DealAmountMode = 'total' | 'collected' | 'outstanding'
+
+const AMOUNT_MODE_PREFIX: Record<DealAmountMode, string | undefined> = {
+  total: undefined,
+  collected: 'Collected',
+  outstanding: 'Outstanding',
+}
 
 function getHeaderBgClass(stage: DealStage): string {
   if (stage.stage_type === 'won') return 'bg-success/20'
@@ -19,12 +28,22 @@ function getHeaderBgClass(stage: DealStage): string {
   return pastels[(stage.position ?? 0) % pastels.length]
 }
 
-function formatStageTotal(deals: Deal[]): string {
+function computeDisplayAmount(deal: Deal, mode: DealAmountMode, collectedByDeal: Map<string, number>): number | null {
+  if (mode === 'total') return deal.amount
+  const collected = collectedByDeal.get(deal.id) ?? 0
+  if (mode === 'collected') return collected
+  // outstanding
+  const total = deal.amount ?? 0
+  return Math.max(0, total - collected)
+}
+
+function formatStageTotal(deals: Deal[], mode: DealAmountMode, collectedByDeal: Map<string, number>): string {
   if (!deals.length) return ''
   const byCcy: Record<string, number> = {}
   deals.forEach((d) => {
-    if (d.amount == null) return
-    byCcy[d.currency] = (byCcy[d.currency] ?? 0) + Number(d.amount)
+    const v = computeDisplayAmount(d, mode, collectedByDeal)
+    if (v == null) return
+    byCcy[d.currency] = (byCcy[d.currency] ?? 0) + Number(v)
   })
   const entries = Object.entries(byCcy).sort((a, b) => b[1] - a[1])
   if (!entries.length) return ''
@@ -35,13 +54,17 @@ function formatStageTotal(deals: Deal[]): string {
 
 interface DealsKanbanBoardProps {
   onOpenDeal: (id: string) => void
+  amountMode?: DealAmountMode
 }
 
-export function DealsKanbanBoard({ onOpenDeal }: DealsKanbanBoardProps) {
+export function DealsKanbanBoard({ onOpenDeal, amountMode = 'total' }: DealsKanbanBoardProps) {
   const stagesQuery = useDealStages()
   const dealsQuery = useDeals()
+  const totalsQuery = useDealPaymentsTotals()
   const { moveDeal } = useDealMutations()
   const [activeId, setActiveId] = useState<string | null>(null)
+  const collectedByDeal = totalsQuery.data?.collectedByDeal ?? new Map<string, number>()
+  const labelPrefix = AMOUNT_MODE_PREFIX[amountMode]
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 10 } }),
