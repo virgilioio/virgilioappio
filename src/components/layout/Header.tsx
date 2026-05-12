@@ -133,50 +133,59 @@ export function Header() {
     }
   }
 
-  const navigationItems = [
-    {
-      href: '/dashboard',
-      icon: Home,
-      label: 'Home',
-      show: true,
-    },
+  const navigationItems: Array<{
+    href: string
+    icon: typeof Home
+    label: string
+    show: boolean
+    section: Exclude<AppSection, null>
+  }> = [
     {
       href: '/find',
       icon: Sparkles,
       label: 'Find',
       show: canSeeRecruiterTools && (isPlatformAdmin || isWorkspaceOwner || isAdmin || isMember),
+      section: 'ats',
     },
     {
       href: '/jobs',
       icon: Briefcase,
       label: 'Jobs',
       show: canViewJobs,
+      section: 'ats',
     },
     {
       href: '/candidates',
       icon: Users,
       label: 'Candidates',
       show: canSeeRecruiterTools && canViewCandidatesNavigation,
+      section: 'ats',
     },
     {
       href: '/pipeline',
       icon: TrendingUp,
       label: 'Pipeline',
       show: canViewJobs,
+      section: 'ats',
     },
     {
       href: '/analytics',
       icon: BarChart3,
       label: 'Analytics',
       show: isPlatformAdmin || isWorkspaceOwner || isAdmin,
+      section: 'ats',
     },
     {
       href: '/talent-intelligence',
       icon: Lightbulb,
       label: 'Intelligence',
       show: isPlatformAdmin || isWorkspaceOwner || isAdmin,
+      section: 'ats',
     },
   ]
+
+  const activeSection = getActiveSection(location.pathname)
+  const visibleNavItems = navigationItems.filter(item => item.show && item.section === activeSection)
 
   const userDisplayName = (profile?.first_name && profile?.last_name
     ? `${profile.first_name} ${profile.last_name}`
