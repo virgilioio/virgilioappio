@@ -189,7 +189,11 @@ export function DealsKanbanBoard({ onOpenDeal, amountMode = 'total' }: DealsKanb
           <DragOverlay dropAnimation={null}>
             {activeDeal ? (
               <div className="w-72 rotate-1 opacity-95">
-                <DealCard deal={activeDeal} />
+                <DealCard
+                  deal={activeDeal}
+                  displayAmount={computeDisplayAmount(activeDeal, amountMode, collectedByDeal)}
+                  amountLabelPrefix={labelPrefix}
+                />
               </div>
             ) : null}
           </DragOverlay>
