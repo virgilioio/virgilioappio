@@ -231,12 +231,9 @@ export function Header() {
       scrolled && "shadow-calendly"
     )}>
       <div className="flex items-center justify-between px-md py-2 sm:px-lg">
-        {/* Logo and Desktop Navigation */}
+        {/* Desktop Navigation */}
         <div className="flex items-center gap-6">
-          <Link to="/dashboard" className="flex items-center gap-sm">
-            <GoGioLogo className="h-6 w-auto" />
-          </Link>
-          
+
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-1">
             {visibleNavItems
