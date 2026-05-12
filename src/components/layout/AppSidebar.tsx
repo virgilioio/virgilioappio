@@ -46,6 +46,27 @@ const AtsIcon: IconRenderer = ({ className }) => (
   </svg>
 )
 
+// Virgilio-style "v" mark: slanted rounded capsule + dot.
+const CrmIcon: IconRenderer = ({ className }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden
+    className={cn('inline-block', className)}
+  >
+    <line
+      x1="6.5"
+      y1="4.5"
+      x2="13.5"
+      y2="18.5"
+      stroke="currentColor"
+      strokeWidth="5.5"
+      strokeLinecap="round"
+    />
+    <circle cx="18" cy="7" r="3.25" />
+  </svg>
+)
+
 const CogIcon: IconRenderer = ({ className }) => (
   <svg
     viewBox="0 0 24 24"
