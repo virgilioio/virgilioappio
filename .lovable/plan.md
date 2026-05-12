@@ -1,28 +1,51 @@
-## Fixes
+## Goal
 
-### 1. `src/components/deals/billing/DealPaymentsCard.tsx`
-The "Register payment" header button overrides the default styling with `className="bg-virgilio-purple hover:bg-virgilio-purple/90"`. Remove that override and use the plain `<Button>` (default variant) — same as `Create & Continue` in `JobWizard.tsx` line 270 and `Create Job` in `JobFormSheet.tsx` line 452.
+Add a 3-way amount mode selector on the Deals board that switches what every deal card's amount badge and every column total display:
 
-### 2. `src/components/deals/billing/DealPaymentFormDialog.tsx`
-- Replace the native `<Input type="date">` with `DatePickerVirgilio` from `@/components/ui/date-picker-virgilio` (the project's standard, already used by `DealFormSheet`). Convert between `Date` and the ISO `yyyy-MM-dd` string we store in state.
-- Remove the `className="bg-virgilio-purple hover:bg-virgilio-purple/90"` override on the submit `<Button>` so it uses the default primary variant.
+- **Total** (current behavior — `deal.amount`)
+- **Collected** (sum of `deal_payments` for that deal)
+- **Outstanding** (`amount − collected`, floored at 0)
 
-### 3. Memory — prevent recurrence
-Add a new Core rule + dedicated memory file so future forms always pick the right primary submit button and the right date picker.
+## UX
 
-- New memory file `mem://style/forms/primary-submit-and-datepicker` with content:
-  - **Primary submit button:** always `<Button type="submit">` (or `<Button>`) with **no variant and no `bg-*` className override**. The default variant is the workspace primary. Reference: `JobWizard.tsx` (`Create & Continue`), `JobFormSheet.tsx` (`Create Job`).
-  - **Forbidden:** `className="bg-virgilio-purple ..."`, `variant="virgilio"` on submit buttons, and any other color override on a primary submit.
-  - **Date picker:** always `DatePickerVirgilio` from `@/components/ui/date-picker-virgilio`. Never use `<Input type="date">`. Never wire a raw shadcn `<Calendar>` directly in form dialogs.
-- Update `mem://index.md` Core section with one short line: `Forms: primary submit = plain <Button> (no variant/className). Dates = <DatePickerVirgilio>. Never override.` and add the new memory to the Memories list.
+- Chip group rendered above the kanban (in `Deals.tsx`, between `PageHeader` and `DealsKanbanBoard`), aligned left.
+- Single-select segmented chips: **Total · Collected · Outstanding**, default **Total**.
+- Visual: reuse the same rounded-pill segmented look used by the ATS view switcher in `PipelineOverview.tsx` (`!rounded-full`, active = `bg-foreground text-background`, inactive = `text-text-secondary`). Inline `Button`s with `variant="ghost"` inside a `flex gap-1` row — no popover (this is a view mode, not a filter list).
+- State lives in `Deals.tsx` (`amountMode: 'total' | 'collected' | 'outstanding'`) and is passed into `DealsKanbanBoard` as a prop.
+
+## Data
+
+New hook `useDealPaymentsTotals()` in `src/hooks/useDealPaymentsTotals.ts`:
+- Single tenant-scoped query: `select deal_id, amount, currency from deal_payments` filtered by `tenant_id` (resolved from `members` like the existing hooks).
+- Returns `{ collectedByDeal: Map<dealId, number> }` (sum per deal). Currency assumed to match the deal's currency (already enforced when registering payments).
+- React Query keyed `['deal-payments-totals', tenantId]`. Invalidated by `useDealPayments` mutations — extend its `onSuccess` to also invalidate this key.
+
+## Wiring
+
+**`DealsKanbanBoard.tsx`**
+- Accept new prop `amountMode`.
+- Call `useDealPaymentsTotals()` once.
+- Helper `displayAmount(deal)` → returns the number to show based on `amountMode`:
+  - `total` → `deal.amount`
+  - `collected` → `collectedByDeal.get(deal.id) ?? 0`
+  - `outstanding` → `Math.max(0, (deal.amount ?? 0) − (collectedByDeal.get(deal.id) ?? 0))`
+- Update `formatStageTotal` to take `(deals, amountMode, collectedByDeal)` and sum the displayed amount per currency.
+- Pass `displayAmount(deal)` and `amountMode` into `DealCard` via two new optional props (`displayAmount?: number | null`, `amountLabelPrefix?: string` like "Collected: ").
+
+**`DealCard.tsx`**
+- If `displayAmount` prop is provided, use it instead of `deal.amount`; prepend the label prefix ("Collected", "Outstanding") to the badge to keep context clear.
+- When prop is omitted, fall back to current `deal.amount` (no behavior change for any other consumer).
 
 ## Files
 
-- Edit: `src/components/deals/billing/DealPaymentsCard.tsx`
-- Edit: `src/components/deals/billing/DealPaymentFormDialog.tsx`
-- New:  `mem://style/forms/primary-submit-and-datepicker`
-- Edit: `mem://index.md`
+- Edit: `src/pages/Deals.tsx` — add chip group + state.
+- Edit: `src/components/deals/DealsKanbanBoard.tsx` — accept `amountMode`, fetch totals, swap card amount + column total.
+- Edit: `src/components/deals/DealCard.tsx` — optional `displayAmount` + `amountLabelPrefix` props.
+- New: `src/hooks/useDealPaymentsTotals.ts`.
+- Edit: `src/hooks/useDealPayments.ts` — invalidate `['deal-payments-totals']` on create/update/remove so column totals stay in sync.
 
 ## Out of scope
 
-No DB changes, no functional/behavior changes — visual/style consistency only.
+- No multi-currency conversion (existing card already shows per-deal currency).
+- No DB schema changes; no new migrations.
+- No changes to the deal profile sheet's billing tab (already shows the same numbers).
