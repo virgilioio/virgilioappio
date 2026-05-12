@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { Briefcase } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import gilioIcon from '@/assets/gilio-icon.png'
+import gilioIcon from '@/assets/gio-home-icon.png'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 export type AppSection = 'home' | 'ats' | null
@@ -17,19 +17,11 @@ export function getActiveSection(pathname: string): AppSection {
 type IconRenderer = (props: { className?: string }) => JSX.Element
 
 const GilioIcon: IconRenderer = ({ className }) => (
-  <span
+  <img
+    src={gilioIcon}
+    alt=""
     aria-hidden
-    className={cn('inline-block bg-current', className)}
-    style={{
-      WebkitMaskImage: `url(${gilioIcon})`,
-      maskImage: `url(${gilioIcon})`,
-      WebkitMaskRepeat: 'no-repeat',
-      maskRepeat: 'no-repeat',
-      WebkitMaskPosition: 'center',
-      maskPosition: 'center',
-      WebkitMaskSize: 'contain',
-      maskSize: 'contain',
-    }}
+    className={cn('inline-block object-contain', className)}
   />
 )
 
