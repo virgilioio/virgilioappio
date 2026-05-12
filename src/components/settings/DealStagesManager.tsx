@@ -1,11 +1,27 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragStartEvent,
+  DragOverlay,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { Badge } from '@/components/ui/badge'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,124 +31,138 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { Plus, Pencil, Trash2, ArrowUp, ArrowDown } from 'lucide-react'
-import { useDealStages, type DealStage, type DealStageType } from '@/hooks/useDealStages'
-import { GioEmptyState } from '@/components/ui/GioEmptyState'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Plus } from 'lucide-react'
+import { useDealStages, type DealStage, type DealStageType } from '@/hooks/useDealStages'
+import { DraggableDealStageItem } from './DraggableDealStageItem'
 import { PageHeader } from '@/components/layout/PageHeader'
 
-function badgeClasses(t: DealStageType) {
-  if (t === 'won') return 'bg-virgilio-success/10 text-virgilio-success border-0'
-  if (t === 'lost') return 'bg-virgilio-error/10 text-virgilio-error border-0'
-  return 'bg-virgilio-purple/10 text-virgilio-purple border-0'
-}
-
 export function DealStagesManager() {
-  const { data: stages = [], isLoading, createStage, updateStage, deleteStage, reorderStages } = useDealStages()
-  const [editing, setEditing] = useState<DealStage | null>(null)
-  const [creating, setCreating] = useState(false)
+  const { data: stagesData = [], isLoading, createStage, updateStage, deleteStage, reorderStages } = useDealStages()
 
-  const move = (idx: number, dir: -1 | 1) => {
-    const next = [...stages]
-    const target = idx + dir
-    if (target < 0 || target >= next.length) return
-    ;[next[idx], next[target]] = [next[target], next[idx]]
-    reorderStages.mutate(next.map((s) => s.id))
+  const [orderedStages, setOrderedStages] = useState<DealStage[]>([])
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
+  const [editing, setEditing] = useState<DealStage | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<DealStage | null>(null)
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) {
+      setOrderedStages(stagesData)
+    }
+  }, [stagesData, hasUnsavedChanges])
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+
+  const handleDragStart = (e: DragStartEvent) => setActiveId(e.active.id as string)
+
+  const handleDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e
+    setActiveId(null)
+    if (!over || active.id === over.id) return
+    setOrderedStages((items) => {
+      const oldIndex = items.findIndex((s) => s.id === active.id)
+      const newIndex = items.findIndex((s) => s.id === over.id)
+      if (oldIndex === -1 || newIndex === -1) return items
+      return arrayMove(items, oldIndex, newIndex)
+    })
+    setHasUnsavedChanges(true)
   }
+
+  const handleSave = async () => {
+    await reorderStages.mutateAsync(orderedStages.map((s) => s.id))
+    setHasUnsavedChanges(false)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return
+    await deleteStage.mutateAsync(deleteTarget.id)
+    setDeleteTarget(null)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-full" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-20 w-full" />
+      </div>
+    )
+  }
+
+  const activeStage = activeId ? orderedStages.find((s) => s.id === activeId) : null
 
   return (
     <div className="space-y-6">
       <PageHeader title="Deal Stages">
-        <Button
-          size="sm"
-          className="bg-virgilio-purple hover:bg-virgilio-purple/90"
-          onClick={() => setCreating(true)}
-        >
-          <Plus className="h-3.5 w-3.5 mr-1.5" /> Add stage
+        <Button onClick={() => setCreating(true)} className="flex items-center gap-2">
+          <Plus className="w-4 h-4" />
+          Add stage
         </Button>
       </PageHeader>
 
-      <Card className="shadow-calendly border-virgilio-border/50 rounded-xl">
-        <CardHeader>
-          <CardTitle className="font-poppins font-bold tracking-[-0.04em]">Pipeline stages</CardTitle>
-          <CardDescription>
-            Stages used by your CRM Deals kanban. Reorder, rename, or mark a stage as Won or Lost.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : stages.length === 0 ? (
-            <GioEmptyState title="No stages yet" description="Add your first stage to start the pipeline." />
+      <div>
+        <h3 className="text-lg font-medium text-text-primary mb-2">Pipeline Stages</h3>
+        <p className="text-sm text-text-secondary mb-4">
+          Customize the stages used by the CRM Deals kanban. Drag to reorder, edit names, or mark a stage as Won or Lost.
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <h4 className="text-base font-medium text-text-primary mb-3">Current Pipeline Stages</h4>
+          {orderedStages.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center">
+                <p className="text-text-secondary">No stages in the pipeline</p>
+              </CardContent>
+            </Card>
           ) : (
-            <ul className="divide-y divide-virgilio-border/40">
-              {stages.map((s, idx) => (
-                <li key={s.id} className="flex items-center gap-3 py-2.5">
-                  <div className="flex flex-col">
-                    <button
-                      onClick={() => move(idx, -1)}
-                      disabled={idx === 0}
-                      className="text-virgilio-muted hover:text-virgilio-text disabled:opacity-30"
-                      aria-label="Move up"
-                    >
-                      <ArrowUp className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={() => move(idx, 1)}
-                      disabled={idx === stages.length - 1}
-                      className="text-virgilio-muted hover:text-virgilio-text disabled:opacity-30"
-                      aria-label="Move down"
-                    >
-                      <ArrowDown className="h-3.5 w-3.5" />
-                    </button>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={orderedStages.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-3">
+                  {orderedStages.map((stage) => (
+                    <DraggableDealStageItem
+                      key={stage.id}
+                      stage={stage}
+                      onEdit={(s) => setEditing(s)}
+                      onRemove={(s) => setDeleteTarget(s)}
+                      isDragging={activeId === stage.id}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+              <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+                {activeStage && (
+                  <div style={{ transform: 'rotate(-1.5deg) scale(1.03)', boxShadow: '0 12px 24px rgba(0,0,0,0.15)' }}>
+                    <DraggableDealStageItem stage={activeStage} onEdit={() => {}} onRemove={() => {}} />
                   </div>
-                  <div className="flex-1 min-w-0 flex items-center gap-2">
-                    <span className="text-sm font-poppins font-semibold tracking-[-0.02em] text-virgilio-text truncate">
-                      {s.name}
-                    </span>
-                    <Badge className={badgeClasses(s.stage_type)}>{s.stage_type}</Badge>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => setEditing(s)} aria-label="Edit">
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button size="sm" variant="ghost" className="text-virgilio-error" aria-label="Delete">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete stage?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Deals in this stage will become unassigned and stop appearing on the kanban.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            className="bg-virgilio-error hover:bg-virgilio-error/90"
-                            onClick={() => deleteStage.mutate(s.id)}
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                )}
+              </DragOverlay>
+            </DndContext>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+      <div className="pt-4 border-t border-border/50">
+        <div className="flex justify-between items-center">
+          <p className="text-sm text-text-secondary">Total stages: {orderedStages.length}</p>
+          <Button disabled={!hasUnsavedChanges || reorderStages.isPending} onClick={handleSave}>
+            {reorderStages.isPending ? 'Saving...' : 'Save Pipeline'}
+          </Button>
+        </div>
+      </div>
 
       <StageFormSheet
         open={creating}
@@ -153,6 +183,28 @@ export function DealStagesManager() {
           }
         }}
       />
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove stage?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget && (
+                <>Deals in "{deleteTarget.name}" will become unassigned and stop appearing on the kanban.</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-virgilio-error hover:bg-virgilio-error/90"
+              onClick={handleConfirmDelete}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
@@ -217,7 +269,6 @@ function StageFormSheet({ open, onOpenChange, stage, onSubmit }: StageFormSheetP
               Cancel
             </Button>
             <Button
-              className="bg-virgilio-purple hover:bg-virgilio-purple/90"
               disabled={!name.trim()}
               onClick={() => onSubmit({ name: name.trim(), stage_type: type })}
             >
