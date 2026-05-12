@@ -55,9 +55,11 @@ function formatStageTotal(deals: Deal[], mode: DealAmountMode, collectedByDeal: 
 interface DealsKanbanBoardProps {
   onOpenDeal: (id: string) => void
   amountMode?: DealAmountMode
+  headerLeft?: React.ReactNode
+  headerRight?: React.ReactNode
 }
 
-export function DealsKanbanBoard({ onOpenDeal, amountMode = 'total' }: DealsKanbanBoardProps) {
+export function DealsKanbanBoard({ onOpenDeal, amountMode = 'total', headerLeft, headerRight }: DealsKanbanBoardProps) {
   const stagesQuery = useDealStages()
   const dealsQuery = useDeals()
   const totalsQuery = useDealPaymentsTotals()
@@ -87,9 +89,20 @@ export function DealsKanbanBoard({ onOpenDeal, amountMode = 'total' }: DealsKanb
 
   const isInitialLoading = stagesQuery.isLoading || dealsQuery.isLoading
 
+  const hasHeader = !!(headerLeft || headerRight)
+  const headerNode = hasHeader ? (
+    <CardHeader>
+      <div className="flex flex-wrap items-center gap-2">
+        {headerLeft}
+        {headerRight && <div className="ml-auto">{headerRight}</div>}
+      </div>
+    </CardHeader>
+  ) : null
+
   if (isInitialLoading) {
     return (
       <Card className="h-full flex flex-col">
+        {headerNode}
         <CardContent className="flex-1 min-h-0 p-3">
           <div className="flex gap-3 h-full overflow-x-auto pb-2">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -107,11 +120,14 @@ export function DealsKanbanBoard({ onOpenDeal, amountMode = 'total' }: DealsKanb
 
   if (!stages.length) {
     return (
-      <Card className="h-full flex items-center justify-center">
-        <GioEmptyState
-          title="No stages yet"
-          description="Add deal stages in Settings → Workspace → Deal Stages to start tracking your pipeline."
-        />
+      <Card className="h-full flex flex-col">
+        {headerNode}
+        <CardContent className="flex-1 min-h-0 flex items-center justify-center">
+          <GioEmptyState
+            title="No stages yet"
+            description="Add deal stages in Settings → Workspace → Deal Stages to start tracking your pipeline."
+          />
+        </CardContent>
       </Card>
     )
   }
@@ -131,6 +147,7 @@ export function DealsKanbanBoard({ onOpenDeal, amountMode = 'total' }: DealsKanb
 
   return (
     <Card className="h-full flex flex-col">
+      {headerNode}
       <CardContent className="flex-1 min-h-0 p-3">
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <div className="flex gap-3 h-full overflow-x-auto pb-2">
