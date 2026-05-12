@@ -85,6 +85,7 @@ const CogIcon: IconRenderer = ({ className }) => (
 
 const items: Array<{ id: Exclude<AppSection, null | 'my-profile'>; label: string; Icon: IconRenderer; href: string }> = [
   { id: 'home', label: 'Home', Icon: GilioIcon, href: '/dashboard' },
+  { id: 'crm', label: 'CRM', Icon: CrmIcon, href: '/crm' },
   { id: 'ats', label: 'ATS', Icon: AtsIcon, href: '/jobs' },
 ]
 
