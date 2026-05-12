@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -6,6 +6,7 @@ import { Badge, type BadgeProps } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Textarea } from '@/components/ui/textarea'
+import { Separator } from '@/components/ui/separator'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,16 +29,26 @@ import {
   CheckCircle2,
   Circle,
   MoveRight,
+  MessageSquare,
+  Send,
 } from 'lucide-react'
+import gioFaceEmpty from '@/assets/gio-face-empty.png'
 import { cn } from '@/lib/utils'
 import { useDeal, useDealMutations } from '@/hooks/useDeals'
 import { useDealStages, type DealStageType } from '@/hooks/useDealStages'
 import { useDealNotes } from '@/hooks/useDealNotes'
+import { useDealPayments } from '@/hooks/useDealPayments'
+import { useAuth } from '@/contexts/AuthContext'
+import { usePermissions } from '@/hooks/usePermissions'
+import { useSubmitShortcut } from '@/hooks/useSubmitShortcut'
 import { CURRENCY_SYMBOLS } from '@/constants/currencies'
 import { DealFormSheet } from './DealFormSheet'
 import { DealDetailsCollapsible } from './DealDetailsCollapsible'
 import CandidateNameCard from '@/components/candidates/CandidateNameCard'
 import { GioEmptyState } from '@/components/ui/GioEmptyState'
+import { DealBillingSummary } from './billing/DealBillingSummary'
+import { DealInvoicesCard } from './billing/DealInvoicesCard'
+import { DealPaymentsCard } from './billing/DealPaymentsCard'
 
 function formatAmount(amount: number | null, currency: string) {
   if (amount === null || amount === undefined) return '—'
@@ -48,6 +59,16 @@ function formatAmount(amount: number | null, currency: string) {
 function ageInDays(iso: string): string {
   const days = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000))
   return `${days}d`
+}
+
+function formatNoteDate(dateString: string) {
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 const stageTypeBadgeVariant: Record<DealStageType, BadgeProps['variant']> = {
@@ -81,10 +102,35 @@ export function DealProfileSheet({ dealId, open, onOpenChange }: DealProfileShee
   const { data: stages = [] } = useDealStages()
   const { deleteDeal, moveDeal } = useDealMutations()
   const notes = useDealNotes(dealId)
+  const payments = useDealPayments(dealId)
+  const { user } = useAuth()
+  const permissions = usePermissions()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
+  const [isSubmittingNote, setIsSubmittingNote] = useState(false)
   const [activeTab, setActiveTab] = useState<DealTab>('overview')
   const [openStageId, setOpenStageId] = useState<string | null>(null)
+  const noteFormRef = useRef<HTMLFormElement>(null)
+
+  const handleSubmitNote = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!draft.trim()) return
+    setIsSubmittingNote(true)
+    try {
+      await notes.addNote.mutateAsync(draft.trim())
+      setDraft('')
+    } finally {
+      setIsSubmittingNote(false)
+    }
+  }
+
+  const handleNoteKeyDown = useSubmitShortcut(
+    () => noteFormRef.current?.requestSubmit(),
+    { disabled: !draft.trim() || isSubmittingNote }
+  )
+
+  const canDeleteNote = (n: { author_id: string | null }) =>
+    n.author_id === user?.id || permissions.isPlatformAdmin
 
   if (!deal && open) {
     return (
@@ -104,6 +150,11 @@ export function DealProfileSheet({ dealId, open, onOpenChange }: DealProfileShee
   const currentIdx = stage ? sortedStages.findIndex((s) => s.id === stage.id) : -1
   const wonStage = stages.find((s) => s.stage_type === 'won')
   const lostStage = stages.find((s) => s.stage_type === 'lost')
+  const nextOpenStage = sortedStages
+    .slice(currentIdx + 1)
+    .find((s) => s.stage_type === 'open')
+
+  const collected = (payments.data ?? []).reduce((sum, p) => sum + (p.amount ?? 0), 0)
 
   const tabs = [
     { value: 'overview', label: 'Deal Overview', Icon: LayoutGrid },
@@ -175,30 +226,6 @@ export function DealProfileSheet({ dealId, open, onOpenChange }: DealProfileShee
             </SheetHeader>
           </div>
 
-          {/* Quick actions */}
-          <div className="px-6 py-3 border-b border-virgilio-border/40 flex items-center gap-2">
-            {wonStage && stage?.stage_type !== 'won' && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-virgilio-success border-virgilio-success/30 hover:bg-virgilio-success/10"
-                onClick={() => moveDeal.mutate({ id: deal.id, stage_id: wonStage.id })}
-              >
-                <Trophy className="h-3.5 w-3.5 mr-1.5" /> Mark won
-              </Button>
-            )}
-            {lostStage && stage?.stage_type !== 'lost' && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-virgilio-error border-virgilio-error/30 hover:bg-virgilio-error/10"
-                onClick={() => moveDeal.mutate({ id: deal.id, stage_id: lostStage.id })}
-              >
-                <XCircle className="h-3.5 w-3.5 mr-1.5" /> Mark lost
-              </Button>
-            )}
-          </div>
-
           {/* Body */}
           <div className="px-6 py-4 space-y-4">
             <CandidateNameCard
@@ -209,6 +236,48 @@ export function DealProfileSheet({ dealId, open, onOpenChange }: DealProfileShee
 
             {activeTab === 'overview' && (
               <>
+                {/* Controls Card — mirrors candidate sheet */}
+                <Card className="bg-surface-primary border-border">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between w-full">
+                      <div className="overflow-x-auto scrollbar-none">
+                        <div className="flex items-center gap-2 min-w-max">
+                          {nextOpenStage && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => moveDeal.mutate({ id: deal.id, stage_id: nextOpenStage.id })}
+                            >
+                              <MoveRight className="h-4 w-4 mr-2" />
+                              Move to {nextOpenStage.name}
+                            </Button>
+                          )}
+                          {lostStage && stage?.stage_type !== 'lost' && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => moveDeal.mutate({ id: deal.id, stage_id: lostStage.id })}
+                            >
+                              <XCircle className="h-4 w-4 mr-2" />
+                              Mark lost
+                            </Button>
+                          )}
+                          {wonStage && stage?.stage_type !== 'won' && (
+                            <Button
+                              variant="success"
+                              size="sm"
+                              onClick={() => moveDeal.mutate({ id: deal.id, stage_id: wonStage.id })}
+                            >
+                              <Trophy className="h-4 w-4 mr-2" />
+                              Mark won
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 <DealDetailsCollapsible deal={deal} />
 
                 <Card className="bg-surface-primary border-border">
@@ -277,78 +346,100 @@ export function DealProfileSheet({ dealId, open, onOpenChange }: DealProfileShee
             )}
 
             {activeTab === 'billing' && (
-              <Card className="bg-surface-primary border-border">
-                <CardHeader>
-                  <CardTitle>Billing & Invoices</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <GioEmptyState
-                    title="No invoices yet"
-                    description="Invoices linked to this deal will appear here."
-                  />
-                </CardContent>
-              </Card>
+              <>
+                <DealBillingSummary
+                  total={deal.amount ?? 0}
+                  collected={collected}
+                  currency={deal.currency}
+                />
+                <DealInvoicesCard dealId={deal.id} />
+                <DealPaymentsCard dealId={deal.id} currency={deal.currency} />
+              </>
             )}
 
             {activeTab === 'notes' && (
-              <Card className="bg-surface-primary border-border">
+              <Card>
                 <CardHeader>
-                  <CardTitle>Notes</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5" />
+                    Notes ({(notes.data ?? []).length})
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
+                  {/* Add Note Form — mirrors CandidateComments */}
+                  <form ref={noteFormRef} onSubmit={handleSubmitNote} className="space-y-3">
                     <Textarea
-                      rows={3}
-                      placeholder="Add a note…"
+                      placeholder="Add a note..."
                       value={draft}
                       onChange={(e) => setDraft(e.target.value)}
-                      className="focus-visible:ring-virgilio-purple"
+                      onKeyDown={handleNoteKeyDown}
+                      rows={3}
+                      className="resize-none"
                     />
-                    <div className="flex justify-end">
-                      <Button
-                        size="sm"
-                        disabled={!draft.trim() || notes.addNote.isPending}
-                        className="bg-virgilio-purple hover:bg-virgilio-purple/90"
-                        onClick={async () => {
-                          await notes.addNote.mutateAsync(draft.trim())
-                          setDraft('')
-                        }}
-                      >
-                        {notes.addNote.isPending ? 'Adding…' : 'Add note'}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">⌘↵ to submit</span>
+                      <Button type="submit" disabled={!draft.trim() || isSubmittingNote}>
+                        <Send className="h-4 w-4 mr-2" />
+                        {isSubmittingNote ? 'Adding...' : 'Add Note'}
                       </Button>
                     </div>
-                  </div>
+                  </form>
 
-                  {notes.isLoading ? (
-                    <div className="text-sm text-virgilio-muted">Loading…</div>
-                  ) : (notes.data ?? []).length === 0 ? (
-                    <GioEmptyState title="No notes yet" description="Capture context as the deal progresses." />
-                  ) : (
-                    <ul className="space-y-3">
-                      {(notes.data ?? []).map((n) => {
-                        const initials = n.author_name
-                          ? n.author_name.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase()
-                          : '?'
-                        return (
-                          <li key={n.id} className="rounded-lg border border-virgilio-border/40 p-3 bg-card">
-                            <div className="flex items-center justify-between gap-2 mb-1.5">
-                              <div className="flex items-center gap-2">
+                  <Separator />
+
+                  {/* Notes List */}
+                  <div className="space-y-4">
+                    {notes.isLoading ? (
+                      <div className="flex items-center justify-center py-4">
+                        <div className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                      </div>
+                    ) : (notes.data ?? []).length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <img src={gioFaceEmpty} alt="No notes" className="h-16 w-16 mx-auto mb-4 rounded-full" />
+                        <p className="text-[1.38rem] font-semibold mb-2 tracking-[-0.06em]">
+                          <span>No notes yet</span><span className="text-[#d7c5fb]">.</span>
+                        </p>
+                        <p className="text-sm">Be the first to add a note</p>
+                      </div>
+                    ) : (
+                      (notes.data ?? []).map((n) => (
+                        <div key={n.id} className="bg-muted/20 rounded-lg p-4 space-y-2">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <Avatar className="h-5 w-5">
                                   {n.author_avatar_url && <AvatarImage src={n.author_avatar_url} alt={n.author_name ?? ''} />}
                                   <AvatarFallback className="bg-virgilio-purple/10 text-virgilio-purple text-[9px] font-semibold">
-                                    {initials}
+                                    {n.author_name
+                                      ? n.author_name.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase()
+                                      : '?'}
                                   </AvatarFallback>
                                 </Avatar>
-                                <span className="text-xs font-medium text-virgilio-text">{n.author_name}</span>
+                                <span className="font-medium">{n.author_name}</span>
+                                <span>•</span>
+                                <span>{formatNoteDate(n.created_at)}</span>
                               </div>
-                              <span className="text-[10px] text-virgilio-muted">{ageInDays(n.created_at)}</span>
+                              <p className="mt-2 text-sm whitespace-pre-wrap">{n.body}</p>
                             </div>
-                            <p className="text-sm text-virgilio-text whitespace-pre-wrap leading-relaxed">{n.body}</p>
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  )}
+                            {canDeleteNote(n) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  if (confirm('Are you sure you want to delete this note?')) {
+                                    notes.deleteNote.mutate(n.id)
+                                  }
+                                }}
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             )}
