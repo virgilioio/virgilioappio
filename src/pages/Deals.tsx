@@ -39,7 +39,7 @@ export default function Deals() {
       <Section className="flex-1 min-h-0 flex flex-col">
         <AppContainer variant="default" className="flex-1 min-h-0 flex flex-col">
           <PageHeader title="Deals">
-            <FilterChipSelect
+            <FilterChipSelect<DealAmountMode>
               label="Amount"
               value={amountMode}
               options={AMOUNT_MODE_OPTIONS}
