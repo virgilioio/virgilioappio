@@ -6421,6 +6421,10 @@ export type Database = {
         Args: { check_tenant_id: string }
         Returns: boolean
       }
+      user_is_crm_admin_in_tenant: {
+        Args: { _tenant_id: string }
+        Returns: boolean
+      }
       user_is_member_of_org_hierarchy: {
         Args: { target_org_id: string }
         Returns: boolean
