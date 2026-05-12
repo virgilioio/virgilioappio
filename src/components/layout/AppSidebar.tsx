@@ -23,7 +23,7 @@ export function AppSidebar() {
 
   return (
     <aside
-      className="hidden sm:flex fixed top-0 left-0 bottom-0 z-[60] w-16 flex-col items-center gap-2 border-r border-virgilio-border bg-surface-primary py-3"
+      className="hidden sm:flex fixed top-3 left-3 bottom-3 z-[60] w-16 flex-col items-center gap-2 rounded-2xl bg-surface-primary py-4 shadow-calendly ring-1 ring-virgilio-border/60"
       aria-label="Primary"
     >
       {items.map(item => {
