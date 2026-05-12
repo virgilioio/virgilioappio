@@ -136,7 +136,7 @@ export function DealsKanbanBoard({ onOpenDeal, amountMode = 'total' }: DealsKanb
           <div className="flex gap-3 h-full overflow-x-auto pb-2">
             {stages.map((stage) => {
               const stageDeals = dealsByStage.get(stage.id) ?? []
-              const total = formatStageTotal(stageDeals)
+              const total = formatStageTotal(stageDeals, amountMode, collectedByDeal)
               const tint = getHeaderBgClass(stage)
               return (
                 <Card
@@ -170,7 +170,12 @@ export function DealsKanbanBoard({ onOpenDeal, amountMode = 'total' }: DealsKanb
                       <div className="space-y-2">
                         {stageDeals.map((deal) => (
                           <DraggableDealCard key={deal.id} id={deal.id}>
-                            <DealCard deal={deal} onClick={() => onOpenDeal(deal.id)} />
+                            <DealCard
+                              deal={deal}
+                              onClick={() => onOpenDeal(deal.id)}
+                              displayAmount={computeDisplayAmount(deal, amountMode, collectedByDeal)}
+                              amountLabelPrefix={labelPrefix}
+                            />
                           </DraggableDealCard>
                         ))}
                       </div>
