@@ -1,62 +1,92 @@
 ## Goal
 
-Wrap the Deals kanban board in a `Card` with a header (matching the Pipeline Overview pattern used in the Job page and the Companies/Departments table). Move the Amount filter chip and the "New Deal" button out of the global `PageHeader` and into that new card header. Then rename the Companies page button to "Create Company" and align both primary buttons to the same exact size.
+Lock the CRM (Companies + Deals) to admin-tier users only: **platform admins, workspace owners, or members with `system_role='admin'`**. Members (Hiring Managers), recruiters and Interviewers must not see or access it — at the UI, the route, or the database level.
+
+## Current state
+
+- `usePermissions.canViewOrganizations` already resolves to `isPlatformAdmin || isWorkspaceOwner || isAdmin` ✅
+- Page-level gates in `src/pages/CRM.tsx` and `src/pages/Deals.tsx` already block non-admins from rendering content ✅
+- **Leak 1 (UI):** `src/components/layout/AppSidebar.tsx` renders the CRM icon for *every* authenticated user — there is no `show` filter on the sidebar items.
+- **Leak 2 (DB):** RLS on `deals`, `deal_stages`, `deal_payments` only checks `user_has_tenant_access(tenant_id)`. Any active tenant member (Hiring Manager, recruiter, interviewer) can SELECT/INSERT/UPDATE these rows directly via the Supabase client.
 
 ## Changes
 
-### 1. Deals page — add a card header around the kanban (`src/pages/Deals.tsx` + `src/components/deals/DealsKanbanBoard.tsx`)
+### 1. Sidebar — hide CRM for non-admins (`src/components/layout/AppSidebar.tsx`)
 
-- In `DealsKanbanBoard`, accept two render slots: `headerLeft` (filter chip) and `headerRight` (action button). Wrap the existing kanban content inside a `Card` with a `CardHeader` that lays them out:
-  ```
-  <Card className="flex-1 min-h-0 flex flex-col">
-    <CardHeader>
-      <div className="flex flex-wrap items-center gap-2">
-        {headerLeft}
-        <div className="ml-auto">{headerRight}</div>
-      </div>
-    </CardHeader>
-    <CardContent className="flex-1 min-h-0 ...">
-      {/* existing kanban columns */}
-    </CardContent>
-  </Card>
-  ```
-  This mirrors the existing wrapper used in `OrganizationsTable` (Card + CardHeader with `ml-auto` action) and the visual rhythm of `PipelineOverview` (controls row above the columns).
+Add a `show` predicate to each item and filter the `items` array at render time using `usePermissions()`:
 
-- In `Deals.tsx`, remove the chip + button from `<PageHeader title="Deals">` (the page header keeps only the title, per our PageHeader standard) and pass them into the board:
-  ```tsx
-  <DealsKanbanBoard
-    onOpenDeal={setOpenDealId}
-    amountMode={amountMode}
-    headerLeft={
-      <FilterChipSelect label="Amount" value={amountMode} options={AMOUNT_MODE_OPTIONS} onChange={(v) => setAmountMode(v as DealAmountMode)} />
-    }
-    headerRight={
-      <Button onClick={() => setCreating(true)} className="gap-2 whitespace-nowrap">
-        <Plus className="h-4 w-4" /> New Deal
-      </Button>
-    }
-  />
-  ```
+```ts
+const items = [
+  { id: 'home', ..., show: true },
+  { id: 'crm',  ..., show: canViewOrganizations },
+  { id: 'ats',  ..., show: true },
+]
+```
 
-### 2. Companies page — rename and align button (`src/components/organizations/OrganizationsTable.tsx`)
+Only render items where `show === true`. No change to icon/label/route.
 
-- Rename the primary action label from `Create Department` → `Create Company` in:
-  - The `CardHeader` button (line ~177).
-  - The empty state `action.label` (line ~195).
-- Keep the existing button styling (`className="gap-2 whitespace-nowrap"`, default size, `Plus h-4 w-4`) — this becomes the canonical sizing.
+### 2. Database — restrict CRM tables to admin-tier users
 
-### 3. Match button sizing across both pages
+Create a SECURITY DEFINER helper and rewrite the RLS policies on the three CRM tables. Companies (`organizations`) is intentionally **not** touched: it's shared with ATS (departments), and the Companies UI is already gated by the page-level permission check.
 
-- The new "New Deal" button in the deals card header uses the exact same props and classes as "Create Company": default `Button` size, `gap-2 whitespace-nowrap`, `<Plus className="h-4 w-4" />`. No `size="sm"` and no `h-8`.
+#### New helper
 
-## Out of scope
+```sql
+create or replace function public.user_is_crm_admin_in_tenant(_tenant_id uuid)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+declare v_uid uuid := auth.uid();
+begin
+  if v_uid is null or _tenant_id is null then return false; end if;
+  return exists (
+    select 1 from public.members m
+    where m.user_id = v_uid
+      and m.tenant_id = _tenant_id
+      and m.user_status = 'active'
+      and (
+        m.user_type in ('platform_admin','workspace_owner')
+        or (m.user_type = 'member' and m.system_role = 'admin')
+      )
+  );
+end $$;
+```
 
-- No changes to other "Create Department" labels elsewhere in the app (Job wizard, AI assistant, sourcing) — those refer to org/departments and were not requested.
-- No changes to amount mode logic, totals, badges, or kanban behavior.
-- No changes to permissions or routing.
+#### Replace policies on `deals`, `deal_stages`, `deal_payments`
 
-## Files touched
+Drop the existing `tenant select/insert/update/delete` policies and replace with admin-gated versions:
 
-- `src/pages/Deals.tsx`
-- `src/components/deals/DealsKanbanBoard.tsx`
-- `src/components/organizations/OrganizationsTable.tsx`
+```sql
+-- deals
+drop policy "deals tenant select" on public.deals;
+drop policy "deals tenant insert" on public.deals;
+drop policy "deals tenant update" on public.deals;
+drop policy "deals tenant delete" on public.deals;
+
+create policy "deals admin select" on public.deals
+  for select using (public.user_is_crm_admin_in_tenant(tenant_id));
+create policy "deals admin insert" on public.deals
+  for insert with check (public.user_is_crm_admin_in_tenant(tenant_id));
+create policy "deals admin update" on public.deals
+  for update using (public.user_is_crm_admin_in_tenant(tenant_id))
+  with check (public.user_is_crm_admin_in_tenant(tenant_id));
+create policy "deals admin delete" on public.deals
+  for delete using (public.user_is_crm_admin_in_tenant(tenant_id));
+```
+
+Apply the same drop+recreate pattern to `deal_stages` and `deal_payments`. For `deal_payments`, the existing author-only update/delete policies are removed in favor of the admin-tier gate (recruiters/HMs were never supposed to author deal payments).
+
+### 3. Out of scope
+
+- No changes to `organizations` RLS (shared with ATS departments).
+- No changes to the `usePermissions` matrix — already correct.
+- No changes to the page-level empty-state copy in `CRM.tsx` / `Deals.tsx`.
+- No changes to settings sidebar (`canViewOrganizations` already gates Deal Stages).
+
+## Files / artifacts
+
+- `src/components/layout/AppSidebar.tsx` (UI gate)
+- One SQL migration (helper + policies on `deals`, `deal_stages`, `deal_payments`)
