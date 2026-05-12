@@ -290,8 +290,9 @@ export function DealFormSheet({ open, onOpenChange, deal }: DealFormSheetProps) 
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={submitting} className="bg-virgilio-purple hover:bg-virgilio-purple/90">
-                {submitting ? 'Saving…' : isEdit ? 'Save changes' : 'Create deal'}
+              <Button type="submit" disabled={submitting} className="flex items-center gap-2">
+                {submitting ? (isEdit ? 'Saving...' : 'Creating...') : isEdit ? 'Save changes' : 'Create deal'}
+                {!isEdit && <ChevronRight className="w-4 h-4" />}
               </Button>
             </div>
           </form>
