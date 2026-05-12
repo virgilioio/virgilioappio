@@ -2,13 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
+import { format, parseISO } from 'date-fns'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
 import { CurrencySelect } from '@/components/ui/currency-select'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/searchable-select'
+import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useMembers } from '@/hooks/useMembers'
@@ -130,28 +132,27 @@ export function DealFormSheet({ open, onOpenChange, deal }: DealFormSheetProps) 
             <FormField
               control={form.control}
               name="organization_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Company</FormLabel>
-                  <Select value={field.value ?? ''} onValueChange={(v) => field.onChange(v || null)}>
+              render={({ field }) => {
+                const orgOptions: SearchableSelectOption[] = (organizations ?? [])
+                  .filter((o) => o.status === 'active')
+                  .map((o) => ({ value: o.id, label: o.name }))
+                return (
+                  <FormItem>
+                    <FormLabel>Company</FormLabel>
                     <FormControl>
-                      <SelectTrigger className="h-8 focus:ring-virgilio-purple">
-                        <SelectValue placeholder="Select a company" />
-                      </SelectTrigger>
+                      <SearchableSelect
+                        options={orgOptions}
+                        value={field.value ?? ''}
+                        onValueChange={(v) => field.onChange(v || null)}
+                        placeholder="Select a company"
+                        searchPlaceholder="Search companies..."
+                        emptyMessage="No companies found."
+                      />
                     </FormControl>
-                    <SelectContent>
-                      {(organizations ?? [])
-                        .filter((o) => o.status === 'active')
-                        .map((o) => (
-                          <SelectItem key={o.id} value={o.id}>
-                            {o.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+                    <FormMessage />
+                  </FormItem>
+                )
+              }}
             />
 
             <div className="grid grid-cols-2 gap-3">
@@ -249,11 +250,11 @@ export function DealFormSheet({ open, onOpenChange, deal }: DealFormSheetProps) 
                 <FormItem>
                   <FormLabel>Expected close date</FormLabel>
                   <FormControl>
-                    <Input
-                      type="date"
-                      className="h-11 focus-visible:ring-virgilio-purple"
-                      {...field}
-                      value={field.value ?? ''}
+                    <DatePickerVirgilio
+                      value={field.value ? parseISO(field.value) : undefined}
+                      onChange={(d) => field.onChange(format(d, 'yyyy-MM-dd'))}
+                      placeholder="Pick a close date"
+                      className="w-full h-11"
                     />
                   </FormControl>
                   <FormMessage />

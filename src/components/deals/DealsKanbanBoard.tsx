@@ -1,23 +1,26 @@
 import { useMemo, useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { GioEmptyState } from '@/components/ui/GioEmptyState'
+import DroppableStage from '@/components/jobs/DroppableStage'
 import { useDealStages, type DealStage } from '@/hooks/useDealStages'
 import { useDeals, useDealMutations, type Deal } from '@/hooks/useDeals'
 import { CURRENCY_SYMBOLS } from '@/constants/currencies'
 import { DealCard } from './DealCard'
-import { DraggableDealCard, DroppableDealStage } from './KanbanPrimitives'
+import { DraggableDealCard } from './KanbanPrimitives'
 
-function stageBadgeClasses(stage: DealStage): string {
-  if (stage.stage_type === 'won') return 'bg-virgilio-success/10 text-virgilio-success border-0'
-  if (stage.stage_type === 'lost') return 'bg-virgilio-error/10 text-virgilio-error border-0'
-  return 'bg-virgilio-purple/10 text-virgilio-purple border-0'
+function getHeaderBgClass(stage: DealStage): string {
+  if (stage.stage_type === 'won') return 'bg-success/20'
+  if (stage.stage_type === 'lost') return 'bg-secondary/20'
+  // open stages — cycle through pastels by position for visual variety
+  const pastels = ['bg-pastel-blue/20', 'bg-pastel-purple/20', 'bg-warning/20', 'bg-pastel-orange/20']
+  return pastels[(stage.position ?? 0) % pastels.length]
 }
 
 function formatStageTotal(deals: Deal[]): string {
   if (!deals.length) return ''
-  // Group by currency, show dominant
   const byCcy: Record<string, number> = {}
   deals.forEach((d) => {
     if (d.amount == null) return
@@ -41,8 +44,8 @@ export function DealsKanbanBoard({ onOpenDeal }: DealsKanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
 
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
+    useSensor(MouseSensor, { activationConstraint: { distance: 10 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } })
   )
 
   const stages = stagesQuery.data ?? []
@@ -63,38 +66,30 @@ export function DealsKanbanBoard({ onOpenDeal }: DealsKanbanBoardProps) {
 
   if (isInitialLoading) {
     return (
-      <div className="flex gap-3 h-full overflow-x-auto pb-2">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="w-72 shrink-0 space-y-2">
-            <Skeleton className="h-9 w-full" />
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
+      <Card className="h-full flex flex-col">
+        <CardContent className="flex-1 min-h-0 p-3">
+          <div className="flex gap-3 h-full overflow-x-auto pb-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="w-72 shrink-0 space-y-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </CardContent>
+      </Card>
     )
   }
 
   if (!stages.length) {
     return (
-      <div className="flex-1 flex items-center justify-center">
+      <Card className="h-full flex items-center justify-center">
         <GioEmptyState
           title="No stages yet"
           description="Add deal stages in Settings → Workspace → Deal Stages to start tracking your pipeline."
         />
-      </div>
-    )
-  }
-
-  if (!deals.length) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <GioEmptyState
-          title="No deals yet"
-          description="Create your first deal to begin tracking your sales pipeline."
-        />
-      </div>
+      </Card>
     )
   }
 
@@ -112,42 +107,66 @@ export function DealsKanbanBoard({ onOpenDeal }: DealsKanbanBoardProps) {
   const activeDeal = activeId ? deals.find((d) => d.id === activeId) : null
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="flex gap-3 h-full overflow-x-auto pb-2">
-        {stages.map((stage) => {
-          const stageDeals = dealsByStage.get(stage.id) ?? []
-          const total = formatStageTotal(stageDeals)
-          return (
-            <div key={stage.id} className="w-72 shrink-0 flex flex-col">
-              <div className="flex items-center justify-between px-2 py-2 mb-1">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Badge className={stageBadgeClasses(stage)}>{stage.name}</Badge>
-                  <span className="text-xs text-virgilio-muted shrink-0">{stageDeals.length}</span>
-                </div>
-                {total && (
-                  <span className="text-[11px] font-medium text-virgilio-muted shrink-0">{total}</span>
-                )}
-              </div>
-
-              <DroppableDealStage id={stage.id} isEmpty={!stageDeals.length} className="flex-1">
-                {stageDeals.map((deal) => (
-                  <DraggableDealCard key={deal.id} id={deal.id}>
-                    <DealCard deal={deal} onClick={() => onOpenDeal(deal.id)} />
-                  </DraggableDealCard>
-                ))}
-              </DroppableDealStage>
-            </div>
-          )
-        })}
-      </div>
-
-      <DragOverlay dropAnimation={null}>
-        {activeDeal ? (
-          <div className="w-72 rotate-1 opacity-95">
-            <DealCard deal={activeDeal} />
+    <Card className="h-full flex flex-col">
+      <CardContent className="flex-1 min-h-0 p-3">
+        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          <div className="flex gap-3 h-full overflow-x-auto pb-2">
+            {stages.map((stage) => {
+              const stageDeals = dealsByStage.get(stage.id) ?? []
+              const total = formatStageTotal(stageDeals)
+              const tint = getHeaderBgClass(stage)
+              return (
+                <Card
+                  key={stage.id}
+                  className="w-[calc(100vw-3rem)] sm:w-72 flex-shrink-0 h-full flex flex-col snap-center sm:snap-align-none"
+                >
+                  <CardHeader className={`pb-2 rounded-t-md shrink-0 ${tint}`}>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <CardTitle className="text-base font-medium truncate max-w-[160px]" title={stage.name}>
+                          {stage.name}
+                        </CardTitle>
+                        <Badge variant="secondary" className="text-xs">
+                          {stageDeals.length}
+                        </Badge>
+                      </div>
+                      {total && (
+                        <span className="text-[11px] font-medium text-text-secondary shrink-0">{total}</span>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className={`${tint} rounded-b-md flex-1 overflow-y-auto`}>
+                    <DroppableStage
+                      id={stage.id}
+                      isEmpty={stageDeals.length === 0}
+                      tintClass={tint}
+                    >
+                      {stageDeals.length === 0 && (
+                        <div className="text-xs text-text-tertiary">No deals in this stage</div>
+                      )}
+                      <div className="space-y-2">
+                        {stageDeals.map((deal) => (
+                          <DraggableDealCard key={deal.id} id={deal.id}>
+                            <DealCard deal={deal} onClick={() => onOpenDeal(deal.id)} />
+                          </DraggableDealCard>
+                        ))}
+                      </div>
+                    </DroppableStage>
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
-        ) : null}
-      </DragOverlay>
-    </DndContext>
+
+          <DragOverlay dropAnimation={null}>
+            {activeDeal ? (
+              <div className="w-72 rotate-1 opacity-95">
+                <DealCard deal={activeDeal} />
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+      </CardContent>
+    </Card>
   )
 }
