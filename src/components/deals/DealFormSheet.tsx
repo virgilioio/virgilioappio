@@ -195,28 +195,31 @@ export function DealFormSheet({ open, onOpenChange, deal }: DealFormSheetProps) 
               <FormField
                 control={form.control}
                 name="owner_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Owner</FormLabel>
-                    <Select value={field.value ?? ''} onValueChange={(v) => field.onChange(v || null)}>
+                render={({ field }) => {
+                  const ownerOptions: SearchableSelectOption[] = activeMembers.map((m) => {
+                    const name = `${m.user_first_name ?? ''} ${m.user_last_name ?? ''}`.trim()
+                    return {
+                      value: m.user_id!,
+                      label: name || m.user_email || 'Unknown',
+                    }
+                  })
+                  return (
+                    <FormItem>
+                      <FormLabel>Owner</FormLabel>
                       <FormControl>
-                        <SelectTrigger className="h-8 focus:ring-virgilio-purple">
-                          <SelectValue placeholder="Select an owner" />
-                        </SelectTrigger>
+                        <SearchableSelect
+                          options={ownerOptions}
+                          value={field.value ?? ''}
+                          onValueChange={(v) => field.onChange(v || null)}
+                          placeholder="Select an owner"
+                          searchPlaceholder="Search members..."
+                          emptyMessage="No members found."
+                        />
                       </FormControl>
-                      <SelectContent>
-                        {activeMembers.map((m) => (
-                          <SelectItem key={m.user_id!} value={m.user_id!}>
-                            {(m.user_first_name || m.user_last_name)
-                              ? `${m.user_first_name ?? ''} ${m.user_last_name ?? ''}`.trim()
-                              : m.user_email}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                      <FormMessage />
+                    </FormItem>
+                  )
+                }}
               />
               <FormField
                 control={form.control}
