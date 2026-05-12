@@ -1,56 +1,93 @@
-# Restructure Deal Profile Sheet to match Candidate Profile patterns
 
-Reuse existing components from `CandidateProfileSheet` so the deal sheet inherits the same look-and-feel — no new visual language.
+## 1. Quick actions → Controls Card (mirror candidate's)
 
-## 1. Tab card (reuse `CandidateNameCard`)
+In `DealProfileSheet.tsx`, remove the inline `Mark won` / `Mark lost` row (lines 178–200) and replace with the **same Controls Card pattern** used in `CandidateProfileSheet.tsx` (lines 1210–1291):
 
-Replace the current shadcn `Tabs`/`TabsList` block in `DealProfileSheet.tsx` with `CandidateNameCard` (the same component used in the candidate sheet at line 1295). It already renders the tab strip inside a `Card` with the proper Opaline styling.
+- `<Card className="bg-surface-primary border-border">` → `CardContent p-4` → horizontal scroll row of buttons.
+- Buttons use the **same variants** as the candidate sheet:
+  - `Mark won` → `variant="success"` with `Trophy` icon (mirrors "Mark as Hired").
+  - `Mark lost` → `variant="destructive"` with `XCircle` icon (mirrors "Reject").
+  - `Move to next stage` → `variant="outline"` with `MoveRight` icon (mirrors "Move to Offer"), shown when there is a next open stage.
+- Place this card **inside the Deal Overview tab body**, above `DealDetailsCollapsible`, exactly where the candidate sheet places it.
 
-Tabs passed in:
-- `{ value: 'overview', label: 'Deal Overview', Icon: LayoutGrid }` (renamed from "Overview")
-- `{ value: 'billing', label: 'Billing & Invoices', Icon: Receipt }` (new)
-- `{ value: 'notes', label: 'Notes', Icon: StickyNote }` (existing)
+## 2. Notes tab → exact `CandidateComments` UX
 
-`CandidateNameCard` requires `name` + `tabs`/`activeTab`/`onTabChange`. Pass the deal title as `name`. Drop the existing `<Tabs>` wrapper and switch tab content with `activeTab === '...'` conditionals (same pattern used in `CandidateProfileSheet`).
+Rewrite the Notes `CardContent` in `DealProfileSheet.tsx` to match `CandidateComments.tsx` (lines 79–155):
 
-## 2. Deal Details card (mirror `CandidateDetailsCollapsible`)
+- `<form>` with `Textarea` (`placeholder="Add a note..."`, `rows={3}`, `resize-none`).
+- Wire `useSubmitShortcut` to submit on `⌘/Ctrl + Enter`.
+- Footer row: left side `<span className="text-xs text-muted-foreground">⌘↵ to submit</span>`, right side primary `Button` with `Send` icon — label `Add Note` / `Adding...`.
+- `<Separator />` between form and list.
+- Card title: `<MessageSquare /> Notes (count)`.
+- Each note rendered in `bg-muted/20 rounded-lg p-4` with author + relative time header and trash icon when author or platform admin.
+- Empty state: same `gioFaceEmpty` block as `CandidateComments`.
 
-Create `src/components/deals/DealDetailsCollapsible.tsx` using `CandidateDetailsCollapsible.tsx` as the structural template:
-- `Card` + `Collapsible` with `CardTitle="Deal Details"`.
-- Collapsed summary row (desktop): amount + currency, company name, owner avatar+name.
-- Expanded body grid showing the existing `Field` rows currently inline in the Overview tab — Owner, Company, Amount, Expected close, plus Description if present.
-- Same icon treatment (`DollarSign`, `Building2`, `User`, `Calendar`) and `text-xs text-text-secondary` typography as the candidate card.
+`useDealNotes` already supports add; add a `delete` button that uses the existing `deleteNote` mutation, gated by `author_id === user.id || isPlatformAdmin`.
 
-Render this card at the top of the **Deal Overview** tab content (replacing the floating `grid grid-cols-2` Field block currently in `TabsContent value="overview"`).
+## 3. Billing & Invoices tab → documents + payments
 
-## 3. Stage stepper inside the sheet (mirror Job Overview accordion)
+Replace the empty placeholder with a real billing module that lives entirely inside the Billing tab.
 
-Below the Deal Details card on the Deal Overview tab, add a `Card` titled "Pipeline Stages" reusing the `Accordion` pattern from `CandidateProfileSheet` lines 1320–1500:
+### UI (new components in `src/components/deals/billing/`)
 
-- Iterate `useDealStages()` ordered by `position`.
-- For each stage render an `AccordionItem` with the stage name, a `CheckCircle2` (past/current) or `Circle` (future) icon, and a small `Badge` for `stage_type` (open / won / lost) using the same variants as `DraggableDealStageItem`.
-- Header background tint mirrors `getHeaderBgClass` logic (won → success tint, lost → muted/error tint, open → neutral).
-- Inside the open item:
-  - If it's the current stage: show a "Current stage" label.
-  - If it's not current: show a `Button variant="outline"` with `<MoveRight />` "Move to this stage" that calls `moveDeal.mutate({ id: deal.id, stage_id: stage.id })` (already in `useDealMutations`). Disable while pending.
-- Keep the existing top-of-sheet "Mark won" / "Mark lost" quick-action row — these become shortcuts to specific stages, same as candidate quick actions.
+- `DealBillingSummary.tsx` — three KPI tiles in a grid: **Total deal**, **Collected**, **Outstanding**. Outstanding turns `text-virgilio-success` when 0, `text-virgilio-warning` otherwise. Mirrors the visual language of existing `Card` summary tiles.
+- `DealInvoicesCard.tsx` — `Card` with header "Invoices & Documents" and an "Upload" button. Drag-and-drop dropzone reusing the styling pattern of `EnhancedResumeDropzone`. Lists uploaded files with name, size, uploaded-by, date, download and delete actions.
+- `DealPaymentsCard.tsx` — `Card` with header "Payments" and "Register payment" button. Opens an inline form / small dialog with: amount (number, currency from deal), payment date, method (free text or select: bank transfer, card, cash, other), optional note, optional link to one of the uploaded invoice documents. Lists registered payments with edit/delete.
+- `DealPaymentFormDialog.tsx` — register/edit form.
 
-## 4. Billing & Invoices tab (new, scaffold only)
+The Billing tab in `DealProfileSheet.tsx` renders `DealBillingSummary` on top, then `DealInvoicesCard`, then `DealPaymentsCard`.
 
-New tab content rendered when `activeTab === 'billing'`:
-- A single `Card` with `CardTitle="Billing & Invoices"`.
-- Body uses `GioEmptyState` with title "No invoices yet" and description "Invoices linked to this deal will appear here." plus a disabled "Add invoice" button placeholder.
+### Data hooks (new in `src/hooks/`)
 
-This mirrors the empty-state treatment used elsewhere and gives a stable surface for follow-up work without inventing new data flows in this pass.
+- `useDealInvoices(dealId)` — list/upload/delete using new `deal_invoices` table + `deal-invoices` storage bucket.
+- `useDealPayments(dealId)` — list/create/update/delete using new `deal_payments` table.
+- `useDealBillingSummary(dealId)` — derives `{ total, collected, outstanding }` from `deal.amount` and payments sum (computed client-side from the payments query).
 
-## 5. Cleanups
+### Database (migration)
 
-- Remove the now-unused `Tabs/TabsList/TabsTrigger/TabsContent` imports and the inline `grid grid-cols-2` Field block from `DealProfileSheet.tsx` (the `Field` helper can stay for use inside `DealDetailsCollapsible`, or be moved into that file).
-- Notes tab body stays exactly as-is, just rendered conditionally on `activeTab === 'notes'`.
+Tables (tenant-scoped, RLS via existing tenant access pattern):
+
+```text
+deal_invoices
+  id uuid pk default gen_random_uuid()
+  deal_id uuid fk deals(id) on delete cascade not null
+  tenant_id uuid not null
+  uploaded_by uuid (auth user id)
+  file_name text not null
+  file_path text not null         -- storage object path in deal-invoices bucket
+  file_size bigint
+  mime_type text
+  created_at timestamptz default now()
+
+deal_payments
+  id uuid pk
+  deal_id uuid fk deals(id) on delete cascade not null
+  tenant_id uuid not null
+  amount numeric(14,2) not null check (amount > 0)
+  currency text not null default 'USD'
+  paid_at date not null default current_date
+  method text                     -- bank_transfer | card | cash | other (free text allowed)
+  note text
+  invoice_id uuid fk deal_invoices(id) on delete set null
+  created_by uuid
+  created_at timestamptz default now()
+  updated_at timestamptz default now()
+```
+
+RLS: SELECT/INSERT/UPDATE/DELETE limited to members of the row's `tenant_id` (use the existing `user_has_tenant_access` helper, matching `deal_notes`). Auto-set `tenant_id` from a SECURITY DEFINER trigger that resolves it from `deals.tenant_id` (so the client doesn't have to send it).
+
+Storage: new private bucket `deal-invoices` with RLS policies allowing tenant members to read/write objects under `{tenant_id}/{deal_id}/...`.
+
+## Out of scope
+
+- No changes to deal pricing logic outside payments aggregation.
+- No multi-currency conversion — payments inherit `deal.currency`; if a payment uses a different currency we display it as-is without converting (v1).
+- No PDF generation of invoices — only upload of user-provided files.
 
 ## Files
 
 - Edit: `src/components/deals/DealProfileSheet.tsx`
-- Create: `src/components/deals/DealDetailsCollapsible.tsx`
-
-No DB changes, no new dependencies, no changes to `useDeals` / `useDealStages` / `useDealMutations`.
+- New: `src/components/deals/billing/DealBillingSummary.tsx`, `DealInvoicesCard.tsx`, `DealPaymentsCard.tsx`, `DealPaymentFormDialog.tsx`
+- New: `src/hooks/useDealInvoices.ts`, `src/hooks/useDealPayments.ts`
+- Edit: `src/hooks/useDealNotes.ts` (already has delete; just expose if needed)
+- DB migration: create `deal_invoices`, `deal_payments`, RLS, triggers, `deal-invoices` storage bucket + policies
