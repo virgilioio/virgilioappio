@@ -11,6 +11,7 @@ import { PlatformSettingsManager } from '@/components/settings/PlatformSettingsM
 import { PlatformAssetUploader } from '@/components/settings/PlatformAssetUploader'
 import { OfferTemplatesManager } from '@/components/settings/OfferTemplatesManager'
 import { JobSettingsManager } from '@/components/settings/JobSettingsManager'
+import { DealStagesManager } from '@/components/settings/DealStagesManager'
 import { PlatformJobSettingsManager } from '@/components/settings/PlatformJobSettingsManager'
 import { PlatformTab } from '@/components/settings/PlatformTab'
 import { IntegrationsTab } from '@/components/settings/IntegrationsTab'
@@ -183,6 +184,10 @@ export default function Settings() {
                     <JobSettingsManager />
                   </TabsContent>
                 )}
+
+                <TabsContent value="workspace-deal-stages">
+                  <DealStagesManager />
+                </TabsContent>
               </div>
             </div>
           </Tabs>
