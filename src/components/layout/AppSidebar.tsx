@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Home, Briefcase } from 'lucide-react'
+import { Briefcase } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import gilioIcon from '@/assets/gilio-icon.png'
 
 export type AppSection = 'home' | 'ats' | null
 
@@ -12,9 +13,30 @@ export function getActiveSection(pathname: string): AppSection {
   return null
 }
 
-const items: Array<{ id: Exclude<AppSection, null>; label: string; icon: typeof Home; href: string }> = [
-  { id: 'home', label: 'Home', icon: Home, href: '/dashboard' },
-  { id: 'ats', label: 'ATS', icon: Briefcase, href: '/jobs' },
+type IconRenderer = (props: { className?: string }) => JSX.Element
+
+const GilioIcon: IconRenderer = ({ className }) => (
+  <span
+    aria-hidden
+    className={cn('inline-block bg-current', className)}
+    style={{
+      WebkitMaskImage: `url(${gilioIcon})`,
+      maskImage: `url(${gilioIcon})`,
+      WebkitMaskRepeat: 'no-repeat',
+      maskRepeat: 'no-repeat',
+      WebkitMaskPosition: 'center',
+      maskPosition: 'center',
+      WebkitMaskSize: 'contain',
+      maskSize: 'contain',
+    }}
+  />
+)
+
+const BriefcaseIcon: IconRenderer = ({ className }) => <Briefcase className={className} />
+
+const items: Array<{ id: Exclude<AppSection, null>; label: string; Icon: IconRenderer; href: string }> = [
+  { id: 'home', label: 'Home', Icon: GilioIcon, href: '/dashboard' },
+  { id: 'ats', label: 'ATS', Icon: BriefcaseIcon, href: '/jobs' },
 ]
 
 export function AppSidebar() {
@@ -27,7 +49,7 @@ export function AppSidebar() {
       aria-label="Primary"
     >
       {items.map(item => {
-        const Icon = item.icon
+        const { Icon } = item
         const isActive = active === item.id
         return (
           <Link
