@@ -36,7 +36,16 @@ export default function Settings() {
   
   // Auto-select billing tab if on /billing route
   const isBillingRoute = location.pathname === '/billing'
-  const defaultTab = isBillingRoute ? 'billing' : (searchParams.get('tab') || 'profile')
+  // Pick the first available non-profile tab as fallback when entering via cog
+  const pickDefaultSettingsTab = () => {
+    if (canViewOrganizations) return 'organizations'
+    if (isPlatformAdmin) return 'platform-dashboard'
+    if (userType === 'workspace_owner' && organizationId) return 'organization'
+    return 'integrations'
+  }
+  const defaultTab = isBillingRoute
+    ? 'billing'
+    : (searchParams.get('tab') || pickDefaultSettingsTab())
   const [currentTab, setCurrentTab] = useState(defaultTab)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   

@@ -1,28 +1,36 @@
-## Header gap + scroll-leak handling
+## Goal
 
-### 1. More breathing room from the sidebar
+Split the current Settings page into two entry points in the left sidebar:
 
-The header currently starts at `left-[4.75rem]` (flush against the sidebar's right edge). Add the same 12px gutter the sidebar uses everywhere else.
+- **Avatar (bottom)** → `/settings?tab=profile` (My Profile)
+- **Cog icon (above avatar)** → `/settings` (everything else)
 
-- **`Header.tsx`**: `left-[4.75rem]` → `left-[5.5rem]` (adds 12px).
-- **`Layout.tsx`**: `sm:pl-[4.75rem]` → `sm:pl-[5.5rem]` so page content stays visually aligned with the header's left edge.
+No functional changes to any settings tab — only navigation/entry reorganization.
 
-### 2. Scroll-leak behind the floating header — the professional answer
+## Changes
 
-**What you're seeing:** the header floats with a 12px gap above it. The page itself is the scroll container, so as you scroll, content slides upward through that 12px strip before disappearing off the viewport top. This is the trade-off of any floating/inset chrome.
+### 1. `src/components/layout/AppSidebar.tsx`
 
-**How it's handled professionally** (three established patterns, in order of how common they are in premium apps):
+Add a bottom section to the existing fixed sidebar, pushed down with `mt-auto`:
 
-1. **Backdrop blur header.** Make the floating bar semi-transparent with `backdrop-blur`. Content still passes underneath but is softened into the chrome instead of looking like a leak. Linear, Vercel, Notion.
-2. **Frame mat.** Place a solid strip in the page background color at the very top of the viewport (behind the floating header) so scrolling content disappears into the mat, not into thin air. Reads as a deliberate frame. Arc browser, Raycast.
-3. **Inner scroll container.** Make `<main>` itself the scroller (`overflow-y-auto`, fixed height) so content physically cannot exist outside the content area. The cleanest result, but more invasive — affects sticky elements and page-scroll restoration across the whole app.
+- **Cog button** — inline SVG (Lucide `Settings` style, `currentColor`) following the chrome-icon standard. Links to `/settings`. Active when `pathname === '/settings'` and tab is not `profile`.
+- **Avatar button** — circular `Avatar` (existing shadcn component) showing the user's `avatar_url` from `useUserProfile`, fallback to initials. Links to `/settings?tab=profile`. Active when on `/settings?tab=profile`. Same 44×44 hit area, rounded-full, with the same active ring treatment as other items (Opaline White ring when active).
 
-**Proposed approach:** option **2 (frame mat)**, because it preserves the current floating aesthetic, requires zero changes to scroll behavior, and keeps the dark slab fully opaque and crisp (no blur muddiness). One small fixed strip in `bg-background` solves it.
+Extend `AppSection` type with `'settings'` and `'my-profile'`. Update `getActiveSection` to read the URL (including `?tab=profile`) so the right item highlights.
 
-- **`Layout.tsx`**: add a `<div aria-hidden className="hidden sm:block fixed top-0 left-[5.5rem] right-3 h-3 z-40 bg-background pointer-events-none" />` immediately before `<Header />`. This fills only the 12px gap above the header, behind everything else, so scrolling content tucks under it cleanly.
+### 2. `src/components/settings/SettingsSidebar.tsx`
 
-### Out of scope
+Remove the `profile` ("My Profile") nav item from `navItems` — it's no longer reachable from the inner Settings sidebar (it has its own avatar entry point now). The `ProfileTab` component and its `<TabsContent value="profile">` in `Settings.tsx` stay untouched so direct URL access still works.
 
-- Sidebar position (left edge unchanged).
-- Mobile chrome (already hidden under `sm:`).
-- Switching to inner-scroll architecture (option 3) — not needed unless you want the fix global.
+### 3. `src/pages/Settings.tsx`
+
+Change the default tab when no `?tab=` is provided: instead of falling back to `'profile'`, fall back to the first available non-profile tab (e.g., `'organization'` for admins, `'integrations'` for members, etc.). This way the cog opens "Settings" proper, and the avatar (which explicitly sets `?tab=profile`) opens My Profile.
+
+No other files change. No routes added — both entry points reuse `/settings`.
+
+## Out of scope
+
+- Any change to ProfileTab content or other settings tabs
+- Permissions logic
+- Mobile settings header (already has its own back button)
+- Renaming routes or adding `/profile`
