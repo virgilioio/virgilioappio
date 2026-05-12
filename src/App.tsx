@@ -26,6 +26,7 @@ import { useAuthBootstrap } from './hooks/useAuthBootstrap'
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Find = lazy(() => import('./pages/Find'))
 const Jobs = lazy(() => import('./pages/Jobs'))
+const CRM = lazy(() => import('./pages/CRM'))
 const Pipeline = lazy(() => import('./pages/Pipeline'))
 const JobDetail = lazy(() => import('./pages/JobDetail'))
 const Members = lazy(() => import('./pages/Members'))
