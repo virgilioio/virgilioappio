@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ProfileTab } from '@/components/settings/ProfileTab'
 import OrganizationTab from '@/components/settings/OrganizationTab'
-import { OrganizationsTab } from '@/components/settings/OrganizationsTab'
+
 import { MembersTab } from '@/components/settings/MembersTab'
 import { PlatformSettingsManager } from '@/components/settings/PlatformSettingsManager'
 import { PlatformAssetUploader } from '@/components/settings/PlatformAssetUploader'
@@ -31,14 +31,13 @@ export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const { canViewBilling, canManageMembers, canViewOrganizations, isPlatformAdmin, isWorkspaceOwner } = usePermissions()
+  const { canViewBilling, canManageMembers, isPlatformAdmin, isWorkspaceOwner } = usePermissions()
   const { organizationId, userType } = useAuth()
   
   // Auto-select billing tab if on /billing route
   const isBillingRoute = location.pathname === '/billing'
   // Pick the first available non-profile tab as fallback when entering via cog
   const pickDefaultSettingsTab = () => {
-    if (canViewOrganizations) return 'organizations'
     if (isPlatformAdmin) return 'platform-dashboard'
     if (userType === 'workspace_owner' && organizationId) return 'organization'
     return 'integrations'
@@ -144,12 +143,6 @@ export default function Settings() {
                 <TabsContent value="organization">
                   <OrganizationTab />
                 </TabsContent>
-                
-                {canViewOrganizations && (
-                  <TabsContent value="organizations">
-                    <OrganizationsTab />
-                  </TabsContent>
-                )}
                 
                 {/* Billing Tab - Show for workspace owners */}
                 {userType === 'workspace_owner' && organizationId && (

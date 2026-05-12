@@ -43,12 +43,6 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
 
   const navItems: SettingsNavItem[] = [
     { 
-      id: 'organizations', 
-      label: 'Departments', 
-      icon: Building2, 
-      show: permissions.canViewOrganizations 
-    },
-    { 
       id: 'billing', 
       label: 'Billing', 
       icon: Receipt, 

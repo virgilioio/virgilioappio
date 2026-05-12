@@ -26,6 +26,7 @@ import { useAuthBootstrap } from './hooks/useAuthBootstrap'
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Find = lazy(() => import('./pages/Find'))
 const Jobs = lazy(() => import('./pages/Jobs'))
+const CRM = lazy(() => import('./pages/CRM'))
 const Pipeline = lazy(() => import('./pages/Pipeline'))
 const JobDetail = lazy(() => import('./pages/JobDetail'))
 const Members = lazy(() => import('./pages/Members'))
@@ -128,7 +129,8 @@ function AppContent() {
             <Route path="/candidates" element={<Candidates />} />
             <Route path="/candidates/:candidateId" element={<CandidateRedirect />} />
             <Route path="/members" element={<Members />} />
-            <Route path="/organizations" element={<Navigate to="/settings?tab=organizations" replace />} />
+            <Route path="/crm" element={<CRM />} />
+            <Route path="/organizations" element={<Navigate to="/crm" replace />} />
           </Route>
         </Route>
 
