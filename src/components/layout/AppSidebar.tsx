@@ -46,24 +46,16 @@ const AtsIcon: IconRenderer = ({ className }) => (
   </svg>
 )
 
-// Virgilio-style "v" mark: slanted rounded capsule + dot.
+// Virgilio "v" mark — exact paths from brand SVG, recolored via currentColor.
 const CrmIcon: IconRenderer = ({ className }) => (
   <svg
-    viewBox="0 0 24 24"
+    viewBox="0 0 240 240"
     fill="currentColor"
     aria-hidden
     className={cn('inline-block', className)}
   >
-    <line
-      x1="6.5"
-      y1="4.5"
-      x2="13.5"
-      y2="18.5"
-      stroke="currentColor"
-      strokeWidth="5.5"
-      strokeLinecap="round"
-    />
-    <circle cx="18" cy="7" r="3.25" />
+    <path d="M 54.65625 61.386719 C 68.609375 51.511719 87.925781 54.824219 97.800781 68.777344 L 151.339844 144.460938 C 161.214844 158.417969 157.902344 177.734375 143.949219 187.609375 C 129.992188 197.480469 110.675781 194.171875 100.800781 180.214844 L 47.261719 104.53125 C 37.386719 90.574219 40.699219 71.257812 54.65625 61.386719 Z" />
+    <circle cx="169.21" cy="86.24" r="30.9" />
   </svg>
 )
 
