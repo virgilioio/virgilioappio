@@ -4,6 +4,7 @@ import gilioIcon from '@/assets/gio-home-icon.png'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useUserProfile } from '@/hooks/useUserProfile'
+import { usePermissions } from '@/hooks/usePermissions'
 
 export type AppSection = 'home' | 'ats' | 'crm' | 'settings' | 'my-profile' | null
 
