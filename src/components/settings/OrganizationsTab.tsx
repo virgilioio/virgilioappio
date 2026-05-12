@@ -80,9 +80,9 @@ export function OrganizationsTab() {
       <AlertDialog open={!!deleteOrgId} onOpenChange={() => setDeleteOrgId(null)}>
         <AlertDialogContent className="mx-4 max-w-md sm:max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle>Deactivate Department</AlertDialogTitle>
+            <AlertDialogTitle>Deactivate Company</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to deactivate this department? This will set its status to inactive but won't permanently delete it.
+              Are you sure you want to deactivate this company? This will set its status to inactive but won't permanently delete it.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-3">
