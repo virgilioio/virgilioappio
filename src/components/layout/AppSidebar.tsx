@@ -1,8 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import gilioIcon from '@/assets/gio-home-icon.png'
-import atsIconBlack from '@/assets/ats-icon-black.png'
-import atsIconWhite from '@/assets/ats-icon-white.png'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 export type AppSection = 'home' | 'ats' | null
@@ -15,7 +13,7 @@ export function getActiveSection(pathname: string): AppSection {
   return null
 }
 
-type IconRenderer = (props: { className?: string; isActive?: boolean }) => JSX.Element
+type IconRenderer = (props: { className?: string }) => JSX.Element
 
 const GilioIcon: IconRenderer = ({ className }) => (
   <img
@@ -26,13 +24,18 @@ const GilioIcon: IconRenderer = ({ className }) => (
   />
 )
 
-const AtsIcon: IconRenderer = ({ className, isActive }) => (
-  <img
-    src={isActive ? atsIconBlack : atsIconWhite}
-    alt=""
+// Inline SVG using currentColor — recolor on active/inactive is instant,
+// no asset swap, no flash. Industry standard for chrome icons.
+const AtsIcon: IconRenderer = ({ className }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
     aria-hidden
-    className={cn('inline-block object-contain', className)}
-  />
+    className={cn('inline-block', className)}
+  >
+    <circle cx="10" cy="8.5" r="6.5" />
+    <rect x="8" y="17" width="9" height="5" rx="2.5" />
+  </svg>
 )
 
 const items: Array<{ id: Exclude<AppSection, null>; label: string; Icon: IconRenderer; href: string }> = [
