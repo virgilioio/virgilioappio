@@ -1,36 +1,20 @@
-## Goal
+## Issue
 
-Split the current Settings page into two entry points in the left sidebar:
+Home and avatar look balanced. The ATS glyph and the Cog glyph both render at `h-6 w-6`, but the cog's outline extends to the edges of its 24×24 viewBox while the ATS shapes only fill ~70% of theirs. Result: the cog reads visually larger and heavier than ATS.
 
-- **Avatar (bottom)** → `/settings?tab=profile` (My Profile)
-- **Cog icon (above avatar)** → `/settings` (everything else)
+## Fix
 
-No functional changes to any settings tab — only navigation/entry reorganization.
+Optical normalization in `src/components/layout/AppSidebar.tsx` only — shrink the cog's render size so its bounding glyph matches ATS:
 
-## Changes
+- Cog `<CogIcon className="h-5 w-5" />` (down from `h-6 w-6`)
+- ATS keeps `h-6 w-6`
+- Home and avatar unchanged
 
-### 1. `src/components/layout/AppSidebar.tsx`
-
-Add a bottom section to the existing fixed sidebar, pushed down with `mt-auto`:
-
-- **Cog button** — inline SVG (Lucide `Settings` style, `currentColor`) following the chrome-icon standard. Links to `/settings`. Active when `pathname === '/settings'` and tab is not `profile`.
-- **Avatar button** — circular `Avatar` (existing shadcn component) showing the user's `avatar_url` from `useUserProfile`, fallback to initials. Links to `/settings?tab=profile`. Active when on `/settings?tab=profile`. Same 44×44 hit area, rounded-full, with the same active ring treatment as other items (Opaline White ring when active).
-
-Extend `AppSection` type with `'settings'` and `'my-profile'`. Update `getActiveSection` to read the URL (including `?tab=profile`) so the right item highlights.
-
-### 2. `src/components/settings/SettingsSidebar.tsx`
-
-Remove the `profile` ("My Profile") nav item from `navItems` — it's no longer reachable from the inner Settings sidebar (it has its own avatar entry point now). The `ProfileTab` component and its `<TabsContent value="profile">` in `Settings.tsx` stay untouched so direct URL access still works.
-
-### 3. `src/pages/Settings.tsx`
-
-Change the default tab when no `?tab=` is provided: instead of falling back to `'profile'`, fall back to the first available non-profile tab (e.g., `'organization'` for admins, `'integrations'` for members, etc.). This way the cog opens "Settings" proper, and the avatar (which explicitly sets `?tab=profile`) opens My Profile.
-
-No other files change. No routes added — both entry points reuse `/settings`.
+Also reduce cog `strokeWidth` from `2` to `1.75` so its weight matches the filled ATS shapes at the new size.
 
 ## Out of scope
 
-- Any change to ProfileTab content or other settings tabs
-- Permissions logic
-- Mobile settings header (already has its own back button)
-- Renaming routes or adding `/profile`
+- Hit area (stays 44×44 for all)
+- Avatar size, home icon size
+- Active/hover styling
+- Any other sidebar icons
