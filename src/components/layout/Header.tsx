@@ -28,6 +28,7 @@ import {
   Sparkles,
   BarChart3,
   Lightbulb,
+  Handshake,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -186,6 +187,13 @@ export function Header() {
       href: '/crm',
       icon: Building2,
       label: 'Companies',
+      show: canViewOrganizations,
+      section: 'crm',
+    },
+    {
+      href: '/crm/deals',
+      icon: Handshake,
+      label: 'Deals',
       show: canViewOrganizations,
       section: 'crm',
     },

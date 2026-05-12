@@ -1648,6 +1648,143 @@ export type Database = {
           },
         ]
       }
+      deal_notes: {
+        Row: {
+          author_id: string | null
+          body: string
+          created_at: string
+          deal_id: string
+          id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string | null
+          body: string
+          created_at?: string
+          deal_id: string
+          id?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string | null
+          body?: string
+          created_at?: string
+          deal_id?: string
+          id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_notes_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_stages: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          position: number
+          stage_type: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          position?: number
+          stage_type?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          position?: number
+          stage_type?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      deals: {
+        Row: {
+          amount: number | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          expected_close_date: string | null
+          id: string
+          notes: string | null
+          organization_id: string | null
+          owner_id: string | null
+          position: number
+          stage_id: string | null
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          expected_close_date?: string | null
+          id?: string
+          notes?: string | null
+          organization_id?: string | null
+          owner_id?: string | null
+          position?: number
+          stage_id?: string | null
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          expected_close_date?: string | null
+          id?: string
+          notes?: string | null
+          organization_id?: string | null
+          owner_id?: string | null
+          position?: number
+          stage_id?: string | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deals_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "deal_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_logs: {
         Row: {
           attachments: Json | null
@@ -5887,6 +6024,7 @@ export type Database = {
         Returns: string
       }
       encrypt_refresh_token: { Args: { token: string }; Returns: string }
+      ensure_default_deal_stages: { Args: never; Returns: undefined }
       execute_candidate_sync: { Args: never; Returns: undefined }
       extract_domain_from_email: { Args: { email: string }; Returns: string }
       extract_linkedin_slug: { Args: { raw_url: string }; Returns: string }
