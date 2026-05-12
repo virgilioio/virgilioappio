@@ -226,32 +226,34 @@ export function Header() {
   )
 
   return (
-    <header className={cn(
-      "hidden sm:block fixed top-0 right-0 left-0 sm:left-[4.75rem] z-50 transition-shadow supports-[backdrop-filter]:bg-surface-primary/60 bg-surface-primary/90 backdrop-blur",
-      scrolled && "shadow-calendly"
-    )}>
-      <div className="flex items-center justify-between px-md py-2 sm:px-lg">
+    <header
+      className={cn(
+        "hidden sm:flex fixed top-3 right-3 left-[4.75rem] z-50 h-12 items-center rounded-2xl shadow-calendly ring-1 ring-black/40 transition-shadow",
+        scrolled && "shadow-lg"
+      )}
+      style={{ backgroundColor: '#0d0d09' }}
+    >
+      <div className="flex w-full items-center justify-between px-3">
         {/* Desktop Navigation */}
         <div className="flex items-center gap-6">
-
-          {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-1">
             {visibleNavItems
               .map((item) => {
                 const Icon = item.icon
-                const isActive = location.pathname === item.href || 
+                const isActive = location.pathname === item.href ||
                   (item.href === '/dashboard' && location.pathname === '/')
-                
+
                 return (
                   <Link
                     key={item.href}
                     to={item.href}
                     aria-current={isActive ? 'page' : undefined}
-                    className={`relative flex items-center gap-2 px-2 py-1 text-sm font-poppins font-medium tracking-tight rounded-md transition-all duration-200 ease-out ${
+                    className={cn(
+                      'flex items-center gap-2 rounded-md px-2.5 py-1 text-sm font-poppins font-medium tracking-tight transition-colors duration-200 ease-out',
                       isActive
-                        ? 'bg-virgilio-purple text-white font-semibold after:absolute after:bottom-0 after:left-2 after:right-2 after:h-0.5 after:bg-white after:rounded-full'
-                        : 'text-virgilio-text hover:bg-virgilio-purple/10 hover:-translate-y-0.5 hover:text-virgilio-text'
-                    }`}
+                        ? 'bg-[#fffcf9] text-black font-semibold'
+                        : 'text-white/70 hover:bg-white/10 hover:text-white'
+                    )}
                   >
                     <Icon className="h-3.5 w-3.5" />
                     {item.label}
@@ -262,40 +264,39 @@ export function Header() {
         </div>
 
         {/* User Menu and Mobile Navigation */}
-        <div className="flex items-center gap-md">
-          {/* Global Search Bar - hidden on mobile */}
-          <div className="hidden sm:block">
+        <div className="flex items-center gap-2 text-white">
+          <div className="hidden sm:block [&_input]:bg-white/10 [&_input]:border-white/15 [&_input]:text-white [&_input::placeholder]:text-white/50 [&_svg]:text-white/70">
             <GlobalSearchBar />
           </div>
-          
-          {/* Global Create Button - hidden on mobile */}
-          <div className="hidden sm:block">
+
+          <div className="hidden sm:block [&_button]:text-white [&_button:hover]:bg-white/10">
             <GlobalCreateButton />
           </div>
-          
-          {/* Sourcing Credit Indicator - hidden on mobile */}
-          <div className="hidden sm:block">
+
+          <div className="hidden sm:block [&_*]:!text-white/80 [&_button:hover]:bg-white/10">
             <SourcingCreditIndicator />
           </div>
-          
-          {/* Notification Center - hidden on mobile */}
-          <div className="hidden sm:block">
+
+          <div className="hidden sm:block [&_button]:text-white/80 [&_button:hover]:bg-white/10 [&_svg]:text-white/80">
             <NotificationCenter />
           </div>
-          
+
           {/* Workspace Switcher */}
           {isPlatformAdmin && uniqueOrgs.length > 1 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="hidden sm:inline-flex font-poppins font-semibold">
+                <Button
+                  variant="outline"
+                  className="hidden sm:inline-flex h-8 border-white/15 bg-transparent text-white font-poppins font-semibold hover:bg-white/10 hover:text-white"
+                >
                   {currentOrgName}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="shadow-calendly border-virgilio-border">
                 <DropdownMenuLabel className="font-poppins font-semibold text-virgilio-text">Switch workspace</DropdownMenuLabel>
                 {uniqueOrgs.map((o) => (
-                  <DropdownMenuItem 
-                    key={o.id} 
+                  <DropdownMenuItem
+                    key={o.id}
                     onClick={() => switchWorkspace(o.id)}
                     className={cn(
                       "font-poppins hover:bg-virgilio-purple/5 hover:text-virgilio-text transition-colors cursor-pointer",
@@ -309,15 +310,14 @@ export function Header() {
             </DropdownMenu>
           )}
 
-
-          {/* User Menu - hidden on mobile (moved to bottom nav) */}
+          {/* User Menu */}
           <div className="hidden sm:block">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:ring-2 hover:ring-virgilio-purple/20 transition-all">
-                  <Avatar className="h-10 w-10">
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full p-0 hover:bg-white/10 hover:ring-2 hover:ring-white/20 transition-all">
+                  <Avatar className="h-8 w-8">
                     <AvatarImage src={profile?.avatar_url} alt={userDisplayName} />
-                    <AvatarFallback className="text-sm bg-virgilio-purple text-white font-poppins font-semibold">{userInitials}</AvatarFallback>
+                    <AvatarFallback className="text-xs bg-virgilio-purple text-white font-poppins font-semibold">{userInitials}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>

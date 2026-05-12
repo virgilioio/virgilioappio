@@ -68,9 +68,9 @@ export function Layout() {
       <OrgGate>
         <BulkUploadProvider>
           <AppSidebar />
-          <div className="bg-background sm:pl-[4.75rem]">
+          <div className="bg-background sm:pl-[4.75rem] sm:pr-3">
             <Header />
-            <main className="pt-0 sm:pt-14 pb-24 sm:pb-0 min-h-screen sm:min-h-[calc(100vh-3.5rem)]">
+            <main className="pt-0 sm:pt-16 pb-24 sm:pb-0 min-h-screen sm:min-h-[calc(100vh-4rem)]">
               <Outlet />
             </main>
           </div>
