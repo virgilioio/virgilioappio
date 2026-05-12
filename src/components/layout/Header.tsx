@@ -227,7 +227,7 @@ export function Header() {
 
   return (
     <header className={cn(
-      "hidden sm:block fixed top-0 left-0 right-0 z-50 border-b border-virgilio-border transition-shadow supports-[backdrop-filter]:bg-surface-primary/60 bg-surface-primary/90 backdrop-blur",
+      "hidden sm:block fixed top-0 right-0 left-0 sm:left-16 z-50 border-b border-virgilio-border transition-shadow supports-[backdrop-filter]:bg-surface-primary/60 bg-surface-primary/90 backdrop-blur",
       scrolled && "shadow-calendly"
     )}>
       <div className="flex items-center justify-between px-md py-2 sm:px-lg">
