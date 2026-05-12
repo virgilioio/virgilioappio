@@ -198,8 +198,7 @@ export function Header() {
     <>
       {isPlatformAdmin && <AdminModeIndicator />}
       <nav className="space-y-1">
-        {navigationItems
-          .filter(item => item.show)
+        {visibleNavItems
           .map((item) => {
             const Icon = item.icon
             const isActive = location.pathname === item.href || 
