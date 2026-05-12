@@ -1,48 +1,56 @@
-## Goal
+# Restructure Deal Profile Sheet to match Candidate Profile patterns
 
-Two fixes to the Deals kanban card:
+Reuse existing components from `CandidateProfileSheet` so the deal sheet inherits the same look-and-feel — no new visual language.
 
-1. Owner avatar shows "?" instead of the assigned owner's initials/name.
-2. The card layout deviates from the standard Pipeline `CandidateCard`. Restructure it to match exactly.
+## 1. Tab card (reuse `CandidateNameCard`)
 
----
+Replace the current shadcn `Tabs`/`TabsList` block in `DealProfileSheet.tsx` with `CandidateNameCard` (the same component used in the candidate sheet at line 1295). It already renders the tab strip inside a `Card` with the proper Opaline styling.
 
-## 1. Fix owner "?" bug (`src/hooks/useDeals.ts`)
+Tabs passed in:
+- `{ value: 'overview', label: 'Deal Overview', Icon: LayoutGrid }` (renamed from "Overview")
+- `{ value: 'billing', label: 'Billing & Invoices', Icon: Receipt }` (new)
+- `{ value: 'notes', label: 'Notes', Icon: StickyNote }` (existing)
 
-`enrichDeals` queries `members` for `user_first_name`, `user_last_name`, `user_avatar_url` — those columns don't exist on `members` (only `user_email` does). The lookup returns nothing, so `owner_name` / `owner_avatar_url` stay null and the card falls back to "?".
+`CandidateNameCard` requires `name` + `tabs`/`activeTab`/`onTabChange`. Pass the deal title as `name`. Drop the existing `<Tabs>` wrapper and switch tab content with `activeTab === '...'` conditionals (same pattern used in `CandidateProfileSheet`).
 
-Change `enrichDeals` to resolve owners through `profiles` (the same source `useCustomerMembers` and most owner resolvers use):
+## 2. Deal Details card (mirror `CandidateDetailsCollapsible`)
 
-- Query `profiles` by `user_id IN (ownerIds)` selecting `user_id, first_name, last_name, email, avatar_url`.
-- Build `owner_name` from `${first_name} ${last_name}`.trim() with email fallback.
-- Map `owner_avatar_url` from `avatar_url`.
+Create `src/components/deals/DealDetailsCollapsible.tsx` using `CandidateDetailsCollapsible.tsx` as the structural template:
+- `Card` + `Collapsible` with `CardTitle="Deal Details"`.
+- Collapsed summary row (desktop): amount + currency, company name, owner avatar+name.
+- Expanded body grid showing the existing `Field` rows currently inline in the Overview tab — Owner, Company, Amount, Expected close, plus Description if present.
+- Same icon treatment (`DollarSign`, `Building2`, `User`, `Calendar`) and `text-xs text-text-secondary` typography as the candidate card.
 
-No schema changes, no other hook changes.
+Render this card at the top of the **Deal Overview** tab content (replacing the floating `grid grid-cols-2` Field block currently in `TabsContent value="overview"`).
 
----
+## 3. Stage stepper inside the sheet (mirror Job Overview accordion)
 
-## 2. Restructure `DealCard` to match `CandidateCard` exactly (`src/components/deals/DealCard.tsx`)
+Below the Deal Details card on the Deal Overview tab, add a `Card` titled "Pipeline Stages" reusing the `Accordion` pattern from `CandidateProfileSheet` lines 1320–1500:
 
-Mirror the layout from `src/components/jobs/CandidateCard.tsx` (the kanban card used in the Job Pipeline):
+- Iterate `useDealStages()` ordered by `position`.
+- For each stage render an `AccordionItem` with the stage name, a `CheckCircle2` (past/current) or `Circle` (future) icon, and a small `Badge` for `stage_type` (open / won / lost) using the same variants as `DraggableDealStageItem`.
+- Header background tint mirrors `getHeaderBgClass` logic (won → success tint, lost → muted/error tint, open → neutral).
+- Inside the open item:
+  - If it's the current stage: show a "Current stage" label.
+  - If it's not current: show a `Button variant="outline"` with `<MoveRight />` "Move to this stage" that calls `moveDeal.mutate({ id: deal.id, stage_id: stage.id })` (already in `useDealMutations`). Disable while pending.
+- Keep the existing top-of-sheet "Mark won" / "Mark lost" quick-action row — these become shortcuts to specific stages, same as candidate quick actions.
 
-- **Wrapper:** `<Card className="relative p-4 min-h-32 bg-white border-border cursor-pointer">` with `role="button"`.
-- **Top-right badge** (absolute `top-2 right-2`): the deal age `Xd` rendered as `<Badge variant="secondary" className="gap-1">` with a `Clock` icon — same slot/treatment as the interview-date badge on `CandidateCard`.
-- **Header block** (`flex items-start justify-between gap-3`):
-  - Title (deal `title`) as `font-medium text-sm text-text-primary truncate`.
-  - Subtitle line below (`mt-1`, `text-xs text-text-tertiary`): organization name (or "No company" placeholder, matching the "No LinkedIn" pattern).
-- **Bottom row** (absolute `left-4 right-4 bottom-3 flex justify-between items-center gap-2`):
-  - **Left:** amount as `<Badge variant="outline">` showing `{symbol}{amount} {currency}` — fills the same slot as `timeInStageLabel`.
-  - **Right:** owner badge as `<Badge variant="secondary" className="gap-1 text-[10px] px-1.5">` containing a small `Avatar` (h-3 w-3 / fallback initials) plus the owner's first name (or "Unassigned" when null) — same slot/treatment as `statusBadge`. Wrapped in `Tooltip` showing the full owner name + email.
+## 4. Billing & Invoices tab (new, scaffold only)
 
-Remove the current ad-hoc layout (large amount in body, full avatar bottom-right, age top-right as plain text). Keep `onClick` behaviour and the existing props surface unchanged.
+New tab content rendered when `activeTab === 'billing'`:
+- A single `Card` with `CardTitle="Billing & Invoices"`.
+- Body uses `GioEmptyState` with title "No invoices yet" and description "Invoices linked to this deal will appear here." plus a disabled "Add invoice" button placeholder.
 
-No changes to drag-and-drop wiring (`KanbanPrimitives.tsx`), to the kanban board, or to data hooks beyond item 1.
+This mirrors the empty-state treatment used elsewhere and gives a stable surface for follow-up work without inventing new data flows in this pass.
 
----
+## 5. Cleanups
+
+- Remove the now-unused `Tabs/TabsList/TabsTrigger/TabsContent` imports and the inline `grid grid-cols-2` Field block from `DealProfileSheet.tsx` (the `Field` helper can stay for use inside `DealDetailsCollapsible`, or be moved into that file).
+- Notes tab body stays exactly as-is, just rendered conditionally on `activeTab === 'notes'`.
 
 ## Files
 
-- Edit `src/hooks/useDeals.ts` — switch owner enrichment from `members` to `profiles`.
-- Edit `src/components/deals/DealCard.tsx` — rewrite layout to mirror `CandidateCard`.
+- Edit: `src/components/deals/DealProfileSheet.tsx`
+- Create: `src/components/deals/DealDetailsCollapsible.tsx`
 
-No DB migrations, no new dependencies.
+No DB changes, no new dependencies, no changes to `useDeals` / `useDealStages` / `useDealMutations`.
