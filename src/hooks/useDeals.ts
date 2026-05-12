@@ -51,29 +51,30 @@ async function enrichDeals(rows: any[]): Promise<Deal[]> {
   const orgIds = Array.from(new Set(rows.map((r) => r.organization_id).filter(Boolean)))
   const ownerIds = Array.from(new Set(rows.map((r) => r.owner_id).filter(Boolean)))
 
-  const [orgsRes, membersRes] = await Promise.all([
+  const [orgsRes, profilesRes] = await Promise.all([
     orgIds.length
       ? supabase.from('organizations').select('id, name').in('id', orgIds)
       : Promise.resolve({ data: [], error: null } as any),
     ownerIds.length
       ? supabase
-          .from('members')
-          .select('user_id, user_first_name, user_last_name, user_email, user_avatar_url')
+          .from('profiles')
+          .select('user_id, first_name, last_name, email, avatar_url')
           .in('user_id', ownerIds)
       : Promise.resolve({ data: [], error: null } as any),
   ])
 
   const orgMap = new Map<string, string>((orgsRes.data ?? []).map((o: any) => [o.id, o.name]))
-  const memberMap = new Map<string, any>((membersRes.data ?? []).map((m: any) => [m.user_id, m]))
+  const profileMap = new Map<string, any>((profilesRes.data ?? []).map((p: any) => [p.user_id, p]))
 
   return rows.map((r) => {
-    const m = r.owner_id ? memberMap.get(r.owner_id) : null
+    const p = r.owner_id ? profileMap.get(r.owner_id) : null
+    const fullName = p ? `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim() : ''
     return {
       ...r,
       organization_name: r.organization_id ? orgMap.get(r.organization_id) ?? null : null,
-      owner_name: m ? `${m.user_first_name ?? ''} ${m.user_last_name ?? ''}`.trim() || m.user_email : null,
-      owner_email: m?.user_email ?? null,
-      owner_avatar_url: m?.user_avatar_url ?? null,
+      owner_name: p ? (fullName || p.email) : null,
+      owner_email: p?.email ?? null,
+      owner_avatar_url: p?.avatar_url ?? null,
     } as Deal
   })
 }

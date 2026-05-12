@@ -1,51 +1,48 @@
-## 1. Owner field → SearchableSelect (DealFormSheet)
+## Goal
 
-In `src/components/deals/DealFormSheet.tsx`, replace the plain `Select` for `owner_id` with `SearchableSelect`, mirroring the Company picker pattern already in the same form.
+Two fixes to the Deals kanban card:
 
-- Build `ownerOptions: SearchableSelectOption[]` from `activeMembers`, using `value: m.user_id`, `label: full name || email`.
-- Props: `placeholder="Select an owner"`, `searchPlaceholder="Search members..."`, `emptyMessage="No members found."`.
-- Remove unused `Select*` imports if no longer used.
+1. Owner avatar shows "?" instead of the assigned owner's initials/name.
+2. The card layout deviates from the standard Pipeline `CandidateCard`. Restructure it to match exactly.
 
-## 2. Primary submit button → match "Create & Continue"
+---
 
-In `DealFormSheet.tsx`, update the footer submit button to match `JobWizard.tsx` (line 270–278):
+## 1. Fix owner "?" bug (`src/hooks/useDeals.ts`)
 
-- Drop the custom `bg-virgilio-purple hover:bg-virgilio-purple/90` classes (use default primary).
-- Add `className="flex items-center gap-2"` and a trailing `<ChevronRight className="w-4 h-4" />` icon.
-- Label: `isSubmitting ? 'Creating...' : 'Create deal'` (keep "Save changes" for edit mode, no chevron in edit, to stay consistent — or keep chevron only in create mode like the wizard).
+`enrichDeals` queries `members` for `user_first_name`, `user_last_name`, `user_avatar_url` — those columns don't exist on `members` (only `user_email` does). The lookup returns nothing, so `owner_name` / `owner_avatar_url` stay null and the card falls back to "?".
 
-## 3. Deal Stages settings → mirror Hiring Plan editor
+Change `enrichDeals` to resolve owners through `profiles` (the same source `useCustomerMembers` and most owner resolvers use):
 
-Rewrite `src/components/settings/DealStagesManager.tsx` to use the exact patterns from `src/components/jobs/HiringPlanTab.tsx` + `DraggableStageItem.tsx`.
+- Query `profiles` by `user_id IN (ownerIds)` selecting `user_id, first_name, last_name, email, avatar_url`.
+- Build `owner_name` from `${first_name} ${last_name}`.trim() with email fallback.
+- Map `owner_avatar_url` from `avatar_url`.
 
-Layout:
-- Page wrapped in `space-y-6`, header `<h3>Deal Stages</h3>` + helper paragraph, mirroring HiringPlanTab tone.
-- One section "Current Pipeline Stages" listing all deal stages as draggable cards.
-- Footer bar with `Total stages: N` on the left and a `Save` button on the right (only enabled when `hasUnsavedChanges`).
-- "Add stage" entry below the list using the same `SearchableSelect`-style row OR, since deal stages are user-defined (no library), a simple "Add stage" button that opens the existing StageFormSheet (kept).
+No schema changes, no other hook changes.
 
-DnD card (new `DraggableDealStageItem.tsx`, copy of `DraggableStageItem.tsx`):
-- `@dnd-kit` `useSortable` with `CSS.Translate`, opacity-on-drag, `PointerSensor` distance 5, `KeyboardSensor`.
-- `Card` + `CardContent p-4`, drag handle in `bg-primary/10 text-primary` rounded square, stage name + `Badge` for `stage_type`.
-- Badge variants map: `open → pastel-blue`, `won → success`, `lost → secondary`.
-- Right-side actions: `Pencil` (edit → opens existing StageFormSheet), `Trash2` (delete → existing AlertDialog confirm).
-- `DragOverlay` with the same `rotate(-1.5deg) scale(1.03)` shadow.
+---
 
-State:
-- Local `selectedStages` initialized from `useDealStages().data`, `hasUnsavedChanges` flag, save button calls `reorderStages.mutate(orderedIds)`.
-- `createStage`, `updateStage`, `deleteStage` continue to invalidate via the existing hook.
+## 2. Restructure `DealCard` to match `CandidateCard` exactly (`src/components/deals/DealCard.tsx`)
 
-No DB or hook changes. No route changes.
+Mirror the layout from `src/components/jobs/CandidateCard.tsx` (the kanban card used in the Job Pipeline):
+
+- **Wrapper:** `<Card className="relative p-4 min-h-32 bg-white border-border cursor-pointer">` with `role="button"`.
+- **Top-right badge** (absolute `top-2 right-2`): the deal age `Xd` rendered as `<Badge variant="secondary" className="gap-1">` with a `Clock` icon — same slot/treatment as the interview-date badge on `CandidateCard`.
+- **Header block** (`flex items-start justify-between gap-3`):
+  - Title (deal `title`) as `font-medium text-sm text-text-primary truncate`.
+  - Subtitle line below (`mt-1`, `text-xs text-text-tertiary`): organization name (or "No company" placeholder, matching the "No LinkedIn" pattern).
+- **Bottom row** (absolute `left-4 right-4 bottom-3 flex justify-between items-center gap-2`):
+  - **Left:** amount as `<Badge variant="outline">` showing `{symbol}{amount} {currency}` — fills the same slot as `timeInStageLabel`.
+  - **Right:** owner badge as `<Badge variant="secondary" className="gap-1 text-[10px] px-1.5">` containing a small `Avatar` (h-3 w-3 / fallback initials) plus the owner's first name (or "Unassigned" when null) — same slot/treatment as `statusBadge`. Wrapped in `Tooltip` showing the full owner name + email.
+
+Remove the current ad-hoc layout (large amount in body, full avatar bottom-right, age top-right as plain text). Keep `onClick` behaviour and the existing props surface unchanged.
+
+No changes to drag-and-drop wiring (`KanbanPrimitives.tsx`), to the kanban board, or to data hooks beyond item 1.
+
+---
 
 ## Files
 
-Edit:
-- `src/components/deals/DealFormSheet.tsx` — owner SearchableSelect, button restyle.
-- `src/components/settings/DealStagesManager.tsx` — full rewrite to Hiring Plan layout.
+- Edit `src/hooks/useDeals.ts` — switch owner enrichment from `members` to `profiles`.
+- Edit `src/components/deals/DealCard.tsx` — rewrite layout to mirror `CandidateCard`.
 
-Create:
-- `src/components/settings/DraggableDealStageItem.tsx` — Hiring Plan-style DnD card adapted to deal stages.
-
-## Out of scope
-
-Kanban board, profile sheet, hooks, RLS, organizations, routes.
+No DB migrations, no new dependencies.
