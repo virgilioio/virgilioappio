@@ -5,12 +5,14 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useUserProfile } from '@/hooks/useUserProfile'
 
-export type AppSection = 'home' | 'ats' | 'settings' | 'my-profile' | null
+export type AppSection = 'home' | 'ats' | 'crm' | 'settings' | 'my-profile' | null
 
 const ATS_PREFIXES = ['/find', '/jobs', '/candidates', '/pipeline', '/analytics', '/talent-intelligence']
+const CRM_PREFIXES = ['/crm']
 
 export function getActiveSection(pathname: string, search = ''): AppSection {
   if (pathname === '/' || pathname === '/dashboard') return 'home'
+  if (CRM_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'crm'
   if (ATS_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'ats'
   if (pathname === '/settings' || pathname === '/billing') {
     const params = new URLSearchParams(search)
@@ -44,6 +46,27 @@ const AtsIcon: IconRenderer = ({ className }) => (
   </svg>
 )
 
+// Virgilio-style "v" mark: slanted rounded capsule + dot.
+const CrmIcon: IconRenderer = ({ className }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden
+    className={cn('inline-block', className)}
+  >
+    <line
+      x1="6.5"
+      y1="4.5"
+      x2="13.5"
+      y2="18.5"
+      stroke="currentColor"
+      strokeWidth="5.5"
+      strokeLinecap="round"
+    />
+    <circle cx="18" cy="7" r="3.25" />
+  </svg>
+)
+
 const CogIcon: IconRenderer = ({ className }) => (
   <svg
     viewBox="0 0 24 24"
@@ -62,6 +85,7 @@ const CogIcon: IconRenderer = ({ className }) => (
 
 const items: Array<{ id: Exclude<AppSection, null | 'my-profile'>; label: string; Icon: IconRenderer; href: string }> = [
   { id: 'home', label: 'Home', Icon: GilioIcon, href: '/dashboard' },
+  { id: 'crm', label: 'CRM', Icon: CrmIcon, href: '/crm' },
   { id: 'ats', label: 'ATS', Icon: AtsIcon, href: '/jobs' },
 ]
 
