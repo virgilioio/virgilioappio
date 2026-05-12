@@ -31,12 +31,9 @@ export default function Deals() {
       <Section className="flex-1 min-h-0 flex flex-col">
         <AppContainer variant="default" className="flex-1 min-h-0 flex flex-col">
           <PageHeader title="Deals">
-            <Button
-              size="sm"
-              className="bg-virgilio-purple hover:bg-virgilio-purple/90"
-              onClick={() => setCreating(true)}
-            >
-              <Plus className="h-3.5 w-3.5 mr-1.5" /> New deal
+            <Button onClick={() => setCreating(true)} size="sm" className="gap-1.5 h-8 whitespace-nowrap">
+              <Plus className="h-3.5 w-3.5" />
+              New Deal
             </Button>
           </PageHeader>
 
