@@ -70,6 +70,7 @@ export function useDealPayments(dealId: string | null | undefined) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deal-payments', dealId] })
+      queryClient.invalidateQueries({ queryKey: ['deal-payments-totals'] })
       toast({ title: 'Payment registered' })
     },
     onError: (e: any) => toast({ title: 'Could not register payment', description: e.message, variant: 'destructive' }),
@@ -80,7 +81,10 @@ export function useDealPayments(dealId: string | null | undefined) {
       const { error } = await supabase.from('deal_payments').update(patch).eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['deal-payments', dealId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deal-payments', dealId] })
+      queryClient.invalidateQueries({ queryKey: ['deal-payments-totals'] })
+    },
     onError: (e: any) => toast({ title: 'Could not update payment', description: e.message, variant: 'destructive' }),
   })
 
@@ -89,7 +93,10 @@ export function useDealPayments(dealId: string | null | undefined) {
       const { error } = await supabase.from('deal_payments').delete().eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['deal-payments', dealId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deal-payments', dealId] })
+      queryClient.invalidateQueries({ queryKey: ['deal-payments-totals'] })
+    },
     onError: (e: any) => toast({ title: 'Could not delete payment', description: e.message, variant: 'destructive' }),
   })
 

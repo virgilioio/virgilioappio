@@ -23,9 +23,13 @@ interface DealCardProps {
   deal: Deal
   onClick?: () => void
   className?: string
+  /** Override the amount shown in the bottom-left badge (e.g. collected/outstanding). */
+  displayAmount?: number | null
+  /** Optional prefix for the amount badge label, e.g. "Collected" or "Outstanding". */
+  amountLabelPrefix?: string
 }
 
-export function DealCard({ deal, onClick, className }: DealCardProps) {
+export function DealCard({ deal, onClick, className, displayAmount, amountLabelPrefix }: DealCardProps) {
   const ownerInitials = deal.owner_name
     ? deal.owner_name
         .split(' ')
@@ -37,7 +41,10 @@ export function DealCard({ deal, onClick, className }: DealCardProps) {
     : '?'
 
   const ownerFirstName = deal.owner_name?.split(' ')[0] ?? null
-  const amountLabel = `${formatAmount(deal.amount, deal.currency)} ${deal.currency}`
+  const shownAmount = displayAmount !== undefined ? displayAmount : deal.amount
+  const amountLabel = amountLabelPrefix
+    ? `${amountLabelPrefix}: ${formatAmount(shownAmount, deal.currency)} ${deal.currency}`
+    : `${formatAmount(shownAmount, deal.currency)} ${deal.currency}`
 
   return (
     <Card

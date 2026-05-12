@@ -6,14 +6,22 @@ import { Section } from '@/components/layout/Section'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { GioEmptyState } from '@/components/ui/GioEmptyState'
 import { usePermissions } from '@/hooks/usePermissions'
-import { DealsKanbanBoard } from '@/components/deals/DealsKanbanBoard'
+import { DealsKanbanBoard, type DealAmountMode } from '@/components/deals/DealsKanbanBoard'
 import { DealFormSheet } from '@/components/deals/DealFormSheet'
 import { DealProfileSheet } from '@/components/deals/DealProfileSheet'
+import { cn } from '@/lib/utils'
+
+const AMOUNT_MODES: { value: DealAmountMode; label: string }[] = [
+  { value: 'total', label: 'Total' },
+  { value: 'collected', label: 'Collected' },
+  { value: 'outstanding', label: 'Outstanding' },
+]
 
 export default function Deals() {
   const { canViewOrganizations } = usePermissions()
   const [creating, setCreating] = useState(false)
   const [openDealId, setOpenDealId] = useState<string | null>(null)
+  const [amountMode, setAmountMode] = useState<DealAmountMode>('total')
 
   if (!canViewOrganizations) {
     return (
@@ -37,8 +45,33 @@ export default function Deals() {
             </Button>
           </PageHeader>
 
-          <div className="flex-1 min-h-0 mt-4">
-            <DealsKanbanBoard onOpenDeal={setOpenDealId} />
+          {/* Amount-mode chips: switch what the cards & column totals show */}
+          <div className="mt-4 flex items-center gap-1" role="tablist" aria-label="Amount view">
+            {AMOUNT_MODES.map((m) => {
+              const active = amountMode === m.value
+              return (
+                <Button
+                  key={m.value}
+                  size="sm"
+                  variant="ghost"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setAmountMode(m.value)}
+                  className={cn(
+                    '!rounded-full h-7 px-3 text-xs',
+                    active
+                      ? 'bg-foreground text-background hover:bg-foreground'
+                      : 'text-text-secondary hover:bg-transparent'
+                  )}
+                >
+                  {m.label}
+                </Button>
+              )
+            })}
+          </div>
+
+          <div className="flex-1 min-h-0 mt-3">
+            <DealsKanbanBoard onOpenDeal={setOpenDealId} amountMode={amountMode} />
           </div>
         </AppContainer>
       </Section>
