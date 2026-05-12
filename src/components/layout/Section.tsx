@@ -30,7 +30,6 @@ export function Section({ children, className, variant = "default", banded = fal
     <section className={cn(
       "py-layout-md",
       variantClasses[variant],
-      banded && "border-y border-border/60",
       className
     )}>
       {content}
