@@ -5,8 +5,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 import { useDealPayments, type DealPayment } from '@/hooks/useDealPayments'
 import { useDealInvoices } from '@/hooks/useDealInvoices'
+import { format, parseISO } from 'date-fns'
 
 interface Props {
   open: boolean
@@ -68,7 +70,11 @@ export function DealPaymentFormDialog({ open, onOpenChange, dealId, currency, pa
             </div>
             <div className="space-y-1.5">
               <Label>Date</Label>
-              <Input type="date" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} />
+              <DatePickerVirgilio
+                value={paidAt ? parseISO(paidAt) : undefined}
+                onChange={(d) => setPaidAt(format(d, 'yyyy-MM-dd'))}
+                placeholder="Pick a date"
+              />
             </div>
           </div>
           <div className="space-y-1.5">
@@ -106,7 +112,6 @@ export function DealPaymentFormDialog({ open, onOpenChange, dealId, currency, pa
           <Button
             onClick={handleSubmit}
             disabled={!amount || Number(amount) <= 0 || create.isPending || update.isPending}
-            className="bg-virgilio-purple hover:bg-virgilio-purple/90"
           >
             {isEdit ? 'Save' : 'Register payment'}
           </Button>

@@ -44,7 +44,7 @@ export function DealPaymentsCard({ dealId, currency }: { dealId: string; currenc
             <Wallet className="h-4 w-4" />
             Payments
           </CardTitle>
-          <Button size="sm" onClick={openCreate} className="bg-virgilio-purple hover:bg-virgilio-purple/90">
+          <Button size="sm" onClick={openCreate}>
             <Plus className="h-4 w-4 mr-2" />
             Register payment
           </Button>
