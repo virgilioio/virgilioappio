@@ -228,7 +228,7 @@ export function Header() {
   return (
     <header
       className={cn(
-        "hidden sm:flex fixed top-3 right-3 left-[4.75rem] z-50 h-12 items-center rounded-2xl shadow-calendly ring-1 ring-black/40 transition-shadow",
+        "hidden sm:flex fixed top-3 right-3 left-[5.5rem] z-50 h-12 items-center rounded-2xl shadow-calendly ring-1 ring-black/40 transition-shadow",
         scrolled && "shadow-lg"
       )}
       style={{ backgroundColor: '#0d0d09' }}
