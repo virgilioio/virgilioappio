@@ -49,7 +49,7 @@ const CogIcon: IconRenderer = ({ className }) => (
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
-    strokeWidth="2"
+    strokeWidth="1.75"
     strokeLinecap="round"
     strokeLinejoin="round"
     aria-hidden
@@ -127,7 +127,7 @@ export function AppSidebar() {
                     : 'text-white/70 hover:bg-white/10 hover:text-white'
                 )}
               >
-                <CogIcon className="h-6 w-6" />
+                <CogIcon className="h-5 w-5" />
               </Link>
             </TooltipTrigger>
             <TooltipContent side="right" sideOffset={12}>
