@@ -1,7 +1,8 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Briefcase } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import gilioIcon from '@/assets/gio-home-icon.png'
+import atsIconBlack from '@/assets/ats-icon-black.png'
+import atsIconWhite from '@/assets/ats-icon-white.png'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 export type AppSection = 'home' | 'ats' | null
@@ -14,7 +15,7 @@ export function getActiveSection(pathname: string): AppSection {
   return null
 }
 
-type IconRenderer = (props: { className?: string }) => JSX.Element
+type IconRenderer = (props: { className?: string; isActive?: boolean }) => JSX.Element
 
 const GilioIcon: IconRenderer = ({ className }) => (
   <img
@@ -25,11 +26,18 @@ const GilioIcon: IconRenderer = ({ className }) => (
   />
 )
 
-const BriefcaseIcon: IconRenderer = ({ className }) => <Briefcase className={className} strokeWidth={1.75} />
+const AtsIcon: IconRenderer = ({ className, isActive }) => (
+  <img
+    src={isActive ? atsIconBlack : atsIconWhite}
+    alt=""
+    aria-hidden
+    className={cn('inline-block object-contain', className)}
+  />
+)
 
 const items: Array<{ id: Exclude<AppSection, null>; label: string; Icon: IconRenderer; href: string }> = [
   { id: 'home', label: 'Home', Icon: GilioIcon, href: '/dashboard' },
-  { id: 'ats', label: 'ATS', Icon: BriefcaseIcon, href: '/jobs' },
+  { id: 'ats', label: 'ATS', Icon: AtsIcon, href: '/jobs' },
 ]
 
 export function AppSidebar() {
@@ -60,7 +68,7 @@ export function AppSidebar() {
                       : 'text-white/70 hover:bg-white/10 hover:text-white'
                   )}
                 >
-                  <Icon className="h-6 w-6" />
+                  <Icon className="h-6 w-6" isActive={isActive} />
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={12}>
