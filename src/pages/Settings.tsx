@@ -144,11 +144,7 @@ export default function Settings() {
                   <OrganizationTab />
                 </TabsContent>
                 
-                {canViewOrganizations && (
-                  <TabsContent value="organizations">
-                    <OrganizationsTab />
-                  </TabsContent>
-                )}
+                </TabsContent>
                 
                 {/* Billing Tab - Show for workspace owners */}
                 {userType === 'workspace_owner' && organizationId && (
