@@ -1,6 +1,14 @@
-## Remove Header Bottom Border
+## Sidebar active state — Opaline White
 
-The floating sidebar now has soft rounded corners and a subtle ring shadow. The header's `border-b` creates a sharp horizontal rule that visually fights that softer aesthetic.
+**Color token to save:** `#fffcf9` "Opaline White" — used as the active highlight on the dark sidebar.
 
-### Change
-- **`src/components/layout/Header.tsx`**: Remove `border-b border-virgilio-border` from the `<header>` className. The header will still gain a soft shadow on scroll via the existing `shadow-calendly` when `scrolled` is true, so separation is preserved when needed without a permanent hard line.
+### Changes
+
+1. **`mem://design/color-tokens-opaline-white`** (new memory) — Record `Opaline White #fffcf9` as the sidebar active-item highlight on `#0d0d09`. Update `mem://index.md` to reference it.
+
+2. **`src/components/layout/AppSidebar.tsx`** — Swap the active state styles:
+   - Active background: `#fffcf9` (was `bg-virgilio-purple`).
+   - Active foreground: `text-black` so both the masked Gilio icon and the Briefcase icon render black (mask inherits `currentColor`, so no second asset needed).
+   - Inactive state unchanged (`text-white/70`, hover `bg-white/10`).
+
+No changes needed to the icon asset — the existing CSS-mask renderer already follows `currentColor`, so flipping text color to black on active is sufficient.
