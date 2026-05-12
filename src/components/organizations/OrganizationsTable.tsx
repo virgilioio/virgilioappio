@@ -192,7 +192,7 @@ export function OrganizationsTable({
               }
               fallbackIcon={Building2}
               action={organizations.length === 0 && permissions.canCreateOrganizations && onCreateNew ? {
-                label: 'Create Department',
+                label: 'Create Company',
                 onClick: onCreateNew
               } : undefined}
             />
