@@ -1,5 +1,8 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Clock } from 'lucide-react'
 import { CURRENCY_SYMBOLS } from '@/constants/currencies'
 import type { Deal } from '@/hooks/useDeals'
 import { cn } from '@/lib/utils'
@@ -33,40 +36,64 @@ export function DealCard({ deal, onClick, className }: DealCardProps) {
         .toUpperCase()
     : '?'
 
+  const ownerFirstName = deal.owner_name?.split(' ')[0] ?? null
+  const amountLabel = `${formatAmount(deal.amount, deal.currency)} ${deal.currency}`
+
   return (
     <Card
+      className={cn('relative p-4 min-h-32 bg-white border-border cursor-pointer', className)}
       onClick={onClick}
-      className={cn(
-        'group cursor-pointer p-3 shadow-calendly border-virgilio-border/60 hover:border-virgilio-purple/40 hover:shadow-md transition-all duration-200',
-        className
-      )}
+      role="button"
+      aria-label="Open deal"
     >
-      <div className="flex flex-col gap-2">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="text-sm font-poppins font-semibold tracking-[-0.02em] text-virgilio-text leading-snug line-clamp-2">
-            {deal.title}
-          </h3>
-          <span className="shrink-0 text-[11px] font-medium text-virgilio-muted">
-            {ageInDays(deal.created_at)}
-          </span>
-        </div>
+      {/* Top-right age badge */}
+      <Badge
+        variant="secondary"
+        className="absolute top-2 right-2 gap-1"
+      >
+        <Clock className="h-3 w-3" />
+        {ageInDays(deal.created_at)}
+      </Badge>
 
-        {deal.organization_name && (
-          <p className="text-xs text-virgilio-muted truncate">{deal.organization_name}</p>
-        )}
-
-        <div className="flex items-center justify-between pt-1">
-          <span className="text-sm font-poppins font-semibold tracking-[-0.04em] text-virgilio-text">
-            {formatAmount(deal.amount, deal.currency)}
-            <span className="ml-1 text-[10px] text-virgilio-muted font-normal">{deal.currency}</span>
-          </span>
-          <Avatar className="h-6 w-6">
-            {deal.owner_avatar_url && <AvatarImage src={deal.owner_avatar_url} alt={deal.owner_name ?? ''} />}
-            <AvatarFallback className="bg-virgilio-purple/10 text-virgilio-purple text-[10px] font-semibold">
-              {ownerInitials}
-            </AvatarFallback>
-          </Avatar>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 pr-12">
+          <div className="font-medium text-sm text-text-primary truncate">{deal.title}</div>
+          <div className="flex flex-col gap-0.5 mt-1">
+            {deal.organization_name ? (
+              <div className="text-xs text-text-secondary truncate">{deal.organization_name}</div>
+            ) : (
+              <div className="text-xs text-text-tertiary">No company</div>
+            )}
+          </div>
         </div>
+      </div>
+
+      {/* Bottom row: amount (left) + owner badge (right) */}
+      <div className="absolute left-4 right-4 bottom-3 flex justify-between items-center gap-2">
+        <Badge variant="outline">{amountLabel}</Badge>
+
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="secondary" className="gap-1 text-[10px] px-1.5">
+                <Avatar className="h-3.5 w-3.5">
+                  {deal.owner_avatar_url && (
+                    <AvatarImage src={deal.owner_avatar_url} alt={deal.owner_name ?? ''} />
+                  )}
+                  <AvatarFallback className="bg-virgilio-purple/10 text-virgilio-purple text-[8px] font-semibold">
+                    {ownerInitials}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="hidden sm:inline">{ownerFirstName ?? 'Unassigned'}</span>
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              {deal.owner_name ?? 'Unassigned'}
+              {deal.owner_email ? ` · ${deal.owner_email}` : ''}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
     </Card>
   )
