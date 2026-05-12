@@ -1,104 +1,64 @@
-# Plan: CRM → Deals (MVP Kanban + Profile Sheet)
+## Goal
 
-Confirmed: Supabase only, MVP scope, full adherence to the existing style guide.
+Bring the Deals Kanban and the New Deal form fully in line with the existing Jobs pipeline design and form conventions — no new design, only reuse.
 
-## 1. Supabase schema (one migration)
+---
 
-All tables tenant-scoped; RLS via the existing `user_has_tenant_access(tenant_id)` pattern (per Tenant-based RLS memory). No CHECK constraints — validation via SECURITY DEFINER triggers where needed.
+## 1. Kanban: replicate the Jobs Pipeline board
 
-**`deal_stages`** — workspace kanban columns (editable in Settings)
-- `tenant_id`, `name`, `position` (int), `color` (text, optional), `stage_type` (`open` | `won` | `lost`)
-- Seeded per workspace on first read with: New → Qualified → Proposal → Negotiation → Won → Lost.
+Refactor `src/components/deals/DealsKanbanBoard.tsx` to mirror `src/components/jobs/PipelineOverview.tsx` (board view), including when there are zero deals.
 
-**`deals`**
-- `tenant_id`, `organization_id` (FK → `organizations`, the company)
-- `title`, `amount` (numeric), `currency` (text — defaults to workspace currency)
-- `owner_id` (FK → auth.users; resolved through `members` for display)
-- `stage_id` (FK → `deal_stages`), `position` (int, ordering inside a column)
-- `expected_close_date` (nullable), `notes` (text)
-- `created_by`, timestamps
+- **Always render the columns** (even with zero deals). Drop the global "No deals yet" empty state — empty pipeline is a valid state.
+- Each column = `Card` with:
+  - `CardHeader` tinted via a `getHeaderBgClass(stage_type)` helper, mapped to our existing pastel tokens (`bg-pastel-blue/20`, `bg-pastel-purple/20`, `bg-success/20` for Won, `bg-pastel-orange/20`/`bg-warning/20` for Negotiation, `bg-secondary/20` default; Lost uses `bg-secondary/20`).
+  - `CardTitle` shows the stage name (`text-base font-medium truncate`), followed by a count `Badge variant="secondary"` and the stage total amount (right side, small muted).
+  - `CardContent` keeps the same tint, scrollable, contains `DroppableStage` (reuse `src/components/jobs/DroppableStage.tsx` directly).
+  - Empty-stage placeholder text: `"No deals in this stage"` (`text-xs text-text-tertiary`), matching jobs.
+- Column width: `w-[calc(100vw-3rem)] sm:w-72 flex-shrink-0 h-full flex flex-col snap-center sm:snap-align-none`.
+- Wrap the board in the same outer structure used by jobs pipeline: a horizontal-scroll container inside a `Card`/table-like frame so the board reads as "inside a table" (use the existing `Card` wrapper pattern from `PipelineOverview` board view — single outer `Card` with header row + horizontal scroll body).
+- Keep current DnD wiring (`@dnd-kit` + `moveDeal`), but swap the in-house `DroppableDealStage` for the existing `DroppableStage` from jobs to get identical drop-zone visuals. Remove `KanbanPrimitives.tsx` once unused (or keep `DraggableDealCard` only).
+- Loading: keep Initial-Load-Only `Skeleton` columns matching new column dimensions.
+- The "no stages defined" GioEmptyState remains as a fallback only when `stages.length === 0`.
 
-**`deal_notes`** — threaded notes (mirrors `candidate_comments`)
-- `deal_id`, `author_id`, `body`, timestamps
+## 2. "New deal" button = exact copy of "Create Job"
 
-**RLS** (all three tables): tenant-scoped read/write for active members; restricted viewers (Hiring Managers / Interviewers) get no CRM access.
+In `src/pages/Deals.tsx`, replace the current purple button with the same markup used by `JobsTable` (line 287):
 
-## 2. Settings — Deal Stages editor
+```tsx
+<Button onClick={() => setCreating(true)} size="sm" className="gap-1.5 h-8 whitespace-nowrap">
+  <Plus className="h-3.5 w-3.5" />
+  New Deal
+</Button>
+```
 
-New section in Settings → Workspace, modeled directly on the existing Job Stages editor:
-- Reuses the same DnD reorder pattern (CSS Translate, per Smooth DnD memory).
-- Add / rename / reorder / delete stages; mark a stage as Won or Lost (`stage_type`).
-- Same input heights (44px), Selects (32px), `ring-virgilio-purple` focus, semantic Smart Field badges.
+Default variant (primary token), no custom `bg-virgilio-purple` overrides.
 
-## 3. Routing & Navigation
+## 3. Searchable Company picker in DealFormSheet
 
-- New route `/crm/deals` in `src/App.tsx` (lazy).
-- Header: keep CRM section with two top-nav items styled identically to ATS items (icon + label + active highlight): **Companies** (`/crm`, `Building2`) and **Deals** (`/crm/deals`, `Handshake`).
+In `src/components/deals/DealFormSheet.tsx`, replace the plain `Select` for `organization_id` with the same `SearchableSelect` component used by `JobFormSheet`:
 
-## 4. Deals Kanban page (`src/pages/Deals.tsx`)
+- Import `SearchableSelect`, `SearchableSelectOption` from `@/components/ui/searchable-select`.
+- Map `organizations` (active only) into `{ value, label }[]`.
+- Same placeholder pattern ("Select a company"), same height/focus tokens as Job form.
 
-Visually and structurally a clone of the Jobs pipeline kanban:
-- New components in `src/components/deals/`: `DealsKanbanBoard`, `DroppableDealStage`, `DraggableDealCard`, `DealCard`.
-- `@dnd-kit` + Translate-based motion; optimistic stage moves with silent background refresh (Kanban optimistic feedback memory).
-- Fixed viewport `h-[100dvh]`; standard `PageHeader` (no subtitle).
-- Card: deal title (Poppins, tracking -0.06em), company name, amount + currency, owner avatar, age in `Xd` format.
-- Empty state: standard Gio mascot.
-- Skeletons during initial load (Initial-Load-Only gate per Unified loading gates memory).
-- Toolbar: "+ New Deal", search, basic filters (owner, company), saved-views compatible.
+## 4. Date selector = Virgilio style-guide picker
 
-## 5. Create / Edit deal — `DealFormSheet.tsx`
+Replace the raw `<Input type="date" />` for `expected_close_date` with `DatePickerVirgilio` (`src/components/ui/date-picker-virgilio.tsx`):
 
-Right-side `Sheet` (mirrors `JobFormSheet` / `CandidateFormSheet`), zod + react-hook-form:
-- Title, Company (combobox over `useOrganizations`), Amount, Currency (`CurrencySelect`), Owner (workspace member picker), Stage, Expected close date, Notes.
-- All controls use the standard heights, focus ring, and badge tokens.
+- Store value as ISO date string in the form (`format(date, 'yyyy-MM-dd')`); parse back with `new Date(value)` for the picker's `value` prop.
+- Pass `placeholder="Pick a close date"`.
 
-## 6. Deal profile sheet — `DealProfileSheet.tsx`
+---
 
-Sliding sheet modeled on `CandidateProfileSheet`:
-- Header: title, company, amount + currency, stage badge, owner avatar, edit / delete.
-- Body tabs: **Overview** (key facts, inline edit), **Notes** (threaded `deal_notes` like `CandidateComments`), **Activity** (stage moves + edits via existing `activityLogger`).
-- Right rail: Owner, Company link, Created/Updated, quick "Mark Won / Lost" actions.
-- Same animation, z-index, and close behavior as the candidate sheet.
+## Files to edit
 
-## 7. Hooks
+- `src/components/deals/DealsKanbanBoard.tsx` — full board refactor to mirror jobs pipeline (columns always visible, Card/CardHeader/CardContent, reuse `DroppableStage` from jobs).
+- `src/components/deals/DealFormSheet.tsx` — `SearchableSelect` for company, `DatePickerVirgilio` for close date.
+- `src/pages/Deals.tsx` — button styling to match `Create Job`.
+- `src/components/deals/KanbanPrimitives.tsx` — keep `DraggableDealCard` only (or delete if no longer used after switching to `DroppableStage`).
 
-- `useDeals` — react-query, tenant-scoped list + filters.
-- `useDeal(id)` — single deal joined with company + owner.
-- `useDealStages` — list + reorder + CRUD (used by Settings + kanban).
-- `useDealMutations` — create / update / move-stage / delete with optimistic kanban updates.
-- `useDealNotes` — list / add / delete.
+## Out of scope
 
-## 8. Permissions
-
-- `canManageCRM` derived from existing system roles. Admin / Owner / Recruiter-equivalent: full access. Hiring Manager / Interviewer: no access (consistent with restricted-viewer memory).
-
-## 9. Style-guide guardrails (applied throughout)
-
-- Typography: Poppins headings (bold, tracking -0.06em); Inter body. No subtitles in `PageHeader`.
-- Colors: only semantic tokens from `index.css` / `tailwind.config.ts`. No raw hex/Tailwind color utilities.
-- Inputs 44px, Selects 32px, unified `ring-virgilio-purple` focus.
-- Badges follow Smart Field semantic colors.
-- Empty states: standard Gio mascot.
-- Loading: Initial-Load-Only skeletons.
-- Time: `Xd` concise format.
-- Motion: subtle, calm, premium; DnD via Translate.
-
-## 10. Out of scope (this MVP)
-
-- No Contacts table.
-- No Deals analytics / forecasting.
-- No email, automation, or AI on deals.
-- No changes to the `organizations` schema.
-
-## Build order
-
-1. Migration: `deal_stages`, `deals`, `deal_notes` + RLS + first-read seeding of default stages.
-2. Hooks.
-3. Settings → Deal Stages editor.
-4. `Deals` kanban page + components.
-5. `DealFormSheet`.
-6. `DealProfileSheet`.
-7. Header: Deals nav item + route.
-8. Preview QA: DnD, optimistic updates, permissions, empty/loading states.
-
-Approve and I'll start with the migration.
+- No DB / hook / permission changes.
+- No changes to `DealProfileSheet`, `DealStagesManager`, or routes.
+- No new visual elements beyond what jobs pipeline already provides.
