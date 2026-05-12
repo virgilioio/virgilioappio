@@ -132,28 +132,27 @@ export function DealFormSheet({ open, onOpenChange, deal }: DealFormSheetProps) 
             <FormField
               control={form.control}
               name="organization_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Company</FormLabel>
-                  <Select value={field.value ?? ''} onValueChange={(v) => field.onChange(v || null)}>
+              render={({ field }) => {
+                const orgOptions: SearchableSelectOption[] = (organizations ?? [])
+                  .filter((o) => o.status === 'active')
+                  .map((o) => ({ value: o.id, label: o.name }))
+                return (
+                  <FormItem>
+                    <FormLabel>Company</FormLabel>
                     <FormControl>
-                      <SelectTrigger className="h-8 focus:ring-virgilio-purple">
-                        <SelectValue placeholder="Select a company" />
-                      </SelectTrigger>
+                      <SearchableSelect
+                        options={orgOptions}
+                        value={field.value ?? ''}
+                        onValueChange={(v) => field.onChange(v || null)}
+                        placeholder="Select a company"
+                        searchPlaceholder="Search companies..."
+                        emptyMessage="No companies found."
+                      />
                     </FormControl>
-                    <SelectContent>
-                      {(organizations ?? [])
-                        .filter((o) => o.status === 'active')
-                        .map((o) => (
-                          <SelectItem key={o.id} value={o.id}>
-                            {o.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+                    <FormMessage />
+                  </FormItem>
+                )
+              }}
             />
 
             <div className="grid grid-cols-2 gap-3">
