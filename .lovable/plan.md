@@ -1,31 +1,46 @@
-## Problem
+## Goal
 
-When a recruiter manually schedules an interview from a candidate's profile, the recruiter (the "booker") is not added to the Google Calendar event. The event invite goes only to: the primary interviewer, additional group interviewers, the transcript ingest email, guest emails, and the candidate. As a result, the recruiter who scheduled the meeting has no visibility of it on their own calendar.
+Introduce a persistent left navigation sidebar with two sections — **Home** and **ATS** (Briefcase icon) — and make the existing top navigation menu **context-aware**: it only renders the items that belong to the currently selected sidebar section. No functionality, routes, or permissions change.
 
-## Fix
+## Section → top nav mapping
 
-In `supabase/functions/create-booking/index.ts`, when `booked_by_user_id` is present and differs from the interviewer(s), include the booker as an attendee on the **interviewer's** Google Calendar event (not the candidate's event — candidate must not see who booked it).
+- **Home** → top nav shows nothing extra (it's a single destination — `/dashboard`). The top header keeps the logo, search, create, credits, notifications, and user menu.
+- **ATS** → top nav shows: Find, Jobs, Candidates, Pipeline, Analytics, Intelligence (all current items, with their existing permission gates).
 
-### Steps
+Active sidebar section is derived from the current route:
+- `/`, `/dashboard` → Home
+- `/find`, `/jobs`, `/candidates`, `/pipeline`, `/analytics`, `/talent-intelligence` (and their nested routes like `/jobs/:id`) → ATS
+- Other routes (`/settings`, `/members`, `/billing`, etc.) → no section highlighted; top nav stays empty (these are reached via the user menu, not the sidebar).
 
-1. **Resolve booker email**: After we already load `booked_by_user_id`, fetch their email from `profiles` (`.select('email').eq('user_id', booked_by_user_id)`). Cache as `bookerEmail`.
-2. **Add booker to the interviewer event attendees array** (lines ~598 and ~661 PATCH) — only if:
-   - `bookerEmail` exists,
-   - it isn't already the primary interviewer's email, and
-   - it isn't already in the group attendees list.
-3. **Do NOT add the booker to the candidate's calendar event** (lines ~726) — keep the candidate's invite scoped to the candidate only, matching current privacy behavior.
-4. **No DB schema changes**. No frontend changes. The frontend already passes `booked_by_user_id`.
+Clicking **ATS** in the sidebar navigates to `/jobs` (the canonical ATS landing) so the top nav populates immediately.
 
-### Optional (small)
+## Layout changes
 
-- Set `responseStatus: 'accepted'` for the booker so it appears confirmed on their calendar without an extra click.
+`src/components/layout/Layout.tsx`:
+- Wrap content in a flex row: fixed-width sidebar on the left, existing `Header` + `<Outlet />` on the right.
+- Sidebar is desktop-only (`hidden sm:flex`); mobile keeps the existing `MobileBottomNav` untouched.
+- Adjust `<Header>` left offset / width so it sits to the right of the sidebar (sidebar width reserved with left padding on the fixed header, or the header becomes non-fixed within the right column — pick the option that preserves the existing scroll-shadow behavior).
+
+New file `src/components/layout/AppSidebar.tsx`:
+- Narrow icon-first sidebar (~64px) using semantic tokens (`bg-surface-primary`, `border-virgilio-border`, active state `bg-virgilio-purple text-white`, hover `bg-virgilio-purple/10`), Poppins labels.
+- Two items: Home (`Home` icon) and ATS (`Briefcase` icon). Each shows an icon + label, with the active section visually highlighted using the same treatment as the current top nav active state for consistency.
+
+## Header changes
+
+`src/components/layout/Header.tsx`:
+- Keep the existing `navigationItems` array but tag each with a `section: 'home' | 'ats'`.
+- Compute `activeSection` from `location.pathname` (same logic as sidebar).
+- Filter the rendered nav (both desktop and mobile sheet) to items where `item.section === activeSection`. Home (`/dashboard`) is removed from the top nav since it's now a sidebar destination.
+- Mobile sheet keeps showing all permitted items grouped by section (mobile has no sidebar), so behavior on small screens is unchanged.
 
 ## Out of scope
 
-- Group booking flow already handles multiple interviewers; we are only adding the booker on top.
-- Public booking links (no `booked_by_user_id`) are unaffected.
-- Existing past bookings will not be backfilled (no Google API rewrite for historical events).
+- No route changes, no permission changes, no removal of pages.
+- Mobile bottom nav untouched.
+- No new pages or CRM features yet — this PR is purely the navigational reorganization to prepare for the CRM section to be added later as a third sidebar entry.
 
-## Files
+## Files touched
 
-- `supabase/functions/create-booking/index.ts` — add booker email resolution and include in interviewer event `attendees` (insert + PATCH).
+- `src/components/layout/Layout.tsx` (wrap with sidebar)
+- `src/components/layout/Header.tsx` (section-aware filtering, drop Home from top nav)
+- `src/components/layout/AppSidebar.tsx` (new)
