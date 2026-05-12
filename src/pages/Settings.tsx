@@ -31,14 +31,13 @@ export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const { canViewBilling, canManageMembers, canViewOrganizations, isPlatformAdmin, isWorkspaceOwner } = usePermissions()
+  const { canViewBilling, canManageMembers, isPlatformAdmin, isWorkspaceOwner } = usePermissions()
   const { organizationId, userType } = useAuth()
   
   // Auto-select billing tab if on /billing route
   const isBillingRoute = location.pathname === '/billing'
   // Pick the first available non-profile tab as fallback when entering via cog
   const pickDefaultSettingsTab = () => {
-    if (canViewOrganizations) return 'organizations'
     if (isPlatformAdmin) return 'platform-dashboard'
     if (userType === 'workspace_owner' && organizationId) return 'organization'
     return 'integrations'
