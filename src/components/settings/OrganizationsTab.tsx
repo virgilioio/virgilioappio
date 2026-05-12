@@ -57,10 +57,7 @@ export function OrganizationsTab() {
 
   return (
     <div className="space-y-6">
-      <PageHeader 
-        title="Departments" 
-       
-      />
+      <PageHeader title="Companies" />
 
       <div data-onboarding-target="organization">
         <OrganizationsTable
