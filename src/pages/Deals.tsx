@@ -43,7 +43,7 @@ export default function Deals() {
               label="Amount"
               value={amountMode}
               options={AMOUNT_MODE_OPTIONS}
-              onChange={setAmountMode}
+              onChange={(value) => setAmountMode(value as DealAmountMode)}
             />
             <Button onClick={() => setCreating(true)} size="sm" className="gap-1.5 h-8 whitespace-nowrap">
               <Plus className="h-3.5 w-3.5" />
