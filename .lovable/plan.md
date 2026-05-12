@@ -1,64 +1,51 @@
-## Goal
+## 1. Owner field → SearchableSelect (DealFormSheet)
 
-Bring the Deals Kanban and the New Deal form fully in line with the existing Jobs pipeline design and form conventions — no new design, only reuse.
+In `src/components/deals/DealFormSheet.tsx`, replace the plain `Select` for `owner_id` with `SearchableSelect`, mirroring the Company picker pattern already in the same form.
 
----
+- Build `ownerOptions: SearchableSelectOption[]` from `activeMembers`, using `value: m.user_id`, `label: full name || email`.
+- Props: `placeholder="Select an owner"`, `searchPlaceholder="Search members..."`, `emptyMessage="No members found."`.
+- Remove unused `Select*` imports if no longer used.
 
-## 1. Kanban: replicate the Jobs Pipeline board
+## 2. Primary submit button → match "Create & Continue"
 
-Refactor `src/components/deals/DealsKanbanBoard.tsx` to mirror `src/components/jobs/PipelineOverview.tsx` (board view), including when there are zero deals.
+In `DealFormSheet.tsx`, update the footer submit button to match `JobWizard.tsx` (line 270–278):
 
-- **Always render the columns** (even with zero deals). Drop the global "No deals yet" empty state — empty pipeline is a valid state.
-- Each column = `Card` with:
-  - `CardHeader` tinted via a `getHeaderBgClass(stage_type)` helper, mapped to our existing pastel tokens (`bg-pastel-blue/20`, `bg-pastel-purple/20`, `bg-success/20` for Won, `bg-pastel-orange/20`/`bg-warning/20` for Negotiation, `bg-secondary/20` default; Lost uses `bg-secondary/20`).
-  - `CardTitle` shows the stage name (`text-base font-medium truncate`), followed by a count `Badge variant="secondary"` and the stage total amount (right side, small muted).
-  - `CardContent` keeps the same tint, scrollable, contains `DroppableStage` (reuse `src/components/jobs/DroppableStage.tsx` directly).
-  - Empty-stage placeholder text: `"No deals in this stage"` (`text-xs text-text-tertiary`), matching jobs.
-- Column width: `w-[calc(100vw-3rem)] sm:w-72 flex-shrink-0 h-full flex flex-col snap-center sm:snap-align-none`.
-- Wrap the board in the same outer structure used by jobs pipeline: a horizontal-scroll container inside a `Card`/table-like frame so the board reads as "inside a table" (use the existing `Card` wrapper pattern from `PipelineOverview` board view — single outer `Card` with header row + horizontal scroll body).
-- Keep current DnD wiring (`@dnd-kit` + `moveDeal`), but swap the in-house `DroppableDealStage` for the existing `DroppableStage` from jobs to get identical drop-zone visuals. Remove `KanbanPrimitives.tsx` once unused (or keep `DraggableDealCard` only).
-- Loading: keep Initial-Load-Only `Skeleton` columns matching new column dimensions.
-- The "no stages defined" GioEmptyState remains as a fallback only when `stages.length === 0`.
+- Drop the custom `bg-virgilio-purple hover:bg-virgilio-purple/90` classes (use default primary).
+- Add `className="flex items-center gap-2"` and a trailing `<ChevronRight className="w-4 h-4" />` icon.
+- Label: `isSubmitting ? 'Creating...' : 'Create deal'` (keep "Save changes" for edit mode, no chevron in edit, to stay consistent — or keep chevron only in create mode like the wizard).
 
-## 2. "New deal" button = exact copy of "Create Job"
+## 3. Deal Stages settings → mirror Hiring Plan editor
 
-In `src/pages/Deals.tsx`, replace the current purple button with the same markup used by `JobsTable` (line 287):
+Rewrite `src/components/settings/DealStagesManager.tsx` to use the exact patterns from `src/components/jobs/HiringPlanTab.tsx` + `DraggableStageItem.tsx`.
 
-```tsx
-<Button onClick={() => setCreating(true)} size="sm" className="gap-1.5 h-8 whitespace-nowrap">
-  <Plus className="h-3.5 w-3.5" />
-  New Deal
-</Button>
-```
+Layout:
+- Page wrapped in `space-y-6`, header `<h3>Deal Stages</h3>` + helper paragraph, mirroring HiringPlanTab tone.
+- One section "Current Pipeline Stages" listing all deal stages as draggable cards.
+- Footer bar with `Total stages: N` on the left and a `Save` button on the right (only enabled when `hasUnsavedChanges`).
+- "Add stage" entry below the list using the same `SearchableSelect`-style row OR, since deal stages are user-defined (no library), a simple "Add stage" button that opens the existing StageFormSheet (kept).
 
-Default variant (primary token), no custom `bg-virgilio-purple` overrides.
+DnD card (new `DraggableDealStageItem.tsx`, copy of `DraggableStageItem.tsx`):
+- `@dnd-kit` `useSortable` with `CSS.Translate`, opacity-on-drag, `PointerSensor` distance 5, `KeyboardSensor`.
+- `Card` + `CardContent p-4`, drag handle in `bg-primary/10 text-primary` rounded square, stage name + `Badge` for `stage_type`.
+- Badge variants map: `open → pastel-blue`, `won → success`, `lost → secondary`.
+- Right-side actions: `Pencil` (edit → opens existing StageFormSheet), `Trash2` (delete → existing AlertDialog confirm).
+- `DragOverlay` with the same `rotate(-1.5deg) scale(1.03)` shadow.
 
-## 3. Searchable Company picker in DealFormSheet
+State:
+- Local `selectedStages` initialized from `useDealStages().data`, `hasUnsavedChanges` flag, save button calls `reorderStages.mutate(orderedIds)`.
+- `createStage`, `updateStage`, `deleteStage` continue to invalidate via the existing hook.
 
-In `src/components/deals/DealFormSheet.tsx`, replace the plain `Select` for `organization_id` with the same `SearchableSelect` component used by `JobFormSheet`:
+No DB or hook changes. No route changes.
 
-- Import `SearchableSelect`, `SearchableSelectOption` from `@/components/ui/searchable-select`.
-- Map `organizations` (active only) into `{ value, label }[]`.
-- Same placeholder pattern ("Select a company"), same height/focus tokens as Job form.
+## Files
 
-## 4. Date selector = Virgilio style-guide picker
+Edit:
+- `src/components/deals/DealFormSheet.tsx` — owner SearchableSelect, button restyle.
+- `src/components/settings/DealStagesManager.tsx` — full rewrite to Hiring Plan layout.
 
-Replace the raw `<Input type="date" />` for `expected_close_date` with `DatePickerVirgilio` (`src/components/ui/date-picker-virgilio.tsx`):
-
-- Store value as ISO date string in the form (`format(date, 'yyyy-MM-dd')`); parse back with `new Date(value)` for the picker's `value` prop.
-- Pass `placeholder="Pick a close date"`.
-
----
-
-## Files to edit
-
-- `src/components/deals/DealsKanbanBoard.tsx` — full board refactor to mirror jobs pipeline (columns always visible, Card/CardHeader/CardContent, reuse `DroppableStage` from jobs).
-- `src/components/deals/DealFormSheet.tsx` — `SearchableSelect` for company, `DatePickerVirgilio` for close date.
-- `src/pages/Deals.tsx` — button styling to match `Create Job`.
-- `src/components/deals/KanbanPrimitives.tsx` — keep `DraggableDealCard` only (or delete if no longer used after switching to `DroppableStage`).
+Create:
+- `src/components/settings/DraggableDealStageItem.tsx` — Hiring Plan-style DnD card adapted to deal stages.
 
 ## Out of scope
 
-- No DB / hook / permission changes.
-- No changes to `DealProfileSheet`, `DealStagesManager`, or routes.
-- No new visual elements beyond what jobs pipeline already provides.
+Kanban board, profile sheet, hooks, RLS, organizations, routes.

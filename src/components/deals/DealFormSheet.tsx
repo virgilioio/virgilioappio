@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { CurrencySelect } from '@/components/ui/currency-select'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/searchable-select'
+import { ChevronRight } from 'lucide-react'
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { useOrganizations } from '@/hooks/useOrganizations'
@@ -194,28 +195,31 @@ export function DealFormSheet({ open, onOpenChange, deal }: DealFormSheetProps) 
               <FormField
                 control={form.control}
                 name="owner_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Owner</FormLabel>
-                    <Select value={field.value ?? ''} onValueChange={(v) => field.onChange(v || null)}>
+                render={({ field }) => {
+                  const ownerOptions: SearchableSelectOption[] = activeMembers.map((m) => {
+                    const name = `${m.user_first_name ?? ''} ${m.user_last_name ?? ''}`.trim()
+                    return {
+                      value: m.user_id!,
+                      label: name || m.user_email || 'Unknown',
+                    }
+                  })
+                  return (
+                    <FormItem>
+                      <FormLabel>Owner</FormLabel>
                       <FormControl>
-                        <SelectTrigger className="h-8 focus:ring-virgilio-purple">
-                          <SelectValue placeholder="Select an owner" />
-                        </SelectTrigger>
+                        <SearchableSelect
+                          options={ownerOptions}
+                          value={field.value ?? ''}
+                          onValueChange={(v) => field.onChange(v || null)}
+                          placeholder="Select an owner"
+                          searchPlaceholder="Search members..."
+                          emptyMessage="No members found."
+                        />
                       </FormControl>
-                      <SelectContent>
-                        {activeMembers.map((m) => (
-                          <SelectItem key={m.user_id!} value={m.user_id!}>
-                            {(m.user_first_name || m.user_last_name)
-                              ? `${m.user_first_name ?? ''} ${m.user_last_name ?? ''}`.trim()
-                              : m.user_email}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                      <FormMessage />
+                    </FormItem>
+                  )
+                }}
               />
               <FormField
                 control={form.control}
@@ -286,8 +290,9 @@ export function DealFormSheet({ open, onOpenChange, deal }: DealFormSheetProps) 
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={submitting} className="bg-virgilio-purple hover:bg-virgilio-purple/90">
-                {submitting ? 'Saving…' : isEdit ? 'Save changes' : 'Create deal'}
+              <Button type="submit" disabled={submitting} className="flex items-center gap-2">
+                {submitting ? (isEdit ? 'Saving...' : 'Creating...') : isEdit ? 'Save changes' : 'Create deal'}
+                {!isEdit && <ChevronRight className="w-4 h-4" />}
               </Button>
             </div>
           </form>
