@@ -76,16 +76,18 @@ const CogIcon: IconRenderer = ({ className }) => (
   </svg>
 )
 
-const items: Array<{ id: Exclude<AppSection, null | 'my-profile'>; label: string; Icon: IconRenderer; href: string }> = [
-  { id: 'home', label: 'Home', Icon: GilioIcon, href: '/dashboard' },
-  { id: 'crm', label: 'CRM', Icon: CrmIcon, href: '/crm' },
-  { id: 'ats', label: 'ATS', Icon: AtsIcon, href: '/jobs' },
+const allItems: Array<{ id: Exclude<AppSection, null | 'my-profile'>; label: string; Icon: IconRenderer; href: string; show: (p: ReturnType<typeof usePermissions>) => boolean }> = [
+  { id: 'home', label: 'Home', Icon: GilioIcon, href: '/dashboard', show: () => true },
+  { id: 'crm', label: 'CRM', Icon: CrmIcon, href: '/crm', show: (p) => p.canViewOrganizations },
+  { id: 'ats', label: 'ATS', Icon: AtsIcon, href: '/jobs', show: () => true },
 ]
 
 export function AppSidebar() {
   const { pathname, search } = useLocation()
   const active = getActiveSection(pathname, search)
   const { profile } = useUserProfile()
+  const permissions = usePermissions()
+  const items = allItems.filter((item) => item.show(permissions))
 
   const initials = (() => {
     const f = profile?.first_name?.trim()?.[0] ?? ''
