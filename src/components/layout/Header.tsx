@@ -37,6 +37,7 @@ import { GlobalCreateButton } from '@/components/layout/GlobalCreateButton'
 import { SourcingCreditIndicator } from '@/components/layout/SourcingCreditIndicator'
 import { GlobalSearchBar } from '@/components/search/GlobalSearchBar'
 import { NotificationCenter } from '@/components/layout/NotificationCenter'
+import { getActiveSection, type AppSection } from '@/components/layout/AppSidebar'
 
 import { cn } from '@/lib/utils'
 import { useMembers } from '@/hooks/useMembers'
