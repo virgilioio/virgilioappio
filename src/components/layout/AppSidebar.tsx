@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { Briefcase } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import gilioIcon from '@/assets/gilio-icon.png'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 export type AppSection = 'home' | 'ats' | null
 
@@ -32,7 +33,7 @@ const GilioIcon: IconRenderer = ({ className }) => (
   />
 )
 
-const BriefcaseIcon: IconRenderer = ({ className }) => <Briefcase className={className} />
+const BriefcaseIcon: IconRenderer = ({ className }) => <Briefcase className={className} strokeWidth={1.75} />
 
 const items: Array<{ id: Exclude<AppSection, null>; label: string; Icon: IconRenderer; href: string }> = [
   { id: 'home', label: 'Home', Icon: GilioIcon, href: '/dashboard' },
@@ -44,31 +45,39 @@ export function AppSidebar() {
   const active = getActiveSection(pathname)
 
   return (
-    <aside
-      className="hidden sm:flex fixed top-3 left-3 bottom-3 z-[60] w-16 flex-col items-center gap-2 rounded-2xl bg-surface-primary py-4 shadow-calendly ring-1 ring-virgilio-border/60"
-      aria-label="Primary"
-    >
-      {items.map(item => {
-        const { Icon } = item
-        const isActive = active === item.id
-        return (
-          <Link
-            key={item.id}
-            to={item.href}
-            aria-current={isActive ? 'page' : undefined}
-            aria-label={item.label}
-            className={cn(
-              'group flex w-12 flex-col items-center justify-center gap-0.5 rounded-md px-1 py-2 text-[10px] font-poppins font-medium tracking-tight transition-all duration-200 ease-out',
-              isActive
-                ? 'bg-virgilio-purple text-white font-semibold'
-                : 'text-virgilio-text hover:bg-virgilio-purple/10'
-            )}
-          >
-            <Icon className="h-4 w-4" />
-            <span>{item.label}</span>
-          </Link>
-        )
-      })}
-    </aside>
+    <TooltipProvider delayDuration={150}>
+      <aside
+        className="hidden sm:flex fixed top-3 left-3 bottom-3 z-[60] w-16 flex-col items-center gap-2 rounded-2xl py-4 shadow-calendly ring-1 ring-black/40"
+        style={{ backgroundColor: '#0d0d09' }}
+        aria-label="Primary"
+      >
+        {items.map(item => {
+          const { Icon } = item
+          const isActive = active === item.id
+          return (
+            <Tooltip key={item.id}>
+              <TooltipTrigger asChild>
+                <Link
+                  to={item.href}
+                  aria-current={isActive ? 'page' : undefined}
+                  aria-label={item.label}
+                  className={cn(
+                    'flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200 ease-out',
+                    isActive
+                      ? 'bg-virgilio-purple text-white'
+                      : 'text-white/70 hover:bg-white/10 hover:text-white'
+                  )}
+                >
+                  <Icon className="h-6 w-6" />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={12}>
+                {item.label}
+              </TooltipContent>
+            </Tooltip>
+          )
+        })}
+      </aside>
+    </TooltipProvider>
   )
 }
