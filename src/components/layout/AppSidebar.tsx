@@ -71,7 +71,7 @@ export function AppSidebar() {
                       : 'text-white/70 hover:bg-white/10 hover:text-white'
                   )}
                 >
-                  <Icon className="h-6 w-6" isActive={isActive} />
+                  <Icon className="h-6 w-6" />
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={12}>
