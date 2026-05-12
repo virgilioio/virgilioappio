@@ -147,6 +147,7 @@ export function DealsKanbanBoard({ onOpenDeal, amountMode = 'total', headerLeft,
 
   return (
     <Card className="h-full flex flex-col">
+      {headerNode}
       <CardContent className="flex-1 min-h-0 p-3">
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <div className="flex gap-3 h-full overflow-x-auto pb-2">
