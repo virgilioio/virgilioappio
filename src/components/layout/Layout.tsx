@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { BulkUploadProvider } from '@/contexts/BulkUploadContext'
 import { GlobalBulkUploadWidget } from '@/components/candidates/GlobalBulkUploadWidget'
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav'
+import { AppSidebar } from '@/components/layout/AppSidebar'
 
 export function Layout() {
   const location = useLocation()
