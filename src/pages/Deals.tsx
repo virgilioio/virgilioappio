@@ -5,13 +5,13 @@ import { AppContainer } from '@/components/layout/AppContainer'
 import { Section } from '@/components/layout/Section'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { GioEmptyState } from '@/components/ui/GioEmptyState'
-import { FilterChipSelect } from '@/components/ui/filter-chip-select'
+import { FilterChipSelect, type FilterChipSelectOption } from '@/components/ui/filter-chip-select'
 import { usePermissions } from '@/hooks/usePermissions'
 import { DealsKanbanBoard, type DealAmountMode } from '@/components/deals/DealsKanbanBoard'
 import { DealFormSheet } from '@/components/deals/DealFormSheet'
 import { DealProfileSheet } from '@/components/deals/DealProfileSheet'
 
-const AMOUNT_MODE_OPTIONS = [
+const AMOUNT_MODE_OPTIONS: FilterChipSelectOption<DealAmountMode>[] = [
   { value: 'total' as const, label: 'Total' },
   { value: 'collected' as const, label: 'Collected' },
   { value: 'outstanding' as const, label: 'Outstanding' },
@@ -39,7 +39,7 @@ export default function Deals() {
       <Section className="flex-1 min-h-0 flex flex-col">
         <AppContainer variant="default" className="flex-1 min-h-0 flex flex-col">
           <PageHeader title="Deals">
-            <FilterChipSelect<DealAmountMode>
+            <FilterChipSelect
               label="Amount"
               value={amountMode}
               options={AMOUNT_MODE_OPTIONS}
