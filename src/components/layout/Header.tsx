@@ -239,8 +239,7 @@ export function Header() {
           
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-1">
-            {navigationItems
-              .filter(item => item.show)
+            {visibleNavItems
               .map((item) => {
                 const Icon = item.icon
                 const isActive = location.pathname === item.href || 
