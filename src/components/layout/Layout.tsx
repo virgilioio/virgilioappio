@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { BulkUploadProvider } from '@/contexts/BulkUploadContext'
 import { GlobalBulkUploadWidget } from '@/components/candidates/GlobalBulkUploadWidget'
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav'
+import { AppSidebar } from '@/components/layout/AppSidebar'
 
 export function Layout() {
   const location = useLocation()
@@ -66,7 +67,8 @@ export function Layout() {
     <AuthGate>
       <OrgGate>
         <BulkUploadProvider>
-          <div className="bg-background">
+          <AppSidebar />
+          <div className="bg-background sm:pl-16">
             <Header />
             <main className="pt-0 sm:pt-14 pb-24 sm:pb-0 min-h-screen sm:min-h-[calc(100vh-3.5rem)]">
               <Outlet />

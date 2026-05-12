@@ -37,6 +37,7 @@ import { GlobalCreateButton } from '@/components/layout/GlobalCreateButton'
 import { SourcingCreditIndicator } from '@/components/layout/SourcingCreditIndicator'
 import { GlobalSearchBar } from '@/components/search/GlobalSearchBar'
 import { NotificationCenter } from '@/components/layout/NotificationCenter'
+import { getActiveSection, type AppSection } from '@/components/layout/AppSidebar'
 
 import { cn } from '@/lib/utils'
 import { useMembers } from '@/hooks/useMembers'
@@ -132,50 +133,59 @@ export function Header() {
     }
   }
 
-  const navigationItems = [
-    {
-      href: '/dashboard',
-      icon: Home,
-      label: 'Home',
-      show: true,
-    },
+  const navigationItems: Array<{
+    href: string
+    icon: typeof Home
+    label: string
+    show: boolean
+    section: Exclude<AppSection, null>
+  }> = [
     {
       href: '/find',
       icon: Sparkles,
       label: 'Find',
       show: canSeeRecruiterTools && (isPlatformAdmin || isWorkspaceOwner || isAdmin || isMember),
+      section: 'ats',
     },
     {
       href: '/jobs',
       icon: Briefcase,
       label: 'Jobs',
       show: canViewJobs,
+      section: 'ats',
     },
     {
       href: '/candidates',
       icon: Users,
       label: 'Candidates',
       show: canSeeRecruiterTools && canViewCandidatesNavigation,
+      section: 'ats',
     },
     {
       href: '/pipeline',
       icon: TrendingUp,
       label: 'Pipeline',
       show: canViewJobs,
+      section: 'ats',
     },
     {
       href: '/analytics',
       icon: BarChart3,
       label: 'Analytics',
       show: isPlatformAdmin || isWorkspaceOwner || isAdmin,
+      section: 'ats',
     },
     {
       href: '/talent-intelligence',
       icon: Lightbulb,
       label: 'Intelligence',
       show: isPlatformAdmin || isWorkspaceOwner || isAdmin,
+      section: 'ats',
     },
   ]
+
+  const activeSection = getActiveSection(location.pathname)
+  const visibleNavItems = navigationItems.filter(item => item.show && item.section === activeSection)
 
   const userDisplayName = (profile?.first_name && profile?.last_name
     ? `${profile.first_name} ${profile.last_name}`
@@ -188,8 +198,7 @@ export function Header() {
     <>
       {isPlatformAdmin && <AdminModeIndicator />}
       <nav className="space-y-1">
-        {navigationItems
-          .filter(item => item.show)
+        {visibleNavItems
           .map((item) => {
             const Icon = item.icon
             const isActive = location.pathname === item.href || 
@@ -218,7 +227,7 @@ export function Header() {
 
   return (
     <header className={cn(
-      "hidden sm:block fixed top-0 left-0 right-0 z-50 border-b border-virgilio-border transition-shadow supports-[backdrop-filter]:bg-surface-primary/60 bg-surface-primary/90 backdrop-blur",
+      "hidden sm:block fixed top-0 right-0 left-0 sm:left-16 z-50 border-b border-virgilio-border transition-shadow supports-[backdrop-filter]:bg-surface-primary/60 bg-surface-primary/90 backdrop-blur",
       scrolled && "shadow-calendly"
     )}>
       <div className="flex items-center justify-between px-md py-2 sm:px-lg">
@@ -230,8 +239,7 @@ export function Header() {
           
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-1">
-            {navigationItems
-              .filter(item => item.show)
+            {visibleNavItems
               .map((item) => {
                 const Icon = item.icon
                 const isActive = location.pathname === item.href || 
