@@ -182,6 +182,13 @@ export function Header() {
       show: isPlatformAdmin || isWorkspaceOwner || isAdmin,
       section: 'ats',
     },
+    {
+      href: '/crm',
+      icon: Building2,
+      label: 'Companies',
+      show: canViewOrganizations,
+      section: 'crm',
+    },
   ]
 
   const activeSection = getActiveSection(location.pathname)
