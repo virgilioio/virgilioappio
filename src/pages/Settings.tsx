@@ -144,8 +144,6 @@ export default function Settings() {
                   <OrganizationTab />
                 </TabsContent>
                 
-                </TabsContent>
-                
                 {/* Billing Tab - Show for workspace owners */}
                 {userType === 'workspace_owner' && organizationId && (
                   <TabsContent value="billing">
