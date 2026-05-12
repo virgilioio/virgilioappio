@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ProfileTab } from '@/components/settings/ProfileTab'
 import OrganizationTab from '@/components/settings/OrganizationTab'
-import { OrganizationsTab } from '@/components/settings/OrganizationsTab'
+
 import { MembersTab } from '@/components/settings/MembersTab'
 import { PlatformSettingsManager } from '@/components/settings/PlatformSettingsManager'
 import { PlatformAssetUploader } from '@/components/settings/PlatformAssetUploader'
