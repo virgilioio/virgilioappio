@@ -64,7 +64,7 @@ export function AppSidebar() {
                   className={cn(
                     'flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200 ease-out',
                     isActive
-                      ? 'bg-virgilio-purple text-white'
+                      ? 'bg-[#fffcf9] text-black'
                       : 'text-white/70 hover:bg-white/10 hover:text-white'
                   )}
                 >
