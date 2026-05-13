@@ -1,5 +1,5 @@
 
-import { Building, Building2, Receipt, Users, Shield, Settings as SettingsIcon, Megaphone, FileText, Image, BarChart3, UserCheck, Briefcase, UsersIcon, CreditCard, Layers, Plug, Handshake, Coins } from 'lucide-react'
+import { Building, Building2, Receipt, Users, Shield, Settings as SettingsIcon, Megaphone, FileText, Image, BarChart3, UserCheck, Briefcase, UsersIcon, CreditCard, Layers, Plug, Handshake } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
