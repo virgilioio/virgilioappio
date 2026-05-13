@@ -1,4 +1,5 @@
 import { ReactNode, useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import { CurrencyConverterWidget } from '@/components/dashboard/CurrencyConverterWidget'
 import { PhotoCarouselWidget } from '@/components/dashboard/PhotoCarouselWidget'
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
