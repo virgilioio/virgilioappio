@@ -6570,7 +6570,7 @@ export type Database = {
         | "onboarding"
         | "custom"
         | "application_review"
-      system_role: "admin" | "member"
+      system_role: "admin" | "member" | "sales"
       trigger_event_type: "on_stage_enter" | "on_stage_exit"
       user_type_enum: "platform_admin" | "workspace_owner" | "member" | "guest"
     }
@@ -6834,7 +6834,7 @@ export const Constants = {
         "custom",
         "application_review",
       ],
-      system_role: ["admin", "member"],
+      system_role: ["admin", "member", "sales"],
       trigger_event_type: ["on_stage_enter", "on_stage_exit"],
       user_type_enum: ["platform_admin", "workspace_owner", "member", "guest"],
     },
