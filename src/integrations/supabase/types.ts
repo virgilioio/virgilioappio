@@ -6075,6 +6075,7 @@ export type Database = {
         Args: { required_role: string; tenant_id_param: string }
         Returns: boolean
       }
+      cleanup_expired_cache_rows: { Args: never; Returns: Json }
       cleanup_expired_draft_conversations: { Args: never; Returns: undefined }
       cleanup_expired_invitations: { Args: never; Returns: number }
       cleanup_expired_salary_data: { Args: never; Returns: number }
