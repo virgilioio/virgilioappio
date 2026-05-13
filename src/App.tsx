@@ -68,7 +68,22 @@ const SaaSCustomerDetail = lazy(() =>
 )
 const Analytics = lazy(() => import('./pages/Analytics'))
 const TalentIntelligence = lazy(() => import('./pages/TalentIntelligence'))
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: 'always',
+      retry: 1,
+    },
+  },
+})
+
+// Expose for non-React contexts (sign-out, tenant switch).
+if (typeof window !== 'undefined') {
+  ;(window as unknown as { __queryClient?: QueryClient }).__queryClient = queryClient
+}
 
 function AppContent() {
   // Initialize favicon and browser title loading
