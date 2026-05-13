@@ -29,26 +29,25 @@ function getHeaderBgClass(stage: DealStage): string {
 }
 
 function computeDisplayAmount(deal: Deal, mode: DealAmountMode, collectedByDeal: Map<string, number>): number | null {
-  if (mode === 'total') return deal.amount
+  // Use base_amount when available so columns roll up consistently across currencies
+  const total = deal.base_amount ?? deal.amount
+  if (mode === 'total') return total
   const collected = collectedByDeal.get(deal.id) ?? 0
   if (mode === 'collected') return collected
-  // outstanding
-  const total = deal.amount ?? 0
-  return Math.max(0, total - collected)
+  const t = total ?? 0
+  return Math.max(0, t - collected)
 }
 
 function formatStageTotal(deals: Deal[], mode: DealAmountMode, collectedByDeal: Map<string, number>): string {
   if (!deals.length) return ''
-  const byCcy: Record<string, number> = {}
+  // All values are in base currency (computeDisplayAmount uses base_amount)
+  const baseCcy = deals.find((d) => d.base_currency)?.base_currency ?? 'USD'
+  let total = 0
   deals.forEach((d) => {
     const v = computeDisplayAmount(d, mode, collectedByDeal)
-    if (v == null) return
-    byCcy[d.currency] = (byCcy[d.currency] ?? 0) + Number(v)
+    if (v != null) total += Number(v)
   })
-  const entries = Object.entries(byCcy).sort((a, b) => b[1] - a[1])
-  if (!entries.length) return ''
-  const [ccy, total] = entries[0]
-  const symbol = CURRENCY_SYMBOLS[ccy] ?? ''
+  const symbol = CURRENCY_SYMBOLS[baseCcy] ?? ''
   return `${symbol}${new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(total)}`
 }
 
