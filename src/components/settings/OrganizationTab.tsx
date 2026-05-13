@@ -311,6 +311,8 @@ export default function OrganizationTab() {
         </CardContent>
       </Card>
 
+      <CurrencySettings />
+
       {/* Confirmation Dialog */}
       <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
         <AlertDialogContent>
