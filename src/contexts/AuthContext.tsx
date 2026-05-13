@@ -93,7 +93,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       setIsLoggingOut(true)
-      
+
+      // Wipe persisted react-query cache before we lose identity, so a different
+      // user signing in next can't read the previous user's data.
+      try {
+        const { clearPersistedCache } = await import('@/lib/cache/persister')
+        const qc = (window as unknown as { __queryClient?: import('@tanstack/react-query').QueryClient }).__queryClient
+        clearPersistedCache(qc)
+      } catch {
+        /* non-fatal */
+      }
+
       // 1) ✅ Use reliable sign-out with explicit cleanup
       const { safeSignOut } = await import('@/lib/authHelpers')
       await safeSignOut()

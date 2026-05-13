@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { cacheTiers } from '@/lib/cache/cacheTiers';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { WeeklySchedule, getDefaultWeeklySchedule } from './useBookingConfig';
@@ -50,6 +51,7 @@ export function useBookingEventTypes(bookingConfigId: string | undefined) {
       return data as unknown as BookingEventType[];
     },
     enabled: !!bookingConfigId,
+    ...cacheTiers.reference,
   });
 
   const createMutation = useMutation({

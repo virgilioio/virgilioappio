@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { cacheTiers } from '@/lib/cache/cacheTiers'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
@@ -37,7 +38,8 @@ export function useCandidateSources(context: 'platform-defaults' | 'organization
       if (error) throw error
       return data as CandidateSource[]
     },
-    enabled: !!user
+    enabled: !!user,
+    ...cacheTiers.static,
   })
 
   const createSource = useMutation({

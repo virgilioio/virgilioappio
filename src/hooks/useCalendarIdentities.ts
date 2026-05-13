@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { cacheTiers } from '@/lib/cache/cacheTiers';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -36,6 +37,7 @@ export function useCalendarIdentities() {
       if (error) throw error;
       return data as CalendarIdentity[];
     },
+    ...cacheTiers.reference,
   });
 
   const disconnectMutation = useMutation({

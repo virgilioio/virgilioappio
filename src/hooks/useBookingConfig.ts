@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { cacheTiers } from '@/lib/cache/cacheTiers';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrgContext } from '@/contexts/OrgContext';
@@ -121,6 +122,7 @@ export function useBookingConfig() {
       return data ? (data as unknown as BookingConfig) : null;
     },
     enabled: !!user,
+    ...cacheTiers.reference,
   });
 
   const updateMutation = useMutation({

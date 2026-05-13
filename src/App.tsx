@@ -7,7 +7,9 @@ import {
 } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { OrgContextProvider } from './contexts/OrgContext'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
+import { persister, shouldPersistQueryKey, CACHE_VERSION } from '@/lib/cache/persister'
 import { useStartupDiagnostics } from './hooks/useStartupDiagnostics'
 import { Layout } from './components/layout/Layout'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -66,7 +68,22 @@ const SaaSCustomerDetail = lazy(() =>
 )
 const Analytics = lazy(() => import('./pages/Analytics'))
 const TalentIntelligence = lazy(() => import('./pages/TalentIntelligence'))
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: 'always',
+      retry: 1,
+    },
+  },
+})
+
+// Expose for non-React contexts (sign-out, tenant switch).
+if (typeof window !== 'undefined') {
+  ;(window as unknown as { __queryClient?: QueryClient }).__queryClient = queryClient
+}
 
 function AppContent() {
   // Initialize favicon and browser title loading
@@ -166,7 +183,18 @@ function App() {
   
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={{
+          persister,
+          maxAge: 24 * 60 * 60 * 1000,
+          buster: CACHE_VERSION,
+          dehydrateOptions: {
+            shouldDehydrateQuery: (query) =>
+              query.state.status === 'success' && shouldPersistQueryKey(query.queryKey),
+          },
+        }}
+      >
         <AppBootstrap>
           <AuthProvider>
             <OrgContextProvider>
@@ -178,7 +206,7 @@ function App() {
             </OrgContextProvider>
           </AuthProvider>
         </AppBootstrap>
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </ErrorBoundary>
   )
 }
