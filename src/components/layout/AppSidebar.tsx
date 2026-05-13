@@ -37,13 +37,13 @@ const GilioIcon: IconRenderer = ({ className }) => (
 // no asset swap, no flash. Industry standard for chrome icons.
 const AtsIcon: IconRenderer = ({ className }) => (
   <svg
-    viewBox="0 0 24 24"
+    viewBox="0 0 240 240"
     fill="currentColor"
     aria-hidden
     className={cn('inline-block', className)}
   >
-    <circle cx="10" cy="8.5" r="6.5" />
-    <rect x="8" y="17" width="9" height="5" rx="2.5" />
+    <circle cx="120" cy="86.34" r="71.4" />
+    <rect x="95.93" y="161.33" width="95.55" height="63.7" rx="31.85" />
   </svg>
 )
 
