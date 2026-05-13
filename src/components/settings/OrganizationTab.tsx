@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/hooks/useTenant";
 import { OrganizationDisplay } from "./OrganizationDisplay";
+import { CurrencySettings } from "./CurrencySettings";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Pencil, Save, X } from "lucide-react";
 
