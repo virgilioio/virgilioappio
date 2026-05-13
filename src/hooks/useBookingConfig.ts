@@ -122,6 +122,7 @@ export function useBookingConfig() {
       return data ? (data as unknown as BookingConfig) : null;
     },
     enabled: !!user,
+    ...cacheTiers.reference,
   });
 
   const updateMutation = useMutation({
