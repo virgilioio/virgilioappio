@@ -12,7 +12,7 @@ import { PlatformAssetUploader } from '@/components/settings/PlatformAssetUpload
 import { OfferTemplatesManager } from '@/components/settings/OfferTemplatesManager'
 import { JobSettingsManager } from '@/components/settings/JobSettingsManager'
 import { DealStagesManager } from '@/components/settings/DealStagesManager'
-import { CurrencySettings } from '@/components/settings/CurrencySettings'
+
 import { PlatformJobSettingsManager } from '@/components/settings/PlatformJobSettingsManager'
 import { PlatformTab } from '@/components/settings/PlatformTab'
 import { IntegrationsTab } from '@/components/settings/IntegrationsTab'
