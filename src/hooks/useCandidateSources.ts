@@ -38,7 +38,8 @@ export function useCandidateSources(context: 'platform-defaults' | 'organization
       if (error) throw error
       return data as CandidateSource[]
     },
-    enabled: !!user
+    enabled: !!user,
+    ...cacheTiers.static,
   })
 
   const createSource = useMutation({
