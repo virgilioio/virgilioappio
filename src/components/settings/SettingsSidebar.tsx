@@ -60,11 +60,10 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
       icon: Layers, 
       show: permissions.isPlatformAdmin || permissions.isAdmin || (userType === 'workspace_owner' && !!organizationId),
       submenu: [
-        { id: 'organization', label: 'Company Profile', icon: Building, show: permissions.canManageOrganization },
+        { id: 'organization', label: 'General Settings', icon: Building, show: permissions.canManageOrganization },
         { id: 'members', label: 'Members', icon: Users, show: permissions.canViewMembers },
         { id: 'workspace-job-settings', label: 'Job Settings', icon: SettingsIcon, show: permissions.isPlatformAdmin || permissions.isAdmin || (userType === 'workspace_owner' && !!organizationId) },
         { id: 'workspace-deal-stages', label: 'Deal Stages', icon: Handshake, show: permissions.canViewOrganizations },
-        { id: 'workspace-currency', label: 'Currency', icon: Coins, show: permissions.canViewOrganizations },
         { id: 'integrations', label: 'Integrations', icon: Plug, show: true },
       ]
     },
