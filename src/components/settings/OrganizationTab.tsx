@@ -122,7 +122,7 @@ export default function OrganizationTab() {
     return (
       <div className="space-y-md">
         <PageHeader
-          title="Company Profile"
+          title="General Settings"
          
         />
         <Card>
@@ -141,7 +141,7 @@ export default function OrganizationTab() {
     return (
       <div className="space-y-md">
         <PageHeader
-          title="Company Profile"
+          title="General Settings"
          
         />
         <Card>
@@ -160,7 +160,7 @@ export default function OrganizationTab() {
     return (
       <div className="space-y-md">
         <PageHeader
-          title="Company Profile"
+          title="General Settings"
          
         />
         <Card>
@@ -183,7 +183,7 @@ export default function OrganizationTab() {
     return (
       <div className="space-y-md">
         <PageHeader
-          title="Company Profile"
+          title="General Settings"
          
         />
         <Card>
@@ -198,7 +198,7 @@ export default function OrganizationTab() {
   return (
     <div className="space-y-md">
       <PageHeader
-        title="Company Profile"
+        title="General Settings"
        
       >
         {!isEditMode && (
