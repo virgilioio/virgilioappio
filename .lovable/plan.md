@@ -1,90 +1,145 @@
-## Caching strategy: foundation + hot paths + persistence
+# Multi-Currency Deals & Payments
 
-### Why this matters
-- `QueryClient` is currently default-configured (no `staleTime`, no `gcTime`), so every component remount, tab focus, and route navigation triggers refetches. With ~98 `useQuery` hooks, the same data (members, jobs, filter options, dashboard metrics) is fetched dozens of times per session.
-- There is no persistence: a page reload throws away every cached row and re-runs every dashboard query against Supabase from scratch.
-- Existing memory `core-data-sync-architecture` documents a deduplication intent that is only partially honored. We'll formalize it.
+## Goal
+Let deals and payments be recorded in any currency the client actually pays in (USD, MXN, EUR, …) while every total, kanban column, and report rolls up in **one workspace base currency** using accurate, dated FX rates.
 
-### Goals
-1. Eliminate redundant network calls on the same session.
-2. Make reopening the app feel instant via persisted cache.
-3. Define a documented, predictable cache + invalidation contract.
-4. Keep mutation-heavy flows (kanban moves, scorecards, offers) as fresh as today.
+Note: `deal_invoices` is a file-upload table (no amount/currency), so the financial scope here is **deals + deal_payments**.
 
 ---
 
-### Plan
+## Architecture at a glance
 
-**1. Cache tier definitions (documented in `src/lib/cache/cacheTiers.ts`)**
+```text
+Settings → Workspace → Base currency (e.g. USD)
+                │
+                ▼
+   ┌──────────────────────────┐        ┌────────────────────────┐
+   │ currency_rates (daily)   │◀──────▶│ Edge fn: refresh-fx    │
+   │  base, quote, rate, date │  cron  │ (Frankfurter/ECB)      │
+   └────────────┬─────────────┘        └────────────────────────┘
+                │ lookup at write time
+                ▼
+   deals.amount + currency           ← original (source of truth)
+   deals.base_amount + base_currency ← live snapshot, recomputed daily for OPEN deals
+   deals.fx_rate + fx_rate_date
 
-| Tier | staleTime | gcTime | Use for |
-|---|---|---|---|
-| `realtime` | 0 | 5 min | Mutations' read-after-write, pipeline kanban active board |
-| `transactional` | 60s | 10 min | Candidate lists, job lists, scorecards in flight |
-| `reference` | 10 min | 60 min | Dashboard widgets, analytics metrics, members list, customer members |
-| `static` | 60 min | 24 h | Filter options, app fields, hiring stages, integration registry, country lists |
-
-Exported as helpers: `cacheTiers.reference`, etc., used like `useQuery({ ...cacheTiers.reference, queryKey, queryFn })`.
-
-**2. Global QueryClient defaults (`src/App.tsx`)**
-- `staleTime: 60_000` (transactional default)
-- `gcTime: 10 * 60_000`
-- `refetchOnWindowFocus: false` (current behavior is already this implicitly via no-config — explicit it)
-- `refetchOnReconnect: 'always'`
-- `retry: 1` (network only, not 4xx)
-
-**3. Persisted cache (localStorage)**
-- Add `@tanstack/react-query-persist-client` + `@tanstack/query-sync-storage-persister`.
-- Wrap `QueryClientProvider` with `PersistQueryClientProvider`.
-- `maxAge: 24h`, `buster` keyed to app version (already exposed via `useAppVersionCheck`) so a deploy invalidates everything.
-- **Tenant/user safety**: a `dehydrateOptions.shouldDehydrateQuery` filter excludes any query whose key contains `auth`, `secret`, or `chrome-extension`. On `signOut` and on tenant switch in `OrgContext`, call `queryClient.clear()` AND `persister.removeClient()` so cached data never crosses identities.
-
-**4. Hot-path hook tuning (~15 hooks)**
-Apply explicit tiers + canonical query keys on the highest-traffic hooks:
-- `useDashboardLayout`, dashboard widget hooks (agenda, upcoming activities, recruiting ops) → `reference`
-- `useAnalyticsMetrics`, `useJobAnalyticsMetrics`, `useAnalyticsFilterOptions` → `reference` / `static`
-- `useCandidates`, `useIndependentCandidates`, `useCandidateAssociations`, `useCandidateJobAssociations` → `transactional`
-- `useCandidateFilterOptions`, `useApplicationFields`, `useCandidateSources` → `static`
-- `useCustomerMembers`, members list query → `reference`
-- `useAutocompleteSearch` → keep its existing debounce; add `staleTime: 5min` per query string
-- `useBookingAvailability`, `useBookingConfig`, `useBookingEventTypes` → `reference`
-- `useCalendarIdentities` → `reference`
-
-**5. Canonical query keys**
-Introduce `src/lib/cache/queryKeys.ts` with factories:
-```ts
-qk.candidates.list(tenantId, filters)
-qk.candidates.byId(id)
-qk.jobs.list(tenantId)
-qk.dashboard.widgets(tenantId, userId)
-qk.analytics.metrics(tenantId, range)
-qk.members.list(tenantId)
+   deal_payments.amount + currency           ← original
+   deal_payments.base_amount + base_currency ← FROZEN at payment date
+   deal_payments.fx_rate + fx_rate_date
+   deal_payments.fx_rate_source ('auto' | 'manual')
 ```
-Existing hooks migrate one by one (no big-bang rewrite). Mutations use the same factory to invalidate predictably.
 
-**6. Invalidation contract**
-- Documented in `src/lib/cache/README.md` + saved as a memory.
-- Each mutation hook lists the keys it invalidates. Examples:
-  - Move candidate stage → invalidate `qk.candidates.list`, `qk.dashboard.widgets`, the affected job's pipeline.
-  - Edit member role → invalidate `qk.members.list`, `qk.dashboard.widgets`.
-  - Create/update job → invalidate `qk.jobs.list`, related analytics, dashboard.
-- For 5–15 min cached widgets we also expose a manual "Refresh" affordance on dashboard widgets via existing dropdown (calls `queryClient.invalidateQueries({ queryKey: qk.dashboard.widgets() })`).
-
-**7. Verification**
-- Reload `/dashboard`, open Network tab: confirm second navigation to Dashboard issues 0 Supabase calls within `staleTime`.
-- Hard reload after first visit: confirm widgets paint from cache instantly while a single background revalidation runs.
-- Sign out → sign in as a different tenant: confirm zero cache leakage (cleared on sign-out).
-- Move a candidate on the pipeline: confirm dashboard widgets reflect the change after invalidation.
+**Rules**
+- Original `amount` + `currency` are **immutable** for accounting integrity.
+- `base_*` columns are derived; recomputable from rate tables.
+- Payments freeze their FX rate at creation (ledger style — actual revenue collected).
+- Open deals recompute `base_amount` daily from current rate; once a deal stage is marked **won/closed**, the rate freezes too.
+- Admin can override any rate from Settings; override wins over auto feed and is timestamped + attributed.
 
 ---
 
-### Out of scope (for this pass)
-- Edge-function / server-side caching (analytics, AI fit insights). Saved for a "Full overhaul" follow-up.
-- Touching the remaining ~80 cold-path hooks — they inherit the new global defaults automatically and can be tuned later.
-- Realtime (Supabase channels) replacing polling — separate initiative.
+## Workstreams
 
-### Files touched (estimate)
-- New: `src/lib/cache/cacheTiers.ts`, `src/lib/cache/queryKeys.ts`, `src/lib/cache/persister.ts`, `src/lib/cache/README.md`
-- Edited: `src/App.tsx`, `src/contexts/AuthContext.tsx` (sign-out clear), `src/contexts/OrgContext.tsx` (tenant-switch clear), ~15 hot-path hooks
-- Memory: update `core-data-sync-architecture` to point at the new cache tiers + invalidation contract
-- Dependencies: `@tanstack/react-query-persist-client`, `@tanstack/query-sync-storage-persister`
+### 1. Settings — Base currency & FX management
+New section in **Settings → Workspace → Currency**:
+- Pick **Base currency** (default USD). Stored on `tenants.settings.base_currency`. Changing it triggers a one-time backfill confirmation modal (see §6).
+- **Active currencies** chip list — currencies enabled for selection in deal/payment forms (limits clutter).
+- **Today's rates** table: base → each active currency, last refreshed timestamp, source badge (Auto / Manual).
+- Per-row **Override rate** action (modal: rate, optional expiry date, note). Manual rate persists until expiry or removal.
+- Manual **Refresh now** button.
+
+### 2. Database
+New tables + columns (single migration):
+
+`currency_rates`
+- `tenant_id`, `base_currency`, `quote_currency`, `rate numeric(18,8)`, `rate_date date`, `source text` ('auto'|'manual'), `created_by`, `created_at`
+- Unique `(tenant_id, base_currency, quote_currency, rate_date, source)`
+- RLS: tenant-scoped read; admins write.
+
+`currency_rate_overrides` (active manual overrides)
+- `tenant_id`, `base_currency`, `quote_currency`, `rate`, `effective_from`, `effective_to nullable`, `note`, `created_by`
+- Lookup priority: active override → most recent auto rate ≤ date.
+
+Alter `deals`:
+- `base_currency text`, `base_amount numeric`, `fx_rate numeric(18,8)`, `fx_rate_date date`, `fx_locked_at timestamptz nullable`
+
+Alter `deal_payments`:
+- `base_currency text`, `base_amount numeric`, `fx_rate numeric(18,8)`, `fx_rate_date date`, `fx_rate_source text`
+
+DB function `convert_to_base(p_tenant_id, p_amount, p_currency, p_date)` returns `(base_amount, rate, rate_date, source)` — single source of truth used by triggers and edge functions. Returns NULL gracefully if no rate available (UI shows "Rate pending").
+
+### 3. Rate refresh edge function
+`refresh-fx-rates` (scheduled daily 06:00 UTC via `pg_cron` + `pg_net`):
+- Pulls EUR-quoted rates from Frankfurter (free, ECB-backed, no API key).
+- Cross-rates derived for each tenant's base currency.
+- Inserts one row per `(tenant, base, quote)` per day with `source='auto'`.
+- Idempotent on `(tenant, base, quote, date, source)`.
+- Manual "Refresh now" button calls same function on demand.
+
+### 4. Deal & Payment write paths
+On insert/update of `deals.amount|currency` (open deal): trigger calls `convert_to_base()`, fills `base_*`. When a deal moves to a **won/closed** stage, `fx_locked_at = now()` and base_amount is no longer recomputed.
+
+On insert of `deal_payments`: trigger fills `base_*` from rate at `payment date` and **never** recomputes after.
+
+Daily cron job `recompute-open-deals-base` re-runs `convert_to_base()` for all deals where `fx_locked_at IS NULL`. Keeps forecast totals fresh.
+
+### 5. UI changes
+**Deal cards (kanban)**
+- Show original: `MX$170,000 MXN`.
+- Tiny muted line below for non-base currencies: `≈ $9,800` (base). Skipped if currency == base.
+
+**Column headers / board totals**
+- Always sum `base_amount`. Tooltip: "Converted at today's rate; payments at their dated rate."
+
+**Filter chip "Amount" (Total/Collected/Outstanding)**
+- All three computed in base currency. No user toggle (per your decision).
+
+**Deal profile**
+- `DealBillingSummary` shows base totals, with a small expandable breakdown: per-currency subtotals (e.g. "USD $4,500 · MXN MX$85,000").
+- Payment list shows `original (≈ base)` per row.
+
+**Forms**
+- Deal form: currency selector defaults to last-used or base. Live converted preview under the amount input.
+- Payment form: same, plus a read-only "Rate used: 1 USD = 17.32 MXN (auto · today)".
+
+**Settings warning banner**
+- If a deal/payment has `base_amount IS NULL` (no rate available), show a one-line alert linking to Settings.
+
+### 6. Changing base currency
+One-time guarded action:
+- Modal: "This re-expresses every deal & payment total in {NEW}. Original amounts and historic payment rates are preserved."
+- Backfill job recomputes `deals.base_*` for open deals (live rate) and rewrites `base_currency` label on closed deals/payments by re-converting via cross-rate at their original `fx_rate_date`. Original `amount`/`currency` untouched.
+
+### 7. Hooks & front-end plumbing
+- New `useBaseCurrency()` (reference cache tier).
+- New `useCurrencyRates()` (reference tier, 10 min).
+- `useDeals` / `useDealPayments` / `useDealPaymentsTotals` updated to read `base_amount` for aggregations; cards still get `amount`+`currency` for display.
+- `formatMoney(amount, currency)` helper centralising `CURRENCY_SYMBOLS` usage (replaces ad-hoc `fmt()` in `DealBillingSummary`).
+
+### 8. Permissions
+- Viewing rates & converted totals: any CRM user.
+- Editing base currency / manual overrides: workspace admins + Sales role with admin grant (TBD — default admin-only).
+
+---
+
+## Out of scope (for this pass)
+- Historical analytics charts beyond CRM (revenue dashboard etc.) — same pattern applies later.
+- Multi-base reporting (looking at the same data in EUR and USD simultaneously).
+- Per-organization base currency.
+
+---
+
+## Acceptance criteria
+1. Admin sets base currency in Settings; rates auto-populate within minutes.
+2. Creating a deal in MXN shows live `≈ USD` preview; saved deal contributes to USD column total.
+3. Recording a payment in EUR locks the EUR→USD rate of that day forever; `Collected` stays stable across future rate moves.
+4. Admin override of EUR→USD immediately changes open-deal totals; payment history unaffected.
+5. Closed/won deals stop revaluing.
+6. Changing base currency re-expresses all totals; original amounts untouched; audit trail preserved.
+
+---
+
+## Open questions before build
+- **a.** Default base currency on existing workspaces — assume **USD** unless `tenants.settings` already has one?
+- **b.** "Closed/won" stage detection — use a flag on `deal_stages` (`is_won boolean`) or rely on stage name? Current schema doesn't have this flag.
+- **c.** Should a manual override apply to **only future writes** or also retroactively recompute today's open deals? (Recommend: recompute open deals immediately, leave payments alone.)
