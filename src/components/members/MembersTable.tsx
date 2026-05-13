@@ -35,6 +35,7 @@ const getRoleBadgeVariant = (role?: EnrichedMember['effectiveRole']) => {
   switch (role) {
     case 'Owner': return 'role-owner' as const
     case 'Admin': return 'role-admin' as const
+    case 'Sales': return 'purple' as const
     case 'Recruiter': return 'role-recruiter' as const
     case 'Hiring Manager': return 'role-hiring-manager' as const
     case 'Interviewer': return 'role-interviewer' as const
