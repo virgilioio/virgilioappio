@@ -183,7 +183,18 @@ function App() {
   
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={{
+          persister,
+          maxAge: 24 * 60 * 60 * 1000,
+          buster: CACHE_VERSION,
+          dehydrateOptions: {
+            shouldDehydrateQuery: (query) =>
+              query.state.status === 'success' && shouldPersistQueryKey(query.queryKey),
+          },
+        }}
+      >
         <AppBootstrap>
           <AuthProvider>
             <OrgContextProvider>
@@ -195,7 +206,7 @@ function App() {
             </OrgContextProvider>
           </AuthProvider>
         </AppBootstrap>
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </ErrorBoundary>
   )
 }
