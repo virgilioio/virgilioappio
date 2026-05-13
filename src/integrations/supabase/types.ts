@@ -1648,6 +1648,84 @@ export type Database = {
           },
         ]
       }
+      currency_rate_overrides: {
+        Row: {
+          base_currency: string
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          effective_to: string | null
+          id: string
+          note: string | null
+          quote_currency: string
+          rate: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          base_currency: string
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          note?: string | null
+          quote_currency: string
+          rate: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          base_currency?: string
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          note?: string | null
+          quote_currency?: string
+          rate?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      currency_rates: {
+        Row: {
+          base_currency: string
+          created_at: string
+          created_by: string | null
+          id: string
+          quote_currency: string
+          rate: number
+          rate_date: string
+          source: string
+          tenant_id: string
+        }
+        Insert: {
+          base_currency: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          quote_currency: string
+          rate: number
+          rate_date: string
+          source?: string
+          tenant_id: string
+        }
+        Update: {
+          base_currency?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          quote_currency?: string
+          rate?: number
+          rate_date?: string
+          source?: string
+          tenant_id?: string
+        }
+        Relationships: []
+      }
       deal_invoices: {
         Row: {
           created_at: string
@@ -1733,10 +1811,15 @@ export type Database = {
       deal_payments: {
         Row: {
           amount: number
+          base_amount: number | null
+          base_currency: string | null
           created_at: string
           created_by: string | null
           currency: string
           deal_id: string
+          fx_rate: number | null
+          fx_rate_date: string | null
+          fx_rate_source: string | null
           id: string
           invoice_id: string | null
           method: string | null
@@ -1747,10 +1830,15 @@ export type Database = {
         }
         Insert: {
           amount: number
+          base_amount?: number | null
+          base_currency?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string
           deal_id: string
+          fx_rate?: number | null
+          fx_rate_date?: string | null
+          fx_rate_source?: string | null
           id?: string
           invoice_id?: string | null
           method?: string | null
@@ -1761,10 +1849,15 @@ export type Database = {
         }
         Update: {
           amount?: number
+          base_amount?: number | null
+          base_currency?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string
           deal_id?: string
+          fx_rate?: number | null
+          fx_rate_date?: string | null
+          fx_rate_source?: string | null
           id?: string
           invoice_id?: string | null
           method?: string | null
@@ -1826,10 +1919,16 @@ export type Database = {
       deals: {
         Row: {
           amount: number | null
+          base_amount: number | null
+          base_currency: string | null
           created_at: string
           created_by: string | null
           currency: string
           expected_close_date: string | null
+          fx_locked_at: string | null
+          fx_rate: number | null
+          fx_rate_date: string | null
+          fx_rate_source: string | null
           id: string
           notes: string | null
           organization_id: string | null
@@ -1842,10 +1941,16 @@ export type Database = {
         }
         Insert: {
           amount?: number | null
+          base_amount?: number | null
+          base_currency?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string
           expected_close_date?: string | null
+          fx_locked_at?: string | null
+          fx_rate?: number | null
+          fx_rate_date?: string | null
+          fx_rate_source?: string | null
           id?: string
           notes?: string | null
           organization_id?: string | null
@@ -1858,10 +1963,16 @@ export type Database = {
         }
         Update: {
           amount?: number | null
+          base_amount?: number | null
+          base_currency?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string
           expected_close_date?: string | null
+          fx_locked_at?: string | null
+          fx_rate?: number | null
+          fx_rate_date?: string | null
+          fx_rate_source?: string | null
           id?: string
           notes?: string | null
           organization_id?: string | null
@@ -6087,6 +6198,21 @@ export type Database = {
         Args: { p_credits_to_consume: number; p_tenant_id: string }
         Returns: number
       }
+      convert_to_base: {
+        Args: {
+          p_amount: number
+          p_currency: string
+          p_date: string
+          p_tenant_id: string
+        }
+        Returns: {
+          base_amount: number
+          base_currency: string
+          fx_rate: number
+          fx_rate_date: string
+          fx_rate_source: string
+        }[]
+      }
       copy_platform_template_to_tenant: {
         Args: {
           p_target_tenant_id: string
@@ -6232,6 +6358,10 @@ export type Database = {
           total_jobs_affected: number
         }[]
       }
+      get_tenant_base_currency: {
+        Args: { p_tenant_id: string }
+        Returns: string
+      }
       get_tenant_billable_seat_count: {
         Args: { tenant_id_param: string }
         Returns: number
@@ -6341,6 +6471,10 @@ export type Database = {
       reassign_candidates_for_stage: {
         Args: { stage_id_param: string }
         Returns: undefined
+      }
+      recompute_open_deals_base: {
+        Args: { p_tenant_id?: string }
+        Returns: number
       }
       reconcile_pending_invitation: {
         Args: { p_user_id: string }
