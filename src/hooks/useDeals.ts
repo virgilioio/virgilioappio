@@ -23,6 +23,13 @@ export interface Deal {
   owner_name?: string | null
   owner_email?: string | null
   owner_avatar_url?: string | null
+  // multi-currency snapshot
+  base_currency?: string | null
+  base_amount?: number | null
+  fx_rate?: number | null
+  fx_rate_date?: string | null
+  fx_rate_source?: string | null
+  fx_locked_at?: string | null
 }
 
 export interface DealInput {
