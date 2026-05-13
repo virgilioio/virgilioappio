@@ -37,6 +37,7 @@ export function useCalendarIdentities() {
       if (error) throw error;
       return data as CalendarIdentity[];
     },
+    ...cacheTiers.reference,
   });
 
   const disconnectMutation = useMutation({
