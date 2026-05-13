@@ -110,7 +110,7 @@ export function MembersTable({
   ], [members])
 
   const roleOptions = useMemo(() => {
-    const roles: EnrichedMember['effectiveRole'][] = ['Owner', 'Admin', 'Recruiter', 'Hiring Manager', 'Interviewer']
+    const roles: EnrichedMember['effectiveRole'][] = ['Owner', 'Admin', 'Sales', 'Recruiter', 'Hiring Manager', 'Interviewer']
     return roles.map(r => ({ value: r!, label: r!, count: members.filter(m => m.effectiveRole === r).length })).filter(o => o.count > 0)
   }, [members])
 
