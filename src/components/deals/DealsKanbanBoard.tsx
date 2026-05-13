@@ -55,11 +55,13 @@ function formatStageTotal(deals: Deal[], mode: DealAmountMode, collectedByDeal: 
 interface DealsKanbanBoardProps {
   onOpenDeal: (id: string) => void
   amountMode?: DealAmountMode
+  selectedOwners?: string[]
+  selectedOrgs?: string[]
   headerLeft?: React.ReactNode
   headerRight?: React.ReactNode
 }
 
-export function DealsKanbanBoard({ onOpenDeal, amountMode = 'total', headerLeft, headerRight }: DealsKanbanBoardProps) {
+export function DealsKanbanBoard({ onOpenDeal, amountMode = 'total', selectedOwners = [], selectedOrgs = [], headerLeft, headerRight }: DealsKanbanBoardProps) {
   const stagesQuery = useDealStages()
   const dealsQuery = useDeals()
   const totalsQuery = useDealPaymentsTotals()
