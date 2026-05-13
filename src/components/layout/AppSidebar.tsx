@@ -77,9 +77,9 @@ const CogIcon: IconRenderer = ({ className }) => (
 )
 
 const allItems: Array<{ id: Exclude<AppSection, null | 'my-profile'>; label: string; Icon: IconRenderer; href: string; show: (p: ReturnType<typeof usePermissions>) => boolean }> = [
-  { id: 'home', label: 'Home', Icon: GilioIcon, href: '/dashboard', show: () => true },
+  { id: 'home', label: 'Home', Icon: GilioIcon, href: '/dashboard', show: (p) => !p.isSalesUser },
   { id: 'crm', label: 'CRM', Icon: CrmIcon, href: '/crm', show: (p) => p.canViewOrganizations },
-  { id: 'ats', label: 'ATS', Icon: AtsIcon, href: '/jobs', show: () => true },
+  { id: 'ats', label: 'ATS', Icon: AtsIcon, href: '/jobs', show: (p) => p.canViewJobs },
 ]
 
 export function AppSidebar() {
