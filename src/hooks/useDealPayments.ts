@@ -16,6 +16,11 @@ export interface DealPayment {
   created_by: string | null
   created_at: string
   updated_at: string
+  base_currency?: string | null
+  base_amount?: number | null
+  fx_rate?: number | null
+  fx_rate_date?: string | null
+  fx_rate_source?: string | null
 }
 
 export interface DealPaymentInput {

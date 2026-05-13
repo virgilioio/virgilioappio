@@ -37,12 +37,14 @@ export function useDealPaymentsTotals() {
     queryFn: async (): Promise<{ collectedByDeal: Map<string, number> }> => {
       const { data, error } = await supabase
         .from('deal_payments')
-        .select('deal_id, amount')
+        .select('deal_id, amount, base_amount')
         .eq('tenant_id', tenantId!)
       if (error) throw error
       const map = new Map<string, number>()
       ;(data ?? []).forEach((r: any) => {
-        map.set(r.deal_id, (map.get(r.deal_id) ?? 0) + Number(r.amount))
+        // Prefer base_amount so collected totals roll up in workspace base currency
+        const v = r.base_amount != null ? Number(r.base_amount) : Number(r.amount)
+        map.set(r.deal_id, (map.get(r.deal_id) ?? 0) + v)
       })
       return { collectedByDeal: map }
     },
