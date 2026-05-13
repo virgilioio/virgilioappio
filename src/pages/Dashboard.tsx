@@ -102,6 +102,11 @@ export default function Dashboard() {
     return <WorkspaceProvisioningLoader status="finalizing" />
   }
 
+  // Sales-only users have no ATS/Home access — bounce to CRM.
+  if (permissions.isSalesUser) {
+    return <Navigate to="/crm/deals" replace />
+  }
+
   const hasJobContent = permissions.canViewJobs || permissions.canCreateJobs
   const hasSeenValue = (sourcingProjects?.length ?? 0) > 0
 
