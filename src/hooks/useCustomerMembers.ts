@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
+import { cacheTiers } from '@/lib/cache/cacheTiers'
 
 export interface Member {
   id: string
