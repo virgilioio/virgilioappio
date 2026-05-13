@@ -106,12 +106,14 @@ export function MemberInviteSheet({
     if (permissions.isPlatformAdmin || permissions.isWorkspaceOwner) {
       roles.push(
         { value: 'admin', label: 'Admin', description: 'Full organization management access' },
-        { value: 'member', label: 'Member', description: 'Can be assigned to jobs as recruiter, hiring manager, or interviewer' }
+        { value: 'member', label: 'Member', description: 'Can be assigned to jobs as recruiter, hiring manager, or interviewer' },
+        { value: 'sales', label: 'Sales', description: 'CRM only — manages companies and deals. No access to recruiting.' }
       )
     } else if (permissions.isAdmin) {
       // Admin members cannot create other admins
       roles.push(
-        { value: 'member', label: 'Member', description: 'Can be assigned to jobs as recruiter, hiring manager, or interviewer' }
+        { value: 'member', label: 'Member', description: 'Can be assigned to jobs as recruiter, hiring manager, or interviewer' },
+        { value: 'sales', label: 'Sales', description: 'CRM only — manages companies and deals. No access to recruiting.' }
       )
     }
     
@@ -121,14 +123,14 @@ export function MemberInviteSheet({
   const onFormSubmit = async (data: FormData) => {
     try {
       if (isEditing) {
-        await onSubmit({ system_role: data.role as 'admin' | 'member' })
+        await onSubmit({ system_role: data.role as 'admin' | 'member' | 'sales' })
         onClose()
         return
       }
 
       const inviteData = {
         email: data.email.trim(),
-        system_role: data.role as 'admin' | 'member',
+        system_role: data.role as 'admin' | 'member' | 'sales',
         user_type: 'member',
         organization_id: organizationId,
         user_status: 'invited'

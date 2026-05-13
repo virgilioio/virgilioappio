@@ -17,8 +17,8 @@ export function useWouldUpgradeSeat() {
     userType?: string
   ): boolean => {
     if (!userId) return false
-    // Admins and owners are already paid seats
-    if (systemRole === 'admin' || userType === 'workspace_owner') return false
+    // Admins, owners, and sales are already paid seats
+    if (systemRole === 'admin' || systemRole === 'sales' || userType === 'workspace_owner') return false
     // Already a recruiter on some job → already a paid seat
     if (recruiterUserIds.has(userId)) return false
     return true

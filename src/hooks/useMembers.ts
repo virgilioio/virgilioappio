@@ -13,7 +13,7 @@ export interface Member {
   id: string
   user_id: string | null
   organization_id: string
-  system_role: 'admin' | 'member'
+  system_role: 'admin' | 'member' | 'sales'
   user_status: 'active' | 'inactive' | 'invited'
   user_type?: 'member' | 'workspace_owner' | 'platform_admin'
   created_at: string
@@ -35,14 +35,14 @@ export interface Member {
 export interface CreateMemberData {
   user_id?: string | null
   organization_id: string
-  system_role: 'admin' | 'member'
+  system_role: 'admin' | 'member' | 'sales'
   user_status?: 'active' | 'inactive' | 'invited'
   user_type?: 'member' | 'workspace_owner' | 'platform_admin'
   email?: string
 }
 
 export interface UpdateMemberData {
-  system_role?: 'admin' | 'member'
+  system_role?: 'admin' | 'member' | 'sales'
   user_status?: 'active' | 'inactive' | 'invited'
   organization_id?: string
 }
@@ -159,7 +159,7 @@ export function useMembers(includeHierarchy: boolean = false) {
         
         const typedMember: Member = {
           ...member,
-          system_role: (member.system_role || 'member') as 'admin' | 'member',
+          system_role: (member.system_role || 'member') as 'admin' | 'member' | 'sales',
           user_status: member.user_status as 'active' | 'inactive' | 'invited',
           user_type: member.user_type as 'member' | 'workspace_owner' | 'platform_admin',
           organization_name: organizationsMap[member.organization_id] || null,

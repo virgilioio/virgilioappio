@@ -1,4 +1,5 @@
 import { ReactNode, useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import { CurrencyConverterWidget } from '@/components/dashboard/CurrencyConverterWidget'
 import { PhotoCarouselWidget } from '@/components/dashboard/PhotoCarouselWidget'
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
@@ -100,6 +101,11 @@ export default function Dashboard() {
 
   if (orgLoading || !hasOrganizationContext) {
     return <WorkspaceProvisioningLoader status="finalizing" />
+  }
+
+  // Sales-only users have no ATS/Home access — bounce to CRM.
+  if (permissions.isSalesUser) {
+    return <Navigate to="/crm/deals" replace />
   }
 
   const hasJobContent = permissions.canViewJobs || permissions.canCreateJobs

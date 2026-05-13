@@ -17,7 +17,7 @@ import { MoreVertical, Plus, Send, UserCheck, UserX, Trash2, Copy, Briefcase, Ma
 
 export interface EnrichedMember extends Member {
   seatType?: 'paid' | 'free'
-  effectiveRole?: 'Owner' | 'Admin' | 'Recruiter' | 'Hiring Manager' | 'Interviewer'
+  effectiveRole?: 'Owner' | 'Admin' | 'Sales' | 'Recruiter' | 'Hiring Manager' | 'Interviewer'
 }
 
 interface MembersTableProps {
@@ -35,6 +35,7 @@ const getRoleBadgeVariant = (role?: EnrichedMember['effectiveRole']) => {
   switch (role) {
     case 'Owner': return 'role-owner' as const
     case 'Admin': return 'role-admin' as const
+    case 'Sales': return 'purple' as const
     case 'Recruiter': return 'role-recruiter' as const
     case 'Hiring Manager': return 'role-hiring-manager' as const
     case 'Interviewer': return 'role-interviewer' as const
@@ -109,7 +110,7 @@ export function MembersTable({
   ], [members])
 
   const roleOptions = useMemo(() => {
-    const roles: EnrichedMember['effectiveRole'][] = ['Owner', 'Admin', 'Recruiter', 'Hiring Manager', 'Interviewer']
+    const roles: EnrichedMember['effectiveRole'][] = ['Owner', 'Admin', 'Sales', 'Recruiter', 'Hiring Manager', 'Interviewer']
     return roles.map(r => ({ value: r!, label: r!, count: members.filter(m => m.effectiveRole === r).length })).filter(o => o.count > 0)
   }, [members])
 
