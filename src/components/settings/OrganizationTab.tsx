@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/hooks/useTenant";
 import { OrganizationDisplay } from "./OrganizationDisplay";
+import { CurrencySettings } from "./CurrencySettings";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Pencil, Save, X } from "lucide-react";
 
@@ -122,7 +123,7 @@ export default function OrganizationTab() {
     return (
       <div className="space-y-md">
         <PageHeader
-          title="Company Profile"
+          title="General Settings"
          
         />
         <Card>
@@ -141,7 +142,7 @@ export default function OrganizationTab() {
     return (
       <div className="space-y-md">
         <PageHeader
-          title="Company Profile"
+          title="General Settings"
          
         />
         <Card>
@@ -160,7 +161,7 @@ export default function OrganizationTab() {
     return (
       <div className="space-y-md">
         <PageHeader
-          title="Company Profile"
+          title="General Settings"
          
         />
         <Card>
@@ -183,7 +184,7 @@ export default function OrganizationTab() {
     return (
       <div className="space-y-md">
         <PageHeader
-          title="Company Profile"
+          title="General Settings"
          
         />
         <Card>
@@ -198,7 +199,7 @@ export default function OrganizationTab() {
   return (
     <div className="space-y-md">
       <PageHeader
-        title="Company Profile"
+        title="General Settings"
        
       >
         {!isEditMode && (
@@ -309,6 +310,8 @@ export default function OrganizationTab() {
           )}
         </CardContent>
       </Card>
+
+      <CurrencySettings />
 
       {/* Confirmation Dialog */}
       <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>

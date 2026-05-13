@@ -12,7 +12,7 @@ import { PlatformAssetUploader } from '@/components/settings/PlatformAssetUpload
 import { OfferTemplatesManager } from '@/components/settings/OfferTemplatesManager'
 import { JobSettingsManager } from '@/components/settings/JobSettingsManager'
 import { DealStagesManager } from '@/components/settings/DealStagesManager'
-import { CurrencySettings } from '@/components/settings/CurrencySettings'
+
 import { PlatformJobSettingsManager } from '@/components/settings/PlatformJobSettingsManager'
 import { PlatformTab } from '@/components/settings/PlatformTab'
 import { IntegrationsTab } from '@/components/settings/IntegrationsTab'
@@ -54,6 +54,14 @@ export default function Settings() {
   useEffect(() => {
     scrollToHighlightedSection();
   }, [currentTab]);
+
+  // Backwards compat: legacy currency tab now lives inside General Settings
+  useEffect(() => {
+    if (currentTab === 'workspace-currency') {
+      setCurrentTab('organization')
+      setSearchParams({ tab: 'organization' })
+    }
+  }, [currentTab, setSearchParams]);
 
   const handleTabChange = (tab: string) => {
     setCurrentTab(tab)
@@ -190,9 +198,6 @@ export default function Settings() {
                   <DealStagesManager />
                 </TabsContent>
 
-                <TabsContent value="workspace-currency">
-                  <CurrencySettings />
-                </TabsContent>
               </div>
             </div>
           </Tabs>
