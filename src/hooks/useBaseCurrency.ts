@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
-import { CACHE_REFERENCE } from '@/lib/cache/cacheTiers'
+import { cacheTiers } from '@/lib/cache/cacheTiers'
 
 async function getTenantId(userId: string): Promise<string | null> {
   const { data } = await supabase
@@ -25,7 +25,7 @@ export function useBaseCurrency() {
   const query = useQuery({
     queryKey: ['base-currency', user?.id],
     enabled: !!user?.id,
-    ...CACHE_REFERENCE,
+    ...cacheTiers.reference,
     queryFn: async (): Promise<{ tenantId: string | null; baseCurrency: string }> => {
       if (!user?.id) return { tenantId: null, baseCurrency: 'USD' }
       const tenantId = await getTenantId(user.id)
