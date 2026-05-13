@@ -30,8 +30,16 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
     }
   }, [ready, orgContext])
   
-  // Keep ref in sync with state
+  // Keep ref in sync with state, and wipe cache on tenant SWITCH
+  // (not initial load) so cross-tenant data never bleeds through.
   useEffect(() => {
+    const previous = organizationIdRef.current
+    if (previous && organizationId && previous !== organizationId) {
+      import('@/lib/cache/persister').then(({ clearPersistedCache }) => {
+        const qc = (window as unknown as { __queryClient?: import('@tanstack/react-query').QueryClient }).__queryClient
+        clearPersistedCache(qc)
+      })
+    }
     organizationIdRef.current = organizationId
   }, [organizationId])
 
