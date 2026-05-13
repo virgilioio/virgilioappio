@@ -55,11 +55,13 @@ function formatStageTotal(deals: Deal[], mode: DealAmountMode, collectedByDeal: 
 interface DealsKanbanBoardProps {
   onOpenDeal: (id: string) => void
   amountMode?: DealAmountMode
+  selectedOwners?: string[]
+  selectedOrgs?: string[]
   headerLeft?: React.ReactNode
   headerRight?: React.ReactNode
 }
 
-export function DealsKanbanBoard({ onOpenDeal, amountMode = 'total', headerLeft, headerRight }: DealsKanbanBoardProps) {
+export function DealsKanbanBoard({ onOpenDeal, amountMode = 'total', selectedOwners = [], selectedOrgs = [], headerLeft, headerRight }: DealsKanbanBoardProps) {
   const stagesQuery = useDealStages()
   const dealsQuery = useDeals()
   const totalsQuery = useDealPaymentsTotals()
@@ -76,16 +78,24 @@ export function DealsKanbanBoard({ onOpenDeal, amountMode = 'total', headerLeft,
   const stages = stagesQuery.data ?? []
   const deals = dealsQuery.data ?? []
 
+  const filteredDeals = useMemo(() => {
+    if (!selectedOwners.length && !selectedOrgs.length) return deals
+    return deals.filter((d) =>
+      (selectedOwners.length === 0 || selectedOwners.includes(d.owner_id ?? '__none__')) &&
+      (selectedOrgs.length === 0 || selectedOrgs.includes(d.organization_id ?? '__none__'))
+    )
+  }, [deals, selectedOwners, selectedOrgs])
+
   const dealsByStage = useMemo(() => {
     const map = new Map<string, Deal[]>()
     stages.forEach((s) => map.set(s.id, []))
-    deals.forEach((d) => {
+    filteredDeals.forEach((d) => {
       if (d.stage_id && map.has(d.stage_id)) {
         map.get(d.stage_id)!.push(d)
       }
     })
     return map
-  }, [stages, deals])
+  }, [stages, filteredDeals])
 
   const isInitialLoading = stagesQuery.isLoading || dealsQuery.isLoading
 
