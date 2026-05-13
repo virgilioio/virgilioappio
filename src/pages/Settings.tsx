@@ -190,9 +190,6 @@ export default function Settings() {
                   <DealStagesManager />
                 </TabsContent>
 
-                <TabsContent value="workspace-currency">
-                  <CurrencySettings />
-                </TabsContent>
               </div>
             </div>
           </Tabs>
