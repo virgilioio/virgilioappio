@@ -32,12 +32,14 @@ export function MembersTab() {
 
   const isBillableMember = (m: any) =>
     m.system_role === 'admin'
+    || m.system_role === 'sales'
     || m.user_type === 'workspace_owner'
     || (m.user_id && recruiterUserIds.has(m.user_id))
 
   const getEffectiveRole = (m: any): EnrichedMember['effectiveRole'] => {
     if (m.user_type === 'workspace_owner') return 'Owner'
     if (m.system_role === 'admin') return 'Admin'
+    if (m.system_role === 'sales') return 'Sales'
     if (m.user_id && recruiterUserIds.has(m.user_id)) return 'Recruiter'
     return 'Hiring Manager'
   }
