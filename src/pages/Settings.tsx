@@ -55,6 +55,14 @@ export default function Settings() {
     scrollToHighlightedSection();
   }, [currentTab]);
 
+  // Backwards compat: legacy currency tab now lives inside General Settings
+  useEffect(() => {
+    if (currentTab === 'workspace-currency') {
+      setCurrentTab('organization')
+      setSearchParams({ tab: 'organization' })
+    }
+  }, [currentTab, setSearchParams]);
+
   const handleTabChange = (tab: string) => {
     setCurrentTab(tab)
     setSearchParams({ tab })
