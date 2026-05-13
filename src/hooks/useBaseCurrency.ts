@@ -22,11 +22,12 @@ export function useBaseCurrency() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
 
-  const query = useQuery({
+  const query = useQuery<{ tenantId: string | null; baseCurrency: string }>({
     queryKey: ['base-currency', user?.id],
     enabled: !!user?.id,
-    ...cacheTiers.reference,
-    queryFn: async (): Promise<{ tenantId: string | null; baseCurrency: string }> => {
+    staleTime: cacheTiers.reference.staleTime,
+    gcTime: cacheTiers.reference.gcTime,
+    queryFn: async () => {
       if (!user?.id) return { tenantId: null, baseCurrency: 'USD' }
       const tenantId = await getTenantId(user.id)
       if (!tenantId) return { tenantId: null, baseCurrency: 'USD' }
