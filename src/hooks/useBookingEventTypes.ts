@@ -51,6 +51,7 @@ export function useBookingEventTypes(bookingConfigId: string | undefined) {
       return data as unknown as BookingEventType[];
     },
     enabled: !!bookingConfigId,
+    ...cacheTiers.reference,
   });
 
   const createMutation = useMutation({
