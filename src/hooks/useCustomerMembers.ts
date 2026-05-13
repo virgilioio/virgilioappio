@@ -60,5 +60,6 @@ export function useCustomerMembers(organizationId: string) {
       return membersWithProfiles
     },
     enabled: !!organizationId,
+    ...cacheTiers.reference,
   })
 }
