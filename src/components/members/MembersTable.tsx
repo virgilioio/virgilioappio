@@ -17,7 +17,7 @@ import { MoreVertical, Plus, Send, UserCheck, UserX, Trash2, Copy, Briefcase, Ma
 
 export interface EnrichedMember extends Member {
   seatType?: 'paid' | 'free'
-  effectiveRole?: 'Owner' | 'Admin' | 'Recruiter' | 'Hiring Manager' | 'Interviewer'
+  effectiveRole?: 'Owner' | 'Admin' | 'Sales' | 'Recruiter' | 'Hiring Manager' | 'Interviewer'
 }
 
 interface MembersTableProps {
