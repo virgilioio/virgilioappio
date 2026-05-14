@@ -52,7 +52,7 @@ import { triggerFitAnalysis } from '@/utils/triggerFitAnalysis'
 import { useJobRole } from '@/hooks/useJobRole'
 
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
-import { MobileJobSelector } from '@/components/candidates/MobileJobSelector'
+
 import { AddOrTransferCandidateDialog } from '@/components/candidates/AddOrTransferCandidateDialog'
 import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
 import { cn, ensureAbsoluteUrl } from '@/lib/utils'
