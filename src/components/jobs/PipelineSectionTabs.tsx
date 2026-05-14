@@ -90,19 +90,19 @@ export function PipelineSectionTabs({ value, onChange, counts, className }: Pipe
             type="button"
             onClick={() => onChange(s.value)}
             className={cn(
-              'group inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg px-3 font-poppins text-[14px] tracking-[-0.005em] transition-colors',
+              'group inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg px-3 font-poppins text-[12.5px] tracking-[-0.005em] transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/30',
               isActive
                 ? cn(s.active, 'font-semibold')
                 : 'font-medium text-text-secondary hover:bg-[#FAFAF7] hover:text-text-primary'
             )}
           >
-            {Icon && <Icon className="h-4 w-4" />}
+            {Icon && <Icon className="h-3.5 w-3.5" />}
             <span className="truncate">{s.label}</span>
             {typeof count === 'number' && (
               <span
                 className={cn(
-                  'inline-flex h-6 min-w-6 items-center justify-center rounded-md px-1.5 text-[12px] font-semibold tabular-nums transition-colors',
+                  'inline-flex h-5 min-w-5 items-center justify-center rounded-md px-1.5 text-[11px] font-semibold tabular-nums transition-colors',
                   isActive ? s.chipActive : s.chipInactive
                 )}
               >
