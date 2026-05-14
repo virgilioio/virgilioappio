@@ -1164,16 +1164,7 @@ const stageHasAutomation = useMemo(() => {
 
                <div className="flex-1 overflow-y-auto">
                 <div className="px-4 sm:px-6 pt-4 pb-10 max-w-[1400px] mx-auto w-full">
-                {/* Mobile Job Selector - at top of content area */}
-                {candidateId && !isRestrictedViewer && (
-                  <div className="lg:hidden mb-6">
-                    <MobileJobSelector
-                      candidateId={candidateId}
-                      currentJobId={jobId}
-                      onJobSelect={handleJobChange}
-                    />
-                  </div>
-                )}
+                {/* Mobile job selector removed — single-job profile only */}
 
                 {/* Status Banners — full width above tabs */}
                 {associationStatus === 'rejected' && rejectionDetails && (
