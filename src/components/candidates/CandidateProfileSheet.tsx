@@ -1146,6 +1146,7 @@ const stageHasAutomation = useMemo(() => {
                       onMoveToOffer={handleMoveToOffer}
                       onReturnToPipeline={handleReturnToPipeline}
                       onHire={handleHire}
+                      onAddOrTransfer={associationId && jobId && candidate.id && job ? () => setAddTransferOpen(true) : undefined}
                       canEdit={canEditCandidates}
                     />
                   </ProfileHeroCard>
