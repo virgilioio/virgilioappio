@@ -196,6 +196,12 @@ export default {
 				'table-sub': ['11px', { lineHeight: '1.30', fontWeight: '400' }],
 				'table-num': ['13px', { lineHeight: '1.30', fontWeight: '500' }],
 				'table-mono': ['12.5px', { lineHeight: '1.30', fontWeight: '500' }],
+				// === Dropdowns / Menus (Gio Foundation v1.0 §5) ===
+				'menu-item': ['12.5px', { lineHeight: '1.30', fontWeight: '400' }],
+				'menu-item-emphasis': ['12.5px', { lineHeight: '1.30', fontWeight: '500' }],
+				'menu-group': ['10px', { lineHeight: '1.20', letterSpacing: '0.08em', fontWeight: '500' }],
+				'menu-sub': ['11px', { lineHeight: '1.30', fontWeight: '400' }],
+				'menu-kbd': ['11px', { lineHeight: '1.20', letterSpacing: '0.04em', fontWeight: '500' }],
 			},
 			lineHeight: {
 				tight: 'var(--line-height-tight)',

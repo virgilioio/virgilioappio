@@ -408,3 +408,96 @@ Two patterns, **never both** on the same table.
 ```
 
 Typography utilities (in `tailwind.config.ts`): `text-table-header`, `text-table-header-compact`, `text-table-cell`, `text-table-cell-compact`, `text-table-name`, `text-table-sub`, `text-table-num`, `text-table-mono`.
+
+---
+
+## 5. Dropdowns & menus
+
+Every menu that floats over the page — selects, action menus, comboboxes, command palettes, date pickers. **Same trigger shape, same panel chrome, same item heights**, so users learn the pattern once. Implementation: `src/components/ui/{select,dropdown-menu,popover,command,searchable-select,filter-chip-popover,date-picker-virgilio}.tsx`. Shared classes: `src/lib/menu-classes.ts`.
+
+### Three rules
+
+1. **Match width to content, not container.** Single-select matches trigger width. Action menus = longest label + 24px. Command palette 540–640px.
+2. **One density: 30px row · 12.5px label.** Headings (10px Inter caps `#8B8F9E`) and dividers thin the visual weight — they don't shrink rows.
+3. **Search appears at 7+ items.** Under 7: plain list. 7–50: search header. 50+: full combobox with virtualization.
+
+### Anatomy — one panel chrome
+
+| Part | Spec |
+|---|---|
+| Panel | radius 12 · pad 4 · shadow `0 12px 32px -8px rgb(0 0 0 / 0.18)` · 1px hairline border · `bg-popover` |
+| Item row | 30px h · 12.5px Inter 400 · radius 8 · px-2 · gap 8 |
+| Section heading | 10px Inter caps `#8B8F9E` · `+0.08em` tracking · uppercase |
+| Hover fill | `#F1F0EC` — `--menu-hover` |
+| Selected fill | `#EDE4FF` — `--menu-selected`. Single-select shows leading check at `var(--virgilio-purple)`. |
+| Disabled | 45% opacity · `pointer-events-none` |
+| Danger item | red text · always **last** after a `<Separator>` |
+| Kbd hint | right-aligned · 11px JetBrains Mono · `#8B8F9E` |
+| Divider | 1px `#F1F0EC` (`--tbl-divider-color`) full-bleed (`-mx-1`) |
+
+Tokens (in `index.css`):
+
+```css
+--menu-radius:        12px;
+--menu-pad:           4px;
+--menu-shadow:        0 12px 32px -8px rgb(0 0 0 / 0.18);
+--menu-item-h:        30px;
+--menu-item-radius:   8px;
+--menu-hover:         40 14% 93%;     /* #F1F0EC */
+--menu-selected:      264 73% 95%;    /* #EDE4FF */
+--menu-group-color:   228 9% 58%;     /* #8B8F9E */
+--menu-cmd-min-w:     540px;
+--menu-cmd-max-w:     640px;
+```
+
+Typography utilities (in `tailwind.config.ts`): `text-menu-item` (12.5/Inter/400), `text-menu-item-emphasis` (12.5/Inter/500), `text-menu-group` (10/caps/+0.08em), `text-menu-sub` (11), `text-menu-kbd` (11/Mono).
+
+### Six types — pick the simplest that fits
+
+| Type | When | Component | Notes |
+|---|---|---|---|
+| **Single-select** | Status, role, owner, country | `<Select>` | Width matches trigger. Selected = check + `#EDE4FF`. |
+| **Multi-select w/ checkboxes** | Filter rows by multiple values | `<FilterChipPopover>` | Footer with selection count + Clear + Apply. |
+| **Combobox (search-in)** | Pick from a large set — candidates, jobs, members | `<SearchableSelect>` (or raw `<Command>`) | Search header always · async loading · empty + loading states. |
+| **Action menu (⋯)** | Row actions, more menus | `<DropdownMenu>` | Anchored to icon button, `align="end"`, sideOffset 8. Destructive last after a separator. |
+| **Command palette (⌘K)** | Jump-anywhere | `<CommandDialog>` | Full-bleed search · grouped sections · kbd hints · 540–640px wide. |
+| **Date picker** | Date input | `<DatePickerVirgilio>` | Quick-pick row (Today / Tomorrow / Next week) above 7-col month grid. Selected day = `var(--virgilio-purple)`. |
+
+### Item states — five fills, same row height
+
+| State | Fill | Text |
+|---|---|---|
+| Default | transparent | `foreground` |
+| Hovered | `#F1F0EC` | `foreground` |
+| Selected (single) | `#EDE4FF` + leading check | `foreground` |
+| Disabled | transparent · 45% opacity · no pointer | dimmed |
+| Danger | transparent (hover `destructive/10`) | `destructive` |
+
+**Variants** that compose on top:
+- **With sub-text** — two-line item; main 12.5/500, sub 11/400 muted.
+- **With badge** — right-aligned count chip (`<Badge tone="neutral" size="xs" count>`).
+- **With kbd** — right-aligned `<DropdownMenuShortcut>` / `<CommandShortcut>` (auto-styles to `text-menu-kbd`).
+
+### Anchoring
+
+| Trigger | Default | Notes |
+|---|---|---|
+| Select / single-select | `bottom-start`, `sideOffset 8` | Flips to `top-start` on clip. |
+| Combobox / SearchableSelect | `bottom-start` | Width = `--radix-popover-trigger-width` when needed. |
+| Action menu (`⋯`) | `bottom-end`, `sideOffset 8` | Right edge of trigger; never covers the row. |
+| Command palette | centered modal | 540–640px, full-bleed search. |
+| Date picker | `bottom-start` | Calendar grid, fixed width. |
+
+### Do & Don't
+
+1. **Width — match content, not container.** A 480px-wide single-select dropdown over a 120px trigger looks broken. Action menus hug their longest label.
+2. **Density — never shrink rows for length.** A long menu uses dividers and section headings. Don't compress to 24px to fit.
+3. **Hover & select — fill, not glow.** Hover = `#F1F0EC` flat. Selected = `#EDE4FF`. **No translate, no shadow, no scale.**
+4. **Destructive — always last, always after a divider.** First destructive in a menu uses red text on hover; the confirmation step is a `<Dialog>` with `dangerSolid`.
+5. **Kbd hints — only when the shortcut works.** Don't decorate items with shortcuts the app doesn't bind.
+
+### Migration
+
+- The shared chrome lives in `src/lib/menu-classes.ts` (`menuPanel`, `menuItem`, `menuGroupLabel`, `menuSeparator`, `menuKbd`). Every primitive imports from there — change once, propagates everywhere.
+- Legacy `src/components/ui/multi-select.tsx` removed. Use `<FilterChipPopover>` for multi-select with checkboxes.
+- Call-site overrides like `rounded-md`, `shadow-md`, `bg-popover/95 backdrop-blur` on `<DropdownMenuContent>` / `<PopoverContent>` are now redundant — remove on touch.
