@@ -84,6 +84,7 @@ export interface TableSegmentedOption<T extends string = string> {
   value: T
   label: string
   count?: number
+  icon?: React.ComponentType<{ className?: string }>
 }
 
 export function TableSegmented<T extends string = string>({
@@ -106,6 +107,7 @@ export function TableSegmented<T extends string = string>({
     >
       {options.map(opt => {
         const active = opt.value === value
+        const Icon = opt.icon
         return (
           <button
             key={opt.value}
@@ -118,6 +120,7 @@ export function TableSegmented<T extends string = string>({
                 : "text-text-tertiary hover:text-text-primary"
             )}
           >
+            {Icon && <Icon className="h-3.5 w-3.5" />}
             <span>{opt.label}</span>
             {typeof opt.count === "number" ? (
               <span

@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { SafeHtml } from '@/components/ui/safe-html'
-import { Edit, Plus, Sparkles } from 'lucide-react'
+import { Edit, Plus } from 'lucide-react'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { HiringPlanTab } from './HiringPlanTab'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -136,29 +136,25 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
         </Card>
 
         {/* Compensation */}
-        {salary && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-h4 font-poppins">Compensation</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-h4 font-poppins">Compensation</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {salary ? (
               <div className="text-center pt-2 pb-1">
                 <div className="font-poppins font-semibold tracking-[-0.04em] text-[28px] leading-tight text-text-primary">
                   {salary}
                 </div>
                 <div className="mt-1 text-body-sm text-text-secondary">
-                  base · plus equity &amp; bonus
+                  base salary
                 </div>
               </div>
-              <div className="rounded-lg bg-pastel-purple/30 px-3 py-2 flex items-start gap-2">
-                <Sparkles className="h-3.5 w-3.5 text-virgilio-purple mt-0.5 shrink-0" />
-                <span className="text-body-sm text-text-primary">
-                  Above market median for SF · 80th percentile in NYC
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+            ) : (
+              <div className="text-body-sm text-text-secondary">Not set</div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Hiring team */}
         <Card>
