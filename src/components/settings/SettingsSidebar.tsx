@@ -1,13 +1,10 @@
-
-import { Building, Building2, Receipt, Users, Shield, Settings as SettingsIcon, Megaphone, FileText, Image, BarChart3, UserCheck, Briefcase, UsersIcon, CreditCard, Layers, Plug, Handshake } from 'lucide-react'
+import { Building, Building2, Receipt, Users, Shield, Settings as SettingsIcon, BarChart3, Briefcase, UsersIcon, Layers, Plug, Handshake } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTenant } from '@/hooks/useTenant'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { ChevronDown } from 'lucide-react'
-import { useState } from 'react'
 import { useIntegrationStatuses } from '@/hooks/useIntegrationStatuses'
 import { INTEGRATIONS } from './IntegrationsTab'
 
@@ -16,7 +13,14 @@ interface SettingsNavItem {
   label: string
   icon: React.ComponentType<{ className?: string }>
   show: boolean
-  submenu?: SettingsNavItem[]
+  badge?: React.ReactNode
+}
+
+interface SettingsNavSection {
+  id: string
+  label: string
+  show: boolean
+  items: SettingsNavItem[]
 }
 
 interface SettingsSidebarProps {
@@ -28,211 +32,164 @@ interface SettingsSidebarProps {
 export function SettingsSidebar({ currentTab, onTabChange, className }: SettingsSidebarProps) {
   const permissions = usePermissions()
   const { organizationId, userType } = useAuth()
+  const { tenant } = useTenant()
   const integrationStatuses = useIntegrationStatuses()
   const installedIntegrations = INTEGRATIONS.filter((i) => integrationStatuses[i.id])
-  const [platformOpen, setPlatformOpen] = useState(
-    ['platform-dashboard', 'platform-settings', 'platform-job-settings', 'platform-customers', 'platform-saas-customers'].includes(currentTab)
-  )
-  const [workspaceOpen, setWorkspaceOpen] = useState(
-    ['workspace-job-settings', 'workspace-deal-stages', 'organization', 'members', 'integrations'].includes(currentTab) || currentTab.startsWith('integration-')
-  )
 
-  const isWorkspaceOwnerOfSaaSOrg = () => {
-    return userType === 'workspace_owner' && organizationId
-  }
+  const isWorkspaceOwnerOfSaaSOrg = userType === 'workspace_owner' && !!organizationId
+  const showWorkspaceGroup =
+    permissions.isPlatformAdmin || permissions.isAdmin || isWorkspaceOwnerOfSaaSOrg
+  const memberOnlyIntegrations =
+    permissions.isMember && !permissions.isAdmin && !permissions.isWorkspaceOwner && !permissions.isPlatformAdmin
 
-  const navItems: SettingsNavItem[] = [
-    { 
-      id: 'billing', 
-      label: 'Billing', 
-      icon: Receipt, 
-      show: userType === 'workspace_owner' && !!organizationId
+  const integrationsBadge =
+    installedIntegrations.length > 0 ? (
+      <span className="text-[11px] font-medium text-virgilio-muted">
+        {installedIntegrations.length}
+      </span>
+    ) : undefined
+
+  const sections: SettingsNavSection[] = [
+    {
+      id: 'account',
+      label: 'Account',
+      show: userType === 'workspace_owner' && !!organizationId || memberOnlyIntegrations,
+      items: [
+        {
+          id: 'billing',
+          label: 'Billing',
+          icon: Receipt,
+          show: userType === 'workspace_owner' && !!organizationId,
+        },
+        {
+          id: 'integrations',
+          label: 'Integrations',
+          icon: Plug,
+          show: memberOnlyIntegrations,
+          badge: memberOnlyIntegrations ? integrationsBadge : undefined,
+        },
+      ],
     },
     {
-      id: 'integrations',
-      label: 'Integrations',
-      icon: Plug,
-      show: permissions.isMember && !permissions.isAdmin && !permissions.isWorkspaceOwner && !permissions.isPlatformAdmin,
-    },
-    { 
-      id: 'workspace', 
-      label: 'Workspace', 
-      icon: Layers, 
-      show: permissions.isPlatformAdmin || permissions.isAdmin || (userType === 'workspace_owner' && !!organizationId),
-      submenu: [
+      id: 'workspace',
+      label: 'Workspace',
+      show: showWorkspaceGroup,
+      items: [
         { id: 'organization', label: 'General Settings', icon: Building, show: permissions.canManageOrganization },
         { id: 'members', label: 'Members', icon: Users, show: permissions.canViewMembers },
-        { id: 'workspace-job-settings', label: 'Job Settings', icon: SettingsIcon, show: permissions.isPlatformAdmin || permissions.isAdmin || (userType === 'workspace_owner' && !!organizationId) },
+        { id: 'workspace-job-settings', label: 'Job Settings', icon: SettingsIcon, show: showWorkspaceGroup },
         { id: 'workspace-deal-stages', label: 'Deal Stages', icon: Handshake, show: permissions.canViewOrganizations },
-        { id: 'integrations', label: 'Integrations', icon: Plug, show: true },
-      ]
+        { id: 'integrations', label: 'Integrations', icon: Plug, show: true, badge: integrationsBadge },
+      ],
     },
-    { 
-      id: 'platform', 
-      label: 'Platform', 
-      icon: Shield, 
+    {
+      id: 'platform',
+      label: 'Platform',
       show: permissions.isPlatformAdmin,
-      submenu: [
+      items: [
         { id: 'platform-dashboard', label: 'Dashboard', icon: BarChart3, show: true },
         { id: 'platform-settings', label: 'App Personalization', icon: SettingsIcon, show: true },
         { id: 'platform-job-settings', label: 'Job Settings', icon: Briefcase, show: true },
         { id: 'platform-saas-customers', label: 'SaaS Customers', icon: UsersIcon, show: true },
         { id: 'platform-customers', label: 'Legacy Customer Management', icon: Building2, show: permissions.canAccessCustomerManagement },
-      ]
+      ],
     },
   ]
 
-  const filteredNavItems = navItems.filter(item => item.show)
-  
+  const visibleSections = sections
+    .filter((s) => s.show)
+    .map((s) => ({ ...s, items: s.items.filter((i) => i.show) }))
+    .filter((s) => s.items.length > 0)
 
-  const handleWorkspaceToggle = () => {
-    setWorkspaceOpen(!workspaceOpen)
-  }
-
-  const handlePlatformToggle = () => {
-    setPlatformOpen(!platformOpen)
-  }
-
-  const handleItemClick = (itemId: string) => {
-    if (itemId === 'workspace') {
-      handleWorkspaceToggle()
-      if (!workspaceOpen) {
-        // Default to first available workspace submenu item
-        const workspaceSubmenu = navItems.find(item => item.id === 'workspace')?.submenu
-        const firstAvailableItem = workspaceSubmenu?.find(subItem => subItem.show)
-        if (firstAvailableItem) {
-          onTabChange(firstAvailableItem.id)
-        }
-      }
-    } else if (itemId === 'platform') {
-      handlePlatformToggle()
-      if (!platformOpen) {
-        onTabChange('platform-dashboard') // Default to dashboard when opening platform
-      }
-    } else {
-      onTabChange(itemId)
-    }
-  }
+  const tenantTypeLabel =
+    tenant?.tenant_type === 'organization'
+      ? 'Organization'
+      : tenant?.tenant_type === 'saas_customer'
+      ? 'Workspace'
+      : tenant?.tenant_type
+      ? tenant.tenant_type.charAt(0).toUpperCase() + tenant.tenant_type.slice(1)
+      : 'Workspace'
 
   return (
-    <Card className={cn("w-64 h-fit shadow-calendly border-virgilio-border/50 rounded-xl", className)}>
+    <Card className={cn('w-64 h-fit shadow-calendly border-virgilio-border/50 rounded-xl', className)}>
       {/* Header */}
-      <div className="p-6 pb-4 bg-gradient-to-b from-virgilio-purple/5 to-transparent border-b border-virgilio-border/30">
-        <h2 className="text-lg font-semibold text-virgilio-text">
+      <div className="px-5 pt-5 pb-4 border-b border-virgilio-border/30">
+        <h2 className="text-lg font-semibold text-virgilio-text leading-none">
           Settings<span className="text-virgilio-purple">.</span>
         </h2>
+        {tenant?.name && (
+          <p className="mt-1.5 text-xs text-virgilio-muted truncate">
+            {tenant.name} <span className="text-virgilio-muted/70">· {tenantTypeLabel}</span>
+          </p>
+        )}
       </div>
 
-      <CardContent className="p-6">
-        <div className="space-y-1.5">
-          {filteredNavItems.map((item) => {
-            const Icon = item.icon
-            
-            if (item.submenu) {
-              const isOpen = item.id === 'workspace' ? workspaceOpen : platformOpen
-              const setOpen = item.id === 'workspace' ? setWorkspaceOpen : setPlatformOpen
-              
-              return (
-                <Collapsible key={item.id} open={isOpen} onOpenChange={setOpen}>
-                  <CollapsibleTrigger asChild>
+      <CardContent className="p-3">
+        <div className="space-y-3">
+          {visibleSections.map((section) => (
+            <div key={section.id} className="space-y-0.5">
+              <div className="px-3 mt-1 mb-1 text-[11px] font-medium uppercase tracking-wider text-virgilio-muted">
+                {section.label}
+              </div>
+              {section.items.map((item) => {
+                const Icon = item.icon
+                const isActive = currentTab === item.id
+                return (
+                  <div key={`${section.id}-${item.id}`}>
                     <Button
                       variant="ghost"
                       className={cn(
-                        "w-full justify-between h-11 px-4 py-2 rounded-lg",
-                        "text-sm font-medium transition-all duration-200",
-                        isOpen
-                          ? "bg-virgilio-purple/10 text-virgilio-text shadow-sm" 
-                          : "text-virgilio-muted hover:text-virgilio-text hover:bg-muted hover:shadow-sm hover:-translate-y-0.5"
+                        'w-full justify-start h-9 px-3 rounded-md text-sm font-medium transition-colors',
+                        isActive
+                          ? 'bg-foreground text-background hover:bg-foreground hover:text-background'
+                          : 'text-virgilio-muted hover:text-virgilio-text hover:bg-muted'
                       )}
-                      onClick={() => handleItemClick(item.id)}
+                      onClick={() => onTabChange(item.id)}
                     >
-                      <div className="flex items-center">
-                        <Icon className="h-4 w-4 mr-3 shrink-0" />
-                        <span className="truncate">{item.label}</span>
-                      </div>
-                      <ChevronDown className={cn(
-                        "h-4 w-4 transition-transform duration-200",
-                        isOpen && "rotate-180"
-                      )} />
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-1 mt-1 pl-6 border-l-2 border-virgilio-border/20 ml-3">
-                    {item.submenu.filter(subItem => subItem.show).map((subItem) => {
-                      const SubIcon = subItem.icon
-                      const isActive = currentTab === subItem.id
-                      
-                      return (
-                        <div key={subItem.id}>
-                          <Button
-                            variant="ghost"
-                            className={cn(
-                              "w-full justify-start h-9 px-3 py-2 rounded-lg",
-                              "text-sm font-medium transition-all duration-200",
-                              isActive 
-                                ? "bg-gradient-to-r from-virgilio-purple to-virgilio-purple/90 text-white shadow-sm font-semibold" 
-                                : "text-virgilio-muted hover:text-virgilio-text hover:bg-muted hover:shadow-sm hover:-translate-y-0.5"
-                            )}
-                            onClick={() => onTabChange(subItem.id)}
-                          >
-                            <SubIcon className="h-3.5 w-3.5 mr-2 shrink-0" />
-                            <span className="truncate">{subItem.label}</span>
-                          </Button>
-                          {/* Show installed integration sub-items under Integrations */}
-                          {subItem.id === 'integrations' && installedIntegrations.length > 0 && (
-                            <div className="space-y-0.5 mt-0.5 pl-5">
-                              {installedIntegrations.map((integration) => {
-                                const integrationTabId = `integration-${integration.id}`
-                                const isIntegrationActive = currentTab === integrationTabId
-                                return (
-                                  <Button
-                                    key={integrationTabId}
-                                    variant="ghost"
-                                    className={cn(
-                                      "w-full justify-start h-8 px-2 py-1 rounded-md",
-                                      "text-xs font-medium transition-all duration-200",
-                                      isIntegrationActive
-                                        ? "bg-virgilio-purple/15 text-virgilio-purple font-semibold"
-                                        : "text-virgilio-muted hover:text-virgilio-text hover:bg-muted"
-                                    )}
-                                    onClick={() => onTabChange(integrationTabId)}
-                                  >
-                                    <span className="flex h-4 w-4 items-center justify-center mr-2 shrink-0">
-                                      {integration.logo}
-                                    </span>
-                                    <span className="truncate">{integration.name}</span>
-                                  </Button>
-                                )
-                              })}
-                            </div>
+                      <Icon className="h-4 w-4 mr-2.5 shrink-0" />
+                      <span className="truncate flex-1 text-left">{item.label}</span>
+                      {item.badge && (
+                        <span
+                          className={cn(
+                            'ml-2 shrink-0',
+                            isActive ? 'text-background/70' : 'text-virgilio-muted'
                           )}
-                        </div>
-                      )
-                    })}
-                  </CollapsibleContent>
-                </Collapsible>
-              )
-            }
-
-            const isActive = currentTab === item.id
-            
-            return (
-              <Button
-                key={item.id}
-                variant="ghost"
-                className={cn(
-                  "w-full justify-start h-11 px-4 py-2 rounded-lg",
-                  "text-sm font-medium transition-all duration-200",
-                  isActive 
-                    ? "bg-gradient-to-r from-virgilio-purple to-virgilio-purple/90 text-white shadow-sm font-semibold" 
-                    : "text-virgilio-muted hover:text-virgilio-text hover:bg-muted hover:shadow-sm hover:-translate-y-0.5"
-                )}
-                onClick={() => handleItemClick(item.id)}
-              >
-                <Icon className="h-4 w-4 mr-3 shrink-0" />
-                <span className="truncate">{item.label}</span>
-              </Button>
-            )
-          })}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                    </Button>
+                    {item.id === 'integrations' && installedIntegrations.length > 0 && (
+                      <div className="space-y-0.5 mt-0.5 pl-7">
+                        {installedIntegrations.map((integration) => {
+                          const integrationTabId = `integration-${integration.id}`
+                          const isIntegrationActive = currentTab === integrationTabId
+                          return (
+                            <Button
+                              key={integrationTabId}
+                              variant="ghost"
+                              className={cn(
+                                'w-full justify-start h-8 px-2 rounded-md text-xs font-medium transition-colors',
+                                isIntegrationActive
+                                  ? 'bg-foreground text-background hover:bg-foreground hover:text-background'
+                                  : 'text-virgilio-muted hover:text-virgilio-text hover:bg-muted'
+                              )}
+                              onClick={() => onTabChange(integrationTabId)}
+                            >
+                              <span className="flex h-4 w-4 items-center justify-center mr-2 shrink-0">
+                                {integration.logo}
+                              </span>
+                              <span className="truncate">{integration.name}</span>
+                            </Button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ))}
         </div>
       </CardContent>
     </Card>
