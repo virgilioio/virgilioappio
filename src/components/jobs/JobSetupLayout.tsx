@@ -6,7 +6,6 @@ import { SafeHtml } from '@/components/ui/safe-html'
 import { Edit, Plus, Sparkles } from 'lucide-react'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { HiringPlanTab } from './HiringPlanTab'
-import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { usePermissions } from '@/hooks/usePermissions'
 
 interface JobSetupLayoutProps {
@@ -47,7 +46,7 @@ function getInitials(first?: string | null, last?: string | null, email?: string
 export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }: JobSetupLayoutProps) {
   const { isAdmin, isWorkspaceOwner, isPlatformAdmin } = usePermissions()
   const isReadOnly = !(isAdmin || isWorkspaceOwner || isPlatformAdmin)
-  const { assignments } = useJobAssignments(jobId)
+  const team: any[] = Array.isArray(job?.hiring_team) ? job.hiring_team : []
 
   const status = (job?.status || 'open').toLowerCase()
   const statusTone = STATUS_TONE[status] || 'neutral'
@@ -172,22 +171,21 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
             )}
           </CardHeader>
           <CardContent className="space-y-3">
-            {!assignments || assignments.length === 0 ? (
+            {team.length === 0 ? (
               <p className="text-body-sm text-text-secondary">No team members yet.</p>
             ) : (
-              assignments.map((a: any) => {
-                const profile = a.profile || a.profiles || a
+              team.map((m: any, i: number) => {
                 const name =
-                  [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') ||
-                  profile?.email ||
+                  [m?.first_name, m?.last_name].filter(Boolean).join(' ') ||
+                  m?.email ||
                   'Member'
-                const role = a.role_label || a.role || a.assignment_type || ''
+                const role = m?.role_label || m?.role || m?.assignment_type || ''
                 return (
-                  <div key={a.id || `${profile?.user_id}-${role}`} className="flex items-center gap-3">
+                  <div key={m?.user_id || m?.email || i} className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
-                      {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt="" /> : null}
+                      {m?.avatar_url ? <AvatarImage src={m.avatar_url} alt="" /> : null}
                       <AvatarFallback className="text-[11px] bg-virgilio-purple text-white">
-                        {getInitials(profile?.first_name, profile?.last_name, profile?.email)}
+                        {getInitials(m?.first_name, m?.last_name, m?.email)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
