@@ -1132,8 +1132,12 @@ const stageHasAutomation = useMemo(() => {
                         />
                       }
                     />
-                    <section className="bg-white border border-virgilio-border rounded-2xl shadow-sm p-5 sm:p-6 space-y-4">
+                    {/* Card 2 — stages only (mirrors PipelineSectionTabs sitting below JobHero card) */}
+                    <section className="bg-white border border-virgilio-border rounded-2xl shadow-sm p-5 sm:p-6">
                       <ProfileStageStrip stages={planStages} currentStageId={currentStageId} />
+                    </section>
+                    {/* Action bar — its own surface below the stages card */}
+                    <section className="bg-white border border-virgilio-border rounded-2xl shadow-sm p-5 sm:p-6">
                       <ProfileActionBar
                         nextStageLabel={nextStage?.stage.stage_name || null}
                         onAdvance={async () => {
