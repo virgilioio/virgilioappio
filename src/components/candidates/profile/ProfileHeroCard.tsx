@@ -98,7 +98,7 @@ export function ProfileHeroCard({
 
         <div className="flex items-center gap-2 shrink-0">
           {typeof fitScore === 'number' && fitScore > 0 && (
-            <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 h-8 rounded-lg border border-virgilio-purple/20 bg-virgilio-purple/5">
+            <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 h-[34px] rounded-lg border border-virgilio-purple/20 bg-virgilio-purple/5">
               <span className="text-[10px] font-poppins font-semibold tracking-[0.08em] text-virgilio-purple/70 uppercase">AI Fit</span>
               <span className="font-poppins font-semibold text-virgilio-purple text-sm leading-none tabular-nums">
                 {Math.round(fitScore)}
@@ -106,17 +106,17 @@ export function ProfileHeroCard({
             </div>
           )}
           {nextStageLabel && !isRejected && !isHired && onAdvance && (
-            <Button variant="primary" size="sm" iconRight={ArrowRight} onClick={onAdvance}>
+            <Button variant="primary" size="md" iconRight={ArrowRight} onClick={onAdvance}>
               Advance to {nextStageLabel}
             </Button>
           )}
           {onSchedule && (
-            <Button variant="secondary" size="sm" icon={Calendar} onClick={onSchedule}>
+            <Button variant="secondary" size="md" icon={Calendar} onClick={onSchedule}>
               Schedule
             </Button>
           )}
           {onEmail && (
-            <Button variant="secondary" size="sm" icon={Mail} onClick={onEmail}>
+            <Button variant="secondary" size="md" icon={Mail} onClick={onEmail}>
               Email
             </Button>
           )}
@@ -124,7 +124,7 @@ export function ProfileHeroCard({
             <>
               <Button
                 variant="secondary"
-                size="sm"
+                size="md"
                 iconOnly
                 aria-label="Previous candidate"
                 icon={ChevronLeft}
@@ -133,7 +133,7 @@ export function ProfileHeroCard({
               />
               <Button
                 variant="secondary"
-                size="sm"
+                size="md"
                 iconOnly
                 aria-label="Next candidate"
                 icon={ChevronRight}
