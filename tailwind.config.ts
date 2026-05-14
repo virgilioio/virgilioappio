@@ -112,6 +112,15 @@ export default {
 				'virgilio-success': '#12B886',
 				'virgilio-error': '#FA5252',
 				'virgilio-rejected': 'hsl(var(--virgilio-rejected))',
+				// Gio Foundation v1.0 — Badge tones (lilac & ink; other 8 reuse pastel-*/muted/destructive)
+				'badge-lilac': {
+					DEFAULT: 'hsl(var(--badge-lilac))',
+					foreground: 'hsl(var(--badge-lilac-foreground))'
+				},
+				'badge-ink': {
+					DEFAULT: 'hsl(var(--badge-ink))',
+					foreground: 'hsl(var(--badge-ink-foreground))'
+				},
 			},
 			borderRadius: {
 				xs: '4px',
@@ -212,6 +221,11 @@ export default {
 				'button-md-v2': 'var(--button-height-md-v2)',
 				'button-lg-v2': 'var(--button-height-lg-v2)',
 				'button-xl-v2': 'var(--button-height-xl-v2)',
+				// Gio Foundation v1.0 — Badge heights
+				'badge-xs': 'var(--badge-h-xs)',
+				'badge-sm': 'var(--badge-h-sm)',
+				'badge-md': 'var(--badge-h-md)',
+				'badge-lg': 'var(--badge-h-lg)',
 				'input': 'var(--input-height)',
 				'table-row': 'var(--table-row-height)'
 			},
@@ -340,6 +354,11 @@ export default {
 			'collapsible-up': {
 				from: { height: 'var(--radix-collapsible-content-height)', opacity: '1' },
 				to: { height: '0', opacity: '0' }
+			},
+			'badge-pulse': {
+				'0%': { transform: 'scale(1)', opacity: '0.45' },
+				'70%': { transform: 'scale(2.4)', opacity: '0' },
+				'100%': { transform: 'scale(2.4)', opacity: '0' }
 			}
 			},
 			animation: {
@@ -354,7 +373,8 @@ export default {
 			'coin-flip-2d-reverse': 'coin-flip-2d-back 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards',
 			'shimmer-beam': 'shimmer-beam 2s ease-in-out infinite',
 			'collapsible-down': 'collapsible-down 0.2s ease-out',
-			'collapsible-up': 'collapsible-up 0.2s ease-out'
+			'collapsible-up': 'collapsible-up 0.2s ease-out',
+			'badge-pulse': 'badge-pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite'
 			}
 		}
 	},
