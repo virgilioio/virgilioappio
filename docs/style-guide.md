@@ -300,3 +300,111 @@ The mappings above live in code at `src/lib/badge-tones.ts` — import the const
 2. **Tone — one meaning per color.** Green = positive across the entire app (paid, active, hired, on-track). Never use the same tone for unrelated meanings.
 3. **Quantity — three is the limit.** Three badges per row, then add an overflow chip. Stuffing every attribute into chips reads as confetti, not information.
 4. **Size — match the row density.** `xs` inside a dense table row; `md` only on a sheet header. A `md` badge inside a 32px table row bullies the rest of the row.
+
+---
+
+## 4. Tables
+
+The data surface that defines half of Gio. Tables for candidates, jobs, members, invoices, deals, customers. Implementation in `src/components/ui/table.tsx`, `table-cells.tsx`, `table-states.tsx`, `table-toolbar.tsx`, `table-pagination.tsx`.
+
+### Three rules
+
+1. **Default to default.** 52px rows for everything. Drop to 40px only when the same screen shows >50 rows.
+2. **Headers are eyebrows, not titles.** 10.5px Inter caps, +0.06em tracking, muted color. Never bold, never the same weight as cells.
+3. **Numbers right, names left.** Numeric columns right-align in Poppins with tabular-nums; names left-align in Inter.
+
+### Anatomy (default density)
+
+| Part | Spec |
+|---|---|
+| Header row | 36px h · `#FAFAF7` · `text-table-header` (10.5px Inter caps, +0.06em, tertiary) |
+| Body row | 52px h · white |
+| Cell padding | `0 14px` x · `12px` gap (`--tbl-cell-px`, `--tbl-cell-gap`) |
+| Divider | `1px #F1F0EC` (`--tbl-divider-color`) |
+| Border + radius | `1px #E7E8EE` · radius 12 (wrapper) |
+| Hover row | `#FAFAF7` + actions appear (flat — no translate, no shadow) |
+| Selected row | `#FAF8FF` + 2px purple **left rail** (inset shadow) |
+| Zebra (off by default) | Every other row `#FAFAF7` |
+
+### Density
+
+`<Table density="...">` propagates to all sub-components via context.
+
+| Density | Row | Header | Cell text | Avatar | Use for |
+|---|---|---|---|---|---|
+| `compact` (40h) | 40px | 32px | 12px | 22px | Pipeline overview, audit logs, integration sub-rows, screens with >50 rows |
+| `default` (52h) ★ | 52px | 36px | 13px | 28–32px | Members, Candidates, Jobs, Invoices, SaaS customers — everything else |
+| `comfortable` (64h) | 64px | 40px | 13px | 32+px | Marketing-style listings inside embeds (careers page). Almost never inside the app. |
+
+### Column types — six and only six
+
+Compose tables from these primitives — don't invent a seventh.
+
+1. **`<IdentityCell name sub src />`** — avatar + name (13/500) + sub-text (11/muted). First column of every people/object table.
+2. **`<StatusCell>`** — wraps a single `<Badge size="sm">`. One badge per cell — never stack. Pull tones from §3.
+3. **`<NumericCell>`** — Poppins, tabular-nums, weight 500, right-aligned. Counts, currency, percentages. Set `<TableCell className="text-right">`.
+4. **`<MonoCell>`** — JetBrains Mono 12.5px/500. Invoice IDs, API keys, slugs.
+5. **`<ComposedCell overflowCount>`** + **`<AvatarStack people max={4} />`** — stacked avatars (−8px overlap) and badge clusters with overflow chip.
+6. **`<ActionCell>`** — fixed 32px column, `iconOnly` ghost buttons or single `⋯` menu. Visible on row hover only (relies on row's `group` class — already built into `<TableRow>`).
+
+### Row states
+
+| State | Component / pattern |
+|---|---|
+| Default | `<TableRow>` |
+| Hover | Automatic on `<TableRow>` (`#FAFAF7` fill — no glow, no scale) |
+| Selected | `<TableRow data-state="selected">` (`#FAF8FF` + purple left rail) |
+| Disabled | `<TableRow data-state="disabled">` (40% opacity, pointer-events off) |
+| Error | `<TableRow data-state="error">` (red left rail) |
+| Loading | `<TableSkeleton rows={5} columns={N} />` — header stays solid; always 3–5 skeleton rows |
+| Empty | `<TableEmpty colSpan title description ctaLabel onCta />` — center text + single CTA. No illustrations inside data tables (keep the Gio mascot for app-level empties). |
+| Filtered empty | `<TableFilteredEmpty colSpan query onClearFilters />` — distinct from true-empty; offer to clear filters, not to add data. |
+
+### Toolbar
+
+`<TableToolbar left={...} right={...} />` sits above every table. Anatomy:
+
+```
+[Search 30h ≤280w] [Segmented status w/ counts] [Filter pills + "+ Filter"]   [Columns · Density · Export · Primary]
+```
+
+- `<TableSearch placeholder="Search members…" />` — 30h, max-w 280, **explicit placeholder**.
+- `<TableSegmented options={[{value, label, count}]} />` — mirrors the most-filtered column · counts inline · active = white card.
+- `<TableFilterPills />` + `<TableAddFilterButton />` — purple removable badges + ghost `+ Filter` trigger.
+- Right cluster order: **Columns toggle → Density → Export → Primary action**. Primary is the only non-ghost button.
+
+**Bulk-select morph.** When `selectedCount > 0`, swap the toolbar for `<TableBulkBar count entityLabel onClear>...</TableBulkBar>`. Inside, render bulk actions as `size="sm"`. Reject is `variant="danger"` (outline) per §2.
+
+### Pagination & footer
+
+Two patterns, **never both** on the same table.
+
+- **`<TableFooterSummary rangeStart rangeEnd total entityLabel onLoadMore />`** ★ default. Use when tables auto-paginate via virtual scroll, or for candidate/people/job lists.
+- **`<TablePagination page totalPages perPage onPageChange onPerPageChange />`** — invoice tables, audit logs, anywhere users benefit from page-jumping. **Don't use for candidate/people tables** — filtering is the right primitive there.
+
+### Do & Don't
+
+1. **Headers — eyebrow caps, never bold body weight.** 10.5px Inter caps orient the eye; 13px bold headers shout louder than the data and the table reads bottom-heavy.
+2. **Density — match the use, don't pick at random.** 52px by default. 64px for everything wastes a screen of scrolling for half the information.
+3. **Alignment — numeric right, text left.** The eye scans a clean right edge for numbers and a clean left edge for names. Everything-left makes numbers compete with names for the same reading column.
+4. **Hover & selection — fill, not glow.** Hover = `#FAFAF7` flat fill. Selected = `#FAF8FF` + 2px purple left rail. **No translate, no shadow, no scale.** Wobbly rows on scroll are the single most common drift.
+
+### Tokens (in `index.css`)
+
+```css
+--tbl-row-h-compact: 40px;
+--tbl-row-h-default: 52px;   /* ★ */
+--tbl-row-h-comfy:   64px;
+--tbl-header-h-compact: 32px;
+--tbl-header-h-default: 36px;
+--tbl-header-h-comfy:   40px;
+--tbl-cell-px:  14px;
+--tbl-cell-gap: 12px;
+--tbl-row-hover:    40 33% 97%;     /* #FAFAF7 (HSL channels) */
+--tbl-row-selected: 267 100% 98%;   /* #FAF8FF */
+--tbl-divider-color: 40 14% 93%;    /* #F1F0EC */
+--tbl-border-color:  225 14% 92%;   /* #E7E8EE */
+--tbl-border-radius: 12px;
+```
+
+Typography utilities (in `tailwind.config.ts`): `text-table-header`, `text-table-header-compact`, `text-table-cell`, `text-table-cell-compact`, `text-table-name`, `text-table-sub`, `text-table-num`, `text-table-mono`.

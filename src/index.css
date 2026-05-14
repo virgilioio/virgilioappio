@@ -185,6 +185,21 @@
     --table-row-height: 40px;
     --sidebar-item-height: 36px;
 
+    /* === Tables (Gio Foundation v1.0 §4) === */
+    --tbl-row-h-compact: 40px;
+    --tbl-row-h-default: 52px;   /* ★ standard */
+    --tbl-row-h-comfy:   64px;
+    --tbl-header-h-compact: 32px;
+    --tbl-header-h-default: 36px;
+    --tbl-header-h-comfy:   40px;
+    --tbl-cell-px:  14px;
+    --tbl-cell-gap: 12px;
+    --tbl-row-hover:    40 33% 97%;     /* #FAFAF7 (HSL channels) */
+    --tbl-row-selected: 267 100% 98%;   /* #FAF8FF (HSL channels) */
+    --tbl-divider-color: 40 14% 93%;    /* #F1F0EC */
+    --tbl-border-color:  225 14% 92%;   /* #E7E8EE (matches --virgilio-border) */
+    --tbl-border-radius: 12px;
+
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;

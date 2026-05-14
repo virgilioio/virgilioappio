@@ -187,6 +187,15 @@ export default {
 				'form-helper': ['11px', { lineHeight: '1.45', fontWeight: '400' }],
 				'form-error': ['11.5px', { lineHeight: '1.40', fontWeight: '500' }],
 				'form-required': ['12px', { lineHeight: '1.40', fontWeight: '500' }],
+				// === Tables (Gio Foundation v1.0 §4) ===
+				'table-header': ['10.5px', { lineHeight: '1.20', letterSpacing: '0.06em', fontWeight: '500' }],
+				'table-header-compact': ['10px', { lineHeight: '1.20', letterSpacing: '0.06em', fontWeight: '500' }],
+				'table-cell': ['13px', { lineHeight: '1.40', fontWeight: '400' }],
+				'table-cell-compact': ['12px', { lineHeight: '1.40', fontWeight: '400' }],
+				'table-name': ['13px', { lineHeight: '1.30', fontWeight: '500' }],
+				'table-sub': ['11px', { lineHeight: '1.30', fontWeight: '400' }],
+				'table-num': ['13px', { lineHeight: '1.30', fontWeight: '500' }],
+				'table-mono': ['12.5px', { lineHeight: '1.30', fontWeight: '500' }],
 			},
 			lineHeight: {
 				tight: 'var(--line-height-tight)',
