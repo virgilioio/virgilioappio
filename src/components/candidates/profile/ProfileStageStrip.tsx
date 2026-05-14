@@ -27,7 +27,7 @@ export function ProfileStageStrip({ stages, currentStageId, meta = {} }: Profile
         const stateClass = isPast
           ? 'bg-pastel-green text-pastel-green-foreground'
           : isCurrent
-          ? 'bg-citron-noir text-cream'
+          ? 'bg-text-primary text-white'
           : 'border border-dashed border-virgilio-border text-text-tertiary bg-transparent'
 
         return (
@@ -38,8 +38,8 @@ export function ProfileStageStrip({ stages, currentStageId, meta = {} }: Profile
                   <Check className="h-2.5 w-2.5 text-pastel-green-foreground" strokeWidth={3} />
                 </span>
               ) : isCurrent ? (
-                <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-cream/15">
-                  <span className="h-1.5 w-1.5 rounded-full bg-cream" />
+                <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white/15">
+                  <span className="h-1.5 w-1.5 rounded-full bg-white" />
                 </span>
               ) : (
                 <Circle className="h-3.5 w-3.5 opacity-50" />
@@ -50,7 +50,7 @@ export function ProfileStageStrip({ stages, currentStageId, meta = {} }: Profile
             </div>
             <div className={cn(
               'mt-1 font-poppins text-[11px] tracking-[-0.005em] truncate',
-              isPast ? 'text-pastel-green-foreground/80' : isCurrent ? 'text-cream/70' : 'text-text-tertiary/80'
+              isPast ? 'text-pastel-green-foreground/80' : isCurrent ? 'text-white/70' : 'text-text-tertiary/80'
             )}>
               {isPast
                 ? (m.passedInDays != null ? `✓ Passed in ${m.passedInDays}d` : '✓ Passed')
