@@ -30,6 +30,8 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Skeleton } from '@/components/ui/skeleton'
+import { HeroCardSkeleton, PipelineSectionTabsSkeleton } from '@/components/ui/hero-skeletons'
+import { TableSkeleton } from '@/components/ui/table-states'
 import { GioEmptyState } from '@/components/ui/GioEmptyState'
 import { SuggestedCandidatesLoader } from '@/components/sourcing/SuggestedCandidatesLoader'
 import { toast } from '@/hooks/use-toast'
@@ -813,21 +815,12 @@ export default function JobDetail() {
 
   if (jobLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
-          <div className="flex gap-6">
-            {!isMobile && (
-              <div className="w-64">
-                <Skeleton className="h-40 w-full" />
-              </div>
-            )}
-            <div className="flex-1">
-              <div className="space-y-4">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <Skeleton key={i} className="h-12 w-full" />
-                ))}
-              </div>
-            </div>
+      <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] bg-background overflow-hidden">
+        <div className="layout-container pt-1 pb-2 sm:pt-2 sm:pb-3 space-y-4">
+          <HeroCardSkeleton variant="job" />
+          <PipelineSectionTabsSkeleton />
+          <div className="rounded-2xl border border-virgilio-border bg-white p-5 shadow-sm">
+            <TableSkeleton rows={6} columns={6} />
           </div>
         </div>
       </div>
