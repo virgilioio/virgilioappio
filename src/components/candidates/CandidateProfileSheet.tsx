@@ -165,6 +165,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [associationStatus, setAssociationStatus] = useState<'active' | 'rejected' | 'hired' | 'offer' | null>(null)
   const [isFavorite, setIsFavorite] = useState(false)
   const [currentStageId, setCurrentStageId] = useState<string | null>(null)
+  const [enteredStageAt, setEnteredStageAt] = useState<string | null>(null)
   const [rejectionDetails, setRejectionDetails] = useState<{
     rejectedAt: string | null;
     rejectedByName: string | null;
