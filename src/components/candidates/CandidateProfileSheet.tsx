@@ -391,6 +391,7 @@ const stageHasAutomation = useMemo(() => {
     setAssociationStatus(null)
     setIsFavorite(false)
     setCurrentStageId(null)
+    setEnteredStageAt(null)
     setRejectionDetails(null)
     setOfferDetails(null)
     setHiredDetails(null)
