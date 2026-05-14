@@ -1,60 +1,120 @@
-## Goal
+# Job Overview tab — Current Stage + Scorecards cards
 
-Replace the generic gray-slab loading states on the Job page and the Candidate Profile page with two pixel-faithful skeletons that mirror the actual cards we ship today:
+Replace the legacy "Job Overview" accordion (all stages collapsed with scorecards inside) on the **Job overview** tab of the candidate-in-job profile with the two focused cards from the reference. The stage navigation already lives in the strip above the tabs (`ProfileStageStrip`), so the tab body should now be about the *current* stage only.
 
-1. **Hero card skeleton** — matches `JobHero` / `ProfileHeroCard` (white card · radius 2xl · hairline · breadcrumb · big H1 + purple dot · meta row · right-side action cluster · tabs row inside the card).
-2. **Stages/Status bar skeleton** — matches `PipelineSectionTabs` (Job page, 6 colored section tabs in a card) and `ProfileStageStrip` (Candidate profile, horizontal stage chips in a card).
+## Scope
 
-Both skeletons live inside the same outer card chrome (`bg-white border border-virgilio-border rounded-2xl shadow-sm`) so the page doesn't reflow when real data lands.
+Tab body (`activeTab === 'job'`) inside `CandidateProfileSheet.tsx` — left column only. Right rail (Quick actions, Application, Job information) stays as-is. Hero card and stage strip above stay as-is.
 
-## What I'll add
+## What to build
 
-### 1. New shared file `src/components/ui/hero-skeletons.tsx`
-Exports:
-- **`HeroCardSkeleton`** — variant prop `"job" | "candidate"`
-  - Outer chrome: same card classes as the live heroes (`px-6 pt-5`)
-  - Top strip:
-    - `job`: small breadcrumb pill (60w) + nothing on the right
-    - `candidate`: "Back to job" pill + breadcrumb crumbs + right-side fit pill / action buttons (Advance, Schedule, Email, prev/next)
-  - H1 row: 280×32 bar + a 6×6 purple dot (real `bg-virgilio-purple/30` square) so the visual signature is instantly recognisable
-  - Meta row: 4–5 short bars (status pill 64w, location 80w, dept 90w, posted 110w, hiring team 6×6 stack of 3 + label)
-  - Tabs row at the bottom flush with the card edge: 6 thin underline-tab placeholders
-- **`PipelineSectionTabsSkeleton`** — 6 equal-width rounded `xl` cells inside a card (`p-5 sm:p-6`), matching the `PipelineSectionTabs` shape: each cell shows an icon dot + label bar + count bar
-- **`StageStripSkeleton`** — horizontal row of 6 stage chips (h-9, rounded-full) inside the same card chrome, matching `ProfileStageStrip`
+### 1. `CurrentStageCard.tsx` (new)
+`src/components/candidates/profile/CurrentStageCard.tsx`
 
-All bars use the existing `<Skeleton>` primitive (`bg-muted` shimmer); no new tokens.
+```text
+┌─ Current stage · Onsite                          Open stage ↗ ─┐
+│  In stage 3d · started May 12                                  │
+│                                                                │
+│  ┌─ NEXT EVENT ──────────────┐  ┌─ INTERVIEWERS ─────────────┐ │
+│  │ ┌────┐ Portfolio review   │  │ (avatars) 4 panelists      │ │
+│  │ │MAY │ Thu · 2:00 PM ET   │  │           3 scorecards in  │ │
+│  │ │ 16 │ 45 min             │  │                            │ │
+│  │ └────┘                    │  │                            │ │
+│  └───────────────────────────┘  └────────────────────────────┘ │
+└────────────────────────────────────────────────────────────────┘
+```
 
-### 2. Wire skeletons into the two pages
+Props: `stageName`, `stageType`, `inStageDays` (number), `startedAt` (date), `nextBooking` (from `useStageBookings`), `interviewers` (avatars + count), `scorecardsSubmittedInStage`, `onOpenStage` (jumps to / expands current stage detail or pipeline).
 
-- **`src/pages/JobDetail.tsx` (lines 814–835)** — replace the generic 8×Skeleton block with:
-  ```
-  layout-container > h-[100dvh] flex-col
-    <HeroCardSkeleton variant="job" />
-    <PipelineSectionTabsSkeleton />
-    <TableSkeleton rows={6} />   // already exists in our table primitives
-  ```
-  Keeps the same outer wrapper as the loaded state, so dimensions don't shift.
+Behavior:
+- Header uses `text-h4` Poppins; meta uses `text-caption` text-tertiary; "Open stage" is a `Button variant="link"` with `iconRight={ArrowUpRight}`.
+- Sub-tiles use `bg-[#FAFAF7]` (or `bg-virgilio-cream`) `rounded-xl` `p-4`; section labels are `text-form-label` (10.5px caps tracking 0.06em).
+- Date block: dark square (`bg-text-primary text-white rounded-lg`) with month caps + day; uses `date-fns` for formatting.
+- Avatar stack reuses existing `<AvatarStack>` (–8px overlap, +N).
+- Empty states (no next event / no interviewers): muted single-line "No upcoming event" / "No interviewers yet".
+- For **screening / interview** stages only — for non-interview stages, hide the two sub-tiles (or show a single full-width tile with `stage_description`).
 
-- **`src/components/candidates/CandidateProfileSkeleton.tsx`** — replace the current name-card+two-column placeholder with:
-  ```
-  <HeroCardSkeleton variant="candidate" />
-  <StageStripSkeleton />
-  // keep the existing two-column body skeleton below for the tab content
-  ```
-  This preserves `CandidateProfileSkeleton` as the single entry point used by `CandidateProfileSheet` and `IndependentCandidateProfileSheet` — no consumer changes.
+### 2. `StageScorecardsCard.tsx` (new)
+`src/components/candidates/profile/StageScorecardsCard.tsx`
 
-### 3. No business-logic changes
-- `JobHero`, `ProfileHeroCard`, `PipelineSectionTabs`, `ProfileStageStrip` are untouched
-- No new design tokens, no Tailwind config changes — uses existing `<Skeleton>`, `virgilio-border`, `virgilio-purple/30`, rounded-2xl
+```text
+┌─ Scorecards                                  [⊞ Compare] [+ Add] ┐
+│  3 submitted · 2 pending                                         │
+│                                                                  │
+│  ┌─ TB  Tom Bell  [Hiring manager]                ● Strong yes ──┤
+│  │     2d ago                                                    │
+│  │     "Best portfolio I've seen for this role…"                 │
+│  ├──────────────────────────────────────────────────────────────  │
+│  │ AL  An Le  [Panel]                              ● Yes         │
+│  │     2d ago                                                    │
+│  │     "Strong systems thinking and craft…"                      │
+│  ├──                                                          ── │
+│  │ JK  Jo Khan [Panel]                             ● Lean yes    │
+│  ├──                                                          ── │
+│  │ MR  Maya Reyes                                  ● Pending     │
+│  │     Recruiter · pending submission                            │
+│  └──────────────────────────────────────────────────────────────  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+Wraps existing `useAllStageScorecards(currentStageInstanceId, associationId)` already imported in the sheet. Each row:
+- 28px avatar (initials) · name (Poppins 13px) · role pill (`<Badge tone="neutral" size="xs">`).
+- Time-since (concise `Xd` per memory).
+- Decision badge (right-aligned, `tone` map: `strong_yes` → green, `yes` → green, `lean_yes` → yellow, `lean_no` → orange, `no` → red, `strong_no` → red, pending → yellow with dot).
+- Italic comment quote on second line (`text-body-sm text-text-secondary line-clamp-2 italic`), clicking the row opens the existing scorecard sheet via `onOpenFullSheet`.
+- Counts derived from scorecards array (`submitted = scorecards.filter(s => !s.is_ai_draft && s.rating).length`, `pending = panelists - submitted`).
+- Top-right actions: `Compare` (existing flow if any, else hidden when <2 submitted) and `+ Add` (opens scorecard composer for current user, mirrors the existing "Submit Scorecard" button).
+- Empty state: "No scorecards submitted yet" + a primary "Submit scorecard" CTA.
+- Hide entirely if current stage doesn't `supportsScorecard`.
+
+### 3. Wire into `CandidateProfileSheet.tsx`
+Replace lines ~1203–1378 (current `activeTab === 'job'` block) with:
+
+```tsx
+{activeTab === 'job' && currentStage && (
+  <>
+    <CurrentStageCard
+      stageName={currentStage.stage.stage_name}
+      stageType={currentStage.stage.stage_type}
+      inStageDays={…computed from association.entered_stage_at}
+      startedAt={association.entered_stage_at}
+      jhsId={currentStage.jhsId}
+      candidateId={candidateId!}
+      onOpenStage={…scrolls to / opens detail OR navigates to stage}
+    />
+    {supportsScorecard(currentStage.stage.stage_type) && (
+      <StageScorecardsCard
+        stageInstanceId={currentStage.jhsId}
+        stageName={currentStage.stage.stage_name}
+        associationId={associationId!}
+        currentUserId={user?.id}
+        onOpenFullSheet={(scorecardId) => { /* existing logic */ }}
+        onSubmitScorecard={() => { /* existing logic, opens ScoreSheet */ }}
+        onCompare={() => { /* TODO if not present, hide */ }}
+        onDismissAiDraft={handleDismissAiDraft}
+      />
+    )}
+    {!isRestrictedViewer && candidateId && (
+      <ApplicationDetailsCard candidateId={candidateId} jobId={jobId} />
+    )}
+  </>
+)}
+```
+
+Keep the existing **Application Details** card below (it already exists). Keep `CandidateDetailsCollapsible` removed from this tab — it was redundant with the hero.
 
 ## Out of scope
-- Mobile-only header skeleton (mobile job page uses a different bar that already loads instantly)
-- Tab-content skeletons inside the candidate profile right-column body (kept as-is)
-- Sheet/drawer chrome skeletons
+
+- Right rail cards (already standardized in prior turn).
+- Stage strip / hero (already done).
+- Other tabs (Resume, Overview, Scorecards, Activity, Comments).
+- Accordion-of-all-stages experience — replaced; no migration needed since stage strip + "Open stage" link cover navigation.
+- Mobile compaction beyond what flex-wrap already gives (consultation-first per memory — read-only renders fine).
 
 ## Verification
-- Hard-reload `/jobs/:id` → see hero card outline + 6 colored section tabs outline + table skeleton, then real content swaps in without layout jump
-- Hard-reload `/jobs/:id/candidates/:cid` → see candidate hero card outline + horizontal stage strip outline, then content fills in
-- Open candidate sheet from the pipeline → same hero + strip skeleton appears for the brief load window
 
-Ready to implement on approval.
+1. Hard-reload `/jobs/:id/candidates/:cid` → Job overview tab.
+2. Confirm two new cards render with real data: current stage info, next booking (if any), interviewers (deduped), scorecards from `useAllStageScorecards`.
+3. "Submit scorecard" / row click still opens existing `ScoreSheet` (no behavior regression).
+4. Non-interview stage (e.g., Application Review) → cards collapse gracefully (no booking tile, scorecards card hidden).
+5. Restricted viewer → still sees both cards (read-only), Application Details hidden as today.

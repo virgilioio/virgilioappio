@@ -84,6 +84,8 @@ import { ProfileStageStrip } from '@/components/candidates/profile/ProfileStageS
 import { ProfileQuickActionsCard } from '@/components/candidates/profile/ProfileQuickActionsCard'
 import { ProfileApplicationCard } from '@/components/candidates/profile/ProfileApplicationCard'
 import { ProfileTabs } from '@/components/candidates/profile/ProfileTabs'
+import { CurrentStageCard } from '@/components/candidates/profile/CurrentStageCard'
+import { StageScorecardsCard } from '@/components/candidates/profile/StageScorecardsCard'
 import { ClipboardCheck as ClipboardCheckIconAlias } from 'lucide-react'
 import { useCandidateFitInsights } from '@/hooks/useCandidateFitInsights'
 
@@ -165,6 +167,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [associationStatus, setAssociationStatus] = useState<'active' | 'rejected' | 'hired' | 'offer' | null>(null)
   const [isFavorite, setIsFavorite] = useState(false)
   const [currentStageId, setCurrentStageId] = useState<string | null>(null)
+  const [enteredStageAt, setEnteredStageAt] = useState<string | null>(null)
   const [rejectionDetails, setRejectionDetails] = useState<{
     rejectedAt: string | null;
     rejectedByName: string | null;
@@ -390,6 +393,7 @@ const stageHasAutomation = useMemo(() => {
     setAssociationStatus(null)
     setIsFavorite(false)
     setCurrentStageId(null)
+    setEnteredStageAt(null)
     setRejectionDetails(null)
     setOfferDetails(null)
     setHiredDetails(null)
@@ -526,6 +530,7 @@ const stageHasAutomation = useMemo(() => {
             id, 
             status, 
             current_stage_id,
+            entered_stage_at,
             rejected_at,
             rejected_by,
             rejection_notes,
@@ -545,6 +550,7 @@ const stageHasAutomation = useMemo(() => {
         setAssociationId(assoc?.id ?? null)
         setAssociationStatus((assoc?.status as any) ?? null)
         setCurrentStageId((assoc as any)?.current_stage_id ?? null)
+        setEnteredStageAt((assoc as any)?.entered_stage_at ?? null)
         setWhatsAppTemplateSentAt((assoc as any)?.whatsapp_template_sent_at ?? null)
         setIsFavorite((assoc as any)?.is_favorite ?? false)
         
@@ -1200,182 +1206,73 @@ const stageHasAutomation = useMemo(() => {
                   {/* Left column — tab content */}
                   <div className="lg:col-span-2 space-y-6 min-w-0">
                     {/* Job Overview Tab */}
-                    {activeTab === 'job' && (
-                      <>
-                        <CandidateDetailsCollapsible
-                          candidate={candidate}
-                          whatsAppEnabled={whatsAppEnabled}
-                          handleWhatsAppClick={handleWhatsAppClick}
-                        />
-                        <Card className="bg-surface-primary border-border">
-                          <CardHeader>
-                            <CardTitle>Job Overview</CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-2">
-                            {planStages.length ? (
-                              <Accordion
-                                type="single"
-                                collapsible
-                                value={openStageId ?? undefined}
-                                onValueChange={(v) => setOpenStageId((v as string) || null)}
-                                className="w-full space-y-2"
-                              >
-                                {(() => {
-                                  const sorted = [...planStages].sort((a, b) => a.position - b.position)
-                                  const currentIdx = currentStageId ? sorted.findIndex(s => s.jhsId === currentStageId) : -1
-                                  return sorted.map((opt, idx) => {
-                                    const isPast = currentIdx >= 0 && idx < currentIdx
-                                    const isCurrent = currentIdx >= 0 && idx === currentIdx
-                                    return (
-                                      <AccordionItem key={opt.stage.id} value={opt.stage.id} className="border rounded-lg overflow-hidden">
-                                        <AccordionTrigger className={cn('px-3 py-2 no-underline text-text-primary', getHeaderBgClass(opt.stage.stage_type))}>
-                                          <div className="flex items-center gap-2">
-                                            {isCurrent ? (
-                                              <CheckCircle2 className="h-4 w-4 text-primary" />
-                                            ) : isPast ? (
-                                              <CheckCircle2 className="h-4 w-4 text-primary/40" />
-                                            ) : (
-                                              <Circle className="h-4 w-4 text-text-tertiary" />
-                                            )}
-                                            <div className="text-sm font-medium">{opt.stage.stage_name}</div>
-                                            {stageHasAutomation.get(opt.jhsId) && (
-                                              <Zap className="h-4 w-4 text-purple-500 fill-purple-500" />
-                                            )}
-                                          </div>
-                                        </AccordionTrigger>
-                                        <AccordionContent className="px-3">
-                                          <div className="text-sm text-text-primary">
-                                            {opt.stage.stage_description || 'No details for this stage yet.'}
-                                          </div>
-                                          {supportsScorecard(opt.stage.stage_type) && (
-                                            <div className="mt-3 space-y-2">
-                                              <StageScorecards 
-                                                stageInstanceId={opt.jhsId}
-                                                associationId={associationId!}
-                                                currentUserId={user?.id}
-                                                onOpenFullSheet={(scorecardId) => {
-                                                  setScoreStageInstId(opt.jhsId)
-                                                  setScoreStageName(opt.stage.stage_name)
-                                                  setViewingScorecardId(scorecardId)
-                                                  setScoreOpen(true)
-                                                  onScorecardChange?.(scorecardId, opt.jhsId)
-                                                }}
-                                                onDismissAiDraft={handleDismissAiDraft}
-                                              />
-                                              {(!myScorecardsByStage[opt.jhsId] || myScorecardsByStage[opt.jhsId]?.is_ai_draft) && (
-                                                <Button
-                                                  variant={myScorecardsByStage[opt.jhsId]?.is_ai_draft ? 'purple' : 'secondary'}
-                                                  size="sm"
-                                                  icon={myScorecardsByStage[opt.jhsId]?.is_ai_draft ? Sparkles : Star}
-                                                  onClick={() => {
-                                                    setScoreStageInstId(opt.jhsId)
-                                                    setScoreStageName(opt.stage.stage_name)
-                                                    setScoreOpen(true)
-                                                  }}
-                                                >
-                                                  {myScorecardsByStage[opt.jhsId]?.is_ai_draft ? 'AI Notes Analysis Available' : 'Submit Scorecard'}
-                                                </Button>
-                                              )}
-                                            </div>
-                                          )}
-                                          {(opt.stage.stage_type === 'screening' || opt.stage.stage_type === 'interview') && candidateId && (
-                                            <StageBookingsList 
-                                              jhsId={opt.jhsId}
-                                              candidateId={candidateId}
-                                              onReschedule={(jhsId, bookingId) => {
-                                                setScheduleStageId(jhsId);
-                                                setScheduleStageName(opt.stage.stage_name);
-                                                setOldBookingId(bookingId);
-                                                setScheduleOpen(true);
-                                              }}
-                                            />
-                                          )}
-                                          {isCurrent && (
-                                            <div className="mt-3 flex flex-wrap gap-2">
-                                              {(opt.stage.stage_type === 'screening' || opt.stage.stage_type === 'interview') && (
-                                                <Button
-                                                  variant="secondary"
-                                                  size="sm"
-                                                  icon={Calendar}
-                                                  onClick={() => {
-                                                    setScheduleStageId(opt.jhsId)
-                                                    setScheduleStageName(opt.stage.stage_name)
-                                                    setScheduleOpen(true)
-                                                  }}
-                                                >
-                                                  Schedule Interview
-                                                </Button>
-                                              )}
-                                              {(opt.stage.stage_type === 'screening' || opt.stage.stage_type === 'interview') && associationId && candidateId && candidate?.id === candidateId && !loading && (
-                                                <GenerateBookingLinkButton
-                                                  jobId={jobId}
-                                                  candidateId={candidateId}
-                                                  jhsId={opt.jhsId}
-                                                  associationId={associationId}
-                                                  candidateName={candidate?.candidate_name}
-                                                  candidateEmail={candidate?.email}
-                                                  jobTitle={job?.title}
-                                                  stageName={opt.stage.stage_name}
-                                                />
-                                              )}
-                                            </div>
-                                          )}
-                                          {!isCurrent && (
-                                            <div className="mt-3">
-                                              <Button
-                                                variant="secondary"
-                                                size="sm"
-                                                icon={MoveRight}
-                                                disabled={movingStageId === opt.jhsId}
-                                                onClick={async () => {
-                                                  try {
-                                                    setMovingStageId(opt.jhsId)
-                                                    if (associationId) {
-                                                      await moveAssociationToStage(associationId, opt.jhsId)
-                                                    } else if (candidateId) {
-                                                      const newId = await createAssociationAndMove(jobId, candidateId, opt.jhsId)
-                                                      setAssociationId(newId)
-                                                    }
-                                                    setCurrentStageId(opt.jhsId)
-                                                    setOpenStageId(opt.stage.id)
-                                                    onStageChanged?.()
-                                                  } catch (e) {
-                                                    // handled by hook
-                                                  } finally {
-                                                    setMovingStageId(null)
-                                                  }
-                                                }}
-                                              >
-                                                Move to this stage
-                                              </Button>
-                                            </div>
-                                          )}
-                                        </AccordionContent>
-                                      </AccordionItem>
-                                    )
-                                  })
-                                })()}
-                              </Accordion>
-                            ) : (
-                              <div className="text-sm text-text-secondary">No hiring stages configured for this job.</div>
-                            )}
-                          </CardContent>
-                        </Card>
-                        {!isRestrictedViewer && candidateId && (
-                          <Card className="bg-surface-primary border-border">
-                            <CardHeader>
-                              <CardTitle>Application Details</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                              <CandidateApplicationResponses 
-                                candidateId={candidateId} 
-                                jobId={jobId} 
-                              />
-                            </CardContent>
-                          </Card>
-                        )}
-                      </>
-                    )}
+                    {activeTab === 'job' && (() => {
+                      const sortedStages = [...planStages].sort((a, b) => a.position - b.position)
+                      const currentIdx = currentStageId ? sortedStages.findIndex(s => s.jhsId === currentStageId) : -1
+                      const currentStage = currentIdx >= 0 ? sortedStages[currentIdx] : null
+                      const stageSupportsScorecard = currentStage ? supportsScorecard(currentStage.stage.stage_type) : false
+                      return (
+                        <>
+                          {currentStage && associationId ? (
+                            <CurrentStageCard
+                              stageName={currentStage.stage.stage_name}
+                              stageType={currentStage.stage.stage_type}
+                              jhsId={currentStage.jhsId}
+                              candidateId={candidateId!}
+                              enteredStageAt={enteredStageAt}
+                              onOpenStage={
+                                (currentStage.stage.stage_type === 'screening' || currentStage.stage.stage_type === 'interview')
+                                  ? () => {
+                                      setScheduleStageId(currentStage.jhsId)
+                                      setScheduleStageName(currentStage.stage.stage_name)
+                                      setScheduleOpen(true)
+                                    }
+                                  : undefined
+                              }
+                            />
+                          ) : !planStages.length ? (
+                            <div className="rounded-2xl border border-virgilio-border bg-white p-6 text-[13px] text-text-secondary shadow-sm">
+                              No hiring stages configured for this job.
+                            </div>
+                          ) : null}
+
+                          {currentStage && associationId && stageSupportsScorecard && (
+                            <StageScorecardsCard
+                              stageInstanceId={currentStage.jhsId}
+                              associationId={associationId}
+                              currentUserId={user?.id}
+                              onOpenFullSheet={(scorecardId) => {
+                                setScoreStageInstId(currentStage.jhsId)
+                                setScoreStageName(currentStage.stage.stage_name)
+                                setViewingScorecardId(scorecardId)
+                                setScoreOpen(true)
+                                onScorecardChange?.(scorecardId, currentStage.jhsId)
+                              }}
+                              onSubmitScorecard={() => {
+                                setScoreStageInstId(currentStage.jhsId)
+                                setScoreStageName(currentStage.stage.stage_name)
+                                setScoreOpen(true)
+                              }}
+                              onDismissAiDraft={handleDismissAiDraft}
+                            />
+                          )}
+
+                          {!isRestrictedViewer && candidateId && (
+                            <Card className="bg-surface-primary border-border">
+                              <CardHeader>
+                                <CardTitle>Application Details</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <CandidateApplicationResponses
+                                  candidateId={candidateId}
+                                  jobId={jobId}
+                                />
+                              </CardContent>
+                            </Card>
+                          )}
+                        </>
+                      )
+                    })()}
 
                     {/* Resume Tab */}
                     {activeTab === 'resume' && (
