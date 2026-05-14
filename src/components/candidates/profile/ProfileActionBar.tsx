@@ -19,6 +19,7 @@ interface ProfileActionBarProps {
   onMoveToOffer?: () => void
   onReturnToPipeline?: () => void
   onHire?: () => void
+  onAddOrTransfer?: () => void
   canEdit?: boolean
 }
 
