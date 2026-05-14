@@ -1,46 +1,96 @@
-## Plan: Restyle Settings Sidebar (visual only)
+## Phased Typography Alignment
 
-Pure aesthetic refactor of `src/components/settings/SettingsSidebar.tsx` to match the uploaded reference. No changes to section names, order, visibility logic, tab IDs, routing, or which items render for which roles.
+Align the app's type system with the Gio Design Foundation v1.0 guideline. Phased so we can ship value early without risky global re-flows.
 
-### Visual changes
+---
 
-1. **Card shell**
-   - Keep `Card` wrapper, refine to: white bg, soft shadow, rounded-xl, thin border.
-   - Header block: `Settings` in bold with the small `.` accent dot kept (currently `text-virgilio-purple` — preserved). Add a second line below with the workspace/tenant name + role label (e.g. "Acme Talent · Workspace") using existing tenant data already available via `useAuth`/`useTenant` (read-only display, no logic changes).
+### Phase 1 — Foundation cleanup (low risk, no visual regression)
 
-2. **Flatten groups into labeled sections**
-   - Replace the `Collapsible` Workspace and Platform groups with non-collapsible sections that always show their children when visible.
-   - Each section gets an uppercase muted label header: `ACCOUNT`, `WORKSPACE`, `PLATFORM`.
-   - "Account" section will contain the existing top-level non-grouped items (Billing, Integrations-for-members) since the reference uses an Account grouping. Order and visibility rules unchanged.
-   - Remove chevron toggles and collapsed/open state — sections are always expanded.
+Goal: remove bloat, fix font weights/tracking to match spec, add JetBrains Mono.
 
-3. **Item styling**
-   - Default item: `h-9`, icon left (`h-4 w-4`), label, optional right-aligned badge.
-   - Hover: subtle muted background, no translate-y movement (calm/restrained per design system).
-   - Active: solid near-black background (`bg-foreground text-background`) with rounded-md, matching the screenshot's pill highlight. Replace current purple gradient on active items.
-   - Remove the indented left border treatment for sub-items; all items render at the same indent inside their section.
+1. **Trim font imports** in `src/index.css`:
+   - Poppins: keep `400;500;600;700`, drop `900`.
+   - Inter: keep `400;500;600`, drop `300;700`.
+2. **Add JetBrains Mono** import (`weights 400;500`) and update `tailwind.config.ts`:
+   - `fontFamily.mono: ['JetBrains Mono', 'Monaco', 'Menlo', 'monospace']`.
+3. **Heading weight standardization** in `tailwind.config.ts`:
+   - Change all `h1-*` … `h4-*` token `fontWeight` from `700` → `600`.
+   - In `src/index.css` base layer, change `h1–h6` from `font-medium` (500) → `font-semibold` (600).
+4. **Tracking correction**:
+   - Update `letterSpacing.page-title` and the inline `letterSpacing` on heading tokens from `-0.06em` → `-0.04em`.
+   - Add `letterSpacing.caps: '0.08em'` for uppercase labels.
+5. **Update Core memory** (`mem://index.md`): tracking now -0.04em, weight 600, document mono = JetBrains Mono.
 
-4. **Badges**
-   - Add right-aligned badge slot for items that already expose counts in the app:
-     - Members → existing member count (already fetched elsewhere; reuse `useMembers`/existing hook if trivially available, otherwise omit badge to keep this a pure visual pass).
-     - Integrations → installed integration count from `installedIntegrations.length` (already computed in this file).
-     - Billing → "Trial" pill if `useBillingStatus` indicates trial (only if already easily readable; otherwise omit).
-   - Badges use small muted pill: `text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground`.
-   - If a count/status isn't already available without new data fetching, skip that badge — visual-only constraint.
+Deliverable: lighter font payload, consistent heading weight, mono ready.
 
-5. **Installed integrations sub-list**
-   - Keep the existing nested rendering of installed integrations under the Integrations item, restyled to match: smaller height, lighter text, no purple highlight on active — use the same near-black active pill, just smaller.
+---
 
-6. **Spacing & typography**
-   - Section label: `text-[11px] font-medium uppercase tracking-wider text-muted-foreground px-3 mt-4 mb-1`.
-   - Item label: `text-sm font-medium`.
-   - Tighter vertical rhythm between items (`space-y-0.5`).
+### Phase 2 — Semantic token layer (additive, opt-in)
 
-### Out of scope
-- No changes to `Settings.tsx`, routes, tab IDs, or which tabs render.
-- No changes to permissions/visibility predicates (`item.show`).
-- No changes to badge data sources beyond what is already wired in this file.
-- No changes to the main content area or any other settings component.
+Goal: introduce the named tokens from the guideline without forcing component rewrites yet.
 
-### File touched
-- `src/components/settings/SettingsSidebar.tsx` (only).
+1. **Add new Tailwind `fontSize` tokens** in `tailwind.config.ts` matching the guideline exactly:
+   ```
+   display.xl  48 / 1.05 / 600 / Poppins
+   display.lg  36 / 1.10 / 600 / Poppins
+   h1          26 / 1.15 / 600 / Poppins
+   h2          18 / 1.20 / 600 / Poppins
+   h3          14.5 / 1.30 / 600 / Poppins
+   h4          13 / 1.30 / 600 / Poppins
+
+   body.lg     14 / 1.55 / 400 / Inter
+   body.md     13 / 1.50 / 400 / Inter
+   body.sm     12 / 1.45 / 400 / Inter
+   body.emphasis 13 / 1.50 / 500 / Inter
+
+   ui.menu.lg     13 / 1.20 / 500 / Poppins
+   ui.menu.md     12.5 / 1.30 / 500 / Inter
+   ui.button.lg   13.5 / 1.20 / 500 / Poppins
+   ui.button.md   13 / 1.20 / 500 / Poppins
+   ui.button.sm   12 / 1.20 / 500 / Poppins
+   ui.tab         12.5 / 1.30 / 500 / Poppins
+   ui.breadcrumb  11.5 / 1.40 / 400 / Inter
+
+   form.label       12 / 1.40 / 500 / Inter
+   form.value       13 / 1.40 / 400 / Inter
+   form.placeholder 13 / 1.40 / 400 / Inter (color: muted)
+   form.helper      11 / 1.45 / 400 / Inter
+   form.error       11.5 / 1.40 / 500 / Inter
+   form.required    12 / 1.40 / 500 / Inter (color: error)
+   ```
+2. **Document tokens** in a short `docs/typography.md` that mirrors the screenshot table — single source of truth for engineers.
+3. **No component edits in this phase** — existing classes keep working.
+
+Deliverable: design system available for all new code; old code untouched.
+
+---
+
+### Phase 3 — Adopt tokens in core chrome (controlled rollout)
+
+Goal: visible alignment on the surfaces the user looks at most, without an app-wide sweep.
+
+1. **PageHeader** component → use `text-h1` token (drops page titles from 34 → 26px). This will be the most visible change; preview before merge.
+2. **Top nav tabs** + **settings sidebar nav** → `text-ui.menu.lg` / `text-ui.menu.md`.
+3. **Buttons** (`src/components/ui/button.tsx`) → map size variants to `ui.button.lg/md/sm`.
+4. **Tabs** (`src/components/ui/tabs.tsx`) → `text-ui.tab`.
+5. **Breadcrumbs** → `text-ui.breadcrumb`.
+6. **Form primitives** (`Label`, `Input` placeholder, helper text in `FormDescription`, `FormMessage`) → form.* tokens.
+
+Deliverable: every chrome surface visibly matches the guideline. No business components touched.
+
+---
+
+### Phase 4 — Long tail + enforcement
+
+1. Sweep remaining ad-hoc `text-2xl`/`text-3xl` heading usages and rewrite to `text-h1`/`text-h2`.
+2. Add an ESLint rule (or doc note) discouraging raw `font-poppins`/`font-inter` outside the token layer.
+3. Update memory entries `style/typography/high-density-scaling` and `style/ui/page-header-standardization` to reference the new tokens.
+
+Deliverable: guideline becomes enforced default; legacy classes cleaned.
+
+---
+
+### Risks & call-outs
+- **Phase 3 PageHeader resize** is the most user-visible change (titles shrink ~24%). Worth previewing on Pipeline / Candidates / Settings before committing.
+- All other phases are additive or low-impact.
+- No backend/data changes anywhere.

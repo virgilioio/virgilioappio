@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -293,10 +293,11 @@
     line-height: var(--line-height-normal);
   }
 
-  /* Enhanced Typography Hierarchy - Compact */
+  /* Enhanced Typography Hierarchy - Compact (Phase 1: weight 600 per Gio Foundation) */
   h1, h2, h3, h4, h5, h6 {
-    @apply font-poppins font-medium;
+    @apply font-poppins font-semibold;
     line-height: var(--line-height-tight);
+    letter-spacing: -0.04em;
   }
 
   h1 {
