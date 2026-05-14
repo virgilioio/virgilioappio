@@ -206,7 +206,7 @@ export function ProfileHeroCard({
         </div>
 
         {/* Right cluster: AI Fit + primary actions */}
-        <div className="hidden sm:flex items-start gap-2 shrink-0">
+        <div className="hidden sm:flex items-center gap-2 shrink-0">
           {typeof fitScore === 'number' && fitScore > 0 && (
             <div className="flex flex-col items-center justify-center px-4 py-2.5 rounded-xl border border-virgilio-purple/20 bg-virgilio-purple/5 min-w-[80px]">
               <span className="text-[10px] font-poppins font-semibold tracking-[0.08em] text-virgilio-purple/70 uppercase">AI Fit</span>
