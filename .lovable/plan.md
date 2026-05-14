@@ -1,53 +1,60 @@
-## Audit findings — filter chips
+## Goal
 
-The popover *panel* of `FilterChipPopover` already follows §5 (uses `menu-*` tokens, `menuItem` row sizing, hover/selected colors, group label). The mismatch is in the **trigger chip** itself.
+Replace the generic gray-slab loading states on the Job page and the Candidate Profile page with two pixel-faithful skeletons that mirror the actual cards we ship today:
 
-`FilterChipPopover` has two trigger styles:
-- **`soft`** (rounded-lg, white + hairline, lilac-purple count) — used **only by Jobs** (`JobsTable.tsx`)
-- **`pill`** (rounded-full, accent-tinted, default) — used everywhere else
+1. **Hero card skeleton** — matches `JobHero` / `ProfileHeroCard` (white card · radius 2xl · hairline · breadcrumb · big H1 + purple dot · meta row · right-side action cluster · tabs row inside the card).
+2. **Stages/Status bar skeleton** — matches `PipelineSectionTabs` (Job page, 6 colored section tabs in a card) and `ProfileStageStrip` (Candidate profile, horizontal stage chips in a card).
 
-Files still on the legacy `pill` style:
-- `src/components/candidates/CandidateFiltersPanel.tsx` (9 chips)
-- `src/components/analytics/AnalyticsFiltersBar.tsx` (4 chips)
-- `src/components/talent-intelligence/TalentIntelligenceFilterBar.tsx` (8 chips)
-- `src/components/pipeline/FilterCard.tsx` (3 chips)
-- `src/components/organizations/OrganizationsTable.tsx` (1 chip)
-- `src/components/members/MembersTable.tsx` (3 chips)
-- `src/components/settings/IntegrationsTab.tsx` (2 chips)
-- `src/pages/Deals.tsx` (2 popover chips + 1 `FilterChipSelect`)
+Both skeletons live inside the same outer card chrome (`bg-white border border-virgilio-border rounded-2xl shadow-sm`) so the page doesn't reflow when real data lands.
 
-`FilterChipSelect` is hard-coded to the legacy pill look (no variant prop) — used in `Deals.tsx`.
+## What I'll add
 
-## What I'll change (UI-only, zero API breakage)
+### 1. New shared file `src/components/ui/hero-skeletons.tsx`
+Exports:
+- **`HeroCardSkeleton`** — variant prop `"job" | "candidate"`
+  - Outer chrome: same card classes as the live heroes (`px-6 pt-5`)
+  - Top strip:
+    - `job`: small breadcrumb pill (60w) + nothing on the right
+    - `candidate`: "Back to job" pill + breadcrumb crumbs + right-side fit pill / action buttons (Advance, Schedule, Email, prev/next)
+  - H1 row: 280×32 bar + a 6×6 purple dot (real `bg-virgilio-purple/30` square) so the visual signature is instantly recognisable
+  - Meta row: 4–5 short bars (status pill 64w, location 80w, dept 90w, posted 110w, hiring team 6×6 stack of 3 + label)
+  - Tabs row at the bottom flush with the card edge: 6 thin underline-tab placeholders
+- **`PipelineSectionTabsSkeleton`** — 6 equal-width rounded `xl` cells inside a card (`p-5 sm:p-6`), matching the `PipelineSectionTabs` shape: each cell shows an icon dot + label bar + count bar
+- **`StageStripSkeleton`** — horizontal row of 6 stage chips (h-9, rounded-full) inside the same card chrome, matching `ProfileStageStrip`
 
-### 1. Promote `soft` to the default in `FilterChipPopover`
-- Flip default `variant = 'soft'` in `src/components/ui/filter-chip-popover.tsx`
-- Remove the legacy `pill` branch entirely (no caller passes it explicitly)
-- Drop `variant` from the prop type
-- Result: every existing call site automatically gets the Jobs-page chip look
+All bars use the existing `<Skeleton>` primitive (`bg-muted` shimmer); no new tokens.
 
-### 2. Restyle `FilterChipSelect` to match the Jobs chip
-- Replace the hard-coded `rounded-full border accent` chip in `src/components/ui/filter-chip-select.tsx` with the same trigger as the soft popover: `h-9 px-3.5 rounded-lg border-virgilio-border bg-white hover:bg-[#FAFAF7]`, `text-text-primary` label · `text-text-tertiary` divider `·` · `text-virgilio-purple` value
-- Active state mirrors `soft` (bg `#FAFAF7`)
+### 2. Wire skeletons into the two pages
 
-### 3. Re-align trigger metrics with §5 menu tokens (still on the chip itself)
-- Active dot/divider color uses `--menu-group-color` (#8B8F9E) instead of `text-text-tertiary` for consistency with the panel
-- Hover background uses `bg-[hsl(var(--menu-hover))]` (#F1F0EC) — already the case via `#F1F0EC` literal; replace with token
+- **`src/pages/JobDetail.tsx` (lines 814–835)** — replace the generic 8×Skeleton block with:
+  ```
+  layout-container > h-[100dvh] flex-col
+    <HeroCardSkeleton variant="job" />
+    <PipelineSectionTabsSkeleton />
+    <TableSkeleton rows={6} />   // already exists in our table primitives
+  ```
+  Keeps the same outer wrapper as the loaded state, so dimensions don't shift.
 
-### 4. Remove the `variant` prop usage from `JobsTable.tsx`
-- Now redundant since `soft` is default; tidy four call sites
+- **`src/components/candidates/CandidateProfileSkeleton.tsx`** — replace the current name-card+two-column placeholder with:
+  ```
+  <HeroCardSkeleton variant="candidate" />
+  <StageStripSkeleton />
+  // keep the existing two-column body skeleton below for the tab content
+  ```
+  This preserves `CandidateProfileSkeleton` as the single entry point used by `CandidateProfileSheet` and `IndependentCandidateProfileSheet` — no consumer changes.
 
-### 5. Documentation & memory
-- Note in `docs/style-guide.md` §5: "Filter chips use the soft chip variant by default; the legacy pill variant is removed."
-- Update the dropdowns memory entry to mention chip trigger conformance.
+### 3. No business-logic changes
+- `JobHero`, `ProfileHeroCard`, `PipelineSectionTabs`, `ProfileStageStrip` are untouched
+- No new design tokens, no Tailwind config changes — uses existing `<Skeleton>`, `virgilio-border`, `virgilio-purple/30`, rounded-2xl
 
-### Out of scope
-- The `<TableFilterPills>` removable pills — those are passive labels, not interactive triggers, and already match the badge system
-- Mobile filter drawer chrome (Sheet) — different surface, has its own spec
-- Date-range filters inside `CandidateFiltersPanel` — already inherit the new shadcn `Calendar` styling from the previous pass
-- No business-logic, prop-shape, or onChange changes
+## Out of scope
+- Mobile-only header skeleton (mobile job page uses a different bar that already loads instantly)
+- Tab-content skeletons inside the candidate profile right-column body (kept as-is)
+- Sheet/drawer chrome skeletons
 
-### Verification
-- Open Jobs, Candidates, Analytics, Talent Intelligence, Pipeline, Organizations, Members, Settings → Integrations, Deals — all filter rows render the same rounded-lg white-hairline chip, with lilac active count and identical popover panel.
+## Verification
+- Hard-reload `/jobs/:id` → see hero card outline + 6 colored section tabs outline + table skeleton, then real content swaps in without layout jump
+- Hard-reload `/jobs/:id/candidates/:cid` → see candidate hero card outline + horizontal stage strip outline, then content fills in
+- Open candidate sheet from the pipeline → same hero + strip skeleton appears for the brief load window
 
 Ready to implement on approval.
