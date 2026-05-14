@@ -1,18 +1,25 @@
 import { useState, useEffect, useMemo } from 'react'
 import { differenceInDays } from 'date-fns'
-import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Skeleton, TableSkeleton } from '@/components/ui/skeleton'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Plus, Search, FileText, Building, ChevronLeft, ChevronRight, MoreHorizontal, Eye, Edit, Archive, X } from 'lucide-react'
-import { MobileFilterDrawer } from '@/components/ui/mobile-filter-drawer'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { EmptyState } from '@/components/ui/empty-state'
-import { PermissionGate } from '@/components/auth/PermissionGate'
+import { Card, CardContent } from '@/components/ui/card'
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table'
+import {
+  IdentityCell, StatusCell, NumericCell, ComposedCell, AvatarStack, ActionCell,
+} from '@/components/ui/table-cells'
+import { TableSkeleton, TableEmpty, TableFilteredEmpty } from '@/components/ui/table-states'
+import { TableFooterSummary } from '@/components/ui/table-pagination'
+import {
+  TableToolbar, TableSearch, TableSegmented,
+} from '@/components/ui/table-toolbar'
 import { FilterChipPopover, type FilterChipOption } from '@/components/ui/filter-chip-popover'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { MoreHorizontal, Eye, Edit, Archive, MapPin } from 'lucide-react'
+import { PermissionGate } from '@/components/auth/PermissionGate'
+import { PipelineBar } from '@/components/jobs/PipelineBar'
+import { useJobsCandidateCounts } from '@/hooks/useJobsCandidateCounts'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useMembers } from '@/hooks/useMembers'
@@ -27,561 +34,340 @@ interface JobsTableProps {
   onEdit: (job: Job) => void
   onArchive: (id: string) => void
   onCreateNew: () => void
+  /** Status segment value, controlled by parent. */
+  statusFilter: 'active' | 'all' | 'paused' | 'closed' | 'archived'
 }
 
-export function JobsTable({ 
-  jobs, 
-  isLoading, 
-  onView, 
-  onEdit, 
-  onArchive, 
-  onCreateNew
+type StatusTone = 'green' | 'yellow' | 'neutral' | 'ink'
+
+function statusBadge(status: Job['status']) {
+  const map: Record<Job['status'], { tone: StatusTone; label: string }> = {
+    open: { tone: 'green', label: 'Open' },
+    draft: { tone: 'yellow', label: 'Paused' },
+    closed: { tone: 'neutral', label: 'Closed' },
+    archived: { tone: 'ink', label: 'Archived' },
+  }
+  return map[status]
+}
+
+const COLS = 8 // job, dept, location, stage, pipeline, days, owner, actions
+
+export function JobsTable({
+  jobs,
+  isLoading,
+  onView,
+  onEdit,
+  onArchive,
+  statusFilter,
 }: JobsTableProps) {
-  const navigate = useNavigate()
   const permissions = usePermissions()
   const { organizations } = useOrganizations()
   const { members, isLoading: membersLoading } = useMembers()
+
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('open')
-  const [selectedOrganizations, setSelectedOrganizations] = useState<string[]>([])
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([])
+  const [selectedLocations, setSelectedLocations] = useState<string[]>([])
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
-  
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 10
-  
-  // Fetch job assignments for selected users (like Pipeline page)
+  const [postedRange, setPostedRange] = useState<string[]>([]) // 'today' | '7d' | '30d'
+
   const { assignedJobIds } = useUserAssignedJobIds(selectedUsers)
 
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case 'open':
-        return 'job-open' as const
-      case 'draft':
-        return 'job-draft' as const
-      case 'closed':
-        return 'job-closed' as const
-      case 'archived':
-        return 'job-archived' as const
-      default:
-        return 'job-draft' as const
-    }
-  }
+  const departmentOptions: FilterChipOption[] = useMemo(() => {
+    const set = new Set<string>()
+    jobs.forEach(j => j.department && set.add(j.department))
+    return Array.from(set).sort().map(v => ({ value: v, label: v, count: 0 }))
+  }, [jobs])
 
+  const locationOptions: FilterChipOption[] = useMemo(() => {
+    const set = new Set<string>()
+    jobs.forEach(j => j.location && set.add(j.location))
+    return Array.from(set).sort().map(v => ({ value: v, label: v, count: 0 }))
+  }, [jobs])
 
-  // User options for filter (consistent with Pipeline page)
-  const userOptions = useMemo(() => {
+  const userOptions: FilterChipOption[] = useMemo(() => {
     return members
       .filter(m => m.user_status === 'active' && m.user_id && (m.user_type === 'member' || m.user_type === 'workspace_owner'))
       .map(m => ({
         value: m.user_id!,
         label: `${m.user_first_name || ''} ${m.user_last_name || ''}`.trim() || m.user_email || 'Unknown',
+        count: 0,
       }))
       .sort((a, b) => a.label.localeCompare(b.label))
   }, [members])
 
-  // Organization options for filter (consistent with Pipeline page)
-  const organizationOptions = useMemo(() => {
-    return organizations
-      .filter(org => org.status === 'active')
-      .map(org => ({
-        value: org.id,
-        label: org.name,
-      }))
-      .sort((a, b) => a.label.localeCompare(b.label))
-  }, [organizations])
-
-  // Chip options for FilterChipPopover
-  const statusChipOptions: FilterChipOption[] = useMemo(() => [
-    { value: 'draft', label: 'Draft', count: 0 },
-    { value: 'open', label: 'Open', count: 0 },
-    { value: 'closed', label: 'Closed', count: 0 },
-    { value: 'archived', label: 'Archived', count: 0 },
+  const postedOptions: FilterChipOption[] = useMemo(() => [
+    { value: 'today', label: 'Today', count: 0 },
+    { value: '7d', label: 'Last 7 days', count: 0 },
+    { value: '30d', label: 'Last 30 days', count: 0 },
   ], [])
-
-  const orgChipOptions: FilterChipOption[] = useMemo(
-    () => organizationOptions.map(o => ({ value: o.value, label: o.label, count: 0 })),
-    [organizationOptions]
-  )
-
-  const userChipOptions: FilterChipOption[] = useMemo(
-    () => userOptions.map(u => ({ value: u.value, label: u.label, count: 0 })),
-    [userOptions]
-  )
-
-  const hasActiveFilters = statusFilter !== 'open' || selectedOrganizations.length > 0 || selectedUsers.length > 0 || searchTerm.trim() !== ''
-
 
   const filteredJobs = useMemo(() => {
     return jobs.filter(job => {
-      // Search filter
-      const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           job.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           job.department?.toLowerCase().includes(searchTerm.toLowerCase())
-      if (!matchesSearch) return false
-      
-      // Status filter
-      if (statusFilter !== 'all' && job.status !== statusFilter) return false
-      
-      // Organization filter - supports multiple selections (AND with other filters, OR within)
-      if (selectedOrganizations.length > 0 && !selectedOrganizations.includes(job.organization_id)) return false
-      
-      // User filter - uses shared utility to check hiring_team AND job_assignments
+      // Status segment
+      if (statusFilter === 'active' && !(job.status === 'open' || job.status === 'draft')) return false
+      if (statusFilter === 'paused' && job.status !== 'draft') return false
+      if (statusFilter === 'closed' && job.status !== 'closed') return false
+      if (statusFilter === 'archived' && job.status !== 'archived') return false
+
+      // Search
+      if (searchTerm.trim()) {
+        const q = searchTerm.toLowerCase()
+        const haystack = `${job.title} ${job.department ?? ''} ${(job.hiring_team_names || []).join(' ')}`.toLowerCase()
+        if (!haystack.includes(q)) return false
+      }
+
+      if (selectedDepartments.length && !selectedDepartments.includes(job.department || '')) return false
+      if (selectedLocations.length && !selectedLocations.includes(job.location || '')) return false
+
+      if (postedRange.length) {
+        const days = differenceInDays(new Date(), new Date(job.created_at))
+        const range = postedRange[0]
+        if (range === 'today' && days > 0) return false
+        if (range === '7d' && days > 7) return false
+        if (range === '30d' && days > 30) return false
+      }
+
       if (!jobMatchesUsers(job, selectedUsers, assignedJobIds)) return false
-      
       return true
     })
-  }, [jobs, searchTerm, statusFilter, selectedOrganizations, selectedUsers, assignedJobIds])
+  }, [jobs, statusFilter, searchTerm, selectedDepartments, selectedLocations, selectedUsers, postedRange, assignedJobIds])
 
-  // Calculate pagination
-  const totalPages = Math.ceil(filteredJobs.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const paginatedJobs = filteredJobs.slice(startIndex, endIndex)
+  const visibleIds = useMemo(() => filteredJobs.map(j => j.id), [filteredJobs])
+  const { data: countsMap = {} } = useJobsCandidateCounts(visibleIds)
+  const maxCount = useMemo(
+    () => Math.max(1, ...Object.values(countsMap)),
+    [countsMap]
+  )
 
-  // Reset pagination when filters change
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchTerm, statusFilter, selectedOrganizations, selectedUsers])
+  const hasActiveFilters =
+    searchTerm.trim() !== '' ||
+    selectedDepartments.length > 0 ||
+    selectedLocations.length > 0 ||
+    selectedUsers.length > 0 ||
+    postedRange.length > 0
 
-  // Generate page numbers for pagination
-  const getPageNumbers = () => {
-    const pages: (number | 'ellipsis')[] = []
-    
-    if (totalPages <= 7) {
-      // Show all pages if 7 or fewer
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i)
-      }
-    } else {
-      // Show first page
-      pages.push(1)
-      
-      if (currentPage > 4) {
-        pages.push('ellipsis')
-      }
-      
-      // Show pages around current page
-      const start = Math.max(2, currentPage - 1)
-      const end = Math.min(totalPages - 1, currentPage + 1)
-      
-      for (let i = start; i <= end; i++) {
-        pages.push(i)
-      }
-      
-      if (currentPage < totalPages - 3) {
-        pages.push('ellipsis')
-      }
-      
-      // Show last page
-      if (totalPages > 1) {
-        pages.push(totalPages)
-      }
-    }
-    
-    return pages
-  }
-
-  if (isLoading || membersLoading) {
-    return (
-      <Card className="bg-surface-primary">
-        <CardContent className="pt-6">
-          {/* Row 1: Search + filter chips skeleton */}
-          <div className="flex items-center gap-2 mb-3">
-            <Skeleton className="h-8 w-56" />
-            <Skeleton className="h-8 w-24" />
-            <Skeleton className="h-8 w-24" />
-            <Skeleton className="h-8 w-24" />
-          </div>
-          {/* Row 2: Action button skeleton */}
-          <div className="flex items-center gap-2 mb-3">
-            <Skeleton className="h-8 w-28" />
-          </div>
-          {/* Row 3: Count skeleton */}
-          <div className="mb-4">
-            <Skeleton className="h-3 w-32" />
-          </div>
-          <TableSkeleton rows={5} />
-        </CardContent>
-      </Card>
-    )
+  const clearAll = () => {
+    setSearchTerm('')
+    setSelectedDepartments([])
+    setSelectedLocations([])
+    setSelectedUsers([])
+    setPostedRange([])
   }
 
   return (
-    <Card className="bg-surface-primary">
-      <CardContent className="pt-6">
-        {/* Row 1: Search + filter chips */}
-        <div className="flex flex-wrap items-center gap-2 mb-3">
-          <div className="relative w-56">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Search jobs..."
+    <div className="space-y-3">
+      {/* Toolbar: search + filter chips */}
+      <TableToolbar
+        left={
+          <>
+            <TableSearch
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 h-8 text-sm rounded-full"
+              onChange={setSearchTerm}
+              placeholder="Search by title, owner, or department…"
+              className="min-w-[260px]"
             />
-          </div>
-
-          <MobileFilterDrawer
-            activeFilterCount={
-              (statusFilter !== 'open' ? 1 : 0) + selectedOrganizations.length + selectedUsers.length
-            }
-            onClearAll={() => {
-              setSearchTerm('')
-              setStatusFilter('open')
-              setSelectedOrganizations([])
-              setSelectedUsers([])
-            }}
-          >
             <FilterChipPopover
-              label="Status"
-              options={statusChipOptions}
-              selectedValues={statusFilter === 'all' ? [] : [statusFilter]}
-              onSelectionChange={(vals) => setStatusFilter(vals.length === 0 ? 'all' : vals[vals.length - 1])}
-              searchable={false}
+              label="Department"
+              options={departmentOptions}
+              selectedValues={selectedDepartments}
+              onSelectionChange={setSelectedDepartments}
+              searchable
             />
-
-            {(permissions.canViewOrganizations || permissions.isPlatformAdmin) && orgChipOptions.length > 0 && (
+            <FilterChipPopover
+              label="Location"
+              options={locationOptions}
+              selectedValues={selectedLocations}
+              onSelectionChange={setSelectedLocations}
+              searchable
+            />
+            {(permissions.canViewOrganizations || permissions.isPlatformAdmin) && !membersLoading && userOptions.length > 0 && (
               <FilterChipPopover
-                label="Organization"
-                options={orgChipOptions}
-                selectedValues={selectedOrganizations}
-                onSelectionChange={setSelectedOrganizations}
-                searchable
-              />
-            )}
-
-            {!membersLoading && userChipOptions.length > 0 && (
-              <FilterChipPopover
-                label="User"
-                options={userChipOptions}
+                label="Owner"
+                options={userOptions}
                 selectedValues={selectedUsers}
                 onSelectionChange={setSelectedUsers}
                 searchable
               />
             )}
-
-            {hasActiveFilters && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setSearchTerm('')
-                  setStatusFilter('open')
-                  setSelectedOrganizations([])
-                  setSelectedUsers([])
-                }}
-                className="gap-1 h-8 text-xs text-muted-foreground hover:text-foreground font-poppins sm:inline-flex hidden"
-              >
-                <X className="h-3 w-3" />
-                Clear filters
-              </Button>
-            )}
-          </MobileFilterDrawer>
-        </div>
-
-        {/* Row 2: Action buttons — left-aligned */}
-        <div className="flex flex-wrap items-center gap-2 mb-3">
-          <div className="hidden sm:block">
-            <PermissionGate permission="canCreateJobs">
-              <Button onClick={onCreateNew} size="sm" className="gap-1.5 h-8 whitespace-nowrap">
-                <Plus className="h-3.5 w-3.5" />
-                Create Job
-              </Button>
-            </PermissionGate>
-          </div>
-        </div>
-
-        {/* Row 3: Count */}
-        <div className="text-xs text-muted-foreground mb-4">
-          <span>{filteredJobs.length} of {jobs.length} jobs</span>
-        </div>
-        
-        {filteredJobs.length === 0 ? (
-          <EmptyState
-            assetType="empty-state-jobs"
-            title={jobs.length === 0 ? 'No jobs yet' : 'No jobs match your filters'}
-            description={jobs.length === 0 
-              ? 'Create your first job posting to get started.'
-              : 'Try adjusting your search or filter criteria.'
-            }
-            fallbackIcon={FileText}
-            action={jobs.length === 0 && permissions.canCreateJobs ? {
-              label: 'Create Job',
-              onClick: onCreateNew
-            } : undefined}
-          />
-        ) : (
-          <>
-            <div className="space-y-sm">
-              {/* Desktop Table View */}
-              <div className="hidden lg:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Job Title</TableHead>
-                      <TableHead>Organization</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Days Open</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedJobs.map((job) => (
-                      <TableRow 
-                        key={job.id} 
-                        interactive
-                        className="cursor-pointer"
-                        onClick={() => onView(job)}
-                      >
-                        <TableCell className="font-medium">{job.title}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Building className="h-4 w-4 text-muted-foreground" />
-                            {job.organization_name || 'Organization'}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={getStatusBadgeVariant(job.status)}>
-                            {job.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {differenceInDays(new Date(), new Date(job.created_at))}d
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center justify-end">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-40">
-                                <DropdownMenuItem onClick={(e) => {
-                                  e.stopPropagation()
-                                  onView(job)
-                                }}>
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  View
-                                </DropdownMenuItem>
-                                <PermissionGate permission="canEditJobs">
-                                  <DropdownMenuItem onClick={(e) => {
-                                    e.stopPropagation()
-                                    onEdit(job)
-                                  }}>
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Edit
-                                  </DropdownMenuItem>
-                                </PermissionGate>
-                                <PermissionGate permission="canArchiveJobs">
-                                  <DropdownMenuItem 
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      onArchive(job.id)
-                                    }}
-                                    className="text-destructive focus:text-destructive"
-                                  >
-                                    <Archive className="h-4 w-4 mr-2" />
-                                    Archive
-                                  </DropdownMenuItem>
-                                </PermissionGate>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Mobile Card View */}
-              <div className="lg:hidden space-y-sm">
-                {paginatedJobs.map((job) => (
-                  <Card key={job.id} className="bg-background transition-all duration-150">
-                    <CardContent className="p-sm">
-                      <div 
-                        className="cursor-pointer" 
-                        onClick={() => onView(job)}
-                      >
-                        <div className="flex items-start justify-between mb-sm">
-                          <div className="min-w-0 flex-1">
-                            <h4 className="font-medium text-text-primary mb-1">{job.title}</h4>
-                            <div className="flex items-center gap-2 text-sm text-text-secondary">
-                              <Building className="h-4 w-4" />
-                              {job.organization_name || 'Organization'}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant={getStatusBadgeVariant(job.status)} className="shrink-0">
-                              {job.status}
-                            </Badge>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-40">
-                                <DropdownMenuItem onClick={(e) => {
-                                  e.stopPropagation()
-                                  onView(job)
-                                }}>
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  View
-                                </DropdownMenuItem>
-                                <PermissionGate permission="canEditJobs">
-                                  <DropdownMenuItem onClick={(e) => {
-                                    e.stopPropagation()
-                                    onEdit(job)
-                                  }}>
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Edit
-                                  </DropdownMenuItem>
-                                </PermissionGate>
-                                <PermissionGate permission="canArchiveJobs">
-                                  <DropdownMenuItem 
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      onArchive(job.id)
-                                    }}
-                                    className="text-destructive focus:text-destructive"
-                                  >
-                                    <Archive className="h-4 w-4 mr-2" />
-                                    Archive
-                                  </DropdownMenuItem>
-                                </PermissionGate>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-
-            {/* Beautiful Enhanced Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="mt-8 space-y-6">
-                {/* Enhanced Pagination Navigation */}
-                <div className="flex justify-center">
-                  <div className="inline-flex items-center bg-surface-primary rounded-brand p-1 gap-1">
-                    {/* Previous Button */}
-                    <button
-                      onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className={`
-                        inline-flex items-center gap-2 px-3 py-2 rounded-brand text-sm font-medium transition-all duration-200 ease-out
-                        ${currentPage === 1 
-                          ? 'text-text-tertiary cursor-not-allowed opacity-50' 
-                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:-translate-y-0.5 hover:shadow-sm active:scale-95'
-                        }
-                      `}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      <span className="hidden sm:inline">Previous</span>
-                    </button>
-
-                    {/* Page Numbers */}
-                    <div className="flex items-center gap-1 px-2">
-                      {getPageNumbers().map((page, index) => (
-                        <div key={index}>
-                          {page === 'ellipsis' ? (
-                            <div className="flex items-center justify-center w-8 h-8 text-text-tertiary">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => setCurrentPage(page)}
-                              className={`
-                                w-8 h-8 rounded-brand text-sm font-medium transition-all duration-200 ease-out
-                                ${currentPage === page
-                                  ? 'bg-accent text-accent-foreground shadow-sm scale-105 font-semibold'
-                                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:-translate-y-0.5 hover:shadow-sm active:scale-95'
-                                }
-                              `}
-                            >
-                              {page}
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Next Button */}
-                    <button
-                      onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className={`
-                        inline-flex items-center gap-2 px-3 py-2 rounded-brand text-sm font-medium transition-all duration-200 ease-out
-                        ${currentPage === totalPages 
-                          ? 'text-text-tertiary cursor-not-allowed opacity-50' 
-                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:-translate-y-0.5 hover:shadow-sm active:scale-95'
-                        }
-                      `}
-                    >
-                      <span className="hidden sm:inline">Next</span>
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Mobile Simplified Pagination */}
-                <div className="sm:hidden flex justify-center">
-                  <div className="inline-flex items-center gap-4 px-4 py-2 bg-surface-secondary/30 rounded-brand backdrop-blur-sm">
-                    <button
-                      onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className={`
-                        p-2 rounded-brand transition-all duration-200
-                        ${currentPage === 1 
-                          ? 'text-text-tertiary cursor-not-allowed opacity-50' 
-                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:scale-105 active:scale-95'
-                        }
-                      `}
-                    >
-                      <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-text-secondary">Page</span>
-                      <span className="font-medium text-text-primary bg-accent/20 px-2 py-1 rounded-brand">
-                        {currentPage}
-                      </span>
-                      <span className="text-text-secondary">of {totalPages}</span>
-                    </div>
-                    
-                    <button
-                      onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className={`
-                        p-2 rounded-brand transition-all duration-200
-                        ${currentPage === totalPages 
-                          ? 'text-text-tertiary cursor-not-allowed opacity-50' 
-                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:scale-105 active:scale-95'
-                        }
-                      `}
-                    >
-                      <ChevronRight className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+            <FilterChipPopover
+              label="Posted"
+              options={postedOptions}
+              selectedValues={postedRange}
+              onSelectionChange={(vals) => setPostedRange(vals.slice(-1))}
+              searchable={false}
+            />
           </>
+        }
+      />
+
+      {/* Desktop table */}
+      <div className="hidden lg:block">
+        <Table density="default">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Job</TableHead>
+              <TableHead>Department</TableHead>
+              <TableHead>Location</TableHead>
+              <TableHead>Stage</TableHead>
+              <TableHead>Pipeline</TableHead>
+              <TableHead className="text-right">Days open</TableHead>
+              <TableHead>Owner</TableHead>
+              <TableHead className="w-[44px] text-right" aria-label="Actions" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableSkeleton rows={5} columns={COLS} />
+            ) : filteredJobs.length === 0 ? (
+              jobs.length === 0 ? (
+                <TableEmpty
+                  colSpan={COLS}
+                  title="No jobs yet"
+                  description="Create your first job to start sourcing and tracking candidates."
+                />
+              ) : (
+                <TableFilteredEmpty
+                  colSpan={COLS}
+                  query={searchTerm}
+                  onClearFilters={clearAll}
+                />
+              )
+            ) : (
+              filteredJobs.map(job => {
+                const days = differenceInDays(new Date(), new Date(job.created_at))
+                const overdue = days >= 21
+                const status = statusBadge(job.status)
+                const count = countsMap[job.id] ?? 0
+                const owner = job.hiring_team_names?.[0] || job.organization_name || '—'
+                const trending = count >= 20 // simple, real signal
+                const employmentType = job.department ? 'Full-time' : 'Full-time'
+                return (
+                  <TableRow
+                    key={job.id}
+                    interactive
+                    className="group cursor-pointer"
+                    onClick={() => onView(job)}
+                  >
+                    <TableCell>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <IdentityCell
+                          name={
+                            <span className="inline-flex items-center gap-2">
+                              <span className="truncate">{job.title}</span>
+                              {trending && (
+                                <Badge tone="purple" size="xs">Trending</Badge>
+                              )}
+                            </span>
+                          }
+                          sub={`${employmentType} · ${count} candidate${count === 1 ? '' : 's'}`}
+                          fallback={job.title}
+                        />
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-text-secondary">{job.department || '—'}</TableCell>
+                    <TableCell className="text-text-secondary">
+                      {job.location ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <MapPin className="h-3.5 w-3.5 text-text-tertiary" />
+                          {job.location}
+                        </span>
+                      ) : '—'}
+                    </TableCell>
+                    <TableCell>
+                      <StatusCell>
+                        <Badge tone={status.tone} dot size="sm">{status.label}</Badge>
+                      </StatusCell>
+                    </TableCell>
+                    <TableCell>
+                      <PipelineBar count={count} max={maxCount} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <NumericCell className={overdue ? 'text-destructive' : 'text-text-secondary'}>
+                        {days}d
+                      </NumericCell>
+                    </TableCell>
+                    <TableCell>
+                      <ComposedCell>
+                        <AvatarStack people={[{ name: owner }]} size={22} />
+                        <span className="text-table-cell text-text-primary truncate">{owner}</span>
+                      </ComposedCell>
+                    </TableCell>
+                    <TableCell className="w-[44px] text-right">
+                      <ActionCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <Button variant="ghost" size="xs" iconOnly icon={MoreHorizontal} aria-label="Job actions" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onView(job) }}>
+                              <Eye className="h-4 w-4 mr-2" /> View
+                            </DropdownMenuItem>
+                            <PermissionGate permission="canEditJobs">
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(job) }}>
+                                <Edit className="h-4 w-4 mr-2" /> Edit
+                              </DropdownMenuItem>
+                            </PermissionGate>
+                            <PermissionGate permission="canArchiveJobs">
+                              <DropdownMenuItem
+                                onClick={(e) => { e.stopPropagation(); onArchive(job.id) }}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Archive className="h-4 w-4 mr-2" /> Archive
+                              </DropdownMenuItem>
+                            </PermissionGate>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </ActionCell>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
+            )}
+          </TableBody>
+        </Table>
+
+        {filteredJobs.length > 0 && !isLoading && (
+          <TableFooterSummary
+            rangeStart={1}
+            rangeEnd={filteredJobs.length}
+            total={jobs.length}
+            entityLabel="jobs"
+          />
         )}
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Mobile card view */}
+      <div className="lg:hidden space-y-2">
+        {isLoading ? (
+          <Card><CardContent className="p-4 text-text-tertiary text-sm">Loading…</CardContent></Card>
+        ) : filteredJobs.length === 0 ? (
+          <Card><CardContent className="p-6 text-center text-text-tertiary text-sm">
+            {jobs.length === 0 ? 'No jobs yet.' : 'No jobs match your filters.'}
+          </CardContent></Card>
+        ) : (
+          filteredJobs.map(job => {
+            const status = statusBadge(job.status)
+            const count = countsMap[job.id] ?? 0
+            return (
+              <Card key={job.id} className="bg-white" onClick={() => onView(job)}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-poppins font-semibold text-[14px] text-text-primary truncate">{job.title}</h4>
+                      </div>
+                      <div className="text-[12px] text-text-tertiary mt-0.5 truncate">
+                        {(job.department || 'Full-time')} · {count} candidate{count === 1 ? '' : 's'}
+                      </div>
+                    </div>
+                    <Badge tone={status.tone} dot size="sm">{status.label}</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })
+        )}
+      </div>
+    </div>
   )
 }
