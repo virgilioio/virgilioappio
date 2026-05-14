@@ -1,4 +1,4 @@
-import { ArrowRight, ClipboardCheck, Calendar, Mail, FileText, ThumbsDown, MoreHorizontal, Edit, Download, RotateCcw, Check as CheckIcon } from 'lucide-react'
+import { ArrowRight, ClipboardCheck, Calendar, Mail, FileText, ThumbsDown, MoreHorizontal, Edit, Download, RotateCcw, Check as CheckIcon, ArrowRightLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 
@@ -19,19 +19,26 @@ interface ProfileActionBarProps {
   onMoveToOffer?: () => void
   onReturnToPipeline?: () => void
   onHire?: () => void
+  onAddOrTransfer?: () => void
   canEdit?: boolean
 }
 
 export function ProfileActionBar({
   nextStageLabel, onAdvance, onSubmitScorecard, onSchedule, onEmail,
   onCreateOffer, onReject, isOfferStatus, isRejected, isHired,
-  onEdit, onDownload, onMoveToOffer, onReturnToPipeline, onHire, canEdit,
+  onEdit, onDownload, onMoveToOffer, onReturnToPipeline, onHire, onAddOrTransfer, canEdit,
 }: ProfileActionBarProps) {
   return (
     <div className="flex items-center justify-between gap-2 flex-wrap">
       <div className="flex items-center gap-2 flex-wrap">
         {nextStageLabel && !isRejected && !isHired && (
-          <Button variant="primary" size="md" iconRight={ArrowRight} onClick={onAdvance}>
+          <Button
+            variant="primary"
+            size="md"
+            iconRight={ArrowRight}
+            onClick={onAdvance}
+            className="!text-[#fffcf9] [&_svg]:!text-[#fffcf9]"
+          >
             Advance to {nextStageLabel}
           </Button>
         )}
@@ -62,6 +69,27 @@ export function ProfileActionBar({
             <Button variant="secondary" size="md" iconOnly aria-label="More actions" icon={MoreHorizontal} />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
+            {onAddOrTransfer && (
+              <DropdownMenuItem onClick={onAddOrTransfer}>
+                <ArrowRightLeft className="h-4 w-4 mr-2" /> Add / Transfer to job
+              </DropdownMenuItem>
+            )}
+            {!isOfferStatus && !isRejected && !isHired && onMoveToOffer && (
+              <DropdownMenuItem onClick={onMoveToOffer}>
+                <ArrowRight className="h-4 w-4 mr-2" /> Move to offer
+              </DropdownMenuItem>
+            )}
+            {isOfferStatus && onReturnToPipeline && (
+              <DropdownMenuItem onClick={onReturnToPipeline}>
+                <RotateCcw className="h-4 w-4 mr-2" /> Return to pipeline
+              </DropdownMenuItem>
+            )}
+            {isOfferStatus && onHire && (
+              <DropdownMenuItem onClick={onHire}>
+                <CheckIcon className="h-4 w-4 mr-2" /> Mark as hired
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
             {canEdit && onEdit && (
               <DropdownMenuItem onClick={onEdit}>
                 <Edit className="h-4 w-4 mr-2" /> Edit candidate
@@ -70,27 +98,6 @@ export function ProfileActionBar({
             {onDownload && (
               <DropdownMenuItem onClick={onDownload}>
                 <Download className="h-4 w-4 mr-2" /> Download profile
-              </DropdownMenuItem>
-            )}
-            {!isOfferStatus && !isRejected && !isHired && onMoveToOffer && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onMoveToOffer}>
-                  <ArrowRight className="h-4 w-4 mr-2" /> Move to offer
-                </DropdownMenuItem>
-              </>
-            )}
-            {isOfferStatus && onReturnToPipeline && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onReturnToPipeline}>
-                  <RotateCcw className="h-4 w-4 mr-2" /> Return to pipeline
-                </DropdownMenuItem>
-              </>
-            )}
-            {isOfferStatus && onHire && (
-              <DropdownMenuItem onClick={onHire}>
-                <CheckIcon className="h-4 w-4 mr-2" /> Mark as hired
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>

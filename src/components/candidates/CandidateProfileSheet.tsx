@@ -154,6 +154,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [education, setEducation] = useState<CandidateEducation[]>([])
   const [certifications, setCertifications] = useState<CandidateCertification[]>([])
   const [editOpen, setEditOpen] = useState(false)
+  const [addTransferOpen, setAddTransferOpen] = useState(false)
   const [editLoading, setEditLoading] = useState(false)
   const { updateAssociationStatus, moveAssociationToStage, createAssociationAndMove } = usePipelineActions()
   const [associationId, setAssociationId] = useState<string | null>(null)
@@ -1057,11 +1058,25 @@ const stageHasAutomation = useMemo(() => {
     window.location.href = url.toString()
   }
 
+  if (!open) return null
+
   return (
     <>
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-[96vw] sm:max-w-none h-full p-0" showOverlay={false}>
-        <div className="flex h-full w-full">
+    <div className="fixed inset-0 z-40 bg-background overflow-hidden">
+      <div className="flex h-full w-full">
+        {candidate && jobId && candidate.id && job && (
+          <AddOrTransferCandidateDialog
+            open={addTransferOpen}
+            onOpenChange={setAddTransferOpen}
+            candidateId={candidate.id}
+            candidateName={`${candidate.first_name || ''} ${candidate.last_name || ''}`.trim() || candidate.candidate_name || 'Candidate'}
+            currentJobId={jobId}
+            currentJobTitle={job.title}
+            hasNextCandidate={hasNext}
+            onNavigateNext={onNavigateNext}
+            onClose={() => onOpenChange(false)}
+          />
+        )}
           {/* Job Navigation Sidebar - desktop only */}
           {candidateId && !isRestrictedViewer && (
             <CandidateJobSidebar
@@ -1145,6 +1160,7 @@ const stageHasAutomation = useMemo(() => {
                       onMoveToOffer={handleMoveToOffer}
                       onReturnToPipeline={handleReturnToPipeline}
                       onHire={handleHire}
+                      onAddOrTransfer={associationId && jobId && candidate.id && job ? () => setAddTransferOpen(true) : undefined}
                       canEdit={canEditCandidates}
                     />
                   </ProfileHeroCard>
@@ -2008,8 +2024,7 @@ const stageHasAutomation = useMemo(() => {
           organizationId={organizationId}
         />
       )}
-      </SheetContent>
-    </Sheet>
+    </div>
 
     {/* Offer Delete Warning Dialog */}
     <AlertDialog open={showOfferDeleteWarning} onOpenChange={(open) => {
