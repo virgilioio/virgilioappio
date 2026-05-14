@@ -13,6 +13,8 @@ import { JobDetailFloatingSidebar } from '@/components/jobs/JobDetailFloatingSid
 
 import { JobDetailMobileHeader } from '@/components/jobs/JobDetailMobileHeader'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { JobHero } from '@/components/jobs/JobHero'
+import { PipelineSectionTabs, type PipelineSection } from '@/components/jobs/PipelineSectionTabs'
 
 import { CandidateTable } from '@/components/candidates/CandidateTable'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
