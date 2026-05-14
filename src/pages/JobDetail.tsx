@@ -12,7 +12,7 @@ import { useJobSourcingProject } from '@/hooks/useJobSourcingProject'
 import { JobSetupLayout } from '@/components/jobs/JobSetupLayout'
 
 import { JobDetailMobileHeader } from '@/components/jobs/JobDetailMobileHeader'
-import { PageHeader } from '@/components/layout/PageHeader'
+
 import { JobHero } from '@/components/jobs/JobHero'
 import { PipelineSectionTabs, type PipelineSection } from '@/components/jobs/PipelineSectionTabs'
 
