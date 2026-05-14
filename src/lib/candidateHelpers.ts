@@ -352,3 +352,44 @@ export async function createJobAssociation(
 
   log.debug('Created job association')
 }
+
+/**
+ * Format candidate salary expectation as a short display string.
+ * Examples: "$185k / yr", "€90k / yr", "$50 / hr".
+ * Returns null when amount is missing.
+ */
+export function formatSalaryExpectation(c: {
+  salary_amount?: number | string | null
+  salary_currency?: string | null
+  salary_period?: string | null
+} | null | undefined): string | null {
+  if (!c) return null
+  const raw = c.salary_amount
+  const amount = typeof raw === 'string' ? parseFloat(raw) : raw
+  if (!amount || isNaN(amount as number)) return null
+
+  const currency = (c.salary_currency || 'USD').toUpperCase()
+  let symbol = currency
+  try {
+    const parts = new Intl.NumberFormat(undefined, { style: 'currency', currency, currencyDisplay: 'narrowSymbol' })
+      .formatToParts(0)
+    const s = parts.find(p => p.type === 'currency')?.value
+    if (s) symbol = s
+  } catch { /* fallback to code */ }
+
+  const periodRaw = (c.salary_period || 'year').toLowerCase()
+  const periodSuffix = periodRaw.startsWith('hour') || periodRaw === 'hr'
+    ? 'hr'
+    : periodRaw.startsWith('month') || periodRaw === 'mo'
+      ? 'mo'
+      : periodRaw.startsWith('week') || periodRaw === 'wk'
+        ? 'wk'
+        : 'yr'
+
+  const n = amount as number
+  const display = n >= 1000
+    ? `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1).replace(/\.0$/, '')}k`
+    : `${n}`
+
+  return `${symbol}${display} / ${periodSuffix}`
+}
