@@ -9,7 +9,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import {
-  StatusCell, NumericCell, ComposedCell, AvatarStack, ActionCell,
+  IdentityCell, StatusCell, NumericCell, ComposedCell, AvatarStack, ActionCell,
 } from '@/components/ui/table-cells'
 import { TableSkeleton, TableEmpty, TableFilteredEmpty } from '@/components/ui/table-states'
 import { TableFooterSummary } from '@/components/ui/table-pagination'
