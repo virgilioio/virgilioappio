@@ -759,45 +759,45 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
               {/* Render columns with candidate cards */}
               {stageOptions.map((opt) => (
                 <div key={opt.jhsId} className="group w-[calc(100vw-3rem)] sm:w-72 flex-shrink-0 h-full flex flex-col snap-center sm:snap-align-none">
-                  <div className="px-1 pb-2 pt-1 shrink-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className={`h-2 w-2 rounded-full flex-shrink-0 ${getStageDotColor(opt.stage.stage_type)}`} aria-hidden />
-                        <span className="font-poppins text-[14px] font-semibold text-text-primary truncate" title={opt.stage.stage_name}>
-                          {opt.stage.stage_name}
-                        </span>
-                        <span className="text-[12px] font-medium text-text-tertiary tabular-nums">
-                          {(sortedByStage[opt.jhsId] || []).length}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {stageHasAutomation.get(opt.jhsId) && (
-                          <Zap className="h-3.5 w-3.5 text-virgilio-purple fill-virgilio-purple flex-shrink-0" />
-                        )}
-                        {selectionMode && (
-                          <div className="flex items-center gap-1.5 pr-1" onClick={(e) => e.stopPropagation()}>
-                            <Checkbox
-                              checked={(sortedByStage[opt.jhsId] || []).length > 0 && (sortedByStage[opt.jhsId] || []).every(a => isSelected(a.id))}
-                              onCheckedChange={() => selectAllInStage(opt.jhsId)}
-                              aria-label="Select all in stage"
-                            />
-                          </div>
-                        )}
-                        <button
-                          type="button"
-                          aria-label="Stage actions"
-                          className="h-6 w-6 inline-flex items-center justify-center rounded-md text-text-tertiary hover:bg-[#F1F0EC] hover:text-text-primary transition-colors opacity-0 group-hover:opacity-100"
-                        >
-                          <span className="text-base leading-none">···</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex-1 overflow-y-auto flex flex-col">
+                  <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
                     <ColumnShell
                       id={opt.jhsId}
                       stageType={opt.stage.stage_type}
                       isEmpty={!sortedByStage[opt.jhsId] || sortedByStage[opt.jhsId].length === 0}
+                      header={
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className={`h-2 w-2 rounded-full flex-shrink-0 ${getStageDotColor(opt.stage.stage_type)}`} aria-hidden />
+                            <span className="font-poppins text-[14px] font-semibold text-text-primary truncate" title={opt.stage.stage_name}>
+                              {opt.stage.stage_name}
+                            </span>
+                            <span className="text-[12px] font-medium text-text-tertiary tabular-nums">
+                              {(sortedByStage[opt.jhsId] || []).length}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {stageHasAutomation.get(opt.jhsId) && (
+                              <Zap className="h-3.5 w-3.5 text-virgilio-purple fill-virgilio-purple flex-shrink-0" />
+                            )}
+                            {selectionMode && (
+                              <div className="flex items-center gap-1.5 pr-1" onClick={(e) => e.stopPropagation()}>
+                                <Checkbox
+                                  checked={(sortedByStage[opt.jhsId] || []).length > 0 && (sortedByStage[opt.jhsId] || []).every(a => isSelected(a.id))}
+                                  onCheckedChange={() => selectAllInStage(opt.jhsId)}
+                                  aria-label="Select all in stage"
+                                />
+                              </div>
+                            )}
+                            <button
+                              type="button"
+                              aria-label="Stage actions"
+                              className="h-6 w-6 inline-flex items-center justify-center rounded-md text-text-tertiary hover:bg-[#F1F0EC] hover:text-text-primary transition-colors opacity-0 group-hover:opacity-100"
+                            >
+                              <span className="text-base leading-none">···</span>
+                            </button>
+                          </div>
+                        </div>
+                      }
                     >
                       <div className="space-y-2">
                         {(sortedByStage[opt.jhsId] || []).map(assoc => {
