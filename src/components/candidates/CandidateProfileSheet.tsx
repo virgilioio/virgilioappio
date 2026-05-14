@@ -1055,7 +1055,7 @@ const stageHasAutomation = useMemo(() => {
 
   return (
     <>
-    <div className="fixed inset-0 z-40 bg-background overflow-hidden">
+    <div className="fixed top-[4.5rem] left-3 right-3 bottom-3 sm:left-[5.5rem] z-40 bg-background overflow-hidden rounded-2xl ring-1 ring-virgilio-border/60 shadow-calendly">
       <div className="flex h-full w-full">
         {candidate && jobId && candidate.id && job && (
           <AddOrTransferCandidateDialog
