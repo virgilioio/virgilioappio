@@ -851,30 +851,33 @@ export default function JobDetail() {
           </div>
         )}
 
-        {!isMobile && (
-          <div className="mb-2 animate-fade-in">
-            <JobHero
-              title={job.title}
-              status={job.status}
-              department={(job as any).organization_name || (job as any).organization?.name || (job as any).department || null}
-              location={job.location}
-              createdAt={job.created_at}
-              hiringTeam={(job.hiring_team as any[]) || []}
-              onShare={() => {}}
-              onViewPosting={() => {}}
-              onAddCandidate={() => setShowAddCandidate(true)}
-              onMoreActions={() => setShowEditJobModal(true)}
-              canEdit={!isRestrictedViewer}
-            />
-          </div>
-        )}
-
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
           className="w-full flex-1 min-h-0 flex flex-col overflow-hidden"
         >
-          {/* Underlined top tabs — same on mobile and desktop */}
+          {!isMobile && (
+            <div className="mb-3 bg-white border border-virgilio-border rounded-2xl shadow-sm px-6 pt-5 animate-fade-in shrink-0">
+              <JobHero
+                title={job.title}
+                status={job.status}
+                department={(job as any).organization_name || (job as any).organization?.name || (job as any).department || null}
+                location={job.location}
+                createdAt={job.created_at}
+                hiringTeam={(job.hiring_team as any[]) || []}
+                onShare={() => {}}
+                onViewPosting={() => {}}
+                onAddCandidate={() => setShowAddCandidate(true)}
+                onMoreActions={() => setShowEditJobModal(true)}
+                canEdit={!isRestrictedViewer}
+              />
+              <TabsList className="h-auto bg-transparent p-0 shadow-none border-0 rounded-none w-full justify-start gap-6 mt-4 shrink-0">
+                <TabsTriggerProxy />
+              </TabsList>
+            </div>
+          )}
+          {/* Mobile underlined top tabs */}
+          {isMobile && (
           <TabsList className="h-auto bg-transparent p-0 shadow-none border-0 border-b border-virgilio-border rounded-none w-full justify-start gap-6 mb-3 shrink-0">
             <TabsTrigger
               value="pipeline"
