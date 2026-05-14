@@ -1,97 +1,79 @@
+# Job page — kill the side menu, finish the mockups
 
-# Job Detail Visual Redesign
+Frontend-only. No data, hooks, RLS, or routes change. We're realigning navigation and three tab surfaces (Pipeline, Job Dashboard, Setup) to the screenshots.
 
-Goal: replicate the three uploaded screens (`05_Pipeline_board_view`, `06_Application_Review`, `07_Job_Setup`) on `/jobs/:id`. **Frontend only — no schema, hook, or query changes.** Reuse existing primitives (`Button`, `Badge`, `PageHeader`, `Tabs`, `Card`, `Avatar`, `Table*`, `TableToolbar`, `TableSearch`, `IdentityCell`, `StatusCell`, `Alert`, `Breadcrumb`). Only edit/extend visuals.
+## 1. Remove the floating side menu
 
-## What the mockups establish (and what we're missing today)
+- Delete `src/components/jobs/JobDetailFloatingSidebar.tsx` and all imports/usages in `src/pages/JobDetail.tsx`.
+- Drop the side rail wrapper around the page body. The page becomes a single column under `JobHero`.
+- Move the Sourcing Project shortcut (currently inside the floating sidebar) into `JobHero`'s right action cluster as a small `ghost` button (single project → link, multiple → popover) — preserves access without the rail.
 
-### A. Job hero (all three screens)
-Current: `PageHeader title compact` shows nothing visible; title+meta+actions are scattered.
-Target:
-- Breadcrumb: `Jobs › <Department>`  (small, muted)
-- H1 `Senior Product Designer` + purple period accent (Poppins, ~32px)
-- Meta row (sm body, muted): Open dot-badge · `📍 Remote · US` · `🏢 Design` · `🕐 Posted 9 days ago` · `Hiring team` + avatar stack
-- Right cluster: `Share` (secondary), `View posting` (secondary, ext-link icon), `Add candidate` (primary black), `…` overflow
+## 2. Top-level tabs (desktop + mobile, identical)
 
-### B. Top tabs
-Current: mobile = 3-grid TabsList; desktop = no top tabs (sub-tabs only).
-Target: plain underlined Tabs everywhere — `Pipeline` · `Job Dashboard` · `Setup`. Active = bold + 2px black underline (the existing default `<TabsList variant>` works once we strip the grid styling).
+Replace the current desktop "no tabs" branch and the mobile 3-grid with a single underlined `Tabs` matching the mockup:
 
-### C. Pipeline tab — section row (Suggested / Application review / Recruiting process / Job offers / Hired / Rejected)
-Current: huge h-14 grid with neon gradients and pulsing glow.
-Target: single horizontal pill row inside a white surface with hairline border:
-- Each item = label + small dark count chip (`bg-citron-noir text-cream`) right-aligned
-- Inactive = transparent
-- Active = filled tonal pill (`bg-pastel-purple` for application, `bg-pastel-yellow` for recruiting, `bg-pastel-blue` for offers, `bg-success/15` for hired, `bg-destructive/15` for rejected, `bg-pastel-purple/40` for suggested) with `Sparkles` only on Suggested
-- Use existing `Badge` for the count chip, `cn`-built button-style triggers (no new component)
+```
+Pipeline    Job Dashboard    Setup
+─────────
+```
 
-### D. Pipeline toolbar (above board/table)
-Current: `CardHeader` with "Pipeline Overview" title + paragraph + buttons.
-Target: flat toolbar (no card title):
-- Left: `TableSearch` placeholder "Search in pipeline..." + filter pill `2 filters`
-- Right: Board/List segmented (rounded-full, existing `ToggleGroup` restyled to match), `Select` (secondary), `Add candidate` (primary black)
-- Drop the "Pipeline Overview" h1 + helper paragraph
+- Underline-style triggers (no boxed/pill background), `text-h5` weight, active = bold + 2px purple/foreground underline. Reuse existing `Tabs` primitive; style via local `TabsList`/`TabsTrigger` className overrides — no new component.
+- Restricted viewers (HM/Interviewer): only `Pipeline` is shown.
 
-### E. Pipeline board cards & columns
-Current cards already close; column chrome differs.
-Target column header (in `PipelineOverview`):
-- Colored dot (uses stage type color) + bold stage name + small muted count + `…` button
-- No card border on column wrapper; instead a vertical container with subtle hairline rule between columns
-- Empty drop zone: 2px dashed `border-border` rounded-lg button "+ Add candidate" at column bottom (already exists; restyle to match)
-Card body tweaks (`CandidateCard.tsx`): purple avatar fallback, name bold, title @ company in muted, footer row `✦ <score>`  · `🕐 Xd` (left) and optional `Due tmrw`/heart (right). Strip extra chrome that doesn't appear in the mockup (move-to-stage select, status badges) — keep them only in list view.
+## 3. Pipeline tab
 
-### F. Application review tab (sub-tab `application`, list mode)
-Target structure:
-1. Lilac AI banner (existing `Alert` variant or `<UnifiedAIBanner>`):
-   - Sparkle icon, title "Gio has reviewed N new applications", subtitle "X ranked strong fit · Y worth review · Z likely no-fit. Sorted by AI fit score by default."
-   - Right: purple `Review queue` button + close
-2. Toolbar: `TableSearch` + Sort `Select` + spacer + counter text "N in queue · X over Y days" + black `Start review` button
-3. Data table using new Gio table primitives:
-   - Columns: `#` (NumericCell), `CANDIDATE` (IdentityCell), `TOP SKILLS` (badge stack + `+N`), `AI FIT` (NumericCell colored by score with mini sparkline placeholder), `APPLIED` (relative time), `STATUS` (StatusCell with mail icon), `ACTIONS` (reject `×` outline + accept `✓` solid black, ActionCell pattern but always-visible)
-   - Row hover = flat fill, selected = purple left rail (already in `Table` v1)
+Already partly built. Remaining gaps vs `05_Pipeline_board_view`:
 
-### G. Setup tab
-Current: `JobSetupPanel` with 4 inner sub-tabs (Overview / Hiring Team / Hiring Plan / Job Postings).
-Target: single scroll, 2-column layout (main 2/3 + rail 1/3):
-- Main column:
-  - **Job description** card with `Edit` button top-right; reuses `JobOverviewTab` description block
-  - **Hiring stages** card with `Add stage` button; rows = drag handle · numbered colored circle (1,2,3 with stage color) · name + sub-line · `…` per row. Reuses `HiringPlanTab` content but restyled
-- Right rail (sticky):
-  - **Status** card: Status (Open dot-badge) · Posted · Target start · Slots
-  - **Compensation** card: huge `$185k – $210k`, sub "base · plus equity & bonus", lilac AI insight banner
-  - **Hiring team** card with `+ Add` and member rows (avatar · name · role)
-- Hiring Team & Job Postings move into separate routes/sheets later (out of scope) — for now keep them accessible via their current entry points and just restructure the Setup landing.
+- **Section row (`PipelineSectionTabs`)**: confirm hairline border container, count chips with the right tone per section (Suggested = `Sparkles` icon + neutral count, Application = `pastel-purple`, Recruiting = `pastel-yellow`, Offers = `pastel-blue`, Hired = `success/15`, Rejected = `destructive/15`), active = filled pastel background.
+- **Toolbar**: replace the `CardHeader` "Pipeline Overview" + paragraph with a flat toolbar row using existing `TableToolbar`, `TableSearch`, `TableSegmented` (Board/List), a `Select` for sort, and `<Button variant="primary" icon={UserPlus}>Add candidate</Button>`. Keep `2 filters` pill via `TableFilterPills`.
+- **Board columns** (`PipelineOverview.tsx`): column header = colored dot (`getStageDotColor`) + bold stage name + muted count, no card chrome around the column body, dashed `+ Add candidate` drop zone at the bottom of each column.
+- **Card** (`CandidateCard.tsx`): trim to mockup — avatar, name (semibold), `Title @ Company` muted, footer row `✦ <score>` + `🕐 Xd` (+ `Due tmrw` chip / heart when applicable). Drop extra meta.
 
-## Files to edit (frontend only)
+## 4. Application Review (inside Pipeline → Application section)
 
-1. `src/pages/JobDetail.tsx`
-   - New job hero block (breadcrumb + title + meta + right action cluster) replacing current `PageHeader compact`.
-   - Replace top `TabsList` with a single underlined `Tabs` (Pipeline / Job Dashboard / Setup) on both mobile and desktop.
-   - Replace the colored sub-tab grid with a new local `<PipelineSectionTabs>` pill row.
-   - Replace `Card`-titled pipeline header with a flat toolbar.
-   - Application sub-tab: render new `<ApplicationReviewSection>` block (banner + toolbar + table) instead of the current generic kanban view.
+Build this surface to match `06_Application_Review`:
 
-2. `src/components/jobs/PipelineOverview.tsx`
-   - Restyle column header (dot + name + count + `…`); drop card chrome around columns; add hairline divider.
-   - Restyle list-view drop button.
+- **Lilac AI banner** above the toolbar using existing `Alert` + standardized AI banner styles (Sparkles icon, "Gio has reviewed N new applications", subtitle "X ranked strong fit · Y worth review · Z likely no-fit. Sorted by AI fit score by default.", right-aligned `Review queue` purple button, dismiss `×`).
+- **Toolbar**: `TableSearch` ("Search applicants…"), `Select` "Sort: AI fit · descending", right side muted text "N in queue · M over 5 days" + `Start review` primary button.
+- **Table** (reusing `Table` + cell primitives, density="default"):
+  - Columns: `#`, `CANDIDATE` (`IdentityCell` with avatar + name + `Title · Company`), `TOP SKILLS` (Badge row + `+N` overflow), `AI FIT` (numeric + tiny inline trend sparkline — render as colored SVG path, no library), `APPLIED` (relative `Xd`), `STATUS` (`StatusCell` with mail icon + label e.g. "AI summary ready", "Auto-screened ✓", "Awaiting screen", "Low fit · review"), `ACTIONS` (`ActionCell` with red ghost `X` + primary black `✓`).
+  - Selected row uses the standard 2px purple left rail.
 
-3. `src/components/jobs/CandidateCard.tsx`
-   - Trim card to mockup: avatar / name / title @ company / footer (score · time · heart/Due).
-   - Hide stage selector + extra status icons in board view (still shown in list view).
+## 5. Setup tab — full rebuild
 
-4. `src/components/jobs/JobSetupPanel.tsx`
-   - Replace inner `Tabs` with the 2-column Setup layout described above.
-   - Reuse `JobOverviewTab` description, `HiringPlanTab` for stages, new local sidebar cards for Status / Compensation / Hiring team (composed from `Card`, `Badge`, `Avatar`).
+Discard `JobSetupPanel`'s internal sub-tabs (Overview / Hiring Team / Hiring Plan / Job Postings). The Setup tab becomes one screen matching `07_Job_Setup`:
 
-5. `src/components/layout/PageHeader.tsx`
-   - Extend (don't break) to optionally accept `breadcrumb`, `meta`, and `actions` slots, OR build the hero inline in `JobDetail.tsx` to avoid impacting other pages. **Decision**: build inline in `JobDetail.tsx` to keep `PageHeader` shared semantics intact.
+- 2-column grid `lg:grid-cols-3`:
+  - **Main (col-span-2)**:
+    - `Job description` card — title left, `Edit` ghost button right, body renders the description (bullet lists, headings) from `JobOverviewTab` data. Reuse existing rich-text rendering.
+    - `Hiring stages` card — title left, `+ Add stage` ghost button right. List of stage rows with drag handle, numbered colored circle (uses stage dot color), stage name (bold) + sub-label ("Auto-screened by Gio", "30 min · Recruiter", "5–7 day async", …), trailing `…` menu. This is the existing hiring-plan editor restyled to a flat list — no card-in-card.
+  - **Right rail (col-span-1)**:
+    - `Status` card: rows for Status (open badge), Posted (Xd ago), Target start, Slots ("1 of 2 filled").
+    - `Compensation` card: large centered `$185k – $210k`, `base · plus equity & bonus` muted line, lilac AI insight chip (`Above market median for SF · 80th percentile in NYC`).
+    - `Hiring team` card: title + `+ Add` ghost button, member rows with avatar + name + role label.
+- Postings move into a `…` overflow on the Setup header (or are accessible from `JobHero`'s `View posting`); we are not creating a new tab for them in this pass.
+- `HiringTeamTab`, `HiringPlanTab`, `JobOverviewTab`, `JobPostingsTab` files stay — we reuse their data wiring inside the new Setup layout instead of mounting them whole.
+
+## 6. Mobile parity
+
+- Same three top tabs, same Setup layout but stacked single-column (rail cards drop below main).
+- Pipeline mobile keeps the existing `Select` section picker but switches the trigger styling to a plain underlined dropdown to match the section pills visually.
+- Drop `JobDetailMobileHeader`'s "menu" affordance (no more side menu to open).
+
+## Files
+
+- delete: `src/components/jobs/JobDetailFloatingSidebar.tsx`
+- edit: `src/pages/JobDetail.tsx` (remove sidebar + restricted side rail, rewire top tabs, plug new Setup layout, mount new ApplicationReviewSection)
+- edit: `src/components/jobs/JobHero.tsx` (add Sourcing Project entry point)
+- edit: `src/components/jobs/PipelineSectionTabs.tsx` (tone polish per mockup)
+- edit: `src/components/jobs/PipelineOverview.tsx` (toolbar swap, column header restyle, dashed add-candidate dropzone)
+- edit: `src/components/jobs/CandidateCard.tsx` (trim to mockup)
+- new: `src/components/jobs/ApplicationReviewSection.tsx` (banner + toolbar + table, uses existing primitives only)
+- new: `src/components/jobs/JobSetupLayout.tsx` (2-col layout: Job Description + Hiring Stages on left; Status/Compensation/Hiring Team rail on right) — replaces `JobSetupPanel` as the Setup tab content
+- edit: `src/components/jobs/JobDetailMobileHeader.tsx` (remove menu toggle)
 
 ## Out of scope
-- No backend, hook, query, or schema changes.
-- No new tables, RLS, or routes.
-- No re-architecting of `HiringPlanTab` / `HiringTeamTab` / `JobPostingsTab` internals — they're reused as-is or via lighter wrappers.
-- Mobile parity will use the same primitives (toolbar collapses, sidebar stacks under main).
 
-## Risks
-- `PipelineOverview` is large (994 lines) — visual changes only, no logic edits.
-- Application review currently lives behind `ApplicationReviewSheet`; the new in-tab table reads from the same data source (`applicationReviewCandidates`) already loaded in `JobDetail.tsx`.
+- No backend, no schema, no new hooks/queries, no route changes.
+- No edits to `HiringTeamTab` / `HiringPlanTab` / `JobOverviewTab` / `JobPostingsTab` internals beyond what's needed to embed their UI inside the new Setup layout.
+- Job Postings tab is folded under Setup overflow for now; full Postings redesign is a separate pass.
