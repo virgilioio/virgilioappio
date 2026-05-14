@@ -80,7 +80,7 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/comp
 
 import { ProfileHeroCard } from '@/components/candidates/profile/ProfileHeroCard'
 import { ProfileStageStrip } from '@/components/candidates/profile/ProfileStageStrip'
-import { ProfileActionBar } from '@/components/candidates/profile/ProfileActionBar'
+
 import { ProfileQuickActionsCard } from '@/components/candidates/profile/ProfileQuickActionsCard'
 import { ProfileApplicationCard } from '@/components/candidates/profile/ProfileApplicationCard'
 import { ProfileTabs } from '@/components/candidates/profile/ProfileTabs'
