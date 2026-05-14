@@ -2024,8 +2024,8 @@ const stageHasAutomation = useMemo(() => {
           organizationId={organizationId}
         />
       )}
-      </SheetContent>
-    </Sheet>
+      </div>
+    </div>
 
     {/* Offer Delete Warning Dialog */}
     <AlertDialog open={showOfferDeleteWarning} onOpenChange={(open) => {
