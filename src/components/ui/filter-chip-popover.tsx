@@ -21,6 +21,8 @@ interface FilterChipPopoverProps {
   searchThreshold?: number
   maxVisible?: number
   className?: string
+  /** Visual style. `pill` (default) = legacy rounded-full subtle. `soft` = rounded-lg white + hairline, matches Jobs page mockup. */
+  variant?: 'pill' | 'soft'
 }
 
 export function FilterChipPopover({
@@ -32,6 +34,7 @@ export function FilterChipPopover({
   searchThreshold = 8,
   maxVisible = 8,
   className,
+  variant = 'pill',
 }: FilterChipPopoverProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
