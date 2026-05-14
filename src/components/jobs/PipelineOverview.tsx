@@ -89,11 +89,13 @@ function ColumnShell({
   id,
   stageType,
   isEmpty,
+  header,
   children,
 }: {
   id: string
   stageType: string
   isEmpty: boolean
+  header: React.ReactNode
   children: React.ReactNode
 }) {
   const { isOver, setNodeRef } = useDroppable({ id })
@@ -102,17 +104,21 @@ function ColumnShell({
     <div
       ref={setNodeRef}
       className={cn(
-        'relative flex flex-col gap-2 rounded-2xl border border-virgilio-border/60 bg-[#FAFAF7] p-2 transition-colors duration-150',
+        'relative flex flex-col rounded-2xl border border-virgilio-border bg-white transition-colors duration-150 overflow-hidden',
         isOver && cn(tone.bg, 'ring-1 ring-inset', tone.ring)
       )}
     >
-      {isOver && (
-        <div className={cn('pointer-events-none absolute inset-1.5 rounded-xl border border-dashed', tone.outline)} />
-      )}
-      {isEmpty && !isOver && (
-        <div className="pointer-events-none absolute inset-1.5 rounded-xl border border-dashed border-virgilio-border/50" />
-      )}
-      <div className="relative z-10 flex flex-col gap-2 min-h-[140px]">{children}</div>
+      <div className="px-3 py-2.5 shrink-0">{header}</div>
+      <div className="border-t border-virgilio-border" />
+      <div className="relative p-2 flex-1">
+        {isOver && (
+          <div className={cn('pointer-events-none absolute inset-1.5 rounded-xl border border-dashed', tone.outline)} />
+        )}
+        {isEmpty && !isOver && (
+          <div className="pointer-events-none absolute inset-1.5 rounded-xl border border-dashed border-virgilio-border/60" />
+        )}
+        <div className="relative z-10 flex flex-col gap-2 min-h-[140px]">{children}</div>
+      </div>
     </div>
   )
 }
