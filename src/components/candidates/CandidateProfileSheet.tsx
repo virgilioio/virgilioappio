@@ -1059,10 +1059,10 @@ const stageHasAutomation = useMemo(() => {
     <>
     <div className={cn(
       asPage
-        ? "h-[calc(100dvh-4rem-0.75rem)] mb-3 bg-background overflow-hidden rounded-2xl ring-1 ring-virgilio-border/60 shadow-calendly"
+        ? "min-h-[calc(100dvh-4rem)] bg-background"
         : "fixed top-[4.5rem] left-3 right-3 bottom-3 sm:left-[5.5rem] z-40 bg-background overflow-hidden rounded-2xl ring-1 ring-virgilio-border/60 shadow-calendly"
     )}>
-      <div className="flex h-full w-full">
+      <div className={cn(asPage ? "flex w-full" : "flex h-full w-full")}>
         {candidate && jobId && candidate.id && job && (
           <AddOrTransferCandidateDialog
             open={addTransferOpen}
@@ -1081,12 +1081,12 @@ const stageHasAutomation = useMemo(() => {
           {/* Main Profile Content */}
           <div className="flex-1 flex flex-col min-w-0">
             {loading || !candidate ? (
-              <div className="flex-1 overflow-y-auto p-6">
+              <div className={cn("flex-1 p-6", asPage ? "" : "overflow-y-auto")}>
                 <CandidateProfileSkeleton />
               </div>
             ) : (
               <>
-            <div className="border-b border-virgilio-border bg-white/60">
+            <div className={cn(asPage ? "" : "border-b border-virgilio-border bg-white/60")}>
               <ProfileTopBar
                 jobId={jobId}
                 jobTitle={job?.title}
@@ -1159,7 +1159,7 @@ const stageHasAutomation = useMemo(() => {
               })()}
             </div>
 
-               <div className="flex-1 overflow-y-auto">
+               <div className={cn("flex-1", asPage ? "" : "overflow-y-auto")}>
                 <div className="px-4 sm:px-6 pt-4 pb-10 max-w-[1400px] mx-auto w-full">
                 {/* Mobile job selector removed — single-job profile only */}
 
