@@ -856,51 +856,45 @@ export default function JobDetail() {
           onValueChange={setActiveTab}
           className="w-full flex-1 min-h-0 flex flex-col overflow-hidden"
         >
-          {!isMobile && (
-            <div className="mb-3 bg-white border border-virgilio-border rounded-2xl shadow-sm px-6 pt-5 animate-fade-in shrink-0">
-              <JobHero
-                title={job.title}
-                status={job.status}
-                department={(job as any).organization_name || (job as any).organization?.name || (job as any).department || null}
-                location={job.location}
-                createdAt={job.created_at}
-                hiringTeam={(job.hiring_team as any[]) || []}
-                onShare={() => {}}
-                onViewPosting={() => {}}
-                onAddCandidate={() => setShowAddCandidate(true)}
-                onMoreActions={() => setShowEditJobModal(true)}
-                canEdit={!isRestrictedViewer}
-              />
-              <TabsList className="h-auto bg-transparent p-0 shadow-none border-0 rounded-none w-full justify-start gap-6 mt-4 shrink-0">
-                <TabsTriggerProxy />
+          {(() => {
+            const triggerCls = "relative h-10 px-0 rounded-none bg-transparent shadow-none font-poppins font-medium text-[14px] tracking-[-0.005em] text-text-secondary hover:text-text-primary data-[state=active]:text-text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none after:absolute after:bottom-[-1px] after:left-0 after:right-0 after:h-[2px] after:bg-text-primary after:opacity-0 data-[state=active]:after:opacity-100"
+            const triggers = (
+              <>
+                <TabsTrigger value="pipeline" className={triggerCls}>Pipeline</TabsTrigger>
+                {!isRestrictedViewer && (
+                  <TabsTrigger value="candidates" className={triggerCls}>Job Dashboard</TabsTrigger>
+                )}
+                {!isRestrictedViewer && (
+                  <TabsTrigger value="job-setup" className={triggerCls}>Setup</TabsTrigger>
+                )}
+              </>
+            )
+            return !isMobile ? (
+              <div className="mb-3 bg-white border border-virgilio-border rounded-2xl shadow-sm px-6 pt-5 animate-fade-in shrink-0">
+                <JobHero
+                  title={job.title}
+                  status={job.status}
+                  department={(job as any).organization_name || (job as any).organization?.name || (job as any).department || null}
+                  location={job.location}
+                  createdAt={job.created_at}
+                  hiringTeam={(job.hiring_team as any[]) || []}
+                  onShare={() => {}}
+                  onViewPosting={() => {}}
+                  onAddCandidate={() => setShowAddCandidate(true)}
+                  onMoreActions={() => setShowEditJobModal(true)}
+                  canEdit={!isRestrictedViewer}
+                />
+                <TabsList className="h-auto bg-transparent p-0 shadow-none border-0 rounded-none w-full justify-start gap-6 mt-4">
+                  {triggers}
+                </TabsList>
+              </div>
+            ) : (
+              <TabsList className="h-auto bg-transparent p-0 shadow-none border-0 border-b border-virgilio-border rounded-none w-full justify-start gap-6 mb-3 shrink-0">
+                {triggers}
               </TabsList>
-            </div>
-          )}
-          {/* Mobile underlined top tabs */}
-          {isMobile && (
-          <TabsList className="h-auto bg-transparent p-0 shadow-none border-0 border-b border-virgilio-border rounded-none w-full justify-start gap-6 mb-3 shrink-0">
-            <TabsTrigger
-              value="pipeline"
-              className="relative h-10 px-0 rounded-none bg-transparent shadow-none font-poppins font-medium text-[14px] tracking-[-0.005em] text-text-secondary hover:text-text-primary data-[state=active]:text-text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none after:absolute after:bottom-[-1px] after:left-0 after:right-0 after:h-[2px] after:bg-text-primary after:opacity-0 data-[state=active]:after:opacity-100"
-            >
-              Pipeline
-            </TabsTrigger>
-            {!isRestrictedViewer && (
-              <TabsTrigger
-                value="candidates"
-                className="relative h-10 px-0 rounded-none bg-transparent shadow-none font-poppins font-medium text-[14px] tracking-[-0.005em] text-text-secondary hover:text-text-primary data-[state=active]:text-text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none after:absolute after:bottom-[-1px] after:left-0 after:right-0 after:h-[2px] after:bg-text-primary after:opacity-0 data-[state=active]:after:opacity-100"
-              >
-                Job Dashboard
-              </TabsTrigger>
-            )}
-            {!isRestrictedViewer && (
-              <TabsTrigger
-                value="job-setup"
-                className="relative h-10 px-0 rounded-none bg-transparent shadow-none font-poppins font-medium text-[14px] tracking-[-0.005em] text-text-secondary hover:text-text-primary data-[state=active]:text-text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none after:absolute after:bottom-[-1px] after:left-0 after:right-0 after:h-[2px] after:bg-text-primary after:opacity-0 data-[state=active]:after:opacity-100"
-              >
-                Setup
-              </TabsTrigger>
-            )}
+            )
+          })()}
+
           </TabsList>
 
           {/* Job Dashboard */}
