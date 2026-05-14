@@ -883,6 +883,7 @@ export default function JobDetail() {
                   hiringTeam={(job.hiring_team as any[]) || []}
                   onShare={() => {}}
                   onViewPosting={() => {}}
+                  hasPosting={hasJobPosting}
                   onAddCandidate={() => setShowAddCandidate(true)}
                   onMoreActions={() => setShowEditJobModal(true)}
                   canEdit={!isRestrictedViewer}
