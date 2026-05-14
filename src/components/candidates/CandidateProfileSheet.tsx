@@ -77,6 +77,13 @@ import { CandidateOfferApprovals } from './CandidateOfferApprovals'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { useQuery } from '@tanstack/react-query'
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
+import { ProfileTopBar } from '@/components/candidates/profile/ProfileTopBar'
+import { ProfileHeroCard } from '@/components/candidates/profile/ProfileHeroCard'
+import { ProfileStageStrip } from '@/components/candidates/profile/ProfileStageStrip'
+import { ProfileActionBar } from '@/components/candidates/profile/ProfileActionBar'
+import { ProfileQuickActionsCard } from '@/components/candidates/profile/ProfileQuickActionsCard'
+import { ProfileApplicationCard } from '@/components/candidates/profile/ProfileApplicationCard'
+import { useCandidateFitInsights } from '@/hooks/useCandidateFitInsights'
 
 interface StageScorecardProps {
   stageInstanceId: string;
@@ -123,9 +130,12 @@ interface CandidateProfileSheetProps {
   autoOpenScorecardId?: string | null
   onScorecardOpened?: () => void
   onScorecardChange?: (scorecardId: string | null, stageInstanceId?: string | null) => void
+  /** 1-based index in the candidate list, for "N of M" paginator. */
+  currentIndex?: number | null
+  totalCount?: number | null
 }
 
-export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, autoOpenScorecardStageId, autoOpenScorecardId, onScorecardOpened, onScorecardChange }: CandidateProfileSheetProps) {
+export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, autoOpenScorecardStageId, autoOpenScorecardId, onScorecardOpened, onScorecardChange, currentIndex, totalCount }: CandidateProfileSheetProps) {
   const { canEditCandidates, isAdmin, isWorkspaceOwner, isPlatformAdmin } = usePermissions()
   const navigate = useNavigate()
   
@@ -137,7 +147,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [jobCandidate, setJobCandidate] = useState<any | null>(null)
   const [jobCandidateId, setJobCandidateId] = useState<string | null>(null)
   const [job, setJob] = useState<any | null>(null)
-  const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'overview' | 'offer'>('job')
+  const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'overview' | 'scorecards' | 'activity' | 'comments' | 'offer'>('job')
   const [rightActiveTab, setRightActiveTab] = useState<'chat' | 'feed' | 'notes' | 'emails' | 'reminders' | 'insights'>('insights')
   
   const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])

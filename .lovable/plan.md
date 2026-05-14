@@ -1,55 +1,89 @@
-## Scope
+# In-Job Candidate Profile Redesign
 
-Three small fixes on the Jobs list (and its tab variants), plus a row-height clarification.
+Rebuild the layout of `CandidateProfileSheet.tsx` (the sheet that opens when clicking a candidate inside a job) to match the new mockup. Pure presentation work — all data hooks, mutations, permissions, and downstream sheets (Schedule, Reject, OfferComposer, Scorecard, etc.) stay wired exactly as today.
 
----
+## What changes
 
-### 1. Empty states use the Gio mascot pattern
+### 1. Top bar (above hero)
+- Left: `← Back to job` ghost link.
+- Center: breadcrumb `Jobs › [Job title] › Candidates`.
+- Right: paginator `N of M` with prev/next chevrons (replaces today's Previous/Next buttons in the SheetHeader).
 
-Today, when the Jobs table has no rows we render the bare-bones `TableEmpty` / `TableFilteredEmpty` row primitives (a small title + description inside a table cell, no illustration). That matches the strict "no illustrations inside data tables" rule from the Tables Foundation, but it conflicts with the project-wide `GioEmptyState` standard (Gio mascot avatar + semibold title with purple period + description).
+### 2. New Hero Card (replaces current `SheetHeader` + `CandidateNameCard` block)
+A single rounded white card (`rounded-2xl border border-virgilio-border shadow-sm p-6`) containing three stacked rows:
 
-Fix: in `JobsTable.tsx`, when `filteredJobs.length === 0`, render a single full-width `<TableRow>` whose cell contains the canonical `<GioEmptyState />`:
+**Row A — identity**
+- Large circular avatar (96px, brand purple fallback with initials).
+- Name as `text-h1` Poppins 600 with purple period.
+- Heart favorite toggle (existing logic).
+- Current-stage pill (existing `Badge` tone="purple", dot).
+- Subtitle line: `Applying for <job link> · Source: <source> · Applied <relative>` using `text-body-sm text-text-secondary`.
+- Far right: AI FIT score chip — small bordered box, label "AI FIT" caps, score in Poppins 600 28px purple. Reuses existing `useCandidateFitInsights` score; hidden when no score.
 
-- `jobs.length === 0` → `title="No jobs yet"`, `description="Create your first job to start sourcing and tracking candidates."` Optional secondary "New job" button below.
-- Otherwise (filtered/no matches) → `title="No matches"`, `description` references the search term and active chips, with a `Clear all filters` ghost button.
-- Apply the same in the mobile card list (currently a plain centered text block).
+**Row B — stage progression strip**
+A horizontal flex of equal-width stage cards (one per `JobStage`, scroll-x on mobile). Each card is `rounded-xl px-4 py-3` with:
+- `completed` → `bg-pastel-green` + filled check icon, label + `✓ Passed in Xd`.
+- `current` → `bg-citron-noir text-cream` (solid black), filled dot, label + `In stage · day N of M`.
+- `pending` → `border border-dashed border-virgilio-border bg-transparent text-text-tertiary`, hollow circle, label + "Upcoming".
+Driven by existing `useJobHiringPlan` + association status. No new data.
 
-This covers all five tabs (All, Active, Closed, Paused, Archived) since they all flow through the same component.
+**Row C — action bar**
+Single flex row, space-between:
+- Left cluster (primary actions, in order): `Advance to <next stage>` (variant `primary`, arrow icon), `Submit scorecard` (secondary), `Schedule` (secondary), `Email` (secondary). All `size="md"`.
+- Right cluster: `Create offer letter` (variant `purple`, only when `associationStatus === 'offer'` OR stage type is offer — same condition as today's offer composer trigger), `Reject` (variant `danger`), `⋯` ellipsis menu containing overflow actions (Move to job, Download profile, Edit, Delete, etc. — same items already in current header menu).
+All click handlers map 1:1 to existing functions in the file.
 
-Note: this is a deliberate, scoped exception to the Tables Foundation "no illustrations" rule for the Jobs table, justified by the global empty-state standard the user is asking us to honor. We will keep the exception local to `JobsTable.tsx` for now and not touch the foundation primitives.
+### 3. Tabs (replaces current left tab strip)
+Reuse the exact `TabsList` styling pattern from `JobDetail.tsx` so it visually matches Job Profile:
+`Job overview | Resume | Overview | Scorecards <count> | Activity <count> | Comments <count>` with count badges.
+- `Job overview` = today's `job` tab content.
+- `Resume` = today's `resume`.
+- `Overview` = today's `overview` (work exp / education / skills).
+- `Scorecards`, `Activity`, `Comments` = pulled out of today's right sidebar tabs into top-level tabs.
+- `Insights`, `Reminders`, `Chat`, `Emails` move into the right column (see §4) or are folded in.
 
----
+### 4. Two-column body (inside each tab)
+Grid `lg:grid-cols-[1fr_360px] gap-6`. Same grid for every tab.
 
-### 2. Row height feels tight — switch Jobs table to comfortable density
+**Left column** — primary content for the active tab, organized in cards (`rounded-2xl border-virgilio-border shadow-sm`). Each card has a header row (title in `text-h3` Poppins 600 + small action like "Open stage ↗" / "Add" / "Compare") and a body. Examples for `Job overview`:
+- `Current stage · <name>` card → "Next event" mini-card + "Interviewers" mini-card side by side (existing data).
+- `Scorecards` summary card → list of submitted scorecards (existing `ExpandableScoreDisplay`).
 
-You're right. Current spec values in `index.css`:
+**Right column — sticky** (`sticky top-6`):
+- `QUICK ACTIONS` card — repeats the four primary CTAs as full-width stacked buttons (Advance / Submit scorecard / Schedule / Create offer / Reject). Same handlers.
+- `APPLICATION` card — labeled rows: Applied, Source, Comp ask, Open to, Work auth (already collected by `CandidateApplicationResponses` / candidate fields). Two-column label/value layout, dividers between rows.
+- Below: existing Reminders / Insights small cards (kept, restyled to same card shell) when relevant.
 
-- compact: 40px
-- **default: 52px** (what Jobs uses today)
-- comfortable: 64px
+Banners (`RejectionStatusBanner`, `OfferStatusBanner`, `HiredStatusBanner`) sit between the hero card and the tabs — unchanged logic.
 
-The mockup row pitch is closer to ~64px (two-line cell: title + meta with breathing room). Switch the Jobs table from `density="default"` to `density="comfortable"`. Header height auto-adjusts to 40px.
+## What does NOT change
+- Data fetching, mutations, permissions, restricted-viewer gating.
+- Sheet container behavior (`Sheet` + `SheetContent side="right" w-[96vw]`), URL `?candidate=` syncing in `JobDetail.tsx`.
+- All downstream dialogs/sheets (Schedule, Reject, OfferComposer, ScorecardSheet, EmailComposer, Edit form).
+- Mobile: hero card stacks; stage strip scrolls horizontally; right column drops below tabs (no sticky).
 
-No token changes — this preserves the foundation for other tables (Application Review stays on `default` 52px since rows there are single-line).
+## Files
 
----
+**Heavily edited**
+- `src/components/candidates/CandidateProfileSheet.tsx` — replace JSX from line ~1051 (`<Sheet ...>`) downward; keep all hooks/handlers above. Extract sub-pieces into new files to keep this manageable.
 
-### 3. Tab order
+**New components** (under `src/components/candidates/profile/`)
+- `ProfileTopBar.tsx` — back link, breadcrumb, paginator.
+- `ProfileHeroCard.tsx` — identity row + AI FIT chip.
+- `ProfileStageStrip.tsx` — stage cards (completed/current/pending visual states).
+- `ProfileActionBar.tsx` — primary + secondary + overflow menu.
+- `ProfileQuickActionsCard.tsx` — right-column quick actions.
+- `ProfileApplicationCard.tsx` — right-column application meta.
+Each receives data + handlers as props (no new hooks).
 
-In `src/pages/Jobs.tsx`, reorder the `tabs` array to:
-
-```
-All | Active | Closed | Paused | Archived
-```
-
----
-
-## Files touched
-
-- `src/components/jobs/JobsTable.tsx` — replace `TableEmpty` / `TableFilteredEmpty` with `GioEmptyState` rendered inside a single full-span row; bump `density` to `comfortable`; mirror the empty state in the mobile card branch.
-- `src/pages/Jobs.tsx` — reorder `tabs` array.
+**Touched lightly**
+- `src/pages/JobDetail.tsx` — pass `totalCount` / `currentIndex` to the sheet for the `N of M` paginator (data already exists from candidate list).
 
 ## Out of scope
+- Standalone (non-job) candidate profile (`UniversalCandidateProfileSheet`, `IndependentCandidateProfileSheet`) — not redesigned in this pass.
+- Any backend, RLS, or hook changes.
+- Adding/removing tabs beyond the six in the mockup.
+- Insights/Chat panels: kept as-is functionally, just relocated to right column or merged into Activity tab if obvious; no AI behavior changes.
 
-- Changing the foundation row-height tokens or rolling the comfortable density to other tables.
-- Replacing `TableEmpty` globally with `GioEmptyState` (we can do that as a follow-up sweep if you want — say the word).
+## Verification
+After implementation, open `/jobs/:id?candidate=:cid` at 1347×875 and 390×844, verify hero card matches mockup (avatar size, AI FIT chip, stage colors), tabs match Job Profile chrome, action bar shows correct buttons per status (active vs offer vs rejected), and all existing handlers still fire (Advance, Schedule, Email, Reject, Create offer, ⋯ menu items).
