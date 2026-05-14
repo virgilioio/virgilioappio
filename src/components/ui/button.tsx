@@ -51,7 +51,7 @@ const buttonVariants = cva(
       variant: {
         // === Gio v1.0 spec variants ===
         primary:
-          "bg-foreground text-background shadow-[var(--shadow-button)] hover:bg-foreground/90 active:bg-foreground/85 active:shadow-inner",
+          "bg-[#0d0d09] text-[#fffcf9] [&_svg]:text-[#fffcf9] shadow-[var(--shadow-button)] hover:bg-[#1a1a14] active:bg-[#000000] active:shadow-inner",
         purple:
           "bg-virgilio-purple text-white shadow-[var(--shadow-button)] hover:bg-virgilio-purple/90 active:bg-virgilio-purple/85 active:shadow-inner",
         secondary:

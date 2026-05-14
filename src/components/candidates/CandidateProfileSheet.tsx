@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
 import { Badge } from '@/components/ui/badge'
-import { CandidateJobSidebar } from '@/components/candidates/CandidateJobSidebar'
+import { formatSalaryExpectation } from '@/lib/candidateHelpers'
 import { EnhancedSkillBadge } from '@/components/ui/enhanced-skill-badge'
 import { CandidateAttachments } from '@/components/candidates/CandidateAttachments'
 import { CandidateComments } from '@/components/candidates/CandidateComments'
@@ -52,7 +52,7 @@ import { triggerFitAnalysis } from '@/utils/triggerFitAnalysis'
 import { useJobRole } from '@/hooks/useJobRole'
 
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
-import { MobileJobSelector } from '@/components/candidates/MobileJobSelector'
+
 import { AddOrTransferCandidateDialog } from '@/components/candidates/AddOrTransferCandidateDialog'
 import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
 import { cn, ensureAbsoluteUrl } from '@/lib/utils'
@@ -1050,15 +1050,6 @@ const stageHasAutomation = useMemo(() => {
     }
   }
 
-  const handleJobChange = (newJobId: string) => {
-    if (newJobId === jobId) return // Already viewing this job
-    
-    // Navigate to the new job with the same candidate
-    const url = new URL(window.location.href)
-    url.pathname = `/jobs/${newJobId}`
-    url.searchParams.set('candidate', candidateId!)
-    window.location.href = url.toString()
-  }
 
   if (!open) return null
 
@@ -1079,15 +1070,7 @@ const stageHasAutomation = useMemo(() => {
             onClose={() => onOpenChange(false)}
           />
         )}
-          {/* Job Navigation Sidebar - desktop only */}
-          {candidateId && !isRestrictedViewer && (
-            <CandidateJobSidebar
-              candidateId={candidateId}
-              currentJobId={jobId}
-              onJobSelect={handleJobChange}
-              className="hidden lg:flex"
-            />
-          )}
+          {/* Job Navigation Sidebar removed — single-job profile only */}
 
           {/* Main Profile Content */}
           <div className="flex-1 flex flex-col min-w-0">
@@ -1172,16 +1155,7 @@ const stageHasAutomation = useMemo(() => {
 
                <div className="flex-1 overflow-y-auto">
                 <div className="px-4 sm:px-6 pt-4 pb-10 max-w-[1400px] mx-auto w-full">
-                {/* Mobile Job Selector - at top of content area */}
-                {candidateId && !isRestrictedViewer && (
-                  <div className="lg:hidden mb-6">
-                    <MobileJobSelector
-                      candidateId={candidateId}
-                      currentJobId={jobId}
-                      onJobSelect={handleJobChange}
-                    />
-                  </div>
-                )}
+                {/* Mobile job selector removed — single-job profile only */}
 
                 {/* Status Banners — full width above tabs */}
                 {associationStatus === 'rejected' && rejectionDetails && (
@@ -1716,7 +1690,7 @@ const stageHasAutomation = useMemo(() => {
                       <ProfileApplicationCard
                         appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
                         source={candidate?.job_board_source || candidate?.source || null}
-                        compensation={(candidate as any)?.salary_expectation || null}
+                        compensation={formatSalaryExpectation(candidate as any)}
                         openTo={(candidate as any)?.location || null}
                         workAuth={(candidate as any)?.work_authorization || null}
                       />
