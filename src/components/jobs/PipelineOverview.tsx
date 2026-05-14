@@ -29,6 +29,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { usePipelineCandidateStatuses } from '@/hooks/usePipelineCandidateStatuses'
+import { cn } from '@/lib/utils'
 
 
 interface PipelineOverviewProps {
