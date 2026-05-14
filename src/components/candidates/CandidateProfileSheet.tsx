@@ -1168,7 +1168,8 @@ const stageHasAutomation = useMemo(() => {
               })()}
             </div>
 
-               <div className="flex-1 overflow-y-auto p-6">
+               <div className="flex-1 overflow-y-auto">
+                <div className="px-4 sm:px-6 pt-4 pb-10 max-w-[1400px] mx-auto w-full">
                 {/* Mobile Job Selector - at top of content area */}
                 {candidateId && !isRestrictedViewer && (
                   <div className="lg:hidden mb-6">
@@ -1179,343 +1180,239 @@ const stageHasAutomation = useMemo(() => {
                     />
                   </div>
                 )}
-                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'job' | 'application' | 'resume' | 'overview')}>
-                  {/* Rejection Status Banner - Full width above both columns */}
-                  {associationStatus === 'rejected' && rejectionDetails && (
-                    <div className="mb-6">
-                      <RejectionStatusBanner
-                        rejectedAt={rejectionDetails.rejectedAt}
-                        rejectedByName={rejectionDetails.rejectedByName || undefined}
-                        rejectionReason={rejectionDetails.rejectionReason}
-                        rejectionNotes={rejectionDetails.rejectionNotes}
-                        rejectionEmailScheduledFor={rejectionDetails.rejectionEmailScheduledFor}
-                        rejectionEmailSentAt={rejectionDetails.rejectionEmailSentAt}
-                        onReactivate={handleReactivate}
-                      />
-                    </div>
-                  )}
-                  
-                  {/* Offer Status Banner - Full width above both columns */}
-                  {associationStatus === 'offer' && (
-                    <div className="mb-6">
-                      <OfferStatusBanner
-                        offeredAt={offerDetails?.offeredAt || null}
-                        offeredByName={offerDetails?.offeredByName || undefined}
-                        onCreateOffer={() => setOfferFormOpen(true)}
-                      />
-                    </div>
-                  )}
-                  
-                  {/* Hired Status Banner - Full width above both columns */}
-                  {associationStatus === 'hired' && (
-                    <div className="mb-6">
-                      <HiredStatusBanner
-                        hiredAt={hiredDetails?.hiredAt || null}
-                        hiredByName={hiredDetails?.hiredByName || undefined}
-                        jobTitle={job?.title}
-                        candidateSource={candidate?.source || candidate?.job_board_source || undefined}
-                        onUnhire={handleUnhire}
-                      />
-                    </div>
-                  )}
-                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                   {/* Left column (50%) */}
-                   <div className="space-y-6">
-                     {/* Controls Card - hidden for restricted viewers */}
-                     {!isRestrictedViewer && (
-                      <Card className="bg-surface-primary border-border">
-                        <CardContent className="p-4">
-                           <div className="flex items-center justify-between w-full">
-                              <div className="overflow-x-auto scrollbar-none">
-                                <div className="flex items-center gap-2 min-w-max">
-                                {candidate.job_board_source && (
-                                  <Badge variant="secondary" className="gap-1">
-                                    <Globe className="h-3 w-3" />
-                                    Applied via {candidate.job_board_source}
-                                  </Badge>
-                                )}
-                                {/* Move to Pipeline button for suggested candidates */}
-                                {!associationId && jobId && candidate.id && (
-                                  <MoveToPipelineMenu
-                                    jobId={jobId}
-                                    candidateId={candidate.id}
-                                    buttonText="Move to pipeline"
-                                  />
-                                )}
-                                
-                                {/* Add/Transfer button for candidates already in the job */}
-                                {associationId && jobId && candidate.id && job && (
-                                  <AddOrTransferCandidateDialog
-                                    candidateId={candidate.id}
-                                    candidateName={`${candidate.first_name || ''} ${candidate.last_name || ''}`.trim() || 'Candidate'}
-                                    currentJobId={jobId}
-                                    currentJobTitle={job.title}
-                                    hasNextCandidate={hasNext}
-                                    onNavigateNext={onNavigateNext}
-                                    onClose={() => onOpenChange(false)}
-                                  />
-                                )}
-                                {/* Move to Offer - only show when not already in offer */}
-                                {associationStatus !== 'offer' && (
-                                  <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    icon={MoveRight}
-                                    onClick={handleMoveToOffer}
-                                  >
-                                    Move to Offer
-                                  </Button>
-                                )}
 
-                                {/* Return to Pipeline - only show when in offer status */}
-                                {associationStatus === 'offer' && (
-                                  <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    icon={RotateCcw}
-                                    onClick={handleReturnToPipeline}
-                                  >
-                                    Return to Pipeline
-                                  </Button>
-                                )}
+                {/* Status Banners — full width above tabs */}
+                {associationStatus === 'rejected' && rejectionDetails && (
+                  <div className="mb-4">
+                    <RejectionStatusBanner
+                      rejectedAt={rejectionDetails.rejectedAt}
+                      rejectedByName={rejectionDetails.rejectedByName || undefined}
+                      rejectionReason={rejectionDetails.rejectionReason}
+                      rejectionNotes={rejectionDetails.rejectionNotes}
+                      rejectionEmailScheduledFor={rejectionDetails.rejectionEmailScheduledFor}
+                      rejectionEmailSentAt={rejectionDetails.rejectionEmailSentAt}
+                      onReactivate={handleReactivate}
+                    />
+                  </div>
+                )}
+                {associationStatus === 'offer' && (
+                  <div className="mb-4">
+                    <OfferStatusBanner
+                      offeredAt={offerDetails?.offeredAt || null}
+                      offeredByName={offerDetails?.offeredByName || undefined}
+                      onCreateOffer={() => setOfferFormOpen(true)}
+                    />
+                  </div>
+                )}
+                {associationStatus === 'hired' && (
+                  <div className="mb-4">
+                    <HiredStatusBanner
+                      hiredAt={hiredDetails?.hiredAt || null}
+                      hiredByName={hiredDetails?.hiredByName || undefined}
+                      jobTitle={job?.title}
+                      candidateSource={candidate?.source || candidate?.job_board_source || undefined}
+                      onUnhire={handleUnhire}
+                    />
+                  </div>
+                )}
 
-                                <Button
-                                  variant="danger"
-                                  size="sm"
-                                  icon={ThumbsDown}
-                                  onClick={handleReject}
-                                >
-                                  Reject
-                                </Button>
+                {/* Unified Tab Strip — matches Job profile */}
+                <ProfileTabs
+                  activeTab={activeTab}
+                  onTabChange={(v) => setActiveTab(v as typeof activeTab)}
+                  tabs={[
+                    ...((associationStatus === 'offer' || associationStatus === 'hired')
+                      ? [{ value: 'offer', label: 'Offer', Icon: FileText }]
+                      : []),
+                    { value: 'job', label: 'Job overview', Icon: ClipboardCheckIconAlias },
+                    { value: 'resume', label: 'Resume', Icon: FileText },
+                    ...(!isRestrictedViewer ? [{ value: 'overview', label: 'Overview', Icon: UserRound }] : []),
+                    { value: 'scorecards', label: 'Scorecards', Icon: Star },
+                    { value: 'activity', label: 'Activity', Icon: Activity },
+                    { value: 'comments', label: 'Comments', Icon: MessageSquare },
+                  ]}
+                  className="mb-6"
+                />
 
-                                {/* Mark as Hired - only show when in offer status */}
-                                {associationStatus === 'offer' && (
-                                  <Button
-                                    variant="success"
-                                    size="sm"
-                                    icon={Check}
-                                    onClick={handleHire}
-                                  >
-                                    Mark as Hired
-                                  </Button>
-                                )}
-                                </div>
-                              </div>
-                           </div>
-                        </CardContent>
-                      </Card>
-                     )}
-
-                     <CandidateNameCard
-                       email={candidate.email}
-                       phone={candidate.phone}
-                        tabs={[
-                          ...((associationStatus === 'offer' || associationStatus === 'hired')
-                            ? [{ value: 'offer', label: 'Offer', Icon: FileText }]
-                            : []),
-                          { value: 'job', label: 'Job Overview', Icon: FileText },
-                          ...(!isRestrictedViewer ? [{ value: 'application', label: 'Application Details', Icon: FileText }] : []),
-                          { value: 'resume', label: 'Resume', Icon: FileText },
-                          ...(!isRestrictedViewer ? [{ value: 'overview', label: 'Overview', Icon: FileText }] : []),
-                        ]}
-                       activeTab={activeTab}
-                       onTabChange={(v) => setActiveTab(v as 'job' | 'application' | 'resume' | 'overview' | 'offer')}
-                     />
-
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Left column — tab content */}
+                  <div className="lg:col-span-2 space-y-6 min-w-0">
                     {/* Job Overview Tab */}
                     {activeTab === 'job' && (
                       <>
-                      {/* Collapsible Candidate Details */}
-                      <CandidateDetailsCollapsible
-                        candidate={candidate}
-                        whatsAppEnabled={whatsAppEnabled}
-                        handleWhatsAppClick={handleWhatsAppClick}
-                      />
-                      <Card className="bg-surface-primary border-border">
-                        <CardHeader>
-                          <CardTitle>Job Overview</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                          {planStages.length ? (
-                            <Accordion
-                              type="single"
-                              collapsible
-                              value={openStageId ?? undefined}
-                              onValueChange={(v) => setOpenStageId((v as string) || null)}
-                              className="w-full space-y-2"
-                            >
-{(() => {
-  const sorted = [...planStages].sort((a, b) => a.position - b.position)
-  const currentIdx = currentStageId ? sorted.findIndex(s => s.jhsId === currentStageId) : -1
-  return sorted.map((opt, idx) => {
-    const isPast = currentIdx >= 0 && idx < currentIdx
-    const isCurrent = currentIdx >= 0 && idx === currentIdx
-    return (
-      <AccordionItem key={opt.stage.id} value={opt.stage.id} className="border rounded-lg overflow-hidden">
-        <AccordionTrigger className={cn('px-3 py-2 no-underline text-text-primary', getHeaderBgClass(opt.stage.stage_type))}>
-          <div className="flex items-center gap-2">
-            {isCurrent ? (
-              <CheckCircle2 className="h-4 w-4 text-primary" />
-            ) : isPast ? (
-              <CheckCircle2 className="h-4 w-4 text-primary/40" />
-            ) : (
-              <Circle className="h-4 w-4 text-text-tertiary" />
-            )}
-            <div className="text-sm font-medium">{opt.stage.stage_name}</div>
-            {stageHasAutomation.get(opt.jhsId) && (
-              <Zap className="h-4 w-4 text-purple-500 fill-purple-500" />
-            )}
-          </div>
-        </AccordionTrigger>
-        <AccordionContent className="px-3">
-          <div className="text-sm text-text-primary">
-            {opt.stage.stage_description || 'No details for this stage yet.'}
-          </div>
-
-          {supportsScorecard(opt.stage.stage_type) && (
-            <div className="mt-3 space-y-2">
-              <StageScorecards 
-                stageInstanceId={opt.jhsId}
-                associationId={associationId!}
-                currentUserId={user?.id}
-                onOpenFullSheet={(scorecardId) => {
-                  setScoreStageInstId(opt.jhsId)
-                  setScoreStageName(opt.stage.stage_name)
-                  setViewingScorecardId(scorecardId)
-                  setScoreOpen(true)
-                  onScorecardChange?.(scorecardId, opt.jhsId)
-                }}
-                onDismissAiDraft={handleDismissAiDraft}
-              />
-              
-                {/* Submit Scorecard Button - show for all stages if user hasn't submitted yet or AI draft exists */}
-              {(!myScorecardsByStage[opt.jhsId] || myScorecardsByStage[opt.jhsId]?.is_ai_draft) && (
-                <Button
-                  variant={myScorecardsByStage[opt.jhsId]?.is_ai_draft ? 'purple' : 'secondary'}
-                  size="sm"
-                  icon={myScorecardsByStage[opt.jhsId]?.is_ai_draft ? Sparkles : Star}
-                  onClick={() => {
-                    setScoreStageInstId(opt.jhsId)
-                    setScoreStageName(opt.stage.stage_name)
-                    setScoreOpen(true)
-                  }}
-                >
-                  {myScorecardsByStage[opt.jhsId]?.is_ai_draft ? 'AI Notes Analysis Available' : 'Submit Scorecard'}
-                </Button>
-              )}
-            </div>
-          )}
-
-          {/* Schedule Interview Button for screening/interview stages */}
-          {/* Scheduled Interviews for this Stage */}
-          {(opt.stage.stage_type === 'screening' || opt.stage.stage_type === 'interview') && candidateId && (
-            <StageBookingsList 
-              jhsId={opt.jhsId}
-              candidateId={candidateId}
-              onReschedule={(jhsId, bookingId) => {
-                setScheduleStageId(jhsId);
-                setScheduleStageName(opt.stage.stage_name);
-                setOldBookingId(bookingId);
-                setScheduleOpen(true);
-              }}
-            />
-          )}
-
-          {/* Action Buttons for Current Stage */}
-          {isCurrent && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {/* Schedule Interview Button - only for screening/interview stages */}
-              {(opt.stage.stage_type === 'screening' || opt.stage.stage_type === 'interview') && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  icon={Calendar}
-                  onClick={() => {
-                    setScheduleStageId(opt.jhsId)
-                    setScheduleStageName(opt.stage.stage_name)
-                    setScheduleOpen(true)
-                  }}
-                >
-                  Schedule Interview
-                </Button>
-              )}
-              
-              {/* Generate Booking Link Button - for screening/interview stages with association */}
-              {/* CRITICAL GUARD: Only show when candidate is loaded AND matches candidateId to prevent race conditions */}
-              {(opt.stage.stage_type === 'screening' || opt.stage.stage_type === 'interview') && associationId && candidateId && candidate?.id === candidateId && !loading && (
-                <GenerateBookingLinkButton
-                  jobId={jobId}
-                  candidateId={candidateId}
-                  jhsId={opt.jhsId}
-                  associationId={associationId}
-                  candidateName={candidate?.candidate_name}
-                  candidateEmail={candidate?.email}
-                  jobTitle={job?.title}
-                  stageName={opt.stage.stage_name}
-                />
-              )}
-              
-            </div>
-          )}
-
-          {!isCurrent && (
-            <div className="mt-3">
-              <Button
-                variant="secondary"
-                size="sm"
-                icon={MoveRight}
-                disabled={movingStageId === opt.jhsId}
-                onClick={async () => {
-                  try {
-                    setMovingStageId(opt.jhsId)
-                    if (associationId) {
-                      await moveAssociationToStage(associationId, opt.jhsId)
-                    } else if (candidateId) {
-                      const newId = await createAssociationAndMove(jobId, candidateId, opt.jhsId)
-                      setAssociationId(newId)
-                    }
-                    setCurrentStageId(opt.jhsId)
-                    setOpenStageId(opt.stage.id)
-                    onStageChanged?.()
-                  } catch (e) {
-                    // Toasts are handled by hooks on error
-                  } finally {
-                    setMovingStageId(null)
-                  }
-                }}
-              >
-                Move to this stage
-              </Button>
-            </div>
-          )}
-        </AccordionContent>
-      </AccordionItem>
-
-      )
-  })
-})()}
-                            </Accordion>
-                          ) : (
-                            <div className="text-sm text-text-secondary">No hiring stages configured for this job.</div>
-                          )}
-                        </CardContent>
-                      </Card>
+                        <CandidateDetailsCollapsible
+                          candidate={candidate}
+                          whatsAppEnabled={whatsAppEnabled}
+                          handleWhatsAppClick={handleWhatsAppClick}
+                        />
+                        <Card className="bg-surface-primary border-border">
+                          <CardHeader>
+                            <CardTitle>Job Overview</CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-2">
+                            {planStages.length ? (
+                              <Accordion
+                                type="single"
+                                collapsible
+                                value={openStageId ?? undefined}
+                                onValueChange={(v) => setOpenStageId((v as string) || null)}
+                                className="w-full space-y-2"
+                              >
+                                {(() => {
+                                  const sorted = [...planStages].sort((a, b) => a.position - b.position)
+                                  const currentIdx = currentStageId ? sorted.findIndex(s => s.jhsId === currentStageId) : -1
+                                  return sorted.map((opt, idx) => {
+                                    const isPast = currentIdx >= 0 && idx < currentIdx
+                                    const isCurrent = currentIdx >= 0 && idx === currentIdx
+                                    return (
+                                      <AccordionItem key={opt.stage.id} value={opt.stage.id} className="border rounded-lg overflow-hidden">
+                                        <AccordionTrigger className={cn('px-3 py-2 no-underline text-text-primary', getHeaderBgClass(opt.stage.stage_type))}>
+                                          <div className="flex items-center gap-2">
+                                            {isCurrent ? (
+                                              <CheckCircle2 className="h-4 w-4 text-primary" />
+                                            ) : isPast ? (
+                                              <CheckCircle2 className="h-4 w-4 text-primary/40" />
+                                            ) : (
+                                              <Circle className="h-4 w-4 text-text-tertiary" />
+                                            )}
+                                            <div className="text-sm font-medium">{opt.stage.stage_name}</div>
+                                            {stageHasAutomation.get(opt.jhsId) && (
+                                              <Zap className="h-4 w-4 text-purple-500 fill-purple-500" />
+                                            )}
+                                          </div>
+                                        </AccordionTrigger>
+                                        <AccordionContent className="px-3">
+                                          <div className="text-sm text-text-primary">
+                                            {opt.stage.stage_description || 'No details for this stage yet.'}
+                                          </div>
+                                          {supportsScorecard(opt.stage.stage_type) && (
+                                            <div className="mt-3 space-y-2">
+                                              <StageScorecards 
+                                                stageInstanceId={opt.jhsId}
+                                                associationId={associationId!}
+                                                currentUserId={user?.id}
+                                                onOpenFullSheet={(scorecardId) => {
+                                                  setScoreStageInstId(opt.jhsId)
+                                                  setScoreStageName(opt.stage.stage_name)
+                                                  setViewingScorecardId(scorecardId)
+                                                  setScoreOpen(true)
+                                                  onScorecardChange?.(scorecardId, opt.jhsId)
+                                                }}
+                                                onDismissAiDraft={handleDismissAiDraft}
+                                              />
+                                              {(!myScorecardsByStage[opt.jhsId] || myScorecardsByStage[opt.jhsId]?.is_ai_draft) && (
+                                                <Button
+                                                  variant={myScorecardsByStage[opt.jhsId]?.is_ai_draft ? 'purple' : 'secondary'}
+                                                  size="sm"
+                                                  icon={myScorecardsByStage[opt.jhsId]?.is_ai_draft ? Sparkles : Star}
+                                                  onClick={() => {
+                                                    setScoreStageInstId(opt.jhsId)
+                                                    setScoreStageName(opt.stage.stage_name)
+                                                    setScoreOpen(true)
+                                                  }}
+                                                >
+                                                  {myScorecardsByStage[opt.jhsId]?.is_ai_draft ? 'AI Notes Analysis Available' : 'Submit Scorecard'}
+                                                </Button>
+                                              )}
+                                            </div>
+                                          )}
+                                          {(opt.stage.stage_type === 'screening' || opt.stage.stage_type === 'interview') && candidateId && (
+                                            <StageBookingsList 
+                                              jhsId={opt.jhsId}
+                                              candidateId={candidateId}
+                                              onReschedule={(jhsId, bookingId) => {
+                                                setScheduleStageId(jhsId);
+                                                setScheduleStageName(opt.stage.stage_name);
+                                                setOldBookingId(bookingId);
+                                                setScheduleOpen(true);
+                                              }}
+                                            />
+                                          )}
+                                          {isCurrent && (
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                              {(opt.stage.stage_type === 'screening' || opt.stage.stage_type === 'interview') && (
+                                                <Button
+                                                  variant="secondary"
+                                                  size="sm"
+                                                  icon={Calendar}
+                                                  onClick={() => {
+                                                    setScheduleStageId(opt.jhsId)
+                                                    setScheduleStageName(opt.stage.stage_name)
+                                                    setScheduleOpen(true)
+                                                  }}
+                                                >
+                                                  Schedule Interview
+                                                </Button>
+                                              )}
+                                              {(opt.stage.stage_type === 'screening' || opt.stage.stage_type === 'interview') && associationId && candidateId && candidate?.id === candidateId && !loading && (
+                                                <GenerateBookingLinkButton
+                                                  jobId={jobId}
+                                                  candidateId={candidateId}
+                                                  jhsId={opt.jhsId}
+                                                  associationId={associationId}
+                                                  candidateName={candidate?.candidate_name}
+                                                  candidateEmail={candidate?.email}
+                                                  jobTitle={job?.title}
+                                                  stageName={opt.stage.stage_name}
+                                                />
+                                              )}
+                                            </div>
+                                          )}
+                                          {!isCurrent && (
+                                            <div className="mt-3">
+                                              <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                icon={MoveRight}
+                                                disabled={movingStageId === opt.jhsId}
+                                                onClick={async () => {
+                                                  try {
+                                                    setMovingStageId(opt.jhsId)
+                                                    if (associationId) {
+                                                      await moveAssociationToStage(associationId, opt.jhsId)
+                                                    } else if (candidateId) {
+                                                      const newId = await createAssociationAndMove(jobId, candidateId, opt.jhsId)
+                                                      setAssociationId(newId)
+                                                    }
+                                                    setCurrentStageId(opt.jhsId)
+                                                    setOpenStageId(opt.stage.id)
+                                                    onStageChanged?.()
+                                                  } catch (e) {
+                                                    // handled by hook
+                                                  } finally {
+                                                    setMovingStageId(null)
+                                                  }
+                                                }}
+                                              >
+                                                Move to this stage
+                                              </Button>
+                                            </div>
+                                          )}
+                                        </AccordionContent>
+                                      </AccordionItem>
+                                    )
+                                  })
+                                })()}
+                              </Accordion>
+                            ) : (
+                              <div className="text-sm text-text-secondary">No hiring stages configured for this job.</div>
+                            )}
+                          </CardContent>
+                        </Card>
+                        {!isRestrictedViewer && candidateId && (
+                          <Card className="bg-surface-primary border-border">
+                            <CardHeader>
+                              <CardTitle>Application Details</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <CandidateApplicationResponses 
+                                candidateId={candidateId} 
+                                jobId={jobId} 
+                              />
+                            </CardContent>
+                          </Card>
+                        )}
                       </>
-                    )}
-
-                    {/* Application Details Tab */}
-                    {activeTab === 'application' && (
-                      <Card className="bg-surface-primary border-border">
-                        <CardHeader>
-                          <CardTitle>Application Details</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <CandidateApplicationResponses 
-                            candidateId={candidateId!} 
-                            jobId={jobId} 
-                          />
-                        </CardContent>
-                      </Card>
                     )}
 
                     {/* Resume Tab */}
@@ -1577,125 +1474,194 @@ const stageHasAutomation = useMemo(() => {
                       </Card>
                     )}
 
-                    {activeTab === 'overview' ? (
-                      <Accordion type="multiple" defaultValue={['summary']} className="space-y-4">
-                        {/* URLs - hidden on mobile */}
-                        <div className="hidden md:block">
-                          <AccordionItem value="urls" className="border-0">
-                            {independentCandidateId || candidateId ? (
-                              <CandidateUrls candidateId={independentCandidateId || candidateId!} />
+                    {/* Overview Tab — Profile summary, skills, URLs, attachments */}
+                    {activeTab === 'overview' && (
+                      <>
+                        <Card className="bg-surface-primary border-border">
+                          <CardHeader>
+                            <CardTitle className="flex items-center justify-between">
+                              <span>Profile Summary</span>
+                              <Sparkles className="h-4 w-4 text-purple-500" />
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            {candidate.profile_summary ? (
+                              <ProfileSummaryMarkdown
+                                content={candidate.profile_summary}
+                                className="text-text-primary leading-relaxed"
+                              />
                             ) : (
-                              <Card className="bg-surface-primary border-border">
-                                <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                                  <CardTitle>URLs</CardTitle>
-                                </AccordionTrigger>
-                                <AccordionContent>
-                                  <CardContent className="pt-0">
-                                    <div className="text-sm text-text-secondary">No candidate data available.</div>
-                                  </CardContent>
-                                </AccordionContent>
-                              </Card>
+                              <div className="text-sm text-text-secondary">No summary available.</div>
                             )}
-                          </AccordionItem>
-                        </div>
+                          </CardContent>
+                        </Card>
 
-                        {/* Attachments - hidden on mobile */}
-                        <div className="hidden md:block">
-                          <AccordionItem value="attachments" className="border-0">
-                            {independentCandidateId || candidateId ? (
-                              <CandidateAttachments candidateId={independentCandidateId || candidateId!} />
-                            ) : (
-                              <Card className="bg-surface-primary border-border">
-                                <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                                  <CardTitle>Attachments</CardTitle>
-                                </AccordionTrigger>
-                                <AccordionContent>
-                                  <CardContent className="pt-0">
-                                    <div className="text-sm text-text-secondary">No candidate data available.</div>
-                                  </CardContent>
-                                </AccordionContent>
-                              </Card>
-                            )}
-                          </AccordionItem>
-                        </div>
-
-                        {/* Skills - hidden on mobile */}
-                        <div className="hidden md:block">
-                          <AccordionItem value="skills" className="border-0">
-                            <Card className="bg-surface-primary border-border">
-                              <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                                <div className="flex items-center justify-between flex-1 pr-4">
-                                  <CardTitle>Skills</CardTitle>
-                                  <div className="text-xs text-text-tertiary">
-                                    Added {new Date((jobCandidate?.created_at || candidate.created_at) as string).toLocaleDateString()}
-                                  </div>
+                        <Card className="bg-surface-primary border-border">
+                          <CardHeader>
+                            <CardTitle>Skills</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            {(() => {
+                              const manualSkills = candidate?.skills || []
+                              const autoGenerated = Array.isArray((candidate as any)?.auto_generated_skills)
+                                ? ((candidate as any).auto_generated_skills as any[]).map((s) => typeof s === 'string' ? s : s?.name).filter(Boolean)
+                                : []
+                              const displaySkills = manualSkills.length > 0 ? manualSkills : autoGenerated
+                              return displaySkills && displaySkills.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                  {displaySkills.map((s: string, i: number) => (
+                                    <EnhancedSkillBadge 
+                                      key={`${s}-${i}`} 
+                                      skill={s}
+                                      analysis={{
+                                        matchRelevance: candidate?.match_score ? Math.round(candidate.match_score) : undefined
+                                      }}
+                                      variant="compact"
+                                      showTooltip={true}
+                                      interactive={false}
+                                    />
+                                  ))}
                                 </div>
-                              </AccordionTrigger>
-                              <AccordionContent>
-                                <CardContent className="pt-0">
-                                  {(() => {
-                                    // Use manual skills if available, otherwise use auto-generated skills
-                                    const manualSkills = candidate?.skills || []
-                                    const autoGenerated = Array.isArray((candidate as any)?.auto_generated_skills)
-                                      ? ((candidate as any).auto_generated_skills as any[]).map((s) => typeof s === 'string' ? s : s?.name).filter(Boolean)
-                                      : []
-                                    
-                                    const displaySkills = manualSkills.length > 0 ? manualSkills : autoGenerated
+                              ) : (
+                                <div className="text-sm text-text-secondary">No skills specified</div>
+                              )
+                            })()}
+                          </CardContent>
+                        </Card>
 
-                                    return displaySkills && displaySkills.length > 0 ? (
-                                      <div className="flex flex-wrap gap-2">
-                                        {displaySkills.map((s: string, i: number) => (
-                                          <EnhancedSkillBadge 
-                                            key={`${s}-${i}`} 
-                                            skill={s}
-                                            analysis={{
-                                              matchRelevance: candidate?.match_score ? Math.round(candidate.match_score) : undefined
-                                            }}
-                                            variant="compact"
-                                            showTooltip={true}
-                                            interactive={false}
-                                          />
-                                        ))}
-                                      </div>
-                                    ) : (
-                                      <div className="text-sm text-text-secondary">No skills specified</div>
-                                    )
-                                  })()}
-                                </CardContent>
-                              </AccordionContent>
-                            </Card>
-                          </AccordionItem>
-                        </div>
+                        {(independentCandidateId || candidateId) && (
+                          <CandidateUrls candidateId={independentCandidateId || candidateId!} />
+                        )}
+                        {(independentCandidateId || candidateId) && (
+                          <CandidateAttachments candidateId={independentCandidateId || candidateId!} />
+                        )}
 
-                        {/* Profile Summary */}
-                        <AccordionItem value="summary" className="border-0">
-                          <Card className="bg-surface-primary border-border">
-                            <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                              <div className="flex items-center justify-between w-full pr-4">
-                                <CardTitle>Profile Summary</CardTitle>
-                                <Sparkles className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                        {candidateId && (
+                          <CandidateInsightsTab
+                            candidateId={candidateId}
+                            jobId={jobId}
+                            jobDescription={job?.description}
+                          />
+                        )}
+                      </>
+                    )}
+
+                    {/* Scorecards Tab */}
+                    {activeTab === 'scorecards' && (
+                      <Card className="bg-surface-primary border-border">
+                        <CardHeader>
+                          <CardTitle>Scorecards</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          {planStages.filter(p => supportsScorecard(p.stage.stage_type)).length === 0 ? (
+                            <div className="text-sm text-text-secondary">No scorecard-enabled stages.</div>
+                          ) : (
+                            [...planStages]
+                              .sort((a, b) => a.position - b.position)
+                              .filter(p => supportsScorecard(p.stage.stage_type))
+                              .map((opt) => (
+                                <div key={opt.jhsId} className="border border-virgilio-border rounded-lg p-4 space-y-3">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="font-poppins font-medium text-[13.5px] text-text-primary">{opt.stage.stage_name}</div>
+                                    {associationId && (!myScorecardsByStage[opt.jhsId] || myScorecardsByStage[opt.jhsId]?.is_ai_draft) && (
+                                      <Button
+                                        variant={myScorecardsByStage[opt.jhsId]?.is_ai_draft ? 'purple' : 'secondary'}
+                                        size="sm"
+                                        icon={myScorecardsByStage[opt.jhsId]?.is_ai_draft ? Sparkles : Star}
+                                        onClick={() => {
+                                          setScoreStageInstId(opt.jhsId)
+                                          setScoreStageName(opt.stage.stage_name)
+                                          setScoreOpen(true)
+                                        }}
+                                      >
+                                        {myScorecardsByStage[opt.jhsId]?.is_ai_draft ? 'AI Draft' : 'Add'}
+                                      </Button>
+                                    )}
+                                  </div>
+                                  {associationId && (
+                                    <StageScorecards 
+                                      stageInstanceId={opt.jhsId}
+                                      associationId={associationId}
+                                      currentUserId={user?.id}
+                                      onOpenFullSheet={(scorecardId) => {
+                                        setScoreStageInstId(opt.jhsId)
+                                        setScoreStageName(opt.stage.stage_name)
+                                        setViewingScorecardId(scorecardId)
+                                        setScoreOpen(true)
+                                        onScorecardChange?.(scorecardId, opt.jhsId)
+                                      }}
+                                      onDismissAiDraft={handleDismissAiDraft}
+                                    />
+                                  )}
+                                </div>
+                              ))
+                          )}
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Activity Tab */}
+                    {activeTab === 'activity' && (
+                      <>
+                        <Card className="bg-surface-primary border-border">
+                          <CardHeader>
+                            <CardTitle>Activity Feed</CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-0">
+                            <ScrollArea className="h-[460px]">
+                              <div className="p-6">
+                                <ActivityFeedList 
+                                  candidateId={candidate.id}
+                                  jobId={jobId}
+                                />
                               </div>
-                            </AccordionTrigger>
-                            <AccordionContent>
-                              <CardContent className="pt-0">
-                                {candidate.profile_summary ? (
-                                  <ProfileSummaryMarkdown
-                                    content={candidate.profile_summary}
-                                    className="text-text-primary leading-relaxed"
-                                  />
-                                ) : (
-                                  <div className="text-sm text-text-secondary">No summary available.</div>
-                                )}
-                              </CardContent>
-                            </AccordionContent>
-                          </Card>
-                        </AccordionItem>
-                      </Accordion>
-                    ) : (
-                      <></>
-                     )}
+                            </ScrollArea>
+                          </CardContent>
+                        </Card>
+                        <Card className="bg-surface-primary border-border">
+                          <CardHeader>
+                            <CardTitle>Email History</CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-0">
+                            <div className="h-[460px] overflow-y-auto">
+                              <div className="p-6">
+                                <EmailHistoryList 
+                                  candidateId={candidate.id} 
+                                  jobId={jobId}
+                                  onReply={handleEmailReply}
+                                  onForward={handleEmailForward}
+                                />
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </>
+                    )}
 
-                    {/* Offer Tab with Subtabs */}
+                    {/* Comments Tab */}
+                    {activeTab === 'comments' && (
+                      <>
+                        {organizationId && candidateId ? (
+                          <CandidateComments candidateId={candidateId} jobId={jobId} organizationId={organizationId} />
+                        ) : (
+                          <Card className="bg-surface-primary border-border">
+                            <CardHeader>
+                              <CardTitle>Comments</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="text-sm text-text-secondary">No candidate data available.</div>
+                            </CardContent>
+                          </Card>
+                        )}
+                        {candidateId && (
+                          <div className="mt-6">
+                            <CandidateReminders candidateId={candidateId} jobId={jobId} />
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Offer Tab */}
                     {activeTab === 'offer' && candidateId && (
                       <Tabs defaultValue="offer-details" className="w-full">
                         <TabsList className="w-full">
@@ -1710,172 +1676,53 @@ const stageHasAutomation = useMemo(() => {
                         </TabsContent>
                       </Tabs>
                     )}
-                   </div>
+                  </div>
 
-                   {/* Right column (1x) - hidden on mobile */}
-                   <div className="space-y-6 hidden lg:block">
-                     {/* Controls Card - Right Side - hidden for restricted viewers */}
-                     {!isRestrictedViewer && (
-                      <Card className="bg-surface-primary border-border">
-                        <CardContent className="p-4">
-                           <div className="overflow-x-auto scrollbar-none w-full">
-                             <div className="flex items-center justify-between min-w-max">
-                             <div className="flex items-center gap-2">
-                                {canEditCandidates && (
-                                  <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    icon={Edit}
-                                    onClick={() => setEditOpen(true)}
-                                  >
-                                    Edit
-                                  </Button>
-                                )}
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  icon={Download}
-                                  disabled={!candidate}
-                                  onClick={() => setDownloadDialogOpen(true)}
-                                >
-                                  Download
-                                </Button>
-                              </div>
+                  {/* Right column — Quick Actions + Application sidebar */}
+                  <div className="space-y-4 hidden lg:block">
+                    <div className="sticky top-4 space-y-4">
+                      {(() => {
+                        const sortedStages = [...planStages].sort((a, b) => a.position - b.position)
+                        const currentIdx = currentStageId ? sortedStages.findIndex(s => s.jhsId === currentStageId) : -1
+                        const nextStage = currentIdx >= 0 && currentIdx < sortedStages.length - 1 ? sortedStages[currentIdx + 1] : null
+                        const currentStage = currentIdx >= 0 ? sortedStages[currentIdx] : null
+                        return (
+                          <ProfileQuickActionsCard
+                            nextStageLabel={nextStage?.stage.stage_name || null}
+                            onAdvance={async () => {
+                              if (!associationId || !nextStage) return
+                              await moveAssociationToStage(associationId, nextStage.jhsId)
+                              setCurrentStageId(nextStage.jhsId)
+                              onStageChanged?.()
+                            }}
+                            onSubmitScorecard={() => {
+                              if (!currentStage) return
+                              setScoreStageInstId(currentStage.jhsId)
+                              setScoreStageName(currentStage.stage.stage_name)
+                              setScoreOpen(true)
+                            }}
+                            onSchedule={() => setSimpleScheduleOpen(true)}
+                            onCreateOffer={() => setOfferFormOpen(true)}
+                            onReject={handleReject}
+                            isOfferStatus={associationStatus === 'offer'}
+                            isRejected={associationStatus === 'rejected'}
+                            isHired={associationStatus === 'hired'}
+                          />
+                        )
+                      })()}
 
-                             <Separator orientation="vertical" className="h-6" />
-
-                             <div className="flex items-center gap-2">
-                               <Button
-                                 variant="secondary"
-                                 size="sm"
-                                 icon={StickyNote}
-                                 onClick={() => setRightActiveTab('notes')}
-                               >
-                                 Add Note
-                               </Button>
-                               <Button
-                                 variant="secondary"
-                                 size="sm"
-                                 icon={Mail}
-                                 onClick={() => setEmailComposerOpen(true)}
-                               >
-                                 Send Email
-                               </Button>
-                               <Button
-                                 variant="secondary"
-                                 size="sm"
-                                 icon={Calendar}
-                                 onClick={() => setSimpleScheduleOpen(true)}
-                               >
-                                 Schedule Interview
-                               </Button>
-                             </div>
-                           </div>
-                           </div>
-                         </CardContent>
-                      </Card>
-                     )}
-
-                     {/* Tab Navigation */}
-                     <CandidateNameCard
-                       email={candidate.email}
-                       phone={candidate.phone}
-                          tabs={[
-                            ...(!isRestrictedViewer ? [{ value: 'insights', label: 'Insights', Icon: Sparkles }] : []),
-                            ...(!isRestrictedViewer ? [{ value: 'emails', label: 'Emails', Icon: Mail }] : []),
-                            { value: 'notes', label: 'Notes', Icon: StickyNote },
-                            ...(!isRestrictedViewer ? [{ value: 'reminders', label: 'Reminders', Icon: Bell }] : []),
-                            { value: 'feed', label: 'Feed', Icon: Activity },
-                          ]}
-                         activeTab={rightActiveTab}
-                         onTabChange={(v) => setRightActiveTab(v as 'feed' | 'notes' | 'emails' | 'reminders' | 'insights')}
+                      <ProfileApplicationCard
+                        appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
+                        source={candidate?.job_board_source || candidate?.source || null}
+                        compensation={(candidate as any)?.salary_expectation || null}
+                        openTo={(candidate as any)?.location || null}
+                        workAuth={(candidate as any)?.work_authorization || null}
                       />
-
-                     {/* Feed Tab */}
-                     {rightActiveTab === 'feed' && (
-                        <Card className="bg-surface-primary border-border">
-                          <CardHeader>
-                            <CardTitle>Activity Feed</CardTitle>
-                          </CardHeader>
-                         <CardContent className="p-0">
-                           <ScrollArea className="h-[500px]">
-                             <div className="p-6">
-                               <ActivityFeedList 
-                                 candidateId={candidate.id}
-                                 jobId={jobId}
-                               />
-                             </div>
-                           </ScrollArea>
-                         </CardContent>
-                       </Card>
-                     )}
-
-                     {/* Notes Tab */}
-                     {rightActiveTab === 'notes' && (
-                       <>
-                         {organizationId && candidateId ? (
-                           <CandidateComments candidateId={candidateId} jobId={jobId} organizationId={organizationId} />
-                         ) : (
-                            <Card className="bg-surface-primary border-border">
-                              <CardHeader>
-                                <CardTitle>Notes</CardTitle>
-                              </CardHeader>
-                             <CardContent>
-                               <div className="text-sm text-text-secondary">No candidate data available.</div>
-                             </CardContent>
-                           </Card>
-                         )}
-                       </>
-                     )}
-
-                      {/* Emails Tab */}
-                      {rightActiveTab === 'emails' && (
-                         <Card className="bg-surface-primary border-border">
-                           <CardHeader>
-                             <CardTitle>Email History</CardTitle>
-                           </CardHeader>
-                          <CardContent className="p-0">
-                            <div className="h-[500px] overflow-y-auto">
-                              <div className="p-6">
-                                <EmailHistoryList 
-                                  candidateId={candidate.id} 
-                                  jobId={jobId}
-                                  onReply={handleEmailReply}
-                                  onForward={handleEmailForward}
-                                />
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
-
-                      {/* Reminders Tab */}
-                       {rightActiveTab === 'reminders' && candidateId && (
-                        <CandidateReminders candidateId={candidateId} jobId={jobId} />
-                       )}
-
-                       {/* Insights Tab */}
-                       {rightActiveTab === 'insights' && candidateId && (
-                         <CandidateInsightsTab
-                           candidateId={candidateId}
-                           jobId={jobId}
-                           jobDescription={job?.description}
-                         />
-                       )}
-
-                      {/* Job Information */}
-                       <Card className="bg-surface-primary border-border">
-                         <CardHeader>
-                           <CardTitle>Job Information</CardTitle>
-                         </CardHeader>
-                        <CardContent>
-                          <div className="text-sm text-text-primary">{job?.title || '—'}</div>
-                        </CardContent>
-                      </Card>
+                    </div>
                   </div>
                 </div>
-              </Tabs>
-            </div>
+                </div>
+              </div>
             </>
             )}
           <CandidateFormSheet
