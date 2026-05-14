@@ -23,6 +23,7 @@ interface JobHeroProps {
   hiringTeam?: HiringTeamMember[]
   onShare?: () => void
   onViewPosting?: () => void
+  hasPosting?: boolean
   onAddCandidate?: () => void
   onMoreActions?: () => void
   canEdit?: boolean
