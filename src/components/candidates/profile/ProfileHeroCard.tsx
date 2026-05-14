@@ -131,9 +131,9 @@ export function ProfileHeroCard({
       </div>
 
       {/* Identity row */}
-      <div className="flex items-start gap-4 sm:gap-5">
+      <div className="flex items-center gap-4">
         {/* Avatar */}
-        <div className="h-20 w-20 sm:h-24 sm:w-24 shrink-0 rounded-full bg-virgilio-purple text-white flex items-center justify-center font-poppins font-semibold text-2xl sm:text-3xl tracking-[-0.04em]">
+        <div className="h-14 w-14 shrink-0 rounded-full bg-virgilio-purple text-white flex items-center justify-center font-poppins font-semibold text-xl tracking-[-0.04em]">
           {getInitials(candidateName)}
         </div>
 
@@ -157,9 +157,19 @@ export function ProfileHeroCard({
             {currentStageName && (
               <Badge tone="purple" size="sm" dot>{currentStageName}</Badge>
             )}
+            {linkedinUrl && (
+              <button
+                type="button"
+                onClick={() => window.open(ensureAbsoluteUrl(linkedinUrl), '_blank')}
+                className="p-1 rounded-md hover:bg-muted transition-colors text-text-tertiary hover:text-text-secondary"
+                aria-label="Open LinkedIn profile"
+              >
+                <LinkedInFilled className="h-4 w-4" />
+              </button>
+            )}
           </div>
 
-          <div className="mt-1.5 flex items-center gap-1.5 flex-wrap text-body-sm text-text-secondary">
+          <div className="mt-1 flex items-center gap-1.5 flex-wrap text-body-sm text-text-secondary">
             {jobTitle && (
               <>
                 <span>Applying for</span>
@@ -180,24 +190,17 @@ export function ProfileHeroCard({
                 <span>Applied {applied}</span>
               </>
             )}
-          </div>
-
-          <div className="mt-2 flex items-center gap-1.5">
             {onOpenFullProfile && (
-              <Button variant="ghost" size="xs" icon={UserRound} onClick={onOpenFullProfile}>
-                Full profile
-              </Button>
-            )}
-            {linkedinUrl && (
-              <Button
-                variant="ghost"
-                size="xs"
-                onClick={() => window.open(ensureAbsoluteUrl(linkedinUrl), '_blank')}
-                aria-label="Open LinkedIn profile"
-              >
-                <LinkedInFilled className="h-3.5 w-3.5 mr-1" />
-                LinkedIn
-              </Button>
+              <>
+                <span className="text-text-tertiary/60">·</span>
+                <button
+                  type="button"
+                  onClick={onOpenFullProfile}
+                  className="inline-flex items-center gap-1 text-text-secondary hover:text-text-primary transition-colors"
+                >
+                  <UserRound className="h-3.5 w-3.5" /> Full profile
+                </button>
+              </>
             )}
           </div>
         </div>
