@@ -112,6 +112,15 @@ export default {
 				'virgilio-success': '#12B886',
 				'virgilio-error': '#FA5252',
 				'virgilio-rejected': 'hsl(var(--virgilio-rejected))',
+				// Gio Foundation v1.0 — Badge tones (lilac & ink; other 8 reuse pastel-*/muted/destructive)
+				'badge-lilac': {
+					DEFAULT: 'hsl(var(--badge-lilac))',
+					foreground: 'hsl(var(--badge-lilac-foreground))'
+				},
+				'badge-ink': {
+					DEFAULT: 'hsl(var(--badge-ink))',
+					foreground: 'hsl(var(--badge-ink-foreground))'
+				},
 			},
 			borderRadius: {
 				xs: '4px',
