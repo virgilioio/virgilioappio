@@ -73,7 +73,7 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive text-destructive-foreground shadow-[var(--shadow-button)] hover:bg-destructive/90 active:bg-destructive/85 active:shadow-inner",
         outline:
-          "border border-virgilio-border bg-background shadow-[var(--shadow-xs)] hover:bg-[#FAFAF7] active:bg-[#F1F0EC] active:shadow-inner",
+          "border border-virgilio-border bg-white shadow-[var(--shadow-xs)] hover:bg-[#FAFAF7] active:bg-[#F1F0EC] active:shadow-inner",
         virgilio:
           "bg-virgilio-purple text-white shadow-[var(--shadow-button)] hover:bg-virgilio-purple/90",
         warning:
