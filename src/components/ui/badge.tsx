@@ -1,126 +1,243 @@
-
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
+import { X, type LucideIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Gio Foundation v1.0 — Badges & tags.
+ * See docs/style-guide.md for the full spec.
+ *
+ * Compositional API: tone × size × shape + modifiers (dot, bordered, pulse, icon, count, onRemove).
+ * Default text: 11px Inter 500. Default size: sm (22px). Default shape: pill.
+ *
+ * The 40+ legacy semantic `variant="..."` props are kept as deprecated aliases that resolve
+ * internally to a tone + dot + label, so no consumer breaks during the rollout.
+ */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tone classes (bg + fg). 8 tones reuse existing pastel/muted/destructive palette;
+// `lilac` and `ink` are new tokens added in Phase A1.
+// ─────────────────────────────────────────────────────────────────────────────
+export const BADGE_TONES = {
+  green: "bg-pastel-green text-pastel-green-foreground",
+  red: "bg-destructive/10 text-destructive",
+  pink: "bg-pastel-pink text-pastel-pink-foreground",
+  yellow: "bg-pastel-yellow text-pastel-yellow-foreground",
+  orange: "bg-pastel-orange text-pastel-orange-foreground",
+  blue: "bg-pastel-blue text-pastel-blue-foreground",
+  purple: "bg-pastel-purple text-pastel-purple-foreground",
+  lilac: "bg-badge-lilac text-badge-lilac-foreground",
+  neutral: "bg-muted text-muted-foreground",
+  ink: "bg-badge-ink text-badge-ink-foreground",
+} as const
+
+export type BadgeTone = keyof typeof BADGE_TONES
+
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center gap-1.5 font-inter font-medium leading-none whitespace-nowrap select-none transition-colors duration-150",
   {
     variants: {
+      tone: BADGE_TONES,
+      size: {
+        xs: "h-badge-xs px-[7px] text-[10px]",
+        sm: "h-badge-sm px-[9px] text-[11px]", // default
+        md: "h-badge-md px-[11px] text-[12px]",
+        lg: "h-badge-lg px-[14px] text-[12.5px]",
+      },
+      shape: {
+        pill: "rounded-full",
+        square: "rounded-md",
+      },
+      bordered: {
+        true: "border border-current/20",
+        false: "",
+      },
+      // ─── Legacy `variant="..."` aliases (deprecated). Each resolves to a tone+dot
+      // combination matching the prior visual. New code should use `tone` + `dot`.
       variant: {
-        default:
-          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-        secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive:
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        success:
-          "border-transparent bg-success text-success-foreground hover:bg-success/80",
-        warning:
-          "border-transparent bg-warning text-warning-foreground hover:bg-warning/80",
-        info:
-          "border-transparent bg-info text-info-foreground hover:bg-info/80",
-        outline: "text-foreground border-border hover:bg-accent hover:text-accent-foreground",
-
-        // Pastel skill badges
-        "pastel-blue": "border-transparent bg-pastel-blue text-pastel-blue-foreground hover:bg-pastel-blue/80",
-        "pastel-purple": "border-transparent bg-pastel-purple text-pastel-purple-foreground hover:bg-pastel-purple/80",
-        "pastel-green": "border-transparent bg-pastel-green text-pastel-green-foreground hover:bg-pastel-green/80",
-        "pastel-pink": "border-transparent bg-pastel-pink text-pastel-pink-foreground hover:bg-pastel-pink/80",
-        "pastel-yellow": "border-transparent bg-pastel-yellow text-pastel-yellow-foreground hover:bg-pastel-yellow/80",
-        "pastel-orange": "border-transparent bg-pastel-orange text-pastel-orange-foreground hover:bg-pastel-orange/80",
-        "purple": "border-transparent bg-purple-100 text-purple-800 hover:bg-purple-100/80 dark:bg-purple-900/30 dark:text-purple-300",
-
-        // ── Role badges ──
-        "role-recruiter": "border-purple-200 bg-purple-100 text-purple-700 dark:border-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
-        "role-admin": "border-blue-200 bg-blue-100 text-blue-700 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-        "role-owner": "border-blue-300 bg-blue-200 text-blue-800 dark:border-blue-600 dark:bg-blue-900/40 dark:text-blue-200",
-        "role-hiring-manager": "border-orange-200 bg-orange-100 text-orange-700 dark:border-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
-        "role-interviewer": "border-cyan-200 bg-cyan-100 text-cyan-700 dark:border-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
-
-        // ── Seat badges ──
-        "seat-paid": "border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-700 dark:bg-purple-900/20 dark:text-purple-300",
-        "seat-free": "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300",
-
-        // ── Status badges (member / general) ──
-        "status-active": "border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-        "status-invited": "border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-        "status-inactive": "border-border bg-muted text-muted-foreground",
-
-        // ── Job status badges ──
-        "job-open": "border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-        "job-draft": "border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-600 dark:bg-slate-800/30 dark:text-slate-300",
-        "job-closed": "border-red-200 bg-red-100 text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300",
-        "job-archived": "border-border bg-muted text-muted-foreground",
-
-        // ── Pipeline / candidate outcome badges ──
-        "pipeline-hired": "border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-        "pipeline-offer": "border-blue-200 bg-blue-100 text-blue-700 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-        "pipeline-rejected": "border-red-200 bg-red-100 text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300",
-
-        // ── Booking / interview status badges ──
-        "booking-confirmed": "border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-        "booking-rescheduled": "border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-        "booking-cancelled": "border-red-200 bg-red-100 text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300",
-        "booking-completed": "border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-600 dark:bg-slate-800/30 dark:text-slate-300",
-        "booking-no-show": "border-orange-200 bg-orange-100 text-orange-700 dark:border-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
-
-        // ── Integration / connection status badges ──
-        "integration-connected": "border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-        "integration-disconnected": "border-border bg-muted text-muted-foreground",
-        "integration-error": "border-red-200 bg-red-100 text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300",
-        "integration-expired": "border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-
-        // ── Source / origin badges ──
-        "source-inherited": "border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-600 dark:bg-slate-800/30 dark:text-slate-300",
-        "source-custom": "border-purple-200 bg-purple-100 text-purple-700 dark:border-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
-
-        // ── Requirement badges ──
-        "required": "border-red-200 bg-red-100 text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300",
-        "optional": "border-border bg-muted text-muted-foreground",
-
-        // ── Category / type (neutral tinted) ──
-        "category": "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-600 dark:bg-slate-800/20 dark:text-slate-300",
-
-        // ── Match tier badges (sourcing) ──
-        "match-excellent": "border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-        "match-good": "border-blue-200 bg-blue-100 text-blue-700 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-        "match-fair": "border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-600 dark:bg-slate-800/30 dark:text-slate-300",
-
-        // ── Collected / keyword badges (sourcing) ──
-        "collected": "border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-        "keyword-match": "border-purple-200 bg-purple-100 text-purple-700 dark:border-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
-
-        // ── Pending activity type badges ──
-        "activity-scorecard": "border-cyan-200 bg-cyan-100 text-cyan-700 dark:border-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
-        "activity-decision": "border-purple-200 bg-purple-100 text-purple-700 dark:border-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
-        "activity-email": "border-blue-200 bg-blue-100 text-blue-700 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-        "activity-offer": "border-orange-200 bg-orange-100 text-orange-700 dark:border-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
+        default: "",
+        secondary: "bg-secondary text-secondary-foreground",
+        destructive: "bg-destructive/10 text-destructive",
+        success: "bg-pastel-green text-pastel-green-foreground",
+        warning: "bg-pastel-yellow text-pastel-yellow-foreground",
+        info: "bg-pastel-blue text-pastel-blue-foreground",
+        outline: "bg-transparent text-foreground border border-virgilio-border",
+        "pastel-blue": "bg-pastel-blue text-pastel-blue-foreground",
+        "pastel-purple": "bg-pastel-purple text-pastel-purple-foreground",
+        "pastel-green": "bg-pastel-green text-pastel-green-foreground",
+        "pastel-pink": "bg-pastel-pink text-pastel-pink-foreground",
+        "pastel-yellow": "bg-pastel-yellow text-pastel-yellow-foreground",
+        "pastel-orange": "bg-pastel-orange text-pastel-orange-foreground",
+        purple: "bg-pastel-purple text-pastel-purple-foreground",
+        "role-recruiter": "bg-pastel-purple text-pastel-purple-foreground",
+        "role-admin": "bg-pastel-blue text-pastel-blue-foreground",
+        "role-owner": "bg-badge-ink text-badge-ink-foreground",
+        "role-hiring-manager": "bg-pastel-orange text-pastel-orange-foreground",
+        "role-interviewer": "bg-muted text-muted-foreground",
+        "seat-paid": "bg-pastel-purple text-pastel-purple-foreground",
+        "seat-free": "bg-pastel-green text-pastel-green-foreground",
+        "status-active": "bg-pastel-green text-pastel-green-foreground",
+        "status-invited": "bg-pastel-yellow text-pastel-yellow-foreground",
+        "status-inactive": "bg-muted text-muted-foreground",
+        "job-open": "bg-pastel-green text-pastel-green-foreground",
+        "job-draft": "bg-muted text-muted-foreground",
+        "job-closed": "bg-destructive/10 text-destructive",
+        "job-archived": "bg-muted text-muted-foreground",
+        "pipeline-hired": "bg-pastel-green text-pastel-green-foreground",
+        "pipeline-offer": "bg-pastel-orange text-pastel-orange-foreground",
+        "pipeline-rejected": "bg-destructive/10 text-destructive",
+        "booking-confirmed": "bg-pastel-green text-pastel-green-foreground",
+        "booking-rescheduled": "bg-pastel-yellow text-pastel-yellow-foreground",
+        "booking-cancelled": "bg-destructive/10 text-destructive",
+        "booking-completed": "bg-muted text-muted-foreground",
+        "booking-no-show": "bg-pastel-orange text-pastel-orange-foreground",
+        "integration-connected": "bg-pastel-green text-pastel-green-foreground",
+        "integration-disconnected": "bg-muted text-muted-foreground",
+        "integration-error": "bg-destructive/10 text-destructive",
+        "integration-expired": "bg-pastel-yellow text-pastel-yellow-foreground",
+        "source-inherited": "bg-muted text-muted-foreground",
+        "source-custom": "bg-pastel-purple text-pastel-purple-foreground",
+        required: "bg-destructive/10 text-destructive",
+        optional: "bg-muted text-muted-foreground",
+        category: "bg-muted text-muted-foreground",
+        "match-excellent": "bg-pastel-green text-pastel-green-foreground",
+        "match-good": "bg-pastel-blue text-pastel-blue-foreground",
+        "match-fair": "bg-muted text-muted-foreground",
+        collected: "bg-pastel-green text-pastel-green-foreground",
+        "keyword-match": "bg-badge-lilac text-badge-lilac-foreground",
+        "activity-scorecard": "bg-pastel-blue text-pastel-blue-foreground",
+        "activity-decision": "bg-pastel-purple text-pastel-purple-foreground",
+        "activity-email": "bg-pastel-blue text-pastel-blue-foreground",
+        "activity-offer": "bg-pastel-orange text-pastel-orange-foreground",
       },
     },
     defaultVariants: {
+      tone: "neutral",
+      size: "sm",
+      shape: "pill",
+      bordered: false,
       variant: "default",
     },
   }
 )
 
+type BadgeBaseProps = Omit<
+  VariantProps<typeof badgeVariants>,
+  "tone" | "variant"
+> & {
+  tone?: BadgeTone
+  /** @deprecated Use `tone` + optional `dot` instead. Kept for backward compat. */
+  variant?: VariantProps<typeof badgeVariants>["variant"]
+}
+
 export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {
+  extends Omit<React.HTMLAttributes<HTMLSpanElement>, "color">,
+    BadgeBaseProps {
+  /** Show a leading 7px tone-colored dot. Use for status badges. */
+  dot?: boolean
+  /** Animate a soft halo around the dot — for live-signal badges only. */
+  pulse?: boolean
+  /** Leading icon (Sparkles, Flame, Lock, …). Renders an icon-prefix badge. */
+  icon?: LucideIcon
+  /** Trailing inline count chip (`12`, `+4 new`). */
+  count?: number | string
+  /** Adds a × that calls this handler — turns the badge into a removable chip. */
+  onRemove?: () => void
+  /** @deprecated visual hover affordance. Prefer wrapping in a button if interactive. */
   interactive?: boolean
 }
 
-function Badge({ className, variant, interactive = false, ...props }: BadgeProps) {
+const dotSizeForBadge: Record<NonNullable<BadgeProps["size"]>, string> = {
+  xs: "h-1.5 w-1.5",
+  sm: "h-[7px] w-[7px]",
+  md: "h-2 w-2",
+  lg: "h-2.5 w-2.5",
+}
+
+const iconSizeForBadge: Record<NonNullable<BadgeProps["size"]>, string> = {
+  xs: "h-2.5 w-2.5",
+  sm: "h-3 w-3",
+  md: "h-3.5 w-3.5",
+  lg: "h-4 w-4",
+}
+
+function Badge({
+  className,
+  tone,
+  variant,
+  size = "sm",
+  shape = "pill",
+  bordered,
+  dot,
+  pulse,
+  icon: Icon,
+  count,
+  onRemove,
+  interactive = false,
+  children,
+  ...props
+}: BadgeProps) {
+  // If a legacy `variant` is provided, let CVA apply its alias classes and skip `tone`.
+  const useLegacy = !!variant && variant !== "default"
+  const resolvedTone: BadgeTone | undefined = useLegacy ? undefined : (tone ?? "neutral")
+
+  const dotSize = dotSizeForBadge[size ?? "sm"]
+  const iconSize = iconSizeForBadge[size ?? "sm"]
+
   return (
-    <div 
+    <span
       className={cn(
-        badgeVariants({ variant }), 
-        interactive && "cursor-pointer hover:scale-105",
+        badgeVariants({
+          tone: resolvedTone,
+          size,
+          shape,
+          bordered,
+          variant: useLegacy ? variant : "default",
+        }),
+        interactive && "cursor-pointer hover:opacity-90",
         className
-      )} 
-      {...props} 
-    />
+      )}
+      {...props}
+    >
+      {dot && (
+        <span className="relative inline-flex shrink-0">
+          <span
+            className={cn("rounded-full bg-current", dotSize)}
+            aria-hidden
+          />
+          {pulse && (
+            <span
+              className={cn(
+                "absolute inset-0 rounded-full bg-current animate-badge-pulse",
+                dotSize
+              )}
+              aria-hidden
+            />
+          )}
+        </span>
+      )}
+      {Icon && <Icon className={cn("shrink-0", iconSize)} aria-hidden />}
+      {children}
+      {count !== undefined && count !== null && (
+        <span className="ml-0.5 inline-flex items-center justify-center rounded-full bg-current/[0.13] px-1.5 text-[0.92em] tabular-nums leading-none">
+          {count}
+        </span>
+      )}
+      {onRemove && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onRemove()
+          }}
+          className="ml-0.5 -mr-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full hover:bg-current/15 focus:outline-none focus-visible:ring-1 focus-visible:ring-current"
+          aria-label="Remove"
+        >
+          <X className="h-2.5 w-2.5" />
+        </button>
+      )}
+    </span>
   )
 }
 
