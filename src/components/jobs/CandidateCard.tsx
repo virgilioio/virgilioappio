@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { format, parseISO, formatDistanceToNowStrict } from 'date-fns'
 import { Card } from '@/components/ui/card'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Calendar, Clock, FileText, CheckCircle, Send, Phone, Heart } from 'lucide-react'
+import { Calendar, Clock, FileText, CheckCircle, Send, Phone, Heart, Sparkles } from 'lucide-react'
 import { JobStage } from '@/hooks/useJobHiringPlan'
 import { Checkbox } from '@/components/ui/checkbox'
 import { supabase } from '@/lib/supabaseClient'
@@ -63,6 +64,22 @@ export default function CandidateCard(props: CandidateCardProps) {
       return data
     },
     enabled: !!candidateId,
+  })
+
+  // Lightweight candidate meta (current role / company / AI fit) for visual subtitle.
+  const { data: candidateMeta } = useQuery({
+    queryKey: ['candidate-meta', candidateId],
+    queryFn: async () => {
+      if (!candidateId) return null
+      const { data } = await supabase
+        .from('candidates')
+        .select('current_role, current_company, ai_fit_score')
+        .eq('id', candidateId)
+        .maybeSingle()
+      return data as any
+    },
+    enabled: !!candidateId,
+    staleTime: 5 * 60 * 1000,
   })
 
   // Query for candidate status (scorecards, bookings, and booking link sent)
@@ -283,106 +300,130 @@ export default function CandidateCard(props: CandidateCardProps) {
 
   const statusBadge = getStatusBadge()
 
+  const initials = (candidateName || '?')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(s => s[0]?.toUpperCase())
+    .join('') || '?'
+
+  const role = candidateMeta?.current_role || null
+  const company = candidateMeta?.current_company || null
+  const aiFitScore = typeof candidateMeta?.ai_fit_score === 'number' ? candidateMeta.ai_fit_score : null
+
   return (
     <>
-      <Card className="relative p-4 min-h-32 bg-white border-border cursor-pointer" onClick={onClick} role="button" aria-label="Open candidate profile">
+      <Card
+        className="relative bg-white border border-virgilio-border rounded-xl shadow-none hover:shadow-[var(--shadow-xs)] transition-shadow p-3 cursor-pointer"
+        onClick={onClick}
+        role="button"
+        aria-label="Open candidate profile"
+      >
         {props.showCheckbox && (
-          <div className="absolute top-3 right-3 z-10" onClick={(e) => e.stopPropagation()}>
+          <div className="absolute top-2 right-2 z-10" onClick={(e) => e.stopPropagation()}>
             <Checkbox checked={!!props.checked} onCheckedChange={(v) => props.onCheckedChange?.(!!v)} aria-label="Select candidate" />
           </div>
         )}
 
-        {nextInterview && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Badge
-                  variant="secondary"
-                  className="absolute top-2 right-2 cursor-pointer hover:bg-secondary/80 gap-1"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setSelectedBookingId(nextInterview.id)
-                    setBookingDialogOpen(true)
-                  }}
-                >
-                  <Calendar className="h-3 w-3" />
-                  {format(parseISO(nextInterview.scheduled_start), 'MMM d')}
-                </Badge>
-              </TooltipTrigger>
-              <TooltipContent>
-                Interview: {format(parseISO(nextInterview.scheduled_start), 'PPpp')}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+        {!props.showCheckbox && props.isFavorite && (
+          <Heart className="absolute top-2.5 right-2.5 h-3.5 w-3.5 fill-red-500 text-red-500" />
         )}
-        
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="font-medium text-sm text-text-primary truncate">{candidateName}</div>
-              {props.isFavorite && (
-                <Heart className="h-3.5 w-3.5 fill-red-500 text-red-500 flex-shrink-0" />
-              )}
+
+        <div className="flex items-start gap-2.5">
+          <Avatar className="h-8 w-8 shrink-0">
+            <AvatarFallback className="bg-virgilio-purple text-white text-[11px] font-semibold">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1">
+            <div className="font-poppins text-[13px] font-semibold text-text-primary leading-tight truncate">
+              {candidateName}
             </div>
-            <div className="flex flex-col gap-0.5 mt-1">
-              {linkedinUrl ? (
-                <a
-                  href={linkedinUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-[#0A66C2] hover:underline"
-                  title="Open LinkedIn"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <LinkedInFilled className="w-3.5 h-3.5" /> LinkedIn
-                </a>
-              ) : (
-                <div className="text-xs text-text-tertiary">No LinkedIn</div>
-              )}
-              {phone && (
-                <div className="inline-flex items-center gap-1 text-xs text-text-secondary">
-                  {whatsAppEnabled && buildWhatsAppUrl(phone) ? (
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1 text-[#25D366] hover:text-[#128C7E] hover:underline bg-transparent border-none p-0 cursor-pointer"
-                      title="Open WhatsApp"
-                      onClick={handleWhatsAppClick}
-                    >
-                      <WhatsAppIcon size={14} />
-                      <span className="text-text-secondary">{formatE164Display(phone)}</span>
-                    </button>
-                  ) : (
-                    <>
-                      <Phone className="w-3 h-3" />
-                      <span>{formatE164Display(phone)}</span>
-                    </>
-                  )}
-                </div>
-              )}
+            <div className="text-[12px] text-text-tertiary truncate mt-0.5">
+              {role || ''}{role && company ? ' ' : ''}{company ? `@ ${company}` : ''}
             </div>
           </div>
         </div>
 
-        {/* Bottom row with time badge (left) and status badge (right) */}
-        <div className="absolute left-4 right-4 bottom-3 flex justify-between items-center gap-2">
-          {timeInStageLabel && (
-            <Badge variant={timeBadgeVariant ?? 'outline'}>{timeInStageLabel}</Badge>
-          )}
-          {statusBadge && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge variant={statusBadge.variant} className="gap-1 text-[10px] px-1.5">
-                    <statusBadge.Icon className="h-3 w-3" />
-                    <span className="hidden sm:inline">{statusBadge.label}</span>
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {statusBadge.label}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
+        {(linkedinUrl || phone) && (
+          <div className="mt-2 flex items-center gap-3 text-[11px]">
+            {linkedinUrl && (
+              <a
+                href={linkedinUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-[#0A66C2] hover:underline"
+                title="Open LinkedIn"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <LinkedInFilled className="w-3 h-3" />
+              </a>
+            )}
+            {phone && (whatsAppEnabled && buildWhatsAppUrl(phone) ? (
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-[#25D366] hover:text-[#128C7E] bg-transparent border-none p-0 cursor-pointer"
+                title="Open WhatsApp"
+                onClick={handleWhatsAppClick}
+              >
+                <WhatsAppIcon size={12} />
+              </button>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-text-tertiary">
+                <Phone className="w-3 h-3" />
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Bottom row: AI fit (left) + time chip / status (right) */}
+        <div className="mt-3 pt-2 flex items-center justify-between gap-2">
+          <div className="inline-flex items-center gap-1 font-poppins text-[12px] tabular-nums text-text-secondary">
+            <Sparkles className="h-3 w-3 text-virgilio-purple" />
+            <span className="font-semibold text-text-primary">{aiFitScore ?? '—'}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {nextInterview ? (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded-md bg-pastel-pink/60 px-1.5 py-0.5 text-[11px] font-medium text-text-primary hover:brightness-95"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedBookingId(nextInterview.id)
+                        setBookingDialogOpen(true)
+                      }}
+                    >
+                      <Calendar className="h-3 w-3" />
+                      {format(parseISO(nextInterview.scheduled_start), 'MMM d')}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Interview: {format(parseISO(nextInterview.scheduled_start), 'PPpp')}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : timeInStageLabel ? (
+              <span className="inline-flex items-center gap-1 text-[11px] tabular-nums text-text-tertiary">
+                <Clock className="h-3 w-3" />
+                {timeInStageLabel}
+              </span>
+            ) : null}
+            {statusBadge && !nextInterview && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span aria-label={statusBadge.label}>
+                      <statusBadge.Icon className="h-3 w-3 text-text-tertiary" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>{statusBadge.label}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
         </div>
       </Card>
 
