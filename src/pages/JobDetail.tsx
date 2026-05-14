@@ -346,6 +346,8 @@ export default function JobDetail() {
 
   // Sourcing project shortcut
   const { projects: sourcingProjects } = useJobSourcingProject(id)
+  const { postings: jobPostings } = useJobPostings(id!)
+  const hasJobPosting = (jobPostings || []).some((p) => p.is_active) || (jobPostings || []).length > 0
 
   // Candidates hook with new functions
   const {
