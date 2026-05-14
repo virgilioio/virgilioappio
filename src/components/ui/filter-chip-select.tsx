@@ -39,17 +39,17 @@ export function FilterChipSelect<T extends string = string>({
         <button
           type="button"
           className={cn(
-            'inline-flex items-center gap-1.5 rounded-full border px-3 h-8 text-sm font-poppins font-medium transition-all duration-150 whitespace-nowrap',
-            'hover:bg-accent/30',
+            'inline-flex items-center gap-1.5 font-poppins font-medium transition-colors duration-150 whitespace-nowrap',
+            'h-9 px-3.5 rounded-lg border border-virgilio-border text-[13px] text-text-primary',
             isActive
-              ? 'bg-accent/40 border-accent-foreground/20 text-accent-foreground'
-              : 'border-border text-muted-foreground hover:text-foreground',
+              ? 'bg-[#FAFAF7] hover:bg-[hsl(var(--menu-hover))]'
+              : 'bg-white hover:bg-[#FAFAF7]',
             className,
           )}
         >
-          <span className="text-foreground">{label}</span>
-          <span className="text-accent-foreground/60">|</span>
-          <span className="text-accent-foreground">{current?.label ?? ''}</span>
+          <span className="text-text-primary">{label}</span>
+          <span className="text-[hsl(var(--menu-group-color))]">·</span>
+          <span className="text-virgilio-purple">{current?.label ?? ''}</span>
           <ChevronDown className="h-3 w-3 opacity-60" />
         </button>
       </DropdownMenuTrigger>

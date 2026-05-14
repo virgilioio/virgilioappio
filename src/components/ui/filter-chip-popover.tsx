@@ -21,8 +21,8 @@ interface FilterChipPopoverProps {
   searchThreshold?: number
   maxVisible?: number
   className?: string
-  /** Visual style. `pill` (default) = legacy rounded-full subtle. `soft` = rounded-lg white + hairline, matches Jobs page mockup. */
-  variant?: 'pill' | 'soft'
+  /** @deprecated kept for backward compatibility — only the soft chip is supported now. */
+  variant?: 'soft' | 'pill'
 }
 
 export function FilterChipPopover({
@@ -34,7 +34,6 @@ export function FilterChipPopover({
   searchThreshold = 8,
   maxVisible = 8,
   className,
-  variant = 'pill',
 }: FilterChipPopoverProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -75,36 +74,26 @@ export function FilterChipPopover({
     <Popover open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setSearch(''); setShowAll(false) } }}>
       <PopoverTrigger asChild>
         <button
+          type="button"
           className={cn(
             'inline-flex items-center gap-1.5 font-poppins font-medium transition-colors duration-150 whitespace-nowrap',
-            variant === 'soft'
-              ? cn(
-                  'h-9 px-3.5 rounded-lg border border-virgilio-border text-[13px] text-text-primary',
-                  isActive
-                    ? 'bg-[#FAFAF7] hover:bg-[#F1F0EC]'
-                    : 'bg-white hover:bg-[#FAFAF7]'
-                )
-              : cn(
-                  'rounded-full border px-3 h-8 text-sm hover:bg-accent/30',
-                  isActive
-                    ? 'bg-accent/40 border-accent-foreground/20 text-accent-foreground'
-                    : 'border-border text-muted-foreground hover:text-foreground'
-                ),
+            'h-9 px-3.5 rounded-lg border border-virgilio-border text-[13px] text-text-primary',
+            isActive
+              ? 'bg-[#FAFAF7] hover:bg-[hsl(var(--menu-hover))]'
+              : 'bg-white hover:bg-[#FAFAF7]',
             className,
           )}
         >
           {isActive ? (
             <>
-              <span className={variant === 'soft' ? 'text-text-primary' : 'text-foreground'}>{label}</span>
-              <span className={variant === 'soft' ? 'text-text-tertiary' : 'text-accent-foreground/60'}>·</span>
-              <span className={variant === 'soft' ? 'text-virgilio-purple' : 'text-accent-foreground'}>{summaryText}</span>
+              <span className="text-text-primary">{label}</span>
+              <span className="text-[hsl(var(--menu-group-color))]">·</span>
+              <span className="text-virgilio-purple">{summaryText}</span>
               <ChevronDown className="h-3 w-3 opacity-60" />
             </>
           ) : (
             <>
-              {variant === 'soft'
-                ? <span aria-hidden className="text-[15px] leading-none text-text-tertiary -mt-px">+</span>
-                : <Plus className="h-3.5 w-3.5" />}
+              <span aria-hidden className="text-[15px] leading-none text-[hsl(var(--menu-group-color))] -mt-px">+</span>
               {label}
             </>
           )}
