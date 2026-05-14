@@ -26,13 +26,19 @@ interface ProfileActionBarProps {
 export function ProfileActionBar({
   nextStageLabel, onAdvance, onSubmitScorecard, onSchedule, onEmail,
   onCreateOffer, onReject, isOfferStatus, isRejected, isHired,
-  onEdit, onDownload, onMoveToOffer, onReturnToPipeline, onHire, canEdit,
+  onEdit, onDownload, onMoveToOffer, onReturnToPipeline, onHire, onAddOrTransfer, canEdit,
 }: ProfileActionBarProps) {
   return (
     <div className="flex items-center justify-between gap-2 flex-wrap">
       <div className="flex items-center gap-2 flex-wrap">
         {nextStageLabel && !isRejected && !isHired && (
-          <Button variant="primary" size="md" iconRight={ArrowRight} onClick={onAdvance}>
+          <Button
+            variant="primary"
+            size="md"
+            iconRight={ArrowRight}
+            onClick={onAdvance}
+            className="!text-[#fffcf9] [&_svg]:!text-[#fffcf9]"
+          >
             Advance to {nextStageLabel}
           </Button>
         )}
