@@ -219,38 +219,38 @@ export function JobsTable({
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <FilterChipPopover
+              variant="soft"
               label="Company"
               options={companyOptions}
               selectedValues={selectedCompanies}
               onSelectionChange={setSelectedCompanies}
               searchable
-              className="h-9 px-3.5 text-[13px]"
             />
             <FilterChipPopover
+              variant="soft"
               label="Location"
               options={locationOptions}
               selectedValues={selectedLocations}
               onSelectionChange={setSelectedLocations}
               searchable
-              className="h-9 px-3.5 text-[13px]"
             />
             {(permissions.canViewOrganizations || permissions.isPlatformAdmin) && !membersLoading && userOptions.length > 0 && (
               <FilterChipPopover
+                variant="soft"
                 label="Owner"
                 options={userOptions}
                 selectedValues={selectedUsers}
                 onSelectionChange={setSelectedUsers}
                 searchable
-                className="h-9 px-3.5 text-[13px]"
               />
             )}
             <FilterChipPopover
+              variant="soft"
               label="Posted"
               options={postedOptions}
               selectedValues={postedRange}
               onSelectionChange={(vals) => setPostedRange(vals.slice(-1))}
               searchable={false}
-              className="h-9 px-3.5 text-[13px]"
             />
           </div>
         </div>
