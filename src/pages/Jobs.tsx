@@ -13,7 +13,6 @@ import { JobsTable } from '@/components/jobs/JobsTable'
 import { JobFormSheet } from '@/components/jobs/JobFormSheet'
 import { JobWizard } from '@/components/jobs/JobWizard'
 import { useJobs, Job } from '@/hooks/useJobs'
-import { TableSegmented } from '@/components/ui/table-toolbar'
 
 type StatusSegment = 'active' | 'all' | 'paused' | 'closed' | 'archived'
 
