@@ -1,31 +1,38 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { differenceInDays } from 'date-fns'
+import { Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import {
-  IdentityCell, StatusCell, NumericCell, ComposedCell, AvatarStack, ActionCell,
+  StatusCell, NumericCell, ComposedCell, AvatarStack, ActionCell,
 } from '@/components/ui/table-cells'
 import { TableSkeleton, TableEmpty, TableFilteredEmpty } from '@/components/ui/table-states'
 import { TableFooterSummary } from '@/components/ui/table-pagination'
-import {
-  TableToolbar, TableSearch, TableSegmented,
-} from '@/components/ui/table-toolbar'
 import { FilterChipPopover, type FilterChipOption } from '@/components/ui/filter-chip-popover'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, Eye, Edit, Archive, MapPin } from 'lucide-react'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { PipelineBar } from '@/components/jobs/PipelineBar'
-import { useJobsCandidateCounts } from '@/hooks/useJobsCandidateCounts'
+import { usePipelineJobMetrics } from '@/hooks/usePipelineJobMetrics'
 import { usePermissions } from '@/hooks/usePermissions'
-import { useOrganizations } from '@/hooks/useOrganizations'
 import { useMembers } from '@/hooks/useMembers'
 import { useUserAssignedJobIds } from '@/hooks/useUserAssignedJobIds'
 import { jobMatchesUsers } from '@/utils/jobInvolvement'
 import { Job } from '@/hooks/useJobs'
+import { cn } from '@/lib/utils'
+
+type StatusSegment = 'active' | 'all' | 'paused' | 'closed' | 'archived'
+
+interface TabOption {
+  value: StatusSegment
+  label: string
+  count: number
+}
 
 interface JobsTableProps {
   jobs: Job[]
@@ -34,8 +41,9 @@ interface JobsTableProps {
   onEdit: (job: Job) => void
   onArchive: (id: string) => void
   onCreateNew: () => void
-  /** Status segment value, controlled by parent. */
-  statusFilter: 'active' | 'all' | 'paused' | 'closed' | 'archived'
+  statusFilter: StatusSegment
+  onStatusFilterChange: (v: StatusSegment) => void
+  tabs: TabOption[]
 }
 
 type StatusTone = 'green' | 'yellow' | 'neutral' | 'ink'
@@ -50,7 +58,7 @@ function statusBadge(status: Job['status']) {
   return map[status]
 }
 
-const COLS = 8 // job, dept, location, stage, pipeline, days, owner, actions
+const COLS = 8 // job, company, location, stage, pipeline, days, owner, actions
 
 export function JobsTable({
   jobs,
@@ -59,22 +67,23 @@ export function JobsTable({
   onEdit,
   onArchive,
   statusFilter,
+  onStatusFilterChange,
+  tabs,
 }: JobsTableProps) {
   const permissions = usePermissions()
-  const { organizations } = useOrganizations()
   const { members, isLoading: membersLoading } = useMembers()
 
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([])
+  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([])
   const [selectedLocations, setSelectedLocations] = useState<string[]>([])
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
-  const [postedRange, setPostedRange] = useState<string[]>([]) // 'today' | '7d' | '30d'
+  const [postedRange, setPostedRange] = useState<string[]>([])
 
   const { assignedJobIds } = useUserAssignedJobIds(selectedUsers)
 
-  const departmentOptions: FilterChipOption[] = useMemo(() => {
+  const companyOptions: FilterChipOption[] = useMemo(() => {
     const set = new Set<string>()
-    jobs.forEach(j => j.department && set.add(j.department))
+    jobs.forEach(j => j.organization_name && set.add(j.organization_name))
     return Array.from(set).sort().map(v => ({ value: v, label: v, count: 0 }))
   }, [jobs])
 
@@ -95,6 +104,16 @@ export function JobsTable({
       .sort((a, b) => a.label.localeCompare(b.label))
   }, [members])
 
+  const memberById = useMemo(() => {
+    const map = new Map<string, { name: string; email?: string }>()
+    members.forEach(m => {
+      if (!m.user_id) return
+      const name = `${m.user_first_name || ''} ${m.user_last_name || ''}`.trim() || m.user_email || ''
+      map.set(m.user_id, { name, email: m.user_email })
+    })
+    return map
+  }, [members])
+
   const postedOptions: FilterChipOption[] = useMemo(() => [
     { value: 'today', label: 'Today', count: 0 },
     { value: '7d', label: 'Last 7 days', count: 0 },
@@ -103,20 +122,18 @@ export function JobsTable({
 
   const filteredJobs = useMemo(() => {
     return jobs.filter(job => {
-      // Status segment
       if (statusFilter === 'active' && !(job.status === 'open' || job.status === 'draft')) return false
       if (statusFilter === 'paused' && job.status !== 'draft') return false
       if (statusFilter === 'closed' && job.status !== 'closed') return false
       if (statusFilter === 'archived' && job.status !== 'archived') return false
 
-      // Search
       if (searchTerm.trim()) {
         const q = searchTerm.toLowerCase()
-        const haystack = `${job.title} ${job.department ?? ''} ${(job.hiring_team_names || []).join(' ')}`.toLowerCase()
+        const haystack = `${job.title} ${job.organization_name ?? ''} ${(job.hiring_team_names || []).join(' ')}`.toLowerCase()
         if (!haystack.includes(q)) return false
       }
 
-      if (selectedDepartments.length && !selectedDepartments.includes(job.department || '')) return false
+      if (selectedCompanies.length && !selectedCompanies.includes(job.organization_name || '')) return false
       if (selectedLocations.length && !selectedLocations.includes(job.location || '')) return false
 
       if (postedRange.length) {
@@ -130,48 +147,84 @@ export function JobsTable({
       if (!jobMatchesUsers(job, selectedUsers, assignedJobIds)) return false
       return true
     })
-  }, [jobs, statusFilter, searchTerm, selectedDepartments, selectedLocations, selectedUsers, postedRange, assignedJobIds])
+  }, [jobs, statusFilter, searchTerm, selectedCompanies, selectedLocations, selectedUsers, postedRange, assignedJobIds])
 
   const visibleIds = useMemo(() => filteredJobs.map(j => j.id), [filteredJobs])
-  const { data: countsMap = {} } = useJobsCandidateCounts(visibleIds)
-  const maxCount = useMemo(
-    () => Math.max(1, ...Object.values(countsMap)),
-    [countsMap]
-  )
+  const { data: metrics = [] } = usePipelineJobMetrics(visibleIds)
+  const metricsByJob = useMemo(() => {
+    const m = new Map<string, typeof metrics[number]>()
+    metrics.forEach(x => m.set(x.job_id, x))
+    return m
+  }, [metrics])
 
   const hasActiveFilters =
     searchTerm.trim() !== '' ||
-    selectedDepartments.length > 0 ||
+    selectedCompanies.length > 0 ||
     selectedLocations.length > 0 ||
     selectedUsers.length > 0 ||
     postedRange.length > 0
 
   const clearAll = () => {
     setSearchTerm('')
-    setSelectedDepartments([])
+    setSelectedCompanies([])
     setSelectedLocations([])
     setSelectedUsers([])
     setPostedRange([])
   }
 
   return (
-    <div className="space-y-3">
-      {/* Toolbar: search + filter chips */}
-      <TableToolbar
-        left={
-          <>
-            <TableSearch
+    <div className="space-y-4">
+      {/* Tabs + Filters card */}
+      <div className="rounded-2xl border border-virgilio-border bg-white overflow-hidden">
+        {/* Tabs row */}
+        <div className="flex items-center gap-1 px-3 py-2 border-b border-virgilio-border">
+          {tabs.map(t => {
+            const active = t.value === statusFilter
+            return (
+              <button
+                key={t.value}
+                type="button"
+                onClick={() => onStatusFilterChange(t.value)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg font-poppins text-[13.5px] tracking-[-0.01em] transition-colors',
+                  active
+                    ? 'bg-[#FAFAF7] text-text-primary font-semibold'
+                    : 'text-text-tertiary hover:text-text-primary font-medium'
+                )}
+              >
+                <span>{t.label}</span>
+                {t.count > 0 && (
+                  <span className={cn(
+                    'font-poppins text-[12.5px] tabular-nums',
+                    active ? 'text-text-secondary' : 'text-text-tertiary/70'
+                  )}>
+                    ({t.count})
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Search + filters row */}
+        <div className="flex flex-wrap items-center gap-3 p-3">
+          <div className="relative flex-1 min-w-[240px]">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary" />
+            <Input
               value={searchTerm}
-              onChange={setSearchTerm}
-              placeholder="Search by title, owner, or department…"
-              className="min-w-[260px]"
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="Search by title, owner, or company…"
+              className="h-10 pl-10 pr-3 bg-[#FAFAF7] border-transparent rounded-xl text-[13.5px] focus-visible:bg-white"
             />
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
             <FilterChipPopover
-              label="Department"
-              options={departmentOptions}
-              selectedValues={selectedDepartments}
-              onSelectionChange={setSelectedDepartments}
+              label="Company"
+              options={companyOptions}
+              selectedValues={selectedCompanies}
+              onSelectionChange={setSelectedCompanies}
               searchable
+              className="h-9 px-3.5 text-[13px]"
             />
             <FilterChipPopover
               label="Location"
@@ -179,6 +232,7 @@ export function JobsTable({
               selectedValues={selectedLocations}
               onSelectionChange={setSelectedLocations}
               searchable
+              className="h-9 px-3.5 text-[13px]"
             />
             {(permissions.canViewOrganizations || permissions.isPlatformAdmin) && !membersLoading && userOptions.length > 0 && (
               <FilterChipPopover
@@ -187,6 +241,7 @@ export function JobsTable({
                 selectedValues={selectedUsers}
                 onSelectionChange={setSelectedUsers}
                 searchable
+                className="h-9 px-3.5 text-[13px]"
               />
             )}
             <FilterChipPopover
@@ -195,18 +250,19 @@ export function JobsTable({
               selectedValues={postedRange}
               onSelectionChange={(vals) => setPostedRange(vals.slice(-1))}
               searchable={false}
+              className="h-9 px-3.5 text-[13px]"
             />
-          </>
-        }
-      />
+          </div>
+        </div>
+      </div>
 
       {/* Desktop table */}
-      <div className="hidden lg:block">
+      <div className="hidden lg:block rounded-2xl border border-virgilio-border bg-white overflow-hidden">
         <Table density="default">
           <TableHeader>
             <TableRow>
               <TableHead>Job</TableHead>
-              <TableHead>Department</TableHead>
+              <TableHead>Company</TableHead>
               <TableHead>Location</TableHead>
               <TableHead>Stage</TableHead>
               <TableHead>Pipeline</TableHead>
@@ -237,10 +293,25 @@ export function JobsTable({
                 const days = differenceInDays(new Date(), new Date(job.created_at))
                 const overdue = days >= 21
                 const status = statusBadge(job.status)
-                const count = countsMap[job.id] ?? 0
-                const owner = job.hiring_team_names?.[0] || job.organization_name || '—'
-                const trending = count >= 20 // simple, real signal
-                const employmentType = job.department ? 'Full-time' : 'Full-time'
+                const metric = metricsByJob.get(job.id)
+                const totalCount = metric?.active_candidates ?? 0
+                const stageData = (metric?.stages ?? []).map(s => ({
+                  stage_id: s.stage_id,
+                  stage_name: s.stage_name,
+                  stage_type: s.stage_type,
+                  count: s.count_in_stage,
+                  position: s.position,
+                }))
+                const trending = totalCount >= 20
+
+                // Owner resolution
+                const ownerMember = job.created_by ? memberById.get(job.created_by) : undefined
+                const ownerName =
+                  ownerMember?.name ||
+                  job.hiring_team_names?.[0] ||
+                  '—'
+                const ownerFirst = ownerName === '—' ? '—' : ownerName.split(' ')[0]
+
                 return (
                   <TableRow
                     key={job.id}
@@ -249,22 +320,21 @@ export function JobsTable({
                     onClick={() => onView(job)}
                   >
                     <TableCell>
-                      <div className="flex items-center gap-2 min-w-0">
-                        <IdentityCell
-                          name={
-                            <span className="inline-flex items-center gap-2">
-                              <span className="truncate">{job.title}</span>
-                              {trending && (
-                                <Badge tone="purple" size="xs">Trending</Badge>
-                              )}
-                            </span>
-                          }
-                          sub={`${employmentType} · ${count} candidate${count === 1 ? '' : 's'}`}
-                          fallback={job.title}
-                        />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-poppins font-semibold text-[14px] tracking-[-0.01em] text-text-primary truncate">
+                            {job.title}
+                          </span>
+                          {trending && (
+                            <Badge tone="purple" size="xs">Trending</Badge>
+                          )}
+                        </div>
+                        <div className="text-[12px] text-text-tertiary mt-0.5 truncate">
+                          Full-time · {totalCount} candidate{totalCount === 1 ? '' : 's'}
+                        </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-text-secondary">{job.department || '—'}</TableCell>
+                    <TableCell className="text-text-secondary">{job.organization_name || '—'}</TableCell>
                     <TableCell className="text-text-secondary">
                       {job.location ? (
                         <span className="inline-flex items-center gap-1.5">
@@ -279,7 +349,7 @@ export function JobsTable({
                       </StatusCell>
                     </TableCell>
                     <TableCell>
-                      <PipelineBar count={count} max={maxCount} />
+                      <PipelineBar stages={stageData} total={totalCount} />
                     </TableCell>
                     <TableCell className="text-right">
                       <NumericCell className={overdue ? 'text-destructive' : 'text-text-secondary'}>
@@ -288,8 +358,8 @@ export function JobsTable({
                     </TableCell>
                     <TableCell>
                       <ComposedCell>
-                        <AvatarStack people={[{ name: owner }]} size={22} />
-                        <span className="text-table-cell text-text-primary truncate">{owner}</span>
+                        <AvatarStack people={[{ name: ownerName }]} size={22} />
+                        <span className="text-table-cell text-text-primary truncate">{ownerFirst}</span>
                       </ComposedCell>
                     </TableCell>
                     <TableCell className="w-[44px] text-right">
@@ -347,17 +417,16 @@ export function JobsTable({
         ) : (
           filteredJobs.map(job => {
             const status = statusBadge(job.status)
-            const count = countsMap[job.id] ?? 0
+            const metric = metricsByJob.get(job.id)
+            const count = metric?.active_candidates ?? 0
             return (
               <Card key={job.id} className="bg-white" onClick={() => onView(job)}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-poppins font-semibold text-[14px] text-text-primary truncate">{job.title}</h4>
-                      </div>
+                      <h4 className="font-poppins font-semibold text-[14px] text-text-primary truncate">{job.title}</h4>
                       <div className="text-[12px] text-text-tertiary mt-0.5 truncate">
-                        {(job.department || 'Full-time')} · {count} candidate{count === 1 ? '' : 's'}
+                        {(job.organization_name || 'Full-time')} · {count} candidate{count === 1 ? '' : 's'}
                       </div>
                     </div>
                     <Badge tone={status.tone} dot size="sm">{status.label}</Badge>

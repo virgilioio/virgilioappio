@@ -13,7 +13,6 @@ import { JobsTable } from '@/components/jobs/JobsTable'
 import { JobFormSheet } from '@/components/jobs/JobFormSheet'
 import { JobWizard } from '@/components/jobs/JobWizard'
 import { useJobs, Job } from '@/hooks/useJobs'
-import { TableSegmented } from '@/components/ui/table-toolbar'
 
 type StatusSegment = 'active' | 'all' | 'paused' | 'closed' | 'archived'
 
@@ -99,19 +98,6 @@ export default function Jobs() {
                 </div>
               </header>
 
-              {/* Status segmented tabs */}
-              <TableSegmented
-                value={statusFilter}
-                onChange={(v) => setStatusFilter(v as StatusSegment)}
-                options={[
-                  { value: 'active', label: 'Active', count: counts.active },
-                  { value: 'all', label: 'All', count: counts.all },
-                  { value: 'paused', label: 'Paused', count: counts.paused },
-                  { value: 'closed', label: 'Closed', count: counts.closed },
-                  { value: 'archived', label: 'Archived', count: counts.archived },
-                ]}
-              />
-
               <JobsTable
                 jobs={jobs}
                 isLoading={isLoading}
@@ -120,6 +106,14 @@ export default function Jobs() {
                 onArchive={handleArchive}
                 onCreateNew={handleCreateNew}
                 statusFilter={statusFilter}
+                onStatusFilterChange={setStatusFilter}
+                tabs={[
+                  { value: 'active', label: 'Active', count: counts.active },
+                  { value: 'all', label: 'All', count: counts.all },
+                  { value: 'paused', label: 'Paused', count: counts.paused },
+                  { value: 'closed', label: 'Closed', count: counts.closed },
+                  { value: 'archived', label: 'Archived', count: counts.archived },
+                ]}
               />
             </div>
           </div>
