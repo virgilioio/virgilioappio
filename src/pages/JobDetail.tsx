@@ -855,6 +855,19 @@ export default function JobDetail() {
           <>
             <div className="mb-2 animate-fade-in">
               <PageHeader title={job.title} compact />
+              <JobHero
+                title={job.title}
+                status={job.status}
+                department={(job as any).organization_name || (job as any).organization?.name || (job as any).department || null}
+                location={job.location}
+                createdAt={job.created_at}
+                hiringTeam={(job.hiring_team as any[]) || []}
+                onShare={() => {}}
+                onViewPosting={() => {}}
+                onAddCandidate={() => setShowAddCandidate(true)}
+                onMoreActions={() => setShowEditJobModal(true)}
+                canEdit={!isRestrictedViewer}
+              />
             </div>
           </>
         )}
