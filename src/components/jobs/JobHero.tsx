@@ -78,6 +78,7 @@ export function JobHero({
   hiringTeam = [],
   onShare,
   onViewPosting,
+  hasPosting = true,
   onAddCandidate,
   onMoreActions,
   canEdit = true,
