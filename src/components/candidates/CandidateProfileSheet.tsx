@@ -1068,7 +1068,7 @@ const stageHasAutomation = useMemo(() => {
         ? "h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col bg-background overflow-hidden"
         : "fixed top-[4.5rem] left-3 right-3 bottom-3 sm:left-[5.5rem] z-40 bg-background overflow-hidden rounded-2xl ring-1 ring-virgilio-border/60 shadow-calendly"
     )}>
-      <div className={cn(asPage ? "flex w-full" : "flex h-full w-full")}>
+      <div className={cn(asPage ? "flex w-full flex-1 min-h-0" : "flex h-full w-full")}>
         {candidate && jobId && candidate.id && job && (
           <AddOrTransferCandidateDialog
             open={addTransferOpen}
@@ -1085,7 +1085,7 @@ const stageHasAutomation = useMemo(() => {
           {/* Job Navigation Sidebar removed — single-job profile only */}
 
           {/* Main Profile Content */}
-          <div className="flex-1 flex flex-col min-w-0">
+          <div className="flex-1 flex flex-col min-w-0 min-h-0">
             {loading || !candidate ? (
               <div className={cn("flex-1 p-6", asPage ? "" : "overflow-y-auto")}>
                 <CandidateProfileSkeleton />
