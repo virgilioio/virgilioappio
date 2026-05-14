@@ -345,33 +345,43 @@ export function CandidateTable({
                           </TableCell>
                         )}
                         <TableCell>
-                          <Link 
-                          to={getCandidateLink(candidate)}
-                          className="block w-full h-full"
-                          onClick={(e) => handleLinkClick(e, candidate)}
+                          <Link
+                            to={getCandidateLink(candidate)}
+                            className="block w-full h-full"
+                            onClick={(e) => handleLinkClick(e, candidate)}
                           >
-                            <div className="font-medium text-text-primary flex items-center gap-1.5">
-                              {showFitScore && candidate.ai_fit_score != null && (
-                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold border ${
-                                  candidate.ai_fit_score >= 75 
-                                    ? 'border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                                    : candidate.ai_fit_score >= 50
-                                    ? 'border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                                    : 'border-red-200 bg-red-100 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300'
-                                }`}>
-                                  {Math.round(candidate.ai_fit_score)}%
+                            <IdentityCell
+                              fallback={candidate.candidate_name}
+                              name={
+                                <span className="inline-flex items-center gap-1.5 min-w-0">
+                                  {showFitScore && candidate.ai_fit_score != null && (
+                                    <Badge
+                                      tone={
+                                        candidate.ai_fit_score >= 75 ? 'green'
+                                        : candidate.ai_fit_score >= 50 ? 'yellow'
+                                        : 'red'
+                                      }
+                                      size="xs"
+                                    >
+                                      {Math.round(candidate.ai_fit_score)}%
+                                    </Badge>
+                                  )}
+                                  {showFitScore && candidate.ai_fit_score == null && (
+                                    <Badge tone="neutral" size="xs">—</Badge>
+                                  )}
+                                  <span className="truncate">{candidate.candidate_name}</span>
+                                  <NewBadge show={isCandidateNewForUser(candidate)} />
                                 </span>
-                              )}
-                              {showFitScore && candidate.ai_fit_score == null && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border border-border bg-muted text-muted-foreground">
-                                  —
-                                </span>
-                              )}
-                              {candidate.candidate_name}
-                              <NewBadge show={isCandidateNewForUser(candidate)} />
-                            </div>
-                           </Link>
-                         </TableCell>
+                              }
+                              sub={
+                                [
+                                  candidate.location_city,
+                                  candidate.location_country,
+                                ].filter(Boolean).join(', ') || undefined
+                              }
+                            />
+                          </Link>
+                        </TableCell>
                          {showMatchScore && (
                            <TableCell>
                              {candidate.match_score !== undefined && (
