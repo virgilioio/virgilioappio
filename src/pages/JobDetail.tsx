@@ -150,6 +150,13 @@ export default function JobDetail() {
   }
 
   const openProfileInPlace = (candidateId: string, context: 'application' | 'pipeline' | 'suggested' = 'application', candidateList: any[] = []) => {
+    // For application/pipeline contexts, navigate to the dedicated candidate profile route.
+    // Suggested (Apollo/PDL) context still uses the in-place overlay since those previews may not have a real candidate row.
+    if (context !== 'suggested') {
+      navigate(`/jobs/${id}/candidates/${candidateId}`)
+      return
+    }
+
     const index = candidateList.findIndex((c: any) => c.id === candidateId || c.candidate_id === candidateId)
     setProfileCandidateId(candidateId)
     setProfileContext(context)
@@ -159,7 +166,7 @@ export default function JobDetail() {
     // Clear Apollo state when opening non-Apollo profiles
     setSelectedApolloId(null)
     setSelectedApolloData(null)
-    
+
     // Update URL
     updateCandidateUrl(candidateId)
   }
