@@ -1002,23 +1002,27 @@ export default function JobDetail() {
                             Select
                           </Button>
                         )}
-                        {selectionMode && selectedCandidateIds.length > 0 && (
+                        {selectionMode && (
                           <>
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              icon={Mail}
-                              onClick={() => setShowBulkEmailDialog(true)}
-                            >
-                              Email
-                            </Button>
-                            <Button
-                              variant="danger"
-                              size="sm"
-                              onClick={() => setShowBulkRejectionDialog(true)}
-                            >
-                              Reject
-                            </Button>
+                            {selectedCandidateIds.length > 0 && (
+                              <>
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  icon={Mail}
+                                  onClick={() => setShowBulkEmailDialog(true)}
+                                >
+                                  Email
+                                </Button>
+                                <Button
+                                  variant="danger"
+                                  size="sm"
+                                  onClick={() => setShowBulkRejectionDialog(true)}
+                                >
+                                  Reject
+                                </Button>
+                              </>
+                            )}
                             <Button
                               variant="secondary"
                               size="sm"
