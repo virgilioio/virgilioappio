@@ -130,9 +130,12 @@ interface CandidateProfileSheetProps {
   autoOpenScorecardId?: string | null
   onScorecardOpened?: () => void
   onScorecardChange?: (scorecardId: string | null, stageInstanceId?: string | null) => void
+  /** 1-based index in the candidate list, for "N of M" paginator. */
+  currentIndex?: number | null
+  totalCount?: number | null
 }
 
-export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, autoOpenScorecardStageId, autoOpenScorecardId, onScorecardOpened, onScorecardChange }: CandidateProfileSheetProps) {
+export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, autoOpenScorecardStageId, autoOpenScorecardId, onScorecardOpened, onScorecardChange, currentIndex, totalCount }: CandidateProfileSheetProps) {
   const { canEditCandidates, isAdmin, isWorkspaceOwner, isPlatformAdmin } = usePermissions()
   const navigate = useNavigate()
   
