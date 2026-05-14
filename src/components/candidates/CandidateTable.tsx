@@ -606,7 +606,6 @@ export function CandidateTable({
               onLoadMore={currentPage < totalPages ? () => setCurrentPage(currentPage + 1) : undefined}
               loadMoreLabel={`Show ${Math.min(itemsPerPage, filteredCandidates.length - endIndex)} more`}
             />
-            )}
           </>
         )}
       </CardContent>
