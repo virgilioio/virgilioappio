@@ -220,7 +220,6 @@ export function JobsTable({
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <FilterChipPopover
-              variant="soft"
               label="Company"
               options={companyOptions}
               selectedValues={selectedCompanies}
@@ -228,7 +227,6 @@ export function JobsTable({
               searchable
             />
             <FilterChipPopover
-              variant="soft"
               label="Location"
               options={locationOptions}
               selectedValues={selectedLocations}
@@ -237,7 +235,6 @@ export function JobsTable({
             />
             {(permissions.canViewOrganizations || permissions.isPlatformAdmin) && !membersLoading && userOptions.length > 0 && (
               <FilterChipPopover
-                variant="soft"
                 label="Owner"
                 options={userOptions}
                 selectedValues={selectedUsers}
@@ -246,7 +243,6 @@ export function JobsTable({
               />
             )}
             <FilterChipPopover
-              variant="soft"
               label="Posted"
               options={postedOptions}
               selectedValues={postedRange}
