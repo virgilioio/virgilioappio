@@ -127,7 +127,7 @@ const buttonVariants = cva(
 /** On-dark remap: applied when `onDark` is true. */
 const onDarkClasses: Record<string, string> = {
   primary:
-    "bg-cream text-citron-noir shadow-[var(--shadow-button)] hover:bg-cream/90 active:bg-cream/85",
+    "bg-[#fffcf9] text-[#0d0d09] shadow-[var(--shadow-button)] hover:bg-[#fffcf9]/90 active:bg-[#fffcf9]/85",
   purple:
     "bg-virgilio-purple text-white shadow-[var(--shadow-button)] hover:bg-virgilio-purple/90",
   secondary:
