@@ -1050,15 +1050,6 @@ const stageHasAutomation = useMemo(() => {
     }
   }
 
-  const handleJobChange = (newJobId: string) => {
-    if (newJobId === jobId) return // Already viewing this job
-    
-    // Navigate to the new job with the same candidate
-    const url = new URL(window.location.href)
-    url.pathname = `/jobs/${newJobId}`
-    url.searchParams.set('candidate', candidateId!)
-    window.location.href = url.toString()
-  }
 
   if (!open) return null
 
