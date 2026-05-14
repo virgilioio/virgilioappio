@@ -200,6 +200,18 @@
     --tbl-border-color:  225 14% 92%;   /* #E7E8EE (matches --virgilio-border) */
     --tbl-border-radius: 12px;
 
+    /* === Dropdowns / Menus (Gio Foundation v1.0 §5) === */
+    --menu-radius:        12px;
+    --menu-pad:           4px;
+    --menu-shadow:        0 12px 32px -8px rgb(0 0 0 / 0.18);
+    --menu-item-h:        30px;
+    --menu-item-radius:   8px;
+    --menu-hover:         40 14% 93%;     /* #F1F0EC */
+    --menu-selected:      264 73% 95%;    /* #EDE4FF */
+    --menu-group-color:   228 9% 58%;     /* #8B8F9E */
+    --menu-cmd-min-w:     540px;
+    --menu-cmd-max-w:     640px;
+
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
