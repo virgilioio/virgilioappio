@@ -1059,6 +1059,8 @@ export default function JobDetail() {
                           refreshToken={pipelineRefresh}
                           onStageChanged={() => setPipelineRefresh((v) => v + 1)}
                           onCandidateClick={openPipelineProfile}
+                          searchTerm={pipelineSearch}
+                          onAddCandidateClick={() => setShowAddCandidate(true)}
                         />
                       </div>
                       <ScrollArea className="h-full w-full scrollbar-black hidden sm:block">
@@ -1075,6 +1077,8 @@ export default function JobDetail() {
                             refreshToken={pipelineRefresh}
                             onStageChanged={() => setPipelineRefresh((v) => v + 1)}
                             onCandidateClick={openPipelineProfile}
+                          searchTerm={pipelineSearch}
+                          onAddCandidateClick={() => setShowAddCandidate(true)}
                           />
                         </div>
                       </ScrollArea>
@@ -1095,6 +1099,8 @@ export default function JobDetail() {
                             refreshToken={pipelineRefresh}
                             onStageChanged={() => setPipelineRefresh((v) => v + 1)}
                             onCandidateClick={openPipelineProfile}
+                          searchTerm={pipelineSearch}
+                          onAddCandidateClick={() => setShowAddCandidate(true)}
                           />
                         </div>
                       ) : pipelineSectionTab === 'suggested' ? (
