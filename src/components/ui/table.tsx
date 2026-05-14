@@ -33,10 +33,10 @@ const ROW_H: Record<TableDensity, string> = {
   comfortable: "h-[var(--tbl-row-h-comfy)]",
 }
 
-const HEADER_H: Record<TableDensity, string> = {
-  compact: "h-[var(--tbl-header-h-compact)]",
-  default: "h-[var(--tbl-header-h-default)]",
-  comfortable: "h-[var(--tbl-header-h-comfy)]",
+const HEADER_TR_H: Record<TableDensity, string> = {
+  compact: "[&_tr]:h-[var(--tbl-header-h-compact)]",
+  default: "[&_tr]:h-[var(--tbl-header-h-default)]",
+  comfortable: "[&_tr]:h-[var(--tbl-header-h-comfy)]",
 }
 
 const CELL_TEXT: Record<TableDensity, string> = {
