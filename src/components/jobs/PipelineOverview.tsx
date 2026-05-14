@@ -690,7 +690,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
 
               {/* Render columns with candidate cards */}
               {stageOptions.map((opt) => (
-                <div key={opt.jhsId} className="w-[calc(100vw-3rem)] sm:w-72 flex-shrink-0 h-full flex flex-col snap-center sm:snap-align-none">
+                <div key={opt.jhsId} className="group w-[calc(100vw-3rem)] sm:w-72 flex-shrink-0 h-full flex flex-col snap-center sm:snap-align-none">
                   <div className="px-1 pb-2 pt-1 shrink-0">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
