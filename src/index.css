@@ -8,7 +8,7 @@
 @layer base {
   :root {
     /* Light Mode Colors - World-class depth pattern */
-    --background: 0 0% 100%; /* Pure white background to match cards */
+    --background: 48 14% 96%; /* Warm off-gray app background (#F5F4F0) */
     --foreground: 0 0% 15%; /* Darker for better hierarchy */
 
     --card: 0 0% 100%; /* Keep cards pure white for contrast */
