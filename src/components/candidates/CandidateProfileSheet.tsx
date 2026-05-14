@@ -1086,7 +1086,7 @@ const stageHasAutomation = useMemo(() => {
               </div>
             ) : (
               <>
-            <div className="space-y-3 mb-3">
+            <div className={cn("space-y-3 mb-3", asPage && "layout-container pt-1 pb-2 sm:pt-2 sm:pb-3")}>
               {(() => {
                 const sortedStages = [...planStages].sort((a, b) => a.position - b.position)
                 const currentIdx = currentStageId ? sortedStages.findIndex(s => s.jhsId === currentStageId) : -1
