@@ -2025,7 +2025,9 @@ const stageHasAutomation = useMemo(() => {
         />
       )}
       </div>
+    </>
     </div>
+    </>
 
     {/* Offer Delete Warning Dialog */}
     <AlertDialog open={showOfferDeleteWarning} onOpenChange={(open) => {
