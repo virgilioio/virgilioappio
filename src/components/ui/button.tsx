@@ -55,7 +55,7 @@ const buttonVariants = cva(
         purple:
           "bg-virgilio-purple text-white shadow-[var(--shadow-button)] hover:bg-virgilio-purple/90 active:bg-virgilio-purple/85 active:shadow-inner",
         secondary:
-          "border border-virgilio-border bg-background text-foreground shadow-[var(--shadow-xs)] hover:bg-[#FAFAF7] active:bg-[#F1F0EC] active:shadow-inner",
+          "border border-virgilio-border bg-white text-foreground shadow-[var(--shadow-xs)] hover:bg-[#FAFAF7] active:bg-[#F1F0EC] active:shadow-inner",
         ghost:
           "text-foreground hover:bg-[#F1F0EC] active:bg-[#E7E5E0]",
         danger:
