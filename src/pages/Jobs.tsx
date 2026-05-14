@@ -55,7 +55,7 @@ export default function Jobs() {
       <PermissionGate permission="canViewJobs">
         <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden bg-virgilio-cream">
           <div className="flex-1 min-h-0 overflow-auto">
-            <div className="mx-auto w-full max-w-[1400px] px-6 py-8 space-y-6 animate-fade-in">
+            <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8 space-y-6 animate-fade-in">
               {/* Page header */}
               <header className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                 <div className="min-w-0 flex-1">
