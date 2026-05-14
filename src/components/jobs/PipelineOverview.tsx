@@ -787,12 +787,12 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                       </div>
                     </div>
                   </div>
-                  <div className="flex-1 overflow-y-auto flex flex-col gap-2">
-                    <DroppableStage id={opt.jhsId} isEmpty={!sortedByStage[opt.jhsId] || sortedByStage[opt.jhsId].length === 0} tintClass="">
-                      {!isLoadingCandidates && (!sortedByStage[opt.jhsId] || sortedByStage[opt.jhsId].length === 0) && (
-                        <div className="min-h-[120px] rounded-xl border border-dashed border-virgilio-border/60" />
-                      )}
-
+                  <div className="flex-1 overflow-y-auto flex flex-col">
+                    <ColumnShell
+                      id={opt.jhsId}
+                      stageType={opt.stage.stage_type}
+                      isEmpty={!sortedByStage[opt.jhsId] || sortedByStage[opt.jhsId].length === 0}
+                    >
                       <div className="space-y-2">
                         {(sortedByStage[opt.jhsId] || []).map(assoc => {
                           const t = getTimeInfo(assoc)
@@ -835,13 +835,14 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                           )
                         })}
                       </div>
-                    </DroppableStage>
-                    <button
-                      type="button"
-                      className="w-full rounded-xl border border-dashed border-virgilio-border/60 px-3 py-2.5 text-[13px] text-text-tertiary hover:text-text-primary hover:border-virgilio-border transition-colors inline-flex items-center justify-center gap-1.5"
-                    >
-                      <span className="text-base leading-none">+</span> Add candidate
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => onAddCandidateClick?.()}
+                        className="mt-1 w-full rounded-xl border border-dashed border-virgilio-border/60 bg-white/40 px-3 py-2.5 text-[13px] text-text-tertiary hover:text-text-primary hover:border-virgilio-border hover:bg-white transition-colors inline-flex items-center justify-center gap-1.5"
+                      >
+                        <span className="text-base leading-none">+</span> Add candidate
+                      </button>
+                    </ColumnShell>
                   </div>
                 </div>
               ))}
