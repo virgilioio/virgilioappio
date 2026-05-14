@@ -28,6 +28,8 @@ interface AddOrTransferCandidateDialogProps {
   hasNextCandidate?: boolean
   onNavigateNext?: () => void
   onClose?: () => void
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 export function AddOrTransferCandidateDialog({
@@ -38,9 +40,17 @@ export function AddOrTransferCandidateDialog({
   trigger,
   hasNextCandidate,
   onNavigateNext,
-  onClose
+  onClose,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
 }: AddOrTransferCandidateDialogProps) {
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isControlled = controlledOpen !== undefined
+  const open = isControlled ? controlledOpen! : internalOpen
+  const setOpen = (next: boolean) => {
+    if (!isControlled) setInternalOpen(next)
+    controlledOnOpenChange?.(next)
+  }
   const [activeTab, setActiveTab] = useState<'add' | 'transfer'>('add')
   const [selectedJobId, setSelectedJobId] = useState<string>('')
   const [selectedStageId, setSelectedStageId] = useState<string>('')
