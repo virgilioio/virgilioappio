@@ -6,10 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { cn, ensureAbsoluteUrl } from '@/lib/utils'
 import { Link } from 'react-router-dom'
 
-function getInitials(name?: string | null) {
-  if (!name) return '?'
-  return name.trim().split(/\s+/).slice(0, 2).map(s => s[0]?.toUpperCase()).join('') || '?'
-}
+// (avatar removed — initials helper no longer needed)
 
 interface ProfileHeroCardProps {
   candidateName: string
