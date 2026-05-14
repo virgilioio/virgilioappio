@@ -227,10 +227,11 @@ export default {
 			letterSpacing: {
 				tighter: '-0.05em',
 				tight: '-0.025em',
-				'page-title': '-0.06em',
+				'page-title': '-0.04em',
 				normal: '0em',
 				wide: '0.025em',
-				wider: '0.05em'
+				wider: '0.05em',
+				caps: '0.08em'
 			},
 			transitionDuration: {
 				'fast': 'var(--transition-fast)',
