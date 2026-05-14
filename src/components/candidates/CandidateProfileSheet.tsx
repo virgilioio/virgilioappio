@@ -2024,7 +2024,6 @@ const stageHasAutomation = useMemo(() => {
           organizationId={organizationId}
         />
       )}
-      </div>
     </div>
 
     {/* Offer Delete Warning Dialog */}
