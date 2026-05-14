@@ -1131,45 +1131,24 @@ const stageHasAutomation = useMemo(() => {
                           ]}
                         />
                       }
+                      nextStageLabel={nextStage?.stage.stage_name || null}
+                      onAdvance={async () => {
+                        if (!associationId || !nextStage) return
+                        await moveAssociationToStage(associationId, nextStage.jhsId)
+                        setCurrentStageId(nextStage.jhsId)
+                        onStageChanged?.()
+                      }}
+                      onSchedule={() => setSimpleScheduleOpen(true)}
+                      onEmail={() => {
+                        resetEmailComposer()
+                        setEmailComposerOpen(true)
+                      }}
+                      isRejected={associationStatus === 'rejected'}
+                      isHired={associationStatus === 'hired'}
                     />
                     {/* Card 2 — stages only (mirrors PipelineSectionTabs sitting below JobHero card) */}
                     <section className="bg-white border border-virgilio-border rounded-2xl shadow-sm p-5 sm:p-6">
                       <ProfileStageStrip stages={planStages} currentStageId={currentStageId} />
-                    </section>
-                    {/* Action bar — its own surface below the stages card */}
-                    <section className="bg-white border border-virgilio-border rounded-2xl shadow-sm p-5 sm:p-6">
-                      <ProfileActionBar
-                        nextStageLabel={nextStage?.stage.stage_name || null}
-                        onAdvance={async () => {
-                          if (!associationId || !nextStage) return
-                          await moveAssociationToStage(associationId, nextStage.jhsId)
-                          setCurrentStageId(nextStage.jhsId)
-                          onStageChanged?.()
-                        }}
-                        onSubmitScorecard={() => {
-                          if (!currentStage) return
-                          setScoreStageInstId(currentStage.jhsId)
-                          setScoreStageName(currentStage.stage.stage_name)
-                          setScoreOpen(true)
-                        }}
-                        onSchedule={() => setSimpleScheduleOpen(true)}
-                        onEmail={() => {
-                          resetEmailComposer()
-                          setEmailComposerOpen(true)
-                        }}
-                        onCreateOffer={() => setOfferFormOpen(true)}
-                        onReject={handleReject}
-                        isOfferStatus={associationStatus === 'offer'}
-                        isRejected={associationStatus === 'rejected'}
-                        isHired={associationStatus === 'hired'}
-                        onEdit={() => setEditOpen(true)}
-                        onDownload={() => setDownloadDialogOpen(true)}
-                        onMoveToOffer={handleMoveToOffer}
-                        onReturnToPipeline={handleReturnToPipeline}
-                        onHire={handleHire}
-                        onAddOrTransfer={associationId && jobId && candidate.id && job ? () => setAddTransferOpen(true) : undefined}
-                        canEdit={canEditCandidates}
-                      />
                     </section>
                   </>
                 )
