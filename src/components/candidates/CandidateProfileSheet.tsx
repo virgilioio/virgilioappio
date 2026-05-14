@@ -195,6 +195,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
 
 // Hiring plan stages for vertical accordion
 const { loadHiringPlanInstances } = useJobHiringPlan()
+const { insights: fitInsights } = useCandidateFitInsights(candidateId, jobId)
 type PlanStageOption = { jhsId: string; stage: JobStage; position: number }
 const [planStages, setPlanStages] = useState<PlanStageOption[]>([])
 const [openStageId, setOpenStageId] = useState<string | null>(null)
