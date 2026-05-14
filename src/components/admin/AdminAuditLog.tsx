@@ -176,7 +176,7 @@ export function AdminAuditLog() {
         {/* Audit Log Table */}
         {!isLoading && !error && (
           <ScrollArea className="h-[600px] rounded-md border">
-            <Table>
+            <Table density="compact">
               <TableHeader>
                 <TableRow>
                   <TableHead>Timestamp</TableHead>

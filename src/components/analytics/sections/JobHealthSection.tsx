@@ -36,7 +36,7 @@ export function JobHealthSection({ data }: JobHealthSectionProps) {
           </p>
         }
       >
-        <Table>
+        <Table density="compact">
           <TableHeader>
             <TableRow>
               <TableHead className="min-w-[200px]">

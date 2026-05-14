@@ -29,7 +29,7 @@ export function SourcePerformanceSection({ data }: SourcePerformanceSectionProps
           maxHeight="max-h-[300px]"
           subtitle="Conversion = Hires / Total candidates from source"
         >
-          <Table>
+          <Table density="compact">
             <TableHeader>
               <TableRow>
                 <TableHead>Source</TableHead>

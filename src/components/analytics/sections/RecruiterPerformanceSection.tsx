@@ -28,7 +28,7 @@ export function RecruiterPerformanceSection({ data }: RecruiterPerformanceSectio
         emptyDescription="No candidates have been added by identifiable team members in this period"
         maxHeight="max-h-[400px]"
       >
-        <Table>
+        <Table density="compact">
           <TableHeader>
             <TableRow>
               <TableHead className="min-w-[180px]">
