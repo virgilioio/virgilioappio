@@ -118,11 +118,11 @@ export function FilterChipPopover({
       >
         {/* Header */}
         <div className="flex items-center justify-between px-3 pt-3 pb-2">
-          <span className="text-xs font-poppins font-semibold text-foreground uppercase tracking-wider">{label}</span>
+          <span className="text-menu-group font-inter uppercase text-[hsl(var(--menu-group-color))]">{label}</span>
           {isActive && (
             <button
               onClick={clearSelection}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors font-poppins"
+              className="text-[11px] text-text-tertiary hover:text-foreground transition-colors font-inter"
             >
               Clear
             </button>
@@ -133,12 +133,12 @@ export function FilterChipPopover({
         {showSearch && (
           <div className="px-3 pb-2">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[hsl(var(--menu-group-color))]" />
               <Input
                 placeholder={`Search ${label.toLowerCase()}...`}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="h-8 pl-8 text-xs rounded-md"
+                className="h-8 pl-8 text-[12.5px] rounded-md"
               />
             </div>
           </div>
@@ -147,7 +147,7 @@ export function FilterChipPopover({
         {/* Options list */}
         <div className="max-h-[240px] overflow-y-auto px-1 pb-1">
           {visible.length === 0 ? (
-            <div className="px-3 py-4 text-xs text-muted-foreground text-center font-poppins">No results</div>
+            <div className="px-3 py-4 text-[12.5px] text-text-tertiary text-center font-inter">No results</div>
           ) : (
             visible.map(opt => {
               const checked = selectedValues.includes(opt.value)
@@ -155,9 +155,9 @@ export function FilterChipPopover({
                 <label
                   key={opt.value}
                   className={cn(
-                    'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md cursor-pointer transition-colors',
-                    'hover:bg-accent/30',
-                    checked && 'bg-accent/20',
+                    'flex items-center gap-2.5 h-[var(--menu-item-h)] px-2 rounded-[var(--menu-item-radius)] cursor-pointer transition-colors',
+                    'hover:bg-[hsl(var(--menu-hover))]',
+                    checked && 'bg-[hsl(var(--menu-selected))]',
                   )}
                 >
                   <Checkbox
@@ -165,18 +165,17 @@ export function FilterChipPopover({
                     onCheckedChange={() => toggle(opt.value)}
                     className="h-3.5 w-3.5"
                   />
-                  <span className="flex-1 text-xs font-inter text-foreground truncate">{opt.label}</span>
-                  <span className="text-[10px] text-muted-foreground tabular-nums">{opt.count}</span>
+                  <span className="flex-1 text-menu-item font-inter text-foreground truncate">{opt.label}</span>
+                  <span className="text-[10px] text-[hsl(var(--menu-group-color))] tabular-nums">{opt.count}</span>
                 </label>
               )
             })
           )}
 
-          {/* Show more toggle */}
           {!showAll && hiddenCount > 0 && !search && (
             <button
               onClick={() => setShowAll(true)}
-              className="w-full px-2.5 py-1.5 text-xs text-primary hover:text-primary/80 font-poppins font-medium text-left transition-colors"
+              className="w-full px-2 h-[var(--menu-item-h)] text-[12.5px] text-virgilio-purple hover:text-virgilio-purple/80 font-inter font-medium text-left transition-colors"
             >
               Show {hiddenCount} more
             </button>
@@ -184,7 +183,7 @@ export function FilterChipPopover({
           {showAll && hiddenCount > 0 && !search && (
             <button
               onClick={() => setShowAll(false)}
-              className="w-full px-2.5 py-1.5 text-xs text-primary hover:text-primary/80 font-poppins font-medium text-left transition-colors"
+              className="w-full px-2 h-[var(--menu-item-h)] text-[12.5px] text-virgilio-purple hover:text-virgilio-purple/80 font-inter font-medium text-left transition-colors"
             >
               Show less
             </button>
@@ -192,10 +191,13 @@ export function FilterChipPopover({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-border px-3 py-2">
+        <div className="border-t border-[hsl(var(--tbl-divider-color))] px-2 py-2 flex items-center justify-between gap-2">
+          <span className="text-[11px] text-text-tertiary font-inter pl-1">
+            {isActive ? `${selectedValues.length} selected` : ''}
+          </span>
           <Button
             size="sm"
-            className="w-full h-8 text-xs font-poppins"
+            className="h-7 text-[12px] font-poppins px-3"
             onClick={() => setOpen(false)}
           >
             Apply
