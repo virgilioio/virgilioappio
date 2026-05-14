@@ -459,15 +459,27 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     return false
   }, [favoriteFilter])
 
+  // External search filter (name / role / company)
+  const externalTerm = (searchTerm || '').trim().toLowerCase()
+  const filterBySearchTerm = useCallback((assoc: PipelineAssociation) => {
+    if (!externalTerm) return true
+    const hay = [
+      assoc.candidate_name,
+      (assoc as any).candidate_role,
+      (assoc as any).candidate_company,
+    ].filter(Boolean).join(' ').toLowerCase()
+    return hay.includes(externalTerm)
+  }, [externalTerm])
+
   // Sorted candidates by stage (for board view rendering)
   const sortedByStage = useMemo(() => {
     const result: Record<string, PipelineAssociation[]> = {}
     for (const opt of stageOptions) {
-      const arr = (byStage[opt.jhsId] || []).filter(filterByFavorite).slice().sort(sortByStatusPriority)
+      const arr = (byStage[opt.jhsId] || []).filter(filterByFavorite).filter(filterBySearchTerm).slice().sort(sortByStatusPriority)
       result[opt.jhsId] = arr
     }
     return result
-  }, [byStage, stageOptions, sortByStatusPriority, filterByFavorite])
+  }, [byStage, stageOptions, sortByStatusPriority, filterByFavorite, filterBySearchTerm])
 
 
   // Flat list of candidates for list view
