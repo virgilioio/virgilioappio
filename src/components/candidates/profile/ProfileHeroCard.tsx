@@ -1,5 +1,4 @@
-import { ReactNode } from 'react'
-import { Heart, UserRound } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Heart, UserRound } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -24,7 +23,14 @@ interface ProfileHeroCardProps {
   onOpenFullProfile?: () => void
   linkedinUrl?: string | null
   fitScore?: number | null
-  children?: ReactNode  // stage strip + action bar
+  // Top navigation strip (Back / Breadcrumb / Pager)
+  onClose?: () => void
+  index?: number | null
+  total?: number | null
+  hasPrev?: boolean
+  hasNext?: boolean
+  onNavigatePrev?: () => void
+  onNavigateNext?: () => void
 }
 
 function relativeTime(iso?: string | null) {
@@ -45,11 +51,75 @@ function relativeTime(iso?: string | null) {
 export function ProfileHeroCard({
   candidateName, candidateId, jobId, jobTitle, source, appliedAt,
   currentStageName, isFavorite, onToggleFavorite, onOpenFullProfile, linkedinUrl,
-  fitScore, children,
+  fitScore,
+  onClose, index, total, hasPrev, hasNext, onNavigatePrev, onNavigateNext,
 }: ProfileHeroCardProps) {
   const applied = relativeTime(appliedAt)
+  const showPager = typeof index === 'number' && typeof total === 'number' && total > 0
+
   return (
-    <section className="bg-white border border-virgilio-border rounded-2xl shadow-sm p-5 sm:p-6 space-y-5">
+    <header className="pb-4">
+      {/* Top navigation strip: Back · Breadcrumb · Pager */}
+      <div className="flex items-center justify-between gap-4 pb-3 mb-4 border-b border-virgilio-border">
+        <div className="flex-1 min-w-0">
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary font-poppins text-[13px] tracking-[-0.005em] transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to job
+            </button>
+          )}
+        </div>
+
+        <nav aria-label="breadcrumb" className="hidden md:flex items-center gap-1.5 text-body-sm text-text-tertiary min-w-0">
+          <Link to="/jobs" className="hover:text-text-secondary transition-colors">Jobs</Link>
+          {jobTitle && (
+            <>
+              <span className="text-text-tertiary/60">›</span>
+              <Link to={`/jobs/${jobId}`} className="hover:text-text-secondary transition-colors truncate max-w-[260px]">
+                {jobTitle}
+              </Link>
+            </>
+          )}
+          <span className="text-text-tertiary/60">›</span>
+          <span className="text-text-secondary">Candidates</span>
+        </nav>
+
+        <div className="flex-1 flex items-center justify-end gap-2">
+          {showPager && (
+            <span className="text-body-sm font-poppins text-text-secondary tabular-nums">
+              {index} of {total}
+            </span>
+          )}
+          {(onNavigatePrev || onNavigateNext) && (
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                iconOnly
+                aria-label="Previous candidate"
+                icon={ChevronLeft}
+                onClick={onNavigatePrev}
+                disabled={!hasPrev}
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                iconOnly
+                aria-label="Next candidate"
+                icon={ChevronRight}
+                onClick={onNavigateNext}
+                disabled={!hasNext}
+              />
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Identity row */}
       <div className="flex items-start gap-4 sm:gap-5">
         {/* Avatar */}
         <div className="h-20 w-20 sm:h-24 sm:w-24 shrink-0 rounded-full bg-virgilio-purple text-white flex items-center justify-center font-poppins font-semibold text-2xl sm:text-3xl tracking-[-0.04em]">
@@ -59,10 +129,10 @@ export function ProfileHeroCard({
         {/* Identity block */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="font-poppins font-semibold tracking-[-0.04em] text-text-primary text-[28px] sm:text-[32px] leading-tight truncate">
+            <h1 className="font-poppins font-semibold tracking-[-0.04em] text-text-primary text-[28px] sm:text-[32px] leading-tight truncate">
               {candidateName}
               <span className="text-virgilio-purple">.</span>
-            </h2>
+            </h1>
             {onToggleFavorite && (
               <button
                 type="button"
@@ -78,7 +148,7 @@ export function ProfileHeroCard({
             )}
           </div>
 
-          <div className="mt-1.5 flex items-center gap-1.5 flex-wrap text-[13px] font-poppins text-text-secondary">
+          <div className="mt-1.5 flex items-center gap-1.5 flex-wrap text-body-sm text-text-secondary">
             {jobTitle && (
               <>
                 <span>Applying for</span>
@@ -131,9 +201,7 @@ export function ProfileHeroCard({
           </div>
         )}
       </div>
-
-      {children}
-    </section>
+    </header>
   )
 }
 

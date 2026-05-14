@@ -77,7 +77,7 @@ import { CandidateOfferApprovals } from './CandidateOfferApprovals'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { useQuery } from '@tanstack/react-query'
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
-import { ProfileTopBar } from '@/components/candidates/profile/ProfileTopBar'
+
 import { ProfileHeroCard } from '@/components/candidates/profile/ProfileHeroCard'
 import { ProfileStageStrip } from '@/components/candidates/profile/ProfileStageStrip'
 import { ProfileActionBar } from '@/components/candidates/profile/ProfileActionBar'
@@ -1086,75 +1086,71 @@ const stageHasAutomation = useMemo(() => {
               </div>
             ) : (
               <>
-            <div className={cn(asPage ? "" : "border-b border-virgilio-border bg-white/60")}>
-              <ProfileTopBar
-                jobId={jobId}
-                jobTitle={job?.title}
-                onClose={() => onOpenChange(false)}
-                index={currentIndex ?? null}
-                total={totalCount ?? null}
-                hasPrev={hasPrev}
-                hasNext={hasNext}
-                onNavigatePrev={onNavigatePrev}
-                onNavigateNext={onNavigateNext}
-              />
-            </div>
-
-            <div className="px-4 sm:px-6 pt-4 sm:pt-6 bg-muted/20">
+            <div className="px-4 sm:px-6 pt-4 sm:pt-6 bg-muted/20 space-y-4">
               {(() => {
                 const sortedStages = [...planStages].sort((a, b) => a.position - b.position)
                 const currentIdx = currentStageId ? sortedStages.findIndex(s => s.jhsId === currentStageId) : -1
                 const nextStage = currentIdx >= 0 && currentIdx < sortedStages.length - 1 ? sortedStages[currentIdx + 1] : null
                 const currentStage = currentIdx >= 0 ? sortedStages[currentIdx] : null
                 return (
-                  <ProfileHeroCard
-                    candidateName={candidate.candidate_name}
-                    candidateId={candidate.id}
-                    jobId={jobId}
-                    jobTitle={job?.title}
-                    source={candidate?.job_board_source || candidate?.source || null}
-                    appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
-                    currentStageName={currentStage?.stage.stage_name || null}
-                    isFavorite={isFavorite}
-                    onToggleFavorite={jobId ? handleToggleFavorite : undefined}
-                    onOpenFullProfile={() => navigate(`/candidates?openCandidate=${candidate.id}`)}
-                    linkedinUrl={candidate.linkedin_url || null}
-                    fitScore={fitInsights?.score ?? null}
-                  >
-                    <ProfileStageStrip stages={planStages} currentStageId={currentStageId} />
-                    <ProfileActionBar
-                      nextStageLabel={nextStage?.stage.stage_name || null}
-                      onAdvance={async () => {
-                        if (!associationId || !nextStage) return
-                        await moveAssociationToStage(associationId, nextStage.jhsId)
-                        setCurrentStageId(nextStage.jhsId)
-                        onStageChanged?.()
-                      }}
-                      onSubmitScorecard={() => {
-                        if (!currentStage) return
-                        setScoreStageInstId(currentStage.jhsId)
-                        setScoreStageName(currentStage.stage.stage_name)
-                        setScoreOpen(true)
-                      }}
-                      onSchedule={() => setSimpleScheduleOpen(true)}
-                      onEmail={() => {
-                        resetEmailComposer()
-                        setEmailComposerOpen(true)
-                      }}
-                      onCreateOffer={() => setOfferFormOpen(true)}
-                      onReject={handleReject}
-                      isOfferStatus={associationStatus === 'offer'}
-                      isRejected={associationStatus === 'rejected'}
-                      isHired={associationStatus === 'hired'}
-                      onEdit={() => setEditOpen(true)}
-                      onDownload={() => setDownloadDialogOpen(true)}
-                      onMoveToOffer={handleMoveToOffer}
-                      onReturnToPipeline={handleReturnToPipeline}
-                      onHire={handleHire}
-                      onAddOrTransfer={associationId && jobId && candidate.id && job ? () => setAddTransferOpen(true) : undefined}
-                      canEdit={canEditCandidates}
+                  <>
+                    <ProfileHeroCard
+                      candidateName={candidate.candidate_name}
+                      candidateId={candidate.id}
+                      jobId={jobId}
+                      jobTitle={job?.title}
+                      source={candidate?.job_board_source || candidate?.source || null}
+                      appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
+                      currentStageName={currentStage?.stage.stage_name || null}
+                      isFavorite={isFavorite}
+                      onToggleFavorite={jobId ? handleToggleFavorite : undefined}
+                      onOpenFullProfile={() => navigate(`/candidates?openCandidate=${candidate.id}`)}
+                      linkedinUrl={candidate.linkedin_url || null}
+                      fitScore={fitInsights?.score ?? null}
+                      onClose={() => onOpenChange(false)}
+                      index={currentIndex ?? null}
+                      total={totalCount ?? null}
+                      hasPrev={hasPrev}
+                      hasNext={hasNext}
+                      onNavigatePrev={onNavigatePrev}
+                      onNavigateNext={onNavigateNext}
                     />
-                  </ProfileHeroCard>
+                    <section className="bg-white border border-virgilio-border rounded-2xl shadow-sm p-5 sm:p-6 space-y-4">
+                      <ProfileStageStrip stages={planStages} currentStageId={currentStageId} />
+                      <ProfileActionBar
+                        nextStageLabel={nextStage?.stage.stage_name || null}
+                        onAdvance={async () => {
+                          if (!associationId || !nextStage) return
+                          await moveAssociationToStage(associationId, nextStage.jhsId)
+                          setCurrentStageId(nextStage.jhsId)
+                          onStageChanged?.()
+                        }}
+                        onSubmitScorecard={() => {
+                          if (!currentStage) return
+                          setScoreStageInstId(currentStage.jhsId)
+                          setScoreStageName(currentStage.stage.stage_name)
+                          setScoreOpen(true)
+                        }}
+                        onSchedule={() => setSimpleScheduleOpen(true)}
+                        onEmail={() => {
+                          resetEmailComposer()
+                          setEmailComposerOpen(true)
+                        }}
+                        onCreateOffer={() => setOfferFormOpen(true)}
+                        onReject={handleReject}
+                        isOfferStatus={associationStatus === 'offer'}
+                        isRejected={associationStatus === 'rejected'}
+                        isHired={associationStatus === 'hired'}
+                        onEdit={() => setEditOpen(true)}
+                        onDownload={() => setDownloadDialogOpen(true)}
+                        onMoveToOffer={handleMoveToOffer}
+                        onReturnToPipeline={handleReturnToPipeline}
+                        onHire={handleHire}
+                        onAddOrTransfer={associationId && jobId && candidate.id && job ? () => setAddTransferOpen(true) : undefined}
+                        canEdit={canEditCandidates}
+                      />
+                    </section>
+                  </>
                 )
               })()}
             </div>
