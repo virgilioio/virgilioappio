@@ -155,9 +155,16 @@
     --shadow-neumorphic-active: var(--shadow-xs);
 
     /* Component Heights - Enhanced with better visual weight */
+    /* Legacy tokens kept for backward compatibility during Phase A rollout */
     --button-height-sm: 32px;
     --button-height-default: 36px;
     --button-height-lg: 40px;
+    /* Gio Foundation v1.0 button sizes (Phase A1 — additive). Phase A2 wires them up. */
+    --button-height-xs-v2: 24px;
+    --button-height-sm-v2: 28px;
+    --button-height-md-v2: 34px;
+    --button-height-lg-v2: 40px;
+    --button-height-xl-v2: 48px;
     --input-height: 32px;
     --table-row-height: 40px;
     --sidebar-item-height: 36px;
