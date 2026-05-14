@@ -69,7 +69,7 @@ export function ProfileHeroCard({
   const showPager = typeof index === 'number' && typeof total === 'number' && total > 0
 
   return (
-    <section className="bg-white border border-virgilio-border rounded-2xl shadow-sm px-5 sm:px-6 pt-5">
+    <section className="bg-white border border-virgilio-border rounded-2xl shadow-sm px-6 pt-5">
       {/* Top navigation strip: Back · Breadcrumb · Pager */}
       <div className="flex items-center justify-between gap-4 mb-4">
         <div className="flex-1 min-w-0">
