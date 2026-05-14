@@ -220,6 +220,26 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     }
   }
 
+  const getStageDotColor = (type: string) => {
+    switch (type) {
+      case 'application':
+      case 'screening':
+        return 'bg-info'
+      case 'interview':
+        return 'bg-virgilio-purple'
+      case 'assessment':
+        return 'bg-warning'
+      case 'reference_check':
+        return 'bg-pastel-orange'
+      case 'offer':
+        return 'bg-success'
+      case 'onboarding':
+        return 'bg-pastel-green'
+      default:
+        return 'bg-text-tertiary'
+    }
+  }
+
   const loadStages = useCallback(async () => {
     const plan = await loadHiringPlanInstances(jobId)
     // Exclude application_review stages unless includeApplicationReview is true
@@ -614,18 +634,20 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
         </div>
       )}
 
-      {/* Filter chips */}
-      <div className="hidden sm:flex flex-wrap items-center gap-2">
-        <FilterChipPopover
-          label="Favorite"
-          options={[
-            { value: 'yes', label: 'Favorites', count: allAssociations.filter(a => a.is_favorite).length },
-            { value: 'no', label: 'Not Favorites', count: allAssociations.filter(a => !a.is_favorite).length },
-          ]}
-          selectedValues={favoriteFilter}
-          onSelectionChange={setFavoriteFilter}
-        />
-      </div>
+      {/* Filter chips (only when internal header is shown; toolbar lives in JobDetail otherwise) */}
+      {showHeader && (
+        <div className="hidden sm:flex flex-wrap items-center gap-2">
+          <FilterChipPopover
+            label="Favorite"
+            options={[
+              { value: 'yes', label: 'Favorites', count: allAssociations.filter(a => a.is_favorite).length },
+              { value: 'no', label: 'Not Favorites', count: allAssociations.filter(a => !a.is_favorite).length },
+            ]}
+            selectedValues={favoriteFilter}
+            onSelectionChange={setFavoriteFilter}
+          />
+        </div>
+      )}
 
       {/* Unified loading gate: show skeleton only on initial load; after first render, keep board mounted */}
       {(!hasRenderedOnce.current && (isLoadingPlan || isLoadingCandidates || isStatusLoading)) ? (
@@ -668,48 +690,49 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
 
               {/* Render columns with candidate cards */}
               {stageOptions.map((opt) => (
-                <Card key={opt.jhsId} className="w-[calc(100vw-3rem)] sm:w-72 flex-shrink-0 h-full flex flex-col snap-center sm:snap-align-none">
-                  <CardHeader className={`pb-2 rounded-t-md shrink-0 ${getHeaderBgClass(opt.stage.stage_type)}`}>
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div key={opt.jhsId} className="w-[calc(100vw-3rem)] sm:w-72 flex-shrink-0 h-full flex flex-col snap-center sm:snap-align-none">
+                  <div className="px-2 pb-2 pt-1 shrink-0">
+                    <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <CardTitle className="text-base font-medium truncate max-w-[160px]" title={opt.stage.stage_name}>
+                        <span className={`h-2 w-2 rounded-full flex-shrink-0 ${getStageDotColor(opt.stage.stage_type)}`} aria-hidden />
+                        <span className="font-poppins text-[13px] font-semibold text-text-primary truncate" title={opt.stage.stage_name}>
                           {opt.stage.stage_name}
-                        </CardTitle>
-                        <Badge variant="secondary" className="text-xs">
+                        </span>
+                        <span className="text-[12px] font-medium text-text-tertiary tabular-nums">
                           {(sortedByStage[opt.jhsId] || []).length}
-                        </Badge>
-                        {opt.stage.is_default && (
-                          <Badge variant="outline">Default</Badge>
-                        )}
-                        {isLastPriorityStage(opt.stage) && (
-                          <Badge variant="outline">Last</Badge>
-                        )}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         {stageHasAutomation.get(opt.jhsId) && (
-                          <Zap className="h-4 w-4 text-purple-500 fill-purple-500 flex-shrink-0" />
+                          <Zap className="h-3.5 w-3.5 text-virgilio-purple fill-virgilio-purple flex-shrink-0" />
                         )}
                         {selectionMode && (
-                          <div className="flex items-center gap-2 pr-1" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-1.5 pr-1" onClick={(e) => e.stopPropagation()}>
                             <Checkbox
                               checked={(sortedByStage[opt.jhsId] || []).length > 0 && (sortedByStage[opt.jhsId] || []).every(a => isSelected(a.id))}
                               onCheckedChange={() => selectAllInStage(opt.jhsId)}
                               aria-label="Select all in stage"
                             />
-                            <span className="text-xs text-text-secondary">All</span>
                           </div>
                         )}
+                        <button
+                          type="button"
+                          aria-label="Stage actions"
+                          className="h-6 w-6 inline-flex items-center justify-center rounded-md text-text-tertiary hover:bg-[#F1F0EC] hover:text-text-primary transition-colors"
+                        >
+                          <span className="text-base leading-none">···</span>
+                        </button>
                       </div>
                     </div>
-                  </CardHeader>
-                  <CardContent className={`${getHeaderBgClass(opt.stage.stage_type)} rounded-b-md flex-1 overflow-y-auto`}>
-                    <DroppableStage id={opt.jhsId} isEmpty={!sortedByStage[opt.jhsId] || sortedByStage[opt.jhsId].length === 0} tintClass={getHeaderBgClass(opt.stage.stage_type)}>
+                  </div>
+                  <div className="rounded-xl border border-virgilio-border bg-background p-2 flex-1 overflow-y-auto">
+                    <DroppableStage id={opt.jhsId} isEmpty={!sortedByStage[opt.jhsId] || sortedByStage[opt.jhsId].length === 0} tintClass="">
                       {isLoadingCandidates && (
-                        <div className="text-xs text-text-tertiary">Loading candidates...</div>
+                        <div className="text-xs text-text-tertiary px-1 py-2">Loading candidates...</div>
                       )}
 
                       {!isLoadingCandidates && (!sortedByStage[opt.jhsId] || sortedByStage[opt.jhsId].length === 0) && (
-                        <div className="text-xs text-text-tertiary">
+                        <div className="text-xs text-text-tertiary px-1 py-2">
                           No candidates in this stage
                         </div>
                       )}
@@ -759,8 +782,8 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                         })}
                       </div>
                     </DroppableStage>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               ))}
             </div>
             <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
