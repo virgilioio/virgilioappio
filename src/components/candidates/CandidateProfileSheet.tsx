@@ -77,7 +77,7 @@ import { CandidateOfferApprovals } from './CandidateOfferApprovals'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { useQuery } from '@tanstack/react-query'
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
-import { ProfileTopBar } from '@/components/candidates/profile/ProfileTopBar'
+
 import { ProfileHeroCard } from '@/components/candidates/profile/ProfileHeroCard'
 import { ProfileStageStrip } from '@/components/candidates/profile/ProfileStageStrip'
 import { ProfileActionBar } from '@/components/candidates/profile/ProfileActionBar'
