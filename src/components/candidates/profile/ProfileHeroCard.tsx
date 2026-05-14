@@ -63,6 +63,7 @@ export function ProfileHeroCard({
   fitScore,
   onClose, index, total, hasPrev, hasNext, onNavigatePrev, onNavigateNext,
   tabs,
+  nextStageLabel, onAdvance, onSchedule, onEmail, isRejected, isHired,
 }: ProfileHeroCardProps) {
   const applied = relativeTime(appliedAt)
   const showPager = typeof index === 'number' && typeof total === 'number' && total > 0
