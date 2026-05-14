@@ -1098,26 +1098,28 @@ const stageHasAutomation = useMemo(() => {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
-                          variant="outline"
-                           className="h-8 w-8 p-0 min-h-0"
-                           onClick={() => {
-                             navigate(`/candidates?openCandidate=${candidate.id}`);
+                          variant="secondary"
+                          size="sm"
+                          iconOnly
+                          aria-label="View full candidate profile"
+                          onClick={() => {
+                            navigate(`/candidates?openCandidate=${candidate.id}`);
                           }}
-                        >
-                          <UserRound className="h-4 w-4" />
-                        </Button>
+                          icon={UserRound}
+                        />
                       </TooltipTrigger>
                       <TooltipContent>View full candidate profile</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                   {candidate.linkedin_url && (
                     <Button
-                      variant="outline"
-                       className="h-8 w-8 p-0 min-h-0"
-                       onClick={() => window.open(ensureAbsoluteUrl(candidate.linkedin_url!), '_blank')}
+                      variant="secondary"
+                      size="sm"
+                      iconOnly
                       aria-label="Open LinkedIn profile"
+                      onClick={() => window.open(ensureAbsoluteUrl(candidate.linkedin_url!), '_blank')}
                     >
-                      <LinkedInFilled className="h-5 w-5" />
+                      <LinkedInFilled className="h-4 w-4" />
                     </Button>
                   )}
                 </div>
@@ -1244,44 +1246,44 @@ const stageHasAutomation = useMemo(() => {
                                 {/* Move to Offer - only show when not already in offer */}
                                 {associationStatus !== 'offer' && (
                                   <Button
-                                    variant="outline"
+                                    variant="secondary"
                                     size="sm"
+                                    icon={MoveRight}
                                     onClick={handleMoveToOffer}
                                   >
-                                    <MoveRight className="h-4 w-4 mr-2" />
                                     Move to Offer
                                   </Button>
                                 )}
-                                
+
                                 {/* Return to Pipeline - only show when in offer status */}
                                 {associationStatus === 'offer' && (
                                   <Button
-                                    variant="outline"
+                                    variant="secondary"
                                     size="sm"
+                                    icon={RotateCcw}
                                     onClick={handleReturnToPipeline}
                                   >
-                                    <RotateCcw className="h-4 w-4 mr-2" />
                                     Return to Pipeline
                                   </Button>
                                 )}
-                                
+
                                 <Button
-                                  variant="destructive"
+                                  variant="danger"
                                   size="sm"
+                                  icon={ThumbsDown}
                                   onClick={handleReject}
                                 >
-                                  <ThumbsDown className="h-4 w-4 mr-2" />
                                   Reject
                                 </Button>
-                                
+
                                 {/* Mark as Hired - only show when in offer status */}
                                 {associationStatus === 'offer' && (
                                   <Button
                                     variant="success"
                                     size="sm"
+                                    icon={Check}
                                     onClick={handleHire}
                                   >
-                                    <Check className="h-4 w-4 mr-2" />
                                     Mark as Hired
                                   </Button>
                                 )}
@@ -1374,29 +1376,19 @@ const stageHasAutomation = useMemo(() => {
                 onDismissAiDraft={handleDismissAiDraft}
               />
               
-              {/* Submit Scorecard Button - show for all stages if user hasn't submitted yet or AI draft exists */}
+                {/* Submit Scorecard Button - show for all stages if user hasn't submitted yet or AI draft exists */}
               {(!myScorecardsByStage[opt.jhsId] || myScorecardsByStage[opt.jhsId]?.is_ai_draft) && (
                 <Button
-                  variant="outline"
+                  variant={myScorecardsByStage[opt.jhsId]?.is_ai_draft ? 'purple' : 'secondary'}
                   size="sm"
+                  icon={myScorecardsByStage[opt.jhsId]?.is_ai_draft ? Sparkles : Star}
                   onClick={() => {
                     setScoreStageInstId(opt.jhsId)
                     setScoreStageName(opt.stage.stage_name)
                     setScoreOpen(true)
                   }}
-                  className="gap-2"
                 >
-                  {myScorecardsByStage[opt.jhsId]?.is_ai_draft ? (
-                    <>
-                      <Sparkles className="h-4 w-4" />
-                      AI Notes Analysis Available
-                    </>
-                  ) : (
-                    <>
-                      <Star className="h-4 w-4" />
-                      Submit Scorecard
-                    </>
-                  )}
+                  {myScorecardsByStage[opt.jhsId]?.is_ai_draft ? 'AI Notes Analysis Available' : 'Submit Scorecard'}
                 </Button>
               )}
             </div>
@@ -1423,16 +1415,15 @@ const stageHasAutomation = useMemo(() => {
               {/* Schedule Interview Button - only for screening/interview stages */}
               {(opt.stage.stage_type === 'screening' || opt.stage.stage_type === 'interview') && (
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
+                  icon={Calendar}
                   onClick={() => {
                     setScheduleStageId(opt.jhsId)
                     setScheduleStageName(opt.stage.stage_name)
                     setScheduleOpen(true)
                   }}
-                  className="gap-2"
                 >
-                  <Calendar className="h-4 w-4" />
                   Schedule Interview
                 </Button>
               )}
@@ -1458,9 +1449,9 @@ const stageHasAutomation = useMemo(() => {
           {!isCurrent && (
             <div className="mt-3">
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
-                className="gap-2"
+                icon={MoveRight}
                 disabled={movingStageId === opt.jhsId}
                 onClick={async () => {
                   try {
@@ -1481,7 +1472,6 @@ const stageHasAutomation = useMemo(() => {
                   }
                 }}
               >
-                <MoveRight className="h-4 w-4" />
                 Move to this stage
               </Button>
             </div>
@@ -1534,10 +1524,10 @@ const stageHasAutomation = useMemo(() => {
                                     onChange={handleReplaceResumeChange}
                                     accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp"
                                   />
-                                  <Button variant="outline" onClick={() => replaceResumeInputRef.current?.click()} disabled={isResumeUploading}>
+                                  <Button variant="secondary" size="sm" onClick={() => replaceResumeInputRef.current?.click()} disabled={isResumeUploading}>
                                     Replace Resume
                                   </Button>
-                                  <Button variant="destructive" onClick={handleDeleteResume}>
+                                  <Button variant="danger" size="sm" onClick={handleDeleteResume}>
                                     Delete Resume
                                   </Button>
                                 </div>
@@ -1557,12 +1547,13 @@ const stageHasAutomation = useMemo(() => {
                                 <p className="text-sm text-text-secondary mb-4">
                                   Upload a resume to auto-extract candidate information
                                 </p>
-                                <Button 
-                                  variant="outline" 
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  icon={Edit}
                                   onClick={() => setEditOpen(true)}
                                   disabled={!canEditCandidates}
                                 >
-                                  <Edit className="h-4 w-4 mr-2" />
                                   Upload Resume
                                 </Button>
                               </div>
@@ -1720,50 +1711,50 @@ const stageHasAutomation = useMemo(() => {
                              <div className="flex items-center gap-2">
                                 {canEditCandidates && (
                                   <Button
-                                    variant="outline"
+                                    variant="secondary"
                                     size="sm"
+                                    icon={Edit}
                                     onClick={() => setEditOpen(true)}
                                   >
-                                    <Edit className="h-4 w-4 mr-2" />
                                     Edit
                                   </Button>
                                 )}
                                 <Button
-                                  variant="outline"
+                                  variant="secondary"
                                   size="sm"
+                                  icon={Download}
                                   disabled={!candidate}
                                   onClick={() => setDownloadDialogOpen(true)}
                                 >
-                                  <Download className="h-4 w-4 mr-2" />
                                   Download
                                 </Button>
                               </div>
-                             
+
                              <Separator orientation="vertical" className="h-6" />
-                             
+
                              <div className="flex items-center gap-2">
                                <Button
-                                 variant="outline"
+                                 variant="secondary"
                                  size="sm"
+                                 icon={StickyNote}
                                  onClick={() => setRightActiveTab('notes')}
                                >
-                                 <StickyNote className="h-4 w-4 mr-2" />
                                  Add Note
                                </Button>
                                <Button
-                                 variant="outline"
+                                 variant="secondary"
                                  size="sm"
+                                 icon={Mail}
                                  onClick={() => setEmailComposerOpen(true)}
                                >
-                                 <Mail className="h-4 w-4 mr-2" />
                                  Send Email
                                </Button>
                                <Button
-                                 variant="outline"
+                                 variant="secondary"
                                  size="sm"
+                                 icon={Calendar}
                                  onClick={() => setSimpleScheduleOpen(true)}
                                >
-                                 <Calendar className="h-4 w-4 mr-2" />
                                  Schedule Interview
                                </Button>
                              </div>

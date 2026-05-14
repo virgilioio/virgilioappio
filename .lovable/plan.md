@@ -1,56 +1,41 @@
-# Buttons — gap to Gio v1.0 spec
+## Plan
 
-Comparison against `00_Buttons.html`. Existing system (`src/components/ui/button.tsx`, `docs/style-guide.md` §2, height tokens in `src/index.css` + `tailwind.config.ts`) is ~80% there. Variants, sizes, height tokens, loading width-lock, danger/dangerSolid split, and on-dark variants already match.
+### 1. Fix the Button system mismatches at the source
+- Change the default `<Button>` to the new `md · 34px` Gio default instead of the old 40px legacy default.
+- Re-map legacy `variant="destructive"` to the documented outline `danger` style, not solid red.
+- Keep `dangerSolid` as the only filled red button for final destructive confirmations.
+- Replace hard-coded hover colors in the Button component with semantic token-based classes so the implementation matches the design-system rule.
+- Ensure icon-only usage relies on `iconOnly` + `aria-label`, not manual `h-8 w-8 p-0` overrides.
 
-What's missing or off:
+### 2. Correct candidate profile sheet control cards
+- Convert the candidate profile control-card actions to `variant="secondary" size="sm"` per the spec: `sm · 28px · 12px text` for card-internal buttons and toolbar actions.
+- Specifically update:
+  - Move to Offer / Return to Pipeline
+  - Add / Transfer to Job
+  - Edit / Download
+  - Add Note / Send Email / Schedule Interview
+  - Submit Scorecard / AI Notes Analysis Available
+  - Schedule Interview / Move to this stage
+  - Resume Replace / Upload controls where they are card-internal secondary actions
+- Replace `mr-2`, manual icon sizing, and manual height/padding overrides with Button’s built-in `icon`, `iconRight`, `dropdown`, and size handling where practical.
 
-## A — Base styling drift
+### 3. Fix rejection and destructive actions
+- Change the first-surface Reject buttons in the candidate profile and job bulk-selection toolbar to `variant="danger" size="sm"` so they render as the explicit outline Danger variant.
+- Keep dialog confirmation buttons as `variant="dangerSolid"`, because those are final destructive commit steps.
+- Update Cancel buttons in destructive dialogs to `secondary`/standard non-destructive styling.
 
-| # | Spec | We have | Action |
-|---|------|---------|--------|
-| 1 | `tracking-[-0.005em]` on every button | not set | add to base CVA |
-| 2 | Focus ring: `ring-2 ring-virgilio-purple/30 ring-offset-0` | `/35` + `ring-offset-2` | retune to spec (no offset, 30%) |
-| 3 | Active: "filled variants darken further, shadow drops" — no translate | `active:translate-y-[0.5px] active:shadow-inner` | drop the translate, keep darken; (style-guide §2 also says +0.5px — fix doc) |
-| 4 | Hover tones: secondary → `#FAFAF7`, ghost → `#F1F0EC` (cream-tinted) | `foreground/[0.04]` and `foreground/[0.06]` (cool gray) | swap to cream-tinted tokens |
-| 5 | xl text 14px | `text-[15px]` | change to 14 |
-| 6 | Icon size 13–15px across sizes | xs 12, sm 14, md 16, lg 16, xl 18 | tighten md → 14 (`size-3.5`), lg → 15, xl → 16 |
+### 4. Clean up related reusable candidate action components
+- Update `MoveToPipelineMenu`, `AddOrTransferCandidateDialog`, `GenerateBookingLinkButton`, `RejectionDialog`, and `BulkRejectionDialog` so their triggers/footer buttons use the new variants and sizes consistently.
+- Narrow any component prop types that still only allow old variants like `default | outline | ghost` so they accept the Gio variants actually needed.
 
-## B — Missing API surface
+### 5. Audit visible legacy usage around the candidate workflow
+- Replace duplicated JobDetail toolbar button mismatches:
+  - `variant="virgilio"` → `variant="purple"` only for Gio/review-style brand actions.
+  - `variant="outline"` → `variant="secondary"` for ordinary toolbar actions.
+  - remove manual `h-[36px]` overrides.
+- Do a final `rg` audit for `variant="destructive"`, `variant="outline"`, manual `h-[36px]`, `h-8 w-8 p-0`, and `mr-2` in the touched candidate workflow files to catch remaining drift.
 
-Spec implies prop-driven composition; today it's variant-only and consumers hand-roll icons.
-
-7. **`icon` / `iconRight` props** — accept a `LucideIcon`, render at the size matching the button size, with the spec gap (6px). Removes copy-paste `<Icon className="…" />` everywhere.
-8. **`iconOnly` prop** — square button (`w === h`), requires `aria-label` (dev warning if missing). Replaces today's `size="icon|icon-sm|icon-lg"` which mixes "size" and "shape".
-9. **`dropdown` prop** — appends a `ChevronDown` at `opacity-65`. Replaces the manual chevron pattern.
-10. **`onDark` prop** — collapses `primaryOnDark` / `secondaryOnDark` / `ghostOnDark` into `<Button variant="primary" onDark>`. Keep the three variants as deprecated aliases for one cleanup pass.
-
-## C — Specialty patterns missing
-
-Not part of the base button, but called out by the spec and currently absent:
-
-11. **`<SplitButton>`** — primary action + chevron sidecar that opens a menu of alternatives. Thin composition over `Button` + `DropdownMenu`.
-12. **`<ToggleButton>`** — visible-state push (Favorite, Pin, Subscribe), `aria-pressed`, lilac fill in pressed state. Today done ad-hoc per surface.
-13. **`<FAB>`** — bottom-right mobile-only floating action, single per screen, md surface raised to lg height. Tiny wrapper with positioning + responsive `hidden md:none`.
-14. **Segmented control** — confirm `ToggleGroup` is wired with the spec look (active = white fill + shadow). Adjust if not.
-
-`link` variant and `<Switch>` already cover the spec's "Link button" and "Toggle (single)".
-
-## D — Style guide § 2 updates
-
-Patch `docs/style-guide.md` to reflect A + B + C: tracking value, hover tones, icon size table, drop the translate-on-active line, document `icon` / `iconRight` / `iconOnly` / `dropdown` / `onDark` props, add SplitButton / ToggleButton / FAB rows under "Specialty patterns", and add the **In context** ordering rules (right-aligned in PageHeader, primary rightmost in dialogs, danger-solid only in confirm step). Add the "Do & Don't" pairs from the spec verbatim.
-
-## E — Sweep
-
-15. Replace `variant="primaryOnDark|secondaryOnDark|ghostOnDark"` call sites with `onDark`. Replace ad-hoc `<Button><Icon …/>label</Button>` patterns with `icon={Icon}` where it's a clean swap. Keep aliases until two sweep passes are clean.
-
-## Technical notes
-
-- Base CVA change (point 1–3): one-line edits, won't break any consumer.
-- Points 7–10 are additive props — old usage keeps working.
-- `iconOnly` will deprecate `size="icon|icon-sm|icon-lg"`; alias them to `iconOnly + size`.
-- `onDark` ramp lives as Tailwind variants, not new tokens — top bar already uses `bg-citron-noir`.
-- No backend, no schema, no new colors.
-
-## Rollout order
-
-D (doc) → A (base styling, lowest risk) → B (props, additive) → C (new components) → E (sweep). Each phase shippable independently. Want me to start with D + A together so the doc and code land in lockstep?
+### Technical details
+- Primary files: `src/components/ui/button.tsx`, `src/components/candidates/CandidateProfileSheet.tsx`, `src/pages/JobDetail.tsx`.
+- Supporting files: `MoveToPipelineMenu.tsx`, `AddOrTransferCandidateDialog.tsx`, `GenerateBookingLinkButton.tsx`, `RejectionDialog.tsx`, `BulkRejectionDialog.tsx`, and dialog/alert-dialog button wrappers if needed.
+- No business logic changes; this is a visual/design-system conformance pass only.
