@@ -1,74 +1,53 @@
-## Jobs list redesign — faithful to mockup
+## Jobs page — fixes pass
 
-Refresh the `/jobs` page to match the new mockup, mirroring header conventions from `JobDetail` and routing all pills through the unified Badge system.
+Six targeted corrections to match the mockup faithfully and clean up the secondary button across the app.
 
-### 1. Page header (matches JobDetail)
+### 1. Job column — drop avatar
+In `JobsTable.tsx`, replace `<IdentityCell>` for the Job column with a plain stack: title (Poppins 14 semi) + inline `Trending` badge, and sub line `{employment_type} · {n} candidates`. No avatar.
 
-In `src/pages/Jobs.tsx`, replace the empty `PageHeader` band with a self-rendered header (same pattern as `JobHero`):
+### 2. Department → Company
+- Rename header label `Department` to `Company`.
+- Cell value uses `job.organization_name` (the org / job folder owner) instead of `job.department`.
+- Update mobile card meta line accordingly.
+- Remove the `Department` filter chip; add a `Company` filter chip populated from unique `organization_name` values.
 
-- Title row: `Jobs` in `font-poppins font-semibold tracking-[-0.04em] text-[28px] sm:text-[32px]` with the purple `.` accent. Inline neutral count chip `42` (`<Badge tone="neutral" size="sm">{total}</Badge>`).
-- Summary row beneath title: three dotted Badges — `tone="green" dot` 8 open, `tone="yellow" dot` 3 paused, `tone="neutral" dot` 31 closed (rendered as inline text+dot, not chips, to match the mock's lightweight summary line).
-- Right side actions: `<Button variant="secondary" size="md" icon={SlidersHorizontal}>Columns</Button>`, `<Button variant="secondary" size="md" icon={Download}>Export</Button>`, `<Button variant="primary" size="md" icon={Plus}>New job</Button>` — same sizes/styles as the JobDetail hero buttons.
+### 3. Owner column = recruiter / primary user
+Resolve the owner via, in order: `job.created_by` (look up in `members` for name + initials), else first `hiring_team_names[0]`. Render as `AvatarStack` (1 avatar, purple, 22px) + first name. No change to layout.
 
-### 2. Status tabs strip
+### 4. Pipeline graph — multi-color per-stage bar
+Replace the single-color `PipelineBar` with a real segmented bar driven by `usePipelineJobMetrics(visibleJobIds)`:
+- Pull `stages[]` per job (id, name, type, count, position).
+- Render each stage as a colored segment whose width is `count / totalCount`. Empty stages render a thin gray track segment so the full pipeline shape stays visible (matches mock's gray fill on the right).
+- Color palette by `stage_type` (sourcing=blue/cyan, screen=pink, interview=purple, offer=orange/yellow, hired=green, default=gray). Tailwind tokens already in palette.
+- Right side: `+N` label using total active candidates (Poppins 11.5 tabular-nums, text-tertiary).
+- Tooltip on each segment: `{stageName} · {count}`.
+- New file: `src/components/jobs/PipelineBar.tsx` — rewrite.
 
-Remove the in-card `FilterChipPopover` for Status. Add a top-level tabs strip directly under the header (outside the table card), styled like Pipeline section tabs:
+### 5. Secondary buttons — actually white
+Root cause: `--background` token = warm off-gray `#F5F4F0`, and `secondary` variant uses `bg-background`, so it inherits the page color and looks gray.
+- Fix in `src/components/ui/button.tsx`: change `secondary` → `bg-white` (keep hairline border, hover `#FAFAF7`, active `#F1F0EC`). Same fix for legacy `outline` alias.
+- This corrects the appearance globally, including the JobDetail hero buttons (Share, View posting), without per-call overrides.
 
-- Tabs: `Active (n)`, `All (n)`, `Paused (n)`, `Closed (n)`, `Archived (n)`. Counts derived from `jobs` by status (treating the existing `draft` as part of Active group? — clarify below).
-- Reuse the existing tab pattern from `PipelineSectionTabs` (rounded pill, active = filled, inactive = ghost) for visual parity with the JobDetail tabs.
+### 6. Tabs + filters card
+Wrap the status tabs row + the search/filter row inside a single full-width white card with hairline border + 14–16px radius (matches the table card aesthetic).
 
-### 3. Filter row
+Layout (inside one `<div className="rounded-2xl border border-virgilio-border bg-white">`):
+1. Top row — tabs only, larger style, full width, slight bottom hairline divider:
+   - Tabs: `Active (8)`, `All (42)`, `Paused (3)`, `Closed (31)`, `Archived` (no count when 0).
+   - Active tab: `bg-[#FAFAF7]` pill, text-primary semibold; inactive: text-tertiary.
+   - Replace `TableSegmented` (small, mini-card style) with a new local `JobsListTabs` matching the mock — 14px Poppins, ~40px row height, generous horizontal padding, count in lighter tone.
+2. Bottom row — search input full-width on the left, filter chips right-aligned:
+   - Search: rounded soft input, larger (h-10), placeholder `Search by title, owner, or department…`, icon left.
+   - Filter chips on the right: `+ Company`, `+ Location`, `+ Owner`, `+ Posted`. Use a slightly larger (h-9) FilterChipPopover trigger with leading `+` and label only when inactive, label + value when active. Re-style the trigger in `FilterChipPopover` only via additional className passthrough — no breaking changes elsewhere.
 
-Below the tabs (still outside the table card), a single row containing:
+The card replaces the current `TableSegmented` strip and `TableToolbar` block. The data table below remains its own card.
 
-- Full-width search input (rounded, soft surface), placeholder `Search by title, owner, or department…`.
-- Right-aligned `+ Department`, `+ Location`, `+ Owner`, `+ Posted` filter chips (reuse `FilterChipPopover` with the `+` prefix style from the mock). Department/Location/Owner already exist in data; Posted = date filter chip (today / 7d / 30d / all).
-- All controls use the standard 32–34px height per style guide.
+### Files touched
+- `src/components/ui/button.tsx` — secondary/outline → `bg-white`.
+- `src/components/jobs/PipelineBar.tsx` — rewrite to multi-segment.
+- `src/components/jobs/JobsTable.tsx` — drop avatar in JOB col, rename Department→Company, swap data, owner resolution, use new PipelineBar with metrics, drop separate `TableToolbar`/`TableSegmented`, render the new combined card via the page (move toolbar rendering to `Jobs.tsx`).
+- `src/pages/Jobs.tsx` — new combined Tabs + Filters card; pass company/owner filters down.
+- `src/hooks/useJobsCandidateCounts.ts` — keep for fallback total only (or remove and read totals from `usePipelineJobMetrics`).
 
-### 4. Table redesign — full Tables Foundation v1
-
-Rewrite `JobsTable` body using `<Table density="default">` and the column primitives from the style guide:
-
-| Column | Primitive | Notes |
-|---|---|---|
-| JOB | `IdentityCell` | Title (Poppins 14 semi) + inline `Badge tone="purple" size="xs"` for `Trending` when applicable. Secondary line: `{employment_type} · {candidate_count} candidates` (`text-table-meta`). |
-| DEPARTMENT | text | Plain text cell. |
-| LOCATION | text | `{location_mode} · {location}` formatting. |
-| STAGE | `StatusCell` | Single Badge with `dot`, tone mapped per stage (Sourcing=blue, Screen=pink, Interview=purple, Offer=yellow, Hired=green). |
-| PIPELINE | custom | Segmented multi-color bar (gray→blue→purple→orange) reflecting per-stage candidate counts, with `+N` neutral chip on the right. New `PipelineBar` presentational component. |
-| DAYS OPEN | `NumericCell` | `{n}d` Poppins tabular-nums; tone red when `> SLA` (e.g. ≥21d), neutral otherwise. |
-| OWNER | `ComposedCell` | Purple `AvatarStack` (single) + first name. |
-| (actions) | `ActionCell` | Kebab opacity 0→1 on row hover, 32px column. |
-
-Header row uses `text-table-header` (10.5 caps, +0.06em). No vertical dividers. Solid `#FAFAF7` header. Hover = flat `#FAFAF7`. Selected = lavender + 2px purple left rail (already in primitives).
-
-Footer: `TableFooterSummary` ("8 of 42 jobs") instead of pagination — list is short and matches the mock.
-
-### 5. Empty / loading / mobile
-
-- `TableSkeleton` (3–5 rows) for loading.
-- `TableEmpty` (with mascot) when no jobs at all, `TableFilteredEmpty` for filtered.
-- Mobile (`lg:hidden`) keeps the stacked Card view but rebuilds the rows using the same Badge tones for stage/status. No subtitle on PageHeader on mobile either.
-
-### 6. Badge / tag system migration (project-wide guideline reinforced here)
-
-- Replace all `Badge variant="job-open|job-draft|job-closed|job-archived"` usages in this page with the compositional API: `<Badge tone="green|neutral|yellow|ink" dot size="xs|sm">`.
-- Trending uses `<Badge tone="purple" size="xs">Trending</Badge>`.
-- Stage badges use `<Badge tone={stageTone} dot size="sm">`.
-- Count chip in title: `<Badge tone="neutral" size="sm">{n}</Badge>` (no dot).
-
-### Files to touch
-
-- `src/pages/Jobs.tsx` — new header, tabs strip, filter row, layout.
-- `src/components/jobs/JobsTable.tsx` — strip search/status/action rows; convert to Tables Foundation primitives + new columns.
-- `src/components/jobs/PipelineBar.tsx` — new tiny presentational component.
-- (No data/hook/query changes; pipeline counts derive from existing job fields, defaulting to 0 segments when not yet populated.)
-
-### Open question
-
-The mock shows tabs `Active / All / Paused / Closed / Archived` but our DB enum is `draft | open | closed | archived` (no `paused`). Two options:
-
-1. Map `Paused = draft` (rename label only) — fastest, no migration.
-2. Add a real `paused` status to the enum + data layer.
-
-Default to **option 1** unless you say otherwise; this keeps the change purely presentational.
+### Out of scope
+No DB migrations. No changes to Pipeline page or candidate stage logic.
