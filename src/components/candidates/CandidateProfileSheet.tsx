@@ -135,9 +135,11 @@ interface CandidateProfileSheetProps {
   /** 1-based index in the candidate list, for "N of M" paginator. */
   currentIndex?: number | null
   totalCount?: number | null
+  /** When true, render as a full route page inside Layout (no fixed overlay). */
+  asPage?: boolean
 }
 
-export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, autoOpenScorecardStageId, autoOpenScorecardId, onScorecardOpened, onScorecardChange, currentIndex, totalCount }: CandidateProfileSheetProps) {
+export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, autoOpenScorecardStageId, autoOpenScorecardId, onScorecardOpened, onScorecardChange, currentIndex, totalCount, asPage = false }: CandidateProfileSheetProps) {
   const { canEditCandidates, isAdmin, isWorkspaceOwner, isPlatformAdmin } = usePermissions()
   const navigate = useNavigate()
   
