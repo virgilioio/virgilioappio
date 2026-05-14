@@ -53,17 +53,17 @@ export function FilterChipSelect<T extends string = string>({
           <ChevronDown className="h-3 w-3 opacity-60" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-[200px]">
+      <DropdownMenuContent align="start" className="min-w-[200px]">
         {options.map(opt => {
           const selected = opt.value === value
           return (
             <DropdownMenuItem
               key={opt.value}
               onSelect={() => onChange(opt.value)}
-              className="flex items-center justify-between gap-2"
+              data-state={selected ? "checked" : undefined}
             >
-              <span className="text-xs font-inter">{opt.label}</span>
-              {selected && <Check className="h-3.5 w-3.5 text-accent-foreground" />}
+              <span className="flex-1 truncate">{opt.label}</span>
+              {selected && <Check className="h-3.5 w-3.5 text-virgilio-purple" />}
             </DropdownMenuItem>
           )
         })}

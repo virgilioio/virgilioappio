@@ -83,12 +83,12 @@ export function NotificationCenter() {
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="w-[440px] p-0 shadow-calendly border-virgilio-border"
+        className="w-[440px] p-0"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-virgilio-border">
+        <div className="flex items-center justify-between px-3 py-2.5 border-b border-[hsl(var(--tbl-divider-color))]">
           <div className="flex items-center gap-2">
-            <h3 className="font-poppins font-semibold text-sm text-virgilio-text">
+            <h3 className="font-poppins font-semibold text-[13px] text-virgilio-text">
               Notifications
             </h3>
             {unreadCount > 0 && (
@@ -100,7 +100,7 @@ export function NotificationCenter() {
           {unreadCount > 0 && (
             <button
               onClick={handleMarkAllAsRead}
-              className="text-xs font-poppins text-virgilio-purple hover:text-virgilio-purple/80 transition-colors font-medium"
+              className="text-[11.5px] font-poppins font-medium text-virgilio-purple hover:text-virgilio-purple/80 transition-colors"
             >
               Mark all read
             </button>
@@ -110,11 +110,11 @@ export function NotificationCenter() {
         {/* Notification List */}
         {unreadCount === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
-            <BellOff className="h-8 w-8 text-virgilio-muted mb-3" />
-            <p className="text-sm font-poppins font-medium text-virgilio-text">
+            <BellOff className="h-8 w-8 text-[hsl(var(--menu-group-color))] mb-3" />
+            <p className="text-[12.5px] font-poppins font-medium text-virgilio-text">
               All caught up!
             </p>
-            <p className="text-xs text-virgilio-muted mt-1">
+            <p className="text-[11.5px] text-[hsl(var(--menu-group-color))] mt-1">
               No new notifications right now
             </p>
           </div>
@@ -122,21 +122,21 @@ export function NotificationCenter() {
           <div className="overflow-y-auto max-h-[420px]">
             {groups.map((group) => (
               <div key={group.label}>
-                <div className="sticky top-0 z-10 bg-popover px-4 py-2">
-                  <span className="text-[11px] font-poppins font-semibold uppercase tracking-wider text-virgilio-muted">
+                <div className="sticky top-0 z-10 bg-popover px-3 pt-2 pb-1">
+                  <span className="text-menu-group font-inter uppercase text-[hsl(var(--menu-group-color))]">
                     {group.label}
                   </span>
                 </div>
-                <div className="divide-y divide-virgilio-border">
+                <div className="divide-y divide-[hsl(var(--tbl-divider-color))]">
                   {group.items.map((notification) => (
                     <button
                       key={notification.id}
                       onClick={() => handleNotificationClick(notification)}
-                      className="w-full text-left px-4 py-4 hover:bg-virgilio-purple/10 transition-colors duration-150 focus:outline-none focus:bg-virgilio-purple/10"
+                      className="w-full text-left px-3 py-3 hover:bg-[hsl(var(--menu-hover))] transition-colors duration-150 focus:outline-none focus:bg-[hsl(var(--menu-hover))]"
                     >
                       <div className="flex gap-3 items-start">
                         {/* Unread dot */}
-                        <div className="flex items-center pt-3.5 shrink-0">
+                        <div className="flex items-center pt-3 shrink-0">
                           <div className="h-2 w-2 rounded-full bg-virgilio-purple" />
                         </div>
 
@@ -156,22 +156,22 @@ export function NotificationCenter() {
                         {/* Content */}
                         <div className="flex-1 min-w-0 space-y-1">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-poppins font-semibold text-virgilio-text truncate">
+                            <span className="text-[12.5px] font-poppins font-semibold text-virgilio-text truncate">
                               {notification.type === 'offer_approval'
                                 ? 'Offer approval needed'
                                 : notification.candidateName}
                             </span>
-                            <span className="text-[11px] text-virgilio-muted whitespace-nowrap shrink-0">
+                            <span className="text-[11px] text-[hsl(var(--menu-group-color))] whitespace-nowrap shrink-0">
                               {formatDistanceToNow(new Date(notification.timestamp), { addSuffix: true })}
                             </span>
                           </div>
-                          <p className="text-xs text-virgilio-text truncate">
+                          <p className="text-[12px] text-virgilio-text truncate">
                             {notification.type === 'offer_approval'
                               ? `Approve offer for ${notification.candidateName}`
                               : notification.emailSubject || 'No subject'}
                           </p>
                           {notification.type === 'email' && notification.emailSnippet && (
-                            <p className="text-xs text-virgilio-muted truncate">
+                            <p className="text-[11.5px] text-[hsl(var(--menu-group-color))] truncate">
                               {notification.emailSnippet}
                             </p>
                           )}

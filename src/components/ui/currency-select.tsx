@@ -32,7 +32,7 @@ export function CurrencySelect({ value, onChange, disabled, placeholder = 'Selec
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
+      <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[220px] p-[var(--menu-pad)]" align="start">
         <Command>
           <CommandInput placeholder="Search currency..." />
           <CommandList>
@@ -46,14 +46,12 @@ export function CurrencySelect({ value, onChange, disabled, placeholder = 'Selec
                     onChange(currentValue.toUpperCase())
                     setOpen(false)
                   }}
+                  data-state={value === currency.value ? "checked" : undefined}
                 >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      value === currency.value ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  {currency.label}
+                  <span className="flex-1 truncate">{currency.label}</span>
+                  {value === currency.value && (
+                    <Check className="h-3.5 w-3.5 text-virgilio-purple" />
+                  )}
                 </CommandItem>
               ))}
             </CommandGroup>

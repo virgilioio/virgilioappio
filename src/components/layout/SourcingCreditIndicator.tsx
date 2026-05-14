@@ -38,11 +38,11 @@ export function SourcingCreditIndicator() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-72 shadow-calendly border-virgilio-border">
-        <DropdownMenuLabel className="font-poppins font-semibold text-virgilio-text">
+      <DropdownMenuContent align="end" className="w-72">
+        <DropdownMenuLabel>
           Sourcing Credits ({currentMonth})
         </DropdownMenuLabel>
-        <DropdownMenuSeparator className="bg-virgilio-border" />
+        <DropdownMenuSeparator />
         
         <div className="p-3 space-y-3">
           {/* Enrichment Credits */}
