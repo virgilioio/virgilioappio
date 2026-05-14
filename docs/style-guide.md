@@ -501,3 +501,14 @@ Typography utilities (in `tailwind.config.ts`): `text-menu-item` (12.5/Inter/400
 - The shared chrome lives in `src/lib/menu-classes.ts` (`menuPanel`, `menuItem`, `menuGroupLabel`, `menuSeparator`, `menuKbd`). Every primitive imports from there — change once, propagates everywhere.
 - Legacy `src/components/ui/multi-select.tsx` removed. Use `<FilterChipPopover>` for multi-select with checkboxes.
 - Call-site overrides like `rounded-md`, `shadow-md`, `bg-popover/95 backdrop-blur` on `<DropdownMenuContent>` / `<PopoverContent>` are now redundant — remove on touch.
+
+### Calendar primitive
+
+The shadcn `<Calendar>` (`src/components/ui/calendar.tsx`) is restyled to the
+date-picker spec: 32px square cells · radius 8 · Inter 12.5px · selected
+`bg-virgilio-purple text-white` · today (unselected) `ring-1 ring-virgilio-purple/30`
+· hover `bg-[hsl(var(--menu-hover))]` · header `text-menu-group` uppercase.
+This means `AnalyticsTimeFilter`, `BulkEmailDialog`, `CandidateFiltersPanel`
+(and any future consumer of `<Calendar>`) inherit the foundation without code
+changes. Prefer `<DatePickerVirgilio>` for new code; the bare `<Calendar>` is
+reserved for ranges and embedded contexts.
