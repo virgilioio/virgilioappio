@@ -1114,9 +1114,30 @@ const stageHasAutomation = useMemo(() => {
                       hasNext={hasNext}
                       onNavigatePrev={onNavigatePrev}
                       onNavigateNext={onNavigateNext}
+                      tabs={
+                        <ProfileTabs
+                          activeTab={activeTab}
+                          onTabChange={(v) => setActiveTab(v as typeof activeTab)}
+                          tabs={[
+                            ...((associationStatus === 'offer' || associationStatus === 'hired')
+                              ? [{ value: 'offer', label: 'Offer', Icon: FileText }]
+                              : []),
+                            { value: 'job', label: 'Job overview', Icon: ClipboardCheckIconAlias },
+                            { value: 'resume', label: 'Resume', Icon: FileText },
+                            ...(!isRestrictedViewer ? [{ value: 'overview', label: 'Overview', Icon: UserRound }] : []),
+                            { value: 'scorecards', label: 'Scorecards', Icon: Star },
+                            { value: 'activity', label: 'Activity', Icon: Activity },
+                            { value: 'comments', label: 'Comments', Icon: MessageSquare },
+                          ]}
+                        />
+                      }
                     />
-                    <section className="bg-white border border-virgilio-border rounded-2xl shadow-sm p-5 sm:p-6 space-y-4">
+                    {/* Card 2 — stages only (mirrors PipelineSectionTabs sitting below JobHero card) */}
+                    <section className="bg-white border border-virgilio-border rounded-2xl shadow-sm p-5 sm:p-6">
                       <ProfileStageStrip stages={planStages} currentStageId={currentStageId} />
+                    </section>
+                    {/* Action bar — its own surface below the stages card */}
+                    <section className="bg-white border border-virgilio-border rounded-2xl shadow-sm p-5 sm:p-6">
                       <ProfileActionBar
                         nextStageLabel={nextStage?.stage.stage_name || null}
                         onAdvance={async () => {
@@ -1194,23 +1215,7 @@ const stageHasAutomation = useMemo(() => {
                   </div>
                 )}
 
-                {/* Unified Tab Strip — matches Job profile */}
-                <ProfileTabs
-                  activeTab={activeTab}
-                  onTabChange={(v) => setActiveTab(v as typeof activeTab)}
-                  tabs={[
-                    ...((associationStatus === 'offer' || associationStatus === 'hired')
-                      ? [{ value: 'offer', label: 'Offer', Icon: FileText }]
-                      : []),
-                    { value: 'job', label: 'Job overview', Icon: ClipboardCheckIconAlias },
-                    { value: 'resume', label: 'Resume', Icon: FileText },
-                    ...(!isRestrictedViewer ? [{ value: 'overview', label: 'Overview', Icon: UserRound }] : []),
-                    { value: 'scorecards', label: 'Scorecards', Icon: Star },
-                    { value: 'activity', label: 'Activity', Icon: Activity },
-                    { value: 'comments', label: 'Comments', Icon: MessageSquare },
-                  ]}
-                  className="mb-6"
-                />
+                {/* Tabs moved into ProfileHeroCard */}
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Left column — tab content */}

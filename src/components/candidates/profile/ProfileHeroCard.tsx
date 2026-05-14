@@ -1,4 +1,5 @@
 import { ArrowLeft, ChevronLeft, ChevronRight, Heart, UserRound } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -31,6 +32,7 @@ interface ProfileHeroCardProps {
   hasNext?: boolean
   onNavigatePrev?: () => void
   onNavigateNext?: () => void
+  tabs?: ReactNode
 }
 
 function relativeTime(iso?: string | null) {
@@ -53,12 +55,13 @@ export function ProfileHeroCard({
   currentStageName, isFavorite, onToggleFavorite, onOpenFullProfile, linkedinUrl,
   fitScore,
   onClose, index, total, hasPrev, hasNext, onNavigatePrev, onNavigateNext,
+  tabs,
 }: ProfileHeroCardProps) {
   const applied = relativeTime(appliedAt)
   const showPager = typeof index === 'number' && typeof total === 'number' && total > 0
 
   return (
-    <header className="pb-4">
+    <section className="bg-white border border-virgilio-border rounded-2xl shadow-sm px-5 sm:px-6 pt-5">
       {/* Top navigation strip: Back · Breadcrumb · Pager */}
       <div className="flex items-center justify-between gap-4 pb-3 mb-4 border-b border-virgilio-border">
         <div className="flex-1 min-w-0">
@@ -201,7 +204,10 @@ export function ProfileHeroCard({
           </div>
         )}
       </div>
-    </header>
+
+      {/* Tabs slot — sits flush with card bottom edge */}
+      {tabs && <div className="mt-4">{tabs}</div>}
+    </section>
   )
 }
 
