@@ -108,10 +108,10 @@ export default function Jobs() {
                 statusFilter={statusFilter}
                 onStatusFilterChange={setStatusFilter}
                 tabs={[
-                  { value: 'active', label: 'Active', count: counts.active },
                   { value: 'all', label: 'All', count: counts.all },
-                  { value: 'paused', label: 'Paused', count: counts.paused },
+                  { value: 'active', label: 'Active', count: counts.active },
                   { value: 'closed', label: 'Closed', count: counts.closed },
+                  { value: 'paused', label: 'Paused', count: counts.paused },
                   { value: 'archived', label: 'Archived', count: counts.archived },
                 ]}
               />

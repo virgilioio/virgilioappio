@@ -11,7 +11,8 @@ import {
 import {
   IdentityCell, StatusCell, NumericCell, ComposedCell, AvatarStack, ActionCell,
 } from '@/components/ui/table-cells'
-import { TableSkeleton, TableEmpty, TableFilteredEmpty } from '@/components/ui/table-states'
+import { TableSkeleton } from '@/components/ui/table-states'
+import { GioEmptyState } from '@/components/ui/GioEmptyState'
 import { TableFooterSummary } from '@/components/ui/table-pagination'
 import { FilterChipPopover, type FilterChipOption } from '@/components/ui/filter-chip-popover'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -258,7 +259,7 @@ export function JobsTable({
 
       {/* Desktop table */}
       <div className="hidden lg:block rounded-2xl border border-virgilio-border bg-white overflow-hidden">
-        <Table density="default">
+        <Table density="comfortable">
           <TableHeader>
             <TableRow>
               <TableHead>Job</TableHead>
@@ -275,19 +276,30 @@ export function JobsTable({
             {isLoading ? (
               <TableSkeleton rows={5} columns={COLS} />
             ) : filteredJobs.length === 0 ? (
-              jobs.length === 0 ? (
-                <TableEmpty
-                  colSpan={COLS}
-                  title="No jobs yet"
-                  description="Create your first job to start sourcing and tracking candidates."
-                />
-              ) : (
-                <TableFilteredEmpty
-                  colSpan={COLS}
-                  query={searchTerm}
-                  onClearFilters={clearAll}
-                />
-              )
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={COLS} className="py-10">
+                  {jobs.length === 0 ? (
+                    <GioEmptyState
+                      title="No jobs yet"
+                      description="Create your first job to start sourcing and tracking candidates."
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center gap-3">
+                      <GioEmptyState
+                        title="No matches"
+                        description={
+                          searchTerm
+                            ? `No jobs match "${searchTerm}" with the current filters.`
+                            : 'No jobs match the current filters.'
+                        }
+                      />
+                      <Button variant="ghost" size="sm" onClick={clearAll}>
+                        Clear all filters
+                      </Button>
+                    </div>
+                  )}
+                </TableCell>
+              </TableRow>
             ) : (
               filteredJobs.map(job => {
                 const days = differenceInDays(new Date(), new Date(job.created_at))
@@ -411,8 +423,21 @@ export function JobsTable({
         {isLoading ? (
           <Card><CardContent className="p-4 text-text-tertiary text-sm">Loading…</CardContent></Card>
         ) : filteredJobs.length === 0 ? (
-          <Card><CardContent className="p-6 text-center text-text-tertiary text-sm">
-            {jobs.length === 0 ? 'No jobs yet.' : 'No jobs match your filters.'}
+          <Card><CardContent className="p-6">
+            {jobs.length === 0 ? (
+              <GioEmptyState
+                title="No jobs yet"
+                description="Create your first job to start sourcing and tracking candidates."
+              />
+            ) : (
+              <div className="flex flex-col items-center gap-3">
+                <GioEmptyState
+                  title="No matches"
+                  description={searchTerm ? `No jobs match "${searchTerm}".` : 'No jobs match the current filters.'}
+                />
+                <Button variant="ghost" size="sm" onClick={clearAll}>Clear all filters</Button>
+              </div>
+            )}
           </CardContent></Card>
         ) : (
           filteredJobs.map(job => {
