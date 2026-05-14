@@ -127,7 +127,7 @@ export default {
 				poppins: ['Poppins', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
 				'poppins-black': ['Poppins', 'sans-serif'],
 				inter: ['Inter', 'Roboto', 'Work Sans', 'sans-serif'],
-				mono: ['Monaco', 'Menlo', 'monospace']
+				mono: ['JetBrains Mono', 'Monaco', 'Menlo', 'monospace']
 			},
 			fontSize: {
 				xs: 'var(--font-size-xs)',
@@ -139,15 +139,45 @@ export default {
 				'2xl': 'var(--font-size-2xl)',
 				'3xl': 'var(--font-size-3xl)',
 				'4xl': 'var(--font-size-4xl)',
-				// Virgilio Calendly-style heading sizes
-			'h1-mobile': ['24px', { lineHeight: '1.2', letterSpacing: '-0.06em', fontWeight: '700' }],
-				'h1-desktop': ['34px', { lineHeight: '1.2', letterSpacing: '-0.06em', fontWeight: '700' }],
-				'h2-mobile': ['20px', { lineHeight: '1.2', letterSpacing: '-0.06em', fontWeight: '700' }],
-				'h2-desktop': ['25px', { lineHeight: '1.2', letterSpacing: '-0.06em', fontWeight: '700' }],
-				'h3-mobile': ['16px', { lineHeight: '1.2', letterSpacing: '-0.06em', fontWeight: '700' }],
-				'h3-desktop': ['20px', { lineHeight: '1.2', letterSpacing: '-0.06em', fontWeight: '700' }],
-				'h4-mobile': ['13px', { lineHeight: '1.25', letterSpacing: '-0.06em', fontWeight: '700' }],
-				'h4-desktop': ['16px', { lineHeight: '1.25', letterSpacing: '-0.06em', fontWeight: '700' }],
+				// Virgilio Calendly-style heading sizes (Phase 1: weight 600, tracking -0.04em)
+				'h1-mobile': ['24px', { lineHeight: '1.2', letterSpacing: '-0.04em', fontWeight: '600' }],
+				'h1-desktop': ['34px', { lineHeight: '1.2', letterSpacing: '-0.04em', fontWeight: '600' }],
+				'h2-mobile': ['20px', { lineHeight: '1.2', letterSpacing: '-0.04em', fontWeight: '600' }],
+				'h2-desktop': ['25px', { lineHeight: '1.2', letterSpacing: '-0.04em', fontWeight: '600' }],
+				'h3-mobile': ['16px', { lineHeight: '1.2', letterSpacing: '-0.04em', fontWeight: '600' }],
+				'h3-desktop': ['20px', { lineHeight: '1.2', letterSpacing: '-0.04em', fontWeight: '600' }],
+				'h4-mobile': ['13px', { lineHeight: '1.25', letterSpacing: '-0.04em', fontWeight: '600' }],
+				'h4-desktop': ['16px', { lineHeight: '1.25', letterSpacing: '-0.04em', fontWeight: '600' }],
+
+				// === Phase 2: Gio Design Foundation v1.0 semantic tokens ===
+				// Display
+				'display-xl': ['48px', { lineHeight: '1.05', letterSpacing: '-0.04em', fontWeight: '600' }],
+				'display-lg': ['36px', { lineHeight: '1.10', letterSpacing: '-0.04em', fontWeight: '600' }],
+				// Headings
+				'h1': ['26px', { lineHeight: '1.15', letterSpacing: '-0.04em', fontWeight: '600' }],
+				'h2': ['18px', { lineHeight: '1.20', letterSpacing: '-0.04em', fontWeight: '600' }],
+				'h3': ['14.5px', { lineHeight: '1.30', letterSpacing: '-0.02em', fontWeight: '600' }],
+				'h4': ['13px', { lineHeight: '1.30', letterSpacing: '-0.02em', fontWeight: '600' }],
+				// Body
+				'body-lg': ['14px', { lineHeight: '1.55', fontWeight: '400' }],
+				'body-md': ['13px', { lineHeight: '1.50', fontWeight: '400' }],
+				'body-sm': ['12px', { lineHeight: '1.45', fontWeight: '400' }],
+				'body-emphasis': ['13px', { lineHeight: '1.50', fontWeight: '500' }],
+				// UI labels
+				'ui-menu-lg': ['13px', { lineHeight: '1.20', fontWeight: '500' }],
+				'ui-menu-md': ['12.5px', { lineHeight: '1.30', fontWeight: '500' }],
+				'ui-button-lg': ['13.5px', { lineHeight: '1.20', fontWeight: '500' }],
+				'ui-button-md': ['13px', { lineHeight: '1.20', fontWeight: '500' }],
+				'ui-button-sm': ['12px', { lineHeight: '1.20', fontWeight: '500' }],
+				'ui-tab': ['12.5px', { lineHeight: '1.30', fontWeight: '500' }],
+				'ui-breadcrumb': ['11.5px', { lineHeight: '1.40', fontWeight: '400' }],
+				// Form fields
+				'form-label': ['12px', { lineHeight: '1.40', fontWeight: '500' }],
+				'form-value': ['13px', { lineHeight: '1.40', fontWeight: '400' }],
+				'form-placeholder': ['13px', { lineHeight: '1.40', fontWeight: '400' }],
+				'form-helper': ['11px', { lineHeight: '1.45', fontWeight: '400' }],
+				'form-error': ['11.5px', { lineHeight: '1.40', fontWeight: '500' }],
+				'form-required': ['12px', { lineHeight: '1.40', fontWeight: '500' }],
 			},
 			lineHeight: {
 				tight: 'var(--line-height-tight)',
