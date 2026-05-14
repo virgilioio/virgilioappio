@@ -135,20 +135,18 @@ export function AvatarStack({ people, max = 4, size = 24, className }: {
 export function ComposedCell({
   children,
   overflowCount,
-  overflowItems,
   className,
 }: {
   children: React.ReactNode
   /** When the cluster is badges/chips, render `+N more` chip via OverflowMore. */
   overflowCount?: number
-  overflowItems?: string[]
   className?: string
 }) {
   return (
     <div className={cn("flex items-center gap-1.5 flex-wrap", className)}>
       {children}
       {overflowCount && overflowCount > 0 ? (
-        <OverflowMore count={overflowCount} items={overflowItems} />
+        <OverflowMore count={overflowCount} />
       ) : null}
     </div>
   )
