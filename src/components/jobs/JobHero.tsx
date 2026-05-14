@@ -132,22 +132,28 @@ export function JobHero({
       {canEdit && (
         <div className="flex items-center gap-2 shrink-0">
           {onShare && (
-            <Button variant="secondary" size="sm" icon={Share2} onClick={onShare}>
+            <Button variant="secondary" size="md" icon={Share2} onClick={onShare}>
               Share
             </Button>
           )}
           {onViewPosting && (
-            <Button variant="secondary" size="sm" icon={ExternalLink} onClick={onViewPosting}>
+            <Button variant="secondary" size="md" icon={ExternalLink} onClick={onViewPosting}>
               View posting
             </Button>
           )}
           {onAddCandidate && (
-            <Button variant="primary" size="sm" icon={UserPlus} onClick={onAddCandidate}>
+            <Button
+              variant="primary"
+              size="md"
+              icon={UserPlus}
+              onClick={onAddCandidate}
+              className="text-white [&_svg]:text-white"
+            >
               Add candidate
             </Button>
           )}
           {onMoreActions && (
-            <Button variant="secondary" size="sm" iconOnly icon={MoreHorizontal} aria-label="More actions" onClick={onMoreActions} />
+            <Button variant="secondary" size="md" iconOnly icon={MoreHorizontal} aria-label="More actions" onClick={onMoreActions} />
           )}
         </div>
       )}
