@@ -1,75 +1,94 @@
-# Fix candidate profile page chrome + black-on-black button text
+# Candidate profile hero — match JobHero pattern (Option A)
 
-## Issue 1 — "Advance to …" still has black text on black
+## Goal
 
-The `primary` variant in `src/components/ui/button.tsx` already sets `text-[#fffcf9]` / `[&_svg]:text-[#fffcf9]`. But the buttons appear with dark text inside both `ProfileActionBar` and `ProfileQuickActionsCard`. Something in the cascade (parent `<Card>`, `text-card-foreground`, or arbitrary surface override) is winning at runtime.
+Make the candidate profile top section a bare header (like `JobHero`), with the navigation strip (Back / breadcrumbs / pager) sitting directly above the candidate name in left-center-right distribution. Stage strip and action bar move into their own card below.
 
-**Fix:** Promote the cream foreground in the `primary` variant to `!important` so it always wins, regardless of what wraps the button.
+## Final structure on `/jobs/:jobId/candidates/:id`
 
-`src/components/ui/button.tsx` — replace the `primary` line:
+```text
+─ Bare header (no card chrome) ─────────────────────────────────────
+  ← Back to job        Jobs › Job title › Candidates    7/18 ‹ ›
+  ─────────────────────────────────────────────────────────────────
+  ⬤  Candidate Name.  ♥  [Stage badge]                  ┌──────┐
+      Applying for Job · Source · Applied 3d            │AI Fit│
+      [Full profile] [LinkedIn]                         │  87  │
+                                                        └──────┘
+─ Card: stage strip + action bar ───────────────────────────────────
+  ●─●─●─○─○─○   [Advance to Phone Screen]  [Reject] [⋯]
+────────────────────────────────────────────────────────────────────
 
-```tsx
-primary:
-  "bg-[#0d0d09] !text-[#fffcf9] [&_svg]:!text-[#fffcf9] shadow-[var(--shadow-button)] hover:bg-[#1a1a14] active:bg-[#000000] active:shadow-inner",
+  (rest of page: tabs + main content + quick actions sidebar)
 ```
 
-Do the same defensive bump for `purple` (white-on-purple), `dangerSolid`, `success`, and the legacy `default`, `destructive`, `virgilio` aliases — they all set explicit white/contrast foregrounds that must beat any wrapper color. This is a one-line treatment per variant and preserves all other behavior.
+Padding/typography mirrors `JobHero`:
+- Outer: bare section with `pb-4` (no border, no shadow, no rounded card)
+- Title: `font-poppins font-semibold tracking-[-0.04em] text-[28px] sm:text-[32px]`
+- Meta row: `text-body-sm text-text-secondary`
+- Strip above title: same horizontal rhythm as JobHero's breadcrumb row
 
-## Issue 2 — Profile page is wrapped in a giant card
+## Implementation
 
-The `asPage` wrapper currently renders:
+### 1. `ProfileHeroCard.tsx` — strip the card, add the nav strip
 
-```tsx
-"h-[calc(100dvh-4rem-0.75rem)] mb-3 bg-background overflow-hidden rounded-2xl ring-1 ring-virgilio-border/60 shadow-calendly"
+- Replace `<section className="bg-white border border-virgilio-border rounded-2xl shadow-sm p-5 sm:p-6 space-y-5">` with a bare `<header className="pb-4">`.
+- Add new top strip (3-column flex, left-center-right) above the avatar/identity row:
+  - Left: `← Back to job` button (calls `onClose`)
+  - Center: `Jobs › {jobTitle} › Candidates` breadcrumb (hidden on mobile, same pattern as `JobHero`)
+  - Right: `7 of 18 ‹ ›` pager (only when index/total provided)
+- Hairline divider (`border-b border-virgilio-border`) between strip and identity row, with `pb-3 mb-4` rhythm.
+- Remove `children` slot (stage strip + action bar move out — see step 3).
+- Add new props: `onClose`, `index`, `total`, `hasPrev`, `hasNext`, `onNavigatePrev`, `onNavigateNext`.
+
+### 2. Retire `ProfileTopBar.tsx`
+
+The new strip lives inside `ProfileHeroCard` only. Delete `ProfileTopBar.tsx` since it's no longer used (overlay mode also gets the same in-hero strip — see step 4).
+
+### 3. `CandidateProfileSheet.tsx` — restructure
+
+Currently renders (in `asPage` mode):
+```
+ProfileTopBar
+ProfileHeroCard
+  └─ children: ProfileStageStrip + ProfileActionBar
+ProfileTabs
+...
 ```
 
-That single rounded ring + shadow is what the user sees as "the whole page wrapped in a huge card with a header." The mockup shows "Back to job / Jobs › Senior Product Designer › Candidates / 7 of 18 ‹ ›" floating directly on the page background, with the candidate hero card as a separate, distinct card below.
-
-### Fix in `CandidateProfileSheet.tsx`
-
-**1. Outer wrapper (line ~1058–1062)** — in `asPage` mode, strip all card chrome and let it flow:
-
-```tsx
-<div className={cn(
-  asPage
-    ? "min-h-[calc(100dvh-4rem)] bg-background"
-    : "fixed top-[4.5rem] left-3 right-3 bottom-3 sm:left-[5.5rem] z-40 bg-background overflow-hidden rounded-2xl ring-1 ring-virgilio-border/60 shadow-calendly"
-)}>
+New structure:
+```
+ProfileHeroCard (bare, includes top nav strip)
+<section className="bg-white border border-virgilio-border rounded-2xl shadow-sm p-5 sm:p-6 space-y-4">
+  ProfileStageStrip
+  ProfileActionBar
+</section>
+ProfileTabs
+...
 ```
 
-No `rounded-2xl`, no `ring-1`, no `shadow-calendly`, no `overflow-hidden`. Page scrolls naturally inside Layout's `<main>`.
+- Remove the `<ProfileTopBar … />` block.
+- Pass `onClose`, `currentIndex`, `totalCount`, `hasPrev`, `hasNext`, `onNavigatePrev`, `onNavigateNext`, `jobTitle` directly to `ProfileHeroCard`.
+- Wrap `ProfileStageStrip` + `ProfileActionBar` in their own white card sibling below the hero.
+- Apply this structure in **both** modes (`asPage` and overlay) — the in-hero nav strip works for both. In overlay mode, "Back to job" still calls `onClose` (closes the overlay) and the breadcrumb/pager still make sense.
 
-**2. Inner flex (line ~1063)** — in `asPage` mode, drop `h-full` (no fixed-height parent anymore):
+### 4. `CandidateProfile.tsx` (page wrapper)
 
-```tsx
-<div className={cn(asPage ? "flex w-full" : "flex h-full w-full")}>
-```
+No prop-shape change required — it already passes `onOpenChange`, `currentIndex`, `totalCount`, `hasPrev`, `hasNext`, `onNavigatePrev`, `onNavigateNext` to `CandidateProfileSheet`. We just need to make sure `jobTitle` reaches the sheet (the sheet already resolves it from the candidate record / job hook — verify and pass through).
 
-**3. ProfileTopBar wrapper (line ~1083)** — currently `border-b border-virgilio-border bg-white/60`. The mockup shows this strip transparent and borderless; the only chrome below it is the hero card itself. In `asPage` mode use bare padding:
+### 5. Container alignment with Jobs page
 
-```tsx
-<div className={cn(asPage ? "" : "border-b border-virgilio-border bg-white/60")}>
-  <ProfileTopBar … />
-</div>
-```
-
-**4. Main scroll column (line ~1156)** — `<div className="flex-1 overflow-y-auto">`. In `asPage` mode the page itself scrolls, so drop the inner scroll:
-
-```tsx
-<div className={cn("flex-1", asPage ? "" : "overflow-y-auto")}>
-```
-
-Same treatment for the loading skeleton container at line ~1078 (`flex-1 overflow-y-auto p-6` → `flex-1 p-6` when `asPage`).
-
-That's it — five conditional classNames inside one component. No new components, no design changes to hero card, tabs, action bar, quick actions, or application card.
-
-## Out of scope
-
-- Overlay mode (Pipeline / Candidates list / Apollo previews) is unchanged.
-- No backend / RLS work.
-- No tab/header/sidebar redesign.
+Confirm both pages render their hero inside the same Layout container width and gutter. `Jobs` uses `container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8`; the candidate page should match. If `CandidateProfileSheet` currently uses different padding in `asPage` mode, normalize to the same container.
 
 ## Files touched
 
-- `src/components/ui/button.tsx` — `!important` foregrounds on solid-fill variants.
-- `src/components/candidates/CandidateProfileSheet.tsx` — strip card chrome + internal scroll in `asPage` mode; ProfileTopBar strip transparent on the page.
+- `src/components/candidates/profile/ProfileHeroCard.tsx` — bare header + new top strip + new props
+- `src/components/candidates/CandidateProfileSheet.tsx` — drop ProfileTopBar, wrap stage strip + action bar in their own card, normalize container padding
+- `src/components/candidates/profile/ProfileTopBar.tsx` — delete
+- `src/pages/CandidateProfile.tsx` — verify prop pass-through (likely no change)
+
+## Out of scope
+
+- No changes to `JobHero` or the Jobs page.
+- No changes to tabs, quick actions sidebar, or application card.
+- No backend / RLS / data changes.
+- Mobile breakpoint behavior matches `JobHero`: breadcrumb hidden under `md`, pager + back stay visible.
