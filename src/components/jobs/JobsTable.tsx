@@ -320,22 +320,22 @@ export function JobsTable({
                     onClick={() => onView(job)}
                   >
                     <TableCell>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="font-poppins font-semibold text-[14px] tracking-[-0.01em] text-text-primary truncate">
-                            {job.title}
+                      <IdentityCell
+                        hideAvatar
+                        name={
+                          <span className="inline-flex items-center gap-2 min-w-0">
+                            <span className="truncate">{job.title}</span>
+                            {trending && (
+                              <Badge tone="purple" size="xs">Trending</Badge>
+                            )}
                           </span>
-                          {trending && (
-                            <Badge tone="purple" size="xs">Trending</Badge>
-                          )}
-                        </div>
-                        <div className="text-[12px] text-text-tertiary mt-0.5 truncate">
-                          Full-time · {totalCount} candidate{totalCount === 1 ? '' : 's'}
-                        </div>
-                      </div>
+                        }
+                        sub={`Full-time · ${totalCount} candidate${totalCount === 1 ? '' : 's'}`}
+                        fallback={job.title}
+                      />
                     </TableCell>
-                    <TableCell className="text-text-secondary">{job.organization_name || '—'}</TableCell>
-                    <TableCell className="text-text-secondary">
+                    <TableCell>{job.organization_name || '—'}</TableCell>
+                    <TableCell>
                       {job.location ? (
                         <span className="inline-flex items-center gap-1.5">
                           <MapPin className="h-3.5 w-3.5 text-text-tertiary" />
@@ -352,17 +352,17 @@ export function JobsTable({
                       <PipelineBar stages={stageData} total={totalCount} />
                     </TableCell>
                     <TableCell className="text-right">
-                      <NumericCell className={overdue ? 'text-destructive' : 'text-text-secondary'}>
+                      <NumericCell className={overdue ? 'text-destructive' : undefined}>
                         {days}d
                       </NumericCell>
                     </TableCell>
                     <TableCell>
                       <ComposedCell>
-                        <AvatarStack people={[{ name: ownerName }]} size={22} />
+                        <AvatarStack people={[{ name: ownerName }]} max={1} size={28} />
                         <span className="text-table-cell text-text-primary truncate">{ownerFirst}</span>
                       </ComposedCell>
                     </TableCell>
-                    <TableCell className="w-[44px] text-right">
+                    <TableCell className="w-[32px] text-right">
                       <ActionCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
