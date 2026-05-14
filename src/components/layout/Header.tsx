@@ -253,7 +253,7 @@ export function Header() {
         {/* Desktop Navigation */}
         <div className="flex items-center gap-10">
           <Link to="/dashboard" aria-label="Gio" className="flex items-center shrink-0 pl-1">
-            <img src={gioLogo} alt="Gio" className="h-5 w-auto" />
+            <img src={gioLogo} alt="Gio" className="h-[30px] w-auto" />
           </Link>
           <nav className="hidden lg:flex items-center gap-1">
             {visibleNavItems
