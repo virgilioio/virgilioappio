@@ -481,23 +481,24 @@ export function CandidateTable({
                           </Link>
                         </TableCell>
                          {!hideActions && (
-                           <TableCell>
-                             <div className="flex items-center justify-end gap-1">
-                                <PermissionGate permission="canDeleteCandidates">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.preventDefault()
-                                      e.stopPropagation()
-                                      handleDelete(candidate)
-                                    }}
-                                    className="h-[36px] w-[36px] p-0 text-destructive hover:bg-destructive/10 hover:scale-110 transition-all duration-150"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </PermissionGate>
-                             </div>
+                           <TableCell className="w-[32px] text-right">
+                             <ActionCell>
+                               <PermissionGate permission="canDeleteCandidates">
+                                 <Button
+                                   variant="ghost"
+                                   size="xs"
+                                   iconOnly
+                                   icon={Trash2}
+                                   aria-label="Delete candidate"
+                                   onClick={(e) => {
+                                     e.preventDefault()
+                                     e.stopPropagation()
+                                     handleDelete(candidate)
+                                   }}
+                                   className="text-destructive hover:bg-destructive/10"
+                                 />
+                               </PermissionGate>
+                             </ActionCell>
                            </TableCell>
                          )}
                       </TableRow>
