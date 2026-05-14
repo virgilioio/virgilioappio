@@ -1208,8 +1208,8 @@ export default function JobDetail() {
                       )}
                     </ScrollArea>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
