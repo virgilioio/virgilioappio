@@ -206,6 +206,12 @@ export default {
 				'button-sm': 'var(--button-height-sm)',
 				'button': 'var(--button-height-default)',
 				'button-lg': 'var(--button-height-lg)',
+				// Gio Foundation v1.0 (Phase A1)
+				'button-xs-v2': 'var(--button-height-xs-v2)',
+				'button-sm-v2': 'var(--button-height-sm-v2)',
+				'button-md-v2': 'var(--button-height-md-v2)',
+				'button-lg-v2': 'var(--button-height-lg-v2)',
+				'button-xl-v2': 'var(--button-height-xl-v2)',
 				'input': 'var(--input-height)',
 				'table-row': 'var(--table-row-height)'
 			},
