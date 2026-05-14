@@ -1059,7 +1059,7 @@ const stageHasAutomation = useMemo(() => {
     <>
     <div className={cn(
       asPage
-        ? "min-h-[calc(100dvh-4rem)] bg-background"
+        ? "h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col bg-background overflow-hidden"
         : "fixed top-[4.5rem] left-3 right-3 bottom-3 sm:left-[5.5rem] z-40 bg-background overflow-hidden rounded-2xl ring-1 ring-virgilio-border/60 shadow-calendly"
     )}>
       <div className={cn(asPage ? "flex w-full" : "flex h-full w-full")}>
@@ -1086,7 +1086,7 @@ const stageHasAutomation = useMemo(() => {
               </div>
             ) : (
               <>
-            <div className="px-4 sm:px-6 pt-4 sm:pt-6 bg-muted/20 space-y-4">
+            <div className={cn("space-y-3 mb-3", asPage && "layout-container pt-1 pb-2 sm:pt-2 sm:pb-3")}>
               {(() => {
                 const sortedStages = [...planStages].sort((a, b) => a.position - b.position)
                 const currentIdx = currentStageId ? sortedStages.findIndex(s => s.jhsId === currentStageId) : -1
@@ -1155,8 +1155,8 @@ const stageHasAutomation = useMemo(() => {
               })()}
             </div>
 
-               <div className={cn("flex-1", asPage ? "" : "overflow-y-auto")}>
-                <div className="px-4 sm:px-6 pt-4 pb-10 max-w-[1400px] mx-auto w-full">
+               <div className={cn("flex-1 min-h-0", asPage ? "overflow-y-auto" : "overflow-y-auto")}>
+                <div className={cn("pb-10 mx-auto w-full", asPage ? "layout-container max-w-[1400px]" : "px-4 sm:px-6 pt-4 max-w-[1400px]")}>
                 {/* Mobile job selector removed — single-job profile only */}
 
                 {/* Status Banners — full width above tabs */}
