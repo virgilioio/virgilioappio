@@ -1155,8 +1155,8 @@ const stageHasAutomation = useMemo(() => {
               })()}
             </div>
 
-               <div className={cn("flex-1", asPage ? "" : "overflow-y-auto")}>
-                <div className="px-4 sm:px-6 pt-4 pb-10 max-w-[1400px] mx-auto w-full">
+               <div className={cn("flex-1 min-h-0", asPage ? "overflow-y-auto" : "overflow-y-auto")}>
+                <div className={cn("pb-10 mx-auto w-full", asPage ? "layout-container max-w-[1400px]" : "px-4 sm:px-6 pt-4 max-w-[1400px]")}>
                 {/* Mobile job selector removed — single-job profile only */}
 
                 {/* Status Banners — full width above tabs */}
