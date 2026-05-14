@@ -50,8 +50,7 @@ export default function MoveToPipelineMenu({ jobId, candidateId, buttonText = 'M
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button size="sm" disabled={loading || stageOptions.length === 0} className="gap-2">
-          <MoveRight className="h-4 w-4" />
+        <Button variant="purple" size="sm" icon={MoveRight} dropdown disabled={loading || stageOptions.length === 0}>
           {stageOptions.length === 0 ? 'No stages' : buttonText}
         </Button>
       </DropdownMenuTrigger>

@@ -1082,7 +1082,7 @@ export default function JobDetail() {
                               {selectionMode && (
                                 <Button
                                   size="sm"
-                                  variant="destructive"
+                                  variant="danger"
                                   disabled={selectedCandidateIds.length === 0}
                                   onClick={() => setShowBulkRejectionDialog(true)}
                                 >
@@ -1491,7 +1491,7 @@ export default function JobDetail() {
                                 {selectionMode && (
                                   <Button
                                     size="sm"
-                                    variant="destructive"
+                                    variant="danger"
                                     disabled={selectedCandidateIds.length === 0}
                                     onClick={() => setShowBulkRejectionDialog(true)}
                                   >

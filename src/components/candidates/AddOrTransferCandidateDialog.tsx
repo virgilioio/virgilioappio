@@ -145,8 +145,7 @@ export function AddOrTransferCandidateDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button variant="outline" size="sm">
-            <ArrowRightLeft className="h-4 w-4 mr-2" />
+          <Button variant="secondary" size="sm" icon={ArrowRightLeft}>
             Add / Transfer to Job
           </Button>
         )}
