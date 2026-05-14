@@ -215,6 +215,14 @@ export default {
 				'input': 'var(--input-height)',
 				'table-row': 'var(--table-row-height)'
 			},
+			width: {
+				// Square icon-only buttons mirror height tokens
+				'button-xs-v2': 'var(--button-height-xs-v2)',
+				'button-sm-v2': 'var(--button-height-sm-v2)',
+				'button-md-v2': 'var(--button-height-md-v2)',
+				'button-lg-v2': 'var(--button-height-lg-v2)',
+				'button-xl-v2': 'var(--button-height-xl-v2)',
+			},
 			boxShadow: {
 				xs: 'var(--shadow-xs)',
 				sm: 'var(--shadow-sm)',
