@@ -336,12 +336,19 @@ export default function CandidateCard(props: CandidateCardProps) {
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
-            <div className="font-poppins text-[13px] font-semibold text-text-primary leading-tight truncate">
+            <div className="font-poppins text-[14px] font-semibold tracking-[-0.01em] text-text-primary leading-[1.15] truncate">
               {candidateName}
             </div>
-            <div className="text-[12px] text-text-tertiary truncate mt-0.5">
-              {role || ''}{role && company ? ' ' : ''}{company ? `@ ${company}` : ''}
-            </div>
+            {role && (
+              <div className="text-[12px] text-text-secondary leading-tight truncate mt-0.5">
+                {role}
+              </div>
+            )}
+            {company && (
+              <div className="text-[12px] text-text-tertiary leading-tight truncate">
+                @ {company}
+              </div>
+            )}
           </div>
         </div>
 

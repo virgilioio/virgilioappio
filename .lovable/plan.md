@@ -1,41 +1,53 @@
 ## Goal
-Match the mockup's structural framing for the Job detail header, status tabs, and pipeline toolbar.
+Polish three pieces of the Pipeline Board to match the mockup.
 
-## Changes (frontend / presentation only)
+## 1. Candidate card title typography
+File: `src/components/jobs/CandidateCard.tsx`
 
-### 1. Wrap the Job header in a white card
-File: `src/pages/JobDetail.tsx`
+- Title (candidate name): `font-poppins text-[14px] font-semibold tracking-[-0.01em] text-text-primary leading-[1.15]`.
+- Role + company become **two stacked lines** (matching mock):
+  - Line 1: `current_role` (e.g., "Designer") — `text-[12px] text-text-secondary leading-tight`.
+  - Line 2: `@ {current_company}` — `text-[12px] text-text-tertiary leading-tight`.
+- Drop the inline "Designer @ Notion" single-line treatment.
+- Avatar stays 32px purple.
 
-Group **JobHero + top tabs (Pipeline / Job Dashboard / Setup)** inside a single white card container:
-- `bg-white border border-virgilio-border rounded-2xl shadow-sm`
-- Internal padding ~ `px-6 pt-5 pb-0`
-- Move the existing `<JobHero>` and `<TabsList>` inside this wrapper.
-- Remove the bottom-border on `TabsList` (the card edge replaces it). Keep the per-trigger underline indicator.
-- Card sits below the global app chrome with the warm gray background showing around it.
+## 2. Stage column = single container with header + divider + body
+File: `src/components/jobs/PipelineOverview.tsx`
 
-### 2. Wrap the Pipeline status tabs in a white card
-File: `src/components/jobs/PipelineSectionTabs.tsx` (or wrap in `JobDetail.tsx`)
+Restructure each column so the **stage header is INSIDE** the column container (currently it sits above the gray ColumnShell):
 
-Wrap the status pills row (Suggested / Application review / Recruiting process / Job offers / Hired / Rejected) in:
-- `bg-white border border-virgilio-border rounded-xl px-3 py-2`
-- Pills remain evenly spaced inside (`flex items-center justify-between` or `gap` distribution preserved).
-- Active pill keeps its tinted background; inactive pills stay transparent on the white card.
+```
+┌─ rounded-2xl white card, border virgilio-border ──┐
+│  Header row (px-3 py-2.5):                        │
+│    • dot + stage name (14px Poppins semibold)     │
+│      + count (12px tabular-nums text-tertiary)    │
+│    • [zap icon] [bulk checkbox] [⋯ on hover]      │
+│  ── 1px divider (border-virgilio-border) ──       │
+│  Body (p-2, gap-2):                               │
+│    candidate cards…                               │
+│    + Add candidate (dashed, full width)           │
+└───────────────────────────────────────────────────┘
+```
 
-### 3. Align the toolbar row (search + right buttons)
-File: `src/pages/JobDetail.tsx` (toolbar block around line 959)
+- Refactor `ColumnShell` to accept a `header` ReactNode and render: header → `<div className="border-t border-virgilio-border" />` → body.
+- Default background: `bg-white`. On `isOver` (DnD), tint background and inner dashed dropzone using existing `STAGE_HOVER_CLASSES` (this is the lavender effect on Take-home in the mock).
+- On empty (no cards, not dragging), keep a subtle dashed body indicator and the "+ Add candidate" button as the only visible action.
+- Remove the separate header `<div className="px-1 pb-2 pt-1 ...">` block that currently sits above ColumnShell — fold its contents into the new header slot.
+- Stage dot keeps `getStageDotColor()`.
 
-- Ensure `TableToolbar` row is visually a single aligned row: search on left, filter button next to it; right cluster (Board/List segmented + Select + Add candidate) right-aligned, all at the same height (`h-9`).
-- All elements share the same corner radius (`rounded-lg`) so they "square up".
-- Remove any wrapping/flex-wrap; use `flex items-center justify-between gap-3` and consistent control sizes (`size="sm"` Buttons, `h-9` search).
-- Add a primary "Add candidate" button (`variant="primary"`, `icon={UserPlus}`) to the right cluster on the recruiting tab to mirror the mock — wired to `setShowAddCandidate(true)`.
+## 3. Cancel selection mode
+File: `src/pages/JobDetail.tsx` (toolbar right cluster, around line 995)
 
-### 4. Background spacing
-Confirm warm-gray `--background` shows between: header card → status-tab card → toolbar/board area, with `space-y-3` (12px) gaps to match the mockup rhythm.
+- Currently the Cancel button only shows when `selectedCandidateIds.length > 0`. Change so the **Cancel button shows whenever `selectionMode` is true**, regardless of selection count.
+- Clicking it sets `setSelectionMode(false)` and clears `setSelectedCandidateIds([])`.
+- When selectionMode is on but nothing selected: show only the Cancel button (no Email/Reject yet). When something is selected: show Email + Reject + Cancel.
+- Hide the "Select" toggle button while `selectionMode` is true (so Cancel replaces it visually).
 
 ## Out of scope
-- No data, hook, route, or backend changes.
-- No restructuring of `PipelineOverview` columns (already done in prior pass).
+- No changes to data, queries, or board DnD logic.
+- No card body redesign beyond the title/subtitle typography.
 
 ## Files touched
-- `src/pages/JobDetail.tsx` — wrap header, regroup toolbar, add primary Add-candidate.
-- `src/components/jobs/PipelineSectionTabs.tsx` — outer white card wrapper.
+- `src/components/jobs/CandidateCard.tsx`
+- `src/components/jobs/PipelineOverview.tsx`
+- `src/pages/JobDetail.tsx`
