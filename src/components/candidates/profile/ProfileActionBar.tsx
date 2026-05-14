@@ -37,7 +37,6 @@ export function ProfileActionBar({
             size="md"
             iconRight={ArrowRight}
             onClick={onAdvance}
-            className="!text-[#fffcf9] [&_svg]:!text-[#fffcf9]"
           >
             Advance to {nextStageLabel}
           </Button>
