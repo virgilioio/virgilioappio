@@ -204,7 +204,10 @@ export function ProfileHeroCard({
           </div>
         )}
       </div>
-    </header>
+
+      {/* Tabs slot — sits flush with card bottom edge */}
+      {tabs && <div className="mt-4">{tabs}</div>}
+    </section>
   )
 }
 
