@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronLeft, ChevronRight, Heart, UserRound } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Calendar, ChevronLeft, ChevronRight, Heart, Mail, UserRound } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Button } from '@/components/ui/button'
