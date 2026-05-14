@@ -91,7 +91,6 @@ const CommandGroup = React.forwardRef<
     ref={ref}
     className={cn(
       "overflow-hidden text-foreground",
-      `[&_[cmdk-group-heading]]:${menuGroupLabel.replace(/\s+/g, " ")}`,
       "[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1",
       "[&_[cmdk-group-heading]]:text-menu-group [&_[cmdk-group-heading]]:font-inter [&_[cmdk-group-heading]]:uppercase",
       "[&_[cmdk-group-heading]]:text-[hsl(var(--menu-group-color))]",

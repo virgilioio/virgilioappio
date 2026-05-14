@@ -62,11 +62,32 @@ export function DatePickerVirgilio({
           <span className="text-sm">{value ? format(value, 'MMM d, yyyy') : placeholder}</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-4 pointer-events-auto" align="start">
-        <div className="space-y-4">
+      <PopoverContent className="w-auto p-3 pointer-events-auto" align="start">
+        <div className="space-y-3">
+          {/* Quick-pick row */}
+          <div className="flex gap-1">
+            {[
+              { label: 'Today', date: new Date() },
+              { label: 'Tomorrow', date: (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d })() },
+              { label: 'Next week', date: (() => { const d = new Date(); d.setDate(d.getDate() + 7); return d })() },
+            ].map(({ label, date }) => (
+              <Button
+                key={label}
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2.5 text-[12.5px]"
+                onClick={() => !isDateDisabled(date) && handleDateSelect(date)}
+                disabled={isDateDisabled(date)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+
           {/* Month Navigation */}
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-virgilio-text">
+            <h3 className="text-h4 text-virgilio-text">
               {format(currentMonth, 'MMMM yyyy')}
             </h3>
             <div className="flex gap-1">
@@ -75,7 +96,7 @@ export function DatePickerVirgilio({
                 variant="ghost"
                 size="sm"
                 onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-                className="h-7 w-7 p-0 hover:bg-virgilio-border/50 rounded-lg"
+                className="h-7 w-7 p-0 rounded-lg"
               >
                 <ChevronLeft className="h-4 w-4 text-virgilio-text" />
               </Button>
@@ -84,7 +105,7 @@ export function DatePickerVirgilio({
                 variant="ghost"
                 size="sm"
                 onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                className="h-7 w-7 p-0 hover:bg-virgilio-border/50 rounded-lg"
+                className="h-7 w-7 p-0 rounded-lg"
               >
                 <ChevronRight className="h-4 w-4 text-virgilio-text" />
               </Button>
@@ -93,19 +114,17 @@ export function DatePickerVirgilio({
 
           {/* Calendar Grid */}
           <div className="space-y-1">
-            {/* Weekday Headers */}
             <div className="grid grid-cols-7 gap-1">
               {WEEK_DAYS.map((day) => (
                 <div
                   key={day}
-                  className="text-center text-xs font-semibold text-virgilio-muted py-1 w-8"
+                  className="text-center text-menu-group font-inter uppercase text-[hsl(var(--menu-group-color))] py-1 w-8"
                 >
                   {day}
                 </div>
               ))}
             </div>
 
-            {/* Date Cells */}
             <div className="grid grid-cols-7 gap-1">
               {days.map((day, idx) => {
                 const isCurrentMonth = isSameMonth(day, currentMonth)
@@ -120,12 +139,12 @@ export function DatePickerVirgilio({
                     onClick={() => !isDisabledDate && isCurrentMonth && handleDateSelect(day)}
                     disabled={isDisabledDate || !isCurrentMonth}
                     className={cn(
-                      "h-8 w-8 rounded-lg text-xs font-semibold transition-all duration-200 ease-out",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple focus-visible:ring-offset-1",
+                      "h-8 w-8 rounded-lg text-[12.5px] font-medium transition-colors duration-150",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/30",
                       !isCurrentMonth && "text-virgilio-border cursor-default",
-                      isDisabledDate && isCurrentMonth && "opacity-30 cursor-not-allowed",
-                      isCurrentMonth && !isDisabledDate && !isSelected && "text-virgilio-text hover:bg-virgilio-purple/10 hover:-translate-y-0.5 hover:shadow-sm cursor-pointer",
-                      isSelected && "bg-virgilio-purple text-white shadow-md",
+                      isDisabledDate && isCurrentMonth && "opacity-45 cursor-not-allowed",
+                      isCurrentMonth && !isDisabledDate && !isSelected && "text-virgilio-text hover:bg-[hsl(var(--menu-hover))] cursor-pointer",
+                      isSelected && "bg-virgilio-purple text-white",
                       isTodayDate && !isSelected && isCurrentMonth && "ring-1 ring-virgilio-purple/30"
                     )}
                   >
