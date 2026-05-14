@@ -1,93 +1,51 @@
-# Mirror JobDetail card structure on candidate profile
+# Candidate Profile Hero Refinement
 
-## Reference: how `JobDetail` does it
+## 1. Top nav strip (ProfileHeroCard.tsx)
 
-`JobDetail.tsx` (lines 883–907) wraps **JobHero + TabsList together** in one white card:
+- **"Back to job"** — change classes to match breadcrumb exactly: `text-body-sm text-text-tertiary hover:text-text-secondary` (drop `font-poppins text-[13px] tracking-[-0.005em]`). Same font (Inter body), same size as the breadcrumb.
+- **Remove the divider** under the top strip: drop `pb-3 mb-4 border-b border-virgilio-border` → use `mb-3` (or `mb-4`) only.
 
-```tsx
-<div className="mb-3 bg-white border border-virgilio-border rounded-2xl shadow-sm px-6 pt-5">
-  <JobHero … />
-  <TabsList className="mt-4 …">{triggers}</TabsList>
-</div>
+## 2. Hero top-right action cluster (ProfileHeroCard.tsx)
+
+Mirror `JobHero`'s right-side action cluster. Add an actions slot on the right of the identity row containing, in this order:
+
+- `Advance to {nextStageLabel}` — `variant="primary"`, `iconRight={ArrowRight}` (hidden when rejected/hired or no next stage)
+- `Schedule` — `variant="secondary"`, `icon={Calendar}`
+- `Email` — `variant="secondary"`, `icon={Mail}`
+
+Implementation: extend `ProfileHeroCard` props with `nextStageLabel`, `onAdvance`, `onSchedule`, `onEmail`, `isRejected`, `isHired`. Render the cluster as a `shrink-0` flex group aligned to the top-right of the identity row (replacing/with the AI Fit chip side; AI Fit moves to the left of the buttons or stays — keep AI Fit chip, place buttons after it).
+
+Layout: identity row becomes `flex items-start justify-between gap-4`, with left = avatar + identity block, right = `[AI Fit chip] [Advance] [Schedule] [Email]`.
+
+## 3. Pager / navigation arrows relocation
+
+The top-strip pager (`{index} of {total}` + Prev/Next chevrons) is freed up. Move it to the **right edge of the breadcrumb row**, replacing the now-empty right side of the top strip. Net effect: top strip becomes `[Back to job] · · · [breadcrumb centered] · · · [pager + arrows]` — same three-column distribution as today, just without the divider underneath. No new location needed; the strip stays, only its bottom border is removed.
+
+(If we'd rather free the top strip entirely, alternative is to dock the pager into the hero's top-right above the action buttons — but the current placement reads cleanly and matches the user's prior "left/center/right" requirement.)
+
+## 4. Delete the middle action bar card (CandidateProfileSheet.tsx)
+
+- Remove `<ProfileActionBar />` and its wrapping card entirely from `CandidateProfileSheet.tsx`.
+- The file `src/components/candidates/profile/ProfileActionBar.tsx` becomes unused → delete it.
+- Quick Actions sidebar (`ProfileQuickActionsCard`) already contains Advance / Submit scorecard / Schedule / Create offer / Reject — no changes needed there.
+
+## Resulting structure
+
 ```
-
-Below it, `PipelineSectionTabs` (the per-job stage selector) sits as its own element.
-
-## Target structure on the candidate profile
-
-```text
-┌─ Card 1: bg-white border rounded-2xl shadow-sm px-6 pt-5 ──────────┐
-│  Back to job        Jobs › Job › Candidates        7/18 ‹ ›        │
-│  ───────────────────────────────────────────────────────────────── │
-│  ⬤  Candidate Name.  ♥  [Stage badge]                  ┌──────┐   │
-│      Applying for Job · Source · Applied 3d            │AI Fit│   │
-│      [Full profile] [LinkedIn]                         │  87  │   │
-│  ───────────────────────────────────────────────────── └──────┘   │
-│  [Job overview] [Resume] [Overview] [Scorecards] [Activity] [...] │  ← ProfileTabs
-└────────────────────────────────────────────────────────────────────┘
-
-┌─ Card 2: stages only ──────────────────────────────────────────────┐
-│  ●─●─●─○─○─○                                                       │  ← ProfileStageStrip
-└────────────────────────────────────────────────────────────────────┘
-
-  (ProfileActionBar continues to live wherever it lives today —
-   NOT inside Card 2. Tab content + sidebar render below as before.)
+[ Hero card ]
+  Top strip: Back to job  ·  Breadcrumb  ·  {N of M} ‹ ›
+  Identity:  Avatar  Name + meta            [AI Fit] [Advance] [Schedule] [Email]
+  Tabs
+[ Stages card ]
+[ Tab content ]   |  [ Quick Actions sidebar ]
 ```
-
-## Implementation
-
-### 1. `ProfileHeroCard.tsx` — restore card chrome, accept tabs slot
-
-- Wrap the existing content in a card: `<section className="bg-white border border-virgilio-border rounded-2xl shadow-sm px-6 pt-5">`. No bottom padding — tabs sit flush so the underline meets the card edge (matches JobDetail pattern).
-- Keep the in-hero top nav strip (Back / breadcrumb / pager) already added in the previous round.
-- Add a `tabs?: ReactNode` slot rendered after the identity row with `mt-4` (mirrors `JobDetail`).
-- The hero itself does NOT contain the stage strip or action bar.
-
-### 2. `CandidateProfileSheet.tsx` — restructure
-
-Currently:
-```
-ProfileHeroCard (bare)
-<section card>
-  ProfileStageStrip
-  ProfileActionBar
-</section>
-… later …
-ProfileTabs (in scroll body)
-… status banners …
-tab content
-```
-
-New:
-```
-ProfileHeroCard (carded, with tabs prop = <ProfileTabs … />)
-<section card>                   ← Card 2: stages only
-  ProfileStageStrip
-</section>
-ProfileActionBar                 ← restore to its previous location
-                                   (back where it sat before the prior edit)
-… status banners …
-tab content (no ProfileTabs render here)
-```
-
-- Lift `<ProfileTabs … />` (currently rendered around line 1198) out of the scroll body and pass it as the `tabs` prop on `ProfileHeroCard`.
-- Split the prior wrapper card: keep only `ProfileStageStrip` inside it. Remove `ProfileActionBar` from this card.
-- Restore `ProfileActionBar` to its previous render site (immediately after the hero, ungrouped — same position it had before we introduced the wrapping card).
-
-### 3. No changes to
-
-- `ProfileStageStrip.tsx` / `ProfileActionBar.tsx` internals.
-- `JobHero` / `JobDetail`.
-- `CandidateProfile.tsx` page wrapper.
-- Tab content panels, quick actions sidebar, status banners.
 
 ## Files touched
 
-- `src/components/candidates/profile/ProfileHeroCard.tsx` — restore card chrome, add `tabs` ReactNode slot
-- `src/components/candidates/CandidateProfileSheet.tsx` — pass `<ProfileTabs />` to hero, remove its in-body site, isolate stage strip in its own card, restore action bar to its prior position
+- `src/components/candidates/profile/ProfileHeroCard.tsx` — typography fix, remove divider, add action cluster props + render.
+- `src/components/candidates/CandidateProfileSheet.tsx` — pass new action props to hero, delete ProfileActionBar card.
+- `src/components/candidates/profile/ProfileActionBar.tsx` — delete file.
 
 ## Out of scope
 
-- Overlay-mode behavioral changes (Pipeline overlay).
-- Backend / data / RLS work.
-- Tab content, quick actions, application card.
+Stages card, Quick Actions sidebar, tab content, status banners, overlay mode, any backend/data changes.
