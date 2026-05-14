@@ -154,6 +154,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [education, setEducation] = useState<CandidateEducation[]>([])
   const [certifications, setCertifications] = useState<CandidateCertification[]>([])
   const [editOpen, setEditOpen] = useState(false)
+  const [addTransferOpen, setAddTransferOpen] = useState(false)
   const [editLoading, setEditLoading] = useState(false)
   const { updateAssociationStatus, moveAssociationToStage, createAssociationAndMove } = usePipelineActions()
   const [associationId, setAssociationId] = useState<string | null>(null)
