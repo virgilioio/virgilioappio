@@ -83,6 +83,8 @@ import { ProfileStageStrip } from '@/components/candidates/profile/ProfileStageS
 import { ProfileActionBar } from '@/components/candidates/profile/ProfileActionBar'
 import { ProfileQuickActionsCard } from '@/components/candidates/profile/ProfileQuickActionsCard'
 import { ProfileApplicationCard } from '@/components/candidates/profile/ProfileApplicationCard'
+import { ProfileTabs } from '@/components/candidates/profile/ProfileTabs'
+import { ClipboardCheck as ClipboardCheckIconAlias } from 'lucide-react'
 import { useCandidateFitInsights } from '@/hooks/useCandidateFitInsights'
 
 interface StageScorecardProps {
