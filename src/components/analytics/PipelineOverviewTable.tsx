@@ -73,7 +73,7 @@ export function PipelineOverviewTable({ jobIds, isLoading: externalLoading }: Pi
       </CardHeader>
       <CardContent className="p-0 flex-1 min-h-0">
         <div className="h-full max-h-[60vh] sm:max-h-[400px] overflow-auto">
-          <Table>
+          <Table density="compact">
             <TableHeader className="sticky top-0 z-10 bg-background">
               <TableRow className="hover:bg-transparent">
                 <TableHead className="sticky left-0 z-20 bg-background min-w-[200px] font-poppins font-semibold">

@@ -905,7 +905,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                           </AccordionTrigger>
                           <AccordionContent className="px-3 pb-3">
                             <div className="w-full">
-                              <Table className="w-full">
+                              <Table density="compact" className="w-full">
                                 <TableBody>
                                   {group.rows.map((row) => (
                                     <TableRow key={row.id} interactive className="hover:bg-transparent" onClick={() => { 

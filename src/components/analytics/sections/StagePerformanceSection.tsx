@@ -43,7 +43,7 @@ export function StagePerformanceSection({ metrics, stageData }: StagePerformance
           icon={AlertTriangle}
           maxHeight="max-h-[300px]"
         >
-          <Table>
+          <Table density="compact">
             <TableHeader>
               <TableRow>
                 <TableHead>Candidate</TableHead>
