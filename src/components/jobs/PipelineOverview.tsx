@@ -46,6 +46,10 @@ interface PipelineOverviewProps {
   includeApplicationReview?: boolean
   /** Called when a candidate is clicked. Second arg is the visual navigation order snapshot */
   onCandidateClick?: (candidateId: string, navigationOrder: string[]) => void
+  /** External search term to filter candidates by name/role/company */
+  searchTerm?: string
+  /** Called when user clicks the bottom dashed "+ Add candidate" inside any column */
+  onAddCandidateClick?: () => void
 }
 
 
