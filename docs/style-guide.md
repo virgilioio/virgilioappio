@@ -80,79 +80,117 @@ Single source of truth for typography and buttons. Replaces `docs/typography.md`
 
 ## 2. Buttons
 
-Every clickable affordance in Gio. Rules cover variant, size, state, shape, and the rare on-dark / specialty cases. **One primary per surface, always.**
+Every clickable affordance in Gio. Rules cover variant, size, state, shape, on-dark, and specialty patterns. **One primary per surface, always.**
+
+> **Three rules**
+> 1. **One primary per surface.** Per page, per dialog, per card. Two primaries means neither is.
+> 2. **Hierarchy by variant, density by size.** Pick variant for visual weight, size to fit the row — never to add importance.
+> 3. **Destructive defaults to caution.** Outline `danger` by default. Solid red is for the irreversible, confirmed step only.
 
 ### Variants
 
 The variant determines visual weight and intent — not the action.
 
-| Variant         | Use                                                                                  | Examples                                  |
-|-----------------|--------------------------------------------------------------------------------------|-------------------------------------------|
-| `primary`       | The single most important action on a screen. **Black fill, white text.** One per surface, ideally one per dialog. | Save, Create, Submit, Continue            |
-| `purple`        | Brand-emphasis primary. Use when the action involves AI/Gio or core CRM commitments. | Add to pipeline, Generate with Gio, Send offer |
-| `secondary`     | Medium weight. Most buttons in the app are this. White fill + thin border.           | Cancel, Filter, Edit, Export              |
-| `ghost`         | Tertiary. Inline in dense rows, table actions, menu items, low-frequency settings. **Never for destructive actions.** | Edit, Remove, Open                        |
-| `danger`        | Default for destructive action. **Outline only — never solid** unless the user has already confirmed. | Reject, Delete candidate, Archive job     |
-| `dangerSolid`   | The confirm step inside a destructive dialog. Pair with a clear cancel. **Never the first action in a view.** | "Yes, delete workspace", "I understand, reject all 12" |
-| `success`       | Positive confirmations only.                                                         | Mark hired, Approve offer                 |
+| Variant         | Color                                    | Use                                                                                  |
+|-----------------|------------------------------------------|--------------------------------------------------------------------------------------|
+| `primary`       | citron-noir `#0d0d09` → cream            | The single most important action on a screen. Save, Create, Submit, Continue.        |
+| `purple`        | brand `#6F3FF5`                          | Brand-emphasis primary. AI / Gio / core CRM commits — Add to pipeline, Generate with Gio, Send offer. |
+| `secondary`     | white + hairline border                  | Medium weight. Most buttons in the app are this. Cancel, Filter, Edit, Export.       |
+| `ghost`         | no chrome until hover                    | Tertiary. Inline in dense rows, table actions, menu items. **Never destructive.**    |
+| `danger`        | white + red text & border                | DEFAULT for destructive actions. **Outline only — never solid** unless confirmed.    |
+| `dangerSolid`   | filled red                               | Confirm step inside a destructive dialog. Pair with a clear cancel. **Never the first action in a view.** |
+| `success`       | filled green — used sparingly            | Positive confirmations only — Mark hired, Approve offer.                             |
+| `link`          | inline purple, weight 500                | Inline in body text. Underline on hover. Never destructive.                          |
 
 ### Sizes
 
 Five sizes. Default is **md (34px)** — use it unless you have a reason. **Size by row density, not by importance.**
 
-| Size  | Height | Token                | Use                                                                                  |
-|-------|--------|----------------------|--------------------------------------------------------------------------------------|
-| `xs`  | 24px   | `h-button-xs-v2`     | Inline in dense rows, table chip-style actions. Use very sparingly.                  |
-| `sm`  | 28px   | `h-button-sm-v2`     | Card-internal buttons, toolbar actions inside lists, secondary actions in settings.  |
-| `md`  | 34px   | `h-button-md-v2`     | **Default.** PageHeader actions, dialog footers, form submit, top-bar actions.       |
-| `lg`  | 40px   | `h-button-lg-v2`     | Heavy emphasis CTAs in dialogs, full-width buttons in sheets, settings "Save" footers. |
-| `xl`  | 48px   | `h-button-xl-v2`     | Empty states, onboarding, marketing-style hero CTAs. Almost never appears in the working app. |
+| Size  | Height | Text     | Icon  | Use                                                                                  |
+|-------|--------|----------|-------|--------------------------------------------------------------------------------------|
+| `xs`  | 24px   | 11.5px   | 12px  | Inline pill in dense rows, table chip-style actions. Use very sparingly.             |
+| `sm`  | 28px   | 12px     | 14px  | Card-internal buttons, toolbar actions inside lists, secondary actions in settings.  |
+| `md`  | 34px   | 13px     | 14px  | **Default.** PageHeader actions, dialog footers, form submit, top-bar actions.       |
+| `lg`  | 40px   | 13.5px   | 15px  | Heavy-emphasis CTAs in dialogs, full-width buttons in sheets, settings "Save" footers. |
+| `xl`  | 48px   | 14px     | 16px  | Empty states, onboarding, marketing-style hero CTAs. Almost never inside the working app. |
 
 ### States
 
-Every variant supports the same five states. Engineer them once; designers don't redraw them.
+Every variant supports the same six states. Engineer them once.
 
 | State              | Behavior                                                                              |
 |--------------------|---------------------------------------------------------------------------------------|
-| **Default**        | Resting state. Where you see it most of the time.                                     |
-| **Hover**          | "Barely a posture." Primary `-6%` lightness; secondary `-4%` alpha. **No lift, no scale.** |
-| **Active / pressed** | Filling tones down, `translate-y-+0.5px`, inner shadow. Never a finger-zoom.       |
-| **Focus**          | Only for keyboard navigation (`:focus-visible`). Purple ring 2px + offset, **35% opacity.** |
-| **Disabled**       | 45% opacity, no pointer, aria attribute. Always pair with a media or reasoning why.   |
-| **Loading**        | Async actions. Lock the width to avoid layout shift. Keep the label visible so users know what's happening. |
+| **Default**        | Resting state. The 95% case.                                                          |
+| **Hover**          | Fill shift only. Primary `-6%` lightness; secondary → `#FAFAF7`; ghost → `#F1F0EC`. **No translate, no scale.** |
+| **Active / pressed** | Filled variants darken further; inner shadow. Lasts ~80ms. **No translate, no lift.** |
+| **Focus**          | `:focus-visible` only. Purple ring `2px @ 30% opacity`, no offset. Never combine with hover. |
+| **Disabled**       | 45% opacity, `cursor-not-allowed`, aria-disabled. Always pair with a tooltip explaining why. |
+| **Loading**        | Spinner replaces leading icon. Label stays. Width is locked to avoid layout shift.    |
 
-### Shapes & content
+### Shapes & content (props)
 
-Variant always stays the same. What changes is what's *inside* the button.
+Variant + size stay the same. What changes is what's *inside* the button.
 
-| Shape                  | Notes                                                                                  |
-|------------------------|----------------------------------------------------------------------------------------|
-| Text only              | Default. Use whenever the label alone is unambiguous.                                  |
-| Icon + text            | When an icon reinforces the action. Icon always 14–16px depending on size.             |
-| Text + trailing icon   | For all external or arrow-right next steps, external link, "open in new tab", or chevron-down for dropdowns. |
-| Icon only              | Toolbar utilities, +/×/sort/etc. **Always pair with `aria-label` and ideally a tooltip.** Never for unfamiliar actions. |
-| With dropdown chevron  | Indicates the button reveals a menu. Chevron sits at the end with **0.65 opacity**.    |
+| Prop          | Notes                                                                                   |
+|---------------|-----------------------------------------------------------------------------------------|
+| (text only)   | Default. Use whenever the label alone is unambiguous.                                   |
+| `icon`        | Leading `LucideIcon`. Auto-sized to the button size. Use when the icon reinforces the verb (Download = download). |
+| `iconRight`   | Trailing `LucideIcon`. For directional / external — arrow-right, external-link.         |
+| `iconOnly`    | Square button (`w === h`). **Requires `aria-label`.** Toolbar utilities, table actions, close. |
+| `dropdown`    | Appends `ChevronDown` at `opacity-0.65`. Indicates the button reveals a menu.           |
+| `loading`     | Async actions. Spinner replaces `icon`; width locked.                                   |
 
 ### On dark (top bar)
 
-When buttons sit on the cream-on-black top bar, variants are remapped: primary becomes inverted cream-on-black, secondary uses a translucent fill, ghost gets a softer hover.
+When buttons sit on the citron-noir top bar, set `onDark` — variants are remapped automatically: primary becomes inverted cream-on-black, secondary uses a translucent fill, ghost gets a softer hover.
 
-| Variant            | Use                                                                                |
-|--------------------|------------------------------------------------------------------------------------|
-| `primaryOnDark`    | The "Create" button in the top bar. Cream fill on the black surface.               |
-| `secondaryOnDark`  | Search trigger, workspace switcher, dropdown openers inside the top bar.           |
-| `ghostOnDark`      | Top-level toggles in the top bar (Jobs, Candidates, notifications toggles).        |
+```tsx
+<Button variant="primary" onDark>Create</Button>
+<Button variant="secondary" onDark icon={Search}>Search Acme Talent</Button>
+<Button variant="ghost" onDark>Jobs</Button>
+```
+
+> The legacy `variant="primaryOnDark|secondaryOnDark|ghostOnDark"` still works but is deprecated — migrate to `onDark`.
 
 ### Specialty patterns
 
-These aren't standalone variants — they're compositions of the same tokens.
+These aren't standalone variants — they're compositions on top of `<Button>`.
 
-| Pattern             | Notes                                                                                |
-|---------------------|--------------------------------------------------------------------------------------|
-| Segmented control   | Mutually exclusive choice with 2–4 options. Use when both options need to feel equal. Active option carries white fill + shadow. |
-| Toggle (single)     | On/binary in settings rows. Always pair with a label on the left.                    |
-| Toggle button (pressed) | Visible-state button (Star = Favorite, Bookmark, Pin). Pressed state carries a soft fill, `aria-pressed`. |
-| Split button        | When the default action has variants. Main side fires the default, chevron side opens alternatives. |
+| Pattern                | Component             | Notes                                                                                 |
+|------------------------|-----------------------|---------------------------------------------------------------------------------------|
+| Segmented control      | `<ToggleGroup>`       | Mutually-exclusive choice with 2–4 options. Active option = white fill + shadow.      |
+| Toggle (single)        | `<Switch>`            | On/off binary in a settings row. Always pair with a label and helper text.            |
+| Toggle button (pressed)| `<ToggleButton>`      | Visible-state push (Favorite, Pin, Bookmark). Pressed = lilac fill, `aria-pressed`.   |
+| Split button           | `<SplitButton>`       | Default action + chevron sidecar opening alternatives.                                |
+| Floating action (FAB)  | `<FAB>`               | Bottom-right, **mobile only**, one per screen. Desktop uses the page header instead.  |
+| Link button            | `variant="link"`      | Inline purple in body text. Underline on hover.                                       |
+
+### In context (ordering)
+
+- **PageHeader actions** — right-aligned, `size="md"`. Reading right-to-left: primary → secondaries → icon-only overflow. Primary is rightmost — it's where the eye lands after scanning a row.
+- **Dialog footer** — Cancel sits left of the primary so muscle memory reaches confirm at the end. Destructive confirms swap the primary to `dangerSolid`.
+- **Destructive flow** — first surface uses outline `danger`. Only the confirm dialog uses `dangerSolid`.
+- **Card footer (full-width)** — `size="lg"` + `className="w-full"`, single CTA, never paired.
+- **Inline triage (table row)** — `size="sm"`, `iconOnly`, hidden until row hover. Reject sits left of Approve (same right-to-left commit pattern as dialogs).
+
+### Anatomy
+
+```
+[icon]  Generate with Gio  [chevron]
+  ↑     ↑                    ↑
+  14px  Poppins 500          opacity-65
+        13px · -0.005em
+height 34px · radius 8 · pad-x 12 · gap 6 · pad-y 0
+```
+
+### Do & Don't
+
+| Topic           | Do                                                          | Don't                                                              |
+|-----------------|-------------------------------------------------------------|--------------------------------------------------------------------|
+| Hierarchy       | One primary; demote Cancel to ghost so the eye lands on Save. | Two primaries shouting — neither wins.                            |
+| Destructive     | Outline `danger` for the first destructive action.          | `dangerSolid` as the resting state — treats users as already wrong.|
+| Sizing          | All `md` across a PageHeader. Importance comes from variant. | Mixed sizes to fake hierarchy — looks ransom-note.                |
+| Icons           | Icon reinforces the verb (Download = download).             | Random decorative icon — user reads twice and trusts less.         |
 
 ### Button rules
 
@@ -160,8 +198,9 @@ These aren't standalone variants — they're compositions of the same tokens.
 2. **Default size is `md` (34px).** Don't reach for `lg` to add emphasis — change variant instead.
 3. **Destructive defaults to outline (`danger`).** Solid red is only for the final confirm step.
 4. **Brand purple is for AI / Gio / core CRM commits.** Not a generic primary.
-5. **No motion bigger than `translate-y-0.5px`.** No scale, no lift, no bounce.
-6. **Icon-only requires `aria-label` + tooltip.** No exceptions.
+5. **No motion. Ever.** No translate, no lift, no scale, no bounce — only fill shifts.
+6. **`iconOnly` requires `aria-label` + tooltip.** No exceptions.
+7. **On the top bar, use `onDark` — never hand-roll `bg-white/10`.**
 
 ---
 
