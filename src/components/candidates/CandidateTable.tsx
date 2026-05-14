@@ -291,16 +291,23 @@ export function CandidateTable({
       <CardContent>
         {/* Bulk actions are now handled in the Pipeline Overview header */}
         {filteredCandidates.length === 0 ? (
-          <GioEmptyState
-            title={candidates.length === 0 ? 'No candidates yet' : 'No candidates match your filters'}
-            description={candidates.length === 0 ? 'Add your first candidate to this job' : 'Try adjusting your search or filters'}
-          />
+          candidates.length === 0 ? (
+            <GioEmptyState
+              title="No candidates yet"
+              description="Add your first candidate to this job"
+            />
+          ) : (
+            <GioEmptyState
+              title="No candidates match your filters"
+              description="Try adjusting your search or filters"
+            />
+          )
         ) : (
           <>
             <div className="space-y-sm">
               {/* Desktop Table View */}
               <div className="hidden md:block">
-                <Table>
+                <Table density="default">
                   <TableHeader>
                     <TableRow>
                        {selectionMode && (
