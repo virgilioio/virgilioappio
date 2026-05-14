@@ -354,6 +354,11 @@ export default {
 			'collapsible-up': {
 				from: { height: 'var(--radix-collapsible-content-height)', opacity: '1' },
 				to: { height: '0', opacity: '0' }
+			},
+			'badge-pulse': {
+				'0%': { transform: 'scale(1)', opacity: '0.45' },
+				'70%': { transform: 'scale(2.4)', opacity: '0' },
+				'100%': { transform: 'scale(2.4)', opacity: '0' }
 			}
 			},
 			animation: {
@@ -368,7 +373,8 @@ export default {
 			'coin-flip-2d-reverse': 'coin-flip-2d-back 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards',
 			'shimmer-beam': 'shimmer-beam 2s ease-in-out infinite',
 			'collapsible-down': 'collapsible-down 0.2s ease-out',
-			'collapsible-up': 'collapsible-up 0.2s ease-out'
+			'collapsible-up': 'collapsible-up 0.2s ease-out',
+			'badge-pulse': 'badge-pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite'
 			}
 		}
 	},
