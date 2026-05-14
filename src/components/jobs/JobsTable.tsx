@@ -268,7 +268,7 @@ export function JobsTable({
               <TableHead>Pipeline</TableHead>
               <TableHead className="text-right">Days open</TableHead>
               <TableHead>Owner</TableHead>
-              <TableHead className="w-[44px] text-right" aria-label="Actions" />
+              <TableHead className="w-[32px] text-right" aria-label="Actions" />
             </TableRow>
           </TableHeader>
           <TableBody>
