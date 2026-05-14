@@ -162,3 +162,102 @@ These aren't standalone variants — they're compositions of the same tokens.
 4. **Brand purple is for AI / Gio / core CRM commits.** Not a generic primary.
 5. **No motion bigger than `translate-y-0.5px`.** No scale, no lift, no bounce.
 6. **Icon-only requires `aria-label` + tooltip.** No exceptions.
+
+---
+
+## 3. Badges & tags
+
+The smallest building block in Gio — a colored pill that conveys status, category, or count at a glance. Used in tables, page headers, candidate cards, sheets, filters, and tabs.
+
+> **Three rules**
+> 1. **Color carries meaning.** Green = positive, red = critical, amber = warns, blue = informs. Never reassign a hue per surface.
+> 2. **Pill by default, dot for status.** State-of-something gets a leading dot. Categorical tags don't. Counts get a circle.
+> 3. **Small, quiet, never bold.** 11px Inter @ 500. Never 600+, never display fonts, never larger than 12.5px in-app.
+
+### Color system — 10 tones
+
+| Tone     | Token (bg / fg)                                     | Means                                                         |
+|----------|-----------------------------------------------------|---------------------------------------------------------------|
+| green    | `pastel-green` / `pastel-green-foreground`          | Positive — active, open, online, hired, paid, healthy         |
+| red      | `destructive/10` / `destructive`                    | Critical — at-risk, rejected, error, expired, overdue         |
+| pink     | `pastel-pink` / `pastel-pink-foreground`            | Attention                                                     |
+| yellow   | `pastel-yellow` / `pastel-yellow-foreground`        | Warning — pending review, near-limit, slow, needs attention   |
+| orange   | `pastel-orange` / `pastel-orange-foreground`        | Pending / in-flight (offer extended)                          |
+| blue     | `pastel-blue` / `pastel-blue-foreground`            | Informational — in-progress phases (Phone screen, In trial)   |
+| purple   | `pastel-purple` / `pastel-purple-foreground`        | Brand-emphasis — featured, role badges                        |
+| **lilac**| `badge-lilac` / `badge-lilac-foreground`            | AI / soft brand emphasis (Suggested, Beta, Trial)             |
+| neutral  | `muted` / `muted-foreground`                        | Default — categories without intent, count chips, inactive    |
+| **ink**  | `badge-ink` / `badge-ink-foreground`                | Inverted — maximum emphasis (Workspace owner, Current plan)   |
+
+### Types — 6 structural variants
+
+| Type              | API                                  | Notes                                                                |
+|-------------------|--------------------------------------|----------------------------------------------------------------------|
+| Status badge      | `<Badge tone={t} dot>Open</Badge>`   | Default workhorse. State of something. Always a leading dot.         |
+| Categorical tag   | `<Badge tone={t}>Figma</Badge>`      | Skill, role, source, department. No dot.                             |
+| Count badge       | `<Badge tone="neutral" count={4}/>`  | Number next to titles or tab labels.                                 |
+| Counter dot       | `<CounterBadge count={n} />`         | Notification overlay. Red dot for >0, number for >1, hard cap `99+`. |
+| Removable chip    | `<RemovableChip onRemove={…}>`       | Active filter values. The × removes it.                              |
+| Icon prefix badge | `<Badge tone="lilac" icon={Sparkles}>` | Sparkles = AI, Flame = trending, Lock = restricted.                |
+
+### Sizes — 4 sizes
+
+| Size  | Height | Text   | Use                                                                                  |
+|-------|--------|--------|--------------------------------------------------------------------------------------|
+| `xs`  | 18px   | 10px   | Inline in dense table rows, row cards, counter chips on tabs. **Most common in dense surfaces.** |
+| `sm`  | 22px   | 11px   | **Default.** PageHeader meta row, profile chips, filter chips, sidebar nav counts.   |
+| `md`  | 26px   | 12px   | Single status badges at the top of a sheet or detail page when they carry real signal. |
+| `lg`  | 30px   | 12.5px | Marketing surfaces, trial banners. Almost never used inside the working app.         |
+
+### States & modifiers
+
+| Modifier         | Notes                                                                                |
+|------------------|--------------------------------------------------------------------------------------|
+| Default          | Filled with the tone's background. The 95% case.                                     |
+| `pulse`          | Halo at 25% opacity around the dot. Real-time signal — Live now, Recording, Joining. Use sparingly. |
+| `bordered`       | 1px hairline `current/20` border. Use when on a busy or colored surface.             |
+| Inverted (`ink`) | Use `tone="ink"`. Maximum emphasis on light surfaces.                                |
+| `shape="square"` | 6px radius instead of pill. Use when stacked inside small cards (job cards, table cells). Pill remains the brand. |
+
+### By use case
+
+| Use case          | Type          | Tone mapping                                                                              |
+|-------------------|---------------|-------------------------------------------------------------------------------------------|
+| Job status        | status badge  | open=green · paused=yellow · draft=neutral · closed=red · archived=neutral                |
+| Candidate stage   | status badge  | sourced=neutral · phone/take-home/onsite=blue · offer=orange · hired=green · rejected=red |
+| Member role       | categorical   | owner=ink · admin=blue · recruiter=purple · hiring manager=orange · interviewer=neutral · sales=lilac |
+| AI fit score      | status badge  | ≥85=green · ≥70=blue · ≥50=yellow · ≥30=orange · <30=red. Always show the number.         |
+| Scorecard rating  | status badge  | strong yes / yes / lean yes=green · neutral=neutral · lean no / no / strong no=red        |
+| Billing & plan    | status badge  | current plan=ink · trial=lilac · paid=green · refunded=neutral · past due=red             |
+| Integration status| status badge  | connected=green · action needed=yellow · beta=lilac · not connected=neutral               |
+| System / AI flags | icon prefix   | lilac + Sparkles (AI) / Flame (trending) / Lock (restricted)                              |
+
+The mappings above live in code at `src/lib/badge-tones.ts` — import the const, don't hardcode.
+
+### Anatomy
+
+```
+┌────────────────────────────────────────────┐
+│  •   AI suggested              38          │   height per size (xs 18 / sm 22 / md 26 / lg 30)
+│  ↑   ↑                          ↑          │   radius 9999 (pill) or 6 (square)
+│  dot label                      count chip │   pad-x per size · gap 6
+│  7px 11px Inter 500             bg current/13%
+└────────────────────────────────────────────┘
+   bg = tone.bg · fg = tone.fg
+```
+
+### In context (recipes)
+
+- **PageHeader meta row** (`sm` + `xs` mix): status badge + count chip + plain meta text. The badge sequence ends before the meta starts.
+- **Dense table row** (`xs`): each badge does a different job. Two of the same tone in one row would compete — vary tones across columns.
+- **Tab counter chip** (`xs` + `count`): active tab uses a saturated tone; inactive tabs use neutral counts.
+- **Filter bar** (`sm` + removable): every active filter renders as a `<RemovableChip>` (defaults to purple) so they read as a set rather than competing meanings.
+- **Notification stack**: `<CounterBadge>` — plain red dot for unread > 0; numbered for unread > 1, hard cap `99+`.
+- **Skills cluster** (`xs` categorical): 3–5 skill badges max, then `<OverflowMore count={N} />`. Related skills share a tone.
+
+### Do & Don't
+
+1. **Status — dot or no dot, consistently.** State-of-something gets a dot; categorical does not. Mixing the conventions makes a reader unable to tell if a badge represents state, category, or both.
+2. **Tone — one meaning per color.** Green = positive across the entire app (paid, active, hired, on-track). Never use the same tone for unrelated meanings.
+3. **Quantity — three is the limit.** Three badges per row, then add an overflow chip. Stuffing every attribute into chips reads as confetti, not information.
+4. **Size — match the row density.** `xs` inside a dense table row; `md` only on a sheet header. A `md` badge inside a 32px table row bullies the rest of the row.
