@@ -1,15 +1,34 @@
-## Match candidate hero top-right buttons to Job hero exactly
+## Match `PipelineSectionTabs` to ProfileStageStrip dimensions
 
-**File:** `src/components/candidates/profile/ProfileHeroCard.tsx`
+**File:** `src/components/jobs/PipelineSectionTabs.tsx` (only)
 
-JobHero uses `size="md"` (34h, 13px text, 14 icon) for every right-cluster button. Candidate hero currently uses `size="sm"` (28h). One change: bump them all to `md`.
+`ProfileStageStrip` renders taller two-line tiles: `flex-1 min-w-[140px] rounded-xl px-3 py-2.5`, indicator + label on top, meta line below. `PipelineSectionTabs` is currently a single-line 40-px pill row. Replicate the strip's geometry exactly.
 
-### Changes (right cluster only)
+### Per-tab tile
 
-1. `Advance to {nextStageLabel}` button — `size="sm"` → `size="md"`
-2. `Schedule` button — `size="sm"` → `size="md"`
-3. `Email` button — `size="sm"` → `size="md"`
-4. Prev/Next chevron iconOnly buttons — `size="sm"` → `size="md"`
-5. AI Fit chip — bump from `h-8` (32px) → `h-[34px]` so it lines up with the new md buttons. Keep all other styling.
+- Container: `flex-1 min-w-[140px] rounded-xl px-3 py-2.5 transition-colors` (identical to strip).
+- Top row (`flex items-center gap-1.5`):
+  - 14-px indicator slot — active: filled white dot inside `bg-white/15` ring (mirrors "current" stage); inactive: section `icon` if present (e.g. `Sparkles`), else `Circle` at `opacity-50`.
+  - Label: `font-poppins font-medium text-[12.5px] tracking-[-0.005em] truncate`.
+- Bottom row (`mt-1 font-poppins text-[11px] tracking-[-0.005em] truncate`):
+  - `{count} candidates` (singular for 1, em-dash when undefined).
+  - Color tracks state: active `text-white/70`, inactive `text-text-tertiary/80`.
 
-Nothing else changes: identity row, breadcrumb, Back-to-job link, tab slot, and JobHero itself stay untouched.
+### State styling (mirrors strip's current/upcoming)
+
+- Active tab → `bg-text-primary text-white`.
+- Inactive tab → `border border-dashed border-virgilio-border text-text-tertiary bg-transparent` with `hover:bg-[#FAFAF7] hover:text-text-primary`.
+
+Drop the per-section `active` / `chipInactive` / `chipActive` palettes and the inline count pill — count moves into the meta row. Keep `icon` for Suggested.
+
+### Wrapper
+
+Replace the bordered/shadowed wrapper with the strip's exact wrapper: `flex gap-2 overflow-x-auto scrollbar-none -mx-1 px-1`. No outer card.
+
+### Preserved
+
+- Public API: `value`, `onChange`, `counts`, `className`.
+- `role="tablist"` / `role="tab"` / `aria-selected` / focus ring.
+- No edits to `JobDetail.tsx` or `ProfileStageStrip.tsx`. No business-logic changes.
+
+Result: Suggested / Application Review / Recruiting Process / Job Offers / Hired / Rejected render at the exact same height, padding, radius, and two-line typography as the candidate's stage strip.
