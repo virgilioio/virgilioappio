@@ -71,6 +71,51 @@ const isLastPriorityStage = (stage: JobStage) => {
   return p === 'last' || p === 99 || p === '99' || p === 999 || p === '999'
 }
 
+// Tinted shell + dashed dropzone overlay shown when a card is dragged over the column.
+const STAGE_HOVER_CLASSES: Record<string, { bg: string; ring: string; outline: string }> = {
+  application:     { bg: 'bg-info/15',          ring: 'ring-info/40',           outline: 'border-info/50' },
+  application_review: { bg: 'bg-pastel-purple/40', ring: 'ring-virgilio-purple/30', outline: 'border-virgilio-purple/40' },
+  screening:       { bg: 'bg-info/15',          ring: 'ring-info/40',           outline: 'border-info/50' },
+  interview:       { bg: 'bg-pastel-purple/40', ring: 'ring-virgilio-purple/30', outline: 'border-virgilio-purple/40' },
+  assessment:      { bg: 'bg-warning/20',       ring: 'ring-warning/40',        outline: 'border-warning/50' },
+  reference_check: { bg: 'bg-pastel-orange/40', ring: 'ring-pastel-orange/50',  outline: 'border-pastel-orange/60' },
+  offer:           { bg: 'bg-success/20',       ring: 'ring-success/40',        outline: 'border-success/50' },
+  onboarding:      { bg: 'bg-pastel-green/40',  ring: 'ring-pastel-green/50',   outline: 'border-pastel-green/60' },
+  custom:          { bg: 'bg-virgilio-purple/5',ring: 'ring-virgilio-purple/30',outline: 'border-virgilio-purple/40' },
+}
+
+function ColumnShell({
+  id,
+  stageType,
+  isEmpty,
+  children,
+}: {
+  id: string
+  stageType: string
+  isEmpty: boolean
+  children: React.ReactNode
+}) {
+  const { isOver, setNodeRef } = useDroppable({ id })
+  const tone = STAGE_HOVER_CLASSES[stageType] || STAGE_HOVER_CLASSES.custom
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        'relative flex flex-col gap-2 rounded-2xl border border-virgilio-border/60 bg-[#FAFAF7] p-2 transition-colors duration-150',
+        isOver && cn(tone.bg, 'ring-1 ring-inset', tone.ring)
+      )}
+    >
+      {isOver && (
+        <div className={cn('pointer-events-none absolute inset-1.5 rounded-xl border border-dashed', tone.outline)} />
+      )}
+      {isEmpty && !isOver && (
+        <div className="pointer-events-none absolute inset-1.5 rounded-xl border border-dashed border-virgilio-border/50" />
+      )}
+      <div className="relative z-10 flex flex-col gap-2 min-h-[140px]">{children}</div>
+    </div>
+  )
+}
+
 export function PipelineOverview({ jobId, showHeader = true, externalScroll = false, viewMode: controlledView, onViewModeChange, selectionMode: controlledSelectionMode, onSelectionModeChange, onSelectedIdsChange, refreshToken, onStageChanged, includeApplicationReview = false, onCandidateClick, searchTerm, onAddCandidateClick }: PipelineOverviewProps) {
   const { loadHiringPlanInstances, isLoadingPlan } = useJobHiringPlan()
   const { fetchAssociationsForJob, moveAssociationToStage, updateAssociationStatus } = usePipelineActions()
