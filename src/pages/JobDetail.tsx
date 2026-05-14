@@ -977,8 +977,8 @@ export default function JobDetail() {
                             value={pipelineView}
                             onChange={(v) => setPipelineView(v as 'board' | 'list')}
                             options={[
-                              { value: 'board', label: 'Board' },
-                              { value: 'list', label: 'List' },
+                              { value: 'board', label: 'Board', icon: LayoutGrid },
+                              { value: 'list', label: 'List', icon: List },
                             ]}
                           />
                         )}
