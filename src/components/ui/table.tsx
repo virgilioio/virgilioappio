@@ -90,7 +90,7 @@ const TableHeader = React.forwardRef<
       ref={ref}
       className={cn(
         "sticky top-0 z-10 bg-[hsl(var(--tbl-row-hover))] border-b border-[hsl(var(--tbl-divider-color))]",
-        `[&_tr]:${HEADER_H[density]}`,
+        HEADER_TR_H[density],
         className
       )}
       {...props}
