@@ -325,7 +325,7 @@ export function CandidateTable({
                          {showJobInfo && <TableHead>Organization</TableHead>}
                          {!hideSkills && <TableHead>Skills</TableHead>}
                          <TableHead>Added</TableHead>
-                        {!hideActions && <TableHead className="text-right">Actions</TableHead>}
+                        {!hideActions && <TableHead className="w-[32px] text-right" aria-label="Actions" />}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
