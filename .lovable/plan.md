@@ -1,34 +1,42 @@
-## Match `PipelineSectionTabs` to ProfileStageStrip dimensions
+## Wrap PipelineSectionTabs in a card; restore per-section active colors
 
-**File:** `src/components/jobs/PipelineSectionTabs.tsx` (only)
+**File:** `src/components/jobs/PipelineSectionTabs.tsx` only
 
-`ProfileStageStrip` renders taller two-line tiles: `flex-1 min-w-[140px] rounded-xl px-3 py-2.5`, indicator + label on top, meta line below. `PipelineSectionTabs` is currently a single-line 40-px pill row. Replicate the strip's geometry exactly.
+Match the candidate page exactly: the stage strip there sits inside `bg-white border border-virgilio-border rounded-2xl shadow-sm p-5 sm:p-6` (`CandidateProfileSheet.tsx:1150`). Restore the original per-section colors for the active state.
 
-### Per-tab tile
+### 1. Card wrapper
 
-- Container: `flex-1 min-w-[140px] rounded-xl px-3 py-2.5 transition-colors` (identical to strip).
-- Top row (`flex items-center gap-1.5`):
-  - 14-px indicator slot — active: filled white dot inside `bg-white/15` ring (mirrors "current" stage); inactive: section `icon` if present (e.g. `Sparkles`), else `Circle` at `opacity-50`.
-  - Label: `font-poppins font-medium text-[12.5px] tracking-[-0.005em] truncate`.
-- Bottom row (`mt-1 font-poppins text-[11px] tracking-[-0.005em] truncate`):
-  - `{count} candidates` (singular for 1, em-dash when undefined).
-  - Color tracks state: active `text-white/70`, inactive `text-text-tertiary/80`.
+Wrap the tile row in that same card; keep `className` forwarded to the outer `<section>`.
 
-### State styling (mirrors strip's current/upcoming)
+```tsx
+<section className={cn('bg-white border border-virgilio-border rounded-2xl shadow-sm p-5 sm:p-6', className)}>
+  <div role="tablist" aria-label="Pipeline section" className="flex gap-2 overflow-x-auto scrollbar-none -mx-1 px-1">
+    {/* tiles */}
+  </div>
+</section>
+```
 
-- Active tab → `bg-text-primary text-white`.
-- Inactive tab → `border border-dashed border-virgilio-border text-text-tertiary bg-transparent` with `hover:bg-[#FAFAF7] hover:text-text-primary`.
+### 2. Restore per-section active palette
 
-Drop the per-section `active` / `chipInactive` / `chipActive` palettes and the inline count pill — count moves into the meta row. Keep `icon` for Suggested.
+Use the original `SECTIONS[].active` tones for the active tile: Suggested `bg-pastel-purple/40`, Application Review `bg-pastel-purple`, Recruiting `bg-pastel-yellow`, Offers `bg-pastel-blue`, Hired `bg-success/20`, Rejected `bg-destructive/15` — all with `text-text-primary`.
 
-### Wrapper
+Per-tile state classes:
 
-Replace the bordered/shadowed wrapper with the strip's exact wrapper: `flex gap-2 overflow-x-auto scrollbar-none -mx-1 px-1`. No outer card.
+- Active → `cn(s.active, 'font-semibold')`.
+- Inactive → unchanged: `border border-dashed border-virgilio-border text-text-tertiary bg-transparent hover:bg-[#FAFAF7] hover:text-text-primary`.
+
+### 3. Indicator + meta colors adapted for pastel active
+
+Swap white-on-dark → dark-on-pastel for active state:
+
+- Active indicator: `bg-text-primary/10` ring with `bg-text-primary` inner dot.
+- Active meta line: `text-text-primary/70` (was `text-white/70`).
+- Inactive indicator/meta unchanged.
 
 ### Preserved
 
-- Public API: `value`, `onChange`, `counts`, `className`.
-- `role="tablist"` / `role="tab"` / `aria-selected` / focus ring.
-- No edits to `JobDetail.tsx` or `ProfileStageStrip.tsx`. No business-logic changes.
-
-Result: Suggested / Application Review / Recruiting Process / Job Offers / Hired / Rejected render at the exact same height, padding, radius, and two-line typography as the candidate's stage strip.
+- Tile geometry: `flex-1 min-w-[140px] rounded-xl px-3 py-2.5` two-line layout (12.5 px label + 11 px meta).
+- Count formatting `{n} candidate(s)` / `—`.
+- Public API (`value`, `onChange`, `counts`, `className`).
+- ARIA roles, focus ring, section icons (Sparkles for Suggested) on inactive tiles.
+- No edits to `ProfileStageStrip` or `JobDetail`.
