@@ -527,6 +527,7 @@ const stageHasAutomation = useMemo(() => {
             id, 
             status, 
             current_stage_id,
+            entered_stage_at,
             rejected_at,
             rejected_by,
             rejection_notes,
@@ -546,6 +547,7 @@ const stageHasAutomation = useMemo(() => {
         setAssociationId(assoc?.id ?? null)
         setAssociationStatus((assoc?.status as any) ?? null)
         setCurrentStageId((assoc as any)?.current_stage_id ?? null)
+        setEnteredStageAt((assoc as any)?.entered_stage_at ?? null)
         setWhatsAppTemplateSentAt((assoc as any)?.whatsapp_template_sent_at ?? null)
         setIsFavorite((assoc as any)?.is_favorite ?? false)
         
