@@ -954,133 +954,97 @@ export default function JobDetail() {
                   />
                 </div>
               )}
-              <Card className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
-                <CardHeader className="hidden sm:block sticky top-0 z-10 bg-surface-primary/80 backdrop-blur supports-[backdrop-filter]:bg-surface-primary/60 border-b border-border">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h1 className="text-xl font-semibold text-text-primary">Pipeline Overview</h1>
-                      <p className="text-sm text-text-secondary">Drag candidates across stages. Scroll horizontally to view more columns.</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {!selectionMode && (
-                        <>
-                          {pipelineSectionTab === 'application' && applicationCount > 0 && (
-                            <Button
-                              size="sm"
-                              variant="virgilio"
-                              className="gap-sm h-[36px]"
-                              onClick={() => setShowApplicationReview(true)}
-                            >
-                              <ClipboardCheck className="h-4 w-4" />
-                              Review Applications
-                            </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            className="gap-sm h-[36px]"
-                            onClick={() => setShowAddCandidate(true)}
-                          >
-                            <UserPlus className="h-4 w-4" />
-                            Add Candidate
-                          </Button>
-                        </>
-                      )}
-                      {selectionMode && selectedCandidateIds.length > 0 && (
-                        <div className="flex items-center gap-2">
-                          <BulkMoveJobCandidatesToPipelineDialog
-                            jobId={id!}
-                            candidates={selectedCandidateIds.map(candidateId => ({ id: candidateId, candidate_name: '', location_country: null, location_state: null, location_city: null, salary_amount: null, salary_currency: null, salary_period: null, profile_summary: null, linkedin_url: null, skills: null }))}
-                            onCompleted={() => {
-                              setSelectedCandidateIds([])
-                              setSelectionMode(false)
-                              setPipelineRefresh((v) => v + 1)
-                            }}
+              <div className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
+                <div className="hidden sm:block shrink-0 mb-3">
+                  <TableToolbar
+                    left={
+                      <>
+                        <TableSearch
+                          value={pipelineSearch}
+                          onChange={setPipelineSearch}
+                          placeholder="Search in pipeline…"
+                          className="w-[280px]"
+                        />
+                        <Button variant="secondary" size="sm" icon={Filter}>
+                          Filters
+                        </Button>
+                      </>
+                    }
+                    right={
+                      <>
+                        {pipelineSectionTab === 'recruiting' && (
+                          <TableSegmented
+                            value={pipelineView}
+                            onChange={(v) => setPipelineView(v as 'board' | 'list')}
+                            options={[
+                              { value: 'board', label: 'Board' },
+                              { value: 'list', label: 'List' },
+                            ]}
                           />
+                        )}
+                        {pipelineSectionTab === 'application' && applicationCount > 0 && (
                           <Button
+                            variant="purple"
                             size="sm"
-                            variant="outline"
-                            className="gap-2"
-                            onClick={() => setShowBulkEmailDialog(true)}
+                            icon={ClipboardCheck}
+                            onClick={() => setShowApplicationReview(true)}
                           >
-                            <Mail className="h-4 w-4" />
-                            Email
+                            Review applications
                           </Button>
+                        )}
+                        {!selectionMode && pipelineSectionTab === 'recruiting' && (
                           <Button
+                            variant="secondary"
                             size="sm"
-                            variant="outline"
-                            className="gap-2"
-                            onClick={async () => {
-                              setSelectedCandidateIds([])
-                              setSelectionMode(false)
-                            }}
+                            icon={CheckSquare}
+                            onClick={() => setSelectionMode(true)}
                           >
-                            <Archive className="h-4 w-4" />
-                            Archive
+                            Select
                           </Button>
-                        </div>
-                      )}
-                      {pipelineSectionTab === 'recruiting' ? (
-                        <>
-                          {selectionMode && (
+                        )}
+                        {selectionMode && selectedCandidateIds.length > 0 && (
+                          <>
                             <Button
+                              variant="secondary"
                               size="sm"
+                              icon={Mail}
+                              onClick={() => setShowBulkEmailDialog(true)}
+                            >
+                              Email
+                            </Button>
+                            <Button
                               variant="danger"
-                              disabled={selectedCandidateIds.length === 0}
+                              size="sm"
                               onClick={() => setShowBulkRejectionDialog(true)}
                             >
                               Reject
                             </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant={selectionMode ? 'secondary' : 'outline'}
-                            onClick={() => setSelectionMode((v) => !v)}
-                            aria-pressed={selectionMode}
-                          >
-                            Select
-                          </Button>
-                          <TooltipProvider delayDuration={200}>
-                            <ToggleGroup
-                              type="single"
-                              value={pipelineView}
-                              onValueChange={(v) => v && setPipelineView(v as 'board' | 'list')}
+                            <Button
+                              variant="secondary"
                               size="sm"
-                              variant="outline"
-                              className="rounded-full border border-border/40 bg-surface-secondary/60 p-1"
+                              onClick={() => {
+                                setSelectedCandidateIds([])
+                                setSelectionMode(false)
+                              }}
                             >
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <ToggleGroupItem value="board" aria-label="Board view" className="rounded-full">
-                                    <LayoutGrid className="h-4 w-4" />
-                                  </ToggleGroupItem>
-                                </TooltipTrigger>
-                                <TooltipContent>Board</TooltipContent>
-                              </Tooltip>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <ToggleGroupItem value="list" aria-label="List view" className="rounded-full">
-                                    <List className="h-4 w-4" />
-                                  </ToggleGroupItem>
-                                </TooltipTrigger>
-                                <TooltipContent>List</TooltipContent>
-                              </Tooltip>
-                            </ToggleGroup>
-                          </TooltipProvider>
-                        </>
-                      ) : (
+                              Cancel
+                            </Button>
+                          </>
+                        )}
                         <Button
+                          variant="primary"
                           size="sm"
-                          variant={selectionMode ? 'secondary' : 'outline'}
-                          onClick={() => setSelectionMode((v) => !v)}
-                          aria-pressed={selectionMode}
+                          icon={UserPlus}
+                          onClick={() => setShowAddCandidate(true)}
+                          className="text-white [&_svg]:text-white"
                         >
-                          Select
+                          Add candidate
                         </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-0 flex-1 min-h-0">
+                      </>
+                    }
+                  />
+                </div>
+                <div className="p-0 flex-1 min-h-0">
                   {pipelineSectionTab === 'recruiting' && pipelineView === 'board' ? (
                     <>
                       <div className="h-full min-h-[52dvh] w-full overflow-y-auto sm:hidden p-layout-md pb-[calc(env(safe-area-inset-bottom,0px)+96px)]">
