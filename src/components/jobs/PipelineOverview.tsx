@@ -634,18 +634,20 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
         </div>
       )}
 
-      {/* Filter chips */}
-      <div className="hidden sm:flex flex-wrap items-center gap-2">
-        <FilterChipPopover
-          label="Favorite"
-          options={[
-            { value: 'yes', label: 'Favorites', count: allAssociations.filter(a => a.is_favorite).length },
-            { value: 'no', label: 'Not Favorites', count: allAssociations.filter(a => !a.is_favorite).length },
-          ]}
-          selectedValues={favoriteFilter}
-          onSelectionChange={setFavoriteFilter}
-        />
-      </div>
+      {/* Filter chips (only when internal header is shown; toolbar lives in JobDetail otherwise) */}
+      {showHeader && (
+        <div className="hidden sm:flex flex-wrap items-center gap-2">
+          <FilterChipPopover
+            label="Favorite"
+            options={[
+              { value: 'yes', label: 'Favorites', count: allAssociations.filter(a => a.is_favorite).length },
+              { value: 'no', label: 'Not Favorites', count: allAssociations.filter(a => !a.is_favorite).length },
+            ]}
+            selectedValues={favoriteFilter}
+            onSelectionChange={setFavoriteFilter}
+          />
+        </div>
+      )}
 
       {/* Unified loading gate: show skeleton only on initial load; after first render, keep board mounted */}
       {(!hasRenderedOnce.current && (isLoadingPlan || isLoadingCandidates || isStatusLoading)) ? (
