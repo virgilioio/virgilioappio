@@ -501,6 +501,7 @@ Typography utilities (in `tailwind.config.ts`): `text-menu-item` (12.5/Inter/400
 - The shared chrome lives in `src/lib/menu-classes.ts` (`menuPanel`, `menuItem`, `menuGroupLabel`, `menuSeparator`, `menuKbd`). Every primitive imports from there — change once, propagates everywhere.
 - Legacy `src/components/ui/multi-select.tsx` removed. Use `<FilterChipPopover>` for multi-select with checkboxes.
 - Call-site overrides like `rounded-md`, `shadow-md`, `bg-popover/95 backdrop-blur` on `<DropdownMenuContent>` / `<PopoverContent>` are now redundant — remove on touch.
+- **Filter chips (single source of truth).** `<FilterChipPopover>` and `<FilterChipSelect>` render one trigger style only: `h-9 px-3.5 rounded-lg`, `border-virgilio-border`, white default → `#FAFAF7` hover, active fill `#FAFAF7` with lilac `text-virgilio-purple` value separated by a `·` in `--menu-group-color`. The legacy rounded-full pill chip is removed; the deprecated `variant` prop on `FilterChipPopover` is a no-op kept only for type-compat and will be deleted in a future pass. Reference: Jobs page filter row.
 
 ### Calendar primitive
 
