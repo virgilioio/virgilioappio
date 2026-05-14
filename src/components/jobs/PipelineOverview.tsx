@@ -220,6 +220,26 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     }
   }
 
+  const getStageDotColor = (type: string) => {
+    switch (type) {
+      case 'application':
+      case 'screening':
+        return 'bg-info'
+      case 'interview':
+        return 'bg-virgilio-purple'
+      case 'assessment':
+        return 'bg-warning'
+      case 'reference_check':
+        return 'bg-pastel-orange'
+      case 'offer':
+        return 'bg-success'
+      case 'onboarding':
+        return 'bg-pastel-green'
+      default:
+        return 'bg-text-tertiary'
+    }
+  }
+
   const loadStages = useCallback(async () => {
     const plan = await loadHiringPlanInstances(jobId)
     // Exclude application_review stages unless includeApplicationReview is true
