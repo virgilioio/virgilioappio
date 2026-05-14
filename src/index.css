@@ -74,6 +74,22 @@
     --pastel-orange: 25 100% 94%;
     --pastel-orange-foreground: 20 91% 35%;
 
+    /* === Gio Foundation v1.0 — Badges & tags ===
+       Two new tones (lilac, ink). Other 8 reuse pastel-* / muted / destructive. */
+    --badge-lilac: 270 100% 97%;          /* soft lilac surface */
+    --badge-lilac-foreground: 261 75% 45%;
+    --badge-ink: 60 100% 4%;              /* citron-noir #0d0d09 */
+    --badge-ink-foreground: 36 100% 99%;  /* opaline-white #fffcf9 */
+
+    /* Anatomy tokens */
+    --badge-h-xs: 18px;
+    --badge-h-sm: 22px;
+    --badge-h-md: 26px;
+    --badge-h-lg: 30px;
+    --badge-dot: 7px;
+    --badge-radius-pill: 9999px;
+    --badge-radius-square: 6px;
+
     --border: 0 0% 88%; /* Subtle hairline border for separation */
     --input: 0 0% 100%; /* Remove input border visibility */
     --ring: 267 84% 87%;
