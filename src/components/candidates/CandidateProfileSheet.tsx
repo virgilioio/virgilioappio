@@ -1114,6 +1114,23 @@ const stageHasAutomation = useMemo(() => {
                       hasNext={hasNext}
                       onNavigatePrev={onNavigatePrev}
                       onNavigateNext={onNavigateNext}
+                      tabs={
+                        <ProfileTabs
+                          activeTab={activeTab}
+                          onTabChange={(v) => setActiveTab(v as typeof activeTab)}
+                          tabs={[
+                            ...((associationStatus === 'offer' || associationStatus === 'hired')
+                              ? [{ value: 'offer', label: 'Offer', Icon: FileText }]
+                              : []),
+                            { value: 'job', label: 'Job overview', Icon: ClipboardCheckIconAlias },
+                            { value: 'resume', label: 'Resume', Icon: FileText },
+                            ...(!isRestrictedViewer ? [{ value: 'overview', label: 'Overview', Icon: UserRound }] : []),
+                            { value: 'scorecards', label: 'Scorecards', Icon: Star },
+                            { value: 'activity', label: 'Activity', Icon: Activity },
+                            { value: 'comments', label: 'Comments', Icon: MessageSquare },
+                          ]}
+                        />
+                      }
                     />
                     <section className="bg-white border border-virgilio-border rounded-2xl shadow-sm p-5 sm:p-6 space-y-4">
                       <ProfileStageStrip stages={planStages} currentStageId={currentStageId} />
