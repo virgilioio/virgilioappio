@@ -33,6 +33,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
 import { GoGioLogo } from '@/components/GoGioLogo'
+import gioLogo from '@/assets/gio-logo-2026.svg'
 import { AdminModeIndicator } from '@/components/admin/AdminModeIndicator'
 import { GlobalCreateButton } from '@/components/layout/GlobalCreateButton'
 import { SourcingCreditIndicator } from '@/components/layout/SourcingCreditIndicator'
