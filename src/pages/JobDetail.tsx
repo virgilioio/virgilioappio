@@ -9,7 +9,7 @@ import { useCandidates } from '@/hooks/useCandidates'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { useJobs } from '@/hooks/useJobs'
 import { useJobSourcingProject } from '@/hooks/useJobSourcingProject'
-import { JobDetailFloatingSidebar } from '@/components/jobs/JobDetailFloatingSidebar'
+import { JobSetupLayout } from '@/components/jobs/JobSetupLayout'
 
 import { JobDetailMobileHeader } from '@/components/jobs/JobDetailMobileHeader'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -19,7 +19,7 @@ import { PipelineSectionTabs, type PipelineSection } from '@/components/jobs/Pip
 import { CandidateTable } from '@/components/candidates/CandidateTable'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 import { JobAssignmentsPanel } from '@/components/jobs/JobAssignmentsPanel'
-import { JobSetupPanel } from '@/components/jobs/JobSetupPanel'
+
 import { JobFormSheet } from '@/components/jobs/JobFormSheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
