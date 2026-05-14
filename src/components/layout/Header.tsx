@@ -33,6 +33,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
 import { GoGioLogo } from '@/components/GoGioLogo'
+import gioLogo from '@/assets/gio-logo-2026.svg'
 import { AdminModeIndicator } from '@/components/admin/AdminModeIndicator'
 import { GlobalCreateButton } from '@/components/layout/GlobalCreateButton'
 import { SourcingCreditIndicator } from '@/components/layout/SourcingCreditIndicator'
@@ -250,7 +251,10 @@ export function Header() {
     >
       <div className="flex w-full items-center justify-between px-3">
         {/* Desktop Navigation */}
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-10">
+          <Link to="/dashboard" aria-label="Gio" className="flex items-center shrink-0 pl-1">
+            <img src={gioLogo} alt="Gio" className="h-5 w-auto" />
+          </Link>
           <nav className="hidden lg:flex items-center gap-1">
             {visibleNavItems
               .map((item) => {
