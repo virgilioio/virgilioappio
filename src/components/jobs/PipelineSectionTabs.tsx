@@ -74,7 +74,7 @@ export function PipelineSectionTabs({ value, onChange, counts, className }: Pipe
       role="tablist"
       aria-label="Pipeline section"
       className={cn(
-        'flex w-full items-center justify-between gap-2',
+        'flex w-full items-center justify-between gap-1.5 bg-white border border-virgilio-border rounded-xl px-2 py-1.5 shadow-sm',
         className
       )}
     >
