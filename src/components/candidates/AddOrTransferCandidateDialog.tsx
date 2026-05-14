@@ -153,14 +153,15 @@ export function AddOrTransferCandidateDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button variant="secondary" size="sm" icon={ArrowRightLeft}>
-            Add / Transfer to Job
-          </Button>
-        )}
-      </DialogTrigger>
-      
+      {!isControlled && (
+        <DialogTrigger asChild>
+          {trigger || (
+            <Button variant="secondary" size="sm" icon={ArrowRightLeft}>
+              Add / Transfer to Job
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Add or Transfer Candidate</DialogTitle>
