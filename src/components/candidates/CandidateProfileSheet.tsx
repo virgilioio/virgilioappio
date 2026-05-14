@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
 import { Badge } from '@/components/ui/badge'
-import { CandidateJobSidebar } from '@/components/candidates/CandidateJobSidebar'
+import { formatSalaryExpectation } from '@/lib/candidateHelpers'
 import { EnhancedSkillBadge } from '@/components/ui/enhanced-skill-badge'
 import { CandidateAttachments } from '@/components/candidates/CandidateAttachments'
 import { CandidateComments } from '@/components/candidates/CandidateComments'
@@ -1079,15 +1079,7 @@ const stageHasAutomation = useMemo(() => {
             onClose={() => onOpenChange(false)}
           />
         )}
-          {/* Job Navigation Sidebar - desktop only */}
-          {candidateId && !isRestrictedViewer && (
-            <CandidateJobSidebar
-              candidateId={candidateId}
-              currentJobId={jobId}
-              onJobSelect={handleJobChange}
-              className="hidden lg:flex"
-            />
-          )}
+          {/* Job Navigation Sidebar removed — single-job profile only */}
 
           {/* Main Profile Content */}
           <div className="flex-1 flex flex-col min-w-0">
@@ -1716,7 +1708,7 @@ const stageHasAutomation = useMemo(() => {
                       <ProfileApplicationCard
                         appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
                         source={candidate?.job_board_source || candidate?.source || null}
-                        compensation={(candidate as any)?.salary_expectation || null}
+                        compensation={formatSalaryExpectation(candidate as any)}
                         openTo={(candidate as any)?.location || null}
                         workAuth={(candidate as any)?.work_authorization || null}
                       />
