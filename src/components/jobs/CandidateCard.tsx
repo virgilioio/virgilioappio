@@ -66,6 +66,22 @@ export default function CandidateCard(props: CandidateCardProps) {
     enabled: !!candidateId,
   })
 
+  // Lightweight candidate meta (current role / company / AI fit) for visual subtitle.
+  const { data: candidateMeta } = useQuery({
+    queryKey: ['candidate-meta', candidateId],
+    queryFn: async () => {
+      if (!candidateId) return null
+      const { data } = await supabase
+        .from('candidates')
+        .select('current_role, current_company, ai_fit_score')
+        .eq('id', candidateId)
+        .maybeSingle()
+      return data as any
+    },
+    enabled: !!candidateId,
+    staleTime: 5 * 60 * 1000,
+  })
+
   // Query for candidate status (scorecards, bookings, and booking link sent)
   const { data: candidateStatus } = useQuery({
     queryKey: ['candidate-status', candidateId, associationId, currentStageJhsId],
