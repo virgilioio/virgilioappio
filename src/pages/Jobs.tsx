@@ -1,16 +1,21 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { Plus, Download, SlidersHorizontal } from 'lucide-react'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { JobsTable } from '@/components/jobs/JobsTable'
 import { JobFormSheet } from '@/components/jobs/JobFormSheet'
 import { JobWizard } from '@/components/jobs/JobWizard'
 import { useJobs, Job } from '@/hooks/useJobs'
-import { usePermissions } from '@/hooks/usePermissions'
-import { PageHeader } from '@/components/layout/PageHeader'
-import { Section } from '@/components/layout/Section'
-import { AppContainer } from '@/components/layout/AppContainer'
+import { TableSegmented } from '@/components/ui/table-toolbar'
+
+type StatusSegment = 'active' | 'all' | 'paused' | 'closed' | 'archived'
 
 export default function Jobs() {
   const navigate = useNavigate()
@@ -18,87 +23,111 @@ export default function Jobs() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
   const [archiveJobId, setArchiveJobId] = useState<string | null>(null)
-  const permissions = usePermissions()
-  
-  const {
-    jobs,
-    isLoading,
-    createJob,
-    updateJob,
-    archiveJob
-  } = useJobs()
+  const [statusFilter, setStatusFilter] = useState<StatusSegment>('active')
 
-  const handleCreateNew = () => {
-    setSelectedJob(null)
-    setIsWizardOpen(true)
-  }
+  const { jobs, isLoading, createJob, updateJob, archiveJob } = useJobs()
 
-  const handleView = (job: Job) => {
-    navigate(`/jobs/${job.id}`)
-  }
+  const counts = useMemo(() => {
+    const c = { active: 0, all: jobs.length, paused: 0, closed: 0, archived: 0 }
+    for (const j of jobs) {
+      if (j.status === 'open' || j.status === 'draft') c.active++
+      if (j.status === 'draft') c.paused++
+      if (j.status === 'closed') c.closed++
+      if (j.status === 'archived') c.archived++
+    }
+    return c
+  }, [jobs])
 
-  const handleEdit = (job: Job) => {
-    setSelectedJob(job)
-    setIsFormOpen(true)
-  }
-
-  const handleArchive = (id: string) => {
-    setArchiveJobId(id)
-  }
-
+  const handleCreateNew = () => { setSelectedJob(null); setIsWizardOpen(true) }
+  const handleView = (job: Job) => navigate(`/jobs/${job.id}`)
+  const handleEdit = (job: Job) => { setSelectedJob(job); setIsFormOpen(true) }
+  const handleArchive = (id: string) => setArchiveJobId(id)
   const handleConfirmArchive = async () => {
-    if (archiveJobId) {
-      await archiveJob(archiveJobId)
-      setArchiveJobId(null)
-    }
+    if (archiveJobId) { await archiveJob(archiveJobId); setArchiveJobId(null) }
   }
-
   const handleFormSubmit = async (data: any) => {
-    if (selectedJob) {
-      await updateJob(selectedJob.id, data)
-    } else {
-      await createJob(data)
-    }
-    setIsFormOpen(false)
-    setSelectedJob(null)
+    if (selectedJob) await updateJob(selectedJob.id, data)
+    else await createJob(data)
+    setIsFormOpen(false); setSelectedJob(null)
   }
 
   return (
     <AuthGate>
       <PermissionGate permission="canViewJobs">
-        <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden">
-          <Section variant="default" banded className="shrink-0 animate-fade-in">
-            <AppContainer>
-              <PageHeader title="Jobs" />
-            </AppContainer>
-          </Section>
+        <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden bg-virgilio-cream">
+          <div className="flex-1 min-h-0 overflow-auto">
+            <div className="mx-auto w-full max-w-[1400px] px-6 py-8 space-y-6 animate-fade-in">
+              {/* Page header */}
+              <header className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-3">
+                    <h1 className="font-poppins font-semibold tracking-[-0.04em] text-text-primary text-[28px] leading-tight sm:text-[32px]">
+                      Jobs<span className="text-virgilio-purple">.</span>
+                    </h1>
+                    <Badge tone="neutral" size="sm">{jobs.length}</Badge>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-body-sm text-text-secondary">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-pastel-green-foreground" />
+                      {jobs.filter(j => j.status === 'open').length} open
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-pastel-yellow-foreground" />
+                      {counts.paused} paused
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-text-tertiary" />
+                      {counts.closed} closed
+                    </span>
+                  </div>
+                </div>
 
-          <Section className="flex-1 min-h-0 overflow-hidden !py-0 animate-fade-in">
-            <AppContainer className="h-full min-h-0">
-              <div className="py-6 h-full min-h-0 overflow-auto">
-                <JobsTable
-                  jobs={jobs}
-                  isLoading={isLoading}
-                  onView={handleView}
-                  onEdit={handleEdit}
-                  onArchive={handleArchive}
-                  onCreateNew={handleCreateNew}
-                />
-              </div>
-            </AppContainer>
-          </Section>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button variant="secondary" size="md" icon={SlidersHorizontal}>Columns</Button>
+                  <Button variant="secondary" size="md" icon={Download}>Export</Button>
+                  <PermissionGate permission="canCreateJobs">
+                    <Button
+                      variant="primary"
+                      size="md"
+                      icon={Plus}
+                      onClick={handleCreateNew}
+                      className="text-white [&_svg]:text-white"
+                    >
+                      New job
+                    </Button>
+                  </PermissionGate>
+                </div>
+              </header>
 
-          <JobWizard
-            isOpen={isWizardOpen}
-            onClose={() => setIsWizardOpen(false)}
-          />
+              {/* Status segmented tabs */}
+              <TableSegmented<StatusSegment>
+                value={statusFilter}
+                onChange={setStatusFilter}
+                options={[
+                  { value: 'active', label: 'Active', count: counts.active },
+                  { value: 'all', label: 'All', count: counts.all },
+                  { value: 'paused', label: 'Paused', count: counts.paused },
+                  { value: 'closed', label: 'Closed', count: counts.closed },
+                  { value: 'archived', label: 'Archived', count: counts.archived },
+                ]}
+              />
 
+              <JobsTable
+                jobs={jobs}
+                isLoading={isLoading}
+                onView={handleView}
+                onEdit={handleEdit}
+                onArchive={handleArchive}
+                onCreateNew={handleCreateNew}
+                statusFilter={statusFilter}
+              />
+            </div>
+          </div>
+
+          <JobWizard isOpen={isWizardOpen} onClose={() => setIsWizardOpen(false)} />
           <JobFormSheet
             isOpen={isFormOpen}
-            onClose={() => {
-              setIsFormOpen(false)
-              setSelectedJob(null)
-            }}
+            onClose={() => { setIsFormOpen(false); setSelectedJob(null) }}
             onSubmit={handleFormSubmit}
             job={selectedJob}
             isLoading={isLoading}

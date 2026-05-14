@@ -1,53 +1,74 @@
-## Goal
-Polish three pieces of the Pipeline Board to match the mockup.
+## Jobs list redesign — faithful to mockup
 
-## 1. Candidate card title typography
-File: `src/components/jobs/CandidateCard.tsx`
+Refresh the `/jobs` page to match the new mockup, mirroring header conventions from `JobDetail` and routing all pills through the unified Badge system.
 
-- Title (candidate name): `font-poppins text-[14px] font-semibold tracking-[-0.01em] text-text-primary leading-[1.15]`.
-- Role + company become **two stacked lines** (matching mock):
-  - Line 1: `current_role` (e.g., "Designer") — `text-[12px] text-text-secondary leading-tight`.
-  - Line 2: `@ {current_company}` — `text-[12px] text-text-tertiary leading-tight`.
-- Drop the inline "Designer @ Notion" single-line treatment.
-- Avatar stays 32px purple.
+### 1. Page header (matches JobDetail)
 
-## 2. Stage column = single container with header + divider + body
-File: `src/components/jobs/PipelineOverview.tsx`
+In `src/pages/Jobs.tsx`, replace the empty `PageHeader` band with a self-rendered header (same pattern as `JobHero`):
 
-Restructure each column so the **stage header is INSIDE** the column container (currently it sits above the gray ColumnShell):
+- Title row: `Jobs` in `font-poppins font-semibold tracking-[-0.04em] text-[28px] sm:text-[32px]` with the purple `.` accent. Inline neutral count chip `42` (`<Badge tone="neutral" size="sm">{total}</Badge>`).
+- Summary row beneath title: three dotted Badges — `tone="green" dot` 8 open, `tone="yellow" dot` 3 paused, `tone="neutral" dot` 31 closed (rendered as inline text+dot, not chips, to match the mock's lightweight summary line).
+- Right side actions: `<Button variant="secondary" size="md" icon={SlidersHorizontal}>Columns</Button>`, `<Button variant="secondary" size="md" icon={Download}>Export</Button>`, `<Button variant="primary" size="md" icon={Plus}>New job</Button>` — same sizes/styles as the JobDetail hero buttons.
 
-```
-┌─ rounded-2xl white card, border virgilio-border ──┐
-│  Header row (px-3 py-2.5):                        │
-│    • dot + stage name (14px Poppins semibold)     │
-│      + count (12px tabular-nums text-tertiary)    │
-│    • [zap icon] [bulk checkbox] [⋯ on hover]      │
-│  ── 1px divider (border-virgilio-border) ──       │
-│  Body (p-2, gap-2):                               │
-│    candidate cards…                               │
-│    + Add candidate (dashed, full width)           │
-└───────────────────────────────────────────────────┘
-```
+### 2. Status tabs strip
 
-- Refactor `ColumnShell` to accept a `header` ReactNode and render: header → `<div className="border-t border-virgilio-border" />` → body.
-- Default background: `bg-white`. On `isOver` (DnD), tint background and inner dashed dropzone using existing `STAGE_HOVER_CLASSES` (this is the lavender effect on Take-home in the mock).
-- On empty (no cards, not dragging), keep a subtle dashed body indicator and the "+ Add candidate" button as the only visible action.
-- Remove the separate header `<div className="px-1 pb-2 pt-1 ...">` block that currently sits above ColumnShell — fold its contents into the new header slot.
-- Stage dot keeps `getStageDotColor()`.
+Remove the in-card `FilterChipPopover` for Status. Add a top-level tabs strip directly under the header (outside the table card), styled like Pipeline section tabs:
 
-## 3. Cancel selection mode
-File: `src/pages/JobDetail.tsx` (toolbar right cluster, around line 995)
+- Tabs: `Active (n)`, `All (n)`, `Paused (n)`, `Closed (n)`, `Archived (n)`. Counts derived from `jobs` by status (treating the existing `draft` as part of Active group? — clarify below).
+- Reuse the existing tab pattern from `PipelineSectionTabs` (rounded pill, active = filled, inactive = ghost) for visual parity with the JobDetail tabs.
 
-- Currently the Cancel button only shows when `selectedCandidateIds.length > 0`. Change so the **Cancel button shows whenever `selectionMode` is true**, regardless of selection count.
-- Clicking it sets `setSelectionMode(false)` and clears `setSelectedCandidateIds([])`.
-- When selectionMode is on but nothing selected: show only the Cancel button (no Email/Reject yet). When something is selected: show Email + Reject + Cancel.
-- Hide the "Select" toggle button while `selectionMode` is true (so Cancel replaces it visually).
+### 3. Filter row
 
-## Out of scope
-- No changes to data, queries, or board DnD logic.
-- No card body redesign beyond the title/subtitle typography.
+Below the tabs (still outside the table card), a single row containing:
 
-## Files touched
-- `src/components/jobs/CandidateCard.tsx`
-- `src/components/jobs/PipelineOverview.tsx`
-- `src/pages/JobDetail.tsx`
+- Full-width search input (rounded, soft surface), placeholder `Search by title, owner, or department…`.
+- Right-aligned `+ Department`, `+ Location`, `+ Owner`, `+ Posted` filter chips (reuse `FilterChipPopover` with the `+` prefix style from the mock). Department/Location/Owner already exist in data; Posted = date filter chip (today / 7d / 30d / all).
+- All controls use the standard 32–34px height per style guide.
+
+### 4. Table redesign — full Tables Foundation v1
+
+Rewrite `JobsTable` body using `<Table density="default">` and the column primitives from the style guide:
+
+| Column | Primitive | Notes |
+|---|---|---|
+| JOB | `IdentityCell` | Title (Poppins 14 semi) + inline `Badge tone="purple" size="xs"` for `Trending` when applicable. Secondary line: `{employment_type} · {candidate_count} candidates` (`text-table-meta`). |
+| DEPARTMENT | text | Plain text cell. |
+| LOCATION | text | `{location_mode} · {location}` formatting. |
+| STAGE | `StatusCell` | Single Badge with `dot`, tone mapped per stage (Sourcing=blue, Screen=pink, Interview=purple, Offer=yellow, Hired=green). |
+| PIPELINE | custom | Segmented multi-color bar (gray→blue→purple→orange) reflecting per-stage candidate counts, with `+N` neutral chip on the right. New `PipelineBar` presentational component. |
+| DAYS OPEN | `NumericCell` | `{n}d` Poppins tabular-nums; tone red when `> SLA` (e.g. ≥21d), neutral otherwise. |
+| OWNER | `ComposedCell` | Purple `AvatarStack` (single) + first name. |
+| (actions) | `ActionCell` | Kebab opacity 0→1 on row hover, 32px column. |
+
+Header row uses `text-table-header` (10.5 caps, +0.06em). No vertical dividers. Solid `#FAFAF7` header. Hover = flat `#FAFAF7`. Selected = lavender + 2px purple left rail (already in primitives).
+
+Footer: `TableFooterSummary` ("8 of 42 jobs") instead of pagination — list is short and matches the mock.
+
+### 5. Empty / loading / mobile
+
+- `TableSkeleton` (3–5 rows) for loading.
+- `TableEmpty` (with mascot) when no jobs at all, `TableFilteredEmpty` for filtered.
+- Mobile (`lg:hidden`) keeps the stacked Card view but rebuilds the rows using the same Badge tones for stage/status. No subtitle on PageHeader on mobile either.
+
+### 6. Badge / tag system migration (project-wide guideline reinforced here)
+
+- Replace all `Badge variant="job-open|job-draft|job-closed|job-archived"` usages in this page with the compositional API: `<Badge tone="green|neutral|yellow|ink" dot size="xs|sm">`.
+- Trending uses `<Badge tone="purple" size="xs">Trending</Badge>`.
+- Stage badges use `<Badge tone={stageTone} dot size="sm">`.
+- Count chip in title: `<Badge tone="neutral" size="sm">{n}</Badge>` (no dot).
+
+### Files to touch
+
+- `src/pages/Jobs.tsx` — new header, tabs strip, filter row, layout.
+- `src/components/jobs/JobsTable.tsx` — strip search/status/action rows; convert to Tables Foundation primitives + new columns.
+- `src/components/jobs/PipelineBar.tsx` — new tiny presentational component.
+- (No data/hook/query changes; pipeline counts derive from existing job fields, defaulting to 0 segments when not yet populated.)
+
+### Open question
+
+The mock shows tabs `Active / All / Paused / Closed / Archived` but our DB enum is `draft | open | closed | archived` (no `paused`). Two options:
+
+1. Map `Paused = draft` (rename label only) — fastest, no migration.
+2. Add a real `paused` status to the enum + data layer.
+
+Default to **option 1** unless you say otherwise; this keeps the change purely presentational.
