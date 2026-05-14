@@ -202,15 +202,32 @@ export function ProfileHeroCard({
           </div>
         </div>
 
-        {/* AI Fit chip */}
-        {typeof fitScore === 'number' && fitScore > 0 && (
-          <div className="hidden sm:flex flex-col items-center justify-center px-4 py-2.5 rounded-xl border border-virgilio-purple/20 bg-virgilio-purple/5 min-w-[80px]">
-            <span className="text-[10px] font-poppins font-semibold tracking-[0.08em] text-virgilio-purple/70 uppercase">AI Fit</span>
-            <span className="font-poppins font-semibold text-virgilio-purple text-2xl leading-none mt-1 tabular-nums">
-              {Math.round(fitScore)}
-            </span>
-          </div>
-        )}
+        {/* Right cluster: AI Fit + primary actions */}
+        <div className="hidden sm:flex items-start gap-2 shrink-0">
+          {typeof fitScore === 'number' && fitScore > 0 && (
+            <div className="flex flex-col items-center justify-center px-4 py-2.5 rounded-xl border border-virgilio-purple/20 bg-virgilio-purple/5 min-w-[80px]">
+              <span className="text-[10px] font-poppins font-semibold tracking-[0.08em] text-virgilio-purple/70 uppercase">AI Fit</span>
+              <span className="font-poppins font-semibold text-virgilio-purple text-2xl leading-none mt-1 tabular-nums">
+                {Math.round(fitScore)}
+              </span>
+            </div>
+          )}
+          {nextStageLabel && !isRejected && !isHired && onAdvance && (
+            <Button variant="primary" size="md" iconRight={ArrowRight} onClick={onAdvance}>
+              Advance to {nextStageLabel}
+            </Button>
+          )}
+          {onSchedule && (
+            <Button variant="secondary" size="md" icon={Calendar} onClick={onSchedule}>
+              Schedule
+            </Button>
+          )}
+          {onEmail && (
+            <Button variant="secondary" size="md" icon={Mail} onClick={onEmail}>
+              Email
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Tabs slot — sits flush with card bottom edge */}
