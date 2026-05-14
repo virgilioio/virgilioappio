@@ -1,94 +1,93 @@
-# Candidate profile hero — match JobHero pattern (Option A)
+# Mirror JobDetail card structure on candidate profile
 
-## Goal
+## Reference: how `JobDetail` does it
 
-Make the candidate profile top section a bare header (like `JobHero`), with the navigation strip (Back / breadcrumbs / pager) sitting directly above the candidate name in left-center-right distribution. Stage strip and action bar move into their own card below.
+`JobDetail.tsx` (lines 883–907) wraps **JobHero + TabsList together** in one white card:
 
-## Final structure on `/jobs/:jobId/candidates/:id`
-
-```text
-─ Bare header (no card chrome) ─────────────────────────────────────
-  ← Back to job        Jobs › Job title › Candidates    7/18 ‹ ›
-  ─────────────────────────────────────────────────────────────────
-  ⬤  Candidate Name.  ♥  [Stage badge]                  ┌──────┐
-      Applying for Job · Source · Applied 3d            │AI Fit│
-      [Full profile] [LinkedIn]                         │  87  │
-                                                        └──────┘
-─ Card: stage strip + action bar ───────────────────────────────────
-  ●─●─●─○─○─○   [Advance to Phone Screen]  [Reject] [⋯]
-────────────────────────────────────────────────────────────────────
-
-  (rest of page: tabs + main content + quick actions sidebar)
+```tsx
+<div className="mb-3 bg-white border border-virgilio-border rounded-2xl shadow-sm px-6 pt-5">
+  <JobHero … />
+  <TabsList className="mt-4 …">{triggers}</TabsList>
+</div>
 ```
 
-Padding/typography mirrors `JobHero`:
-- Outer: bare section with `pb-4` (no border, no shadow, no rounded card)
-- Title: `font-poppins font-semibold tracking-[-0.04em] text-[28px] sm:text-[32px]`
-- Meta row: `text-body-sm text-text-secondary`
-- Strip above title: same horizontal rhythm as JobHero's breadcrumb row
+Below it, `PipelineSectionTabs` (the per-job stage selector) sits as its own element.
+
+## Target structure on the candidate profile
+
+```text
+┌─ Card 1: bg-white border rounded-2xl shadow-sm px-6 pt-5 ──────────┐
+│  Back to job        Jobs › Job › Candidates        7/18 ‹ ›        │
+│  ───────────────────────────────────────────────────────────────── │
+│  ⬤  Candidate Name.  ♥  [Stage badge]                  ┌──────┐   │
+│      Applying for Job · Source · Applied 3d            │AI Fit│   │
+│      [Full profile] [LinkedIn]                         │  87  │   │
+│  ───────────────────────────────────────────────────── └──────┘   │
+│  [Job overview] [Resume] [Overview] [Scorecards] [Activity] [...] │  ← ProfileTabs
+└────────────────────────────────────────────────────────────────────┘
+
+┌─ Card 2: stages only ──────────────────────────────────────────────┐
+│  ●─●─●─○─○─○                                                       │  ← ProfileStageStrip
+└────────────────────────────────────────────────────────────────────┘
+
+  (ProfileActionBar continues to live wherever it lives today —
+   NOT inside Card 2. Tab content + sidebar render below as before.)
+```
 
 ## Implementation
 
-### 1. `ProfileHeroCard.tsx` — strip the card, add the nav strip
+### 1. `ProfileHeroCard.tsx` — restore card chrome, accept tabs slot
 
-- Replace `<section className="bg-white border border-virgilio-border rounded-2xl shadow-sm p-5 sm:p-6 space-y-5">` with a bare `<header className="pb-4">`.
-- Add new top strip (3-column flex, left-center-right) above the avatar/identity row:
-  - Left: `← Back to job` button (calls `onClose`)
-  - Center: `Jobs › {jobTitle} › Candidates` breadcrumb (hidden on mobile, same pattern as `JobHero`)
-  - Right: `7 of 18 ‹ ›` pager (only when index/total provided)
-- Hairline divider (`border-b border-virgilio-border`) between strip and identity row, with `pb-3 mb-4` rhythm.
-- Remove `children` slot (stage strip + action bar move out — see step 3).
-- Add new props: `onClose`, `index`, `total`, `hasPrev`, `hasNext`, `onNavigatePrev`, `onNavigateNext`.
+- Wrap the existing content in a card: `<section className="bg-white border border-virgilio-border rounded-2xl shadow-sm px-6 pt-5">`. No bottom padding — tabs sit flush so the underline meets the card edge (matches JobDetail pattern).
+- Keep the in-hero top nav strip (Back / breadcrumb / pager) already added in the previous round.
+- Add a `tabs?: ReactNode` slot rendered after the identity row with `mt-4` (mirrors `JobDetail`).
+- The hero itself does NOT contain the stage strip or action bar.
 
-### 2. Retire `ProfileTopBar.tsx`
+### 2. `CandidateProfileSheet.tsx` — restructure
 
-The new strip lives inside `ProfileHeroCard` only. Delete `ProfileTopBar.tsx` since it's no longer used (overlay mode also gets the same in-hero strip — see step 4).
-
-### 3. `CandidateProfileSheet.tsx` — restructure
-
-Currently renders (in `asPage` mode):
+Currently:
 ```
-ProfileTopBar
-ProfileHeroCard
-  └─ children: ProfileStageStrip + ProfileActionBar
-ProfileTabs
-...
-```
-
-New structure:
-```
-ProfileHeroCard (bare, includes top nav strip)
-<section className="bg-white border border-virgilio-border rounded-2xl shadow-sm p-5 sm:p-6 space-y-4">
+ProfileHeroCard (bare)
+<section card>
   ProfileStageStrip
   ProfileActionBar
 </section>
-ProfileTabs
-...
+… later …
+ProfileTabs (in scroll body)
+… status banners …
+tab content
 ```
 
-- Remove the `<ProfileTopBar … />` block.
-- Pass `onClose`, `currentIndex`, `totalCount`, `hasPrev`, `hasNext`, `onNavigatePrev`, `onNavigateNext`, `jobTitle` directly to `ProfileHeroCard`.
-- Wrap `ProfileStageStrip` + `ProfileActionBar` in their own white card sibling below the hero.
-- Apply this structure in **both** modes (`asPage` and overlay) — the in-hero nav strip works for both. In overlay mode, "Back to job" still calls `onClose` (closes the overlay) and the breadcrumb/pager still make sense.
+New:
+```
+ProfileHeroCard (carded, with tabs prop = <ProfileTabs … />)
+<section card>                   ← Card 2: stages only
+  ProfileStageStrip
+</section>
+ProfileActionBar                 ← restore to its previous location
+                                   (back where it sat before the prior edit)
+… status banners …
+tab content (no ProfileTabs render here)
+```
 
-### 4. `CandidateProfile.tsx` (page wrapper)
+- Lift `<ProfileTabs … />` (currently rendered around line 1198) out of the scroll body and pass it as the `tabs` prop on `ProfileHeroCard`.
+- Split the prior wrapper card: keep only `ProfileStageStrip` inside it. Remove `ProfileActionBar` from this card.
+- Restore `ProfileActionBar` to its previous render site (immediately after the hero, ungrouped — same position it had before we introduced the wrapping card).
 
-No prop-shape change required — it already passes `onOpenChange`, `currentIndex`, `totalCount`, `hasPrev`, `hasNext`, `onNavigatePrev`, `onNavigateNext` to `CandidateProfileSheet`. We just need to make sure `jobTitle` reaches the sheet (the sheet already resolves it from the candidate record / job hook — verify and pass through).
+### 3. No changes to
 
-### 5. Container alignment with Jobs page
-
-Confirm both pages render their hero inside the same Layout container width and gutter. `Jobs` uses `container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8`; the candidate page should match. If `CandidateProfileSheet` currently uses different padding in `asPage` mode, normalize to the same container.
+- `ProfileStageStrip.tsx` / `ProfileActionBar.tsx` internals.
+- `JobHero` / `JobDetail`.
+- `CandidateProfile.tsx` page wrapper.
+- Tab content panels, quick actions sidebar, status banners.
 
 ## Files touched
 
-- `src/components/candidates/profile/ProfileHeroCard.tsx` — bare header + new top strip + new props
-- `src/components/candidates/CandidateProfileSheet.tsx` — drop ProfileTopBar, wrap stage strip + action bar in their own card, normalize container padding
-- `src/components/candidates/profile/ProfileTopBar.tsx` — delete
-- `src/pages/CandidateProfile.tsx` — verify prop pass-through (likely no change)
+- `src/components/candidates/profile/ProfileHeroCard.tsx` — restore card chrome, add `tabs` ReactNode slot
+- `src/components/candidates/CandidateProfileSheet.tsx` — pass `<ProfileTabs />` to hero, remove its in-body site, isolate stage strip in its own card, restore action bar to its prior position
 
 ## Out of scope
 
-- No changes to `JobHero` or the Jobs page.
-- No changes to tabs, quick actions sidebar, or application card.
-- No backend / RLS / data changes.
-- Mobile breakpoint behavior matches `JobHero`: breadcrumb hidden under `md`, pager + back stay visible.
+- Overlay-mode behavioral changes (Pipeline overlay).
+- Backend / data / RLS work.
+- Tab content, quick actions, application card.
