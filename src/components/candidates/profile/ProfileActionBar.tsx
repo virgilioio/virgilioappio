@@ -69,6 +69,27 @@ export function ProfileActionBar({
             <Button variant="secondary" size="md" iconOnly aria-label="More actions" icon={MoreHorizontal} />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
+            {onAddOrTransfer && (
+              <DropdownMenuItem onClick={onAddOrTransfer}>
+                <ArrowRightLeft className="h-4 w-4 mr-2" /> Add / Transfer to job
+              </DropdownMenuItem>
+            )}
+            {!isOfferStatus && !isRejected && !isHired && onMoveToOffer && (
+              <DropdownMenuItem onClick={onMoveToOffer}>
+                <ArrowRight className="h-4 w-4 mr-2" /> Move to offer
+              </DropdownMenuItem>
+            )}
+            {isOfferStatus && onReturnToPipeline && (
+              <DropdownMenuItem onClick={onReturnToPipeline}>
+                <RotateCcw className="h-4 w-4 mr-2" /> Return to pipeline
+              </DropdownMenuItem>
+            )}
+            {isOfferStatus && onHire && (
+              <DropdownMenuItem onClick={onHire}>
+                <CheckIcon className="h-4 w-4 mr-2" /> Mark as hired
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
             {canEdit && onEdit && (
               <DropdownMenuItem onClick={onEdit}>
                 <Edit className="h-4 w-4 mr-2" /> Edit candidate
@@ -77,27 +98,6 @@ export function ProfileActionBar({
             {onDownload && (
               <DropdownMenuItem onClick={onDownload}>
                 <Download className="h-4 w-4 mr-2" /> Download profile
-              </DropdownMenuItem>
-            )}
-            {!isOfferStatus && !isRejected && !isHired && onMoveToOffer && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onMoveToOffer}>
-                  <ArrowRight className="h-4 w-4 mr-2" /> Move to offer
-                </DropdownMenuItem>
-              </>
-            )}
-            {isOfferStatus && onReturnToPipeline && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onReturnToPipeline}>
-                  <RotateCcw className="h-4 w-4 mr-2" /> Return to pipeline
-                </DropdownMenuItem>
-              </>
-            )}
-            {isOfferStatus && onHire && (
-              <DropdownMenuItem onClick={onHire}>
-                <CheckIcon className="h-4 w-4 mr-2" /> Mark as hired
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>
