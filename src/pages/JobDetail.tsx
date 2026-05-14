@@ -9,6 +9,7 @@ import { useCandidates } from '@/hooks/useCandidates'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { useJobs } from '@/hooks/useJobs'
 import { useJobSourcingProject } from '@/hooks/useJobSourcingProject'
+import { useJobPostings } from '@/hooks/useJobPostings'
 import { JobSetupLayout } from '@/components/jobs/JobSetupLayout'
 
 import { JobDetailMobileHeader } from '@/components/jobs/JobDetailMobileHeader'
