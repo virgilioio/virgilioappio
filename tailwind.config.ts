@@ -221,6 +221,11 @@ export default {
 				'button-md-v2': 'var(--button-height-md-v2)',
 				'button-lg-v2': 'var(--button-height-lg-v2)',
 				'button-xl-v2': 'var(--button-height-xl-v2)',
+				// Gio Foundation v1.0 — Badge heights
+				'badge-xs': 'var(--badge-h-xs)',
+				'badge-sm': 'var(--badge-h-sm)',
+				'badge-md': 'var(--badge-h-md)',
+				'badge-lg': 'var(--badge-h-lg)',
 				'input': 'var(--input-height)',
 				'table-row': 'var(--table-row-height)'
 			},
