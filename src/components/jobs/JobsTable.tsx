@@ -380,21 +380,22 @@ export function JobsTable({
                           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                             <Button variant="ghost" size="xs" iconOnly icon={MoreHorizontal} aria-label="Job actions" />
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuContent align="end" className="w-44">
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onView(job) }}>
-                              <Eye className="h-4 w-4 mr-2" /> View
+                              <Eye className="h-3.5 w-3.5" /> <span>View</span>
                             </DropdownMenuItem>
                             <PermissionGate permission="canEditJobs">
                               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(job) }}>
-                                <Edit className="h-4 w-4 mr-2" /> Edit
+                                <Edit className="h-3.5 w-3.5" /> <span>Edit</span>
                               </DropdownMenuItem>
                             </PermissionGate>
                             <PermissionGate permission="canArchiveJobs">
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 onClick={(e) => { e.stopPropagation(); onArchive(job.id) }}
-                                className="text-destructive focus:text-destructive"
+                                className="text-destructive focus:bg-destructive/10 focus:text-destructive data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive"
                               >
-                                <Archive className="h-4 w-4 mr-2" /> Archive
+                                <Archive className="h-3.5 w-3.5" /> <span>Archive</span>
                               </DropdownMenuItem>
                             </PermissionGate>
                           </DropdownMenuContent>

@@ -104,24 +104,26 @@ export function MobileBottomNav() {
                 <span>Profile</span>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" side="top" sideOffset={8} className="w-52 shadow-calendly border-virgilio-border">
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-poppins font-semibold text-virgilio-text leading-none">{userDisplayName}</p>
-                  <p className="text-xs font-poppins leading-none text-virgilio-muted">{user?.email}</p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-virgilio-border" />
-              <DropdownMenuItem asChild className="hover:bg-virgilio-purple/5 hover:text-virgilio-text transition-colors cursor-pointer">
-                <Link to="/settings" className="flex items-center gap-2 w-full">
+            <DropdownMenuContent align="end" side="top" sideOffset={8} className="w-56">
+              <div className="px-2 pt-1.5 pb-2">
+                <p className="text-[12.5px] font-poppins font-semibold text-virgilio-text leading-tight truncate">{userDisplayName}</p>
+                <p className="text-[11px] font-inter leading-tight text-[hsl(var(--menu-group-color))] truncate">{user?.email}</p>
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/settings">
                   <Settings className="h-3.5 w-3.5" />
-                  <span className="font-poppins">Settings</span>
+                  <span>Settings</span>
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-virgilio-border" />
-              <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut} className="text-virgilio-error hover:bg-virgilio-error/10 hover:text-virgilio-error transition-colors cursor-pointer">
-                <LogOut className="h-3.5 w-3.5 mr-2" />
-                <span className="font-poppins">{isLoggingOut ? 'Logging out...' : 'Log out'}</span>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="text-destructive focus:bg-destructive/10 focus:text-destructive data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span>{isLoggingOut ? 'Logging out...' : 'Log out'}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -258,23 +258,19 @@ export function GlobalCreateButton() {
             <Plus className="h-4 w-4 text-gray-800" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuContent align="end" className="w-60">
           {createOptions.map((option) => {
             const Icon = option.icon
             return (
               <DropdownMenuItem
                 key={option.label}
                 onClick={option.onClick}
-                className="flex items-center gap-3 p-3 cursor-pointer"
               >
-                <Icon className="h-4 w-4 text-muted-foreground" />
-                <div className="flex-1">
-                  <div className="font-medium text-sm">{option.label}</div>
-                  <div className="text-xs text-muted-foreground">{option.description}</div>
-                </div>
-                <div className="text-xs text-muted-foreground font-mono">
+                <Icon className="h-3.5 w-3.5 text-[hsl(var(--menu-group-color))]" />
+                <span className="flex-1 truncate">{option.label}</span>
+                <span className="ml-auto font-mono text-menu-kbd text-[hsl(var(--menu-group-color))]">
                   {option.shortcut}
-                </div>
+                </span>
               </DropdownMenuItem>
             )
           })}
