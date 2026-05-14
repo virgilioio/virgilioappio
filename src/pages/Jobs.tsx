@@ -100,7 +100,7 @@ export default function Jobs() {
               </header>
 
               {/* Status segmented tabs */}
-              <TableSegmented<StatusSegment>
+              <TableSegmented
                 value={statusFilter}
                 onChange={setStatusFilter}
                 options={[
