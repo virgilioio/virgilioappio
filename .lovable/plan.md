@@ -1,51 +1,70 @@
-# Candidate Profile — Tabs Redesign (Mockup Parity)
+# Candidate Profile — Sidebar removal, Top bar, Quick Actions fix, Comp ask
 
-Reorganize the body of the candidate profile page so it matches the mockup: a **single horizontal tab strip** (Job overview · Resume · Overview · Scorecards · Activity · Comments) styled exactly like the job profile, with content rendered in cards in a two-column layout (main content left, Quick Actions + Application sidebar right).
+## 1. Remove the associated-jobs left sidebar
 
-## Tab Strip — match Job Profile
+**File:** `src/components/candidates/CandidateProfileSheet.tsx`
 
-Replace the current `CandidateNameCard` tabs with a `Tabs` + `TabsList` + `TabsTrigger` strip identical to `JobSetupPanel.tsx`:
-- `TabsList` styled to match the underlined-tab pattern shown in the mockup (icon + label, count badges, purple dot for unread).
-- Tabs (in order): **Job overview**, **Resume**, **Overview**, **Scorecards** *(count)*, **Activity** *(count)*, **Comments** *(count + unread dot)*.
-- Add **Offer** as a leading tab only when `associationStatus` is `offer` or `hired` (preserves current behavior).
-- Drop the second `CandidateNameCard` from the right column (the right-side mini tab strip with Insights/Emails/Notes/Reminders/Feed). All those concerns move into the unified left-side tabs (Activity = Feed + Emails timeline; Comments = Notes; Insights folded into Overview).
+- Delete the `<CandidateJobSidebar … />` block (lines ~1082–1090) and remove the `import { CandidateJobSidebar }` at line 10.
+- Drop the now-unused `handleJobChange` handler if nothing else references it.
+- Keep the `CandidateJobSidebar.tsx` file in the repo for now (no other consumers — safe to leave for cleanup later, or delete in this pass).
 
-## Layout
+## 2. Restore the top bar exactly like the mockup
 
-Two-column grid below the hero card:
+The `ProfileTopBar` component already exists and is rendered at line ~1101, but the visual matches the mockup partially. Update it to match exactly:
 
-```text
-┌─────────────────────────────────────┬──────────────────┐
-│ Tabs strip (full width above grid)  │                  │
-├─────────────────────────────────────┤  Quick Actions   │
-│                                     │  ──────────────  │
-│   Active tab content (cards)        │  Application     │
-│                                     │  (Source, Comp,  │
-│                                     │   Work auth, …)  │
-└─────────────────────────────────────┴──────────────────┘
+**File:** `src/components/candidates/profile/ProfileTopBar.tsx`
+
+- Left: `← Back to job` link button (already there) — keep styling, Poppins 13px, hover text-primary.
+- Center: breadcrumbs `Jobs › {jobTitle} › Candidates` (already implemented) — make visible at `md:flex`, keep truncation.
+- Right: `7 of 18` counter + two icon buttons (chevron left/right) using `<Button variant="secondary" size="sm" iconOnly>` — already in place.
+
+**File:** `CandidateProfileSheet.tsx`
+
+- Confirm the `<ProfileTopBar />` wrapper renders at the top of the main column. With the sidebar gone, the main column becomes the full width — ensure the surrounding `<div className="flex-1 flex flex-col min-w-0">` still applies and the top bar sits inside `border-b border-virgilio-border bg-white/60` so the back/breadcrumb/nav row is visible above the hero card.
+- Pass `currentIndex`, `totalCount`, `hasPrev`, `hasNext`, `onNavigatePrev`, `onNavigateNext` through (already wired).
+
+## 3. Fix the black-on-black "Advance to …" Quick Action button
+
+**File:** `src/components/candidates/profile/ProfileQuickActionsCard.tsx`
+
+Per the style guide (`docs/style-guide.md` §2), `variant="primary"` is citron-noir `#0d0d09` background with **cream `#fffcf9` text**. The current `<Button variant="primary">` should already render correctly — the bug is that the surrounding component or class is overriding the foreground.
+
+- Remove any extraneous `className` that could leak black text (none on this button currently — verify).
+- Ensure the `Button` component's `primary` variant in `src/components/ui/button.tsx` sets `text-[#fffcf9]` and `[&_svg]:text-[#fffcf9]`. If it doesn't, fix the variant definition so every `primary` button across the app gets the correct contrast (same fix that was applied inline in `ProfileActionBar` previously — promote it to the variant).
+- After the variant fix, drop any one-off `!text-[#fffcf9]` overrides in `ProfileActionBar.tsx` so the style guide is the single source of truth.
+
+## 4. Comp ask shows real salary expectations
+
+The candidate already carries `salary_amount`, `salary_currency`, `salary_period` (see CandidateProfileSheet line 661–663).
+
+**File:** `src/components/candidates/CandidateProfileSheet.tsx` (line ~1719)
+
+Replace:
+```tsx
+compensation={(candidate as any)?.salary_expectation || null}
+```
+with a formatted string built from the structured fields, e.g.:
+```tsx
+compensation={formatSalaryExpectation(candidate)}
 ```
 
-- Left column: `lg:col-span-2`, holds the tab content cards.
-- Right column: sticky `ProfileQuickActionsCard` + `ProfileApplicationCard` (already built).
-- Remove the legacy "Controls Card" rows on both columns — those actions already live in `ProfileActionBar` and the Quick Actions sidebar.
+**File:** add helper in `src/lib/candidateHelpers.ts` (or inline):
+- Input: `{ salary_amount, salary_currency, salary_period }`.
+- Output: `"$185k / yr"`, `"€90k / yr"`, `"$50 / hr"`; returns `null` if no amount.
+- Use `Intl.NumberFormat` with the currency, compact notation for yearly figures (`>= 1000` → `Xk`), and a short period suffix (`yr`, `mo`, `hr`).
 
-## Tab Content (each in a `Card` matching job profile spacing)
+If the candidate has a min/max range (check schema for `salary_min`/`salary_max`), render `"$185k – $210k / yr"` like the mockup. I'll verify the column names in `candidates` before writing the helper.
 
-1. **Job overview** — Current stage card (`Current stage · X` with "Open stage" link), Next event + Interviewers cards, Scorecards summary card.
-2. **Resume** — existing `CandidateResumeViewer` block, unchanged.
-3. **Overview** — Profile Summary, Skills, URLs, Attachments (flatten accordions into stacked cards to match mockup).
-4. **Scorecards** — full Scorecards list (`Compare` + `Add` actions in card header), reusing the list currently embedded in Job overview.
-5. **Activity** — `ActivityFeedList` + `EmailHistoryList` in stacked cards.
-6. **Comments** — `CandidateComments` card.
-7. **Offer** (conditional) — existing `CandidateOfferDetails` / `CandidateOfferApprovals` subtabs.
+## 5. Out of scope
 
-## Files to change
+- No backend or RLS changes.
+- Hero card, stage strip, action bar, tabs unchanged.
+- `CandidateJobSidebar.tsx` file kept (orphaned) — can be deleted in a follow-up.
 
-- `src/components/candidates/CandidateProfileSheet.tsx` — replace the body section (~lines 1170–1880): swap the two `CandidateNameCard` tab strips for a single `<Tabs>` + `<TabsList>`, restructure to a 2-col grid with sidebar (`ProfileQuickActionsCard` + `ProfileApplicationCard`), reorganize tab content as cards above. Remove the duplicate Controls Cards.
-- `src/components/candidates/profile/ProfileTabs.tsx` *(new)* — small wrapper rendering the styled `TabsList` with icon + label + optional count/dot, so the strip matches the job profile visual language.
-- `src/components/candidates/profile/ProfileQuickActionsCard.tsx` & `ProfileApplicationCard.tsx` — wire real data (shells already created).
+## Files touched
 
-## Out of scope
-
-- No backend changes, no new hooks. All data sources already exist (`useActivityFeed`, `useCandidateComments`, scorecards hooks, etc.).
-- Hero card, top bar, action bar, and stage strip stay as-is.
+- `src/components/candidates/CandidateProfileSheet.tsx` (remove sidebar, swap compensation prop)
+- `src/components/candidates/profile/ProfileQuickActionsCard.tsx` (verify primary button)
+- `src/components/ui/button.tsx` (ensure `primary` variant has cream foreground)
+- `src/components/candidates/profile/ProfileActionBar.tsx` (drop inline color overrides)
+- `src/lib/candidateHelpers.ts` (new `formatSalaryExpectation` helper)
