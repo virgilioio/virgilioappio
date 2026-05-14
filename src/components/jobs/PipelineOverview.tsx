@@ -691,11 +691,11 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
               {/* Render columns with candidate cards */}
               {stageOptions.map((opt) => (
                 <div key={opt.jhsId} className="w-[calc(100vw-3rem)] sm:w-72 flex-shrink-0 h-full flex flex-col snap-center sm:snap-align-none">
-                  <div className="px-2 pb-2 pt-1 shrink-0">
+                  <div className="px-1 pb-2 pt-1 shrink-0">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className={`h-2 w-2 rounded-full flex-shrink-0 ${getStageDotColor(opt.stage.stage_type)}`} aria-hidden />
-                        <span className="font-poppins text-[13px] font-semibold text-text-primary truncate" title={opt.stage.stage_name}>
+                        <span className="font-poppins text-[14px] font-semibold text-text-primary truncate" title={opt.stage.stage_name}>
                           {opt.stage.stage_name}
                         </span>
                         <span className="text-[12px] font-medium text-text-tertiary tabular-nums">
@@ -718,30 +718,22 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                         <button
                           type="button"
                           aria-label="Stage actions"
-                          className="h-6 w-6 inline-flex items-center justify-center rounded-md text-text-tertiary hover:bg-[#F1F0EC] hover:text-text-primary transition-colors"
+                          className="h-6 w-6 inline-flex items-center justify-center rounded-md text-text-tertiary hover:bg-[#F1F0EC] hover:text-text-primary transition-colors opacity-0 group-hover:opacity-100"
                         >
                           <span className="text-base leading-none">···</span>
                         </button>
                       </div>
                     </div>
                   </div>
-                  <div className="rounded-xl border border-virgilio-border bg-background p-2 flex-1 overflow-y-auto">
+                  <div className="flex-1 overflow-y-auto flex flex-col gap-2">
                     <DroppableStage id={opt.jhsId} isEmpty={!sortedByStage[opt.jhsId] || sortedByStage[opt.jhsId].length === 0} tintClass="">
-                      {isLoadingCandidates && (
-                        <div className="text-xs text-text-tertiary px-1 py-2">Loading candidates...</div>
-                      )}
-
                       {!isLoadingCandidates && (!sortedByStage[opt.jhsId] || sortedByStage[opt.jhsId].length === 0) && (
-                        <div className="text-xs text-text-tertiary px-1 py-2">
-                          No candidates in this stage
-                        </div>
+                        <div className="min-h-[120px] rounded-xl border border-dashed border-virgilio-border/60" />
                       )}
-
 
                       <div className="space-y-2">
                         {(sortedByStage[opt.jhsId] || []).map(assoc => {
                           const t = getTimeInfo(assoc)
-                          // Check if this card is part of a bulk drag (selected + another selected card is being dragged)
                           const isPartOfBulkDrag = activeId !== null && 
                             activeId !== assoc.id && 
                             selectedIds.has(assoc.id) && 
@@ -782,6 +774,12 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                         })}
                       </div>
                     </DroppableStage>
+                    <button
+                      type="button"
+                      className="w-full rounded-xl border border-dashed border-virgilio-border/60 px-3 py-2.5 text-[13px] text-text-tertiary hover:text-text-primary hover:border-virgilio-border transition-colors inline-flex items-center justify-center gap-1.5"
+                    >
+                      <span className="text-base leading-none">+</span> Add candidate
+                    </button>
                   </div>
                 </div>
               ))}
