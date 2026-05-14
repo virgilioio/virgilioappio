@@ -852,875 +852,402 @@ export default function JobDetail() {
         )}
 
         {!isMobile && (
-          <>
-            <div className="mb-2 animate-fade-in">
-              <PageHeader title={job.title} compact />
-              <JobHero
-                title={job.title}
-                status={job.status}
-                department={(job as any).organization_name || (job as any).organization?.name || (job as any).department || null}
-                location={job.location}
-                createdAt={job.created_at}
-                hiringTeam={(job.hiring_team as any[]) || []}
-                onShare={() => {}}
-                onViewPosting={() => {}}
-                onAddCandidate={() => setShowAddCandidate(true)}
-                onMoreActions={() => setShowEditJobModal(true)}
-                canEdit={!isRestrictedViewer}
-              />
-            </div>
-          </>
+          <div className="mb-2 animate-fade-in">
+            <JobHero
+              title={job.title}
+              status={job.status}
+              department={(job as any).organization_name || (job as any).organization?.name || (job as any).department || null}
+              location={job.location}
+              createdAt={job.created_at}
+              hiringTeam={(job.hiring_team as any[]) || []}
+              onShare={() => {}}
+              onViewPosting={() => {}}
+              onAddCandidate={() => setShowAddCandidate(true)}
+              onMoreActions={() => setShowEditJobModal(true)}
+              canEdit={!isRestrictedViewer}
+            />
+          </div>
         )}
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 min-h-0 flex flex-col overflow-hidden">
-          {isMobile ? (
-            // Mobile: Tabs
-            <>
-                <TabsList className={`grid w-full ${isRestrictedViewer ? 'grid-cols-2' : 'grid-cols-3'} mb-6`}>
-                  <TabsTrigger value="candidates">Job Dashboard</TabsTrigger>
-                  <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
-                  {!isRestrictedViewer && <TabsTrigger value="job-setup">Setup</TabsTrigger>}
-                </TabsList>
-              
-              
-              <TabsContent value="candidates" className="flex-1 min-h-0 overflow-auto data-[state=inactive]:hidden mt-0">
-                <JobAnalyticsDashboard 
-                  jobId={id!}
-                  candidates={allAssociatedCandidates.length ? allAssociatedCandidates : applicationReviewCandidates}
-                  jobCurrency={job.currency || 'USD'}
-                />
-              </TabsContent>
-              
-              {!isRestrictedViewer && (
-               <TabsContent value="job-setup" className="flex-1 min-h-0 overflow-auto data-[state=inactive]:hidden mt-0">
-                <JobSetupPanel
-                  jobId={id!}
-                  jobTitle={job.title}
-                  job={{
-                    ...job,
-                    hiring_team: (job.hiring_team as any[]) || []
-                  }}
-                  onEdit={handleEditJob}
-                  onArchive={handleArchiveJob}
-                />
-              </TabsContent>
-              )}
-               <TabsContent value="pipeline" className="flex-1 min-h-0 overflow-hidden data-[state=inactive]:hidden mt-0">
-                 <div className="flex h-full min-h-0 flex-col">
-                   {!isRestrictedViewer && (
-                   <Card className="mb-4 shrink-0">
-                      <CardHeader className="py-3">
-                         <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
-                           {/* Mobile: Dropdown selector */}
-                           <div className="md:hidden">
-                             <Select value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
-                               <SelectTrigger className="w-full h-12">
-                                 <SelectValue>
-                                   <span className="flex items-center gap-2">
-                                     {pipelineSectionTab === 'suggested' && <Sparkles className="h-4 w-4 text-blue-600" />}
-                                     <span className="font-medium">
-                                       {pipelineSectionTab === 'suggested' && 'Suggested'}
-                                       {pipelineSectionTab === 'application' && 'Application Review'}
-                                       {pipelineSectionTab === 'recruiting' && 'Recruiting Process'}
-                                       {pipelineSectionTab === 'offers' && 'Job Offers'}
-                                       {pipelineSectionTab === 'hired' && 'Hired Candidates'}
-                                       {pipelineSectionTab === 'rejected' && 'Rejected Candidates'}
-                                     </span>
-                                      <Badge variant="secondary" className="text-xs">
-                                        {statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : (
-                                          <>
-                                            {pipelineSectionTab === 'suggested' && suggestedCount}
-                                            {pipelineSectionTab === 'application' && applicationCount}
-                                            {pipelineSectionTab === 'recruiting' && recruitingCount}
-                                            {pipelineSectionTab === 'offers' && offerCount}
-                                            {pipelineSectionTab === 'hired' && hiredCount}
-                                            {pipelineSectionTab === 'rejected' && rejectedCount}
-                                          </>
-                                        )}
-                                      </Badge>
-                                   </span>
-                                 </SelectValue>
-                               </SelectTrigger>
-                               <SelectContent>
-                                 <SelectItem value="suggested" className="py-3">
-                                   <span className="flex items-center gap-2">
-                                     <Sparkles className="h-4 w-4 text-blue-600" />
-                                     <span>Suggested</span>
-                                     <Badge variant="secondary" className="text-xs">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : suggestedCount}</Badge>
-                                   </span>
-                                 </SelectItem>
-                                 <SelectItem value="application" className="py-3">
-                                   <span className="flex items-center gap-2">
-                                     <span>Application Review</span>
-                                     <Badge variant="pastel-purple" className="text-xs">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : applicationCount}</Badge>
-                                   </span>
-                                 </SelectItem>
-                                 <SelectItem value="recruiting" className="py-3">
-                                   <span className="flex items-center gap-2">
-                                     <span>Recruiting Process</span>
-                                     <Badge variant="pastel-yellow" className="text-xs">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : recruitingCount}</Badge>
-                                   </span>
-                                 </SelectItem>
-                                 <SelectItem value="offers" className="py-3">
-                                   <span className="flex items-center gap-2">
-                                     <span>Job Offers</span>
-                                     <Badge variant="pastel-blue" className="text-xs">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : offerCount}</Badge>
-                                   </span>
-                                 </SelectItem>
-                                 <SelectItem value="hired" className="py-3">
-                                   <span className="flex items-center gap-2">
-                                     <span>Hired Candidates</span>
-                                     <Badge variant="success" className="text-xs">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : hiredCount}</Badge>
-                                   </span>
-                                 </SelectItem>
-                                 <SelectItem value="rejected" className="py-3">
-                                   <span className="flex items-center gap-2">
-                                     <span>Rejected Candidates</span>
-                                     <Badge variant="destructive" className="text-xs">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : rejectedCount}</Badge>
-                                   </span>
-                                 </SelectItem>
-                               </SelectContent>
-                             </Select>
-                           </div>
-                           
-                           {/* Desktop: Grid tabs */}
-                           <TabsList className="hidden md:grid w-full h-14 p-2 gap-1 grid-cols-6">
-                             <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-text-primary data-[state=active]:from-blue-500 data-[state=active]:to-purple-500 data-[state=active]:text-white border border-blue-500/20 data-[state=active]:border-blue-500 data-[state=active]:shadow-[0_0_20px_rgba(59,130,246,0.5),0_0_40px_rgba(147,51,234,0.3)] data-[state=active]:animate-pulse" value="suggested">
-                               <span className="flex items-center gap-1 truncate">
-                                 <Sparkles className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
-                                 <span className="truncate">Suggested</span>
-                                  <Badge variant="secondary" className="text-xs flex-shrink-0">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : suggestedCount}</Badge>
-                               </span>
-                             </TabsTrigger>
-                             <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-pastel-purple/20 text-text-primary data-[state=active]:bg-pastel-purple" value="application">
-                               <span className="flex items-center gap-1 truncate">
-                                 <span className="truncate">Application Review</span>
-                                  <Badge variant="pastel-purple" className="text-xs flex-shrink-0">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : applicationCount}</Badge>
-                               </span>
-                             </TabsTrigger>
-                             <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-pastel-yellow/20 text-text-primary data-[state=active]:bg-pastel-yellow" value="recruiting">
-                               <span className="flex items-center gap-1 truncate">
-                                 <span className="text-text-primary truncate">Recruiting Process</span>
-                                  <Badge variant="pastel-yellow" className="text-xs flex-shrink-0">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : recruitingCount}</Badge>
-                               </span>
-                             </TabsTrigger>
-                             <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-pastel-blue/20 text-text-primary data-[state=active]:bg-pastel-blue" value="offers">
-                               <span className="flex items-center gap-1 truncate">
-                                 <span className="truncate">Job Offers</span>
-                                  <Badge variant="pastel-blue" className="text-xs flex-shrink-0">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : offerCount}</Badge>
-                               </span>
-                             </TabsTrigger>
-                             <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-success/20 text-text-primary data-[state=active]:bg-success" value="hired">
-                               <span className="flex items-center gap-1 truncate">
-                                 <span className="truncate">Hired Candidates</span>
-                                  <Badge variant="success" className="text-xs flex-shrink-0">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : hiredCount}</Badge>
-                               </span>
-                             </TabsTrigger>
-                             <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-destructive/20 text-text-primary data-[state=active]:bg-destructive" value="rejected">
-                               <span className="flex items-center gap-1 truncate">
-                                 <span className="truncate">Rejected Candidates</span>
-                                  <Badge variant="destructive" className="text-xs flex-shrink-0">{statusListsLoading ? <Skeleton className="h-3 w-4 inline-block" /> : rejectedCount}</Badge>
-                               </span>
-                             </TabsTrigger>
-                           </TabsList>
-                         </Tabs>
-                       </CardHeader>
-                     </Card>
-                   )}
-                    <Card className="w-full flex flex-col flex-1 min-h-[60dvh] sm:min-h-0 overflow-hidden">
-                    <CardHeader className="hidden sm:block sticky top-0 z-10 bg-surface-primary/80 backdrop-blur supports-[backdrop-filter]:bg-surface-primary/60 border-b border-border">
-                       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                         <div>
-                           <h1 className="text-xl font-semibold text-text-primary">Pipeline Overview</h1>
-                          <p className="text-sm text-text-secondary hidden md:block">Drag candidates across stages. Scroll horizontally to view more columns.</p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-between md:justify-end">
-                          {!selectionMode && (
-                            <>
-                              {pipelineSectionTab === 'application' && applicationCount > 0 && (
-                                <Button
-                                  size="sm"
-                                  variant="virgilio"
-                                  className="gap-sm h-[36px]"
-                                  onClick={() => setShowApplicationReview(true)}
-                                >
-                                  <ClipboardCheck className="h-4 w-4" />
-                                  Review Applications
-                                </Button>
-                              )}
-                              <Button
-                                size="sm"
-                                className="gap-sm h-[36px]"
-                                onClick={() => setShowAddCandidate(true)}
-                              >
-                                <UserPlus className="h-4 w-4" />
-                                Add Candidate
-                              </Button>
-                            </>
-                          )}
-                          {selectionMode && selectedCandidateIds.length > 0 && (
-                            <div className="flex items-center gap-2">
-                              <BulkMoveJobCandidatesToPipelineDialog
-                                jobId={id!}
-                                candidates={selectedCandidateIds.map(candidateId => ({ id: candidateId, candidate_name: '', location_country: null, location_state: null, location_city: null, salary_amount: null, salary_currency: null, salary_period: null, profile_summary: null, linkedin_url: null, skills: null }))}
-                                onCompleted={() => { 
-                                  setSelectedCandidateIds([])
-                                  setSelectionMode(false)
-                                  setPipelineRefresh((v) => v + 1)
-                                }}
-                              />
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="gap-2"
-                                onClick={() => setShowBulkEmailDialog(true)}
-                              >
-                                <Mail className="h-4 w-4" />
-                                Email
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                className="gap-2"
-                                onClick={async () => {
-                                  setSelectedCandidateIds([])
-                                  setSelectionMode(false)
-                                }}
-                              >
-                                <Archive className="h-4 w-4" />
-                                Archive
-                              </Button>
-                            </div>
-                          )}
-                          {pipelineSectionTab === 'recruiting' ? (
-                            <>
-                              {selectionMode && (
-                                <Button
-                                  size="sm"
-                                  variant="danger"
-                                  disabled={selectedCandidateIds.length === 0}
-                                  onClick={() => setShowBulkRejectionDialog(true)}
-                                >
-                                  Reject
-                                </Button>
-                              )}
-                              <Button
-                                size="sm"
-                                variant={selectionMode ? 'secondary' : 'outline'}
-                                onClick={() => setSelectionMode((v) => !v)}
-                                aria-pressed={selectionMode}
-                              >
-                                Select
-                              </Button>
-                                <TooltipProvider delayDuration={200}>
-                                  <ToggleGroup
-                                    type="single"
-                                    value={pipelineView}
-                                    onValueChange={(v) => v && setPipelineView(v as 'board' | 'list')}
-                                    size="sm"
-                                    variant="outline"
-                                    className="rounded-full border border-border/40 bg-surface-secondary/60 p-1"
-                                  >
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <ToggleGroupItem value="board" aria-label="Board view" className="rounded-full">
-                                          <LayoutGrid className="h-4 w-4" />
-                                        </ToggleGroupItem>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Board</TooltipContent>
-                                    </Tooltip>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <ToggleGroupItem value="list" aria-label="List view" className="rounded-full">
-                                          <List className="h-4 w-4" />
-                                        </ToggleGroupItem>
-                                      </TooltipTrigger>
-                                      <TooltipContent>List</TooltipContent>
-                                    </Tooltip>
-                                  </ToggleGroup>
-                                </TooltipProvider>
-                              </>
-                            ) : (
-                              <Button
-                                size="sm"
-                                variant={selectionMode ? 'secondary' : 'outline'}
-                                onClick={() => setSelectionMode((v) => !v)}
-                                aria-pressed={selectionMode}
-                              >
-                                Select
-                              </Button>
-                            )}
-                        </div>
-                          </div>
-                        </CardHeader>
-                      <CardContent className="p-0 flex-1 min-h-0">
-                        {pipelineSectionTab === 'recruiting' && pipelineView === 'board' ? (
-                          <>
-                            {/* Mobile: native scroll with snap */}
-                            <div className="h-full min-h-[52dvh] w-full overflow-y-auto sm:hidden p-layout-md pb-[calc(env(safe-area-inset-bottom,0px)+96px)]">
-                              <PipelineOverview
-                                jobId={id!}
-                                showHeader={false}
-                                viewMode={pipelineView}
-                                onViewModeChange={setPipelineView}
-                                selectionMode={selectionMode}
-                                onSelectionModeChange={setSelectionMode}
-                                onSelectedIdsChange={setSelectedCandidateIds}
-                                refreshToken={pipelineRefresh}
-                                onStageChanged={() => setPipelineRefresh((v) => v + 1)}
-                                onCandidateClick={openPipelineProfile}
-                              />
-                            </div>
-                            {/* Desktop: ScrollArea */}
-                            <ScrollArea className="h-full w-full scrollbar-black hidden sm:block">
-                              <div className="w-fit p-layout-md">
-                                <PipelineOverview
-                                  jobId={id!}
-                                  showHeader={false}
-                                  externalScroll
-                                  viewMode={pipelineView}
-                                  onViewModeChange={setPipelineView}
-                                  selectionMode={selectionMode}
-                                  onSelectionModeChange={setSelectionMode}
-                                  onSelectedIdsChange={setSelectedCandidateIds}
-                                  refreshToken={pipelineRefresh}
-                                  onStageChanged={() => setPipelineRefresh((v) => v + 1)}
-                                  onCandidateClick={openPipelineProfile}
-                                />
-                              </div>
-                            </ScrollArea>
-                          </>
-                        ) : (
-                          <ScrollArea className="h-full w-full scrollbar-black">
-                            {pipelineSectionTab === 'recruiting' ? (
-                              <div className="w-full p-layout-md">
-                                <PipelineOverview
-                                  jobId={id!}
-                                  showHeader={false}
-                                  externalScroll
-                                  viewMode={pipelineView}
-                                  onViewModeChange={setPipelineView}
-                                  selectionMode={selectionMode}
-                                  onSelectionModeChange={setSelectionMode}
-                                  onSelectedIdsChange={setSelectedCandidateIds}
-                                  refreshToken={pipelineRefresh}
-                                  onStageChanged={() => setPipelineRefresh((v) => v + 1)}
-                                  onCandidateClick={openPipelineProfile}
-                                />
-                              </div>
-                            ) : pipelineSectionTab === 'suggested' ? (
-                              <div className="w-full p-layout-md">
-                                <div className="space-y-4">
-                                  <div className="flex items-center gap-2">
-                                    <Sparkles className="h-4 w-4 text-primary" />
-                                    <span className="text-sm font-medium text-text-primary">
-                                      AI-Matched Candidates
-                                    </span>
-                                    {matchingCandidates && matchingCandidates.length > 0 && (
-                                      <Badge variant="secondary" className="text-xs">
-                                        {matchingCandidates.length} matches
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  {isLoadingMatches ? (
-                                    <div className="flex items-center justify-center py-12">
-                                      <SuggestedCandidatesLoader />
-                                    </div>
-                                  ) : matchingCandidates && matchingCandidates.length > 0 ? (
-                                    <CandidateTable
-                                      candidates={matchingCandidates as any}
-                                      isLoading={false}
-                                      onEdit={() => {}}
-                                      onDelete={() => {}}
-                                      markCandidateAsViewed={() => {}}
-                                      isCandidateNewForUser={() => false}
-                                      onRowClick={openSuggestedProfile}
-                                      hideActions={true}
-                                      showFitScore={true}
-                                      hideSkills={true}
-                                    />
-                                  ) : (
-                                    <GioEmptyState
-                                      title="No matching candidates found"
-                                      description="Try adjusting the job requirements or add more skills"
-                                    />
-                                  )}
-                                </div>
-                              </div>
-                            ) : pipelineSectionTab === 'application' ? (
-                              <div className="w-full p-layout-md">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                  <Card>
-                                    <CardHeader className="pb-2">
-                                      <div className="text-sm text-text-secondary">Active Candidates</div>
-                                      <div className="text-3xl font-semibold text-text-primary">{activeCount}</div>
-                                    </CardHeader>
-                                  </Card>
-                                  <Card>
-                                    <CardHeader className="pb-2">
-                                      <div className="text-sm text-text-secondary">Offers</div>
-                                      <div className="text-3xl font-semibold text-text-primary">{offerCount}</div>
-                                    </CardHeader>
-                                  </Card>
-                                  <Card>
-                                    <CardHeader className="pb-2">
-                                      <div className="text-sm text-text-secondary">Hired</div>
-                                      <div className="text-3xl font-semibold text-text-primary">{hiredCount}</div>
-                                    </CardHeader>
-                                  </Card>
-                                  <Card>
-                                    <CardHeader className="pb-2">
-                                      <div className="text-sm text-text-secondary">Rejected</div>
-                                      <div className="text-3xl font-semibold text-text-primary">{rejectedCount}</div>
-                                    </CardHeader>
-                                  </Card>
-                                </div>
-                              </div>
-                            ) : pipelineSectionTab === 'offers' ? (
-                              <div className="w-full p-layout-md">
-                                <CandidateTable
-                                  candidates={offersCandidates}
-                                  isLoading={statusListsLoading}
-                                  onEdit={handleEditCandidate}
-                                  onDelete={handleDeleteCandidate}
-                                  markCandidateAsViewed={() => {}}
-                                  isCandidateNewForUser={() => false}
-                                  onRowClick={openOffersProfile}
-                                  selectionMode={selectionMode}
-                                  onSelectionModeChange={setSelectionMode}
-                                  selectedIds={selectedCandidateIds}
-                                  onSelectedIdsChange={setSelectedCandidateIds}
-                                  hideSkills={true}
-                                />
-                              </div>
-                            ) : pipelineSectionTab === 'hired' ? (
-                              <div className="w-full p-layout-md">
-                                <CandidateTable
-                                  candidates={hiredCandidates}
-                                  isLoading={statusListsLoading}
-                                  onEdit={handleEditCandidate}
-                                  onDelete={handleDeleteCandidate}
-                                  markCandidateAsViewed={() => {}}
-                                  isCandidateNewForUser={() => false}
-                                  onRowClick={openHiredProfile}
-                                  selectionMode={selectionMode}
-                                  onSelectionModeChange={setSelectionMode}
-                                  selectedIds={selectedCandidateIds}
-                                  onSelectedIdsChange={setSelectedCandidateIds}
-                                  hideSkills={true}
-                                />
-                              </div>
-                            ) : (
-                              <div className="w-full p-layout-md">
-                                <CandidateTable
-                                  candidates={rejectedCandidates}
-                                  isLoading={statusListsLoading}
-                                  onEdit={handleEditCandidate}
-                                  onDelete={handleDeleteCandidate}
-                                  markCandidateAsViewed={() => {}}
-                                  isCandidateNewForUser={() => false}
-                                  onRowClick={openRejectedProfile}
-                                  selectionMode={selectionMode}
-                                  onSelectionModeChange={setSelectionMode}
-                                  selectedIds={selectedCandidateIds}
-                                  onSelectedIdsChange={setSelectedCandidateIds}
-                                  hideSkills={true}
-                                />
-                              </div>
-                            )}
-                          </ScrollArea>
-                        )}
-                      </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-            </>
-          ) : (
-            // Desktop: Floating sidebar at same level as content
-            <div className="flex gap-6 flex-1 min-h-0 min-w-0">
-              <JobDetailFloatingSidebar
-                currentTab={activeTab}
-                onTabChange={setActiveTab}
-                jobTitle={job.title}
-                isRestrictedViewer={isRestrictedViewer}
-                sourcingProjects={sourcingProjects}
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="w-full flex-1 min-h-0 flex flex-col overflow-hidden"
+        >
+          {/* Underlined top tabs — same on mobile and desktop */}
+          <TabsList className="h-auto bg-transparent p-0 border-b border-virgilio-border rounded-none w-full justify-start gap-6 mb-4 shrink-0">
+            <TabsTrigger
+              value="pipeline"
+              className="relative h-10 px-0 rounded-none bg-transparent shadow-none font-poppins font-medium text-[14px] tracking-[-0.005em] text-text-secondary hover:text-text-primary data-[state=active]:text-text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none after:absolute after:bottom-[-1px] after:left-0 after:right-0 after:h-[2px] after:bg-text-primary after:opacity-0 data-[state=active]:after:opacity-100"
+            >
+              Pipeline
+            </TabsTrigger>
+            {!isRestrictedViewer && (
+              <TabsTrigger
+                value="candidates"
+                className="relative h-10 px-0 rounded-none bg-transparent shadow-none font-poppins font-medium text-[14px] tracking-[-0.005em] text-text-secondary hover:text-text-primary data-[state=active]:text-text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none after:absolute after:bottom-[-1px] after:left-0 after:right-0 after:h-[2px] after:bg-text-primary after:opacity-0 data-[state=active]:after:opacity-100"
+              >
+                Job Dashboard
+              </TabsTrigger>
+            )}
+            {!isRestrictedViewer && (
+              <TabsTrigger
+                value="job-setup"
+                className="relative h-10 px-0 rounded-none bg-transparent shadow-none font-poppins font-medium text-[14px] tracking-[-0.005em] text-text-secondary hover:text-text-primary data-[state=active]:text-text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none after:absolute after:bottom-[-1px] after:left-0 after:right-0 after:h-[2px] after:bg-text-primary after:opacity-0 data-[state=active]:after:opacity-100"
+              >
+                Setup
+              </TabsTrigger>
+            )}
+          </TabsList>
+
+          {/* Job Dashboard */}
+          {!isRestrictedViewer && (
+            <TabsContent
+              value="candidates"
+              className="flex-1 min-h-0 overflow-auto data-[state=inactive]:hidden mt-0"
+            >
+              <JobAnalyticsDashboard
+                jobId={id!}
+                candidates={allAssociatedCandidates.length ? allAssociatedCandidates : applicationReviewCandidates}
+                jobCurrency={job.currency || 'USD'}
               />
-              
-              {/* Main content */}
-              <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-y-auto">
-                <TabsContent value="candidates">
-                  <JobAnalyticsDashboard 
-                    jobId={id!}
-                    candidates={allAssociatedCandidates.length ? allAssociatedCandidates : applicationReviewCandidates}
-                    jobCurrency={job.currency || 'USD'}
-                  />
-                </TabsContent>
-                
-                {/* All Candidates Tab */}
-                {!isRestrictedViewer && (
-                <TabsContent value="all-candidates">
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
-                      <div>
-                        <h2 className="text-2xl font-semibold">All Candidates</h2>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {allAssociatedCandidates.length} candidate{allAssociatedCandidates.length !== 1 ? 's' : ''} associated with this job
-                        </p>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <CandidateTable
-                        candidates={allAssociatedCandidates}
-                        isLoading={statusListsLoading}
-                        onRowClick={(candidateId) => openProfileInPlace(candidateId, 'pipeline', allAssociatedCandidates)}
-                        onEdit={() => {}}
-                        onDelete={() => {}}
-                        markCandidateAsViewed={markCandidateAsViewed}
-                        isCandidateNewForUser={isCandidateNewForUser}
-                        showJobInfo={false}
-                         hideActions={true}
-                         hideSkills={true}
-                       />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-                )}
+            </TabsContent>
+          )}
 
-                {/* Pipeline Tab */}
-                <TabsContent value="pipeline" className="flex-1 min-h-0 overflow-hidden">
-                  <div className="flex h-full min-h-0 flex-col">
-                    {!isRestrictedViewer && (
-                    <div className="mb-4 shrink-0">
-                      <PipelineSectionTabs
-                        value={pipelineSectionTab as PipelineSection}
-                        onChange={(v) => setPipelineSectionTab(v as any)}
-                        counts={{
-                          suggested: suggestedCount,
-                          application: applicationCount,
-                          recruiting: recruitingCount,
-                          offers: offerCount,
-                          hired: hiredCount,
-                          rejected: rejectedCount,
-                        }}
-                      />
+          {/* Setup */}
+          {!isRestrictedViewer && (
+            <TabsContent
+              value="job-setup"
+              className="flex-1 min-h-0 overflow-auto data-[state=inactive]:hidden mt-0"
+            >
+              <JobSetupLayout
+                jobId={id!}
+                jobTitle={job.title}
+                job={{
+                  ...job,
+                  hiring_team: (job.hiring_team as any[]) || []
+                }}
+                onEdit={handleEditJob}
+              />
+            </TabsContent>
+          )}
+
+          {/* Pipeline */}
+          <TabsContent
+            value="pipeline"
+            className="flex-1 min-h-0 overflow-hidden data-[state=inactive]:hidden mt-0"
+          >
+            <div className="flex h-full min-h-0 flex-col">
+              {!isRestrictedViewer && (
+                <div className="mb-4 shrink-0">
+                  <PipelineSectionTabs
+                    value={pipelineSectionTab as PipelineSection}
+                    onChange={(v) => setPipelineSectionTab(v as any)}
+                    counts={{
+                      suggested: suggestedCount,
+                      application: applicationCount,
+                      recruiting: recruitingCount,
+                      offers: offerCount,
+                      hired: hiredCount,
+                      rejected: rejectedCount,
+                    }}
+                  />
+                </div>
+              )}
+              <Card className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
+                <CardHeader className="hidden sm:block sticky top-0 z-10 bg-surface-primary/80 backdrop-blur supports-[backdrop-filter]:bg-surface-primary/60 border-b border-border">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h1 className="text-xl font-semibold text-text-primary">Pipeline Overview</h1>
+                      <p className="text-sm text-text-secondary">Drag candidates across stages. Scroll horizontally to view more columns.</p>
                     </div>
-                    )}
-                    <Card className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
-                      <CardHeader className="hidden sm:block sticky top-0 z-10 bg-surface-primary/80 backdrop-blur supports-[backdrop-filter]:bg-surface-primary/60 border-b border-border">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h1 className="text-xl font-semibold text-text-primary">Pipeline Overview</h1>
-                            <p className="text-sm text-text-secondary">Drag candidates across stages. Scroll horizontally to view more columns.</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {!selectionMode && (
-                              <>
-                                {pipelineSectionTab === 'application' && applicationCount > 0 && (
-                                  <Button
-                                    size="sm"
-                                    variant="virgilio"
-                                    className="gap-sm h-[36px]"
-                                    onClick={() => setShowApplicationReview(true)}
-                                  >
-                                    <ClipboardCheck className="h-4 w-4" />
-                                    Review Applications
-                                  </Button>
-                                )}
-                                <Button
-                                  size="sm"
-                                  className="gap-sm h-[36px]"
-                                  onClick={() => setShowAddCandidate(true)}
-                                >
-                                  <UserPlus className="h-4 w-4" />
-                                  Add Candidate
-                                </Button>
-                              </>
-                            )}
-                            {selectionMode && selectedCandidateIds.length > 0 && (
-                              <div className="flex items-center gap-2">
-                                <BulkMoveJobCandidatesToPipelineDialog
-                                  jobId={id!}
-                                  candidates={selectedCandidateIds.map(candidateId => ({ id: candidateId, candidate_name: '', location_country: null, location_state: null, location_city: null, salary_amount: null, salary_currency: null, salary_period: null, profile_summary: null, linkedin_url: null, skills: null }))}
-                                  onCompleted={() => { 
-                                    setSelectedCandidateIds([])
-                                    setSelectionMode(false)
-                                    setPipelineRefresh((v) => v + 1)
-                                  }}
-                                />
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="gap-2"
-                                  onClick={() => setShowBulkEmailDialog(true)}
-                                >
-                                  <Mail className="h-4 w-4" />
-                                  Email
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  className="gap-2"
-                                  onClick={async () => {
-                                    setSelectedCandidateIds([])
-                                    setSelectionMode(false)
-                                  }}
-                                >
-                                  <Archive className="h-4 w-4" />
-                                  Archive
-                                </Button>
+                    <div className="flex items-center gap-2">
+                      {!selectionMode && (
+                        <>
+                          {pipelineSectionTab === 'application' && applicationCount > 0 && (
+                            <Button
+                              size="sm"
+                              variant="virgilio"
+                              className="gap-sm h-[36px]"
+                              onClick={() => setShowApplicationReview(true)}
+                            >
+                              <ClipboardCheck className="h-4 w-4" />
+                              Review Applications
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            className="gap-sm h-[36px]"
+                            onClick={() => setShowAddCandidate(true)}
+                          >
+                            <UserPlus className="h-4 w-4" />
+                            Add Candidate
+                          </Button>
+                        </>
+                      )}
+                      {selectionMode && selectedCandidateIds.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <BulkMoveJobCandidatesToPipelineDialog
+                            jobId={id!}
+                            candidates={selectedCandidateIds.map(candidateId => ({ id: candidateId, candidate_name: '', location_country: null, location_state: null, location_city: null, salary_amount: null, salary_currency: null, salary_period: null, profile_summary: null, linkedin_url: null, skills: null }))}
+                            onCompleted={() => {
+                              setSelectedCandidateIds([])
+                              setSelectionMode(false)
+                              setPipelineRefresh((v) => v + 1)
+                            }}
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-2"
+                            onClick={() => setShowBulkEmailDialog(true)}
+                          >
+                            <Mail className="h-4 w-4" />
+                            Email
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-2"
+                            onClick={async () => {
+                              setSelectedCandidateIds([])
+                              setSelectionMode(false)
+                            }}
+                          >
+                            <Archive className="h-4 w-4" />
+                            Archive
+                          </Button>
+                        </div>
+                      )}
+                      {pipelineSectionTab === 'recruiting' ? (
+                        <>
+                          {selectionMode && (
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              disabled={selectedCandidateIds.length === 0}
+                              onClick={() => setShowBulkRejectionDialog(true)}
+                            >
+                              Reject
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant={selectionMode ? 'secondary' : 'outline'}
+                            onClick={() => setSelectionMode((v) => !v)}
+                            aria-pressed={selectionMode}
+                          >
+                            Select
+                          </Button>
+                          <TooltipProvider delayDuration={200}>
+                            <ToggleGroup
+                              type="single"
+                              value={pipelineView}
+                              onValueChange={(v) => v && setPipelineView(v as 'board' | 'list')}
+                              size="sm"
+                              variant="outline"
+                              className="rounded-full border border-border/40 bg-surface-secondary/60 p-1"
+                            >
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <ToggleGroupItem value="board" aria-label="Board view" className="rounded-full">
+                                    <LayoutGrid className="h-4 w-4" />
+                                  </ToggleGroupItem>
+                                </TooltipTrigger>
+                                <TooltipContent>Board</TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <ToggleGroupItem value="list" aria-label="List view" className="rounded-full">
+                                    <List className="h-4 w-4" />
+                                  </ToggleGroupItem>
+                                </TooltipTrigger>
+                                <TooltipContent>List</TooltipContent>
+                              </Tooltip>
+                            </ToggleGroup>
+                          </TooltipProvider>
+                        </>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant={selectionMode ? 'secondary' : 'outline'}
+                          onClick={() => setSelectionMode((v) => !v)}
+                          aria-pressed={selectionMode}
+                        >
+                          Select
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0 flex-1 min-h-0">
+                  {pipelineSectionTab === 'recruiting' && pipelineView === 'board' ? (
+                    <>
+                      <div className="h-full min-h-[52dvh] w-full overflow-y-auto sm:hidden p-layout-md pb-[calc(env(safe-area-inset-bottom,0px)+96px)]">
+                        <PipelineOverview
+                          jobId={id!}
+                          showHeader={false}
+                          viewMode={pipelineView}
+                          onViewModeChange={setPipelineView}
+                          selectionMode={selectionMode}
+                          onSelectionModeChange={setSelectionMode}
+                          onSelectedIdsChange={setSelectedCandidateIds}
+                          refreshToken={pipelineRefresh}
+                          onStageChanged={() => setPipelineRefresh((v) => v + 1)}
+                          onCandidateClick={openPipelineProfile}
+                        />
+                      </div>
+                      <ScrollArea className="h-full w-full scrollbar-black hidden sm:block">
+                        <div className="w-fit p-layout-md">
+                          <PipelineOverview
+                            jobId={id!}
+                            showHeader={false}
+                            externalScroll
+                            viewMode={pipelineView}
+                            onViewModeChange={setPipelineView}
+                            selectionMode={selectionMode}
+                            onSelectionModeChange={setSelectionMode}
+                            onSelectedIdsChange={setSelectedCandidateIds}
+                            refreshToken={pipelineRefresh}
+                            onStageChanged={() => setPipelineRefresh((v) => v + 1)}
+                            onCandidateClick={openPipelineProfile}
+                          />
+                        </div>
+                      </ScrollArea>
+                    </>
+                  ) : (
+                    <ScrollArea className="h-full w-full scrollbar-black">
+                      {pipelineSectionTab === 'recruiting' ? (
+                        <div className="w-full p-layout-md">
+                          <PipelineOverview
+                            jobId={id!}
+                            showHeader={false}
+                            externalScroll
+                            viewMode={pipelineView}
+                            onViewModeChange={setPipelineView}
+                            selectionMode={selectionMode}
+                            onSelectionModeChange={setSelectionMode}
+                            onSelectedIdsChange={setSelectedCandidateIds}
+                            refreshToken={pipelineRefresh}
+                            onStageChanged={() => setPipelineRefresh((v) => v + 1)}
+                            onCandidateClick={openPipelineProfile}
+                          />
+                        </div>
+                      ) : pipelineSectionTab === 'suggested' ? (
+                        <div className="w-full p-layout-md">
+                          <div className="space-y-4">
+                            <div className="flex items-center gap-2">
+                              <Sparkles className="h-4 w-4 text-primary" />
+                              <span className="text-sm font-medium text-text-primary">
+                                AI-Matched Candidates
+                              </span>
+                              {matchingCandidates && matchingCandidates.length > 0 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {matchingCandidates.length} matches
+                                </Badge>
+                              )}
+                            </div>
+                            {isLoadingMatches ? (
+                              <div className="flex items-center justify-center py-12">
+                                <SuggestedCandidatesLoader />
                               </div>
-                            )}
-                            {pipelineSectionTab === 'recruiting' ? (
-                              <>
-                                {selectionMode && (
-                                  <Button
-                                    size="sm"
-                                    variant="danger"
-                                    disabled={selectedCandidateIds.length === 0}
-                                    onClick={() => setShowBulkRejectionDialog(true)}
-                                  >
-                                    Reject
-                                  </Button>
-                                )}
-                                <Button
-                                  size="sm"
-                                  variant={selectionMode ? 'secondary' : 'outline'}
-                                  onClick={() => setSelectionMode((v) => !v)}
-                                  aria-pressed={selectionMode}
-                                >
-                                  Select
-                                </Button>
-                                <TooltipProvider delayDuration={200}>
-                                  <ToggleGroup
-                                    type="single"
-                                    value={pipelineView}
-                                    onValueChange={(v) => v && setPipelineView(v as 'board' | 'list')}
-                                    size="sm"
-                                    variant="outline"
-                                    className="rounded-full border border-border/40 bg-surface-secondary/60 p-1"
-                                  >
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <ToggleGroupItem value="board" aria-label="Board view" className="rounded-full">
-                                          <LayoutGrid className="h-4 w-4" />
-                                        </ToggleGroupItem>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Board</TooltipContent>
-                                    </Tooltip>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <ToggleGroupItem value="list" aria-label="List view" className="rounded-full">
-                                          <List className="h-4 w-4" />
-                                        </ToggleGroupItem>
-                                      </TooltipTrigger>
-                                      <TooltipContent>List</TooltipContent>
-                                    </Tooltip>
-                                  </ToggleGroup>
-                                </TooltipProvider>
-                              </>
+                            ) : matchingCandidates && matchingCandidates.length > 0 ? (
+                              <CandidateTable
+                                candidates={matchingCandidates as any}
+                                isLoading={false}
+                                onEdit={() => {}}
+                                onDelete={() => {}}
+                                markCandidateAsViewed={() => {}}
+                                isCandidateNewForUser={() => false}
+                                onRowClick={openSuggestedProfile}
+                                hideActions={true}
+                                showFitScore={true}
+                                hideSkills={true}
+                              />
                             ) : (
-                              <Button
-                                size="sm"
-                                variant={selectionMode ? 'secondary' : 'outline'}
-                                onClick={() => setSelectionMode((v) => !v)}
-                                aria-pressed={selectionMode}
-                              >
-                                Select
-                              </Button>
+                              <GioEmptyState
+                                title="No matching candidates found"
+                                description="Try adjusting the job requirements or add more skills"
+                              />
                             )}
                           </div>
                         </div>
-                      </CardHeader>
-                      <CardContent className="p-0 flex-1 min-h-0">
-                        {pipelineSectionTab === 'recruiting' && pipelineView === 'board' ? (
-                          <>
-                            {/* Mobile: native scroll with snap */}
-                            <div className="h-full min-h-[52dvh] w-full overflow-y-auto sm:hidden p-layout-md pb-[calc(env(safe-area-inset-bottom,0px)+96px)]">
-                              <PipelineOverview
-                                jobId={id!}
-                                showHeader={false}
-                                viewMode={pipelineView}
-                                onViewModeChange={setPipelineView}
-                                selectionMode={selectionMode}
-                                onSelectionModeChange={setSelectionMode}
-                                onSelectedIdsChange={setSelectedCandidateIds}
-                                refreshToken={pipelineRefresh}
-                                onStageChanged={() => setPipelineRefresh((v) => v + 1)}
-                                onCandidateClick={openPipelineProfile}
-                              />
-                            </div>
-                            {/* Desktop: ScrollArea */}
-                            <ScrollArea className="h-full w-full scrollbar-black hidden sm:block">
-                              <div className="w-fit p-layout-md">
-                                <PipelineOverview
-                                  jobId={id!}
-                                  showHeader={false}
-                                  externalScroll
-                                  viewMode={pipelineView}
-                                  onViewModeChange={setPipelineView}
-                                  selectionMode={selectionMode}
-                                  onSelectionModeChange={setSelectionMode}
-                                  onSelectedIdsChange={setSelectedCandidateIds}
-                                  refreshToken={pipelineRefresh}
-                                  onStageChanged={() => setPipelineRefresh((v) => v + 1)}
-                                  onCandidateClick={openPipelineProfile}
-                                />
-                              </div>
-                            </ScrollArea>
-                          </>
-                        ) : (
-                          <ScrollArea className="h-full w-full scrollbar-black">
-                            {pipelineSectionTab === 'recruiting' ? (
-                              <div className="w-full p-layout-md">
-                                <PipelineOverview
-                                  jobId={id!}
-                                  showHeader={false}
-                                  externalScroll
-                                  viewMode={pipelineView}
-                                  onViewModeChange={setPipelineView}
-                                  selectionMode={selectionMode}
-                                  onSelectionModeChange={setSelectionMode}
-                                  onSelectedIdsChange={setSelectedCandidateIds}
-                                  refreshToken={pipelineRefresh}
-                                  onStageChanged={() => setPipelineRefresh((v) => v + 1)}
-                                  onCandidateClick={openPipelineProfile}
-                                />
-                              </div>
-                            ) : pipelineSectionTab === 'suggested' ? (
-                              <div className="w-full p-layout-md">
-                                <div className="space-y-4">
-                                  <div className="flex items-center gap-2">
-                                    <Sparkles className="h-4 w-4 text-primary" />
-                                    <span className="text-sm font-medium text-text-primary">
-                                      AI-Matched Candidates
-                                    </span>
-                                    {matchingCandidates && matchingCandidates.length > 0 && (
-                                      <Badge variant="secondary" className="text-xs">
-                                        {matchingCandidates.length} matches
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  {isLoadingMatches ? (
-                                    <div className="flex items-center justify-center py-12">
-                                      <SuggestedCandidatesLoader />
-                                    </div>
-                                  ) : matchingCandidates && matchingCandidates.length > 0 ? (
-                                    <CandidateTable
-                                      candidates={matchingCandidates as any}
-                                      isLoading={false}
-                                      onEdit={() => {}}
-                                      onDelete={() => {}}
-                                      markCandidateAsViewed={() => {}}
-                                      isCandidateNewForUser={() => false}
-                                      onRowClick={openSuggestedProfile}
-                                      hideActions={true}
-                                      showFitScore={true}
-                                      hideSkills={true}
-                                    />
-                                  ) : (
-                                    <GioEmptyState
-                                      title="No matching candidates found"
-                                      description="Try adjusting the job requirements or add more skills"
-                                    />
-                                  )}
-                                </div>
-                              </div>
-                            ) : pipelineSectionTab === 'application' ? (
-                              <div className="w-full p-layout-md">
-                                <CandidateTable
-                                  candidates={applicationReviewCandidates}
-                                  isLoading={statusListsLoading}
-                                  onEdit={handleEditCandidate}
-                                  onDelete={handleDeleteCandidate}
-                                  markCandidateAsViewed={markCandidateAsViewed}
-                                  isCandidateNewForUser={isCandidateNewForUser}
-                                  onRowClick={(candidateId) => openProfileInPlace(candidateId, 'application', applicationReviewCandidates)}
-                                  selectionMode={selectionMode}
-                                  onSelectionModeChange={setSelectionMode}
-                                  selectedIds={selectedCandidateIds}
-                                  onSelectedIdsChange={setSelectedCandidateIds}
-                                  hideSkills={true}
-                                  showFitScore={true}
-                                />
-                              </div>
-                            ) : pipelineSectionTab === 'offers' ? (
-                              <div className="w-full p-layout-md">
-                                <CandidateTable
-                                  candidates={offersCandidates}
-                                  isLoading={statusListsLoading}
-                                  onEdit={handleEditCandidate}
-                                  onDelete={handleDeleteCandidate}
-                                  markCandidateAsViewed={() => {}}
-                                  isCandidateNewForUser={() => false}
-                                  onRowClick={openOffersProfile}
-                                  selectionMode={selectionMode}
-                                  onSelectionModeChange={setSelectionMode}
-                                  selectedIds={selectedCandidateIds}
-                                  onSelectedIdsChange={setSelectedCandidateIds}
-                                  hideSkills={true}
-                                />
-                              </div>
-                            ) : pipelineSectionTab === 'hired' ? (
-                              <div className="w-full p-layout-md">
-                                <CandidateTable
-                                  candidates={hiredCandidates}
-                                  isLoading={statusListsLoading}
-                                  onEdit={handleEditCandidate}
-                                  onDelete={handleDeleteCandidate}
-                                  markCandidateAsViewed={() => {}}
-                                  isCandidateNewForUser={() => false}
-                                  onRowClick={openHiredProfile}
-                                  selectionMode={selectionMode}
-                                  onSelectionModeChange={setSelectionMode}
-                                  selectedIds={selectedCandidateIds}
-                                  onSelectedIdsChange={setSelectedCandidateIds}
-                                  hideSkills={true}
-                                />
-                              </div>
-                            ) : (
-                              <div className="w-full p-layout-md">
-                                <CandidateTable
-                                  candidates={rejectedCandidates}
-                                  isLoading={statusListsLoading}
-                                  onEdit={handleEditCandidate}
-                                  onDelete={handleDeleteCandidate}
-                                  markCandidateAsViewed={() => {}}
-                                  isCandidateNewForUser={() => false}
-                                  onRowClick={openRejectedProfile}
-                                  selectionMode={selectionMode}
-                                  onSelectionModeChange={setSelectionMode}
-                                  selectedIds={selectedCandidateIds}
-                                  onSelectedIdsChange={setSelectedCandidateIds}
-                                  hideSkills={true}
-                                />
-                              </div>
-                            )}
-                          </ScrollArea>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </div>
-                </TabsContent>
-
-
-                {/* Job Setup Tab */}
-                {!isRestrictedViewer && (
-                <TabsContent value="job-setup">
-                    <JobSetupPanel
-                      jobId={id!}
-                      jobTitle={job.title}
-                      job={{
-                        ...job,
-                        hiring_team: (job.hiring_team as any[]) || []
-                      }}
-                      onEdit={handleEditJob}
-                      onArchive={handleArchiveJob}
-                    />
-                </TabsContent>
-                )}
-              </div>
+                      ) : pipelineSectionTab === 'application' ? (
+                        <div className="w-full p-layout-md">
+                          <CandidateTable
+                            candidates={applicationReviewCandidates}
+                            isLoading={statusListsLoading}
+                            onEdit={handleEditCandidate}
+                            onDelete={handleDeleteCandidate}
+                            markCandidateAsViewed={markCandidateAsViewed}
+                            isCandidateNewForUser={isCandidateNewForUser}
+                            onRowClick={(candidateId) => openProfileInPlace(candidateId, 'application', applicationReviewCandidates)}
+                            selectionMode={selectionMode}
+                            onSelectionModeChange={setSelectionMode}
+                            selectedIds={selectedCandidateIds}
+                            onSelectedIdsChange={setSelectedCandidateIds}
+                            hideSkills={true}
+                            showFitScore={true}
+                          />
+                        </div>
+                      ) : pipelineSectionTab === 'offers' ? (
+                        <div className="w-full p-layout-md">
+                          <CandidateTable
+                            candidates={offersCandidates}
+                            isLoading={statusListsLoading}
+                            onEdit={handleEditCandidate}
+                            onDelete={handleDeleteCandidate}
+                            markCandidateAsViewed={() => {}}
+                            isCandidateNewForUser={() => false}
+                            onRowClick={openOffersProfile}
+                            selectionMode={selectionMode}
+                            onSelectionModeChange={setSelectionMode}
+                            selectedIds={selectedCandidateIds}
+                            onSelectedIdsChange={setSelectedCandidateIds}
+                            hideSkills={true}
+                          />
+                        </div>
+                      ) : pipelineSectionTab === 'hired' ? (
+                        <div className="w-full p-layout-md">
+                          <CandidateTable
+                            candidates={hiredCandidates}
+                            isLoading={statusListsLoading}
+                            onEdit={handleEditCandidate}
+                            onDelete={handleDeleteCandidate}
+                            markCandidateAsViewed={() => {}}
+                            isCandidateNewForUser={() => false}
+                            onRowClick={openHiredProfile}
+                            selectionMode={selectionMode}
+                            onSelectionModeChange={setSelectionMode}
+                            selectedIds={selectedCandidateIds}
+                            onSelectedIdsChange={setSelectedCandidateIds}
+                            hideSkills={true}
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-full p-layout-md">
+                          <CandidateTable
+                            candidates={rejectedCandidates}
+                            isLoading={statusListsLoading}
+                            onEdit={handleEditCandidate}
+                            onDelete={handleDeleteCandidate}
+                            markCandidateAsViewed={() => {}}
+                            isCandidateNewForUser={() => false}
+                            onRowClick={openRejectedProfile}
+                            selectionMode={selectionMode}
+                            onSelectionModeChange={setSelectionMode}
+                            selectedIds={selectedCandidateIds}
+                            onSelectedIdsChange={setSelectedCandidateIds}
+                            hideSkills={true}
+                          />
+                        </div>
+                      )}
+                    </ScrollArea>
+                  )}
+                </CardContent>
+              </Card>
             </div>
-          )}
+          </TabsContent>
         </Tabs>
 
         {/* Edit Job Modal */}
