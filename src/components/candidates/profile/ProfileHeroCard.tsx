@@ -6,10 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { cn, ensureAbsoluteUrl } from '@/lib/utils'
 import { Link } from 'react-router-dom'
 
-function getInitials(name?: string | null) {
-  if (!name) return '?'
-  return name.trim().split(/\s+/).slice(0, 2).map(s => s[0]?.toUpperCase()).join('') || '?'
-}
+// (avatar removed — initials helper no longer needed)
 
 interface ProfileHeroCardProps {
   candidateName: string
@@ -66,44 +63,62 @@ export function ProfileHeroCard({
   nextStageLabel, onAdvance, onSchedule, onEmail, isRejected, isHired,
 }: ProfileHeroCardProps) {
   const applied = relativeTime(appliedAt)
-  const showPager = typeof index === 'number' && typeof total === 'number' && total > 0
+  
 
   return (
     <section className="bg-white border border-virgilio-border rounded-2xl shadow-sm px-6 pt-5">
-      {/* Top navigation strip: Back · Breadcrumb · Pager */}
+      {/* Top navigation strip: Back · Breadcrumb · Actions + Pager */}
       <div className="flex items-center justify-between gap-4 mb-4">
-        <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-3 min-w-0">
           {onClose && (
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex items-center gap-1.5 text-body-sm text-text-tertiary hover:text-text-secondary transition-colors"
+              className="inline-flex items-center gap-1.5 text-body-sm text-text-tertiary hover:text-text-secondary transition-colors shrink-0"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               Back to job
             </button>
           )}
+          <nav aria-label="breadcrumb" className="hidden md:flex items-center gap-1.5 text-body-sm text-text-tertiary min-w-0">
+            <span className="text-text-tertiary/60">·</span>
+            <Link to="/jobs" className="hover:text-text-secondary transition-colors">Jobs</Link>
+            {jobTitle && (
+              <>
+                <span className="text-text-tertiary/60">›</span>
+                <Link to={`/jobs/${jobId}`} className="hover:text-text-secondary transition-colors truncate max-w-[260px]">
+                  {jobTitle}
+                </Link>
+              </>
+            )}
+            <span className="text-text-tertiary/60">›</span>
+            <span className="text-text-secondary">Candidates</span>
+          </nav>
         </div>
 
-        <nav aria-label="breadcrumb" className="hidden md:flex items-center gap-1.5 text-body-sm text-text-tertiary min-w-0">
-          <Link to="/jobs" className="hover:text-text-secondary transition-colors">Jobs</Link>
-          {jobTitle && (
-            <>
-              <span className="text-text-tertiary/60">›</span>
-              <Link to={`/jobs/${jobId}`} className="hover:text-text-secondary transition-colors truncate max-w-[260px]">
-                {jobTitle}
-              </Link>
-            </>
+        <div className="flex items-center gap-2 shrink-0">
+          {typeof fitScore === 'number' && fitScore > 0 && (
+            <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 h-8 rounded-lg border border-virgilio-purple/20 bg-virgilio-purple/5">
+              <span className="text-[10px] font-poppins font-semibold tracking-[0.08em] text-virgilio-purple/70 uppercase">AI Fit</span>
+              <span className="font-poppins font-semibold text-virgilio-purple text-sm leading-none tabular-nums">
+                {Math.round(fitScore)}
+              </span>
+            </div>
           )}
-          <span className="text-text-tertiary/60">›</span>
-          <span className="text-text-secondary">Candidates</span>
-        </nav>
-
-        <div className="flex-1 flex items-center justify-end gap-2">
-          {showPager && (
-            <span className="text-body-sm font-poppins text-text-secondary tabular-nums">
-              {index} of {total}
-            </span>
+          {nextStageLabel && !isRejected && !isHired && onAdvance && (
+            <Button variant="primary" size="sm" iconRight={ArrowRight} onClick={onAdvance}>
+              Advance to {nextStageLabel}
+            </Button>
+          )}
+          {onSchedule && (
+            <Button variant="secondary" size="sm" icon={Calendar} onClick={onSchedule}>
+              Schedule
+            </Button>
+          )}
+          {onEmail && (
+            <Button variant="secondary" size="sm" icon={Mail} onClick={onEmail}>
+              Email
+            </Button>
           )}
           {(onNavigatePrev || onNavigateNext) && (
             <>
@@ -131,104 +146,69 @@ export function ProfileHeroCard({
       </div>
 
       {/* Identity row */}
-      <div className="flex items-center gap-4">
-        {/* Avatar */}
-        <div className="h-14 w-14 shrink-0 rounded-full bg-virgilio-purple text-white flex items-center justify-center font-poppins font-semibold text-xl tracking-[-0.04em]">
-          {getInitials(candidateName)}
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="font-poppins font-semibold tracking-[-0.04em] text-text-primary text-[28px] sm:text-[32px] leading-tight truncate">
+            {candidateName}
+            <span className="text-virgilio-purple">.</span>
+          </h1>
+          {onToggleFavorite && (
+            <button
+              type="button"
+              onClick={onToggleFavorite}
+              className="p-1 rounded-md hover:bg-muted transition-colors"
+              aria-label={isFavorite ? 'Remove from favorites' : 'Mark as favorite'}
+            >
+              <Heart className={cn('h-5 w-5', isFavorite ? 'fill-red-500 text-red-500' : 'text-text-tertiary hover:text-red-400')} />
+            </button>
+          )}
+          {currentStageName && (
+            <Badge tone="purple" size="sm" dot>{currentStageName}</Badge>
+          )}
+          {linkedinUrl && (
+            <button
+              type="button"
+              onClick={() => window.open(ensureAbsoluteUrl(linkedinUrl), '_blank')}
+              className="p-1 rounded-md hover:bg-muted transition-colors text-text-tertiary hover:text-text-secondary"
+              aria-label="Open LinkedIn profile"
+            >
+              <LinkedInFilled className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
-        {/* Identity block */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="font-poppins font-semibold tracking-[-0.04em] text-text-primary text-[28px] sm:text-[32px] leading-tight truncate">
-              {candidateName}
-              <span className="text-virgilio-purple">.</span>
-            </h1>
-            {onToggleFavorite && (
+        <div className="mt-1 flex items-center gap-1.5 flex-wrap text-body-sm text-text-secondary">
+          {jobTitle && (
+            <>
+              <span>Applying for</span>
+              <Link to={`/jobs/${jobId}`} className="text-text-primary font-medium hover:underline truncate max-w-[260px]">
+                {jobTitle}
+              </Link>
+            </>
+          )}
+          {source && (
+            <>
+              <span className="text-text-tertiary/60">·</span>
+              <span>Source: <span className="text-text-primary font-medium">{source}</span></span>
+            </>
+          )}
+          {applied && (
+            <>
+              <span className="text-text-tertiary/60">·</span>
+              <span>Applied {applied}</span>
+            </>
+          )}
+          {onOpenFullProfile && (
+            <>
+              <span className="text-text-tertiary/60">·</span>
               <button
                 type="button"
-                onClick={onToggleFavorite}
-                className="p-1 rounded-md hover:bg-muted transition-colors"
-                aria-label={isFavorite ? 'Remove from favorites' : 'Mark as favorite'}
+                onClick={onOpenFullProfile}
+                className="inline-flex items-center gap-1 text-text-secondary hover:text-text-primary transition-colors"
               >
-                <Heart className={cn('h-5 w-5', isFavorite ? 'fill-red-500 text-red-500' : 'text-text-tertiary hover:text-red-400')} />
+                <UserRound className="h-3.5 w-3.5" /> Full profile
               </button>
-            )}
-            {currentStageName && (
-              <Badge tone="purple" size="sm" dot>{currentStageName}</Badge>
-            )}
-            {linkedinUrl && (
-              <button
-                type="button"
-                onClick={() => window.open(ensureAbsoluteUrl(linkedinUrl), '_blank')}
-                className="p-1 rounded-md hover:bg-muted transition-colors text-text-tertiary hover:text-text-secondary"
-                aria-label="Open LinkedIn profile"
-              >
-                <LinkedInFilled className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-
-          <div className="mt-1 flex items-center gap-1.5 flex-wrap text-body-sm text-text-secondary">
-            {jobTitle && (
-              <>
-                <span>Applying for</span>
-                <Link to={`/jobs/${jobId}`} className="text-text-primary font-medium hover:underline truncate max-w-[260px]">
-                  {jobTitle}
-                </Link>
-              </>
-            )}
-            {source && (
-              <>
-                <span className="text-text-tertiary/60">·</span>
-                <span>Source: <span className="text-text-primary font-medium">{source}</span></span>
-              </>
-            )}
-            {applied && (
-              <>
-                <span className="text-text-tertiary/60">·</span>
-                <span>Applied {applied}</span>
-              </>
-            )}
-            {onOpenFullProfile && (
-              <>
-                <span className="text-text-tertiary/60">·</span>
-                <button
-                  type="button"
-                  onClick={onOpenFullProfile}
-                  className="inline-flex items-center gap-1 text-text-secondary hover:text-text-primary transition-colors"
-                >
-                  <UserRound className="h-3.5 w-3.5" /> Full profile
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Right cluster: AI Fit + primary actions */}
-        <div className="hidden sm:flex items-center gap-2 shrink-0">
-          {typeof fitScore === 'number' && fitScore > 0 && (
-            <div className="flex flex-col items-center justify-center px-4 py-2.5 rounded-xl border border-virgilio-purple/20 bg-virgilio-purple/5 min-w-[80px]">
-              <span className="text-[10px] font-poppins font-semibold tracking-[0.08em] text-virgilio-purple/70 uppercase">AI Fit</span>
-              <span className="font-poppins font-semibold text-virgilio-purple text-2xl leading-none mt-1 tabular-nums">
-                {Math.round(fitScore)}
-              </span>
-            </div>
-          )}
-          {nextStageLabel && !isRejected && !isHired && onAdvance && (
-            <Button variant="primary" size="md" iconRight={ArrowRight} onClick={onAdvance}>
-              Advance to {nextStageLabel}
-            </Button>
-          )}
-          {onSchedule && (
-            <Button variant="secondary" size="md" icon={Calendar} onClick={onSchedule}>
-              Schedule
-            </Button>
-          )}
-          {onEmail && (
-            <Button variant="secondary" size="md" icon={Mail} onClick={onEmail}>
-              Email
-            </Button>
+            </>
           )}
         </div>
       </div>
