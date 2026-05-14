@@ -18,11 +18,9 @@ import { PipelineSectionTabs, type PipelineSection } from '@/components/jobs/Pip
 
 import { CandidateTable } from '@/components/candidates/CandidateTable'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
-import { JobAssignmentsPanel } from '@/components/jobs/JobAssignmentsPanel'
 
 import { JobFormSheet } from '@/components/jobs/JobFormSheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ArrowLeft, Archive, LayoutGrid, List, UserPlus, Sparkles, Mail, ClipboardCheck } from 'lucide-react'
