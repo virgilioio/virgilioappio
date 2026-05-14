@@ -1,4 +1,4 @@
-import { ArrowRight, ClipboardCheck, Calendar, Mail, FileText, ThumbsDown, MoreHorizontal, Edit, Download, RotateCcw, Check as CheckIcon } from 'lucide-react'
+import { ArrowRight, ClipboardCheck, Calendar, Mail, FileText, ThumbsDown, MoreHorizontal, Edit, Download, RotateCcw, Check as CheckIcon, ArrowRightLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 
