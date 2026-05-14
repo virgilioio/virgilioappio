@@ -1,83 +1,70 @@
-## Adopt Gio Foundation §5 — Dropdowns
+## Audit findings
 
-Codify the dropdown spec from the screenshot as a new section of `docs/style-guide.md`, retrofit our shared primitives to match it, and remove dead legacy code. **Public APIs of every primitive stay the same** — every existing call site (`<Select>`, `<DropdownMenu>`, `<Popover>`, `<SearchableSelect>`, `<DatePickerVirgilio>`, `<CurrencySelect>`, `<FilterChipPopover>`, etc.) keeps working untouched. We retrofit the chrome inside.
+The previous pass updated the *foundation* (`Select`, `DropdownMenu`, `Popover`, `Command`, `FilterChipPopover`, `DatePickerVirgilio`) but several surfaces still ship legacy chrome and bypass the new tokens.
 
-### 1. Add §5 Dropdowns to `docs/style-guide.md`
+### Surfaces that still violate §5
 
-New section after §4 Tables. Spec captured from the screenshot:
+**Bespoke popover panels** (custom paddings/widths/typography, ignore `menuPanel`/`menuItem`):
+- `src/components/layout/GlobalCreateButton.tsx` — `DropdownMenuContent w-56` with custom oversized rows + own group label styling
+- `src/components/layout/Header.tsx` — avatar menu + secondary action menu, `shadow-calendly border-virgilio-border` legacy classes, custom item heights
+- `src/components/layout/NotificationCenter.tsx` — fully custom `PopoverContent w-[440px]` (legacy shadow, header/divider styles, sticky group label using old token names)
+- `src/components/layout/MobileBottomNav.tsx` — `shadow-calendly` legacy class
+- `src/components/jobs/JobsTable.tsx` — row action menu with hand-rolled item classes
+- `src/components/ui/searchable-select.tsx` — uses `Popover` + `cmdk`, but item classes are inline, no `menuItem`
+- `src/components/ui/filter-chip-select.tsx` — own item layout, no chrome tokens
+- `src/components/ui/currency-select.tsx` — bespoke item rendering
+- `src/components/ui/month-picker.tsx` — old border/typography
+- `src/components/ui/split-button.tsx` — verify uses tokens
 
-**Three rules**
-1. **Match width to content, not container.** Single-select matches trigger width. Action menus = longest label + 24px. Command palette 540–640px.
-2. **One density: 30px row · 12.5px label.** Headings (10px uppercase) and dividers thin the visual weight — they don't shrink rows.
-3. **Search appears at 7+ items.** <7: plain list. 7–50: search header. 50+: full combobox with virtualization.
+**Calendar / date pickers** (still on legacy `react-day-picker` styling, do not match §5 date-picker spec):
+- `src/components/ui/calendar.tsx` — base shadcn calendar, uses `text-muted-foreground`, `bg-accent`, 36px cells, no Today/Tomorrow/Next-week row, no purple-30 ring on today
+- Direct `<Calendar>` consumers that should either adopt the restyled calendar or migrate to `DatePickerVirgilio`:
+  - `src/components/analytics/AnalyticsTimeFilter.tsx`
+  - `src/components/candidates/BulkEmailDialog.tsx` (schedule-send date)
+  - `src/components/candidates/CandidateFiltersPanel.tsx` (two date range fields)
+- `src/components/ui/datetime-picker-virgilio.tsx` — already composes the new picker, just confirm visuals after calendar restyle
 
-**Anatomy** — one panel chrome reused across all six types: radius 12 · pad 4 · shadow `12px 32px -8px rgb(0 0 0 / 0.18)` · group label 10px Inter caps `#8B8F9E` · hover `#F1F0EC` · selected `#EDE4FF` · danger items always last after a divider · kbd hints right-aligned.
+**Filters on the Jobs page**: `src/components/jobs/JobsTable.tsx` toolbar + the underlying `<FilterChipPopover>`/`<FilterChipSelect>`/`<SearchableSelect>` — covered once the three primitives above are normalized.
 
-**Six types** — pick the simplest that fits:
+## What I'll change
 
-| Type | When | Notes |
-|---|---|---|
-| Single-select dropdown | Status, role, owner, country | Width matches trigger · `<Select>` |
-| Multi-select with checkboxes | Filter rows by multiple values | Footer with selection count + Clear + Apply · `<FilterChipPopover>` |
-| Combobox (search-in) | Pick from large set — candidates, jobs | Search header always · async loading · empty/loading states · `<SearchableSelect>` |
-| Action menu (⋯) | Row actions, more menus | Anchored to icon button · destructive last after divider · `<DropdownMenu>` |
-| Command palette (⌘K) | Jump-anywhere | Full-bleed search · grouped sections · kbd hints · live counts · 540–640px · `<Command>` |
-| Date picker | Date input | Quick-pick row (Today / Tomorrow / Next week) + 7-col month grid · `<DatePickerVirgilio>` |
+### 1. Restyle the shared `Calendar` primitive (`src/components/ui/calendar.tsx`)
+Bring it in line with `DatePickerVirgilio`'s grid so every consumer of shadcn `<Calendar>` automatically follows §5:
+- 32px day cells, radius 8, Inter 12.5px
+- `day_selected` → `bg-virgilio-purple text-white`
+- `day_today` (unselected) → `ring-1 ring-virgilio-purple/30`
+- `head_cell` → `text-menu-group uppercase text-[hsl(var(--menu-group-color))]`
+- Hover → `bg-[hsl(var(--menu-hover))]`
+- Disabled → `opacity-45`
+- Focus ring → `ring-virgilio-purple/30`
+This fixes AnalyticsTimeFilter, BulkEmailDialog, CandidateFiltersPanel without touching them.
 
-**Item states** — five fills, same row height: Default · Hovered (`#F1F0EC`) · Selected single (`#EDE4FF` + check) · Disabled (45% opacity) · Danger (red text). Variants: with sub-text (two-line), with badge (right-aligned count chip), with kbd (right-aligned mono shortcut).
+### 2. Normalize bespoke menu surfaces to use shared tokens
+In each file below, replace inline classes with `menuPanel` chrome (already applied automatically via the updated `DropdownMenuContent`/`PopoverContent`) and swap legacy `shadow-calendly border-virgilio-border w-…` props for sizing only:
+- `GlobalCreateButton.tsx` — items use `menuItem`, group label uses `menuGroupLabel`, separator via `<DropdownMenuSeparator>`, danger-style only when applicable
+- `Header.tsx` — avatar + secondary menus: drop `shadow-calendly border-virgilio-border`, remove custom item paddings, sign-out becomes last item after separator with destructive tone
+- `NotificationCenter.tsx` — rebuild panel to spec: 4px pad container retained but inner header uses §5 hairline (`menuSeparator`), group labels use `menuGroupLabel` tokens, drop legacy `shadow-calendly`, swap `bg-virgilio-purple/10` row hover for `bg-[hsl(var(--menu-hover))]`, badge uses lilac selection token; keep 440px width per spec exception (notification panel is wider than menu)
+- `MobileBottomNav.tsx` — drop `shadow-calendly border-virgilio-border`
+- `JobsTable.tsx` — items use `menuItem`; danger row last after `<DropdownMenuSeparator>`
 
-**Anchoring** — `bottom-start` is default. Flip to `top-start` on clip. Action menus use `bottom-end` + 8px offset so the menu doesn't cover the row.
+### 3. Normalize remaining UI primitives
+- `searchable-select.tsx` — `CommandItem` already gets `menuItem` from updated `command.tsx`; remove inline overrides; ensure `PopoverContent` has no extra padding (it inherits new chrome)
+- `filter-chip-select.tsx` — `DropdownMenuItem` inherits `menuItem`; remove custom inline classes; check icon goes right
+- `currency-select.tsx` — same treatment, items via `menuItem`
+- `month-picker.tsx` — remove `border-t pt-3` legacy divider, use `menuSeparator`; quick-pick row matches DatePickerVirgilio's quick-pick row
 
-**Tokens** to add in `index.css`:
-```css
---menu-radius: 12px;
---menu-pad: 4px;
---menu-shadow: 0 12px 32px -8px rgb(0 0 0 / 0.18);
---menu-item-h: 30px;
---menu-item-text: 12.5px;
---menu-group-label: 10px;
---menu-group-color: #8B8F9E;
---menu-hover:    40 14% 93%;     /* #F1F0EC */
---menu-selected: 264 73% 95%;    /* #EDE4FF */
-```
+### 4. Documentation + memory
+- Update `docs/style-guide.md` §5 with a note that the shadcn `<Calendar>` primitive itself now follows the date-picker spec
+- Update `mem://style/dropdowns/foundation-v1` to mention Calendar primitive coverage
 
-Typography utilities to add in `tailwind.config.ts`: `text-menu-item` (12.5/Inter/400), `text-menu-group` (10/Inter/500/+0.08em/uppercase), `text-menu-kbd` (11/Mono).
-
-### 2. Retrofit primitives — chrome only, APIs untouched
-
-Files edited under `src/components/ui/`:
-
-- **`select.tsx`** — `SelectContent` adopts `--menu-radius`, `--menu-shadow`, `p-1`. `SelectItem` → 30px h, 12.5px text, hover/selected use new tokens. `SelectLabel` → uppercase 10px caps `#8B8F9E`.
-- **`dropdown-menu.tsx`** — same chrome on `DropdownMenuContent` / `Sub`. `DropdownMenuItem` → 30px/12.5px. `DropdownMenuShortcut` already right-aligns; restyle to `text-menu-kbd`. New optional `inset` for danger via the existing destructive className.
-- **`popover.tsx`** — only chrome (radius 12 · shadow · pad 4) so menus opened in popovers (filter pills, date picker) match.
-- **`command.tsx`** — `CommandInput` becomes the full-bleed search header; min-w 540 / max-w 640 on the wrapper; `CommandGroup` heading uses `text-menu-group`; items 30px/12.5px; right-aligned kbd hint slot.
-- **`searchable-select.tsx`** — combobox shell (search header always, empty + loading states already exist) restyled to the same chrome.
-- **`multi-select.tsx`** — **delete file** (0 callers). `<FilterChipPopover>` already implements the checkbox + Clear/Apply footer per spec.
-- **`filter-chip-popover.tsx`** — checkbox row 30px, label 12.5px, footer height fixed, Clear = `variant="ghost"`, Apply = `variant="primary"` `size="sm"`.
-- **`filter-chip-select.tsx`** — share chrome with `select.tsx`.
-- **`date-picker-virgilio.tsx`** — confirm Today/Tomorrow/Next week pills sit above the 7-col grid in the new chrome; selected day uses `--menu-selected`. Apply button uses primary `size="sm"`. No date-logic changes.
-- **`datetime-picker-virgilio.tsx`** — same chrome only.
-- **`currency-select.tsx`** — re-skin via the new combobox chrome.
-
-Refactor approach: extract a `menuPanel` and `menuItem` className constant in `src/lib/utils.ts` (or a new `src/lib/menu-classes.ts`) so all 10 primitives stay in lockstep — single source of truth in one place.
-
-### 3. Delete dead legacy
-
-- `src/components/ui/multi-select.tsx` (0 imports — confirmed via project grep).
-- Inline call-site overrides for menu chrome that hard-code `rounded-md`, `shadow-lg`, `bg-popover`, etc. — search and remove only the ones that fight the new tokens. Surface-level audit, not a refactor of business logic.
-
-### 4. Out of scope (don't touch)
-
-- Public APIs / props of any primitive.
-- Call-site logic — every `<Select>`, `<DropdownMenu>`, `<DatePickerVirgilio>` etc. keeps its existing data and handlers.
-- Page-specific menus (PipelineSectionTabs, ProfileStageStrip, sidebar) — they're tab strips, not dropdowns.
-- New component types beyond the six the spec defines.
+### Out of scope
+- Public-facing booking calendar visuals (`PublicBookingPage`) — has its own brand canvas
+- Rich-text editor floating toolbars (`rich-text-editor.tsx`) — different system (toolbar, not a menu)
+- Phone-input country popover beyond inheriting the new chrome
+- No API/prop changes on any component
 
 ### Verification
+- Open Jobs page → click `+` create button, header avatar, notification bell, jobs row `⋯`, candidate filters date range, analytics time filter, bulk-email schedule date — all should render identical chrome (radius 12, 4px pad, soft shadow, 30px rows, hover #F1F0EC, lilac selected) and the calendar grid should match the DatePickerVirgilio look.
+- Settings → Style Guide → Dropdowns panel still renders without overrides.
 
-After edits: visual check on (a) Settings → Style Guide (add a new `<DropdownsGuide>` panel under `StyleGuide.tsx` mirroring the screenshot — Anatomy, the six Types, Item states, Anchoring), (b) Jobs page filters (`<FilterChipPopover>`), (c) any candidate row `⋯` action menu (`<DropdownMenu>`), (d) Find page autocomplete (`<SearchableSelect>`), (e) interview scheduler date input (`<DatePickerVirgilio>`).
-
-### Memory updates after merge
-
-- New core line: "Dropdowns: one chrome — radius 12 · pad 4 · shadow 12/32/-8 · 30h items · 12.5px label · hover #F1F0EC · selected #EDE4FF · danger last. Six types — single-select, multi-select+Apply, combobox, action menu, command palette, date picker. Spec: `docs/style-guide.md` §5."
-- Add memory: `mem://style/dropdowns/foundation-v1` describing the six types and the menu tokens.
+Ready to implement on approval.
