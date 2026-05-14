@@ -63,7 +63,7 @@ export function ProfileHeroCard({
   nextStageLabel, onAdvance, onSchedule, onEmail, isRejected, isHired,
 }: ProfileHeroCardProps) {
   const applied = relativeTime(appliedAt)
-  const showPager = typeof index === 'number' && typeof total === 'number' && total > 0
+  
 
   return (
     <section className="bg-white border border-virgilio-border rounded-2xl shadow-sm px-6 pt-5">
