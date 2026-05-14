@@ -71,15 +71,15 @@ export function ProfileHeroCard({
   return (
     <section className="bg-white border border-virgilio-border rounded-2xl shadow-sm px-5 sm:px-6 pt-5">
       {/* Top navigation strip: Back · Breadcrumb · Pager */}
-      <div className="flex items-center justify-between gap-4 pb-3 mb-4 border-b border-virgilio-border">
+      <div className="flex items-center justify-between gap-4 mb-4">
         <div className="flex-1 min-w-0">
           {onClose && (
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary font-poppins text-[13px] tracking-[-0.005em] transition-colors"
+              className="inline-flex items-center gap-1.5 text-body-sm text-text-tertiary hover:text-text-secondary transition-colors"
             >
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="h-3.5 w-3.5" />
               Back to job
             </button>
           )}
