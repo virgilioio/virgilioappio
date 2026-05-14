@@ -9,6 +9,7 @@ import { useCandidates } from '@/hooks/useCandidates'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { useJobs } from '@/hooks/useJobs'
 import { useJobSourcingProject } from '@/hooks/useJobSourcingProject'
+import { useJobPostings } from '@/hooks/useJobPostings'
 import { JobSetupLayout } from '@/components/jobs/JobSetupLayout'
 
 import { JobDetailMobileHeader } from '@/components/jobs/JobDetailMobileHeader'
@@ -345,6 +346,8 @@ export default function JobDetail() {
 
   // Sourcing project shortcut
   const { projects: sourcingProjects } = useJobSourcingProject(id)
+  const { postings: jobPostings } = useJobPostings(id!)
+  const hasJobPosting = (jobPostings || []).some((p) => p.is_active) || (jobPostings || []).length > 0
 
   // Candidates hook with new functions
   const {
@@ -880,6 +883,7 @@ export default function JobDetail() {
                   hiringTeam={(job.hiring_team as any[]) || []}
                   onShare={() => {}}
                   onViewPosting={() => {}}
+                  hasPosting={hasJobPosting}
                   onAddCandidate={() => setShowAddCandidate(true)}
                   onMoreActions={() => setShowEditJobModal(true)}
                   canEdit={!isRestrictedViewer}

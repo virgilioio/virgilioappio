@@ -23,6 +23,7 @@ interface JobHeroProps {
   hiringTeam?: HiringTeamMember[]
   onShare?: () => void
   onViewPosting?: () => void
+  hasPosting?: boolean
   onAddCandidate?: () => void
   onMoreActions?: () => void
   canEdit?: boolean
@@ -77,6 +78,7 @@ export function JobHero({
   hiringTeam = [],
   onShare,
   onViewPosting,
+  hasPosting = true,
   onAddCandidate,
   onMoreActions,
   canEdit = true,
@@ -137,7 +139,14 @@ export function JobHero({
             </Button>
           )}
           {onViewPosting && (
-            <Button variant="secondary" size="md" icon={ExternalLink} onClick={onViewPosting}>
+            <Button
+              variant="secondary"
+              size="md"
+              icon={ExternalLink}
+              onClick={onViewPosting}
+              disabled={!hasPosting}
+              title={hasPosting ? undefined : 'Publish a job posting to view it'}
+            >
               View posting
             </Button>
           )}
