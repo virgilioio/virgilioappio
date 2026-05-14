@@ -895,7 +895,6 @@ export default function JobDetail() {
             )
           })()}
 
-          </TabsList>
 
           {/* Job Dashboard */}
           {!isRestrictedViewer && (
