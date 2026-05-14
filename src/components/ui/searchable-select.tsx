@@ -79,7 +79,7 @@ export function SearchableSelect({
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-full p-0" align="start">
+        <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[220px] p-[var(--menu-pad)]" align="start">
           <Command>
             <CommandInput placeholder={searchPlaceholder} />
             <CommandList className="max-h-[300px] overflow-y-auto">
@@ -91,10 +91,10 @@ export function SearchableSelect({
                         setOpen(false)
                         onCreateNew()
                       }}
-                      className="text-primary cursor-pointer"
+                      className="text-virgilio-purple"
                     >
-                      <Plus className="mr-2 h-4 w-4" />
-                      {createNewLabel}
+                      <Plus className="h-3.5 w-3.5" />
+                      <span>{createNewLabel}</span>
                     </CommandItem>
                   </CommandGroup>
                   <CommandSeparator />
@@ -111,21 +111,17 @@ export function SearchableSelect({
                       onValueChange(selectedValue === value ? "" : selectedValue)
                       setOpen(false)
                     }}
+                    data-state={value === option.value ? "checked" : undefined}
                   >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        value === option.value ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                    <div className="flex items-center justify-between w-full">
-                      <span>{option.label}</span>
-                      {option.badge && (
-                        <Badge variant={option.badgeVariant || 'secondary'} className="ml-2 text-xs">
-                          {option.badge}
-                        </Badge>
-                      )}
-                    </div>
+                    <span className="flex-1 truncate">{option.label}</span>
+                    {option.badge && (
+                      <Badge variant={option.badgeVariant || 'secondary'} className="text-[10px]">
+                        {option.badge}
+                      </Badge>
+                    )}
+                    {value === option.value && (
+                      <Check className="h-3.5 w-3.5 text-virgilio-purple" />
+                    )}
                   </CommandItem>
                 ))}
               </CommandGroup>

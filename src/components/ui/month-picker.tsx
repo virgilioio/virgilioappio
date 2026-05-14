@@ -50,66 +50,72 @@ export function MonthPicker({ selected, onSelect, placeholder = "Select month", 
           {selected ? format(selected, "MMM yyyy") : placeholder}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <div className="p-3">
-          {/* Year navigation */}
-          <div className="flex items-center justify-between mb-4">
+      <PopoverContent className="w-auto p-3" align="start">
+        {/* Quick presets — match DatePickerVirgilio */}
+        <div className="flex gap-1 mb-3">
+          {presets.map((preset) => (
             <Button
-              variant="outline"
-              size="icon"
-              className="h-7 w-7"
+              key={preset.label}
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2.5 text-[12.5px]"
+              onClick={() => onSelect(preset.getValue())}
+            >
+              {preset.label}
+            </Button>
+          ))}
+        </div>
+
+        {/* Year navigation */}
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-h4 text-virgilio-text">{format(currentMonth, 'yyyy')}</h3>
+          <div className="flex gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 rounded-lg"
               onClick={() => navigateMonth('prev')}
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-4 w-4 text-virgilio-text" />
             </Button>
-            <div className="font-semibold">
-              {format(currentMonth, "yyyy")}
-            </div>
             <Button
-              variant="outline"
-              size="icon"
-              className="h-7 w-7"
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 rounded-lg"
               onClick={() => navigateMonth('next')}
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-4 w-4 text-virgilio-text" />
             </Button>
           </div>
+        </div>
 
-          {/* Month grid */}
-          <div className="grid grid-cols-3 gap-2 mb-4">
-            {months.map((month, index) => {
-              const isSelected = selected && 
-                selected.getMonth() === index && 
-                selected.getFullYear() === currentMonth.getFullYear()
-              
-              return (
-                <Button
-                  key={month}
-                  variant={isSelected ? "default" : "outline"}
-                  size="sm"
-                  className="h-8"
-                  onClick={() => selectMonth(index)}
-                >
-                  {month}
-                </Button>
-              )
-            })}
-          </div>
-
-          {/* Presets */}
-          <div className="space-y-1 border-t pt-3">
-            {presets.map((preset) => (
-              <Button
-                key={preset.label}
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start h-8"
-                onClick={() => onSelect(preset.getValue())}
+        {/* Month grid */}
+        <div className="grid grid-cols-3 gap-1">
+          {months.map((month, index) => {
+            const isSelected =
+              selected &&
+              selected.getMonth() === index &&
+              selected.getFullYear() === currentMonth.getFullYear()
+            return (
+              <button
+                key={month}
+                type="button"
+                onClick={() => selectMonth(index)}
+                className={cn(
+                  'h-8 w-16 rounded-lg text-[12.5px] font-medium transition-colors duration-150',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/30',
+                  isSelected
+                    ? 'bg-virgilio-purple text-white'
+                    : 'text-virgilio-text hover:bg-[hsl(var(--menu-hover))]'
+                )}
               >
-                {preset.label}
-              </Button>
-            ))}
-          </div>
+                {month}
+              </button>
+            )
+          })}
         </div>
       </PopoverContent>
     </Popover>
