@@ -8,6 +8,9 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton, TableSkeleton } from '@/components/ui/skeleton'
 import { GioEmptyState } from '@/components/ui/GioEmptyState'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { IdentityCell, NumericCell, ActionCell } from '@/components/ui/table-cells'
+import { TableEmpty } from '@/components/ui/table-states'
+import { TableFooterSummary } from '@/components/ui/table-pagination'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Trash2, UserPlus, MapPin, DollarSign, FileText, Search, ChevronLeft, ChevronRight, MoreHorizontal, ListChecks, Archive, Clock } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
@@ -288,16 +291,23 @@ export function CandidateTable({
       <CardContent>
         {/* Bulk actions are now handled in the Pipeline Overview header */}
         {filteredCandidates.length === 0 ? (
-          <GioEmptyState
-            title={candidates.length === 0 ? 'No candidates yet' : 'No candidates match your filters'}
-            description={candidates.length === 0 ? 'Add your first candidate to this job' : 'Try adjusting your search or filters'}
-          />
+          candidates.length === 0 ? (
+            <GioEmptyState
+              title="No candidates yet"
+              description="Add your first candidate to this job"
+            />
+          ) : (
+            <GioEmptyState
+              title="No candidates match your filters"
+              description="Try adjusting your search or filters"
+            />
+          )
         ) : (
           <>
             <div className="space-y-sm">
               {/* Desktop Table View */}
               <div className="hidden md:block">
-                <Table>
+                <Table density="default">
                   <TableHeader>
                     <TableRow>
                        {selectionMode && (
@@ -315,7 +325,7 @@ export function CandidateTable({
                          {showJobInfo && <TableHead>Organization</TableHead>}
                          {!hideSkills && <TableHead>Skills</TableHead>}
                          <TableHead>Added</TableHead>
-                        {!hideActions && <TableHead className="text-right">Actions</TableHead>}
+                        {!hideActions && <TableHead className="w-[32px] text-right" aria-label="Actions" />}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -335,33 +345,43 @@ export function CandidateTable({
                           </TableCell>
                         )}
                         <TableCell>
-                          <Link 
-                          to={getCandidateLink(candidate)}
-                          className="block w-full h-full"
-                          onClick={(e) => handleLinkClick(e, candidate)}
+                          <Link
+                            to={getCandidateLink(candidate)}
+                            className="block w-full h-full"
+                            onClick={(e) => handleLinkClick(e, candidate)}
                           >
-                            <div className="font-medium text-text-primary flex items-center gap-1.5">
-                              {showFitScore && candidate.ai_fit_score != null && (
-                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold border ${
-                                  candidate.ai_fit_score >= 75 
-                                    ? 'border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                                    : candidate.ai_fit_score >= 50
-                                    ? 'border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                                    : 'border-red-200 bg-red-100 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300'
-                                }`}>
-                                  {Math.round(candidate.ai_fit_score)}%
+                            <IdentityCell
+                              fallback={candidate.candidate_name}
+                              name={
+                                <span className="inline-flex items-center gap-1.5 min-w-0">
+                                  {showFitScore && candidate.ai_fit_score != null && (
+                                    <Badge
+                                      tone={
+                                        candidate.ai_fit_score >= 75 ? 'green'
+                                        : candidate.ai_fit_score >= 50 ? 'yellow'
+                                        : 'red'
+                                      }
+                                      size="xs"
+                                    >
+                                      {Math.round(candidate.ai_fit_score)}%
+                                    </Badge>
+                                  )}
+                                  {showFitScore && candidate.ai_fit_score == null && (
+                                    <Badge tone="neutral" size="xs">—</Badge>
+                                  )}
+                                  <span className="truncate">{candidate.candidate_name}</span>
+                                  <NewBadge show={isCandidateNewForUser(candidate)} />
                                 </span>
-                              )}
-                              {showFitScore && candidate.ai_fit_score == null && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border border-border bg-muted text-muted-foreground">
-                                  —
-                                </span>
-                              )}
-                              {candidate.candidate_name}
-                              <NewBadge show={isCandidateNewForUser(candidate)} />
-                            </div>
-                           </Link>
-                         </TableCell>
+                              }
+                              sub={
+                                [
+                                  candidate.location_city,
+                                  candidate.location_country,
+                                ].filter(Boolean).join(', ') || undefined
+                              }
+                            />
+                          </Link>
+                        </TableCell>
                          {showMatchScore && (
                            <TableCell>
                              {candidate.match_score !== undefined && (
@@ -461,23 +481,24 @@ export function CandidateTable({
                           </Link>
                         </TableCell>
                          {!hideActions && (
-                           <TableCell>
-                             <div className="flex items-center justify-end gap-1">
-                                <PermissionGate permission="canDeleteCandidates">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.preventDefault()
-                                      e.stopPropagation()
-                                      handleDelete(candidate)
-                                    }}
-                                    className="h-[36px] w-[36px] p-0 text-destructive hover:bg-destructive/10 hover:scale-110 transition-all duration-150"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </PermissionGate>
-                             </div>
+                           <TableCell className="w-[32px] text-right">
+                             <ActionCell>
+                               <PermissionGate permission="canDeleteCandidates">
+                                 <Button
+                                   variant="ghost"
+                                   size="xs"
+                                   iconOnly
+                                   icon={Trash2}
+                                   aria-label="Delete candidate"
+                                   onClick={(e) => {
+                                     e.preventDefault()
+                                     e.stopPropagation()
+                                     handleDelete(candidate)
+                                   }}
+                                   className="text-destructive hover:bg-destructive/10"
+                                 />
+                               </PermissionGate>
+                             </ActionCell>
                            </TableCell>
                          )}
                       </TableRow>
@@ -577,114 +598,14 @@ export function CandidateTable({
               </div>
             </div>
 
-            {/* Beautiful Enhanced Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="mt-8 space-y-6">
-                {/* Enhanced Pagination Navigation */}
-                <div className="flex justify-center">
-                  <div className="inline-flex items-center bg-surface-primary border border-border/80 rounded-brand shadow-sm p-1 gap-1">
-                    {/* Previous Button */}
-                    <button
-                      onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className={`
-                        inline-flex items-center gap-2 px-3 py-2 rounded-brand text-sm font-medium transition-all duration-200 ease-out
-                        ${currentPage === 1 
-                          ? 'text-text-tertiary cursor-not-allowed opacity-50' 
-                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:-translate-y-0.5 hover:shadow-sm active:scale-95'
-                        }
-                      `}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      <span className="hidden sm:inline">Previous</span>
-                    </button>
-
-                    {/* Page Numbers */}
-                    <div className="flex items-center gap-1 px-2">
-                      {getPageNumbers().map((page, index) => (
-                        <div key={index}>
-                          {page === 'ellipsis' ? (
-                            <div className="flex items-center justify-center w-8 h-8 text-text-tertiary">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => setCurrentPage(page)}
-                              className={`
-                                w-8 h-8 rounded-brand text-sm font-medium transition-all duration-200 ease-out
-                                ${currentPage === page
-                                  ? 'bg-accent text-accent-foreground shadow-sm scale-105 font-semibold'
-                                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:-translate-y-0.5 hover:shadow-sm active:scale-95'
-                                }
-                              `}
-                            >
-                              {page}
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Next Button */}
-                    <button
-                      onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className={`
-                        inline-flex items-center gap-2 px-3 py-2 rounded-brand text-sm font-medium transition-all duration-200 ease-out
-                        ${currentPage === totalPages 
-                          ? 'text-text-tertiary cursor-not-allowed opacity-50' 
-                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:-translate-y-0.5 hover:shadow-sm active:scale-95'
-                        }
-                      `}
-                    >
-                      <span className="hidden sm:inline">Next</span>
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Mobile Simplified Pagination */}
-                <div className="sm:hidden flex justify-center">
-                  <div className="inline-flex items-center gap-4 px-4 py-2 bg-surface-secondary/30 border border-border/50 rounded-brand backdrop-blur-sm">
-                    <button
-                      onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className={`
-                        p-2 rounded-brand transition-all duration-200
-                        ${currentPage === 1 
-                          ? 'text-text-tertiary cursor-not-allowed opacity-50' 
-                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:scale-105 active:scale-95'
-                        }
-                      `}
-                    >
-                      <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-text-secondary">Page</span>
-                      <span className="font-medium text-text-primary bg-accent/20 px-2 py-1 rounded-brand">
-                        {currentPage}
-                      </span>
-                      <span className="text-text-secondary">of {totalPages}</span>
-                    </div>
-                    
-                    <button
-                      onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className={`
-                        p-2 rounded-brand transition-all duration-200
-                        ${currentPage === totalPages 
-                          ? 'text-text-tertiary cursor-not-allowed opacity-50' 
-                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:scale-105 active:scale-95'
-                        }
-                      `}
-                    >
-                      <ChevronRight className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+            <TableFooterSummary
+              rangeStart={filteredCandidates.length === 0 ? 0 : startIndex + 1}
+              rangeEnd={Math.min(endIndex, filteredCandidates.length)}
+              total={filteredCandidates.length}
+              entityLabel="candidates"
+              onLoadMore={currentPage < totalPages ? () => setCurrentPage(currentPage + 1) : undefined}
+              loadMoreLabel={`Show ${Math.min(itemsPerPage, filteredCandidates.length - endIndex)} more`}
+            />
           </>
         )}
       </CardContent>

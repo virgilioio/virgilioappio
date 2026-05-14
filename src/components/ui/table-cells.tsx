@@ -27,9 +27,11 @@ interface IdentityCellProps {
   src?: string | null
   fallback?: string
   className?: string
+  /** Render without the leading avatar (used for object/job tables that don't have a face). */
+  hideAvatar?: boolean
 }
 
-export function IdentityCell({ name, sub, src, fallback, className }: IdentityCellProps) {
+export function IdentityCell({ name, sub, src, fallback, className, hideAvatar }: IdentityCellProps) {
   const { density } = useTableDensity()
   const initials = (fallback ?? (typeof name === "string" ? name : ""))
     .toString()
@@ -41,10 +43,12 @@ export function IdentityCell({ name, sub, src, fallback, className }: IdentityCe
     .toUpperCase()
   return (
     <div className={cn("flex items-center gap-3 min-w-0", className)}>
-      <Avatar className={cn("shrink-0", AVATAR_SIZE[density])}>
-        {src ? <AvatarImage src={src} alt="" /> : null}
-        <AvatarFallback className="text-[11px] font-medium">{initials || "—"}</AvatarFallback>
-      </Avatar>
+      {!hideAvatar && (
+        <Avatar className={cn("shrink-0", AVATAR_SIZE[density])}>
+          {src ? <AvatarImage src={src} alt="" /> : null}
+          <AvatarFallback className="text-[11px] font-medium">{initials || "—"}</AvatarFallback>
+        </Avatar>
+      )}
       <div className="min-w-0 leading-tight">
         <div className="text-table-name text-text-primary truncate">{name}</div>
         {sub ? (
