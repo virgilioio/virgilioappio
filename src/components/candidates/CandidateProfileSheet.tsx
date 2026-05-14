@@ -135,9 +135,11 @@ interface CandidateProfileSheetProps {
   /** 1-based index in the candidate list, for "N of M" paginator. */
   currentIndex?: number | null
   totalCount?: number | null
+  /** When true, render as a full route page inside Layout (no fixed overlay). */
+  asPage?: boolean
 }
 
-export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, autoOpenScorecardStageId, autoOpenScorecardId, onScorecardOpened, onScorecardChange, currentIndex, totalCount }: CandidateProfileSheetProps) {
+export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, autoOpenScorecardStageId, autoOpenScorecardId, onScorecardOpened, onScorecardChange, currentIndex, totalCount, asPage = false }: CandidateProfileSheetProps) {
   const { canEditCandidates, isAdmin, isWorkspaceOwner, isPlatformAdmin } = usePermissions()
   const navigate = useNavigate()
   
@@ -1055,7 +1057,11 @@ const stageHasAutomation = useMemo(() => {
 
   return (
     <>
-    <div className="fixed top-[4.5rem] left-3 right-3 bottom-3 sm:left-[5.5rem] z-40 bg-background overflow-hidden rounded-2xl ring-1 ring-virgilio-border/60 shadow-calendly">
+    <div className={cn(
+      asPage
+        ? "h-[calc(100dvh-4rem-0.75rem)] mb-3 bg-background overflow-hidden rounded-2xl ring-1 ring-virgilio-border/60 shadow-calendly"
+        : "fixed top-[4.5rem] left-3 right-3 bottom-3 sm:left-[5.5rem] z-40 bg-background overflow-hidden rounded-2xl ring-1 ring-virgilio-border/60 shadow-calendly"
+    )}>
       <div className="flex h-full w-full">
         {candidate && jobId && candidate.id && job && (
           <AddOrTransferCandidateDialog
