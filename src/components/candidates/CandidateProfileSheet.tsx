@@ -1080,92 +1080,77 @@ const stageHasAutomation = useMemo(() => {
               </div>
             ) : (
               <>
-            <SheetHeader className="p-6 border-b">
-              <div className="flex items-center justify-between flex-1">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <h2 className="font-poppins font-bold tracking-page-title text-text-primary text-4xl">
-                    {candidate.candidate_name}
-                    <span className="text-purple-period">.</span>
-                  </h2>
-                  {jobId && (
-                    <button
-                      type="button"
-                      onClick={handleToggleFavorite}
-                      className="p-1 rounded-md hover:bg-muted transition-colors"
-                      title={isFavorite ? 'Remove from favorites' : 'Mark as favorite'}
-                    >
-                      <Heart
-                        className={cn(
-                          'h-5 w-5 transition-colors',
-                          isFavorite
-                            ? 'fill-red-500 text-red-500'
-                            : 'text-muted-foreground hover:text-red-400'
-                        )}
-                      />
-                    </button>
-                  )}
-                   <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          iconOnly
-                          aria-label="View full candidate profile"
-                          onClick={() => {
-                            navigate(`/candidates?openCandidate=${candidate.id}`);
-                          }}
-                          icon={UserRound}
-                        />
-                      </TooltipTrigger>
-                      <TooltipContent>View full candidate profile</TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  {candidate.linkedin_url && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      iconOnly
-                      aria-label="Open LinkedIn profile"
-                      onClick={() => window.open(ensureAbsoluteUrl(candidate.linkedin_url!), '_blank')}
-                    >
-                      <LinkedInFilled className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-                {job?.title && (
-                  <Badge variant="secondary" className="w-fit">
-                    {`${job.title}${associationStatus && associationStatus !== 'active' ? ' • ' + (associationStatus[0].toUpperCase() + associationStatus.slice(1)) : ''}`}
-                  </Badge>
-                )}
-              </div>
-              <div className="flex items-center gap-1 sm:gap-sm">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="gap-1 sm:gap-sm text-text-secondary hover:text-text-primary px-2 sm:px-3"
-                  onClick={onNavigatePrev}
-                  disabled={!hasPrev}
-                  title="Previous candidate"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  <span className="hidden sm:inline">Previous</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="gap-1 sm:gap-sm text-text-secondary hover:text-text-primary px-2 sm:px-3"
-                  onClick={onNavigateNext}
-                  disabled={!hasNext}
-                  title="Next candidate"
-                >
-                  <span className="hidden sm:inline">Next</span>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-                  </div>
-                </div>
-              </SheetHeader>
+            <div className="border-b border-virgilio-border bg-white/60">
+              <ProfileTopBar
+                jobId={jobId}
+                jobTitle={job?.title}
+                onClose={() => onOpenChange(false)}
+                index={currentIndex ?? null}
+                total={totalCount ?? null}
+                hasPrev={hasPrev}
+                hasNext={hasNext}
+                onNavigatePrev={onNavigatePrev}
+                onNavigateNext={onNavigateNext}
+              />
+            </div>
+
+            <div className="px-4 sm:px-6 pt-4 sm:pt-6 bg-cream-soft/40">
+              {(() => {
+                const sortedStages = [...planStages].sort((a, b) => a.position - b.position)
+                const currentIdx = currentStageId ? sortedStages.findIndex(s => s.jhsId === currentStageId) : -1
+                const nextStage = currentIdx >= 0 && currentIdx < sortedStages.length - 1 ? sortedStages[currentIdx + 1] : null
+                const currentStage = currentIdx >= 0 ? sortedStages[currentIdx] : null
+                return (
+                  <ProfileHeroCard
+                    candidateName={candidate.candidate_name}
+                    candidateId={candidate.id}
+                    jobId={jobId}
+                    jobTitle={job?.title}
+                    source={candidate?.job_board_source || candidate?.source || null}
+                    appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
+                    currentStageName={currentStage?.stage.stage_name || null}
+                    isFavorite={isFavorite}
+                    onToggleFavorite={jobId ? handleToggleFavorite : undefined}
+                    onOpenFullProfile={() => navigate(`/candidates?openCandidate=${candidate.id}`)}
+                    linkedinUrl={candidate.linkedin_url || null}
+                    fitScore={fitInsights?.score ?? null}
+                  >
+                    <ProfileStageStrip stages={planStages} currentStageId={currentStageId} />
+                    <ProfileActionBar
+                      nextStageLabel={nextStage?.stage.stage_name || null}
+                      onAdvance={async () => {
+                        if (!associationId || !nextStage) return
+                        await moveAssociationToStage(associationId, nextStage.jhsId)
+                        setCurrentStageId(nextStage.jhsId)
+                        onStageChanged?.()
+                      }}
+                      onSubmitScorecard={() => {
+                        if (!currentStage) return
+                        setScoreStageInstId(currentStage.jhsId)
+                        setScoreStageName(currentStage.stage.stage_name)
+                        setScoreOpen(true)
+                      }}
+                      onSchedule={() => setSimpleScheduleOpen(true)}
+                      onEmail={() => {
+                        resetEmailComposer()
+                        setEmailComposerOpen(true)
+                      }}
+                      onCreateOffer={() => setOfferFormOpen(true)}
+                      onReject={handleReject}
+                      isOfferStatus={associationStatus === 'offer'}
+                      isRejected={associationStatus === 'rejected'}
+                      isHired={associationStatus === 'hired'}
+                      onEdit={() => setEditOpen(true)}
+                      onDownload={() => setDownloadDialogOpen(true)}
+                      onMoveToOffer={handleMoveToOffer}
+                      onReturnToPipeline={handleReturnToPipeline}
+                      onHire={handleHire}
+                      canEdit={canEditCandidates}
+                    />
+                  </ProfileHeroCard>
+                )
+              })()}
+            </div>
 
                <div className="flex-1 overflow-y-auto p-6">
                 {/* Mobile Job Selector - at top of content area */}
