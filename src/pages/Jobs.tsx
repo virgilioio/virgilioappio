@@ -100,9 +100,9 @@ export default function Jobs() {
               </header>
 
               {/* Status segmented tabs */}
-              <TableSegmented<StatusSegment>
+              <TableSegmented
                 value={statusFilter}
-                onChange={setStatusFilter}
+                onChange={(v) => setStatusFilter(v as StatusSegment)}
                 options={[
                   { value: 'active', label: 'Active', count: counts.active },
                   { value: 'all', label: 'All', count: counts.all },
