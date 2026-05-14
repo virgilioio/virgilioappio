@@ -33,6 +33,13 @@ interface ProfileHeroCardProps {
   onNavigatePrev?: () => void
   onNavigateNext?: () => void
   tabs?: ReactNode
+  // Primary actions (mirrors JobHero right-side cluster)
+  nextStageLabel?: string | null
+  onAdvance?: () => void
+  onSchedule?: () => void
+  onEmail?: () => void
+  isRejected?: boolean
+  isHired?: boolean
 }
 
 function relativeTime(iso?: string | null) {
