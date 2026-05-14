@@ -32,6 +32,7 @@ interface ProfileHeroCardProps {
   hasNext?: boolean
   onNavigatePrev?: () => void
   onNavigateNext?: () => void
+  tabs?: ReactNode
 }
 
 function relativeTime(iso?: string | null) {
