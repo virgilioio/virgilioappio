@@ -71,6 +71,7 @@ export default function JobDetail() {
   const [showApplicationReview, setShowApplicationReview] = useState(false)
   const [editingCandidate, setEditingCandidate] = useState<any>(null)
   const [activeTab, setActiveTab] = useState('pipeline')
+  const [showHiringTeamDialog, setShowHiringTeamDialog] = useState(false)
   
   // Guard: reset to allowed tab if restricted viewer lands on a restricted tab
   useEffect(() => {
