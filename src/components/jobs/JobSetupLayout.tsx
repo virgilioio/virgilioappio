@@ -57,7 +57,29 @@ function getInitials(first?: string | null, last?: string | null, email?: string
 export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }: JobSetupLayoutProps) {
   const { isAdmin, isWorkspaceOwner, isPlatformAdmin } = usePermissions()
   const isReadOnly = !(isAdmin || isWorkspaceOwner || isPlatformAdmin)
-  const team: any[] = Array.isArray(job?.hiring_team) ? job.hiring_team : []
+
+  const { assignments } = useJobAssignments(jobId)
+  const { members } = useMembers(true)
+  const teamMembers = assignments
+    .map((a) => {
+      const m = members.find((mm) => mm.user_id === a.user_id)
+      if (!m) return null
+      const first = m.user_first_name || ''
+      const last = m.user_last_name || ''
+      return {
+        id: a.id,
+        name: `${first} ${last}`.trim() || m.user_email || 'Member',
+        roleLabel: ROLE_LABEL[a.role] || a.role,
+        avatarUrl: m.user_avatar_url || null,
+        first,
+        last,
+        email: m.user_email,
+      }
+    })
+    .filter(Boolean) as Array<{ id: string; name: string; roleLabel: string; avatarUrl: string | null; first: string; last: string; email?: string }>
+
+  const { postings, refetch: refetchPostings, updatePosting } = useJobPostings(jobId)
+  const [postingSheet, setPostingSheet] = useState<{ mode: 'create' | 'edit'; postingId?: string } | null>(null)
 
   const status = (job?.status || 'open').toLowerCase()
   const statusTone = STATUS_TONE[status] || 'neutral'
