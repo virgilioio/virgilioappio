@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -7,6 +8,16 @@ import { Edit, Plus } from 'lucide-react'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { HiringPlanTab } from './HiringPlanTab'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useJobAssignments } from '@/hooks/useJobAssignments'
+import { useMembers } from '@/hooks/useMembers'
+import { useJobPostings } from '@/hooks/useJobPostings'
+import { PostingSheet } from './postings/PostingSheet'
+
+const ROLE_LABEL: Record<string, string> = {
+  recruiter: 'Recruiter',
+  hiring_manager: 'Hiring manager',
+  interviewer: 'Interviewer',
+}
 
 interface JobSetupLayoutProps {
   jobId: string
@@ -46,7 +57,29 @@ function getInitials(first?: string | null, last?: string | null, email?: string
 export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }: JobSetupLayoutProps) {
   const { isAdmin, isWorkspaceOwner, isPlatformAdmin } = usePermissions()
   const isReadOnly = !(isAdmin || isWorkspaceOwner || isPlatformAdmin)
-  const team: any[] = Array.isArray(job?.hiring_team) ? job.hiring_team : []
+
+  const { assignments } = useJobAssignments(jobId)
+  const { members } = useMembers(true)
+  const teamMembers = assignments
+    .map((a) => {
+      const m = members.find((mm) => mm.user_id === a.user_id)
+      if (!m) return null
+      const first = m.user_first_name || ''
+      const last = m.user_last_name || ''
+      return {
+        id: a.id,
+        name: `${first} ${last}`.trim() || m.user_email || 'Member',
+        roleLabel: ROLE_LABEL[a.role] || a.role,
+        avatarUrl: m.user_avatar_url || null,
+        first,
+        last,
+        email: m.user_email,
+      }
+    })
+    .filter(Boolean) as Array<{ id: string; name: string; roleLabel: string; avatarUrl: string | null; first: string; last: string; email?: string }>
+
+  const { postings, refetch: refetchPostings } = useJobPostings(jobId)
+  const [postingSheet, setPostingSheet] = useState<{ mode: 'create' | 'edit'; postingId?: string } | null>(null)
 
   const status = (job?.status || 'open').toLowerCase()
   const statusTone = STATUS_TONE[status] || 'neutral'
@@ -167,37 +200,78 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
             )}
           </CardHeader>
           <CardContent className="space-y-3">
-            {team.length === 0 ? (
+            {teamMembers.length === 0 ? (
               <p className="text-body-sm text-text-secondary">No team members yet.</p>
             ) : (
-              team.map((m: any, i: number) => {
-                const name =
-                  [m?.first_name, m?.last_name].filter(Boolean).join(' ') ||
-                  m?.email ||
-                  'Member'
-                const role = m?.role_label || m?.role || m?.assignment_type || ''
-                return (
-                  <div key={m?.user_id || m?.email || i} className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
-                      {m?.avatar_url ? <AvatarImage src={m.avatar_url} alt="" /> : null}
-                      <AvatarFallback className="text-[11px] bg-virgilio-purple text-white">
-                        {getInitials(m?.first_name, m?.last_name, m?.email)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0">
-                      <div className="text-body-sm font-medium text-text-primary truncate">{name}</div>
-                      {role && (
-                        <div className="text-body-xs text-text-secondary truncate">
-                          {String(role).replace(/_/g, ' ')}
-                        </div>
-                      )}
-                    </div>
+              teamMembers.map((m) => (
+                <div key={m.id} className="flex items-center gap-3">
+                  <Avatar className="h-8 w-8">
+                    {m.avatarUrl ? <AvatarImage src={m.avatarUrl} alt="" /> : null}
+                    <AvatarFallback className="text-[11px] bg-virgilio-purple text-white">
+                      {getInitials(m.first, m.last, m.email)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <div className="text-body-sm font-medium text-text-primary truncate">{m.name}</div>
+                    <div className="text-body-xs text-text-secondary truncate">{m.roleLabel}</div>
                   </div>
-                )
-              })
+                </div>
+              ))
             )}
           </CardContent>
         </Card>
+
+        {/* Job posts */}
+        <Card>
+          <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-h4 font-poppins">Job posts</CardTitle>
+            {!isReadOnly && (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={Plus}
+                onClick={() => setPostingSheet({ mode: 'create' })}
+              >
+                Add
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {postings.length === 0 ? (
+              <p className="text-body-sm text-text-secondary">No job posts yet.</p>
+            ) : (
+              postings.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setPostingSheet({ mode: 'edit', postingId: p.id })}
+                  className="w-full flex items-center justify-between gap-3 rounded-lg px-2 py-2 -mx-2 hover:bg-[#F1F0EC] transition-colors text-left"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-body-sm font-medium text-text-primary truncate">{p.title}</div>
+                    <div className="font-mono text-[11px] text-text-secondary truncate">/{p.slug}</div>
+                  </div>
+                  <Badge tone={p.is_active ? 'green' : 'neutral'} dot size="sm">
+                    {p.is_active ? 'Active' : 'Inactive'}
+                  </Badge>
+                </button>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        {postingSheet && (
+          <PostingSheet
+            jobId={jobId}
+            postingId={postingSheet.postingId}
+            open={!!postingSheet}
+            onOpenChange={(o) => !o && setPostingSheet(null)}
+            onSaved={() => {
+              refetchPostings()
+            }}
+            defaultTitle={jobTitle}
+          />
+        )}
       </div>
     </div>
   )
