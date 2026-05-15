@@ -316,7 +316,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
                             Copy URL
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem variant="danger" onSelect={() => handleDelete(p.id)}>
+                          <DropdownMenuItem className={menuItemDanger} onSelect={() => handleDelete(p.id)}>
                             <Trash2 className="h-3.5 w-3.5" />
                             Delete
                           </DropdownMenuItem>
