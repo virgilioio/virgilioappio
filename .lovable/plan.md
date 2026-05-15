@@ -1,37 +1,34 @@
-# Hiring team display + Job posts card
+# Job posting actions: View posting + manage menu
 
-## 1. Hiring team card shows nothing
-The card reads `job.hiring_team` (legacy JSONB), but real assignments live in `job_assignments` (one row per user+role) — that's why the Memberships Campaign Manager job is empty even though it has assignees in the dialog.
+Two small additions to the Setup tab and job hero, no backend changes.
 
-**Fix in `JobSetupLayout.tsx`:**
-- Drop the `team` prop derived from `job.hiring_team`.
-- Use `useJobAssignments(jobId)` + `useMembers(true)` (same pattern as `JobAssignmentsPanel`) to build the displayed list.
-- For each assignment, show: avatar (initials fallback), `First Last`, role label (`Recruiter (owner)` if creator, `Hiring manager`, `Interviewer`).
-- Empty state copy: "No team members yet." with a subtle "Add" CTA opening the existing `HiringTeamManageDialog`.
-- Mock-up parity: stack rows tightly (8px gap), 32px avatars, name in `text-body-sm` medium, role in `text-body-xs` secondary. Match the screenshot.
+## 1. "View posting" opens the public job post
 
-No backend / RLS changes — `useJobAssignments` already works in the dialog.
+In `src/pages/JobDetail.tsx`:
+- Pick the first **active** posting (fallback to most recent) from `jobPostings`.
+- Set `hasPosting` = there is at least one active posting.
+- Wire `onViewPosting` to `window.open('/p/' + posting.slug, '_blank', 'noopener')`.
+- Disabled state stays the same when no active posting exists (tooltip already in `JobHero`).
 
-## 2. New "Job posts" card under Hiring team
-Add a third card to the right rail of `JobSetupLayout`, below "Hiring team":
+## 2. Toggle + ellipsis menu on each Job posts card row
 
-- Title: "Job posts" + "Add" ghost button on the right (admin only).
-- Body: list each posting from `useJobPostings(jobId)` as a compact row:
-  - Title + slug (mono, 11px)
-  - Status badge: `green` Active / `neutral` Inactive
-  - Row click → opens edit; Add → opens create.
-- Empty state: "No job posts yet." + "Create posting" ghost button.
-- Reuse the existing `<PostingSheet>` for create/edit (already used by `JobPostingsTab`).
+In `src/components/jobs/JobSetupLayout.tsx`, replace the static badge on the right of each posting row with:
 
-No new hooks, no schema changes.
+- A `<Switch>` bound to `p.is_active` → calls `updatePosting(p.id, { is_active: !p.is_active })`. Stops row click propagation.
+- An ellipsis `<DropdownMenu>` (align="end", sideOffset 8) with these items in order:
+  - **Edit** → opens `PostingSheet` in edit mode (same as row click).
+  - **Duplicate** → `duplicatePosting(p.id)` then `refetchPostings`.
+  - **Copy URL** → `navigator.clipboard.writeText(window.location.origin + '/p/' + p.slug)` + toast "Link copied".
+  - divider
+  - **Delete** (danger, last) → confirm then `deletePosting(p.id)`.
+
+Re-add `updatePosting` and `duplicatePosting` to the `useJobPostings` destructuring (currently only `postings`/`refetch` are pulled). Toggle and menu are admin-only (hidden when `isReadOnly`). Row click still opens `PostingSheet` for edit.
 
 ## Files
-- Edit: `src/components/jobs/JobSetupLayout.tsx`
-  - Add `useJobAssignments` + `useMembers` lookup → render assignments in Hiring team card.
-  - Add Job posts card using `useJobPostings` + `PostingSheet`.
-- No changes to `JobDetail.tsx` (existing `onAddTeamMember` wiring stays).
+
+- Edit `src/pages/JobDetail.tsx` (View posting wiring).
+- Edit `src/components/jobs/JobSetupLayout.tsx` (Switch + ellipsis menu per row).
 
 ## Out of scope
-- Touching `job.hiring_team` JSONB column or migrations.
-- Restyling `JobAssignmentsPanel` / `PostingSheet`.
-- Pipeline / Job Dashboard tabs.
+
+No changes to `PostingSheet`, `useJobPostings` hook internals, public posting page, or RLS.
