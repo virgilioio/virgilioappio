@@ -87,8 +87,28 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
     })
     .filter(Boolean) as Array<{ id: string; name: string; roleLabel: string; avatarUrl: string | null; first: string; last: string; email?: string }>
 
-  const { postings, refetch: refetchPostings } = useJobPostings(jobId)
+  const { postings, refetch: refetchPostings, updatePosting, duplicatePosting, deletePosting } = useJobPostings(jobId)
   const [postingSheet, setPostingSheet] = useState<{ mode: 'create' | 'edit'; postingId?: string } | null>(null)
+  const { toast } = useToast()
+
+  const handleToggleActive = async (id: string, next: boolean) => {
+    await updatePosting(id, { is_active: next })
+  }
+
+  const handleCopyUrl = async (slug: string) => {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/p/${slug}`)
+      toast({ title: 'Link copied', description: 'Public posting URL copied to clipboard.' })
+    } catch {
+      toast({ title: 'Copy failed', description: 'Could not copy URL', variant: 'destructive' })
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Delete this job post? This cannot be undone.')) {
+      await deletePosting(id)
+    }
+  }
 
   const status = (job?.status || 'open').toLowerCase()
   const statusTone = STATUS_TONE[status] || 'neutral'
