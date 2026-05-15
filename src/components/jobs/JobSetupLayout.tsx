@@ -78,7 +78,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
     })
     .filter(Boolean) as Array<{ id: string; name: string; roleLabel: string; avatarUrl: string | null; first: string; last: string; email?: string }>
 
-  const { postings, refetch: refetchPostings, updatePosting } = useJobPostings(jobId)
+  const { postings, refetch: refetchPostings } = useJobPostings(jobId)
   const [postingSheet, setPostingSheet] = useState<{ mode: 'create' | 'edit'; postingId?: string } | null>(null)
 
   const status = (job?.status || 'open').toLowerCase()
