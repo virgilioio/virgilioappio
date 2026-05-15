@@ -930,6 +930,7 @@ export default function JobDetail() {
                   hiring_team: (job.hiring_team as any[]) || []
                 }}
                 onEdit={handleEditJob}
+                onAddTeamMember={() => setShowHiringTeamDialog(true)}
               />
             </TabsContent>
           )}
