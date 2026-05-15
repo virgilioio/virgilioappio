@@ -1257,6 +1257,17 @@ export default function JobDetail() {
           />
         )}
 
+        {/* Create Job Posting Sheet (from header CTA) */}
+        {job && (
+          <PostingSheet
+            jobId={id!}
+            open={showCreatePostingSheet}
+            onOpenChange={setShowCreatePostingSheet}
+            onSaved={() => refetchJobPostings()}
+            defaultTitle={job.title}
+          />
+        )}
+
         {/* Add Candidate Sheet */}
         <CandidateFormSheet
           isOpen={showAddCandidate}
