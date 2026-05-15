@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { ChevronRight, MapPin, Building2, Clock, ExternalLink, Share2, UserPlus, MoreHorizontal } from 'lucide-react'
+import { ChevronRight, MapPin, Building2, Clock, ExternalLink, Share2, UserPlus, MoreHorizontal, Plus } from 'lucide-react'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { cn } from '@/lib/utils'
 
