@@ -270,20 +270,64 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
               <p className="text-body-sm text-text-secondary">No job posts yet.</p>
             ) : (
               postings.map((p) => (
-                <button
+                <div
                   key={p.id}
-                  type="button"
-                  onClick={() => setPostingSheet({ mode: 'edit', postingId: p.id })}
-                  className="w-full flex items-center justify-between gap-3 rounded-lg px-2 py-2 -mx-2 hover:bg-[#F1F0EC] transition-colors text-left"
+                  className="group w-full flex items-center gap-2 rounded-lg px-2 py-2 -mx-2 hover:bg-[#F1F0EC] transition-colors"
                 >
-                  <div className="min-w-0 flex-1">
+                  <button
+                    type="button"
+                    onClick={() => setPostingSheet({ mode: 'edit', postingId: p.id })}
+                    className="min-w-0 flex-1 text-left outline-none"
+                  >
                     <div className="text-body-sm font-medium text-text-primary truncate">{p.title}</div>
                     <div className="font-mono text-[11px] text-text-secondary truncate">/{p.slug}</div>
-                  </div>
-                  <Badge tone={p.is_active ? 'green' : 'neutral'} dot size="sm">
-                    {p.is_active ? 'Active' : 'Inactive'}
-                  </Badge>
-                </button>
+                  </button>
+                  {!isReadOnly ? (
+                    <>
+                      <Switch
+                        checked={!!p.is_active}
+                        onCheckedChange={(v) => handleToggleActive(p.id, v)}
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label={p.is_active ? 'Deactivate posting' : 'Activate posting'}
+                      />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            iconOnly
+                            icon={MoreHorizontal}
+                            aria-label="Posting actions"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" sideOffset={8}>
+                          <DropdownMenuItem onSelect={() => setPostingSheet({ mode: 'edit', postingId: p.id })}>
+                            <Pencil className="h-3.5 w-3.5" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={async () => { await duplicatePosting(p.id); refetchPostings() }}>
+                            <Copy className="h-3.5 w-3.5" />
+                            Duplicate
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handleCopyUrl(p.slug)}>
+                            <Link2 className="h-3.5 w-3.5" />
+                            Copy URL
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem variant="danger" onSelect={() => handleDelete(p.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </>
+                  ) : (
+                    <Badge tone={p.is_active ? 'green' : 'neutral'} dot size="sm">
+                      {p.is_active ? 'Active' : 'Inactive'}
+                    </Badge>
+                  )}
+                </div>
               ))
             )}
           </CardContent>
