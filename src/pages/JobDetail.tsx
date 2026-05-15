@@ -11,6 +11,7 @@ import { useJobs } from '@/hooks/useJobs'
 import { useJobSourcingProject } from '@/hooks/useJobSourcingProject'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { JobSetupLayout } from '@/components/jobs/JobSetupLayout'
+import { HiringTeamManageDialog } from '@/components/jobs/HiringTeamManageDialog'
 
 import { JobDetailMobileHeader } from '@/components/jobs/JobDetailMobileHeader'
 
@@ -70,6 +71,7 @@ export default function JobDetail() {
   const [showApplicationReview, setShowApplicationReview] = useState(false)
   const [editingCandidate, setEditingCandidate] = useState<any>(null)
   const [activeTab, setActiveTab] = useState('pipeline')
+  const [showHiringTeamDialog, setShowHiringTeamDialog] = useState(false)
   
   // Guard: reset to allowed tab if restricted viewer lands on a restricted tab
   useEffect(() => {
@@ -928,6 +930,7 @@ export default function JobDetail() {
                   hiring_team: (job.hiring_team as any[]) || []
                 }}
                 onEdit={handleEditJob}
+                onAddTeamMember={() => setShowHiringTeamDialog(true)}
               />
             </TabsContent>
           )}
@@ -1235,6 +1238,16 @@ export default function JobDetail() {
           } : null}
           isLoading={jobUpdateLoading}
         />
+
+        {/* Manage Hiring Team Dialog */}
+        {job && (
+          <HiringTeamManageDialog
+            open={showHiringTeamDialog}
+            onOpenChange={setShowHiringTeamDialog}
+            jobId={id!}
+            jobTitle={job.title}
+          />
+        )}
 
         {/* Add Candidate Sheet */}
         <CandidateFormSheet
