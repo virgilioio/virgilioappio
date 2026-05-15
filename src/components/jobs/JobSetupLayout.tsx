@@ -200,37 +200,78 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
             )}
           </CardHeader>
           <CardContent className="space-y-3">
-            {team.length === 0 ? (
+            {teamMembers.length === 0 ? (
               <p className="text-body-sm text-text-secondary">No team members yet.</p>
             ) : (
-              team.map((m: any, i: number) => {
-                const name =
-                  [m?.first_name, m?.last_name].filter(Boolean).join(' ') ||
-                  m?.email ||
-                  'Member'
-                const role = m?.role_label || m?.role || m?.assignment_type || ''
-                return (
-                  <div key={m?.user_id || m?.email || i} className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
-                      {m?.avatar_url ? <AvatarImage src={m.avatar_url} alt="" /> : null}
-                      <AvatarFallback className="text-[11px] bg-virgilio-purple text-white">
-                        {getInitials(m?.first_name, m?.last_name, m?.email)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0">
-                      <div className="text-body-sm font-medium text-text-primary truncate">{name}</div>
-                      {role && (
-                        <div className="text-body-xs text-text-secondary truncate">
-                          {String(role).replace(/_/g, ' ')}
-                        </div>
-                      )}
-                    </div>
+              teamMembers.map((m) => (
+                <div key={m.id} className="flex items-center gap-3">
+                  <Avatar className="h-8 w-8">
+                    {m.avatarUrl ? <AvatarImage src={m.avatarUrl} alt="" /> : null}
+                    <AvatarFallback className="text-[11px] bg-virgilio-purple text-white">
+                      {getInitials(m.first, m.last, m.email)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <div className="text-body-sm font-medium text-text-primary truncate">{m.name}</div>
+                    <div className="text-body-xs text-text-secondary truncate">{m.roleLabel}</div>
                   </div>
-                )
-              })
+                </div>
+              ))
             )}
           </CardContent>
         </Card>
+
+        {/* Job posts */}
+        <Card>
+          <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-h4 font-poppins">Job posts</CardTitle>
+            {!isReadOnly && (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={Plus}
+                onClick={() => setPostingSheet({ mode: 'create' })}
+              >
+                Add
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {postings.length === 0 ? (
+              <p className="text-body-sm text-text-secondary">No job posts yet.</p>
+            ) : (
+              postings.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setPostingSheet({ mode: 'edit', postingId: p.id })}
+                  className="w-full flex items-center justify-between gap-3 rounded-lg px-2 py-2 -mx-2 hover:bg-[#F1F0EC] transition-colors text-left"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-body-sm font-medium text-text-primary truncate">{p.title}</div>
+                    <div className="font-mono text-[11px] text-text-secondary truncate">/{p.slug}</div>
+                  </div>
+                  <Badge tone={p.is_active ? 'green' : 'neutral'} dot size="sm">
+                    {p.is_active ? 'Active' : 'Inactive'}
+                  </Badge>
+                </button>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        {postingSheet && (
+          <PostingSheet
+            jobId={jobId}
+            postingId={postingSheet.postingId}
+            open={!!postingSheet}
+            onOpenChange={(o) => !o && setPostingSheet(null)}
+            onSaved={() => {
+              refetchPostings()
+            }}
+            defaultTitle={jobTitle}
+          />
+        )}
       </div>
     </div>
   )
