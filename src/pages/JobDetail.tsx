@@ -1239,6 +1239,16 @@ export default function JobDetail() {
           isLoading={jobUpdateLoading}
         />
 
+        {/* Manage Hiring Team Dialog */}
+        {job && (
+          <HiringTeamManageDialog
+            open={showHiringTeamDialog}
+            onOpenChange={setShowHiringTeamDialog}
+            jobId={id!}
+            jobTitle={job.title}
+          />
+        )}
+
         {/* Add Candidate Sheet */}
         <CandidateFormSheet
           isOpen={showAddCandidate}
