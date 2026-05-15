@@ -1,36 +1,34 @@
+# Add hiring team members from Setup tab
+
 ## Problem
+The Setup tab has a "Hiring team" card with an "+ Add" button slot (`onAddTeamMember`), but `JobDetail.tsx` never passes the handler in — so the button never renders and there's no way to add members from Setup. The full management UI (`JobAssignmentsPanel`) only lives in the legacy `HiringTeamTab`, which isn't surfaced anywhere in the new Setup layout.
 
-On `/jobs/:id/candidates/:cid`, the tab content (Job overview, Resume, Scorecards, etc.) doesn't scroll. The hero + stage strip sit at the top and the rest is cut off.
+## Goal
+From `Job → Setup → Hiring team` card, the user can:
+1. See current members (already works).
+2. Click "+ Add" to invite/assign a teammate to this job with a role (Recruiter, Hiring Manager, Interviewer, etc.) — using the existing assignment system.
+3. Optionally manage / remove existing assignments.
 
-## Root cause
+## Approach (UI-only, reuses existing logic)
 
-In `CandidateProfileSheet.tsx`:
+1. **Create `HiringTeamManageDialog`** (`src/components/jobs/HiringTeamManageDialog.tsx`)
+   - Standard `Dialog` styled per design system (rounded-2xl, shadow-sm, max-w-2xl).
+   - Header: "Manage hiring team — {jobTitle}".
+   - Body: render the existing `<JobAssignmentsPanel jobId jobTitle />` — it already handles add / role-change / remove with the proper Select + member picker.
+   - Footer: single "Done" close button.
 
-- Line 1066–1070: outer wrapper is `h-[100dvh] flex flex-col overflow-hidden` when `asPage`.
-- Line 1071: inner row wrapper is `flex w-full` for `asPage` — **missing `flex-1 min-h-0`**.
-- Line 1088: main column is `flex-1 flex flex-col min-w-0` — **missing `min-h-0`**.
+2. **Wire it in `JobDetail.tsx`**
+   - Add `const [teamDialogOpen, setTeamDialogOpen] = useState(false)`.
+   - Pass `onAddTeamMember={() => setTeamDialogOpen(true)}` into `<JobSetupLayout>`.
+   - Render `<HiringTeamManageDialog open={teamDialogOpen} onOpenChange={setTeamDialogOpen} jobId={id!} jobTitle={job.title} />` near the other dialogs.
 
-Because those two intermediate flex containers don't constrain their height, the inner scroll region at line 1164 (`flex-1 min-h-0 overflow-y-auto`) never gets a bounded height, so it grows with content and the page is clipped by the outer `overflow-hidden` instead of scrolling.
-
-## Fix
-
-Two small className tweaks in `src/components/candidates/CandidateProfileSheet.tsx`:
-
-1. Line 1071 — add `flex-1 min-h-0` to the `asPage` variant:
-   ```
-   asPage ? "flex w-full flex-1 min-h-0" : "flex h-full w-full"
-   ```
-2. Line 1088 — add `min-h-0`:
-   ```
-   <div className="flex-1 flex flex-col min-w-0 min-h-0">
-   ```
-
-Both are needed for the existing `flex-1 min-h-0 overflow-y-auto` scroll container at line 1164 to actually become scrollable inside the fixed-viewport (`h-[100dvh]`) page layout.
+3. **No changes** to `JobSetupLayout.tsx` — the card already conditionally shows the Add button when `onAddTeamMember` is provided and the user is not read-only.
 
 ## Out of scope
+- Schema / RLS / backend changes.
+- Restyling `JobAssignmentsPanel` itself.
+- Removing the legacy `HiringTeamTab` route.
 
-No changes to the sheet variant (`asPage=false`), tab structure, hero, or any business logic.
-
-## Verification
-
-Reload `/jobs/:id/candidates/:cid`, switch through Job overview / Resume / Scorecards / Activity / Comments — each long tab should scroll inside the content area while hero + stage strip remain visible above.
+## Files
+- New: `src/components/jobs/HiringTeamManageDialog.tsx`
+- Edit: `src/pages/JobDetail.tsx` (wire dialog + handler)
