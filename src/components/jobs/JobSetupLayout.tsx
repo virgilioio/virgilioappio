@@ -3,8 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Switch } from '@/components/ui/switch'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { useToast } from '@/hooks/use-toast'
 import { SafeHtml } from '@/components/ui/safe-html'
-import { Edit, Plus } from 'lucide-react'
+import { Edit, Plus, MoreHorizontal, Pencil, Copy, Link2, Trash2 } from 'lucide-react'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { HiringPlanTab } from './HiringPlanTab'
 import { usePermissions } from '@/hooks/usePermissions'
