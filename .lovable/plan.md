@@ -1,34 +1,37 @@
-# Add hiring team members from Setup tab
+# Hiring team display + Job posts card
 
-## Problem
-The Setup tab has a "Hiring team" card with an "+ Add" button slot (`onAddTeamMember`), but `JobDetail.tsx` never passes the handler in — so the button never renders and there's no way to add members from Setup. The full management UI (`JobAssignmentsPanel`) only lives in the legacy `HiringTeamTab`, which isn't surfaced anywhere in the new Setup layout.
+## 1. Hiring team card shows nothing
+The card reads `job.hiring_team` (legacy JSONB), but real assignments live in `job_assignments` (one row per user+role) — that's why the Memberships Campaign Manager job is empty even though it has assignees in the dialog.
 
-## Goal
-From `Job → Setup → Hiring team` card, the user can:
-1. See current members (already works).
-2. Click "+ Add" to invite/assign a teammate to this job with a role (Recruiter, Hiring Manager, Interviewer, etc.) — using the existing assignment system.
-3. Optionally manage / remove existing assignments.
+**Fix in `JobSetupLayout.tsx`:**
+- Drop the `team` prop derived from `job.hiring_team`.
+- Use `useJobAssignments(jobId)` + `useMembers(true)` (same pattern as `JobAssignmentsPanel`) to build the displayed list.
+- For each assignment, show: avatar (initials fallback), `First Last`, role label (`Recruiter (owner)` if creator, `Hiring manager`, `Interviewer`).
+- Empty state copy: "No team members yet." with a subtle "Add" CTA opening the existing `HiringTeamManageDialog`.
+- Mock-up parity: stack rows tightly (8px gap), 32px avatars, name in `text-body-sm` medium, role in `text-body-xs` secondary. Match the screenshot.
 
-## Approach (UI-only, reuses existing logic)
+No backend / RLS changes — `useJobAssignments` already works in the dialog.
 
-1. **Create `HiringTeamManageDialog`** (`src/components/jobs/HiringTeamManageDialog.tsx`)
-   - Standard `Dialog` styled per design system (rounded-2xl, shadow-sm, max-w-2xl).
-   - Header: "Manage hiring team — {jobTitle}".
-   - Body: render the existing `<JobAssignmentsPanel jobId jobTitle />` — it already handles add / role-change / remove with the proper Select + member picker.
-   - Footer: single "Done" close button.
+## 2. New "Job posts" card under Hiring team
+Add a third card to the right rail of `JobSetupLayout`, below "Hiring team":
 
-2. **Wire it in `JobDetail.tsx`**
-   - Add `const [teamDialogOpen, setTeamDialogOpen] = useState(false)`.
-   - Pass `onAddTeamMember={() => setTeamDialogOpen(true)}` into `<JobSetupLayout>`.
-   - Render `<HiringTeamManageDialog open={teamDialogOpen} onOpenChange={setTeamDialogOpen} jobId={id!} jobTitle={job.title} />` near the other dialogs.
+- Title: "Job posts" + "Add" ghost button on the right (admin only).
+- Body: list each posting from `useJobPostings(jobId)` as a compact row:
+  - Title + slug (mono, 11px)
+  - Status badge: `green` Active / `neutral` Inactive
+  - Row click → opens edit; Add → opens create.
+- Empty state: "No job posts yet." + "Create posting" ghost button.
+- Reuse the existing `<PostingSheet>` for create/edit (already used by `JobPostingsTab`).
 
-3. **No changes** to `JobSetupLayout.tsx` — the card already conditionally shows the Add button when `onAddTeamMember` is provided and the user is not read-only.
-
-## Out of scope
-- Schema / RLS / backend changes.
-- Restyling `JobAssignmentsPanel` itself.
-- Removing the legacy `HiringTeamTab` route.
+No new hooks, no schema changes.
 
 ## Files
-- New: `src/components/jobs/HiringTeamManageDialog.tsx`
-- Edit: `src/pages/JobDetail.tsx` (wire dialog + handler)
+- Edit: `src/components/jobs/JobSetupLayout.tsx`
+  - Add `useJobAssignments` + `useMembers` lookup → render assignments in Hiring team card.
+  - Add Job posts card using `useJobPostings` + `PostingSheet`.
+- No changes to `JobDetail.tsx` (existing `onAddTeamMember` wiring stays).
+
+## Out of scope
+- Touching `job.hiring_team` JSONB column or migrations.
+- Restyling `JobAssignmentsPanel` / `PostingSheet`.
+- Pipeline / Job Dashboard tabs.
