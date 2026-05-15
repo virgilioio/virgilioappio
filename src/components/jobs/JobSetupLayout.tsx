@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useToast } from '@/hooks/use-toast'
+import { menuItemDanger } from '@/lib/menu-classes'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { Edit, Plus, MoreHorizontal, Pencil, Copy, Link2, Trash2 } from 'lucide-react'
 import { formatDistanceToNowStrict } from 'date-fns'
