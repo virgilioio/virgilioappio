@@ -2,13 +2,15 @@
 
 Two small additions to the Setup tab and job hero, no backend changes.
 
-## 1. "View posting" opens the public job post
+## 1. "View posting" / "Create job post" button
+
+In `src/components/jobs/JobHero.tsx`, make the posting button adaptive:
+- If at least one posting exists → label **"View posting"**, icon `ExternalLink`, opens the first active posting (fallback most recent) in a new tab via `window.open('/p/' + slug, '_blank', 'noopener')`.
+- If no postings exist → label **"+ Create job post"**, icon `Plus`, calls a new `onCreatePosting` handler.
 
 In `src/pages/JobDetail.tsx`:
-- Pick the first **active** posting (fallback to most recent) from `jobPostings`.
-- Set `hasPosting` = there is at least one active posting.
-- Wire `onViewPosting` to `window.open('/p/' + posting.slug, '_blank', 'noopener')`.
-- Disabled state stays the same when no active posting exists (tooltip already in `JobHero`).
+- Compute `activePosting = jobPostings.find(p => p.is_active) ?? jobPostings[0] ?? null`.
+- Pass `hasPosting`, `onViewPosting` (opens public URL), and `onCreatePosting` (opens `PostingSheet` in create mode — reuse the same sheet/state already added in the Job posts card, lifted to the page if needed) to `<JobHero>`.
 
 ## 2. Toggle + ellipsis menu on each Job posts card row
 
