@@ -140,16 +140,24 @@ export function JobHero({
               Share
             </Button>
           )}
-          {onViewPosting && (
+          {hasPosting && onViewPosting && (
             <Button
               variant="secondary"
               size="md"
               icon={ExternalLink}
               onClick={onViewPosting}
-              disabled={!hasPosting}
-              title={hasPosting ? undefined : 'Publish a job posting to view it'}
             >
               View posting
+            </Button>
+          )}
+          {!hasPosting && onCreatePosting && (
+            <Button
+              variant="secondary"
+              size="md"
+              icon={Plus}
+              onClick={onCreatePosting}
+            >
+              Create job post
             </Button>
           )}
           {onAddCandidate && (
