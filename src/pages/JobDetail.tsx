@@ -12,6 +12,7 @@ import { useJobSourcingProject } from '@/hooks/useJobSourcingProject'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { JobSetupLayout } from '@/components/jobs/JobSetupLayout'
 import { HiringTeamManageDialog } from '@/components/jobs/HiringTeamManageDialog'
+import { PostingSheet } from '@/components/jobs/postings/PostingSheet'
 
 import { JobDetailMobileHeader } from '@/components/jobs/JobDetailMobileHeader'
 
@@ -72,6 +73,7 @@ export default function JobDetail() {
   const [editingCandidate, setEditingCandidate] = useState<any>(null)
   const [activeTab, setActiveTab] = useState('pipeline')
   const [showHiringTeamDialog, setShowHiringTeamDialog] = useState(false)
+  const [showCreatePostingSheet, setShowCreatePostingSheet] = useState(false)
   
   // Guard: reset to allowed tab if restricted viewer lands on a restricted tab
   useEffect(() => {
@@ -357,8 +359,9 @@ export default function JobDetail() {
 
   // Sourcing project shortcut
   const { projects: sourcingProjects } = useJobSourcingProject(id)
-  const { postings: jobPostings } = useJobPostings(id!)
-  const hasJobPosting = (jobPostings || []).some((p) => p.is_active) || (jobPostings || []).length > 0
+  const { postings: jobPostings, refetch: refetchJobPostings } = useJobPostings(id!)
+  const activePosting = (jobPostings || []).find((p) => p.is_active) || (jobPostings || [])[0] || null
+  const hasJobPosting = (jobPostings || []).length > 0
 
   // Candidates hook with new functions
   const {
@@ -884,7 +887,12 @@ export default function JobDetail() {
                   createdAt={job.created_at}
                   hiringTeam={(job.hiring_team as any[]) || []}
                   onShare={() => {}}
-                  onViewPosting={() => {}}
+                  onViewPosting={() => {
+                    if (activePosting) {
+                      window.open(`/p/${activePosting.slug}`, '_blank', 'noopener')
+                    }
+                  }}
+                  onCreatePosting={() => setShowCreatePostingSheet(true)}
                   hasPosting={hasJobPosting}
                   onAddCandidate={() => setShowAddCandidate(true)}
                   onMoreActions={() => setShowEditJobModal(true)}
@@ -1246,6 +1254,17 @@ export default function JobDetail() {
             onOpenChange={setShowHiringTeamDialog}
             jobId={id!}
             jobTitle={job.title}
+          />
+        )}
+
+        {/* Create Job Posting Sheet (from header CTA) */}
+        {job && (
+          <PostingSheet
+            jobId={id!}
+            open={showCreatePostingSheet}
+            onOpenChange={setShowCreatePostingSheet}
+            onSaved={() => refetchJobPostings()}
+            defaultTitle={job.title}
           />
         )}
 

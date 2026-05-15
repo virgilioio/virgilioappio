@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { ChevronRight, MapPin, Building2, Clock, ExternalLink, Share2, UserPlus, MoreHorizontal } from 'lucide-react'
+import { ChevronRight, MapPin, Building2, Clock, ExternalLink, Share2, UserPlus, MoreHorizontal, Plus } from 'lucide-react'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { cn } from '@/lib/utils'
 
@@ -23,6 +23,7 @@ interface JobHeroProps {
   hiringTeam?: HiringTeamMember[]
   onShare?: () => void
   onViewPosting?: () => void
+  onCreatePosting?: () => void
   hasPosting?: boolean
   onAddCandidate?: () => void
   onMoreActions?: () => void
@@ -78,6 +79,7 @@ export function JobHero({
   hiringTeam = [],
   onShare,
   onViewPosting,
+  onCreatePosting,
   hasPosting = true,
   onAddCandidate,
   onMoreActions,
@@ -138,16 +140,24 @@ export function JobHero({
               Share
             </Button>
           )}
-          {onViewPosting && (
+          {hasPosting && onViewPosting && (
             <Button
               variant="secondary"
               size="md"
               icon={ExternalLink}
               onClick={onViewPosting}
-              disabled={!hasPosting}
-              title={hasPosting ? undefined : 'Publish a job posting to view it'}
             >
               View posting
+            </Button>
+          )}
+          {!hasPosting && onCreatePosting && (
+            <Button
+              variant="secondary"
+              size="md"
+              icon={Plus}
+              onClick={onCreatePosting}
+            >
+              Create job post
             </Button>
           )}
           {onAddCandidate && (
