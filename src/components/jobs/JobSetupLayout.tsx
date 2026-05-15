@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -7,6 +8,16 @@ import { Edit, Plus } from 'lucide-react'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { HiringPlanTab } from './HiringPlanTab'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useJobAssignments } from '@/hooks/useJobAssignments'
+import { useMembers } from '@/hooks/useMembers'
+import { useJobPostings } from '@/hooks/useJobPostings'
+import { PostingSheet } from './postings/PostingSheet'
+
+const ROLE_LABEL: Record<string, string> = {
+  recruiter: 'Recruiter',
+  hiring_manager: 'Hiring manager',
+  interviewer: 'Interviewer',
+}
 
 interface JobSetupLayoutProps {
   jobId: string
