@@ -11,6 +11,7 @@ import { useJobs } from '@/hooks/useJobs'
 import { useJobSourcingProject } from '@/hooks/useJobSourcingProject'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { JobSetupLayout } from '@/components/jobs/JobSetupLayout'
+import { HiringTeamManageDialog } from '@/components/jobs/HiringTeamManageDialog'
 
 import { JobDetailMobileHeader } from '@/components/jobs/JobDetailMobileHeader'
 
