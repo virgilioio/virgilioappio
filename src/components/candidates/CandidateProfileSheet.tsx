@@ -1228,9 +1228,20 @@ const stageHasAutomation = useMemo(() => {
                               jhsId={currentStage.jhsId}
                               candidateId={candidateId!}
                               enteredStageAt={enteredStageAt}
-                              onOpenStage={
+                              onSchedule={
                                 (currentStage.stage.stage_type === 'screening' || currentStage.stage.stage_type === 'interview')
                                   ? () => {
+                                      setOldBookingId(null)
+                                      setScheduleStageId(currentStage.jhsId)
+                                      setScheduleStageName(currentStage.stage.stage_name)
+                                      setScheduleOpen(true)
+                                    }
+                                  : undefined
+                              }
+                              onReschedule={
+                                (currentStage.stage.stage_type === 'screening' || currentStage.stage.stage_type === 'interview')
+                                  ? (bookingId: string) => {
+                                      setOldBookingId(bookingId)
                                       setScheduleStageId(currentStage.jhsId)
                                       setScheduleStageName(currentStage.stage.stage_name)
                                       setScheduleOpen(true)
