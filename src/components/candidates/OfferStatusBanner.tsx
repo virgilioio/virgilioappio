@@ -12,7 +12,7 @@ interface OfferStatusBannerProps {
 export function OfferStatusBanner({ offeredAt, onCreateOffer, onReactivate }: OfferStatusBannerProps) {
   return (
     <div
-      className="rounded-2xl text-white px-5 py-4 flex items-center justify-between gap-3"
+      className="rounded-2xl px-5 py-4 flex items-center justify-between gap-3"
       style={{ backgroundColor: '#0d0d09' }}
     >
       <div className="flex items-center gap-3 min-w-0">
