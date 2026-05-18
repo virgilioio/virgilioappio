@@ -4,15 +4,17 @@ import { useOfferFormFields } from '@/hooks/useOfferFormFields'
 import { useRecruiterOptions } from '@/hooks/useRecruiterOptions'
 import { useOfferApprovalRequest } from '@/hooks/useOfferApprovalRequest'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Badge, type BadgeTone } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2, Send, Clock, Pencil, Undo2, Check, X, FileText } from 'lucide-react'
+import { Alert } from '@/components/ui/alert'
+import { Loader2, Send, Pencil, Undo2, Check, X, FileText } from 'lucide-react'
 import gioFaceEmpty from '@/assets/gio-face-empty.png'
 import { GenerateOfferDialog } from './GenerateOfferDialog'
 import { MinimizableEmailComposer } from './MinimizableEmailComposer'
 import { supabase } from '@/lib/supabaseClient'
 import { logActivity } from '@/lib/activityLogger'
+
 
 const employmentTypeLabels: Record<string, string> = {
   full_time: 'Full-time', part_time: 'Part-time',
