@@ -1,26 +1,21 @@
-# Fix Offer banner buttons to match Schedule/Email
+# Fix recruiter dropdown clicks in Create Offer composer
 
-## What will change
+## Problem
 
-Make the Offer banner buttons structurally match the top action buttons and prevent the banner text color from bleeding into them.
+In the "Create Offer" composer (rendered inside the Candidate Profile Sheet), the recruiter `SearchableSelect` opens but its list items cannot be clicked with the mouse. Keyboard (arrows + Enter) works, and search works.
 
-## Exact fix
+## Root cause
 
-- Keep the Offer banner background aligned with the navigation black.
-- Remove `text-white` from the Offer banner wrapper so it cannot cascade into child buttons.
-- Apply white text only to the banner text/icon elements that need it.
-- Keep both banner actions as standard Gio secondary buttons:
+The composer mounts inside a Radix `Sheet` (modal Dialog). The recruiter dropdown uses `Popover` (via `SearchableSelect`), which is portaled to `<body>`. Radix Dialog sets `pointer-events: none` on the body while open, so the portaled popover content receives focus (keyboard works) but pointer events are swallowed before reaching the `CommandItem`s.
 
-```text
-<Button variant="secondary" size="md" icon={...}>...</Button>
-```
+The standard Radix fix is to mark the popover as modal so it manages pointer-events independently of the parent Dialog.
 
-## Result
+## Change
 
-- `Reactivate` and `Create offer` will render like `Schedule` and `Email`: white fill, hairline border, dark readable text, 34px height, same typography.
-- No custom button color overrides.
-- No changes to Schedule/Email or offer workflow logic.
+Pass `modal` through `Popover` in `src/components/ui/searchable-select.tsx` (default `true`, prop-overridable), so when the SearchableSelect is used inside a Dialog/Sheet its items are clickable.
 
-## File
+Scope: only `searchable-select.tsx`. No logic, no styling changes. No edits to the composer, the offer flow, or other components.
 
-- `src/components/candidates/OfferStatusBanner.tsx`
+## Verification
+
+Open Create Offer on a candidate → click the Recruiter field → click a name from the list. The selection should apply on click, matching keyboard behavior.
