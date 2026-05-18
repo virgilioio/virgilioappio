@@ -1205,40 +1205,7 @@ const stageHasAutomation = useMemo(() => {
                 <div className={cn("pb-10 mx-auto w-full", asPage ? "layout-container max-w-[1400px]" : "px-4 sm:px-6 pt-4 max-w-[1400px]")}>
                 {/* Mobile job selector removed — single-job profile only */}
 
-                {/* Status Banners — full width above tabs */}
-                {associationStatus === 'rejected' && rejectionDetails && (
-                  <div className="mb-4">
-                    <RejectionStatusBanner
-                      rejectedAt={rejectionDetails.rejectedAt}
-                      rejectedByName={rejectionDetails.rejectedByName || undefined}
-                      rejectionReason={rejectionDetails.rejectionReason}
-                      rejectionNotes={rejectionDetails.rejectionNotes}
-                      rejectionEmailScheduledFor={rejectionDetails.rejectionEmailScheduledFor}
-                      rejectionEmailSentAt={rejectionDetails.rejectionEmailSentAt}
-                      onReactivate={handleReactivate}
-                    />
-                  </div>
-                )}
-                {associationStatus === 'offer' && (
-                  <div className="mb-4">
-                    <OfferStatusBanner
-                      offeredAt={offerDetails?.offeredAt || null}
-                      offeredByName={offerDetails?.offeredByName || undefined}
-                      onCreateOffer={() => setOfferFormOpen(true)}
-                    />
-                  </div>
-                )}
-                {associationStatus === 'hired' && (
-                  <div className="mb-4">
-                    <HiredStatusBanner
-                      hiredAt={hiredDetails?.hiredAt || null}
-                      hiredByName={hiredDetails?.hiredByName || undefined}
-                      jobTitle={job?.title}
-                      candidateSource={candidate?.source || candidate?.job_board_source || undefined}
-                      onUnhire={handleUnhire}
-                    />
-                  </div>
-                )}
+                {/* Status banners moved into Card 2 (replacing stage strip) */}
 
                 {/* Tabs moved into ProfileHeroCard */}
 
