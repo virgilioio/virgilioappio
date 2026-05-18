@@ -1,19 +1,25 @@
-# Fix Offer banner button styling
+# Fix Offer banner buttons to match Schedule/Email
 
-## Change
+## What will change
 
-Make the Offer banner action buttons use the same secondary button styling as the top Schedule and Email buttons:
+Make the Offer banner buttons structurally match the top action buttons and prevent the banner text color from bleeding into them.
+
+## Exact fix
+
+- Keep the Offer banner background aligned with the navigation black.
+- Remove `text-white` from the Offer banner wrapper so it cannot cascade into child buttons.
+- Apply white text only to the banner text/icon elements that need it.
+- Keep both banner actions as standard Gio secondary buttons:
 
 ```text
-<Button variant="secondary" size="md" ...>
+<Button variant="secondary" size="md" icon={...}>...</Button>
 ```
 
-## Exact behavior
+## Result
 
-- `+ Create offer` becomes the standard secondary button: white fill, hairline border, dark text, same height as Schedule/Email.
-- `Reactivate` sits to the left and uses the same standard secondary styling for consistency and legibility.
-- Remove the `onDark` remap from these banner buttons because it intentionally changes secondary buttons into translucent white-text buttons, which is not what is wanted here.
-- Keep the banner background black as-is.
+- `Reactivate` and `Create offer` will render like `Schedule` and `Email`: white fill, hairline border, dark readable text, 34px height, same typography.
+- No custom button color overrides.
+- No changes to Schedule/Email or offer workflow logic.
 
 ## File
 
