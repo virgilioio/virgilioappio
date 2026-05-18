@@ -1176,6 +1176,7 @@ const stageHasAutomation = useMemo(() => {
                         offeredAt={offerDetails?.offeredAt || null}
                         offeredByName={offerDetails?.offeredByName || undefined}
                         onCreateOffer={() => setOfferFormOpen(true)}
+                        onReactivate={handleReactivate}
                       />
                     ) : associationStatus === 'hired' ? (
                       <HiredStatusBanner
