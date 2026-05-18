@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
-import { RotateCcw, Clock, Mail } from 'lucide-react';
+import { XCircle, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { formatMovedHere } from './statusBannerUtils';
 
 interface RejectionStatusBannerProps {
   rejectedAt: string | null;
@@ -23,32 +24,35 @@ export function RejectionStatusBanner({
 }: RejectionStatusBannerProps) {
   if (!rejectedAt) return null;
 
+  const subParts: string[] = [];
+  subParts.push(rejectionReason?.name || 'No reason specified');
+  subParts.push(format(new Date(rejectedAt), 'MMM d, yyyy'));
+  if (rejectedByName) subParts.push(`By ${rejectedByName}`);
+  if (rejectionNotes) subParts.push(`"${rejectionNotes}"`);
+  else if (rejectionEmailSentAt) subParts.push(`Email sent ${format(new Date(rejectionEmailSentAt), 'MMM d')}`);
+  else if (rejectionEmailScheduledFor) subParts.push(`Email scheduled ${format(new Date(rejectionEmailScheduledFor), 'MMM d')}`);
+
   return (
-    <div className="rounded-lg p-4 flex items-center justify-between bg-virgilio-rejected">
-      <div className="space-y-0.5">
-        <p className="text-sm font-medium text-white">Candidate Rejected</p>
-        <p className="text-xs text-white/80">
-          {rejectionReason?.name || 'No reason specified'} • {format(new Date(rejectedAt), 'MMM d, yyyy')}
-          {rejectedByName && ` • By ${rejectedByName}`}
-        </p>
-        {rejectionNotes && (
-          <p className="text-xs text-white/70 italic mt-1">"{rejectionNotes}"</p>
-        )}
-        {rejectionEmailSentAt && (
-          <p className="text-xs text-green-200 flex items-center gap-1 mt-1">
-            <Mail className="h-3 w-3" />
-            Rejection email sent on {format(new Date(rejectionEmailSentAt), 'MMM d, yyyy')}
+    <div className="rounded-2xl bg-virgilio-rejected text-white px-5 py-4 flex items-center justify-between gap-3">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="h-10 w-10 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
+          <XCircle className="h-5 w-5 text-white" />
+        </div>
+        <div className="min-w-0">
+          <p className="font-poppins font-semibold uppercase text-[10.5px] tracking-[0.06em] text-white/80">
+            Rejected
+            <span className="text-white/50 normal-case tracking-normal font-normal"> · Moved here {formatMovedHere(rejectedAt)}</span>
           </p>
-        )}
-        {!rejectionEmailSentAt && rejectionEmailScheduledFor && (
-          <p className="text-xs text-amber-200 flex items-center gap-1 mt-1">
-            <Clock className="h-3 w-3" />
-            Rejection email scheduled for {format(new Date(rejectionEmailScheduledFor), "MMM d, yyyy 'at' h:mm a")}
+          <p className="font-poppins font-semibold text-[15px] tracking-[-0.01em] text-white mt-0.5 truncate">
+            Candidate rejected.
           </p>
-        )}
+          <p className="font-inter text-[12.5px] text-white/70 truncate">
+            {subParts.join(' · ')}
+          </p>
+        </div>
       </div>
-      <Button variant="outline" size="sm" onClick={onReactivate} className="bg-white hover:bg-white/90 text-foreground border-0">
-        <RotateCcw className="h-4 w-4 mr-2" /> Reactivate
+      <Button variant="secondary" size="sm" onClick={onReactivate} icon={RotateCcw} className="shrink-0">
+        Reactivate
       </Button>
     </div>
   );
