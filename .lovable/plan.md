@@ -1,36 +1,28 @@
-# Job posting actions: View posting + manage menu
+# Advance to Offer at last pipeline stage
 
-Two small additions to the Setup tab and job hero, no backend changes.
+When a candidate sits on the final pipeline stage, the "Advance to …" button currently disappears from both the candidate profile hero (top-right) and the Quick Actions card. Replace that empty state with an "Advance to Offer" button in both places, which moves the candidate's association status to `offer` (the same action used elsewhere in the sheet).
 
-## 1. "View posting" / "Create job post" button
+## Behaviour
 
-In `src/components/jobs/JobHero.tsx`, make the posting button adaptive:
-- If at least one posting exists → label **"View posting"**, icon `ExternalLink`, opens the first active posting (fallback most recent) in a new tab via `window.open('/p/' + slug, '_blank', 'noopener')`.
-- If no postings exist → label **"+ Create job post"**, icon `Plus`, calls a new `onCreatePosting` handler.
+- Candidate has a next stage → unchanged: "Advance to {next stage name}" moves to next stage.
+- Candidate is on the last stage AND status is `active` → show "Advance to Offer" in both spots, which calls the existing `handleMoveToOffer` flow (sets status `offer`, stamps `offered_at`/`offered_by`).
+- Candidate status is already `offer`, `hired`, or `rejected` → button stays hidden (matches current rules; Quick Actions still shows "Create offer" when status is `offer`).
 
-In `src/pages/JobDetail.tsx`:
-- Compute `activePosting = jobPostings.find(p => p.is_active) ?? jobPostings[0] ?? null`.
-- Pass `hasPosting`, `onViewPosting` (opens public URL), and `onCreatePosting` (opens `PostingSheet` in create mode — reuse the same sheet/state already added in the Job posts card, lifted to the page if needed) to `<JobHero>`.
+## Files to change
 
-## 2. Toggle + ellipsis menu on each Job posts card row
+1. **`src/components/candidates/CandidateProfileSheet.tsx`**
+   - In both `ProfileHeroCard` and `ProfileQuickActionsCard` call sites (~lines 1096–1154 and ~1543–1571), derive:
+     - `atLastStage = currentIdx >= 0 && nextStage == null`
+     - `advanceToOffer = atLastStage && associationStatus === 'active'`
+     - `effectiveNextStageLabel = nextStage?.stage.stage_name ?? (advanceToOffer ? 'Offer' : null)`
+     - `effectiveOnAdvance = nextStage ? <existing move handler> : (advanceToOffer ? handleMoveToOffer : undefined)`
+   - Pass those into the two components instead of the raw `nextStage`-based values.
 
-In `src/components/jobs/JobSetupLayout.tsx`, replace the static badge on the right of each posting row with:
-
-- A `<Switch>` bound to `p.is_active` → calls `updatePosting(p.id, { is_active: !p.is_active })`. Stops row click propagation.
-- An ellipsis `<DropdownMenu>` (align="end", sideOffset 8) with these items in order:
-  - **Edit** → opens `PostingSheet` in edit mode (same as row click).
-  - **Duplicate** → `duplicatePosting(p.id)` then `refetchPostings`.
-  - **Copy URL** → `navigator.clipboard.writeText(window.location.origin + '/p/' + p.slug)` + toast "Link copied".
-  - divider
-  - **Delete** (danger, last) → confirm then `deletePosting(p.id)`.
-
-Re-add `updatePosting` and `duplicatePosting` to the `useJobPostings` destructuring (currently only `postings`/`refetch` are pulled). Toggle and menu are admin-only (hidden when `isReadOnly`). Row click still opens `PostingSheet` for edit.
-
-## Files
-
-- Edit `src/pages/JobDetail.tsx` (View posting wiring).
-- Edit `src/components/jobs/JobSetupLayout.tsx` (Switch + ellipsis menu per row).
+2. **`src/components/candidates/profile/ProfileHeroCard.tsx`** and **`src/components/candidates/profile/ProfileQuickActionsCard.tsx`**
+   - No structural changes required; the existing render condition `{nextStageLabel && !isRejected && !isHired && onAdvance && (...)}` already handles the new case once the parent passes `nextStageLabel="Offer"` and an `onAdvance` handler. Verify the label renders cleanly as "Advance to Offer".
 
 ## Out of scope
 
-No changes to `PostingSheet`, `useJobPostings` hook internals, public posting page, or RLS.
+- No changes to `handleMoveToOffer`, `usePipelineActions`, or DB logic.
+- No new copy variants beyond the literal label "Offer".
+- No styling changes to the buttons themselves.
