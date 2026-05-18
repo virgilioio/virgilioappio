@@ -1,9 +1,8 @@
 import { useMemo } from 'react'
-import { ArrowUpRight, Calendar, Users } from 'lucide-react'
+import { Calendar, CalendarClock, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AvatarStack } from '@/components/ui/table-cells'
 import { useStageBookings } from '@/hooks/useStageBookings'
-import { cn } from '@/lib/utils'
 
 interface CurrentStageCardProps {
   stageName: string
@@ -11,7 +10,8 @@ interface CurrentStageCardProps {
   jhsId: string
   candidateId: string
   enteredStageAt?: string | null
-  onOpenStage?: () => void
+  onSchedule?: () => void
+  onReschedule?: (bookingId: string) => void
   scorecardsSubmittedCount?: number
 }
 
