@@ -58,24 +58,25 @@ function formatSalaryValue(value: any, config?: any): string {
   return String(amount)
 }
 
-function getStatusVariant(status: string) {
+function getStatusTone(status: string): BadgeTone {
   switch (status) {
-    case 'draft': return 'secondary'
-    case 'pending_approval': return 'purple'
-    case 'approved': return 'purple'
-    case 'finalized': return 'default'
-    case 'sent': return 'default'
-    case 'accepted': return 'default'
-    case 'declined': return 'destructive'
-    default: return 'secondary'
+    case 'draft': return 'neutral'
+    case 'pending_approval': return 'yellow'
+    case 'approved': return 'green'
+    case 'finalized': return 'green'
+    case 'sent': return 'blue'
+    case 'accepted': return 'green'
+    case 'declined': return 'red'
+    default: return 'neutral'
   }
 }
 
 function getStatusLabel(status: string) {
   if (status === 'pending_approval') return 'Pending Approval'
   if (status === 'approved') return 'Approved'
-  return status
+  return status.charAt(0).toUpperCase() + status.slice(1)
 }
+
 
 export function CandidateOfferDetails({ candidateId, jobId, organizationId, candidate, job, organization, onEdit, associationStatus }: CandidateOfferDetailsProps) {
   const { offerLetters, isLoading } = useOfferLetters(candidateId)
