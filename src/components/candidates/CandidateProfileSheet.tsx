@@ -1158,7 +1158,17 @@ const stageHasAutomation = useMemo(() => {
                     />
                     {/* Card 2 — stages only (mirrors PipelineSectionTabs sitting below JobHero card) */}
                     <section className="bg-white border border-virgilio-border rounded-2xl shadow-sm p-5 sm:p-6">
-                      <ProfileStageStrip stages={planStages} currentStageId={currentStageId} />
+                      <ProfileStageStrip
+                        stages={planStages}
+                        currentStageId={currentStageId}
+                        disabled={!associationId || associationStatus !== 'active'}
+                        onStageClick={async (jhsId) => {
+                          if (!associationId || jhsId === currentStageId) return
+                          await moveAssociationToStage(associationId, jhsId)
+                          setCurrentStageId(jhsId)
+                          onStageChanged?.()
+                        }}
+                      />
                     </section>
                   </>
                 )
