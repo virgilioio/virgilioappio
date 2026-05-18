@@ -63,10 +63,6 @@ export function SearchableSelect({
     <div className="space-y-1">
       <Popover open={open} onOpenChange={setOpen} modal>
 
-
-  return (
-    <div className="space-y-1">
-      <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
