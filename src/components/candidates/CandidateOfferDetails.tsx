@@ -276,7 +276,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
             <FileText className="h-4 w-4" />
             <div className="pl-7">
               <span className="text-body-sm font-medium block">Offer document generated</span>
-              <p className="text-body-xs text-text-secondary">{offerDocument.file_name}</p>
+              <p className="text-body-sm text-text-secondary">{offerDocument.file_name}</p>
             </div>
           </Alert>
         )}
@@ -286,7 +286,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
             <div className="pl-7">
               <span className="text-body-sm font-medium block">This offer has been declined</span>
               {declinedNote && (
-                <p className="text-body-xs opacity-80 mt-1">{declinedNote}</p>
+                <p className="text-body-sm opacity-80 mt-1">{declinedNote}</p>
               )}
             </div>
           </Alert>
