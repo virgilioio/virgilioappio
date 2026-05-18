@@ -379,15 +379,16 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
 
                 return (
                   <div key={field.field_name}>
-                    <div className="text-xs font-medium text-text-tertiary uppercase tracking-wider mb-1">{label}</div>
-                    <div className="text-sm text-text-primary">{displayValue}</div>
+                    <div className="text-form-label mb-1">{label}</div>
+                    <div className="text-body-md text-text-primary">{displayValue}</div>
                   </div>
                 )
               })}
           </div>
         ) : (
-          <p className="text-sm text-text-secondary">No field values recorded.</p>
+          <p className="text-body-sm text-text-secondary">No field values recorded.</p>
         )}
+
 
       </CardContent>
 
