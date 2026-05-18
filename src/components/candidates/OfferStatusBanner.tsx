@@ -1,4 +1,4 @@
-import { Hourglass, Plus } from 'lucide-react';
+import { Hourglass, Plus, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatMovedHere } from './statusBannerUtils';
 
@@ -6,11 +6,15 @@ interface OfferStatusBannerProps {
   offeredAt: string | null;
   offeredByName?: string;
   onCreateOffer: () => void;
+  onReactivate?: () => void;
 }
 
-export function OfferStatusBanner({ offeredAt, onCreateOffer }: OfferStatusBannerProps) {
+export function OfferStatusBanner({ offeredAt, onCreateOffer, onReactivate }: OfferStatusBannerProps) {
   return (
-    <div className="rounded-2xl bg-text-primary text-white px-5 py-4 flex items-center justify-between gap-3">
+    <div
+      className="rounded-2xl text-white px-5 py-4 flex items-center justify-between gap-3"
+      style={{ backgroundColor: '#0d0d09' }}
+    >
       <div className="flex items-center gap-3 min-w-0">
         <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
           <Hourglass className="h-5 w-5 text-white" />
@@ -28,9 +32,17 @@ export function OfferStatusBanner({ offeredAt, onCreateOffer }: OfferStatusBanne
           </p>
         </div>
       </div>
-      <Button variant="secondary" size="sm" onClick={onCreateOffer} icon={Plus} className="shrink-0">
-        Create offer
-      </Button>
+      <div className="flex items-center gap-2 shrink-0">
+        {onReactivate && (
+          <Button variant="secondary" size="sm" onDark onClick={onReactivate} icon={RotateCcw}>
+            Reactivate
+          </Button>
+        )}
+        <Button variant="primary" size="sm" onDark onClick={onCreateOffer} icon={Plus}>
+          Create offer
+        </Button>
+      </div>
     </div>
   );
 }
+
