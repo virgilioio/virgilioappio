@@ -8,7 +8,7 @@ import { Badge, type BadgeTone } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert } from '@/components/ui/alert'
-import { Loader2, Send, Pencil, Undo2, Check, X, FileText } from 'lucide-react'
+import { Loader2, Send, Pencil, Undo2, Check, X, FileText, DollarSign, MapPin, Calendar, Briefcase, User, BadgeCheck, Building2 } from 'lucide-react'
 import gioFaceEmpty from '@/assets/gio-face-empty.png'
 import { GenerateOfferDialog } from './GenerateOfferDialog'
 import { MinimizableEmailComposer } from './MinimizableEmailComposer'
@@ -334,18 +334,20 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
           </div>
         )}
 
-        {/* Title */}
-        <div>
-          <div className="text-form-label mb-1">Offer Title</div>
-          <div className="text-body-md text-text-primary">{offerLetter.title}</div>
-        </div>
+        {/* Field list — matches Application card pattern */}
+        <dl className="divide-y divide-virgilio-border/60">
+          <div className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
+            <dt className="inline-flex items-center gap-2 text-[13px] font-poppins text-text-secondary">
+              <span className="text-text-tertiary"><FileText className="h-3.5 w-3.5" /></span>
+              Offer Title
+            </dt>
+            <dd className="text-[13px] font-poppins text-text-primary text-right truncate max-w-[60%]">
+              {offerLetter.title}
+            </dd>
+          </div>
 
-
-
-        {/* Dynamic fields from the form */}
-        {fields.length > 0 && Object.keys(fieldValues).length > 0 ? (
-          <div className="grid grid-cols-1 gap-4">
-            {fields
+          {fields.length > 0 && Object.keys(fieldValues).length > 0 ? (
+            fields
               .sort((a, b) => a.display_order - b.display_order)
               .filter(f => fieldValues[f.field_name] !== undefined)
               .map(field => {
@@ -377,17 +379,35 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
                   displayValue = value != null && value !== '' ? String(value) : '—'
                 }
 
+                const Icon =
+                  fieldType === 'salary' ? DollarSign
+                  : fieldType === 'location' ? MapPin
+                  : fieldType === 'work_location' ? Building2
+                  : fieldType === 'date' ? Calendar
+                  : fieldType === 'employment_type' ? Briefcase
+                  : fieldType === 'recruiter' ? User
+                  : fieldType === 'checkbox' ? BadgeCheck
+                  : FileText
+
                 return (
-                  <div key={field.field_name}>
-                    <div className="text-form-label mb-1">{label}</div>
-                    <div className="text-body-md text-text-primary">{displayValue}</div>
+                  <div key={field.field_name} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
+                    <dt className="inline-flex items-center gap-2 text-[13px] font-poppins text-text-secondary">
+                      <span className="text-text-tertiary"><Icon className="h-3.5 w-3.5" /></span>
+                      {label}
+                    </dt>
+                    <dd className="text-[13px] font-poppins text-text-primary text-right truncate max-w-[60%]">
+                      {displayValue}
+                    </dd>
                   </div>
                 )
-              })}
-          </div>
-        ) : (
-          <p className="text-body-sm text-text-secondary">No field values recorded.</p>
-        )}
+              })
+          ) : (
+            <div className="py-2.5">
+              <p className="text-[13px] font-poppins text-text-secondary">No field values recorded.</p>
+            </div>
+          )}
+        </dl>
+
 
 
       </CardContent>
