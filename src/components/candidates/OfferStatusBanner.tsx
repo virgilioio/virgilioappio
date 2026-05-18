@@ -34,11 +34,11 @@ export function OfferStatusBanner({ offeredAt, onCreateOffer, onReactivate }: Of
       </div>
       <div className="flex items-center gap-2 shrink-0">
         {onReactivate && (
-          <Button variant="secondary" size="sm" onDark onClick={onReactivate} icon={RotateCcw}>
+          <Button variant="secondary" size="md" onClick={onReactivate} icon={RotateCcw}>
             Reactivate
           </Button>
         )}
-        <Button variant="secondary" size="sm" onClick={onCreateOffer} icon={Plus}>
+        <Button variant="secondary" size="md" onClick={onCreateOffer} icon={Plus}>
           Create offer
         </Button>
       </div>
