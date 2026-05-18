@@ -41,7 +41,7 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 
 export function CurrentStageCard({
   stageName, stageType, jhsId, candidateId,
-  enteredStageAt, onOpenStage, scorecardsSubmittedCount,
+  enteredStageAt, onSchedule, onReschedule, scorecardsSubmittedCount,
 }: CurrentStageCardProps) {
   const { data: bookings } = useStageBookings(jhsId, candidateId)
   const isInterviewStage = stageType === 'interview' || stageType === 'screening' || stageType === 'assessment'
@@ -52,6 +52,12 @@ export function CurrentStageCard({
     const now = Date.now()
     const upcoming = bookings.filter(b => new Date(b.scheduled_start as string).getTime() >= now)
     return upcoming[0] || bookings[bookings.length - 1] || null
+  }, [bookings])
+
+  const hasUpcoming = useMemo(() => {
+    if (!bookings) return false
+    const now = Date.now()
+    return bookings.some(b => new Date(b.scheduled_start as string).getTime() >= now)
   }, [bookings])
 
   // Aggregate panelists across all bookings in this stage
@@ -84,6 +90,9 @@ export function CurrentStageCard({
     ? `${nextEventDate.toLocaleDateString(undefined, { weekday: 'short' })} · ${nextEventDate.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}${durationMin ? ` · ${durationMin} min` : ''}`
     : null
 
+  const showScheduleButton = isInterviewStage && (onSchedule || onReschedule)
+  const isReschedule = hasUpcoming && !!nextBooking?.id && !!onReschedule
+
   return (
     <section className="bg-white border border-virgilio-border rounded-2xl shadow-sm p-5 sm:p-6">
       <div className="flex items-start justify-between gap-3 mb-4">
@@ -99,10 +108,28 @@ export function CurrentStageCard({
             </p>
           )}
         </div>
-        {onOpenStage && (
-          <Button variant="link" size="sm" iconRight={ArrowUpRight} onClick={onOpenStage} className="shrink-0">
-            Open stage
-          </Button>
+        {showScheduleButton && (
+          isReschedule ? (
+            <Button
+              variant="secondary"
+              size="md"
+              icon={CalendarClock}
+              onClick={() => onReschedule!(nextBooking!.id as string)}
+              className="shrink-0"
+            >
+              Reschedule
+            </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              size="md"
+              icon={Calendar}
+              onClick={() => onSchedule?.()}
+              className="shrink-0"
+            >
+              Schedule
+            </Button>
+          )
         )}
       </div>
 
