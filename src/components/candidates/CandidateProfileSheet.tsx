@@ -1551,12 +1551,16 @@ const stageHasAutomation = useMemo(() => {
                         const currentStage = currentIdx >= 0 ? sortedStages[currentIdx] : null
                         return (
                           <ProfileQuickActionsCard
-                            nextStageLabel={nextStage?.stage.stage_name || null}
+                            nextStageLabel={nextStage?.stage.stage_name ?? (currentIdx >= 0 && associationStatus === 'active' ? 'Offer' : null)}
                             onAdvance={async () => {
-                              if (!associationId || !nextStage) return
-                              await moveAssociationToStage(associationId, nextStage.jhsId)
-                              setCurrentStageId(nextStage.jhsId)
-                              onStageChanged?.()
+                              if (nextStage) {
+                                if (!associationId) return
+                                await moveAssociationToStage(associationId, nextStage.jhsId)
+                                setCurrentStageId(nextStage.jhsId)
+                                onStageChanged?.()
+                              } else if (currentIdx >= 0 && associationStatus === 'active') {
+                                await handleMoveToOffer()
+                              }
                             }}
                             onSubmitScorecard={() => {
                               if (!currentStage) return
