@@ -1,28 +1,34 @@
-# Click-to-move stages in candidate profile stage strip
+# Status banners replace the stage bar
 
-Make each stage chip in the candidate profile's stage bar clickable. Clicking a stage moves the candidate to that stage immediately — no dropdown, no confirmation button.
+When a candidate is in Offer, Hired, or Rejected status, the stage strip is hidden and a redesigned status banner is rendered in its exact slot — matching the strip's height pixel-for-pixel.
 
-## Behavior
+## What changes
 
-- Click any stage chip → move candidate to that stage.
-- Current stage chip: not clickable (no-op).
-- While the move is in flight, disable interaction on the strip and show a subtle pending state on the clicked chip.
-- Past/future chips both work (allows moving forward or back).
-- If the candidate has no association yet, or is rejected/hired, the strip stays read-only.
-- Success/error toasts are handled by the existing `moveAssociationToStage` hook.
+1. **Swap slot, not stack.** Today the stage strip lives in "Card 2" (the white `section` directly under `ProfileHeroCard`), and the Offer/Hired/Rejection banners render again above the tabs. For non-active statuses we will:
+   - Hide `ProfileStageStrip`.
+   - Render the matching banner inside the **same Card 2 wrapper** (same outer `section`, same padding, same border/radius/shadow), so its outer height equals the previous stage bar exactly.
+   - Remove the duplicate banner block currently sitting above the tab content (no second copy).
+   - Active candidates keep the stage strip as-is.
 
-## Technical scope
+2. **Redesign the three banners** to match the attached mockup (single visual system, only color + copy + action differ):
+   - Dark surface (`bg-text-primary text-white`, rounded-2xl, no extra outer card chrome since they sit inside Card 2).
+   - Left: 40px rounded icon tile (hourglass for Offer, check for Hired, X for Rejected) on a subtle white/10 background.
+   - Eyebrow: `STAGE NAME · Moved here {Xd}` in Poppins 10.5px caps, lilac/purple tint.
+   - Title: Poppins 15px semibold (e.g. "Ready to send an offer.", "Candidate hired.", "Candidate rejected.").
+   - Subtext: Inter 12.5px muted white/70 (context line — alignment copy / job + date / reason).
+   - Right: single white pill action button (`+ Create offer`, `Unhire`, `Reactivate`) — `variant="secondary"`, size `sm`.
+   - Layout: `flex items-center justify-between` with `gap-3`, vertically centered so total height ≈ stage strip chip height.
 
-1. **`ProfileStageStrip.tsx`**
-   - Add optional `onStageClick?: (jhsId: string) => void | Promise<void>` and `disabled?: boolean` props.
-   - Wrap each chip in a `<button>` when `onStageClick` is set and the chip is not the current stage; keep a plain `<div>` for current/disabled.
-   - Add hover affordance (subtle ring/bg shift) for clickable chips, cursor pointer.
-   - Track an internal `pendingId` so the clicked chip shows a muted/loading state while awaiting the promise.
+3. **Height parity.** Card 2 padding (`p-5 sm:p-6`) and the inner banner's vertical rhythm are tuned so the rendered card height equals the stage-strip version. No fixed pixel hacks — same wrapper + matched inner content height (icon tile + 2 text lines ≈ chip's title + meta line).
 
-2. **`CandidateProfileSheet.tsx` (~line 1161)**
-   - Pass `onStageClick` to `<ProfileStageStrip>`:
-     - Guard on `associationId`, `associationStatus === 'active'`, and target ≠ current.
-     - Call `moveAssociationToStage(associationId, jhsId)`, then `setCurrentStageId(jhsId)` and `onStageChanged?.()` — same pattern as the existing "Advance" handler.
-   - Pass `disabled` when no `associationId` or status is rejected/hired.
+## Files
 
-No backend, hook, or schema changes. Pure UI + wiring to the existing `usePipelineActions` hook.
+- `src/components/candidates/CandidateProfileSheet.tsx` — branch Card 2 content on `associationStatus`; remove the second banner block above tabs (lines ~1183-1215).
+- `src/components/candidates/OfferStatusBanner.tsx` — redesign per mockup; drop outer card chrome (parent provides it).
+- `src/components/candidates/HiredStatusBanner.tsx` — same redesign, hired variant.
+- `src/components/candidates/RejectionStatusBanner.tsx` — same redesign, rejected variant (keeps "Reactivate" action; reason/notes shown as subtext, truncated).
+
+## Out of scope
+
+- No changes to status transition logic, hooks, or data fetching.
+- Quick Actions card and hero card behavior unchanged.
