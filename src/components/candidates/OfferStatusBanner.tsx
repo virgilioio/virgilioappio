@@ -1,6 +1,6 @@
-import { format } from 'date-fns';
-import { FileText } from 'lucide-react';
+import { Hourglass, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { formatMovedHere } from './statusBannerUtils';
 
 interface OfferStatusBannerProps {
   offeredAt: string | null;
@@ -8,33 +8,28 @@ interface OfferStatusBannerProps {
   onCreateOffer: () => void;
 }
 
-export function OfferStatusBanner({
-  offeredAt,
-  offeredByName,
-  onCreateOffer,
-}: OfferStatusBannerProps) {
+export function OfferStatusBanner({ offeredAt, onCreateOffer }: OfferStatusBannerProps) {
   return (
-    <div 
-      className="rounded-lg p-4 flex items-center justify-between"
-      style={{ backgroundColor: '#2a3f66' }}
-    >
-      <div className="space-y-0.5">
-        <p className="text-sm font-medium text-white">Candidate at Offer Stage</p>
-        <p className="text-xs text-white/80">
-          {offeredAt 
-            ? `Moved to offer on ${format(new Date(offeredAt), 'MMM d, yyyy')}`
-            : 'Currently in offer stage'}
-          {offeredByName && ` • By ${offeredByName}`}
-        </p>
+    <div className="rounded-2xl bg-text-primary text-white px-5 py-4 flex items-center justify-between gap-3">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+          <Hourglass className="h-5 w-5 text-white" />
+        </div>
+        <div className="min-w-0">
+          <p className="font-poppins font-semibold uppercase text-[10.5px] tracking-[0.06em] text-virgilio-purple/80">
+            Offer stage
+            {offeredAt && <span className="text-white/40 normal-case tracking-normal font-normal"> · Moved here {formatMovedHere(offeredAt)}</span>}
+          </p>
+          <p className="font-poppins font-semibold text-[15px] tracking-[-0.01em] text-white mt-0.5 truncate">
+            Ready to send an offer.
+          </p>
+          <p className="font-inter text-[12.5px] text-white/70 truncate">
+            The team has aligned. Build the offer once and we'll route approvals automatically.
+          </p>
+        </div>
       </div>
-      <Button 
-        variant="outline" 
-        size="sm" 
-        onClick={onCreateOffer}
-        className="bg-white hover:bg-white/90 text-foreground border-0"
-      >
-        <FileText className="h-4 w-4 mr-2" />
-        Create Offer
+      <Button variant="secondary" size="sm" onClick={onCreateOffer} icon={Plus} className="shrink-0">
+        Create offer
       </Button>
     </div>
   );
