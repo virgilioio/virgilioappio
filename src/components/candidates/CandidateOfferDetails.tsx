@@ -119,9 +119,9 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
 
   if (isLoading) {
     return (
-      <Card className="bg-surface-primary border-border">
+      <Card>
         <CardContent className="py-8">
-          <div className="text-sm text-text-secondary text-center">Loading offer details...</div>
+          <div className="text-body-sm text-text-secondary text-center">Loading offer details...</div>
         </CardContent>
       </Card>
     )
@@ -129,19 +129,16 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
 
   if (!offerLetter) {
     return (
-      <Card className="bg-surface-primary border-border">
+      <Card>
         <CardContent className="py-12">
           <div className="text-center">
-            <img 
+            <img
               src={gioFaceEmpty}
               alt="No offer details"
               className="h-16 w-16 mx-auto mb-4 rounded-full"
             />
-            <p className="text-[1.38rem] font-semibold mb-2 tracking-[-0.06em]">
-              <span>No offer details yet</span>
-              <span className="text-purple-period">.</span>
-            </p>
-            <p className="text-sm text-text-secondary">
+            <CardTitle className="mb-2">No offer details yet</CardTitle>
+            <p className="text-body-sm text-text-secondary">
               Create an offer using the Offer Form to see details here.
             </p>
           </div>
@@ -166,197 +163,184 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
     setDeclineComment('')
   }
 
+  const declinedNote = approvalRequest?.steps.find(s => s.status === 'declined')?.notes
+
   return (
     <>
-    <Card className="bg-surface-primary border-border">
-      {/* Approval status banner */}
-      {(approvalRequest?.status === 'approved' || offerDocument) && (
-        <div className="mx-6 mt-6 space-y-3">
-          {approvalRequest?.status === 'approved' && (
-            <div className="p-3 rounded-lg bg-virgilio-purple/10 border border-virgilio-purple/20">
-              <div className="flex items-center gap-2">
-                <Check className="h-4 w-4 text-virgilio-purple" />
-                <span className="text-sm font-medium text-virgilio-purple">This offer has been approved</span>
-              </div>
-            </div>
-          )}
-          {offerDocument && (
-            <div
-              onClick={async () => {
-                const { data } = await supabase.storage
-                  .from('candidate-attachments')
-                  .createSignedUrl(offerDocument.file_path, 300)
-                if (data?.signedUrl) window.open(data.signedUrl, '_blank')
-              }}
-              className="p-3 rounded-lg bg-pastel-yellow/30 border border-pastel-yellow cursor-pointer hover:bg-pastel-yellow/40 transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-pastel-yellow-foreground" />
-                <div>
-                  <span className="text-sm font-medium text-pastel-yellow-foreground">Offer document generated</span>
-                  <p className="text-xs text-pastel-yellow-foreground/80">{offerDocument.file_name}</p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-      {approvalRequest?.status === 'declined' && offerLetter.status === 'draft' && (
-        <div className="mx-6 mt-6 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-          <div className="flex items-center gap-2">
-            <X className="h-4 w-4 text-destructive" />
-            <div>
-              <span className="text-sm font-medium text-destructive">This offer has been declined</span>
-              {approvalRequest.steps.find(s => s.status === 'declined')?.notes && (
-                <p className="text-xs text-destructive/80 mt-1">
-                  {approvalRequest.steps.find(s => s.status === 'declined')?.notes}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
+    <Card>
       <CardHeader className="pb-3">
-        <div className="flex items-center gap-2">
-          <CardTitle className="leading-none">Offer Details</CardTitle>
-          <Badge variant={getStatusVariant(offerLetter.status) as any} className="capitalize">
-            {getStatusLabel(offerLetter.status)}
-          </Badge>
-        </div>
-        <div className="flex items-center gap-2 mt-2">
-          {associationStatus !== 'hired' && onEdit && (
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <CardTitle>Offer Details</CardTitle>
+            <Badge tone={getStatusTone(offerLetter.status)} dot size="sm">
+              {getStatusLabel(offerLetter.status)}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            {associationStatus !== 'hired' && onEdit && (
               <Button
-                variant="ghost"
-                size="sm"
+                variant="secondary"
+                icon={Pencil}
                 onClick={() => onEdit({
                   id: offerLetter.id,
                   form_id: offerLetter.form_id || '',
                   field_values: offerLetter.field_values || {},
                 })}
               >
-                <Pencil className="h-3.5 w-3.5 mr-1.5" />
                 Edit
               </Button>
             )}
-            {/* Approve/Decline for active approver */}
             {offerLetter.status === 'pending_approval' && isCurrentUserActiveApprover && !showApproveForm && !showDeclineForm && (
               <>
                 <Button
-                  size="sm"
-                  onClick={() => setShowApproveForm(true)}
-                  disabled={isApproving || isDeclining}
-                >
-                  <Check className="h-3.5 w-3.5 mr-1.5" />
-                  Approve
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
+                  variant="danger"
+                  icon={X}
                   onClick={() => setShowDeclineForm(true)}
                   disabled={isApproving || isDeclining}
                 >
-                  <X className="h-3.5 w-3.5 mr-1.5" />
                   Decline
+                </Button>
+                <Button
+                  variant="primary"
+                  icon={Check}
+                  onClick={() => setShowApproveForm(true)}
+                  disabled={isApproving || isDeclining}
+                >
+                  Approve
                 </Button>
               </>
             )}
             {offerLetter.status === 'approved' && approvalRequest?.status === 'approved' && (
               <Button
-                variant="ghost"
-                size="sm"
+                variant="primary"
+                icon={FileText}
                 onClick={() => setShowGenerateDialog(true)}
               >
-                <FileText className="h-3.5 w-3.5 mr-1.5" />
                 Generate Offer Letter
               </Button>
             )}
             {offerLetter.status === 'approved' && !!offerDocument && (
               <Button
-                variant="ghost"
-                size="sm"
+                variant="primary"
+                icon={Send}
                 onClick={() => setShowEmailComposer(true)}
               >
-                <Send className="h-3.5 w-3.5 mr-1.5" />
                 Send Offer
               </Button>
             )}
             {offerLetter.status === 'draft' && chainEnabled && chainHasSteps && !isActiveRequest && (
               <Button
-                variant="ghost"
-                size="sm"
+                variant="purple"
+                icon={Send}
                 onClick={() => requestApproval(offerLetter.id, jobId, candidateId)}
-                disabled={isRequesting}
+                loading={isRequesting}
               >
-                {isRequesting ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
                 Request Approval
               </Button>
             )}
             {offerLetter.status === 'pending_approval' && isCurrentUserRequester && approvalRequest && (
               <Button
-                variant="ghost"
-                size="sm"
+                variant="secondary"
+                icon={Undo2}
                 onClick={() => recallApproval(approvalRequest.id)}
-                disabled={isRecalling}
+                loading={isRecalling}
               >
-                {isRecalling ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5 mr-1.5" />}
                 Recall
               </Button>
             )}
+          </div>
         </div>
       </CardHeader>
 
-      {/* Inline approve form */}
-      {showApproveForm && (
-        <div className="mx-6 mb-4 p-4 rounded-lg border border-border bg-surface-secondary space-y-3">
-          <p className="text-sm font-medium text-text-primary">Approve this offer</p>
-          <Textarea
-            placeholder="Add a comment (optional)..."
-            value={approveComment}
-            onChange={(e) => setApproveComment(e.target.value)}
-            rows={2}
-            className="text-sm"
-          />
-          <div className="flex gap-2">
-            <Button size="sm" onClick={handleApprove} disabled={isApproving}>
-              {isApproving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
-              Confirm Approve
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => { setShowApproveForm(false); setApproveComment('') }}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Inline decline form */}
-      {showDeclineForm && (
-        <div className="mx-6 mb-4 p-4 rounded-lg border border-destructive/20 bg-destructive/5 space-y-3">
-          <p className="text-sm font-medium text-destructive">Decline this offer</p>
-          <Textarea
-            placeholder="Add a reason (optional)..."
-            value={declineComment}
-            onChange={(e) => setDeclineComment(e.target.value)}
-            rows={2}
-            className="text-sm"
-          />
-          <div className="flex gap-2">
-            <Button size="sm" variant="destructive" onClick={handleDecline} disabled={isDeclining}>
-              {isDeclining ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <X className="h-3.5 w-3.5 mr-1.5" />}
-              Confirm Decline
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => { setShowDeclineForm(false); setDeclineComment('') }}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      )}
       <CardContent className="space-y-4">
+        {/* Status banners */}
+        {approvalRequest?.status === 'approved' && (
+          <Alert variant="success">
+            <Check className="h-4 w-4" />
+            <span className="text-body-sm font-medium pl-7 block">This offer has been approved</span>
+          </Alert>
+        )}
+        {offerDocument && (
+          <Alert
+            variant="info"
+            role="button"
+            tabIndex={0}
+            onClick={async () => {
+              const { data } = await supabase.storage
+                .from('candidate-attachments')
+                .createSignedUrl(offerDocument.file_path, 300)
+              if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+            }}
+            className="cursor-pointer hover:bg-info/30 transition-colors"
+          >
+            <FileText className="h-4 w-4" />
+            <div className="pl-7">
+              <span className="text-body-sm font-medium block">Offer document generated</span>
+              <p className="text-body-xs text-text-secondary">{offerDocument.file_name}</p>
+            </div>
+          </Alert>
+        )}
+        {approvalRequest?.status === 'declined' && offerLetter.status === 'draft' && (
+          <Alert variant="destructive">
+            <X className="h-4 w-4" />
+            <div className="pl-7">
+              <span className="text-body-sm font-medium block">This offer has been declined</span>
+              {declinedNote && (
+                <p className="text-body-xs opacity-80 mt-1">{declinedNote}</p>
+              )}
+            </div>
+          </Alert>
+        )}
+
+        {/* Inline approve form */}
+        {showApproveForm && (
+          <div className="p-layout-md rounded-lg border border-virgilio-border bg-surface-secondary space-y-3">
+            <p className="text-form-label">Approve this offer</p>
+            <Textarea
+              placeholder="Add a comment (optional)..."
+              value={approveComment}
+              onChange={(e) => setApproveComment(e.target.value)}
+              rows={2}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => { setShowApproveForm(false); setApproveComment('') }}>
+                Cancel
+              </Button>
+              <Button variant="primary" icon={Check} onClick={handleApprove} loading={isApproving}>
+                Confirm Approve
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Inline decline form */}
+        {showDeclineForm && (
+          <div className="p-layout-md rounded-lg border border-destructive/20 bg-destructive/5 space-y-3">
+            <p className="text-form-label text-destructive">Decline this offer</p>
+            <Textarea
+              placeholder="Add a reason (optional)..."
+              value={declineComment}
+              onChange={(e) => setDeclineComment(e.target.value)}
+              rows={2}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => { setShowDeclineForm(false); setDeclineComment('') }}>
+                Cancel
+              </Button>
+              <Button variant="dangerSolid" icon={X} onClick={handleDecline} loading={isDeclining}>
+                Confirm Decline
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Title */}
         <div>
-          <div className="text-xs font-medium text-text-tertiary uppercase tracking-wider mb-1">Offer Title</div>
-          <div className="text-sm text-text-primary">{offerLetter.title}</div>
+          <div className="text-form-label mb-1">Offer Title</div>
+          <div className="text-body-md text-text-primary">{offerLetter.title}</div>
         </div>
+
+
 
         {/* Dynamic fields from the form */}
         {fields.length > 0 && Object.keys(fieldValues).length > 0 ? (
