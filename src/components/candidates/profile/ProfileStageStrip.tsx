@@ -1,4 +1,5 @@
-import { Check, Circle } from 'lucide-react'
+import { useState } from 'react'
+import { Check, Circle, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { JobStage } from '@/hooks/useJobHiringPlan'
 
@@ -9,31 +10,55 @@ interface ProfileStageStripProps {
   currentStageId?: string | null
   /** Optional metadata per stage (passed-in days, current day count). */
   meta?: Record<string, { passedInDays?: number; currentDay?: number; totalDays?: number }>
+  /** When provided, each non-current chip becomes clickable and triggers this. */
+  onStageClick?: (jhsId: string) => void | Promise<void>
+  /** Disables all interaction (e.g. rejected/hired/no association). */
+  disabled?: boolean
 }
 
-export function ProfileStageStrip({ stages, currentStageId, meta = {} }: ProfileStageStripProps) {
+export function ProfileStageStrip({ stages, currentStageId, meta = {}, onStageClick, disabled }: ProfileStageStripProps) {
+  const [pendingId, setPendingId] = useState<string | null>(null)
   if (!stages.length) return null
   const sorted = [...stages].sort((a, b) => a.position - b.position)
   const currentIdx = currentStageId ? sorted.findIndex(s => s.jhsId === currentStageId) : -1
+  const interactive = !!onStageClick && !disabled
+
+  const handleClick = async (jhsId: string) => {
+    if (!onStageClick || pendingId || disabled) return
+    setPendingId(jhsId)
+    try {
+      await onStageClick(jhsId)
+    } finally {
+      setPendingId(null)
+    }
+  }
 
   return (
     <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-1 px-1">
       {sorted.map((opt, idx) => {
         const isPast = currentIdx >= 0 && idx < currentIdx
         const isCurrent = currentIdx >= 0 && idx === currentIdx
+        const isPending = pendingId === opt.jhsId
         const m = meta[opt.jhsId] || {}
+        const clickable = interactive && !isCurrent
 
-        const base = 'flex-1 min-w-[140px] rounded-xl px-3 py-2.5 transition-colors'
+        const base = 'flex-1 min-w-[140px] rounded-xl px-3 py-2.5 transition-all text-left'
         const stateClass = isPast
           ? 'bg-pastel-green text-pastel-green-foreground'
           : isCurrent
           ? 'bg-text-primary text-white'
           : 'border border-dashed border-virgilio-border text-text-tertiary bg-transparent'
+        const interactiveClass = clickable
+          ? 'cursor-pointer hover:ring-2 hover:ring-virgilio-purple/30 hover:border-virgilio-purple/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/40'
+          : ''
+        const pendingClass = isPending ? 'opacity-60' : ''
 
-        return (
-          <div key={opt.jhsId} className={cn(base, stateClass)}>
+        const content = (
+          <>
             <div className="flex items-center gap-1.5">
-              {isPast ? (
+              {isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin opacity-70" />
+              ) : isPast ? (
                 <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-pastel-green-foreground/15">
                   <Check className="h-2.5 w-2.5 text-pastel-green-foreground" strokeWidth={3} />
                 </span>
@@ -60,6 +85,27 @@ export function ProfileStageStrip({ stages, currentStageId, meta = {} }: Profile
                     : 'In stage')
                 : 'Upcoming'}
             </div>
+          </>
+        )
+
+        if (clickable) {
+          return (
+            <button
+              type="button"
+              key={opt.jhsId}
+              disabled={!!pendingId}
+              onClick={() => handleClick(opt.jhsId)}
+              className={cn(base, stateClass, interactiveClass, pendingClass)}
+              title={`Move to ${opt.stage.stage_name}`}
+            >
+              {content}
+            </button>
+          )
+        }
+
+        return (
+          <div key={opt.jhsId} className={cn(base, stateClass)}>
+            {content}
           </div>
         )
       })}
