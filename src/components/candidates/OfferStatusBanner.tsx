@@ -38,7 +38,7 @@ export function OfferStatusBanner({ offeredAt, onCreateOffer, onReactivate }: Of
             Reactivate
           </Button>
         )}
-        <Button variant="primary" size="sm" onDark onClick={onCreateOffer} icon={Plus}>
+        <Button variant="secondary" size="sm" onClick={onCreateOffer} icon={Plus}>
           Create offer
         </Button>
       </div>
