@@ -1,25 +1,29 @@
-# Fix: "+ Add panelist" pill still closes on click
+# Fix: Panelist autocomplete shows no teammates
 
 ## Root cause
 
-The previous fix stabilized the visual anchor, but the pill is still rendered as a `PopoverAnchor`, not a `PopoverTrigger`. Radix uses the trigger/content relationship for dismissal handling; an anchor is only a positioning reference. Because the clicked pill is not the trigger, Radix can still treat that click/focus as an outside interaction and close the popover immediately.
+`PanelistComboField` is fed only by `availableInterviewers`, which is built from `stage_interviewer_assignments` for the current stage. On this job/stage the stage has no configured interviewers with active `booking_configurations`, so the source list is empty and typing a name can never match anything — the dropdown correctly says "No teammates match" because no candidates exist to filter.
+
+What the user expects: typing a name searches the **job's hiring team** (everyone assigned to the job), not just whoever was pre-configured on the stage. Picking a hiring-team member who has no booking config should still surface them, but as unavailable (shown under "No calendar connected").
 
 ## Fix
 
-Stabilize the anchor and stop fighting the popover lifecycle.
+Broaden the source of teammates the field searches, while keeping today's "calendar required to actually schedule" guarantee.
 
-1. Replace `PopoverAnchor` with `PopoverTrigger asChild` around one stable wrapper so Radix knows the pill/input is the trigger, not an outside element.
-2. Move activation to the stable trigger wrapper: clicking the dotted pill sets `editing`, opens the popover, and focuses the input after render.
-3. Keep the wrapper mounted while switching between dotted pill and input, so focus/positioning stay stable.
-4. Keep outside-click and Escape behavior: outside click closes and returns to dotted pill; Escape closes and clears the query.
-5. If Radix trigger toggling conflicts with the controlled open state, explicitly prevent the default trigger toggle and drive `open/editing` from our handler.
-
-No visual or behavioral changes beyond the pill morph working as designed: dotted pill → input + dropdown stays open → type to filter → click to add chip → input clears and stays open for next add → Esc or outside click reverts to dotted pill.
+1. Add a second query inside `ScheduleInterviewSheet` that fetches the job's assignees (`job_assignments` → `members` → `profiles` + `booking_configurations`) for the current job.
+2. Merge stage interviewers + job hiring team into a single deduped pool keyed by `member_id`. Stage assignments keep their `assignment_type` (required/optional/manual); hiring-team-only entries default to `assignment_type: 'manual'`.
+3. Recompute `availableInterviewers` and `interviewersWithoutBookingConfig` from the merged pool:
+   - Available = has active `booking_configurations`.
+   - Unavailable ("No calendar connected") = no active booking config — still listed in the dropdown as disabled with the "No calendar" hint, so the recruiter can see they exist.
+4. Sort: stage `required` → stage `optional` → hiring-team `manual`, then alphabetical.
+5. No change to selection model (still single-select via `setSelectedInterviewer`) or to the existing scheduling logic — only the candidate pool grows.
 
 ## Files
 
-- `src/components/candidates/ScheduleInterviewSheet.tsx` — only the `PanelistComboField` subcomponent.
+- `src/components/candidates/ScheduleInterviewSheet.tsx` — add hiring-team query, merge logic, and adjust the two memos that feed `PanelistComboField`.
 
 ## Out of scope
 
-Everything else in the sheet stays as-is.
+- Multi-panelist selection (today's state is single-select; chip removal already supported by the field).
+- Any changes to `stage_interviewer_assignments`, booking config, or RLS.
+- Changes to group mode (`scheduling_mode === 'all'`).
