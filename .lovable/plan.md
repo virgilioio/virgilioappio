@@ -1,89 +1,83 @@
-# Redesign Create & Edit Posting sheets
+# Public Careers Index — Redesign
 
-Rebuild `PostingSheet.tsx` to match the new mockups. One component handles both create and edit modes — header, footer, AI affordances, and a few helper chips swap by mode. **All existing functionality is preserved**: every field currently saved (`title`, `description`, `details.*`, `publish_to_talent`, slug, application form via `PostingFieldsBuilder`) keeps its wiring; new fields are additive in `details` JSONB.
+Redesign `/c/:companySlug` (`PublicCareersPage.tsx`) to match mockup `40_Careers_index_public`. Editorial hero, stat cards, grouped role list, "How we hire" card, open-application CTA, footer. Fully public, mobile-responsive, reads existing data — no schema changes required for v1.
 
-## Layout
-
-Replace the current tabs with one long-scroll sheet (≈1040px max). Sticky header, sticky footer, sections stacked between them — same visual language as the Setup tab.
+## Page structure
 
 ```text
-┌─ Sheet (right, max-w-[1040px]) ──────────────────────────────┐
-│ Sticky header (white)                                        │
-│  NEW POSTING · {JOB TITLE}   or   EDIT POSTING · {JOB TITLE} │
-│  {Posting title or "Untitled posting"}  [Live|Draft][Primary]│
-│  Subtitle (2 lines, muted)                                   │
-│                                                              │
-│ Scroll area (bg #FAFAF7, gap-6, p-6):                        │
-│  1. POSTING BASICS         [Pulled from job info]            │
-│  2. PUBLIC DESCRIPTION     new: [Gio will draft][Draft from  │
-│                             job]   edit: [Gio rewrote][Rewrite]│
-│  3. BRANDING               [Inherits from workspace]         │
-│  4. APPLICATION FORM       [+ Add question]                  │
-│  5. WHERE TO PUBLISH       [↗ Manage integrations]           │
-│  6. APPLY EXPERIENCE                                         │
-│  7. SEO & SHARING          new: [Will auto-generate]         │
-│                                                              │
-│ Sticky footer (white, top hairline)                          │
-│  Cancel · "Posting to N channels · application form M fields"│
-│  edit: [Preview posting] [Save changes]                      │
-│  new:  [Preview posting] [Save as draft] [Publish posting]   │
-└──────────────────────────────────────────────────────────────┘
+┌─ Top bar ────────────────────────────────────────────┐
+│ [logo] Company · Careers          (domain chip) →    │
+├─ Hero (2-col on desktop) ────────────────────────────┤
+│ "We're hiring · N roles across D depts"              │
+│ H1 editorial title + italic phrase + purple period   │
+│ Subhead paragraph                                    │
+│ [See open roles ↓]  [Life at Acme · 90s ▶]           │
+│                                                      │
+│        ┌─ OPEN ROLES ─┐ ┌─ AVG FIRST REPLY ─┐        │
+│        │     10       │ │    18h median      │       │
+│        └──────────────┘ └────────────────────┘       │
+│        ┌─ Dark perks band ────────────────────┐      │
+│        │ 🌐 Remote-first, offices NYC & Berlin │      │
+│        └───────────────────────────────────────┘      │
+├─ Filter toolbar ─────────────────────────────────────┤
+│ [🔍 Search] [Dept ▾] [Location ▾] [Type ▾]  Sorted ▾ │
+├─ Roles grouped by department ────────────────────────┤
+│ Design · 2 open roles                                │
+│ ─ Senior Product Designer [FEATURED]  📍 …  Full-time│
+│ ─ Senior Product Designer (EU)        📍 …  Full-time│
+│ Engineering · 4 open roles                           │
+│ …                                                    │
+├─ "How we hire" card (text + 4 gradient tiles) ───────┤
+├─ Dark "Don't see your role?" CTA band ───────────────┤
+└─ Footer (logo · tagline · 3 col links · powered by) ─┘
 ```
 
-Each section: caps eyebrow title (10.5px Inter +0.06em muted) + right-side helper chip, then a white rounded-xl card (`border-virgilio-border`, `p-6`) containing the controls.
+## Data wiring (v1, no migration)
 
-## Sections & field wiring
+| Section | Source |
+|---|---|
+| Logo, page_title, header_text, company_website_url, company_slug, show_company_name | `careers_page_settings` (existing) |
+| Open roles count + departments count | derived from active `job_postings` for this tenant |
+| Hero headline / subhead / video CTA / perks band / "How we hire" copy / tiles / footer columns | hard-coded sensible defaults in v1; expose as `careers_page_settings.details.*` later |
+| AVG FIRST REPLY stat | static "48h" promise text from defaults (real metric is internal) |
+| Department grouping | `job_postings.details.department` if present, else "Other" |
+| Location / Type pills | `job_postings.location`, `job_postings.job_type` |
+| Filter options | derived from the same postings list |
+| Posted date | `created_at` → relative ("2 days ago", "1 week ago") |
+| FEATURED badge | `job_postings.details.featured === true` |
+| "View role" link | `/p/:postingSlug` (existing) |
 
-| # | Section | Fields | Storage |
-|---|---|---|---|
-| 1 | **Posting basics** | Public job title*, URL slug* (prefixed `/jobs/`, auto on new), Reference ID (auto on new), Posting language (Select w/ flag glyph), Application deadline (`DatePickerVirgilio`, "No deadline"/"Open until filled"), toggle **Show in public job search**, toggle **Show 'apply within 24h response' badge** | `title`, `slug`, `details.reference_id`, `details.language`, `details.deadline`, `details.show_in_search`, `details.show_24h_badge` |
-| 2 | **Public description** | Posting copy* (`RichTextEditor`, markdown), inline Gio CTA in editor bottom-right ("Generate with Gio" / "Rewrite"). Edit mode: lilac **Inclusion score** sub-banner with "Suggestions →". | `description` (existing) |
-| 3 | **Branding** | Hero banner (upload/replace, preview, 1600×480 hint, fallback "Using workspace default cover"), Brand color (swatch picker + hex input + "From workspace" pill), toggle **Show team photos on posting**, toggle **Embed culture video** | `details.branding.{hero_url, brand_color, show_team_photos, embed_video}` |
-| 4 | **Application form** | Helper line "What candidates fill in to apply. Drag to reorder…", then `<CoreFieldsPreview />` + `<PostingFieldsBuilder postingId>` exactly as today. EEO toggle row pinned at bottom (Demographic survey). In **create** mode before save: shows a muted "Save the draft to start adding custom questions" notice with builder disabled (same gating as the current tab). | unchanged + `details.eeo_enabled` |
-| 5 | **Where to publish** | Stack of channel rows. Each row: 36×36 brand glyph tile + name + meta line + right-side status (Always on / Connected · $X / $129 / 30 days / Not connected / Free · auto) + `<Switch>`. Channels: Acme Talent careers page (always on, lilac "Recommended"), LinkedIn, Welcome to the Jungle, ZipRecruiter, Google for Jobs, Indeed (free tier). Dark **Posting total** summary bar at the bottom ("$X + N sourcing credit" / "$0 (Careers page only)") with right-side lilac chip "N free, M paid". | `publish_to_talent` (existing, wired to careers/talent toggle), `details.channels[code]={enabled, cost}` |
-| 6 | **Apply experience** | Toggles: **Send confirmation email** (helper: "From {sender} · 'We received your application…'"), **Promise first response in 48h**, **Allow candidate to message recruiter**, **Enable referral link** (helper shows `acmetalent.gio.com/r/{ref}`) | `details.apply.{confirmation_email, promise_48h, allow_message, referral_enabled}` |
-| 7 | **SEO & sharing** | Meta title (placeholder "Auto-generates from public title", 60 char hint), Meta description (textarea, 155 char hint, "Auto-generates from public description"). On new mode show eyebrow chip "Will auto-generate". | `details.seo.{meta_title, meta_description}` |
+Client-side search + filters (no DB round-trips). One query: existing `careers_page_settings` + active postings.
 
-## Behavior differences: New vs Edit
+## Components (new, scoped under `src/components/careers/public/`)
 
-- **Header eyebrow:** `NEW POSTING · {JOB}` vs `EDIT POSTING · {JOB}` (lilac caps).
-- **Title block:** "Untitled posting" + Draft badge (new); actual title + Live/Draft + Primary badges (edit).
-- **Slug / Reference ID:** placeholder text in new (`auto-generated from title`, `auto-generated`); editable values in edit. Slug still computed by `generateSlug` on save when left blank (existing behavior).
-- **Public description placeholder:** "Click 'Draft from job' to generate from the job information" (new) vs current copy (edit). Buttons swap: `Generate with Gio` / `Draft from job` (new) vs `Rewrite` / `Gio rewrote` chip (edit).
-- **Branding banner:** "Using workspace default cover" placeholder + Upload (new) vs uploaded asset + Replace (edit).
-- **Footer actions:**
-  - New: `Cancel` · `Preview posting` (disabled until title valid) · `Save as draft` (creates row, `is_active=false`) · `Publish posting` (creates row, `is_active=true`).
-  - Edit: `Cancel` · `Preview posting` · `Save changes`.
-- **Footer summary chip:** live count of enabled channels + application form field count.
+- `CareersTopBar.tsx` — logo, company name, optional right nav, domain chip
+- `CareersHero.tsx` — pill, H1 (with italic span + purple period), subhead, two CTAs, stat cards, perks band
+- `CareersFilterBar.tsx` — search input + Department / Location / Type selects + sort label
+- `CareersRoleGroup.tsx` + `CareersRoleRow.tsx` — grouped list with FEATURED badge, location pill, type pill, posted-ago, dark "View role →"
+- `CareersHowWeHireCard.tsx` — copy + 4 gradient tiles (placeholder gradients, no images required)
+- `CareersOpenApplicationBand.tsx` — dark band + button (mailto: tenant contact for v1)
+- `CareersFooter.tsx` — logo, tagline, 3 link columns, "hiring powered by Gio"
 
-## Visual / tokens
+`PublicCareersPage.tsx` orchestrates: fetch → filter state → render sections. Loading / error / empty states preserved.
 
-- Section eyebrow caps: 10.5px Inter +0.06em, `text-text-tertiary`. Right-side helper chip = lilac `bg-[#EDE4FF] text-virgilio-purple` 11.5px with sparkle icon (reuse unified AI banner tone) — also used for "Pulled from job info", "Inherits from workspace", "Will auto-generate", "Gio rewrote", "Gio will draft", "Recommended".
-- Cards: `bg-surface-primary rounded-xl border-virgilio-border p-6`.
-- Inputs 44h, Selects 32h, ring `virgilio-purple` (existing tokens).
-- Toggle rows: 2-line layout — title 13.5px Poppins 500 + helper 12.5px `text-text-secondary` left, `<Switch>` right, separated by hairline `border-b border-virgilio-border/60`.
-- Badges: reuse `<Badge tone>` — Live = green dot, Draft = neutral dot, Primary = lilac, Required = yellow pill, Optional = neutral pill.
-- Dark posting-total bar: `bg-[#0d0d09] text-[#FFFCF9]` rounded-xl, lightning bolt glyph left, lilac chip right.
-- Sticky footer: white, top hairline. Primary submit (Save / Publish) = plain `<Button>` per Forms core rule. Preview = `variant="secondary"`. Cancel = `variant="ghost"`.
+## Styling
 
-## Preserved functionality (non-negotiable)
+- Cream background `#FAF7F2`-ish via existing `bg-surface-primary` / tokens
+- Editorial H1: Poppins display weight, italic accent span, `text-purple-period` for the dot (matches existing `<PageTitle>` pattern)
+- Body: Inter; pills + buttons reuse `<Badge>` and `<Button variant="primary">`
+- Dark bands use `bg-[#0d0d09] text-[#FFFCF9]` (matches Postings dark summary bar)
+- Fully responsive: 2-col hero collapses, filter bar wraps, role rows stack on mobile
 
-- `useJobPostings` `getPosting / createPosting / updatePosting` remain the source of truth — no new hooks for posting CRUD.
-- All current `details` keys (`location`, `employment_type`, `location_type`, `salary_*`, `commissions_*`) keep saving. They are not visible in the new mockups, so they move into a collapsible "Compensation & location" subsection inside **Posting basics** (closed by default) — values continue to be persisted exactly as today, no data loss.
-- `publish_to_talent` continues to toggle from section 5 (the Acme Talent / careers row).
-- `PostingFieldsBuilder` + `CoreFieldsPreview` rendered unchanged.
-- About-company card and Talent.com integration alert keep their existing logic; About card moves into the Branding section (collapsible).
+## Preserved
 
-## Files
+- Route, slug lookup, logo upload, `useCareersPageSettings`, public Supabase access pattern, footer "Powered by Gio"
+- No changes to `PublicJobPosting.tsx` (next step)
+- No new tables, no edge functions, no DB migrations
 
-- `src/components/jobs/postings/PostingSheet.tsx` — full rewrite, one component, both modes via `postingId` presence.
-- `src/components/jobs/postings/PostingChannelsCard.tsx` — new, channels list + dark total bar.
-- `src/components/jobs/postings/PostingBrandingCard.tsx` — new, banner + brand color swatches + toggles.
-- No DB migrations. No changes to `PostingFieldsBuilder`, `useJobPostings`, or `JobPostingsTab`.
+## Out of scope (next iterations)
 
-## Out of scope
-
-- Real cross-posting to LinkedIn / WTJ / ZipRecruiter / Google for Jobs / Indeed (UI + persisted toggles only).
-- File upload pipeline for Hero banner (UI shell + URL field this pass; existing storage bucket wiring later).
-- Real Gio rewrite / inclusion score logic (buttons wired to existing draft flow only; copy/labels updated, score uses static placeholder until backend lands).
-- Real referral-link generation (URL preview only).
+- Editor UI to customize hero copy / perks / tiles / footer (will need `details` JSONB)
+- Real "average first reply" metric
+- Open-application form submission (v1 = mailto)
+- Public job posting page redesign (next chat)
