@@ -168,6 +168,7 @@ function PanelistComboField({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
 
   const selectedIds = new Set(selected.map((s) => s.id));
   const q = query.toLowerCase();
