@@ -392,8 +392,16 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
       <SectionCard
         title="Job description"
         trailing={
-          <Button variant="ghost" size="xs" icon={Sparkles} className="text-virgilio-purple">
-            Generate with Gio
+          <Button
+            variant="ghost"
+            size="xs"
+            icon={Sparkles}
+            className="text-virgilio-purple"
+            onClick={handleGenerateDescription}
+            loading={isGenerating}
+            disabled={isGenerating}
+          >
+            {isGenerating ? 'Generating…' : 'Generate with Gio'}
           </Button>
         }
       >
@@ -415,7 +423,11 @@ We're hiring a…
 - …"
             className="mt-2 min-h-[220px] font-inter text-[13px] leading-relaxed"
           />
-          <FieldHint>Markdown supported. Includes overview, responsibilities, requirements.</FieldHint>
+          {genValidationMsg ? (
+            <p className="mt-2 text-[12px] text-destructive font-inter">{genValidationMsg}</p>
+          ) : (
+            <FieldHint>Markdown supported. Includes overview, responsibilities, requirements.</FieldHint>
+          )}
         </div>
       </SectionCard>
 
