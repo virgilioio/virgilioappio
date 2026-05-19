@@ -3,7 +3,7 @@ import { parseISO, format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 
-type Slot = { start: string; end?: string };
+type Slot = { start: string; end: string };
 
 interface Props {
   slots: Slot[];
