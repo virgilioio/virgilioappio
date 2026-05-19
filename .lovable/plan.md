@@ -1,52 +1,25 @@
-# Interviewers field — dotted "+ Add panelist" pill with inline autocomplete
+# Fix: "+ Add panelist" pill closes immediately on click
 
-Refine the `PanelistComboField` inside `ScheduleInterviewSheet.tsx` so the entry point matches the reference: a dotted, pill-shaped **+ Add panelist** button that sits inline with the selected chips. Clicking it turns the pill into a typeable input with an autocomplete dropdown of hiring-team members. Selecting one adds a chip and the pill returns to its dotted resting state, ready for the next add.
+## Root cause
 
-## Visual spec
+In `PanelistComboField` the `<PopoverAnchor asChild>` wraps a conditional that swaps the resting `<button>` for the active `<input>` on click. The anchor child unmounts and a new node mounts in the same tick, which makes Radix Popover see a focus/pointer change outside its tree and trigger `onOpenChange(false)` — the menu closes before the input is usable. The `onBlur` auto-close on the input compounds the problem: as React re-renders, the input briefly loses focus and `deactivate()` fires.
 
-Container: no outer input shell. Just a flex-wrap row of selected chips followed by the trigger pill, all on the page background.
+## Fix
 
-Selected chip (unchanged):
-- `<RemovableChip tone="purple" size="sm">` with mini avatar + name + ×.
+Stabilize the anchor and stop fighting the popover lifecycle.
 
-Trigger pill — resting state:
-- Pill shape: `h-7 px-3 rounded-full`.
-- Dashed border: `border border-dashed border-virgilio-border` (slightly stronger on hover: `hover:border-virgilio-purple/50`).
-- Background: transparent, `hover:bg-[hsl(var(--badge-lilac))]/40`.
-- Text: `text-[12px] font-poppins font-medium text-virgilio-ink/70`, `+ Add panelist`.
-- Focus ring: `focus-visible:ring-2 focus-visible:ring-virgilio-purple/30`.
+1. Keep a single, always-mounted anchor element (a `<div>`) that contains either the button or the input. The Popover anchor never unmounts during the morph, so Radix keeps the open state.
+2. Remove the `onBlur` auto-close handler. Rely on Popover's own outside-click + Escape handling for closing. Escape inside the input also calls `deactivate()` explicitly.
+3. On `onOpenChange(false)` from Radix, run `deactivate()` so the pill returns to its dotted resting state when the user clicks outside.
+4. Call `activate()` on `pointerDown` (not `click`) for the resting pill so the focus + open happens before Radix's outside-click detector evaluates pointer-up.
+5. Add `onPointerDownOutside` passthrough on `PopoverContent` left at default — no custom handling.
 
-Trigger pill — active (typing) state:
-- Same height/radius/dashed border, but border becomes solid `border-virgilio-purple/40` and bg `bg-white`.
-- Renders a borderless `<input>` with `placeholder="Type a name…"`, autofocus.
-- Min width 140px, grows with text via auto-sizing (`size` attr or a hidden span).
-- `Esc` or blur with no selection → revert to resting pill.
-- `Backspace` on empty input → remove last chip.
-
-Dropdown:
-- Radix `Popover` anchored to the pill, `align="start" sideOffset="6"`.
-- `Command` list, width matches pill min 220px / max 320px.
-- Filters hiring-team members by name (case-insensitive `includes`), excludes already-selected.
-- Row: avatar (20px) + name + small role/email muted line.
-- Empty state: `No matches.`
-- `Enter` selects highlighted row; click also selects. After selection the input clears and stays open for rapid multi-add until `Esc`/outside click.
-
-Group mode (`schedulingMode === 'all'`): no trigger pill, panelists render as read-only `<Badge>` (unchanged behavior).
-
-Helper line below the row stays: `Calendars sync from Google Workspace. Gio finds shared slots in real time.`
-
-## Behavior
-
-- Source list: existing `useStageInterviewerAssignments` + `useStageBookingInterviewers` already feed available + selected members. No data changes.
-- Add selects → call existing `addInterviewer` mutation (already wired).
-- Remove via chip × → existing `removeInterviewer` mutation.
-- All other sections of the sheet untouched.
+No visual or behavioral changes beyond the pill morph working as designed: dotted pill → input + dropdown stays open → type to filter → Enter/click to add chip → input clears, stays open for next add → Esc or outside click reverts to dotted pill.
 
 ## Files
 
-- `src/components/candidates/ScheduleInterviewSheet.tsx` — rewrite the `PanelistComboField` subcomponent only.
+- `src/components/candidates/ScheduleInterviewSheet.tsx` — only the `PanelistComboField` subcomponent.
 
 ## Out of scope
 
-- Availability timeline, Location & Notes, Invitation card — all stay as currently built.
-- No backend or hook changes.
+Everything else in the sheet stays as-is.
