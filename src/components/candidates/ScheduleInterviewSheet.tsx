@@ -168,6 +168,7 @@ function PanelistComboField({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
 
   const selectedIds = new Set(selected.map((s) => s.id));
   const q = query.toLowerCase();
@@ -205,7 +206,7 @@ function PanelistComboField({
           </RemovableChip>
         ))}
         <PopoverAnchor asChild>
-          <div className="inline-flex">
+          <div ref={anchorRef} className="inline-flex">
             {editing ? (
               <div
                 className={cn(
@@ -264,6 +265,14 @@ function PanelistComboField({
         align="start"
         sideOffset={6}
         onOpenAutoFocus={(e) => e.preventDefault()}
+        onFocusOutside={(e) => {
+          const t = e.target as Node | null;
+          if (t && anchorRef.current?.contains(t)) e.preventDefault();
+        }}
+        onInteractOutside={(e) => {
+          const t = e.target as Node | null;
+          if (t && anchorRef.current?.contains(t)) e.preventDefault();
+        }}
       >
         <Command shouldFilter={false}>
           <CommandList className="max-h-[280px]">
