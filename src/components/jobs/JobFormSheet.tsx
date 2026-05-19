@@ -163,7 +163,7 @@ export function JobFormSheet({
   return (
     <Sheet open={isOpen} onOpenChange={(o) => !o && onClose()}>
       <SheetContent
-        className="w-full sm:max-w-[860px] p-0 flex flex-col bg-virgilio-cream gap-0"
+        className="w-full sm:max-w-[860px] p-0 flex flex-col bg-[#FAFAF7] gap-0"
         side="right"
       >
         {/* HEADER */}
