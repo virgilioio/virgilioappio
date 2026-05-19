@@ -554,186 +554,22 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
         </SectionCard>
 
         {/* ---------- APPLICATION FORM ---------- */}
-        <SectionCard
-          title="Application form"
-          trailing={
-            <div className="flex items-center gap-2">
-              <CopyFromAnotherJobButton
-                excludeJobId={jobId}
-                currentFieldCount={fields.length}
-                onCopy={(jobTitle, copied) => {
-                  setFields(copied)
-                  toast.success(`Copied ${copied.length} fields from ${jobTitle}`)
-                }}
-              />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="secondary" size="sm" icon={Plus} dropdown>
-                  Add question
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" sideOffset={8} className="w-[320px]">
-                <DropdownMenuLabel className="flex items-center gap-1.5">
-                  <Sparkles className="h-3 w-3 text-virgilio-purple" />
-                  Smart fields
-                </DropdownMenuLabel>
-                {SMART_FIELDS.map((sf) => {
-                  const already = fields.some((f) => f.type === sf.type)
-                  const Icon = sf.icon
-                  return (
-                    <DropdownMenuItem
-                      key={sf.id}
-                      disabled={already}
-                      onSelect={() => {
-                        setFields((arr) => [...arr, {
-                          id: `${sf.id}_${Date.now()}`,
-                          label: sf.label,
-                          type: sf.type,
-                          required: false,
-                          icon: sf.icon,
-                          hint: sf.hint,
-                          isSmart: true,
-                        }])
-                      }}
-                    >
-                      <Icon className="h-3.5 w-3.5 text-text-tertiary" />
-                      <span className="flex-1 truncate">{sf.label}</span>
-                      <Badge tone="lilac" size="xs">Smart</Badge>
-                    </DropdownMenuItem>
-                  )
-                })}
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel>Basic question types</DropdownMenuLabel>
-                {BASIC_TYPES.map((bt) => {
-                  const Icon = bt.icon
-                  return (
-                    <DropdownMenuItem
-                      key={bt.type}
-                      onSelect={() => {
-                        setFields((arr) => [...arr, {
-                          id: `q_${Date.now()}`,
-                          label: `New ${bt.label.toLowerCase()} question`,
-                          type: bt.type,
-                          required: false,
-                          icon: bt.icon,
-                        }])
-                      }}
-                    >
-                      <Icon className="h-3.5 w-3.5 text-text-tertiary" />
-                      <span className="flex-1 truncate">{bt.label}</span>
-                    </DropdownMenuItem>
-                  )
-                })}
-                {smartFieldsLibrary.length > 0 && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel>From your library</DropdownMenuLabel>
-                    {smartFieldsLibrary.map((lf) => {
-                      const typeIcon: Record<string, any> = {
-                        text: Type, email: Mail, number: Hash, textarea: AlignLeft,
-                        select: List, checkbox: ToggleLeft, date: CalendarIcon, file: FileText, url: Link2,
-                      }
-                      const Icon = typeIcon[lf.field_type] || MessageSquare
-                      return (
-                        <DropdownMenuItem
-                          key={lf.id}
-                          onSelect={() => {
-                            setFields((arr) => [...arr, {
-                              id: `lib_${lf.id}_${Date.now()}`,
-                              label: lf.field_label,
-                              type: (lf.field_type as any) === 'textarea' ? 'longtext' : (lf.field_type as any),
-                              required: lf.is_required,
-                              icon: Icon,
-                              hint: lf.help_text || undefined,
-                            }])
-                          }}
-                        >
-                          <Icon className="h-3.5 w-3.5 text-text-tertiary" />
-                          <span className="flex-1 truncate">{lf.field_label}</span>
-                          <span className="text-[10.5px] uppercase tracking-[0.06em] text-text-tertiary">{lf.field_type}</span>
-                        </DropdownMenuItem>
-                      )
-                    })}
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            </div>
+        <ApplicationFormBuilder
+          fields={fields}
+          onChange={setFields}
+          eeoEnabled={eeo}
+          onEeoChange={setEeo}
+          extraTrailing={
+            <CopyFromAnotherJobButton
+              excludeJobId={jobId}
+              currentFieldCount={fields.length}
+              onCopy={(jobTitle, copied) => {
+                setFields(copied)
+                toast.success(`Copied ${copied.length} fields from ${jobTitle}`)
+              }}
+            />
           }
-
-        >
-          <p className="text-[12.5px] text-text-secondary -mt-1">
-            What candidates fill in to apply. Drag to reorder. Keep it short — every extra field drops completion by ~6%.
-          </p>
-          <div className="space-y-2">
-            {fields.map((f, i) => {
-              const Icon = f.icon
-              return (
-                <div
-                  key={f.id}
-                  draggable={!f.locked}
-                  onDragStart={onDragStart(i)}
-                  onDragOver={onDragOver(i)}
-                  className={cn(
-                    'flex items-center gap-3 rounded-xl border border-virgilio-border bg-white px-3 py-2.5',
-                    !f.locked && 'cursor-grab active:cursor-grabbing'
-                  )}
-                >
-                  <GripVertical className={cn('h-4 w-4 text-text-tertiary shrink-0', f.locked && 'opacity-30')} />
-                  <div className="h-8 w-8 shrink-0 rounded-lg bg-[#FAFAF7] inline-flex items-center justify-center">
-                    <Icon className="h-4 w-4 text-text-secondary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-[13px] font-poppins font-medium text-text-primary truncate">{f.label}</p>
-                      {(f.isSmart || SMART_FIELD_TYPES.has(f.type)) && !f.locked && (
-                        <Badge tone="lilac" size="xs" icon={Sparkles}>Syncs to profile</Badge>
-                      )}
-                      {f.locked && <span className="text-[10.5px] uppercase tracking-[0.08em] font-poppins font-semibold text-virgilio-purple bg-[#EDE4FF] rounded-full px-2 py-0.5">Required by Gio</span>}
-                    </div>
-                    {f.hint && <p className="text-[11.5px] text-text-tertiary">{f.hint}</p>}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setFields((arr) => arr.map((x) => x.id === f.id ? { ...x, required: !x.required } : x))}
-                    disabled={f.locked}
-                    className={cn(
-                      'text-[11px] font-poppins font-medium uppercase tracking-[0.06em] rounded-full px-2.5 py-1',
-                      f.required ? 'bg-[#FFF4C7] text-[#856404]' : 'bg-[#F1F0EC] text-text-secondary',
-                      f.locked && 'opacity-70 cursor-not-allowed'
-                    )}
-                  >
-                    {f.required ? 'Required' : 'Optional'}
-                  </button>
-                  {f.locked ? (
-                    <Lock className="h-4 w-4 text-text-tertiary shrink-0" />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setFields((arr) => arr.filter((x) => x.id !== f.id))}
-                      aria-label={`Remove ${f.label}`}
-                      className="rounded-md p-1.5 text-text-tertiary hover:bg-[#F1F0EC] hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-          <div className="border-t border-virgilio-border pt-4">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-[#F1F0EC] inline-flex items-center justify-center">
-                <Puzzle className="h-4 w-4 text-text-secondary" />
-              </div>
-              <div className="flex-1">
-                <p className="text-[13px] font-poppins font-medium text-text-primary">Demographic survey (EEO)</p>
-                <p className="text-[12px] text-text-tertiary">Anonymized, optional. Appended after submit. Compliant in US, UK, EU.</p>
-              </div>
-              <ToggleRow label="" checked={eeo} onChange={setEeo} />
-            </div>
-          </div>
-        </SectionCard>
+        />
 
         {/* ---------- WHERE TO PUBLISH ---------- */}
         <SectionCard
