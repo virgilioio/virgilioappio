@@ -90,8 +90,40 @@ export function JobFormSheet({
 
   const handleSubmit = async () => {
     if (!isValid) return
-    const payload: any = { ...jobData }
-    if (job) delete payload.organization_id
+    const src: any = { ...jobData }
+    if (job) delete src.organization_id
+
+    const emptyToNull = (v: any) => (v === '' || v === undefined ? null : v)
+    const trimOrNull = (v: any) => {
+      if (v === null || v === undefined) return null
+      const s = typeof v === 'string' ? v.trim() : v
+      return s === '' ? null : s
+    }
+    const numOrNull = (v: any) =>
+      v === '' || v === undefined || v === null || Number.isNaN(Number(v)) ? null : Number(v)
+
+    const payload: any = {
+      title: (src.title ?? '').trim(),
+      description: trimOrNull(src.description),
+      location: trimOrNull(src.location),
+      internal_title: trimOrNull(src.internal_title),
+      job_level: emptyToNull(src.job_level),
+      work_mode: emptyToNull(src.work_mode),
+      employment_type: emptyToNull(src.employment_type),
+      additional_locations: Array.isArray(src.additional_locations) ? src.additional_locations : [],
+      skills: Array.isArray(src.skills) ? src.skills : [],
+      currency: src.currency || 'USD',
+      salary_min: numOrNull(src.salary_min),
+      salary_max: numOrNull(src.salary_max),
+      min_years_experience: numOrNull(src.min_years_experience),
+      max_years_experience: numOrNull(src.max_years_experience),
+      show_salary_public: src.show_salary_public ?? true,
+      include_equity: !!src.include_equity,
+      include_signing_bonus: !!src.include_signing_bonus,
+      status: src.status || 'draft',
+    }
+    if (!job && src.organization_id) payload.organization_id = src.organization_id
+
     try {
       await onSubmit(payload)
       onClose()
@@ -131,7 +163,7 @@ export function JobFormSheet({
   return (
     <Sheet open={isOpen} onOpenChange={(o) => !o && onClose()}>
       <SheetContent
-        className="w-full sm:max-w-[860px] p-0 flex flex-col bg-virgilio-cream gap-0"
+        className="w-full sm:max-w-[860px] p-0 flex flex-col bg-[#FAFAF7] gap-0"
         side="right"
       >
         {/* HEADER */}
