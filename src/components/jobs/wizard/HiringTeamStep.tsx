@@ -51,6 +51,8 @@ export function HiringTeamStep({ jobId, onNext, onBack }: HiringTeamStepProps) {
   const [notifyOnApplications, setNotifyOnApplications] = useState(true)
   const [dailyDigest, setDailyDigest] = useState(true)
   const [notifyStageMoves, setNotifyStageMoves] = useState(false)
+  const [memberSearch, setMemberSearch] = useState('')
+
 
   const memberOptions = useMemo(
     () =>
