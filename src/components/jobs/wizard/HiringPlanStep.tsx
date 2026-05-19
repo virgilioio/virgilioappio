@@ -57,19 +57,23 @@ const TEMPLATES: Array<{
 function TemplateCard({
   template,
   selected,
+  applying,
   onSelect,
 }: {
   template: (typeof TEMPLATES)[number]
   selected: boolean
+  applying: boolean
   onSelect: () => void
 }) {
   return (
     <button
       type="button"
       onClick={onSelect}
+      disabled={applying}
       className={cn(
         'group relative flex flex-col items-start gap-4 rounded-xl border p-5 text-left transition-colors',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/30',
+        'disabled:cursor-wait',
         selected
           ? 'border-virgilio-purple bg-[#F6F1FF] shadow-[0_0_0_1px_hsl(var(--virgilio-purple))]'
           : 'border-virgilio-border bg-white hover:bg-[#FAFAF7]'
@@ -79,7 +83,7 @@ function TemplateCard({
         className="flex h-10 w-10 items-center justify-center rounded-lg"
         style={{ backgroundColor: template.tileBg, color: template.tileFg }}
       >
-        <GitBranch className="h-[18px] w-[18px]" />
+        {applying ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <GitBranch className="h-[18px] w-[18px]" />}
       </span>
       <div className="space-y-1.5">
         <div className="flex items-center gap-2">
@@ -88,7 +92,7 @@ function TemplateCard({
           </h4>
           {selected && (
             <span className="inline-flex items-center rounded-full bg-[#EDE4FF] px-2 py-0.5 text-[10.5px] font-poppins font-semibold uppercase tracking-[0.08em] text-virgilio-purple">
-              Selected
+              {applying ? 'Applying…' : 'Selected'}
             </span>
           )}
         </div>
@@ -99,6 +103,7 @@ function TemplateCard({
     </button>
   )
 }
+
 
 function GioRecommendsChip({ label = 'Gio recommends' }: { label?: string }) {
   return (
