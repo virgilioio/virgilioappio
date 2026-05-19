@@ -620,7 +620,8 @@ export function SummaryStep({
                 ? 'Gio starts surfacing candidates automatically.'
                 : 'Gio can still source candidates directly without a public listing.'
             }
-            defaultOn={true}
+            checked={autoSource}
+            onChange={(v) => onAutoSourceChange?.(v)}
           />
           <ToggleRow
             title="Notify hiring team in Slack"
