@@ -841,3 +841,123 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
     )
   }
 )
+
+/* ---------------- Copy from another job ---------------- */
+
+function fieldsFromPostingDetails(details: any): AppField[] {
+  const raw = (details?.application_fields ?? details?.fields ?? []) as any[]
+  return raw.map((f, i) => ({
+    id: f.id ?? `copied_${i}_${Date.now()}`,
+    label: f.label ?? 'Untitled',
+    type: (f.type ?? 'text') as FieldType,
+    hint: f.hint,
+    required: !!f.required,
+    locked: !!f.locked,
+    isSmart: !!f.isSmart || SMART_FIELD_TYPES.has(f.type),
+    icon: iconForType(f.type),
+  }))
+}
+
+function CopyFromAnotherJobButton({
+  excludeJobId,
+  currentFieldCount,
+  onCopy,
+}: {
+  excludeJobId: string | null
+  currentFieldCount: number
+  onCopy: (jobTitle: string, copied: AppField[]) => void
+}) {
+  const { jobs, isLoading } = useJobsWithPostings(excludeJobId)
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return jobs
+    return jobs.filter(
+      (j) =>
+        j.title.toLowerCase().includes(q) ||
+        (j.department ?? '').toLowerCase().includes(q),
+    )
+  }, [jobs, query])
+
+  const handleSelect = (j: (typeof jobs)[number]) => {
+    const copied = fieldsFromPostingDetails(j.posting_details)
+    if (copied.length === 0) {
+      toast.error('That job has no application fields to copy')
+      return
+    }
+    if (currentFieldCount > 0) {
+      const ok = window.confirm(
+        `Replace the current ${currentFieldCount} application field${currentFieldCount === 1 ? '' : 's'} with ${copied.length} from "${j.title}"?`,
+      )
+      if (!ok) return
+    }
+    onCopy(j.title, copied)
+    setOpen(false)
+    setQuery('')
+  }
+
+  return (
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger asChild>
+        <Button variant="secondary" size="sm" icon={Copy} dropdown>
+          Copy from another job
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" sideOffset={8} className="w-[320px]">
+        <DropdownMenuLabel>Copy application form</DropdownMenuLabel>
+        {jobs.length >= 7 && (
+          <div className="px-2 pt-1 pb-2">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-tertiary" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search jobs…"
+                className="w-full h-8 rounded-md border border-virgilio-border bg-white pl-7 pr-2 text-[12.5px] outline-none focus:ring-2 focus:ring-virgilio-purple/30"
+              />
+            </div>
+          </div>
+        )}
+        {isLoading ? (
+          <div className="space-y-1.5 p-2">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-9 rounded-md bg-[#F1F0EC] animate-pulse" />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="px-3 py-6 text-center text-[12.5px] text-text-tertiary">
+            {jobs.length === 0
+              ? 'No other jobs have a posting yet.'
+              : 'No jobs match your search.'}
+          </div>
+        ) : (
+          <div className="max-h-[280px] overflow-y-auto">
+            {filtered.map((j) => (
+              <DropdownMenuItem
+                key={j.id}
+                onSelect={(e) => {
+                  e.preventDefault()
+                  handleSelect(j)
+                }}
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12.5px] font-poppins font-medium text-text-primary truncate">
+                    {j.title}
+                  </p>
+                  {j.department && (
+                    <p className="text-[11px] text-text-tertiary truncate">{j.department}</p>
+                  )}
+                </div>
+                <Badge tone="neutral" size="xs">
+                  {j.field_count} {j.field_count === 1 ? 'field' : 'fields'}
+                </Badge>
+              </DropdownMenuItem>
+            ))}
+          </div>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
