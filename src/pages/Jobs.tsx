@@ -156,6 +156,27 @@ export default function Jobs() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
+          <AlertDialog open={!!deleteJobId} onOpenChange={(open) => !open && !isDeleting && setDeleteJobId(null)}>
+            <AlertDialogContent className="mx-4 max-w-md sm:max-w-lg">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete job permanently?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently remove the job, its postings, and detach related candidates. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="flex-col sm:flex-row gap-3">
+                <AlertDialogCancel className="w-full sm:w-auto" disabled={isDeleting}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => { e.preventDefault(); handleConfirmDelete() }}
+                  disabled={isDeleting}
+                  className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {isDeleting ? 'Deleting…' : 'Delete job'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </PermissionGate>
     </AuthGate>
