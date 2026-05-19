@@ -509,11 +509,57 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
         <SectionCard
           title="Application form"
           trailing={
-            <Button variant="secondary" size="sm" icon={Plus}
-              onClick={() => setFields((f) => [...f, { id: `q_${Date.now()}`, label: 'New question', type: 'text', required: false, icon: MessageSquare }])}>
-              Add question
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" size="sm" icon={Plus} dropdown>
+                  Add question
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" sideOffset={8} className="w-[280px]">
+                {smartFieldsLibrary.length > 0 && (
+                  <>
+                    <DropdownMenuLabel>Smart fields</DropdownMenuLabel>
+                    {smartFieldsLibrary.map((lf) => {
+                      const already = fields.some((f) => f.id === lf.id)
+                      const typeIcon: Record<string, any> = {
+                        text: Type, email: Mail, number: Hash, textarea: AlignLeft,
+                        select: List, checkbox: ToggleLeft, date: CalendarIcon, file: FileText, url: Link2,
+                      }
+                      const Icon = typeIcon[lf.field_type] || MessageSquare
+                      return (
+                        <DropdownMenuItem
+                          key={lf.id}
+                          disabled={already}
+                          onSelect={() => {
+                            setFields((arr) => [...arr, {
+                              id: lf.id,
+                              label: lf.field_label,
+                              type: (lf.field_type as any) === 'textarea' ? 'longtext' : (lf.field_type as any),
+                              required: lf.is_required,
+                              icon: Icon,
+                              hint: lf.help_text || undefined,
+                            }])
+                          }}
+                        >
+                          <Icon className="h-3.5 w-3.5 text-text-tertiary" />
+                          <span className="flex-1 truncate">{lf.field_label}</span>
+                          <span className="text-[10.5px] uppercase tracking-[0.06em] text-text-tertiary">{lf.field_type}</span>
+                        </DropdownMenuItem>
+                      )
+                    })}
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                <DropdownMenuItem
+                  onSelect={() => setFields((f) => [...f, { id: `q_${Date.now()}`, label: 'New question', type: 'text', required: false, icon: MessageSquare }])}
+                >
+                  <Plus className="h-3.5 w-3.5 text-text-tertiary" />
+                  Custom question…
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           }
+
         >
           <p className="text-[12.5px] text-text-secondary -mt-1">
             What candidates fill in to apply. Drag to reorder. Keep it short — every extra field drops completion by ~6%.
