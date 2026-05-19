@@ -219,8 +219,9 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
           <SummaryStep
             jobData={wizardState.jobData}
             jobId={wizardState.createdJobId}
-            onComplete={handleComplete}
-            onBack={handlePrevStep}
+            hasPosting={wizardState.hasPosting}
+            postingMeta={postingMeta}
+            onGoToStep={goToStep}
           />
         )
       default:
