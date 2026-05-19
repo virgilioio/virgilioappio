@@ -9,6 +9,7 @@ import { JobInfoStep, AiAssistedBadge } from './wizard/JobInfoStep'
 import { HiringPlanStep } from './wizard/HiringPlanStep'
 import { HiringTeamStep } from './wizard/HiringTeamStep'
 import { SummaryStep } from './wizard/SummaryStep'
+import { JobPostingStep, type JobPostingStepHandle } from './wizard/JobPostingStep'
 
 interface JobWizardProps {
   isOpen: boolean
@@ -26,7 +27,8 @@ const STEPS = [
   { id: 1, title: 'Job information' },
   { id: 2, title: 'Hiring plan' },
   { id: 3, title: 'Hiring team' },
-  { id: 4, title: 'Summary' },
+  { id: 4, title: 'Job posting' },
+  { id: 5, title: 'Summary' },
 ]
 
 const STEP_META: Record<
@@ -34,26 +36,33 @@ const STEP_META: Record<
   { eyebrow: string; title: string; subtitle: string; ai?: boolean }
 > = {
   1: {
-    eyebrow: 'Create job · Step 1 of 4',
+    eyebrow: 'Create job · Step 1 of 5',
     title: 'Job information',
     subtitle:
       'The basics, description, and skills. Department, salary, and currency become part of the public posting.',
     ai: true,
   },
   2: {
-    eyebrow: 'Create job · Step 2 of 4',
+    eyebrow: 'Create job · Step 2 of 5',
     title: 'Hiring plan',
     subtitle:
       'The stages candidates progress through. Drag to reorder. Application review and Offer are required system stages.',
   },
   3: {
-    eyebrow: 'Create job · Step 3 of 4',
+    eyebrow: 'Create job · Step 3 of 5',
     title: 'Hiring team',
     subtitle:
       "Who can see this job, and what they can do. Add as many people as needed; assign roles for what they'll do on this job specifically.",
   },
   4: {
-    eyebrow: 'Create job · Step 4 of 4',
+    eyebrow: 'Create job · Step 4 of 5',
+    title: 'Job posting',
+    subtitle:
+      'The public-facing listing — how candidates discover, read, and apply to this role. You can publish to your careers page and cross-post to job boards.',
+    ai: true,
+  },
+  5: {
+    eyebrow: 'Create job · Step 5 of 5',
     title: 'Summary',
     subtitle: 'Review everything and publish.',
   },
@@ -69,6 +78,8 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
 
   const { createJob } = useJobs()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const postingRef = React.useRef<JobPostingStepHandle>(null)
+  const [postingMeta, setPostingMeta] = useState({ channels: 1, fields: 9 })
 
   const resetWizard = () =>
     setWizardState({
@@ -145,6 +156,20 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
   const canProceedStep1 = () =>
     !!wizardState.jobData.title && !!wizardState.jobData.organization_id
 
+  const handlePostingContinue = async () => {
+    setIsSubmitting(true)
+    try {
+      const ok = await postingRef.current?.savePosting()
+      if (ok === false) return
+      setWizardState((prev) => ({ ...prev, currentStep: 5 }))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handlePostingSkip = () =>
+    setWizardState((prev) => ({ ...prev, currentStep: 5 }))
+
   const renderStepContent = () => {
     switch (wizardState.currentStep) {
       case 1:
@@ -167,6 +192,15 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
         )
       case 4:
         return (
+          <JobPostingStep
+            ref={postingRef}
+            jobData={wizardState.jobData}
+            jobId={wizardState.createdJobId}
+            onPostingMeta={setPostingMeta}
+          />
+        )
+      case 5:
+        return (
           <SummaryStep
             jobData={wizardState.jobData}
             jobId={wizardState.createdJobId}
@@ -180,11 +214,7 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
   }
 
   const meta = STEP_META[wizardState.currentStep]
-  const showFooter =
-    wizardState.currentStep === 1 ||
-    wizardState.currentStep === 2 ||
-    wizardState.currentStep === 3 ||
-    wizardState.currentStep === 4
+  const showFooter = wizardState.currentStep >= 1 && wizardState.currentStep <= 5
 
   const primaryCta = (() => {
     switch (wizardState.currentStep) {
@@ -193,8 +223,10 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
       case 2:
         return { label: 'Continue to team', onClick: handleNextStep, disabled: false, loading: false }
       case 3:
-        return { label: 'Review & create', onClick: handleNextStep, disabled: false, loading: false }
+        return { label: 'Continue to posting', onClick: handleNextStep, disabled: false, loading: false }
       case 4:
+        return { label: 'Continue to review', onClick: handlePostingContinue, disabled: isSubmitting, loading: isSubmitting }
+      case 5:
       default:
         return { label: 'Publish job', onClick: handleComplete, disabled: false, loading: false }
     }
@@ -321,10 +353,21 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
                   </Button>
                 )}
                 <p className="hidden sm:block text-[12px] text-text-tertiary">
-                  {wizardState.currentStep === 1
-                    ? <>Required fields marked with <span className="text-destructive">*</span></>
-                    : null}
+                  {wizardState.currentStep === 1 ? (
+                    <>Required fields marked with <span className="text-destructive">*</span></>
+                  ) : wizardState.currentStep === 4 ? (
+                    <>Posting to <span className="text-text-primary font-medium">{postingMeta.channels} channels</span> · application form <span className="text-text-primary font-medium">{postingMeta.fields} fields</span></>
+                  ) : null}
                 </p>
+                {wizardState.currentStep === 4 && (
+                  <button
+                    type="button"
+                    onClick={handlePostingSkip}
+                    className="text-[12px] text-text-secondary hover:text-text-primary underline underline-offset-2"
+                  >
+                    Skip — I'll create the posting later
+                  </button>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <Button
