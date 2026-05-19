@@ -293,9 +293,18 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
             </div>
             <div>
               <FieldLabel optional>Application deadline</FieldLabel>
-              <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="mt-2 h-11" />
+              <div className="mt-2">
+                <DatePickerVirgilio
+                  value={deadline}
+                  onChange={setDeadline}
+                  placeholder="Pick a date"
+                  minDate={new Date()}
+                  className="h-11 w-full"
+                />
+              </div>
               <FieldHint>Leave empty for rolling.</FieldHint>
             </div>
+
           </div>
           <div className="border-t border-virgilio-border pt-4 space-y-1">
             <ToggleRow
