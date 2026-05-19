@@ -1,56 +1,39 @@
-# Complete the redesigned Edit Job sheet
+# Finish the Edit Job sheet — background + save wiring
 
-Polish the new `JobFormSheet` so all five sections render correctly, the section nav scroll-spy works reliably, and saving an existing job persists every editable field.
+Two focused fixes. Layout, structure, and section distribution stay exactly as designed.
 
-## What's working today
-- Sheet shell, header (eyebrow, title + purple period, status badge, candidate count, close button), section pill nav, scroll body, footer with `Cancel` / `Preview posting` / `Save changes`, "Edited elsewhere" group, and danger zone are all in place.
-- `JobInfoStep` already renders the five SectionCards (Basics, Location & Employment, Compensation, Job description, Required skills) reused from the wizard.
-- `handleJobFormSubmit` in `JobDetail.tsx` calls `updateJob(id, jobData)` and refetches.
+## 1. Fix the "transparent" body background
 
-## Gaps to close
+Root cause: the sheet uses `bg-virgilio-cream`, but that token does not exist in `tailwind.config.ts` or `index.css`. The class compiles to nothing, so the form area shows through to whatever is behind the SectionCards.
 
-### 1. Section nav anchoring
-- `AnchoredJobInfo` tags `<section>` children inside a `useEffect([])`. JobInfoStep mounts before the inner sections are queried in some renders → pills don't scroll-spy, and clicking a pill jumps nowhere.
-- Replace with `useLayoutEffect` + a `MutationObserver` (or simply re-run when `jobData` length-affecting keys change) so every SectionCard gets the correct `data-section` id before the first scroll/spy pass.
+Fix: replace `bg-virgilio-cream` on `SheetContent` with `bg-[#FAFAF7]` (the standard Gio off-white surface already used across the wizard — `JobPostingStep`, `SummaryStep`, `HiringPlanStep`). White SectionCards now sit on a proper warm-neutral canvas.
 
-### 2. Duplicate Compensation card
-- We currently render JobInfoStep's "Compensation" (currency + min/max) **and** a separate "Public posting compensation" SectionCard below it for the three toggles. That's confusing and duplicates the section title.
-- Merge: extend `JobInfoStep`'s Compensation SectionCard with the three toggles (`show_salary_public`, `include_equity`, `include_signing_bonus`) below the salary grid. Remove the standalone card from the sheet. Toggles already exist in `_parts` (`ToggleRow`) and the wizard summary already references them, so this is a single-source-of-truth fix.
+File: `src/components/jobs/JobFormSheet.tsx` — single class swap on `SheetContent`.
 
-### 3. Duplicate Status control
-- JobInfoStep renders a Status Segmented inside Basics. In the edit sheet the status is already shown as a header badge and is mutated via the Danger zone (Close/Archive). Two controls = inconsistent state.
-- Add an optional `hideStatus?: boolean` prop on `JobInfoStep` and pass `hideStatus` from the edit sheet. Wizard usage stays unchanged.
+## 2. Wire every field to save correctly
 
-### 4. Save path correctness
-- `handleSubmit` builds `payload = { ...jobData }` and deletes `organization_id` when editing. Confirm and harden:
-  - Drop empty-string fields (`internal_title`, `job_level`, `work_mode`, `employment_type`, `location`) so we send `null` instead of `""` for nullable enums (otherwise Postgres rejects empty enum strings).
-  - Coerce salary fields: send `null` when cleared, numbers otherwise.
-  - Pass `additional_locations` as `[]` rather than `undefined` when user removed all chips.
-  - Never send `skills: undefined` — default to existing or `[]`.
-- Show a small inline error toast (already handled by `useJobs`); confirm the sheet only closes on success (it already awaits `onSubmit` then `onClose`).
+The current `handleSubmit` spreads `jobData` raw into `onSubmit`. Two real bugs:
+- Empty strings for nullable enum/text columns (`work_mode`, `employment_type`, `job_level`, `internal_title`, `location`, `description`) get sent as `""` and Postgres rejects empty enum strings.
+- Salary and years-of-experience inputs can submit `""` or `NaN` instead of `null`.
 
-### 5. Validation surface
-- `isValid` only checks `title` + `organization_id`. JobInfoStep marks `work_mode` and `employment_type` as required. Either:
-  - Extend `isValid` to include those two enums, OR
-  - Mark them optional (no asterisk) for the edit case since some legacy jobs lack them.
-- Decision: keep the asterisk but in the edit sheet treat them as required only if the field is currently non-null on the job. New edits cannot null them out, but legacy jobs without the value can still be saved.
+Replace `handleSubmit` with a sanitizer that:
+- Trims strings and converts empty → `null` for nullable text/enum columns.
+- Coerces salary + experience to `Number | null`.
+- Defaults `currency` to `USD`, `show_salary_public` to `true`, booleans to `false`.
+- Always sends `skills` and `additional_locations` as arrays (never undefined).
+- Strips `organization_id` on edits (already correct).
+- Includes `status` so the segmented control in Basics persists.
 
-### 6. Deep-link "Edited elsewhere"
-- `onGoToSetup` currently only switches `activeTab` to `job-setup`. Wire the `subtab` argument through to `JobSetupLayout` (URL search param `?setup=plan|team|posting`) so clicking "Hiring plan / Team / Posting" lands on the right tab.
+After save, the sheet already awaits `onSubmit` then calls `onClose`, and `JobDetail.handleJobFormSubmit` already calls `refetch()` — so the UI reflects changes immediately.
 
-### 7. Minor polish
-- Last-edited footer chip: skip rendering when `job?.updated_at === created_at` (untouched draft).
-- Header subtitle: hide the 2-line description when the job is `archived` or `closed`; replace with a muted note "Read-only — reopen the job to edit live fields."
-- When `status === 'archived'` or `closed`, set form fields read-only via `fieldset[disabled]` wrapping the scroll body, and disable `Save changes` (keeping danger-zone buttons live for unarchive flow in a later iteration).
+File: `src/components/jobs/JobFormSheet.tsx` — rewrite the `handleSubmit` body only.
 
-## Files to touch
-- `src/components/jobs/JobFormSheet.tsx` — anchoring fix, drop duplicate compensation card, save-payload sanitization, validation update, read-only state, deep-link argument.
-- `src/components/jobs/wizard/JobInfoStep.tsx` — add `hideStatus` prop; merge public-posting toggles into the Compensation SectionCard.
-- `src/pages/JobDetail.tsx` — pass `hideStatus` (implicit by sheet), implement `onGoToSetup` deep-link (push `?setup=<subtab>` on the URL), keep existing `handleJobFormSubmit`.
-- `src/components/jobs/JobSetupLayout.tsx` (or equivalent) — read `?setup=` on mount and select that subtab.
+## Verification
+- Open Edit Job, change title + work_mode + salary + skills → Save → toast "Job updated successfully", header reflects new title on reopen.
+- Clear a salary field, clear work_mode (via segmented reset) → Save succeeds, DB row shows `null`.
+- Reopen the sheet after save → all values re-hydrate from `useJobs` exactly as saved.
 
 ## Out of scope
-- Wizard (`JobWizard.tsx`) layout changes beyond the new `hideStatus` prop.
-- Hiring-team / hiring-plan / posting form rewrites — those stay in their own setup tabs.
-- DB migrations — every field already exists on `public.jobs`.
-- Reopen-from-archived flow (separate ticket).
+- No layout or section changes.
+- No `JobInfoStep` changes.
+- No new DB columns.
