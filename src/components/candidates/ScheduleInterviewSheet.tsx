@@ -602,10 +602,9 @@ export function ScheduleInterviewSheet({
       setSelectedInterviewer(null);
       setSelectedDate(new Date());
       setSelectedSlot(null);
-      setMeetingType('google_meet');
-      setCustomLocation('');
+      setFormatOption('video');
+      setSiteAddress('');
       setGuestEmails([]);
-      setShowPanelistPicker(false);
     }
     onOpenChange(newOpen);
   };
