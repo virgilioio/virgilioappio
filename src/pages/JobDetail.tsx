@@ -953,6 +953,9 @@ export default function JobDetail() {
                   <TabsTrigger value="candidates" className={triggerCls}>Job Dashboard</TabsTrigger>
                 )}
                 {!isRestrictedViewer && (
+                  <TabsTrigger value="postings" className={triggerCls}>Postings</TabsTrigger>
+                )}
+                {!isRestrictedViewer && (
                   <TabsTrigger value="sourcing" className={triggerCls}>Sourcing</TabsTrigger>
                 )}
                 {!isRestrictedViewer && (
