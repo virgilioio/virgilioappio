@@ -551,12 +551,62 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
                   Add question
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" sideOffset={8} className="w-[280px]">
+              <DropdownMenuContent align="end" sideOffset={8} className="w-[320px]">
+                <DropdownMenuLabel className="flex items-center gap-1.5">
+                  <Sparkles className="h-3 w-3 text-virgilio-purple" />
+                  Smart fields
+                </DropdownMenuLabel>
+                {SMART_FIELDS.map((sf) => {
+                  const already = fields.some((f) => f.type === sf.type)
+                  const Icon = sf.icon
+                  return (
+                    <DropdownMenuItem
+                      key={sf.id}
+                      disabled={already}
+                      onSelect={() => {
+                        setFields((arr) => [...arr, {
+                          id: `${sf.id}_${Date.now()}`,
+                          label: sf.label,
+                          type: sf.type,
+                          required: false,
+                          icon: sf.icon,
+                          hint: sf.hint,
+                        }])
+                      }}
+                    >
+                      <Icon className="h-3.5 w-3.5 text-text-tertiary" />
+                      <span className="flex-1 truncate">{sf.label}</span>
+                      <Badge tone="lilac" size="xs">Smart</Badge>
+                    </DropdownMenuItem>
+                  )
+                })}
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Basic question types</DropdownMenuLabel>
+                {BASIC_TYPES.map((bt) => {
+                  const Icon = bt.icon
+                  return (
+                    <DropdownMenuItem
+                      key={bt.type}
+                      onSelect={() => {
+                        setFields((arr) => [...arr, {
+                          id: `q_${Date.now()}`,
+                          label: `New ${bt.label.toLowerCase()} question`,
+                          type: bt.type,
+                          required: false,
+                          icon: bt.icon,
+                        }])
+                      }}
+                    >
+                      <Icon className="h-3.5 w-3.5 text-text-tertiary" />
+                      <span className="flex-1 truncate">{bt.label}</span>
+                    </DropdownMenuItem>
+                  )
+                })}
                 {smartFieldsLibrary.length > 0 && (
                   <>
-                    <DropdownMenuLabel>Smart fields</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>From your library</DropdownMenuLabel>
                     {smartFieldsLibrary.map((lf) => {
-                      const already = fields.some((f) => f.id === lf.id)
                       const typeIcon: Record<string, any> = {
                         text: Type, email: Mail, number: Hash, textarea: AlignLeft,
                         select: List, checkbox: ToggleLeft, date: CalendarIcon, file: FileText, url: Link2,
@@ -565,10 +615,9 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
                       return (
                         <DropdownMenuItem
                           key={lf.id}
-                          disabled={already}
                           onSelect={() => {
                             setFields((arr) => [...arr, {
-                              id: lf.id,
+                              id: `lib_${lf.id}_${Date.now()}`,
                               label: lf.field_label,
                               type: (lf.field_type as any) === 'textarea' ? 'longtext' : (lf.field_type as any),
                               required: lf.is_required,
@@ -583,15 +632,8 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
                         </DropdownMenuItem>
                       )
                     })}
-                    <DropdownMenuSeparator />
                   </>
                 )}
-                <DropdownMenuItem
-                  onSelect={() => setFields((f) => [...f, { id: `q_${Date.now()}`, label: 'New question', type: 'text', required: false, icon: MessageSquare }])}
-                >
-                  <Plus className="h-3.5 w-3.5 text-text-tertiary" />
-                  Custom question…
-                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           }
