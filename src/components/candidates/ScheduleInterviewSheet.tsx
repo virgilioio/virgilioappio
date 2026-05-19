@@ -722,61 +722,32 @@ export function ScheduleInterviewSheet({
                   </div>
 
                   <div className="space-y-2">
-                    <div className="text-body-xs text-virgilio-muted">Interviewers</div>
-                    <div className="flex flex-wrap gap-2 items-center">
-                      {displayedPanelists.length === 0 && !showPanelistPicker && (
-                        <span className="text-body-xs text-virgilio-muted italic">
-                          No panelist selected.
-                        </span>
-                      )}
-                      {displayedPanelists.map((p) => {
-                        const removable = !isGroupMode && availableInterviewers.length > 1;
-                        return removable ? (
-                          <RemovableChip
-                            key={p.id}
-                            tone="purple"
-                            size="md"
-                            onRemove={() => setSelectedInterviewer(null)}
-                          >
-                            {fullName(p)}
-                          </RemovableChip>
-                        ) : (
+                    <Label className="text-form-label text-virgilio-muted">
+                      Interviewers <span className="text-destructive">*</span>
+                    </Label>
+                    {isGroupMode ? (
+                      <div className="flex flex-wrap gap-2 items-center">
+                        {displayedPanelists.map((p) => (
                           <Badge key={p.id} tone="purple" size="md">
                             {fullName(p)}
                           </Badge>
-                        );
-                      })}
-                      {!isGroupMode && (
-                        <button
-                          type="button"
-                          onClick={() => setShowPanelistPicker((v) => !v)}
-                          className="inline-flex items-center gap-1 h-[26px] px-2.5 rounded-full border border-dashed border-virgilio-border text-[12px] font-inter font-medium text-virgilio-muted hover:text-virgilio-purple hover:border-virgilio-purple/50 transition-colors"
-                        >
-                          <Plus className="h-3 w-3" />
-                          Add panelist
-                        </button>
-                      )}
-                    </div>
-
-                    {showPanelistPicker && !isGroupMode && (
-                      <div className="pt-2">
-                        <ManualInterviewerSelector
-                          jobId={jobId}
-                          organizationId={organizationId}
-                          onSelect={(i) => {
-                            setSelectedInterviewer(i);
-                            setShowPanelistPicker(false);
-                          }}
-                          unavailableInterviewers={interviewersWithoutBookingConfig}
-                        />
+                        ))}
                       </div>
+                    ) : (
+                      <PanelistComboField
+                        selected={displayedPanelists}
+                        available={availableInterviewers}
+                        unavailable={interviewersWithoutBookingConfig}
+                        onSelect={(p) => setSelectedInterviewer(p)}
+                        onRemove={() => setSelectedInterviewer(null)}
+                      />
                     )}
-
                     <p className="text-body-xs text-virgilio-muted">
-                      We'll send the invite to the candidate and all panelists.
+                      Calendars sync from Google Workspace. Gio finds shared slots in real time.
                     </p>
                   </div>
                 </SectionCard>
+
 
                 <SectionCard
                   label="WHEN"
