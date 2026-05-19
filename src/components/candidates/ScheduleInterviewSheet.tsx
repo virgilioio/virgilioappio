@@ -1,36 +1,49 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { RemovableChip } from '@/components/ui/removable-chip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from '@/hooks/use-toast';
-import { AlertCircle, Calendar, CheckCircle2, Clock, User, Users, MapPin } from 'lucide-react';
-import googleMeetIcon from '@/assets/google-meet-icon.png';
-import { startOfMonth, endOfMonth, isSameDay, parseISO } from 'date-fns';
+import {
+  AlertCircle,
+  Briefcase,
+  Calendar as CalendarIcon,
+  CheckCircle2,
+  Plus,
+  Save,
+  Send,
+  Users,
+  X,
+} from 'lucide-react';
+import { startOfMonth, endOfMonth, isSameDay, parseISO, format } from 'date-fns';
 import { useBookingAvailability } from '@/hooks/useBookingAvailability';
-import { MonthCalendar } from '@/components/booking/MonthCalendar';
-import { TimeSlotsList } from '@/components/booking/TimeSlotsList';
-import { DayCalendarEvents } from '@/components/scheduling/DayCalendarEvents';
-import { MeetingLocationSelector } from '@/components/scheduling/MeetingLocationSelector';
-import { InterviewDurationSelector } from '@/components/scheduling/InterviewDurationSelector';
 import { ManualInterviewerSelector } from '@/components/scheduling/ManualInterviewerSelector';
+import { MeetingLocationSelector } from '@/components/scheduling/MeetingLocationSelector';
+import { GuestEmailInput } from '@/components/scheduling/GuestEmailInput';
+import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { format } from 'date-fns';
-import { Globe } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { GuestEmailInput } from '@/components/scheduling/GuestEmailInput';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
   candidate_name: z.string().min(2, 'Name must be at least 2 characters').max(100),
@@ -40,213 +53,6 @@ const formSchema = z.object({
 });
 
 type FormData = z.infer<typeof formSchema>;
-
-// Internal confirmation form with pre-filled data
-function InternalBookingConfirmationForm({
-  selectedSlot,
-  candidateTimezone,
-  onCancel,
-  onConfirm,
-  candidateName,
-  candidateEmail,
-  candidatePhone,
-  meetingType,
-  customLocation,
-  guestEmails,
-  onGuestEmailsChange,
-  organizationId,
-}: {
-  selectedSlot: { start: string; end: string };
-  candidateTimezone: string;
-  onCancel: () => void;
-  onConfirm: (formData: FormData, sendInvitation: boolean) => Promise<void>;
-  candidateName: string;
-  candidateEmail: string;
-  candidatePhone: string;
-  meetingType: 'google_meet' | 'custom';
-  customLocation: string;
-  guestEmails: string[];
-  onGuestEmailsChange: (emails: string[]) => void;
-  organizationId: string;
-}) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [sendInvitation, setSendInvitation] = useState(true);
-
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      candidate_name: candidateName,
-      candidate_email: candidateEmail,
-      candidate_phone: candidatePhone,
-      notes: '',
-    },
-  });
-
-  const handleSubmit = async (data: FormData) => {
-    setIsSubmitting(true);
-    try {
-      await onConfirm(data, sendInvitation);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      {/* Selected slot summary */}
-      <Card>
-        <CardContent className="p-5 space-y-3">
-          <div className="flex items-center gap-2 text-sm">
-            <Calendar className="w-4 h-4 text-primary" />
-            <span className="font-semibold">
-              {format(new Date(selectedSlot.start), 'EEEE, MMMM d, yyyy')}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Clock className="w-4 h-4 text-primary" />
-            <span>
-              {format(new Date(selectedSlot.start), 'h:mm a')} - {format(new Date(selectedSlot.end), 'h:mm a')}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Globe className="w-4 h-4 text-primary" />
-            <span className="text-text-secondary">{candidateTimezone.replace(/_/g, ' ')}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            {meetingType === 'google_meet' ? (
-              <>
-                <img src={googleMeetIcon} alt="Google Meet" className="h-4 w-auto object-contain" />
-                <span>Google Meet</span>
-              </>
-            ) : (
-              <>
-                <MapPin className="w-4 h-4 text-primary" />
-                <span className="break-all">{customLocation}</span>
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Send Invitation Toggle */}
-      <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
-        <div className="flex-1">
-          <Label htmlFor="send-invitation" className="text-sm font-medium">
-            Send invitation to candidate
-          </Label>
-          <p className="text-xs text-muted-foreground mt-1">
-            When disabled, the interview will be scheduled but no email will be sent to the candidate
-          </p>
-        </div>
-        <Switch
-          id="send-invitation"
-          checked={sendInvitation}
-          onCheckedChange={setSendInvitation}
-        />
-      </div>
-
-      {/* Form */}
-      <Card>
-        <CardContent className="p-6">
-          <h3 className="text-lg font-semibold mb-4">
-            Confirm Details
-          </h3>
-
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="candidate_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="John Doe" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="candidate_email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email *</FormLabel>
-                    <FormControl>
-                      <Input type="email" placeholder="john@example.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="candidate_phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Phone (optional)</FormLabel>
-                    <FormControl>
-                      <Input type="tel" placeholder="+1 (555) 123-4567" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Additional notes (optional)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Any special instructions or notes..."
-                        className="resize-none min-h-[80px]"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                    <p className="text-xs text-text-secondary">
-                      {field.value?.length || 0}/500
-                    </p>
-                  </FormItem>
-                )}
-              />
-
-              <GuestEmailInput
-                emails={guestEmails}
-                onChange={onGuestEmailsChange}
-                organizationId={organizationId}
-              />
-
-              <div className="flex gap-3 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={onCancel}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1"
-                >
-                  {isSubmitting ? 'Scheduling...' : 'Schedule Interview'}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
 
 interface ScheduleInterviewSheetProps {
   open: boolean;
@@ -258,10 +64,10 @@ interface ScheduleInterviewSheetProps {
   jobId: string;
   jobTitle: string;
   organizationId: string;
-  jhsId: string; // job_hiring_stage_id
+  jhsId: string;
   stageName: string;
-  associationId: string; // job_candidate_association_id
-  oldBookingId?: string | null; // booking to cancel after reschedule
+  associationId: string;
+  oldBookingId?: string | null;
 }
 
 interface StageInterviewer {
@@ -283,6 +89,64 @@ interface StageInterviewer {
   } | null;
 }
 
+function SectionCard({
+  label,
+  rightSlot,
+  children,
+}: {
+  label: string;
+  rightSlot?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-2">
+      <div className="flex items-center justify-between px-1">
+        <span className="text-form-label text-virgilio-muted">{label}</span>
+        {rightSlot ? <div className="flex items-center gap-2">{rightSlot}</div> : null}
+      </div>
+      <div className="bg-white border border-virgilio-border rounded-2xl p-5 space-y-4">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function fullName(p: StageInterviewer): string {
+  return `${p.profiles?.first_name || ''} ${p.profiles?.last_name || ''}`.trim() || 'Unknown';
+}
+
+function initials(p: StageInterviewer): string {
+  const f = p.profiles?.first_name?.[0] || 'I';
+  const l = p.profiles?.last_name?.[0] || '';
+  return `${f}${l}`;
+}
+
+function busyBarsForPanelist(
+  busy: { start: string; end: string }[],
+  selectedDate: Date | null,
+) {
+  if (!selectedDate) return [];
+  const dayStart = new Date(selectedDate);
+  dayStart.setHours(9, 0, 0, 0);
+  const dayEnd = new Date(selectedDate);
+  dayEnd.setHours(17, 0, 0, 0);
+  const span = dayEnd.getTime() - dayStart.getTime();
+
+  return busy
+    .map((b) => {
+      const s = new Date(b.start);
+      const e = new Date(b.end);
+      if (!isSameDay(s, selectedDate)) return null;
+      const clampedStart = Math.max(s.getTime(), dayStart.getTime());
+      const clampedEnd = Math.min(e.getTime(), dayEnd.getTime());
+      if (clampedEnd <= clampedStart) return null;
+      const left = ((clampedStart - dayStart.getTime()) / span) * 100;
+      const width = ((clampedEnd - clampedStart) / span) * 100;
+      return { left, width, key: `${b.start}-${b.end}` };
+    })
+    .filter(Boolean) as { left: number; width: number; key: string }[];
+}
+
 export function ScheduleInterviewSheet({
   open,
   onOpenChange,
@@ -300,17 +164,21 @@ export function ScheduleInterviewSheet({
 }: ScheduleInterviewSheetProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const isReschedule = !!oldBookingId;
+
   const [selectedInterviewer, setSelectedInterviewer] = useState<StageInterviewer | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string } | null>(null);
   const [selectedDuration, setSelectedDuration] = useState<number>(30);
+  const [bufferMinutes, setBufferMinutes] = useState<number>(0);
   const [meetingType, setMeetingType] = useState<'google_meet' | 'custom'>('google_meet');
   const [customLocation, setCustomLocation] = useState('');
   const [guestEmails, setGuestEmails] = useState<string[]>([]);
+  const [sendInvitation, setSendInvitation] = useState(true);
+  const [showPanelistPicker, setShowPanelistPicker] = useState(false);
   const candidateTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-  // Fetch stage scheduling mode (any | all)
   const { data: stageMeta } = useQuery({
     queryKey: ['stage-meta', jhsId],
     queryFn: async () => {
@@ -324,11 +192,10 @@ export function ScheduleInterviewSheet({
     },
     enabled: open && !!jhsId,
   });
-
-  const schedulingMode: 'any' | 'all' = (stageMeta?.interviewer_scheduling_mode as 'any' | 'all') || 'any';
+  const schedulingMode: 'any' | 'all' =
+    (stageMeta?.interviewer_scheduling_mode as 'any' | 'all') || 'any';
   const isGroupMode = schedulingMode === 'all';
 
-  // Fetch stage interviewer assignments
   const { data: interviewers, isLoading: loadingInterviewers } = useQuery({
     queryKey: ['stage-interviewers', jhsId],
     queryFn: async () => {
@@ -336,113 +203,89 @@ export function ScheduleInterviewSheet({
         .from('stage_interviewer_assignments')
         .select('id, member_id, assignment_type')
         .eq('job_hiring_stage_id', jhsId);
-
       if (error) throw error;
-      
       if (!data || data.length === 0) return [];
-      
-      // Get member details including user_id
-      const memberIds = data.map(d => d.member_id);
+
+      const memberIds = data.map((d) => d.member_id);
       const { data: members, error: memberError } = await supabase
         .from('members')
         .select('id, user_id')
         .in('id', memberIds);
-      
       if (memberError) throw memberError;
-      
-      // Get user IDs to fetch booking configs and profiles
-      const userIds = members?.map(m => m.user_id).filter(Boolean) || [];
+
+      const userIds = members?.map((m) => m.user_id).filter(Boolean) || [];
       if (userIds.length === 0) return [];
-      
-      // Fetch ALL booking configurations (not just active) so we can show proper messaging
+
       const { data: bookingConfigs, error: configError } = await supabase
         .from('booking_configurations')
         .select('*')
         .in('user_id', userIds);
-      
       if (configError) throw configError;
-      
-      // Fetch profiles
+
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
         .select('user_id, first_name, last_name, avatar_url')
         .in('user_id', userIds);
-      
       if (profileError) throw profileError;
-      
-      // Match everything up
-      return data.map(interviewer => {
-        const member = members?.find(m => m.id === interviewer.member_id);
+
+      return data.map((interviewer) => {
+        const member = members?.find((m) => m.id === interviewer.member_id);
         const userId = member?.user_id;
         return {
           ...interviewer,
           member_user_id: userId,
-          profiles: profiles?.find(p => p.user_id === userId) || null,
-          booking_configurations: bookingConfigs?.find(bc => bc.user_id === userId) || null,
+          profiles: profiles?.find((p) => p.user_id === userId) || null,
+          booking_configurations:
+            bookingConfigs?.find((bc) => bc.user_id === userId) || null,
         };
       }) as StageInterviewer[];
     },
     enabled: open,
   });
 
-  // Filter and sort interviewers: required first, then optional, exclude backup
   const availableInterviewers = useMemo(() => {
     if (!interviewers) return [];
-    
     return interviewers
-      .filter(i => i.assignment_type !== 'backup' && i.booking_configurations?.is_active)
+      .filter((i) => i.assignment_type !== 'backup' && i.booking_configurations?.is_active)
       .sort((a, b) => {
-        const order = { required: 1, optional: 2, backup: 3 };
+        const order = { required: 1, optional: 2, backup: 3, manual: 4 } as const;
         return order[a.assignment_type] - order[b.assignment_type];
       });
   }, [interviewers]);
 
-  // Get interviewers without active booking configs (for messaging)
   const interviewersWithoutBookingConfig = useMemo(() => {
     if (!interviewers) return [];
-    
     return interviewers
-      .filter(i => i.assignment_type !== 'backup' && !i.booking_configurations?.is_active)
-      .map(i => ({
-        name: `${i.profiles?.first_name || ''} ${i.profiles?.last_name || ''}`.trim() || 'Unknown',
+      .filter((i) => i.assignment_type !== 'backup' && !i.booking_configurations?.is_active)
+      .map((i) => ({
+        name: fullName(i),
         hasConfig: !!i.booking_configurations,
         isActive: i.booking_configurations?.is_active || false,
       }));
   }, [interviewers]);
 
-  // Group-mode interviewers (AND): all eligible (active config, not backup)
-  const groupInterviewers = useMemo(() => {
-    return isGroupMode ? availableInterviewers : [];
-  }, [isGroupMode, availableInterviewers]);
-
+  const groupInterviewers = useMemo(
+    () => (isGroupMode ? availableInterviewers : []),
+    [isGroupMode, availableInterviewers],
+  );
   const groupConfigIds = useMemo(
-    () => groupInterviewers.map(i => i.booking_configurations!.id).filter(Boolean),
-    [groupInterviewers]
+    () => groupInterviewers.map((i) => i.booking_configurations!.id).filter(Boolean),
+    [groupInterviewers],
   );
 
-  const formatNamesList = (names: string[]) => {
-    if (names.length === 0) return '';
-    if (names.length === 1) return names[0];
-    if (names.length === 2) return `${names[0]} & ${names[1]}`;
-    return `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`;
-  };
-
-  const groupNames = useMemo(
-    () => groupInterviewers.map(i => `${i.profiles?.first_name || ''} ${i.profiles?.last_name || ''}`.trim() || 'Unknown'),
-    [groupInterviewers]
-  );
-
-  // Auto-select if only one interviewer (OR-mode only)
-  useMemo(() => {
+  useEffect(() => {
     if (!isGroupMode && availableInterviewers.length === 1 && !selectedInterviewer) {
       setSelectedInterviewer(availableInterviewers[0]);
     }
   }, [availableInterviewers, selectedInterviewer, isGroupMode]);
 
-  // Fetch availability for selected interviewer or group
+  const displayedPanelists: StageInterviewer[] = useMemo(() => {
+    if (isGroupMode) return groupInterviewers;
+    return selectedInterviewer ? [selectedInterviewer] : [];
+  }, [isGroupMode, groupInterviewers, selectedInterviewer]);
+
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
-
   const { data: availabilityData, isLoading: isLoadingAvailability } = useBookingAvailability(
     isGroupMode ? undefined : selectedInterviewer?.booking_configurations?.id,
     monthStart,
@@ -451,107 +294,64 @@ export function ScheduleInterviewSheet({
     candidateTimezone,
     true,
     undefined,
-    isGroupMode ? groupConfigIds : undefined
+    isGroupMode ? groupConfigIds : undefined,
   );
 
-  // Extract available dates
-  const availableDates = useMemo(() => {
-    if (!availabilityData?.available_slots) return [];
-    
-    const uniqueDates = new Set<string>();
-    availabilityData.available_slots.forEach(slot => {
-      const date = parseISO(slot.start);
-      uniqueDates.add(date.toDateString());
-    });
-    
-    return Array.from(uniqueDates).map(dateStr => new Date(dateStr));
-  }, [availabilityData]);
-
-  // Filter time slots for selected date
   const timeSlotsForSelectedDate = useMemo(() => {
     if (!selectedDate || !availabilityData?.available_slots) return [];
-    
-    return availabilityData.available_slots.filter(slot => {
-      const slotDate = parseISO(slot.start);
-      return isSameDay(slotDate, selectedDate);
-    });
+    return availabilityData.available_slots.filter((slot) =>
+      isSameDay(parseISO(slot.start), selectedDate),
+    );
   }, [selectedDate, availabilityData]);
 
-  // Handle form confirmation
-  const handleConfirmBooking = async (formData: FormData, sendInvitation: boolean) => {
-    if (!selectedSlot) {
-      throw new Error('Missing required data');
+  useEffect(() => {
+    if (selectedDate && selectedDate.getMonth() !== currentMonth.getMonth()) {
+      setCurrentMonth(startOfMonth(selectedDate));
     }
-    if (isGroupMode) {
-      if (groupConfigIds.length < 2) throw new Error('Need at least 2 interviewers for group scheduling');
-    } else if (!selectedInterviewer?.booking_configurations) {
-      throw new Error('Missing required data');
-    }
+  }, [selectedDate]);
 
-    const primaryConfigId = isGroupMode ? groupConfigIds[0] : selectedInterviewer!.booking_configurations!.id;
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      candidate_name: candidateName,
+      candidate_email: candidateEmail,
+      candidate_phone: candidatePhone || '',
+      notes: '',
+    },
+  });
 
-    const bookingData = {
-      booking_config_id: primaryConfigId,
-      ...(isGroupMode && { booking_config_ids: groupConfigIds }),
-      candidate_name: formData.candidate_name,
-      candidate_email: formData.candidate_email,
-      candidate_phone: formData.candidate_phone || null,
-      candidate_timezone: candidateTimezone,
-      scheduled_start: selectedSlot.start,
-      scheduled_end: new Date(new Date(selectedSlot.start).getTime() + selectedDuration * 60 * 1000).toISOString(),
-      duration_minutes: selectedDuration,
-      notes: formData.notes || null,
-      // Internal booking context
-      job_id: jobId,
-      candidate_id: candidateId,
-      job_candidate_association_id: associationId,
-      job_hiring_stage_id: jhsId,
-      booked_by_user_id: user?.id,
-      send_invitation: sendInvitation,
-      meeting_type_preference: meetingType,
-      custom_meeting_location: meetingType === 'custom' ? customLocation : null,
-      guest_emails: guestEmails.length > 0 ? guestEmails : undefined,
-    };
-
-    await createBookingMutation.mutateAsync(bookingData);
-  };
-
-  // Create booking mutation
   const createBookingMutation = useMutation({
     mutationFn: async (bookingData: any) => {
       const { data, error } = await supabase.functions.invoke('create-booking', {
         body: bookingData,
       });
-
       if (error) {
         let serverMessage = error.message;
         try {
           const body = await (error as any).context?.json?.();
           if (body?.error) serverMessage = body.error;
-        } catch (_) { /* keep generic */ }
+        } catch (_) {}
         throw new Error(serverMessage);
       }
       return data;
     },
     onSuccess: async () => {
       const successName = isGroupMode
-        ? formatNamesList(groupNames)
-        : (selectedInterviewer?.profiles?.first_name || 'interviewer');
+        ? displayedPanelists.map(fullName).join(', ')
+        : selectedInterviewer?.profiles?.first_name || 'interviewer';
       toast({
-        title: 'Interview Scheduled',
+        title: isReschedule ? 'Interview Rescheduled' : 'Interview Scheduled',
         description: `Interview scheduled with ${successName} for ${stageName}.`,
       });
-      
-      // If this was a reschedule, cancel the old booking now
+
       if (oldBookingId && selectedSlot) {
         try {
           const { error } = await supabase.functions.invoke('cancel-booking', {
-            body: { 
-              booking_id: oldBookingId, 
-              reason: `Rescheduled to ${format(selectedSlot.start, 'MMM d, yyyy h:mm a')}` 
+            body: {
+              booking_id: oldBookingId,
+              reason: `Rescheduled to ${format(new Date(selectedSlot.start), 'MMM d, yyyy h:mm a')}`,
             },
           });
-          
           if (error) throw error;
           toast({
             title: 'Previous Interview Cancelled',
@@ -562,21 +362,18 @@ export function ScheduleInterviewSheet({
           toast({
             variant: 'destructive',
             title: 'Warning',
-            description: 'New interview scheduled, but failed to cancel previous one. Please cancel it manually.',
+            description:
+              'New interview scheduled, but failed to cancel previous one. Please cancel it manually.',
           });
         }
       }
-      
-      // Invalidate relevant queries
+
       queryClient.invalidateQueries({ queryKey: ['scheduled-bookings'] });
       queryClient.invalidateQueries({ queryKey: ['activity-feed'] });
-      queryClient.invalidateQueries({ 
-        queryKey: ['stage-bookings', jhsId, candidateId] 
-      });
-      
-      // Reset state and close
+      queryClient.invalidateQueries({ queryKey: ['stage-bookings', jhsId, candidateId] });
+
       setSelectedInterviewer(null);
-      setSelectedDate(null);
+      setSelectedDate(new Date());
       setSelectedSlot(null);
       setSelectedDuration(30);
       setMeetingType('google_meet');
@@ -585,279 +382,548 @@ export function ScheduleInterviewSheet({
       onOpenChange(false);
     },
     onError: (error: any) => {
-      // Check if it's a 409 conflict from create-booking
       const errorMessage = error?.message || '';
-      const isConflict = errorMessage.includes('409') || errorMessage.includes('no longer available');
-      
+      const isConflict =
+        errorMessage.includes('409') || errorMessage.includes('no longer available');
       toast({
         variant: 'destructive',
         title: 'Booking Failed',
-        description: isConflict 
+        description: isConflict
           ? 'That time is already booked for this interviewer. Please choose another time.'
           : error.message || 'Failed to schedule interview. Please try again.',
       });
     },
   });
 
-  // Handle back navigation
-  const handleBack = () => {
-    if (selectedSlot) {
-      setSelectedSlot(null);
-    } else if (selectedDate) {
-      setSelectedDate(null);
-    } else if (!isGroupMode && selectedInterviewer && availableInterviewers.length > 1) {
-      setSelectedInterviewer(null);
+  const handleSubmit = form.handleSubmit(async (formData) => {
+    if (!selectedSlot) {
+      toast({
+        variant: 'destructive',
+        title: 'Pick a time',
+        description: 'Choose a free slot before sending the invite.',
+      });
+      return;
     }
-  };
+    if (isGroupMode) {
+      if (groupConfigIds.length < 2) {
+        toast({
+          variant: 'destructive',
+          title: 'Not enough panelists',
+          description: 'Group scheduling needs at least 2 interviewers.',
+        });
+        return;
+      }
+    } else if (!selectedInterviewer?.booking_configurations) {
+      toast({
+        variant: 'destructive',
+        title: 'Pick a panelist',
+        description: 'Select an interviewer before sending the invite.',
+      });
+      return;
+    }
 
-  // Reset state when sheet closes
+    const primaryConfigId = isGroupMode
+      ? groupConfigIds[0]
+      : selectedInterviewer!.booking_configurations!.id;
+
+    await createBookingMutation.mutateAsync({
+      booking_config_id: primaryConfigId,
+      ...(isGroupMode && { booking_config_ids: groupConfigIds }),
+      candidate_name: formData.candidate_name,
+      candidate_email: formData.candidate_email,
+      candidate_phone: formData.candidate_phone || null,
+      candidate_timezone: candidateTimezone,
+      scheduled_start: selectedSlot.start,
+      scheduled_end: new Date(
+        new Date(selectedSlot.start).getTime() + selectedDuration * 60 * 1000,
+      ).toISOString(),
+      duration_minutes: selectedDuration,
+      notes: formData.notes || null,
+      job_id: jobId,
+      candidate_id: candidateId,
+      job_candidate_association_id: associationId,
+      job_hiring_stage_id: jhsId,
+      booked_by_user_id: user?.id,
+      send_invitation: sendInvitation,
+      meeting_type_preference: meetingType,
+      custom_meeting_location: meetingType === 'custom' ? customLocation : null,
+      guest_emails: guestEmails.length > 0 ? guestEmails : undefined,
+    });
+  });
+
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
       setSelectedInterviewer(null);
-      setSelectedDate(null);
+      setSelectedDate(new Date());
       setSelectedSlot(null);
       setMeetingType('google_meet');
       setCustomLocation('');
       setGuestEmails([]);
+      setShowPanelistPicker(false);
     }
     onOpenChange(newOpen);
   };
 
+  const hasNoEmail = !candidateEmail;
+  const andModeBlocked = isGroupMode && groupConfigIds.length < 2;
+
+  const kicker = isReschedule ? `RESCHEDULE · ${stageName}` : `PIPELINE · ${stageName}`;
+  const primaryLabel = isReschedule ? 'Send new invite' : 'Send invite';
+  const titleText = isReschedule ? 'Reschedule interview' : 'Schedule interview';
+
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Schedule Interview
-          </SheetTitle>
-          <div className="text-sm text-text-secondary mt-2">
-            <div className="flex flex-col gap-1">
-              <div><strong>Candidate:</strong> {candidateName}</div>
-              <div><strong>Job:</strong> {jobTitle}</div>
-              <div><strong>Stage:</strong> {stageName}</div>
+      <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col">
+        <header className="px-6 pt-6 pb-4 border-b border-virgilio-border">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1.5 min-w-0">
+              <div className="text-[10.5px] font-inter font-semibold uppercase tracking-[0.08em] text-virgilio-purple truncate">
+                {kicker}
+              </div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h2 className="text-h2 text-virgilio-text">{titleText}</h2>
+                <Badge tone="lilac" size="sm">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Calendar-aware
+                </Badge>
+              </div>
+              <p className="text-body-sm text-virgilio-muted">
+                We check everyone's calendar in real time and only show slots that work for the whole panel.
+              </p>
             </div>
+            <Button
+              variant="ghost"
+              iconOnly
+              icon={X}
+              aria-label="Close"
+              onClick={() => handleOpenChange(false)}
+            />
           </div>
-        </SheetHeader>
+        </header>
 
-        <div className="mt-6 space-y-6">
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 bg-[#FAFAF7]">
           {loadingInterviewers ? (
             <div className="space-y-4">
-              <Skeleton className="h-20 w-full" />
-              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-32 w-full rounded-2xl" />
+              <Skeleton className="h-64 w-full rounded-2xl" />
             </div>
-          ) : !isGroupMode && !selectedInterviewer && (!availableInterviewers || availableInterviewers.length === 0) ? (
-          <ManualInterviewerSelector
-              jobId={jobId}
-              organizationId={organizationId}
-              onSelect={setSelectedInterviewer}
-              unavailableInterviewers={interviewersWithoutBookingConfig}
-            />
-          ) : isGroupMode && groupConfigIds.length < 2 ? (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Group scheduling (AND-mode)</strong> requires at least 2 interviewers with active booking links.
-                {interviewersWithoutBookingConfig.length > 0 && (
-                  <> Configure availability for: <strong>{interviewersWithoutBookingConfig.map(i => i.name).join(', ')}</strong>.</>
-                )}
-                {' '}You can manage interviewers and booking links in the stage settings.
-              </AlertDescription>
-            </Alert>
-          ) : !candidateEmail ? (
+          ) : hasNoEmail ? (
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 This candidate doesn't have an email address. Please add an email before scheduling.
               </AlertDescription>
             </Alert>
+          ) : andModeBlocked ? (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Group scheduling (AND-mode)</strong> requires at least 2 interviewers with
+                active booking links.
+                {interviewersWithoutBookingConfig.length > 0 && (
+                  <>
+                    {' '}
+                    Configure availability for:{' '}
+                    <strong>
+                      {interviewersWithoutBookingConfig.map((i) => i.name).join(', ')}
+                    </strong>
+                    .
+                  </>
+                )}
+              </AlertDescription>
+            </Alert>
           ) : (
-            <>
-              {/* Step 1: Select Interviewer (if multiple) */}
-              {!isGroupMode && !selectedInterviewer && availableInterviewers.length > 1 && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Select Interviewer</h3>
-                  <div className="space-y-3">
-                    {availableInterviewers.map((interviewer) => (
-                      <Card
-                        key={interviewer.id}
-                        className="cursor-pointer hover:border-primary transition-colors"
-                        onClick={() => setSelectedInterviewer(interviewer)}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-4">
-                            <Avatar className="h-12 w-12">
-                              <AvatarImage src={interviewer.profiles?.avatar_url || undefined} />
-                              <AvatarFallback>
-                                {interviewer.profiles?.first_name?.[0] || 'I'}
-                                {interviewer.profiles?.last_name?.[0] || ''}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1">
-                              <div className="font-medium">
-                                {interviewer.profiles?.first_name || 'Unknown'}{' '}
-                                {interviewer.profiles?.last_name || ''}
-                              </div>
-                              <div className="text-sm text-text-secondary">
-                                {interviewer.booking_configurations?.display_name}
-                              </div>
-                            </div>
-                            <Badge variant={interviewer.assignment_type === 'required' ? 'default' : 'secondary'}>
-                              {interviewer.assignment_type}
-                            </Badge>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Step 2: Select Date & Time */}
-              {((isGroupMode && groupConfigIds.length >= 2) || (!isGroupMode && selectedInterviewer)) && !selectedSlot && (
-                <div className="space-y-4">
-                  {!isGroupMode && availableInterviewers.length > 1 && (
-                    <Button variant="ghost" size="sm" onClick={handleBack}>
-                      ← Back to interviewers
-                    </Button>
-                  )}
-
-                  {isGroupMode ? (
-                    <div className="flex items-center gap-3 p-4 bg-secondary/30 rounded-lg">
-                      <div className="flex -space-x-2">
-                        {groupInterviewers.slice(0, 4).map((i) => (
-                          <Avatar key={i.id} className="h-9 w-9 border-2 border-background">
-                            <AvatarImage src={i.profiles?.avatar_url || undefined} />
-                            <AvatarFallback>
-                              {i.profiles?.first_name?.[0] || 'I'}
-                              {i.profiles?.last_name?.[0] || ''}
-                            </AvatarFallback>
-                          </Avatar>
-                        ))}
+            <Form {...form}>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <SectionCard label="WHAT & WHO">
+                  <div className="flex items-center gap-3 pb-4 border-b border-virgilio-border/70">
+                    <div className="h-9 w-9 rounded-lg bg-[hsl(var(--badge-lilac))] flex items-center justify-center shrink-0">
+                      <Briefcase className="h-4 w-4 text-[hsl(var(--badge-lilac-foreground))]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] font-poppins font-medium text-virgilio-text truncate">
+                        {stageName}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm">
-                          Interview with <strong>{formatNamesList(groupNames)}</strong>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-text-secondary">
-                          <Users className="h-3 w-3" />
-                          Group scheduling — combined availability
-                        </div>
+                      <div className="text-body-xs text-virgilio-muted truncate">
+                        {jobTitle} · {selectedDuration}-min interview
                       </div>
                     </div>
-                  ) : (
-                    <div className="flex items-center gap-3 p-4 bg-secondary/30 rounded-lg">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={selectedInterviewer!.profiles?.avatar_url || undefined} />
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 pb-4 border-b border-virgilio-border/70">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Avatar className="h-9 w-9">
                         <AvatarFallback>
-                          {selectedInterviewer!.profiles?.first_name?.[0] || 'I'}
+                          {candidateName
+                            .split(' ')
+                            .map((n) => n[0])
+                            .slice(0, 2)
+                            .join('')
+                            .toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1">
-                        <div className="font-medium text-sm">
-                          {selectedInterviewer!.profiles?.first_name}{' '}
-                          {selectedInterviewer!.profiles?.last_name}
+                      <div className="min-w-0">
+                        <div className="text-[13px] font-poppins font-medium text-virgilio-text truncate">
+                          {candidateName}
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-text-secondary">
-                          <Clock className="h-3 w-3" />
-                          {selectedInterviewer!.booking_configurations?.duration_minutes} minutes
+                        <div className="text-body-xs text-virgilio-muted truncate">
+                          {jobTitle} · {candidateTimezone.replace(/_/g, ' ')}
                         </div>
                       </div>
                     </div>
-                  )}
-
-                  <h3 className="text-lg font-semibold">Select Date & Time</h3>
-                  
-                  <Card>
-                    <CardContent className="p-6">
-                      <InterviewDurationSelector
-                        value={selectedDuration}
-                        onChange={setSelectedDuration}
-                      />
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardContent className="p-6">
-                      <MeetingLocationSelector
-                        meetingType={meetingType}
-                        onMeetingTypeChange={setMeetingType}
-                        customLocation={customLocation}
-                        onCustomLocationChange={setCustomLocation}
-                      />
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardContent className="p-6">
-                      <MonthCalendar
-                        availableDates={availableDates}
-                        selectedDate={selectedDate}
-                        onDateSelect={setSelectedDate}
-                        currentMonth={currentMonth}
-                        onMonthChange={setCurrentMonth}
-                        allowAllDates
-                      />
-                    </CardContent>
-                  </Card>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Card>
-                      <CardContent className="p-6">
-                        <TimeSlotsList
-                          selectedDate={selectedDate}
-                          timeSlots={timeSlotsForSelectedDate}
-                          selectedSlot={selectedSlot}
-                          onSlotSelect={setSelectedSlot}
-                          isLoading={isLoadingAvailability}
-                        />
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardContent className="p-6 space-y-2">
-                        {isGroupMode && (
-                          <div className="text-xs font-medium text-text-secondary">
-                            Combined busy times across interviewers
-                          </div>
-                        )}
-                        <DayCalendarEvents
-                          selectedDate={selectedDate}
-                          busyEvents={availabilityData?.busy_events || []}
-                          isLoading={isLoadingAvailability}
-                        />
-                      </CardContent>
-                    </Card>
+                    <Badge tone="green" dot pulse size="sm">
+                      Confirmed avail.
+                    </Badge>
                   </div>
-                </div>
-              )}
 
-              {/* Step 3: Confirmation Form */}
-              {selectedSlot && (
-                <div className="space-y-4">
-                  <Button variant="ghost" size="sm" onClick={handleBack}>
-                    ← Back to time selection
-                  </Button>
-                  
-                  <InternalBookingConfirmationForm
-                    selectedSlot={selectedSlot}
-                    candidateTimezone={candidateTimezone}
-                    onCancel={handleBack}
-                    onConfirm={handleConfirmBooking}
-                    candidateName={candidateName}
-                    candidateEmail={candidateEmail}
-                    candidatePhone={candidatePhone || ''}
+                  <div className="space-y-2">
+                    <div className="text-body-xs text-virgilio-muted">Interviewers</div>
+                    <div className="flex flex-wrap gap-2 items-center">
+                      {displayedPanelists.length === 0 && !showPanelistPicker && (
+                        <span className="text-body-xs text-virgilio-muted italic">
+                          No panelist selected.
+                        </span>
+                      )}
+                      {displayedPanelists.map((p) => {
+                        const removable = !isGroupMode && availableInterviewers.length > 1;
+                        return removable ? (
+                          <RemovableChip
+                            key={p.id}
+                            tone="purple"
+                            size="md"
+                            onRemove={() => setSelectedInterviewer(null)}
+                          >
+                            {fullName(p)}
+                          </RemovableChip>
+                        ) : (
+                          <Badge key={p.id} tone="purple" size="md">
+                            {fullName(p)}
+                          </Badge>
+                        );
+                      })}
+                      {!isGroupMode && (
+                        <button
+                          type="button"
+                          onClick={() => setShowPanelistPicker((v) => !v)}
+                          className="inline-flex items-center gap-1 h-[26px] px-2.5 rounded-full border border-dashed border-virgilio-border text-[12px] font-inter font-medium text-virgilio-muted hover:text-virgilio-purple hover:border-virgilio-purple/50 transition-colors"
+                        >
+                          <Plus className="h-3 w-3" />
+                          Add panelist
+                        </button>
+                      )}
+                    </div>
+
+                    {showPanelistPicker && !isGroupMode && (
+                      <div className="pt-2">
+                        <ManualInterviewerSelector
+                          jobId={jobId}
+                          organizationId={organizationId}
+                          onSelect={(i) => {
+                            setSelectedInterviewer(i);
+                            setShowPanelistPicker(false);
+                          }}
+                          unavailableInterviewers={interviewersWithoutBookingConfig}
+                        />
+                      </div>
+                    )}
+
+                    <p className="text-body-xs text-virgilio-muted">
+                      We'll send the invite to the candidate and all panelists.
+                    </p>
+                  </div>
+                </SectionCard>
+
+                <SectionCard
+                  label="WHEN"
+                  rightSlot={
+                    <Badge tone="green" dot pulse size="sm">
+                      Live check
+                    </Badge>
+                  }
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-form-label text-virgilio-muted">Date</Label>
+                      <DatePickerVirgilio
+                        value={selectedDate || undefined}
+                        onChange={(d) => {
+                          setSelectedDate(d);
+                          setSelectedSlot(null);
+                        }}
+                        minDate={new Date()}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-form-label text-virgilio-muted">Time zone</Label>
+                      <Select value={candidateTimezone} onValueChange={() => {}}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={candidateTimezone}>
+                            {candidateTimezone.replace(/_/g, ' ')}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#FAFAF7] rounded-xl p-4 space-y-3">
+                    <div className="relative h-4 ml-[140px]">
+                      {[9, 11, 13, 15, 17].map((h) => {
+                        const left = ((h - 9) / 8) * 100;
+                        return (
+                          <span
+                            key={h}
+                            className="absolute -translate-x-1/2 text-[10px] font-inter text-virgilio-muted"
+                            style={{ left: `${left}%` }}
+                          >
+                            {h > 12 ? `${h - 12}pm` : h === 12 ? '12pm' : `${h}am`}
+                          </span>
+                        );
+                      })}
+                    </div>
+
+                    {displayedPanelists.map((p) => {
+                      const bars = busyBarsForPanelist(
+                        availabilityData?.busy_events || [],
+                        selectedDate,
+                      );
+                      return (
+                        <div key={p.id} className="flex items-center gap-3">
+                          <div className="flex items-center gap-2 w-[140px] min-w-[140px]">
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage src={p.profiles?.avatar_url || undefined} />
+                              <AvatarFallback className="text-[10px]">
+                                {initials(p)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-[12px] font-inter text-virgilio-text truncate">
+                              {p.profiles?.first_name || 'Unknown'}
+                            </span>
+                          </div>
+                          <div className="relative h-6 flex-1 rounded-md bg-white border border-virgilio-border/60">
+                            {bars.map((b) => (
+                              <div
+                                key={b.key}
+                                className="absolute top-0 bottom-0 bg-virgilio-muted/30 rounded-sm"
+                                style={{ left: `${b.left}%`, width: `${b.width}%` }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    <div className="flex items-start gap-3 pt-2 border-t border-virgilio-border/60">
+                      <div className="flex items-center gap-2 w-[140px] min-w-[140px] pt-1">
+                        <span className="text-[10.5px] font-inter font-semibold uppercase tracking-[0.08em] text-virgilio-purple">
+                          FREE
+                        </span>
+                      </div>
+                      <div className="flex-1 flex flex-wrap gap-1.5">
+                        {isLoadingAvailability ? (
+                          <Skeleton className="h-7 w-full" />
+                        ) : timeSlotsForSelectedDate.length === 0 ? (
+                          <span className="text-body-xs text-virgilio-muted py-1">
+                            No slots available — try another day.
+                          </span>
+                        ) : (
+                          timeSlotsForSelectedDate.map((slot) => {
+                            const isSelected = selectedSlot?.start === slot.start;
+                            return (
+                              <button
+                                key={slot.start}
+                                type="button"
+                                onClick={() => setSelectedSlot(slot)}
+                                className={cn(
+                                  'h-7 px-2.5 rounded-md text-[12px] font-inter font-medium transition-colors',
+                                  isSelected
+                                    ? 'bg-virgilio-ink text-white ring-2 ring-virgilio-ink'
+                                    : 'bg-[hsl(var(--badge-lilac))] text-[hsl(var(--badge-lilac-foreground))] hover:bg-pastel-purple',
+                                )}
+                              >
+                                {format(parseISO(slot.start), 'h:mm a')}
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-body-xs text-virgilio-muted">
+                    Found {timeSlotsForSelectedDate.length} slot
+                    {timeSlotsForSelectedDate.length === 1 ? '' : 's'} that work for everyone.
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-virgilio-border/70">
+                    <div className="space-y-1.5">
+                      <Label className="text-form-label text-virgilio-muted">Duration</Label>
+                      <div className="inline-flex items-center bg-[#FAFAF7] border border-virgilio-border rounded-lg p-0.5">
+                        {[30, 45, 60, 90].map((d) => {
+                          const active = selectedDuration === d;
+                          return (
+                            <button
+                              key={d}
+                              type="button"
+                              onClick={() => {
+                                setSelectedDuration(d);
+                                setSelectedSlot(null);
+                              }}
+                              className={cn(
+                                'h-7 px-3 rounded-md text-[12px] font-poppins font-medium transition-colors',
+                                active
+                                  ? 'bg-white text-virgilio-text shadow-sm'
+                                  : 'text-virgilio-muted hover:text-virgilio-text',
+                              )}
+                            >
+                              {d}m
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-form-label text-virgilio-muted">Buffer time</Label>
+                      <Select
+                        value={bufferMinutes.toString()}
+                        onValueChange={(v) => setBufferMinutes(parseInt(v))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">No buffer</SelectItem>
+                          <SelectItem value="5">5 minutes</SelectItem>
+                          <SelectItem value="10">10 minutes</SelectItem>
+                          <SelectItem value="15">15 minutes</SelectItem>
+                          <SelectItem value="30">30 minutes</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </SectionCard>
+
+                <SectionCard label="LOCATION & NOTES">
+                  <MeetingLocationSelector
                     meetingType={meetingType}
+                    onMeetingTypeChange={setMeetingType}
                     customLocation={customLocation}
-                    guestEmails={guestEmails}
-                    onGuestEmailsChange={setGuestEmails}
+                    onCustomLocationChange={setCustomLocation}
+                  />
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 border-t border-virgilio-border/70">
+                    <FormField
+                      control={form.control}
+                      name="candidate_name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-form-label text-virgilio-muted">
+                            Candidate name
+                          </FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="candidate_email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-form-label text-virgilio-muted">
+                            Candidate email
+                          </FormLabel>
+                          <FormControl>
+                            <Input type="email" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-form-label text-virgilio-muted">
+                          Notes for the panel (optional)
+                        </FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Anything the panelists should know before the call…"
+                            className="resize-none min-h-[72px]"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <GuestEmailInput
+                    emails={guestEmails}
+                    onChange={setGuestEmails}
                     organizationId={organizationId}
                   />
-                </div>
-              )}
-            </>
+
+                  <div className="flex items-center justify-between pt-3 border-t border-virgilio-border/70">
+                    <div>
+                      <Label htmlFor="send-invitation" className="text-[13px] font-poppins font-medium text-virgilio-text">
+                        Send email invitation to candidate
+                      </Label>
+                      <p className="text-body-xs text-virgilio-muted mt-0.5">
+                        Off = booked silently with no email to the candidate.
+                      </p>
+                    </div>
+                    <Switch
+                      id="send-invitation"
+                      checked={sendInvitation}
+                      onCheckedChange={setSendInvitation}
+                    />
+                  </div>
+                </SectionCard>
+              </form>
+            </Form>
           )}
         </div>
+
+        <footer className="border-t border-virgilio-border bg-white px-6 py-3 flex items-center justify-between gap-3">
+          <div className="text-body-xs text-virgilio-muted hidden sm:flex items-center gap-1.5 min-w-0">
+            <Users className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">
+              {meetingType === 'google_meet'
+                ? 'Sends a Google Meet invite to candidate + panelists'
+                : 'Sends an invite with the custom location'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 ml-auto">
+            <Button variant="ghost" onClick={() => handleOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button variant="secondary" icon={Save} disabled title="Coming soon">
+              Save as draft
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              icon={Send}
+              loading={createBookingMutation.isPending}
+              disabled={
+                hasNoEmail ||
+                andModeBlocked ||
+                !selectedSlot ||
+                (!isGroupMode && !selectedInterviewer)
+              }
+            >
+              {primaryLabel}
+            </Button>
+          </div>
+        </footer>
       </SheetContent>
     </Sheet>
   );
