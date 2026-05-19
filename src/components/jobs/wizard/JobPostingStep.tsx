@@ -276,7 +276,7 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           show_in_search: showInSearch, show_response_badge: showResponseBadge,
           brand_color: brandColor, banner_name: bannerName || null,
           team_photos: teamPhotos, culture_video: cultureVideo,
-          application_fields: fields.map((f) => ({ id: f.id, label: f.label, type: f.type, required: f.required, locked: !!f.locked })),
+          application_fields: fields.map((f) => ({ id: f.id, label: f.label, type: f.type, required: f.required, locked: !!f.locked, hint: f.hint, isSmart: !!f.isSmart || SMART_FIELD_TYPES.has(f.type) })),
           eeo_survey: eeo,
           channels: Object.entries(channelOn).filter(([, v]) => v).map(([id]) => id),
           apply_experience: { send_confirm: sendConfirm, promise_48h: promise48, allow_message: allowMessage, enable_referral: enableReferral },
