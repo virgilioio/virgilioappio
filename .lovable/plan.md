@@ -1,60 +1,63 @@
-# Dropdown grayout fix + drag-to-schedule on FREE row
+# Promote "Cc additional guests" into a formal GUESTS section
 
-## 1. Dropdowns: items look grayed everywhere
+## What changes
 
-### Root cause
+Today the guest field lives at the bottom of the **INVITATION** card as a small `<Label>` + `<GuestEmailInput>` (a plain Input + portal dropdown + secondary Badges). It looks like an afterthought compared to **WHAT & WHO**, **WHEN**, **INVITATION**.
 
-`src/lib/menu-classes.ts` applies opacity 45 with both `data-[disabled]:opacity-45` and `data-[disabled=true]:opacity-45`.
+We promote it to its own top-level `SectionCard` directly after **INVITATION**, with the exact same visual language as the **Interviewers** field — pill chips + dashed "+ Add guest" pill + popover autocomplete.
 
-The bare `data-[disabled]` selector matches **whenever the attribute is present** regardless of value. The cmdk library (used by `CommandItem`, which backs `<Select>`, `<SearchableSelect>`, `<CurrencySelect>`, `<FilterChipPopover>`, `<DatePickerVirgilio>`, and the panelist combobox) emits `data-disabled="false"` on every enabled item. Result: every cmdk-based dropdown item is rendered at 45% opacity by default and looks blocked.
+## New section structure
 
-Radix Select sets `data-disabled` with an empty value only when the item is actually disabled — it relies on the same broken selector for the legitimate disabled state.
+```text
+┌─ GUESTS ─────────────────────────────────────────── (0/10) ──┐
+│  People to Cc on the invite (optional)                       │
+│                                                              │
+│  Cc'd guests                                                 │
+│  [● Jane Doe ×] [● Mark Smith ×] [● ana@acme.io ×] (+ Add guest)
+│                                                              │
+│  Tip: teammates appear with their name, external emails are  │
+│  added as-is and receive the calendar invite.                │
+└──────────────────────────────────────────────────────────────┘
+```
 
-### Fix
+- `SectionCard label="GUESTS"` with `rightSlot` = small `(N/10)` counter badge.
+- One-line subtitle under the title to explain purpose.
+- Field label "Cc'd guests" using `text-form-label text-virgilio-muted` (same as Interviewers).
+- Chip row + dashed pill trigger + popover, identical chrome to `PanelistComboField`.
+- Helper text below in `text-body-xs text-virgilio-muted`.
 
-In `menu-classes.ts`, replace the bare-attribute selector with two explicit ones:
+## Picker behavior (autocomplete)
 
-- `data-[disabled=true]` → cmdk's actual disabled state
-- `data-[disabled='']` → Radix's actual disabled state
+- Source: `useCustomerMembers(organizationId)` — every teammate in the tenant.
+- As the user types in the dashed pill input:
+  - Filter teammates by first name, last name, full name, email.
+  - Exclude teammates whose email is already chipped.
+  - Exclude the candidate's email (defensive) and the already-selected panelists' emails (they're already on the invite).
+- Results render as `CommandItem` rows: avatar · name · email muted (mirrors current GuestEmailInput suggestion row but inside the shared Command popover).
+- Selecting a teammate adds a **purple chip** (tone="purple", same as panelists) showing their display name; the underlying value stored is the email.
+- If the query is a valid email (`EMAIL_REGEX`) and matches no teammate, show a final `CommandItem` "Add 'foo@bar.com' as external guest" (icon: UserPlus). Pressing Enter or clicking adds a **neutral chip** (tone="neutral") showing the raw email.
+- Enter on a valid-email query with no teammate match also adds external. Enter on no-match + non-email shows inline hint "Enter a valid email".
+- Backspace on empty input removes the last chip (parity with PanelistComboField).
+- Escape closes the popover.
+- Cap at 10 (existing limit), surface counter in section header right slot; once reached, dashed trigger disables with tooltip "Maximum 10 guests".
 
-Enabled cmdk items (`data-disabled="false"`) will no longer match, returning to full opacity. Truly disabled items in both libraries keep the 45% opacity + `pointer-events-none`.
+## Chip styling
 
-No other dropdown code or call sites change.
-
-## 2. Drag-to-schedule on the FREE row
-
-### Current state
-
-The FREE row in `ScheduleInterviewSheet` renders each available slot as a clickable button positioned along a 9 AM–5 PM horizontal scale. Picking a time means clicking one of the precomputed slots; nothing is draggable.
-
-### What changes
-
-After the recruiter picks any slot (or auto-picks the first), the selected slot becomes a draggable pill on the FREE row:
-
-- Press and drag the pill horizontally. The pill follows the cursor in real time using a CSS `translate3d` transform (no React state churn per pixel).
-- A live tooltip above the pill shows the new start time as the cursor moves (e.g. `10:45 AM`), updating at the row's snap quantum.
-- On release, the pill snaps to the **nearest valid available slot** (only times that pass the real-time calendar check are valid landing zones; the day's `availability_data` is the source of truth).
-- If released over an unavailable region, the pill animates back to its last valid position with a subtle bounce — no scheduling happens silently in an unavailable slot.
-- Duration stays fixed to the stage's selected duration; only the start time changes. (Resize is out of scope.)
-- Visual feedback during drag: pill scales 1.02 with stronger shadow, the underlying FREE row shows tick marks at every valid slot boundary as a lilac dot, and invalid regions stay flat white.
-
-### Implementation outline
-
-- Add a `useDraggablePill` hook local to the file (no new deps) using pointer events with capture, snapping `(clientX - rowLeft) / rowWidth * 8h + 9h` to the nearest entry in `timeSlotsForSelectedDate`.
-- Promote the existing button-per-slot to a single draggable pill anchored to `selectedSlot`. Non-selected slots remain visible as faint tick marks behind the pill.
-- Keyboard parity: `←` / `→` move to previous / next available slot; `Home`/`End` jump to first/last.
-- Touch parity: pointer events handle touch natively; passive=false on `pointermove` to allow preventDefault and stop page scroll while dragging.
-
-No backend, schema, or RLS changes. No edits to `useStageBookingInterviewers` or to the booking write path.
+- Teammate guest → `RemovableChip tone="purple" size="md"` with name.
+- External email guest → `RemovableChip tone="neutral" size="md"` with email + tiny `Mail` icon to differentiate.
+- Hovering a teammate chip shows tooltip with the email; hovering an external chip shows tooltip "External guest".
 
 ## Files
 
-- `src/lib/menu-classes.ts` — selector fix.
-- `src/components/candidates/ScheduleInterviewSheet.tsx` — FREE row drag interaction.
+- **Edit** `src/components/candidates/ScheduleInterviewSheet.tsx`
+  - Remove the current `<div className="pt-3 border-t …"> Cc additional guests …` block (lines ~1197–1208) from the INVITATION SectionCard.
+  - Add a new `<SectionCard label="GUESTS" rightSlot={…counter…}>` right after the INVITATION SectionCard, rendering `<GuestComboField …>`.
+  - Add a `GuestComboField` component in the same file (mirrors `PanelistComboField` structure) since it is tightly coupled to the sheet's data flow (members, candidate email, selected panelists).
+- **No changes** to `GuestEmailInput.tsx` (keep it for any other call sites; not used here anymore).
+- **No backend / schema / RLS changes.** `guestEmails: string[]` payload contract is unchanged.
 
 ## Out of scope
 
-- Resize handles on the pill (changing duration by dragging edges).
-- Drawing a brand-new slot by clicking on empty space.
-- Cross-day drag.
-- Group mode (`scheduling_mode === 'all'`).
+- Persisting guests beyond what already happens via `createBookingMutation`.
+- Inviting guests as panelists (they remain Cc-only).
+- Removing or refactoring the legacy `GuestEmailInput` component.
