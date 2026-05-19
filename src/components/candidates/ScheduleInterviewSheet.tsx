@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { startOfMonth, endOfMonth, isSameDay, parseISO, format } from 'date-fns';
 import { useBookingAvailability } from '@/hooks/useBookingAvailability';
+import { DraggableFreeRow } from './DraggableFreeRow';
 import { GuestEmailInput } from '@/components/scheduling/GuestEmailInput';
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
