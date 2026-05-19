@@ -49,7 +49,42 @@ const LANGUAGE_OPTIONS = [
 
 const BRAND_SWATCHES = ['#6F3FF5', '#3B82F6', '#10B981', '#F59E0B', '#EC4899', '#0d0d09']
 
-type FieldType = 'text' | 'email' | 'phone' | 'file' | 'url' | 'yesno' | 'select' | 'number' | 'longtext'
+type FieldType =
+  | 'text' | 'email' | 'phone' | 'file' | 'url' | 'yesno' | 'select' | 'number' | 'longtext' | 'date'
+  | 'salary' | 'location' | 'linkedin' | 'recruiter' | 'employment_type' | 'work_location'
+
+interface SmartFieldDef {
+  id: string
+  label: string
+  type: FieldType
+  icon: React.ComponentType<{ className?: string }>
+  hint: string
+  description: string
+}
+
+const SMART_FIELDS: SmartFieldDef[] = [
+  { id: 'sf_salary',          label: 'Salary expectations', type: 'salary',          icon: DollarSign, hint: 'Currency-aware · syncs to profile', description: 'Expected compensation' },
+  { id: 'sf_location',        label: 'Location',            type: 'location',        icon: MapPin,     hint: 'City · state · country',            description: 'Where the candidate is based' },
+  { id: 'sf_phone',           label: 'Phone',               type: 'phone',           icon: Phone,      hint: 'International format',              description: 'Contact phone number' },
+  { id: 'sf_linkedin',        label: 'LinkedIn',            type: 'linkedin',        icon: Linkedin,   hint: 'Profile URL',                       description: 'LinkedIn profile' },
+  { id: 'sf_employment_type', label: 'Employment type',     type: 'employment_type', icon: Briefcase,  hint: 'Full-time · part-time · contract',  description: 'Preferred employment type' },
+  { id: 'sf_work_location',   label: 'Work location',       type: 'work_location',   icon: Building2,  hint: 'Remote · hybrid · on-site',         description: 'Preferred work arrangement' },
+  { id: 'sf_recruiter',       label: 'Preferred recruiter', type: 'recruiter',       icon: Users,      hint: 'Team member assignment',            description: 'Routes the application to a recruiter' },
+]
+
+const BASIC_TYPES: { type: FieldType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { type: 'text',     label: 'Short text',    icon: Type },
+  { type: 'longtext', label: 'Long text',     icon: AlignLeft },
+  { type: 'number',   label: 'Number',        icon: Hash },
+  { type: 'email',    label: 'Email',         icon: Mail },
+  { type: 'url',      label: 'URL',           icon: Link2 },
+  { type: 'date',     label: 'Date',          icon: CalendarIcon },
+  { type: 'select',   label: 'Single select', icon: List },
+  { type: 'yesno',    label: 'Yes / No',      icon: ToggleLeft },
+  { type: 'file',     label: 'File upload',   icon: FileText },
+]
+
+
 interface AppField {
   id: string
   label: string
