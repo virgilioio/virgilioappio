@@ -75,6 +75,7 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
     isComplete: false,
     createdJobId: null,
     jobData: { status: 'draft' },
+    hasPosting: false,
   })
 
   const { createJob } = useJobs()
@@ -95,6 +96,7 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
       isComplete: false,
       createdJobId: null,
       jobData: { status: 'draft' },
+      hasPosting: false,
     })
 
   useEffect(() => {
