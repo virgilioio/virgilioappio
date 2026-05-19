@@ -81,3 +81,69 @@ Reuses the existing `useJobStages` / `useStageAutomations` / hiring-plan hooks a
 ### Out of scope
 - Steps 3 (Hiring team) and 4 (Summary) — waiting for refs.
 - New backend columns — none needed; existing stages/automations tables back this step.
+
+---
+
+# Step 3 — Hiring team
+
+Rebuild `src/components/jobs/wizard/HiringTeamStep.tsx` to match `30c_Create_job_3_Hiring_team.html` and screenshots. Wizard chrome (left rail, header eyebrow, sticky footer) already in place — only the step body + footer label change.
+
+## Header
+- Eyebrow: `CREATE JOB · STEP 3 OF 4`
+- Title: `Hiring team.`
+- Subtitle: "Who can see this job, and what they can do. Add as many people as needed; assign roles for what they'll do on this job specifically."
+- Left rail: items 1 + 2 green-check, item 3 active black.
+
+## Section 1 — OWNERS (white card)
+Two required selectors stacked, then a two-up grid of optional fields:
+- **Primary recruiter** *  — searchable member select; selected pill shows avatar + name + title + email. Hint: "Owns the job — receives all candidate notifications."
+- **Hiring manager** *  — same shape. Hint: "Owns the bar and the final decision."
+- **Reports to** (optional) — searchable member select (user icon leading).
+- **Coordinator** (optional) — searchable member select, default "Same as recruiter" (calendar icon leading). Hint: "Schedules + reminders. Defaults to recruiter."
+
+## Section 2 — TEAM MEMBERS
+- Section header with right-aligned `+ Add member` secondary button (`UserPlus` icon).
+- Card body: list of workspace member rows, each with:
+  - Checkbox (selected = lilac filled).
+  - Avatar + name + sub-title (role/team).
+  - Role `<Select>` ("Interviewer", "Pick a role…" placeholder when unselected).
+  - Trailing scope label (`Owner · all access`, `HM · view + scorecards`, `Interviewer · scorecards`, `—`).
+  - Trailing settings cog icon (per-member access toggle, opens popover later).
+- Unchecked rows render with reduced opacity.
+- Driven by `useMembers(true)` + `useJobAssignments(jobId)`. Owners auto-checked and locked.
+
+## Section 3 — ROLES ON THIS JOB
+Card with right-aligned `ⓘ What can each role do?` ghost link. 6-tile grid (3×2) describing each role with its assigned count badge:
+- **Recruiter** (lilac) — "Source, screen, schedule, send offers."
+- **Hiring manager** (yellow) — "Calibrate, review scorecards, decide."
+- **Interviewer** (orange) — "Submit scorecards on assigned interviews."
+- **Coordinator** (lilac) — "Schedule meetings, manage reminders."
+- **Sourcer** (green) — "Source-only — can't see entire pipeline."
+- **Observer** (green) — "View-only, no actions."
+
+Each tile uses the standard Badge token color matching its purpose, count number top-right in Poppins tabular-nums. The active role (`Hiring manager` in screenshot) gets a darker highlight.
+
+## Section 4 — NOTIFICATIONS
+Card with three `ToggleRow`s:
+- **Notify owners on new applications** — "Slack DM + email to recruiter + HM" (on)
+- **Daily digest at 9:00 AM** — "Activity summary to recruiter only" (on)
+- **Notify hiring team when stage moves** — "Slack channel #hiring-design" (off)
+
+## Sticky footer (existing chrome — extend wizard)
+- Back · `4 members assigned · 1 recruiter · 1 HM · 2 panelists` (computed) · `Save and exit` · **Review & create ›** (advances to Step 4).
+- `JobWizard.tsx` `primaryCta` switch gains case `3` → label "Review & create", `onClick = handleNextStep`.
+
+## Persistence
+- Primary recruiter & Hiring manager → `job_assignments` rows with `role` `recruiter`/`hiring_manager` (one each per job).
+- Team-member checkboxes → `job_assignments` rows with chosen role.
+- **Existing enum** (`recruiter | hiring_manager | interviewer`) covers the picker; the three extra role tiles (`coordinator`, `sourcer`, `observer`) render UI-only in this pass and surface a "Coming soon" tooltip on the role `<Select>` options. No schema change in this step.
+- `reports_to`, `coordinator`, and the three notification toggles are UI-only for now (stored in wizard local state, flagged in a follow-up to persist on `jobs` or a per-job `job_notifications` table once the user wants it).
+
+## Files touched
+- `src/components/jobs/wizard/HiringTeamStep.tsx` — full rebuild.
+- `src/components/jobs/wizard/_parts.tsx` — add `MemberSelect` (searchable single-select with avatar pill), `MemberRow` (checkbox + avatar + role select + scope + cog), `RoleCard` (count tile with tone), reuse `SectionCard` + `ToggleRow`.
+- `src/components/jobs/JobWizard.tsx` — extend `showFooter` to include step 3; add step-3 case to `primaryCta` ("Review & create"); update sticky footer meta line to show assignment counts when on step 3.
+
+## Out of scope
+- Step 4 (Summary) — waiting for reference.
+- Backend extension for the three additional roles + per-job notifications — separate migration ticket once the user confirms enum expansion.
