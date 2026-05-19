@@ -1,88 +1,83 @@
-# Postings tab — KPI strip, toolbar, perf table
+# Redesign Create & Edit Posting sheets
 
-Add a new "Postings" tab between Job Dashboard and Setup, replacing the right-rail "Job posts" list in the Setup sidebar (still accessible via Setup's "Manage postings" quick link). Reuses `useJobPostings` and the existing `PostingSheet`.
+Rebuild `PostingSheet.tsx` to match the new mockups (`07c_Edit_posting_sheet`, `07d_New_posting_sheet`). One component handles both create and edit modes — header, footer and AI affordances swap by mode. **All existing functionality is preserved**: every field currently saved (`title`, `description`, `details.*`, `publish_to_talent`, `slug`, application form via `PostingFieldsBuilder`) keeps its wiring; new fields are additive.
 
 ## Layout
 
+Replace tabs with a single long-scroll sheet (1040px max) using grouped section cards, matching the Setup tab visual language.
+
 ```text
-+----------------------------------------------------------------------+
-| KPI strip (4 cards)                                                  |
-|  POSTINGS  |  TOTAL APPLICATIONS  |  TOTAL VIEWS  |  MONTHLY SPEND   |
-|  4 cards · last = dark "citron-noir" card with lightning glyph       |
-+----------------------------------------------------------------------+
-| [Search…]  [Status: All ▾]  [Language ▾]   Sorted by … · [+New posting]|
-+----------------------------------------------------------------------+
-| POSTING            STATUS      DISTRIBUTION   PERFORMANCE    DATES   |
-| Senior PD — DS     ● Live      A I W Z  4ch   38 apps · 4.8%  May 8  |
-|  /jobs/…ds         since May 8                4,214 views    Upd 2d  |
-| [Primary] EN(US)…                                            ⤴ Edit …|
-| …                                                                    |
-+----------------------------------------------------------------------+
-| Gio-suggestion banner (lilac): "Gio suggests a 5th posting…"         |
-+----------------------------------------------------------------------+
+┌─ Sheet (right, max-w-[1040px], overflow-y-auto) ─────────────┐
+│ Header                                                       │
+│   EDIT POSTING · {JOB TITLE}     (lilac eyebrow)             │
+│   {Posting title}  [Live|Draft] [Primary]            [X]     │
+│   Subtitle (2 lines, muted)                                  │
+│                                                              │
+│ Section cards (stacked, gap-6):                              │
+│   1. Posting basics        [Pulled from job info chip]       │
+│   2. Public description    [Gio rewrote / Draft from job]    │
+│   3. Application form      [Add question]                    │
+│   4. Where to publish      (channels)                        │
+│   5. Apply experience                                        │
+│   6. Branding              [Inherits from workspace]         │
+│   7. SEO & social card                                       │
+│                                                              │
+│ Sticky footer                                                │
+│   Cancel · "Posting to N channels · application form M fields"│
+│   Edit:   [Preview posting] [Save changes]                   │
+│   New:    [Preview posting] [Save as draft] [Publish posting]│
+└──────────────────────────────────────────────────────────────┘
 ```
 
-## KPI strip
+## Sections & field wiring
 
-Four pulse cards, 1×4 grid (responsive to 2×2 ≤md):
-- **Postings** — count + helper "{live} live · {drafts} drafts/paused".
-- **Total applications** — sum across postings + green "+N this week" if >0.
-- **Total views** — sum + "avg X% apply rate".
-- **Monthly spend** — dark `#0d0d09` card, cream text, lightning glyph. "$XXX + Y credits" subtitle. Hidden when none.
+All persisted to `job_postings` row or `details` JSONB (no schema migration required — JSONB keys are added as needed). Application form continues to use `PostingFieldsBuilder` exactly as today.
 
-KPI numbers in Poppins 600 tracking -0.04em, 28px.
+| # | Section | Fields | Storage |
+|---|---|---|---|
+| 1 | Posting basics | Public job title*, URL slug*, Reference ID, Posting language, Application deadline, Show in public job search, Show '24h response' badge | `title`, `slug`, `details.reference_id`, `details.language`, `details.deadline`, `details.show_in_search`, `details.show_24h_badge` |
+| 2 | Public description | Posting copy* (RichTextEditor, markdown), Gio actions: "Generate with Gio" (new) / "Rewrite" (edit). "Gio will draft / Gio rewrote" status chip | `description` (existing) |
+| 3 | Application form | Renders `<CoreFieldsPreview />` + `<PostingFieldsBuilder postingId>` exactly as today. In **create** mode shows inline notice "Save the draft to start adding custom questions" and disables until `localId` exists (same gating as current tab). | unchanged |
+| 4 | Where to publish | Toggle list of channels: Acme Talent careers page (always on), LinkedIn, Welcome to the Jungle, ZipRecruiter, Google for Jobs. Each row shows connection state + "Manage integrations" link. Existing `publish_to_talent` keeps wiring; other channels stored under `details.channels[code] = { enabled }` | `publish_to_talent`, `details.channels` |
+| 5 | Apply experience | Send confirmation email, Allow candidate to message recruiter, Enable referral link | `details.apply.*` |
+| 6 | Branding | Brand color (swatches + hex), Hero banner (upload / "Using workspace default cover"), Embed culture video (url), Show team photos on posting | `details.branding.*` |
+| 7 | SEO & social card | Meta title (auto from title), Meta description (auto from description), Social card preview (read-only render) | `details.seo.*` |
 
-## Toolbar
+## Behavior differences: New vs Edit
 
-`TableToolbar` pattern: 30h `TableSearch` (≤280w) left, `Status: All ▾` `FilterChipPopover` (All / Live / Paused / Draft / Closed), `Language ▾` `FilterChipPopover` (distinct languages from postings). Right side: "Sorted by performance · descending" muted label + `New posting` primary `Button` (icon Plus) that opens `PostingSheet` in create mode.
+- **Header eyebrow**: `NEW POSTING · {JOB TITLE}` (new) vs `EDIT POSTING · {JOB TITLE}` (edit).
+- **Title display**: "Untitled posting" + Draft badge until typed (new); actual title + Live/Draft + Primary badges (edit).
+- **AI affordances**: "Generate with Gio" / "Draft from job" / "Gio will draft" (new) vs "Rewrite" / "Gio rewrote" (edit).
+- **Slug & Reference ID** show `auto-generated` placeholders in new mode (computed by `generateSlug` on save, same as today).
+- **Footer actions**:
+  - New: `Cancel` · `Preview posting` (disabled until valid) · `Save as draft` (sets `is_active=false`) · `Publish posting` (sets `is_active=true`).
+  - Edit: `Cancel` · `Preview posting` · `Save changes`.
+- **Footer summary chip**: live count of enabled channels and application form fields.
 
-## Table
+## Visual / tokens
 
-`<Table density="default">` with columns:
+- Section cards: `bg-surface-primary` rounded-xl, `border-virgilio-border`, `p-6`, eyebrow caps 10.5px tracking-wider muted.
+- "Pulled from job info" / "Gio rewrote" / "Inherits from workspace": lilac `bg-[#EDE4FF]` pill, 12px Inter, sparkle icon — reuse the unified-AI-banner tone (small variant).
+- Live = green dot Badge, Primary = lilac Badge, Draft = neutral Badge — reuse `<Badge tone>` from style-guide §3.
+- Toggle rows use `<Switch>`; helper text 12.5px `text-text-secondary`.
+- Sticky footer: white, top hairline border, `<Button>` primary for the right-most action (Save / Publish), `variant="secondary"` for Preview, `variant="ghost"` for Cancel.
 
-- **POSTING** — `IdentityCell` style: title 13.5px medium, mono `/jobs/{slug}` row, third tiny line of meta chips (language(s), audience tags). When `is_primary`, a small lilac `Primary` badge sits inline after the title.
-- **STATUS** — `StatusCell` with one Badge dot (Live=green / Paused=yellow / Draft=neutral / Closed=red) + helper line "Live since May 8" / "Paused 4d ago" / "Not yet published" / "Closed May 15" using `formatDistanceToNowStrict` and `Xd` style.
-- **DISTRIBUTION** — Channel chips: small 22h colored squares with one-letter glyph (A=Apollo, I=Indeed, W=Wellfound, Z=ZipRecruiter, H=HiringRoom, X=Xing — derived from `external_postings` keys or empty), then "{N} channels". If only internal site → single black "A" + "1 channel".
-- **PERFORMANCE** — Two stacked `NumericCell`-ish lines:
-  - `{applications}` apps · green `{apply_rate}% apply rate`
-  - eye icon + `{views}` views
-  Pulled from `posting_metrics` if available, otherwise computed via `useJobPostingMetrics` hook (new, see Technical).
-- **DATES** — Posted {date} / Updated {Xd ago}. Drafts show "Draft / Updated yesterday".
-- **ACTIONS** — `ActionCell` (32px col, opacity 0→1 on row hover): external-link icon (opens `/p/{slug}` new tab) + secondary `Edit` button (opens `PostingSheet` edit) + `DropdownMenu` with Duplicate, Copy URL, Pause/Resume (toggle), divider, Delete (danger).
+## Preserved functionality (non-negotiable)
 
-Row click anywhere outside ActionCell opens `PostingSheet` in edit.
-
-Empty state: `TableEmpty` with Gio mascot + headline "No postings yet" + body "Publish your first job posting to start receiving applications." + primary `New posting` CTA.
-
-## Gio suggestion banner
-
-Lilac alert banner below the table: avatar Gio sparkle icon, headline "Gio suggests a {N}th posting for {region}", body explaining the gap, right-aligned purple primary `Create from suggestion →`. Only rendered when `gioSuggestion` is non-null; v1 uses a tiny client-side heuristic (if all live postings concentrate in <=2 regions, suggest the largest missing region from candidate locations). Stub returns null if data insufficient — banner just doesn't render.
-
-## Tabs wiring
-
-Add `<TabsTrigger value="postings">Postings</TabsTrigger>` between `candidates` and `sourcing` in `JobDetail.tsx`. Mount `<JobPostingsTabV2>` inside a new `<TabsContent value="postings">` with the standard `flex-1 min-h-0 overflow-hidden` and an inner `overflow-auto bg-[#FAFAF7]` wrapper to match Setup. Also wire the Setup sidebar "Manage postings" quick link to `setActiveTab('postings')` (replace the custom-event stub I left in `JobSetupLayout`).
-
-## Permissions
-
-Restricted viewers: tab visible but read-only — no `New posting`, no row actions menu, edit-on-row-click becomes view-only. Hide Monthly spend KPI.
-
-## Technical
-
-- Rewrite `src/components/jobs/JobPostingsTab.tsx` end-to-end (call the new component the same name to keep the import). Move the old version to `JobPostingsTab.legacy.tsx` only if needed (probably just overwrite — it isn't imported by `JobDetail`).
-- New tiny hook `src/hooks/useJobPostingMetrics.ts` returning `{ applications, views, applyRate }` per posting. v1 implementation: 2 queries against `applications` + `job_posting_views` (if exists; if not, return zeros and TODO toast on KPI hover). Confirm schema before adding tables — no DB migrations in this pass.
-- Reuse `PostingSheet` for create/edit. No changes to it here (we'll redesign it in the next round).
-- Remove the "Job posts" `SectionCard` from the Setup sidebar in a follow-up — out of scope for this pass.
-
-## Out of scope
-
-- Redesign of `PostingSheet` (next round).
-- DB schema changes (metrics table, posting languages, primary flag column — confirm each before adding).
-- Real "Monthly spend" billing aggregation (display 0 / hide card if no data).
-- Gio LLM-driven suggestion; v1 uses heuristic only.
+- `useJobPostings` `getPosting / createPosting / updatePosting` calls remain the source of truth.
+- All existing `details` keys (`location`, `employment_type`, `location_type`, salary fields, commissions) keep saving — they move under a collapsible "Compensation & location" subsection inside **Posting basics** if not in the new mockups, so no data is lost. (Will confirm with you before hiding any.)
+- `publish_to_talent` still toggled in section 4.
+- `PostingFieldsBuilder` + `CoreFieldsPreview` unchanged.
+- About-company card and Talent.com integration alert continue to render with their existing logic.
 
 ## Files
 
-- Rewrite `src/components/jobs/JobPostingsTab.tsx`.
-- New `src/hooks/useJobPostingMetrics.ts`.
-- Edit `src/pages/JobDetail.tsx` (add tab trigger + content, wire Manage postings quick link).
-- Edit `src/components/jobs/JobSetupLayout.tsx` quick-link handler to use a real callback prop instead of custom event.
+- `src/components/jobs/postings/PostingSheet.tsx` — full rewrite, single component handling both modes via `postingId` presence.
+- New helper `src/components/jobs/postings/PostingChannelsCard.tsx` for the channels list (keeps PostingSheet manageable).
+- No DB migrations. No changes to `PostingFieldsBuilder`, `useJobPostings`, or `JobPostingsTab`.
+
+## Out of scope
+
+- Real cross-posting to LinkedIn / WTJ / ZipRecruiter / Google for Jobs (UI + persisted toggles only, integration wiring later).
+- File upload pipeline for Hero banner (UI + URL field only this pass).
+- Gio AI generation logic for description (button wired to existing flow only; copy/labels updated).
