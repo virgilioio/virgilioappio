@@ -22,9 +22,11 @@ export default function Jobs() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
   const [archiveJobId, setArchiveJobId] = useState<string | null>(null)
+  const [deleteJobId, setDeleteJobId] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [statusFilter, setStatusFilter] = useState<StatusSegment>('active')
 
-  const { jobs, isLoading, createJob, updateJob, archiveJob } = useJobs()
+  const { jobs, isLoading, createJob, updateJob, archiveJob, deleteJob } = useJobs()
 
   const counts = useMemo(() => {
     const c = { active: 0, all: jobs.length, paused: 0, closed: 0, archived: 0 }
@@ -43,6 +45,17 @@ export default function Jobs() {
   const handleArchive = (id: string) => setArchiveJobId(id)
   const handleConfirmArchive = async () => {
     if (archiveJobId) { await archiveJob(archiveJobId); setArchiveJobId(null) }
+  }
+  const handleDelete = (id: string) => setDeleteJobId(id)
+  const handleConfirmDelete = async () => {
+    if (!deleteJobId) return
+    setIsDeleting(true)
+    try {
+      await deleteJob(deleteJobId)
+      setDeleteJobId(null)
+    } finally {
+      setIsDeleting(false)
+    }
   }
   const handleFormSubmit = async (data: any) => {
     if (selectedJob) await updateJob(selectedJob.id, data)
@@ -103,6 +116,7 @@ export default function Jobs() {
                 onView={handleView}
                 onEdit={handleEdit}
                 onArchive={handleArchive}
+                onDelete={handleDelete}
                 onCreateNew={handleCreateNew}
                 statusFilter={statusFilter}
                 onStatusFilterChange={setStatusFilter}
@@ -138,6 +152,27 @@ export default function Jobs() {
                 <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
                 <AlertDialogAction onClick={handleConfirmArchive} className="w-full sm:w-auto">
                   Archive
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <AlertDialog open={!!deleteJobId} onOpenChange={(open) => !open && !isDeleting && setDeleteJobId(null)}>
+            <AlertDialogContent className="mx-4 max-w-md sm:max-w-lg">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete job permanently?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently remove the job, its postings, and detach related candidates. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="flex-col sm:flex-row gap-3">
+                <AlertDialogCancel className="w-full sm:w-auto" disabled={isDeleting}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => { e.preventDefault(); handleConfirmDelete() }}
+                  disabled={isDeleting}
+                  className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {isDeleting ? 'Deleting…' : 'Delete job'}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

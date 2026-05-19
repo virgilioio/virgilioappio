@@ -16,7 +16,7 @@ import { GioEmptyState } from '@/components/ui/GioEmptyState'
 import { TableFooterSummary } from '@/components/ui/table-pagination'
 import { FilterChipPopover, type FilterChipOption } from '@/components/ui/filter-chip-popover'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { MoreHorizontal, Eye, Edit, Archive, MapPin } from 'lucide-react'
+import { MoreHorizontal, Eye, Edit, Archive, MapPin, Trash2 } from 'lucide-react'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { PipelineBar } from '@/components/jobs/PipelineBar'
 import { usePipelineJobMetrics } from '@/hooks/usePipelineJobMetrics'
@@ -41,6 +41,7 @@ interface JobsTableProps {
   onView: (job: Job) => void
   onEdit: (job: Job) => void
   onArchive: (id: string) => void
+  onDelete: (id: string) => void
   onCreateNew: () => void
   statusFilter: StatusSegment
   onStatusFilterChange: (v: StatusSegment) => void
@@ -67,6 +68,7 @@ export function JobsTable({
   onView,
   onEdit,
   onArchive,
+  onDelete,
   statusFilter,
   onStatusFilterChange,
   tabs,
@@ -392,6 +394,15 @@ export function JobsTable({
                                 className="text-destructive focus:bg-destructive/10 focus:text-destructive data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive"
                               >
                                 <Archive className="h-3.5 w-3.5" /> <span>Archive</span>
+                              </DropdownMenuItem>
+                            </PermissionGate>
+                            <PermissionGate permission="canDeleteJobs">
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={(e) => { e.stopPropagation(); onDelete(job.id) }}
+                                className="text-destructive focus:bg-destructive/10 focus:text-destructive data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" /> <span>Delete job</span>
                               </DropdownMenuItem>
                             </PermissionGate>
                           </DropdownMenuContent>
