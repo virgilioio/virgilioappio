@@ -183,6 +183,7 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
   const showFooter =
     wizardState.currentStep === 1 ||
     wizardState.currentStep === 2 ||
+    wizardState.currentStep === 3 ||
     wizardState.currentStep === 4
 
   const primaryCta = (() => {
@@ -191,6 +192,8 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
         return { label: 'Create & continue', onClick: handleNextStep, disabled: !canProceedStep1() || isSubmitting, loading: isSubmitting }
       case 2:
         return { label: 'Continue to team', onClick: handleNextStep, disabled: false, loading: false }
+      case 3:
+        return { label: 'Review & create', onClick: handleNextStep, disabled: false, loading: false }
       case 4:
       default:
         return { label: 'Publish job', onClick: handleComplete, disabled: false, loading: false }
