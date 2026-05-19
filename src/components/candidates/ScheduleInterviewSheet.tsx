@@ -282,7 +282,7 @@ function PanelistComboField({
                     onSelect={() => {
                       onSelect(p);
                       setQuery('');
-                      setOpen(false);
+                      requestAnimationFrame(() => inputRef.current?.focus());
                     }}
                   >
                     <Avatar className="h-5 w-5">
