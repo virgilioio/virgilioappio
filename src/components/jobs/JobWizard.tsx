@@ -78,6 +78,8 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
 
   const { createJob } = useJobs()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const postingRef = React.useRef<JobPostingStepHandle>(null)
+  const [postingMeta, setPostingMeta] = useState({ channels: 1, fields: 9 })
 
   const resetWizard = () =>
     setWizardState({
