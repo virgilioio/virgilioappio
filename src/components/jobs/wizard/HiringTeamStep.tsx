@@ -263,11 +263,21 @@ export function HiringTeamStep({ jobId, onNext, onBack }: HiringTeamStepProps) {
           </Button>
         }
       >
+        <div className="relative mb-3 max-w-[280px]">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-tertiary pointer-events-none" />
+          <Input
+            value={memberSearch}
+            onChange={(e) => setMemberSearch(e.target.value)}
+            placeholder="Search team members…"
+            className="h-[30px] pl-8 text-[12.5px]"
+          />
+        </div>
         {teamRows.length === 0 ? (
           <p className="text-[13px] text-text-tertiary py-4 text-center">
-            No other workspace members available.
+            {memberSearch ? 'No members match your search.' : 'No other workspace members available.'}
           </p>
         ) : (
+
           <ul className="divide-y divide-virgilio-border/60 -mx-1">
             {teamRows.map(({ member, assignment }) => {
               const name = nameOf(member.user_id!)
