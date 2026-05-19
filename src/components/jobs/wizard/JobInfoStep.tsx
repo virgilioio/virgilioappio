@@ -330,7 +330,48 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
         </div>
       </SectionCard>
 
-      {/* Compensation moved to Step 4 (Job posting) */}
+      {/* ----------------------------------------- COMPENSATION (job-level) */}
+      <SectionCard title="Compensation">
+        <FieldHint className="-mt-1 mb-4">
+          Stored on the job. Visibility, equity, signing bonus, and commission live on the job post (Step 4).
+        </FieldHint>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          <div>
+            <FieldLabel>Currency</FieldLabel>
+            <div className="mt-2">
+              <CurrencySelect
+                value={jobData.currency || 'USD'}
+                onChange={(v) => set('currency', v)}
+              />
+            </div>
+          </div>
+          <div>
+            <FieldLabel>Min salary</FieldLabel>
+            <div className="mt-2">
+              <SalaryInput
+                value={jobData.salary_min ?? undefined}
+                onChange={(v) => set('salary_min', v)}
+                currency={jobData.currency || 'USD'}
+                invalid={salaryInvalid}
+              />
+            </div>
+            {salaryInvalid && <FieldHint tone="error">Min must be lower than max</FieldHint>}
+          </div>
+          <div>
+            <FieldLabel>Max salary</FieldLabel>
+            <div className="mt-2">
+              <SalaryInput
+                value={jobData.salary_max ?? undefined}
+                onChange={(v) => set('salary_max', v)}
+                currency={jobData.currency || 'USD'}
+                invalid={salaryInvalid}
+              />
+            </div>
+          </div>
+        </div>
+      </SectionCard>
+
+
 
 
 
