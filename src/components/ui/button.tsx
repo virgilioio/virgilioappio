@@ -68,8 +68,10 @@ const buttonVariants = cva(
           "text-virgilio-purple underline-offset-4 hover:underline shadow-none font-medium",
 
         // === Legacy aliases (kept for backward compat) ===
+        // `default` now mirrors `primary` per Gio Foundation v1.0 spec
+        // (was purple; flipped to citron-noir/cream so every plain <Button> renders the spec-correct primary).
         default:
-          "bg-virgilio-purple !text-white [&_svg]:!text-white shadow-[var(--shadow-button)] hover:bg-virgilio-purple/90 active:bg-virgilio-purple/85 active:shadow-inner",
+          "bg-[#0d0d09] !text-[#fffcf9] [&_svg]:!text-[#fffcf9] shadow-[var(--shadow-button)] hover:bg-[#1a1a14] active:bg-[#000000] active:shadow-inner",
         destructive:
           "bg-destructive !text-destructive-foreground [&_svg]:!text-destructive-foreground shadow-[var(--shadow-button)] hover:bg-destructive/90 active:bg-destructive/85 active:shadow-inner",
         outline:

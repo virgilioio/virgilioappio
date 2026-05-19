@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
-import { Check, ChevronRight, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useJobs, CreateJobData } from '@/hooks/useJobs'
 import { toast } from '@/hooks/use-toast'
@@ -43,7 +43,8 @@ const STEP_META: Record<
   2: {
     eyebrow: 'Create job · Step 2 of 4',
     title: 'Hiring plan',
-    subtitle: 'Configure the pipeline stages this role will move through.',
+    subtitle:
+      'The stages candidates progress through. Drag to reorder. Application review and Offer are required system stages.',
   },
   3: {
     eyebrow: 'Create job · Step 3 of 4',
@@ -178,7 +179,22 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
   }
 
   const meta = STEP_META[wizardState.currentStep]
-  const showFooter = wizardState.currentStep === 1 || wizardState.currentStep === 4
+  const showFooter =
+    wizardState.currentStep === 1 ||
+    wizardState.currentStep === 2 ||
+    wizardState.currentStep === 4
+
+  const primaryCta = (() => {
+    switch (wizardState.currentStep) {
+      case 1:
+        return { label: 'Create & continue', onClick: handleNextStep, disabled: !canProceedStep1() || isSubmitting, loading: isSubmitting }
+      case 2:
+        return { label: 'Continue to team', onClick: handleNextStep, disabled: false, loading: false }
+      case 4:
+      default:
+        return { label: 'Publish job', onClick: handleComplete, disabled: false, loading: false }
+    }
+  })()
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -291,11 +307,19 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
           {showFooter && (
             <div className="border-t border-virgilio-border bg-[#F6F5F1]/95 backdrop-blur px-6 sm:px-10 py-4 flex items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <Button variant="ghost" onClick={onClose} type="button">
-                  Cancel
-                </Button>
+                {wizardState.currentStep === 1 ? (
+                  <Button variant="ghost" onClick={onClose} type="button">
+                    Cancel
+                  </Button>
+                ) : (
+                  <Button variant="ghost" onClick={handlePrevStep} type="button" icon={ChevronLeft}>
+                    Back
+                  </Button>
+                )}
                 <p className="hidden sm:block text-[12px] text-text-tertiary">
-                  Required fields marked with <span className="text-destructive">*</span>
+                  {wizardState.currentStep === 1
+                    ? <>Required fields marked with <span className="text-destructive">*</span></>
+                    : null}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -307,21 +331,15 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
                 >
                   Save and exit
                 </Button>
-                {wizardState.currentStep === 1 ? (
-                  <Button
-                    type="button"
-                    onClick={handleNextStep}
-                    iconRight={ChevronRight}
-                    disabled={!canProceedStep1() || isSubmitting}
-                    loading={isSubmitting}
-                  >
-                    Create &amp; continue
-                  </Button>
-                ) : (
-                  <Button type="button" onClick={handleComplete} iconRight={ChevronRight}>
-                    Publish job
-                  </Button>
-                )}
+                <Button
+                  type="button"
+                  onClick={primaryCta.onClick}
+                  iconRight={ChevronRight}
+                  disabled={primaryCta.disabled}
+                  loading={primaryCta.loading}
+                >
+                  {primaryCta.label}
+                </Button>
               </div>
             </div>
           )}

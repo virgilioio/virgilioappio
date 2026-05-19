@@ -90,7 +90,6 @@ export default function Jobs() {
                       size="md"
                       icon={Plus}
                       onClick={handleCreateNew}
-                      className="text-white [&_svg]:text-white"
                     >
                       New job
                     </Button>
