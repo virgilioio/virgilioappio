@@ -264,6 +264,17 @@ function PanelistComboField({
         align="start"
         sideOffset={6}
         onOpenAutoFocus={(e) => e.preventDefault()}
+        onFocusOutside={(e) => {
+          // Our input lives in the anchor (outside the content). Keep open when it grabs focus.
+          if (inputRef.current && e.target === inputRef.current) e.preventDefault();
+        }}
+        onInteractOutside={(e) => {
+          // Clicks on the anchor (input/pill) must not dismiss.
+          const t = e.target as Node | null;
+          if (t && inputRef.current?.parentElement?.parentElement?.contains(t)) {
+            e.preventDefault();
+          }
+        }}
       >
         <Command shouldFilter={false}>
           <CommandList className="max-h-[280px]">
