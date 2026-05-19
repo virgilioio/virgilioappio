@@ -171,14 +171,17 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
     try {
       const ok = await postingRef.current?.savePosting()
       if (ok === false) return
-      setWizardState((prev) => ({ ...prev, currentStep: 5 }))
+      setWizardState((prev) => ({ ...prev, currentStep: 5, hasPosting: true }))
     } finally {
       setIsSubmitting(false)
     }
   }
 
   const handlePostingSkip = () =>
-    setWizardState((prev) => ({ ...prev, currentStep: 5 }))
+    setWizardState((prev) => ({ ...prev, currentStep: 5, hasPosting: false }))
+
+  const goToStep = (step: number) =>
+    setWizardState((prev) => ({ ...prev, currentStep: step }))
 
   const renderStepContent = () => {
     switch (wizardState.currentStep) {
