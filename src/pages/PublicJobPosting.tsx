@@ -108,7 +108,7 @@ interface SelectOption {
 
 export default function PublicJobPosting() {
   const { slug } = useParams<{ slug: string }>()
-  const navigate = useNavigate()
+  // useNavigate previously used by old header; no longer needed
   const [posting, setPosting] = useState<Posting | null>(null)
   const [customFields, setCustomFields] = useState<PostingField[]>([])
   const [options, setOptions] = useState<Record<string, SelectOption[]>>({})
