@@ -244,7 +244,12 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
         return { label: 'Continue to review', onClick: handlePostingContinue, disabled: isSubmitting, loading: isSubmitting }
       case 5:
       default:
-        return { label: 'Publish job', onClick: handleComplete, disabled: false, loading: false }
+        return {
+          label: wizardState.hasPosting ? 'Create & publish' : 'Create job (internal)',
+          onClick: handleComplete,
+          disabled: false,
+          loading: false,
+        }
     }
   })()
 
