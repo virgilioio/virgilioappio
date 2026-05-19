@@ -99,6 +99,14 @@ interface AppField {
 
 const SMART_FIELD_TYPES = new Set<FieldType>(SMART_FIELDS.map((s) => s.type))
 
+const TYPE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
+  text: Type, longtext: AlignLeft, number: Hash, email: Mail, url: Link2,
+  date: CalendarIcon, select: List, yesno: ToggleLeft, file: FileText, phone: Phone,
+  linkedin: Linkedin, location: MapPin, salary: DollarSign, employment_type: Briefcase,
+  work_location: Building2, recruiter: Users,
+}
+const iconForType = (t: string) => TYPE_ICON[t] || MessageSquare
+
 const DEFAULT_FIELDS: AppField[] = [
   { id: 'full_name', label: 'Full name', type: 'text', hint: 'Short text', required: true, locked: true, icon: User },
   { id: 'email', label: 'Email', type: 'email', hint: 'Email', required: true, locked: true, icon: Mail },
