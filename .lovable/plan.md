@@ -1,83 +1,89 @@
 # Redesign Create & Edit Posting sheets
 
-Rebuild `PostingSheet.tsx` to match the new mockups (`07c_Edit_posting_sheet`, `07d_New_posting_sheet`). One component handles both create and edit modes — header, footer and AI affordances swap by mode. **All existing functionality is preserved**: every field currently saved (`title`, `description`, `details.*`, `publish_to_talent`, `slug`, application form via `PostingFieldsBuilder`) keeps its wiring; new fields are additive.
+Rebuild `PostingSheet.tsx` to match the new mockups. One component handles both create and edit modes — header, footer, AI affordances, and a few helper chips swap by mode. **All existing functionality is preserved**: every field currently saved (`title`, `description`, `details.*`, `publish_to_talent`, slug, application form via `PostingFieldsBuilder`) keeps its wiring; new fields are additive in `details` JSONB.
 
 ## Layout
 
-Replace tabs with a single long-scroll sheet (1040px max) using grouped section cards, matching the Setup tab visual language.
+Replace the current tabs with one long-scroll sheet (≈1040px max). Sticky header, sticky footer, sections stacked between them — same visual language as the Setup tab.
 
 ```text
-┌─ Sheet (right, max-w-[1040px], overflow-y-auto) ─────────────┐
-│ Header                                                       │
-│   EDIT POSTING · {JOB TITLE}     (lilac eyebrow)             │
-│   {Posting title}  [Live|Draft] [Primary]            [X]     │
-│   Subtitle (2 lines, muted)                                  │
+┌─ Sheet (right, max-w-[1040px]) ──────────────────────────────┐
+│ Sticky header (white)                                        │
+│  NEW POSTING · {JOB TITLE}   or   EDIT POSTING · {JOB TITLE} │
+│  {Posting title or "Untitled posting"}  [Live|Draft][Primary]│
+│  Subtitle (2 lines, muted)                                   │
 │                                                              │
-│ Section cards (stacked, gap-6):                              │
-│   1. Posting basics        [Pulled from job info chip]       │
-│   2. Public description    [Gio rewrote / Draft from job]    │
-│   3. Application form      [Add question]                    │
-│   4. Where to publish      (channels)                        │
-│   5. Apply experience                                        │
-│   6. Branding              [Inherits from workspace]         │
-│   7. SEO & social card                                       │
+│ Scroll area (bg #FAFAF7, gap-6, p-6):                        │
+│  1. POSTING BASICS         [Pulled from job info]            │
+│  2. PUBLIC DESCRIPTION     new: [Gio will draft][Draft from  │
+│                             job]   edit: [Gio rewrote][Rewrite]│
+│  3. BRANDING               [Inherits from workspace]         │
+│  4. APPLICATION FORM       [+ Add question]                  │
+│  5. WHERE TO PUBLISH       [↗ Manage integrations]           │
+│  6. APPLY EXPERIENCE                                         │
+│  7. SEO & SHARING          new: [Will auto-generate]         │
 │                                                              │
-│ Sticky footer                                                │
-│   Cancel · "Posting to N channels · application form M fields"│
-│   Edit:   [Preview posting] [Save changes]                   │
-│   New:    [Preview posting] [Save as draft] [Publish posting]│
+│ Sticky footer (white, top hairline)                          │
+│  Cancel · "Posting to N channels · application form M fields"│
+│  edit: [Preview posting] [Save changes]                      │
+│  new:  [Preview posting] [Save as draft] [Publish posting]   │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-## Sections & field wiring
+Each section: caps eyebrow title (10.5px Inter +0.06em muted) + right-side helper chip, then a white rounded-xl card (`border-virgilio-border`, `p-6`) containing the controls.
 
-All persisted to `job_postings` row or `details` JSONB (no schema migration required — JSONB keys are added as needed). Application form continues to use `PostingFieldsBuilder` exactly as today.
+## Sections & field wiring
 
 | # | Section | Fields | Storage |
 |---|---|---|---|
-| 1 | Posting basics | Public job title*, URL slug*, Reference ID, Posting language, Application deadline, Show in public job search, Show '24h response' badge | `title`, `slug`, `details.reference_id`, `details.language`, `details.deadline`, `details.show_in_search`, `details.show_24h_badge` |
-| 2 | Public description | Posting copy* (RichTextEditor, markdown), Gio actions: "Generate with Gio" (new) / "Rewrite" (edit). "Gio will draft / Gio rewrote" status chip | `description` (existing) |
-| 3 | Application form | Renders `<CoreFieldsPreview />` + `<PostingFieldsBuilder postingId>` exactly as today. In **create** mode shows inline notice "Save the draft to start adding custom questions" and disables until `localId` exists (same gating as current tab). | unchanged |
-| 4 | Where to publish | Toggle list of channels: Acme Talent careers page (always on), LinkedIn, Welcome to the Jungle, ZipRecruiter, Google for Jobs. Each row shows connection state + "Manage integrations" link. Existing `publish_to_talent` keeps wiring; other channels stored under `details.channels[code] = { enabled }` | `publish_to_talent`, `details.channels` |
-| 5 | Apply experience | Send confirmation email, Allow candidate to message recruiter, Enable referral link | `details.apply.*` |
-| 6 | Branding | Brand color (swatches + hex), Hero banner (upload / "Using workspace default cover"), Embed culture video (url), Show team photos on posting | `details.branding.*` |
-| 7 | SEO & social card | Meta title (auto from title), Meta description (auto from description), Social card preview (read-only render) | `details.seo.*` |
+| 1 | **Posting basics** | Public job title*, URL slug* (prefixed `/jobs/`, auto on new), Reference ID (auto on new), Posting language (Select w/ flag glyph), Application deadline (`DatePickerVirgilio`, "No deadline"/"Open until filled"), toggle **Show in public job search**, toggle **Show 'apply within 24h response' badge** | `title`, `slug`, `details.reference_id`, `details.language`, `details.deadline`, `details.show_in_search`, `details.show_24h_badge` |
+| 2 | **Public description** | Posting copy* (`RichTextEditor`, markdown), inline Gio CTA in editor bottom-right ("Generate with Gio" / "Rewrite"). Edit mode: lilac **Inclusion score** sub-banner with "Suggestions →". | `description` (existing) |
+| 3 | **Branding** | Hero banner (upload/replace, preview, 1600×480 hint, fallback "Using workspace default cover"), Brand color (swatch picker + hex input + "From workspace" pill), toggle **Show team photos on posting**, toggle **Embed culture video** | `details.branding.{hero_url, brand_color, show_team_photos, embed_video}` |
+| 4 | **Application form** | Helper line "What candidates fill in to apply. Drag to reorder…", then `<CoreFieldsPreview />` + `<PostingFieldsBuilder postingId>` exactly as today. EEO toggle row pinned at bottom (Demographic survey). In **create** mode before save: shows a muted "Save the draft to start adding custom questions" notice with builder disabled (same gating as the current tab). | unchanged + `details.eeo_enabled` |
+| 5 | **Where to publish** | Stack of channel rows. Each row: 36×36 brand glyph tile + name + meta line + right-side status (Always on / Connected · $X / $129 / 30 days / Not connected / Free · auto) + `<Switch>`. Channels: Acme Talent careers page (always on, lilac "Recommended"), LinkedIn, Welcome to the Jungle, ZipRecruiter, Google for Jobs, Indeed (free tier). Dark **Posting total** summary bar at the bottom ("$X + N sourcing credit" / "$0 (Careers page only)") with right-side lilac chip "N free, M paid". | `publish_to_talent` (existing, wired to careers/talent toggle), `details.channels[code]={enabled, cost}` |
+| 6 | **Apply experience** | Toggles: **Send confirmation email** (helper: "From {sender} · 'We received your application…'"), **Promise first response in 48h**, **Allow candidate to message recruiter**, **Enable referral link** (helper shows `acmetalent.gio.com/r/{ref}`) | `details.apply.{confirmation_email, promise_48h, allow_message, referral_enabled}` |
+| 7 | **SEO & sharing** | Meta title (placeholder "Auto-generates from public title", 60 char hint), Meta description (textarea, 155 char hint, "Auto-generates from public description"). On new mode show eyebrow chip "Will auto-generate". | `details.seo.{meta_title, meta_description}` |
 
 ## Behavior differences: New vs Edit
 
-- **Header eyebrow**: `NEW POSTING · {JOB TITLE}` (new) vs `EDIT POSTING · {JOB TITLE}` (edit).
-- **Title display**: "Untitled posting" + Draft badge until typed (new); actual title + Live/Draft + Primary badges (edit).
-- **AI affordances**: "Generate with Gio" / "Draft from job" / "Gio will draft" (new) vs "Rewrite" / "Gio rewrote" (edit).
-- **Slug & Reference ID** show `auto-generated` placeholders in new mode (computed by `generateSlug` on save, same as today).
-- **Footer actions**:
-  - New: `Cancel` · `Preview posting` (disabled until valid) · `Save as draft` (sets `is_active=false`) · `Publish posting` (sets `is_active=true`).
+- **Header eyebrow:** `NEW POSTING · {JOB}` vs `EDIT POSTING · {JOB}` (lilac caps).
+- **Title block:** "Untitled posting" + Draft badge (new); actual title + Live/Draft + Primary badges (edit).
+- **Slug / Reference ID:** placeholder text in new (`auto-generated from title`, `auto-generated`); editable values in edit. Slug still computed by `generateSlug` on save when left blank (existing behavior).
+- **Public description placeholder:** "Click 'Draft from job' to generate from the job information" (new) vs current copy (edit). Buttons swap: `Generate with Gio` / `Draft from job` (new) vs `Rewrite` / `Gio rewrote` chip (edit).
+- **Branding banner:** "Using workspace default cover" placeholder + Upload (new) vs uploaded asset + Replace (edit).
+- **Footer actions:**
+  - New: `Cancel` · `Preview posting` (disabled until title valid) · `Save as draft` (creates row, `is_active=false`) · `Publish posting` (creates row, `is_active=true`).
   - Edit: `Cancel` · `Preview posting` · `Save changes`.
-- **Footer summary chip**: live count of enabled channels and application form fields.
+- **Footer summary chip:** live count of enabled channels + application form field count.
 
 ## Visual / tokens
 
-- Section cards: `bg-surface-primary` rounded-xl, `border-virgilio-border`, `p-6`, eyebrow caps 10.5px tracking-wider muted.
-- "Pulled from job info" / "Gio rewrote" / "Inherits from workspace": lilac `bg-[#EDE4FF]` pill, 12px Inter, sparkle icon — reuse the unified-AI-banner tone (small variant).
-- Live = green dot Badge, Primary = lilac Badge, Draft = neutral Badge — reuse `<Badge tone>` from style-guide §3.
-- Toggle rows use `<Switch>`; helper text 12.5px `text-text-secondary`.
-- Sticky footer: white, top hairline border, `<Button>` primary for the right-most action (Save / Publish), `variant="secondary"` for Preview, `variant="ghost"` for Cancel.
+- Section eyebrow caps: 10.5px Inter +0.06em, `text-text-tertiary`. Right-side helper chip = lilac `bg-[#EDE4FF] text-virgilio-purple` 11.5px with sparkle icon (reuse unified AI banner tone) — also used for "Pulled from job info", "Inherits from workspace", "Will auto-generate", "Gio rewrote", "Gio will draft", "Recommended".
+- Cards: `bg-surface-primary rounded-xl border-virgilio-border p-6`.
+- Inputs 44h, Selects 32h, ring `virgilio-purple` (existing tokens).
+- Toggle rows: 2-line layout — title 13.5px Poppins 500 + helper 12.5px `text-text-secondary` left, `<Switch>` right, separated by hairline `border-b border-virgilio-border/60`.
+- Badges: reuse `<Badge tone>` — Live = green dot, Draft = neutral dot, Primary = lilac, Required = yellow pill, Optional = neutral pill.
+- Dark posting-total bar: `bg-[#0d0d09] text-[#FFFCF9]` rounded-xl, lightning bolt glyph left, lilac chip right.
+- Sticky footer: white, top hairline. Primary submit (Save / Publish) = plain `<Button>` per Forms core rule. Preview = `variant="secondary"`. Cancel = `variant="ghost"`.
 
 ## Preserved functionality (non-negotiable)
 
-- `useJobPostings` `getPosting / createPosting / updatePosting` calls remain the source of truth.
-- All existing `details` keys (`location`, `employment_type`, `location_type`, salary fields, commissions) keep saving — they move under a collapsible "Compensation & location" subsection inside **Posting basics** if not in the new mockups, so no data is lost. (Will confirm with you before hiding any.)
-- `publish_to_talent` still toggled in section 4.
-- `PostingFieldsBuilder` + `CoreFieldsPreview` unchanged.
-- About-company card and Talent.com integration alert continue to render with their existing logic.
+- `useJobPostings` `getPosting / createPosting / updatePosting` remain the source of truth — no new hooks for posting CRUD.
+- All current `details` keys (`location`, `employment_type`, `location_type`, `salary_*`, `commissions_*`) keep saving. They are not visible in the new mockups, so they move into a collapsible "Compensation & location" subsection inside **Posting basics** (closed by default) — values continue to be persisted exactly as today, no data loss.
+- `publish_to_talent` continues to toggle from section 5 (the Acme Talent / careers row).
+- `PostingFieldsBuilder` + `CoreFieldsPreview` rendered unchanged.
+- About-company card and Talent.com integration alert keep their existing logic; About card moves into the Branding section (collapsible).
 
 ## Files
 
-- `src/components/jobs/postings/PostingSheet.tsx` — full rewrite, single component handling both modes via `postingId` presence.
-- New helper `src/components/jobs/postings/PostingChannelsCard.tsx` for the channels list (keeps PostingSheet manageable).
+- `src/components/jobs/postings/PostingSheet.tsx` — full rewrite, one component, both modes via `postingId` presence.
+- `src/components/jobs/postings/PostingChannelsCard.tsx` — new, channels list + dark total bar.
+- `src/components/jobs/postings/PostingBrandingCard.tsx` — new, banner + brand color swatches + toggles.
 - No DB migrations. No changes to `PostingFieldsBuilder`, `useJobPostings`, or `JobPostingsTab`.
 
 ## Out of scope
 
-- Real cross-posting to LinkedIn / WTJ / ZipRecruiter / Google for Jobs (UI + persisted toggles only, integration wiring later).
-- File upload pipeline for Hero banner (UI + URL field only this pass).
-- Gio AI generation logic for description (button wired to existing flow only; copy/labels updated).
+- Real cross-posting to LinkedIn / WTJ / ZipRecruiter / Google for Jobs / Indeed (UI + persisted toggles only).
+- File upload pipeline for Hero banner (UI shell + URL field this pass; existing storage bucket wiring later).
+- Real Gio rewrite / inclusion score logic (buttons wired to existing draft flow only; copy/labels updated, score uses static placeholder until backend lands).
+- Real referral-link generation (URL preview only).
