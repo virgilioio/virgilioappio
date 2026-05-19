@@ -361,7 +361,7 @@ function FieldRow({
               {f.label}
             </button>
           )}
-          {(f.isSmart || SMART_FIELD_TYPES_SET.has(f.type)) && !f.locked && (
+          {(f.isSmart || SMART_FIELD_TYPES_SET.has(f.type)) && (
             <Badge tone="lilac" size="xs" icon={Sparkles}>Syncs to profile</Badge>
           )}
           {f.locked && (

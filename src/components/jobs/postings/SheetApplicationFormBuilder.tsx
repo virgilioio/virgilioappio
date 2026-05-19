@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useMemo, useRef } from 'react'
-import { User, Mail, Phone, FileText, Link2 } from 'lucide-react'
+import { User, Mail, Phone, FileText, Linkedin } from 'lucide-react'
 import { useJobPostingFields, type PostingField, type FieldType as DbFieldType } from '@/hooks/useJobPostingFields'
 import { useCoreFields } from '@/hooks/useCoreFields'
 import {
@@ -24,7 +24,7 @@ const CORE_FIELD_ICONS: Record<string, any> = {
   candidate_name: User,
   email: Mail,
   phone: Phone,
-  linkedin_url: Link2,
+  linkedin_url: Linkedin,
 }
 
 /** Map persisted DB field_type → shared AppField.type. */
@@ -76,6 +76,7 @@ export function SheetApplicationFormBuilder({ postingId, readOnly, eeoEnabled, o
         type: dbTypeToShared(cf.field_type as DbFieldType),
         required: cf.is_required,
         locked: true,
+        isSmart: !!cf.is_smart,
         icon: CORE_FIELD_ICONS[cf.field_name] || iconForType(cf.field_type),
         hint: cf.help_text || undefined,
       })),

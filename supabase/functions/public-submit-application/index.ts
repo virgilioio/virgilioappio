@@ -363,12 +363,20 @@ serve(async (req) => {
       }
     }
 
-    // Sync LinkedIn URL to candidate profile if linkedin field was submitted
-    if (body.linkedin_sync && globalCandidateId) {
-      console.log('🔗 Syncing LinkedIn URL to candidate profile:', body.linkedin_sync);
+    // Sync LinkedIn URL to candidate profile.
+    // The LinkedIn Profile core field (body.linkedin_url) and any custom smart
+    // linkedin field (body.linkedin_sync) both feed into candidates.linkedin_url
+    // — for both new and returning candidates.
+    const linkedinSyncRaw = (body.linkedin_sync || body.linkedin_url || '').trim();
+    if (linkedinSyncRaw && globalCandidateId) {
+      const normalized = (() => {
+        const u = linkedinSyncRaw.slice(0, 512);
+        return u.match(/^https?:\/\//i) ? u : `https://${u}`;
+      })();
+      console.log('🔗 Syncing LinkedIn URL to candidate profile:', normalized);
       const { error: linkedinErr } = await supabase
         .from('candidates')
-        .update({ linkedin_url: (() => { const u = body.linkedin_sync.slice(0, 512).trim(); return u.match(/^https?:\/\//i) ? u : `https://${u}`; })() })
+        .update({ linkedin_url: normalized })
         .eq('id', globalCandidateId);
       if (linkedinErr) {
         console.error('⚠️ Warning: Failed to sync LinkedIn URL:', linkedinErr);

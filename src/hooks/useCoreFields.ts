@@ -10,6 +10,8 @@ export interface CoreField {
   accepted_file_types?: string
   max_file_size_mb?: number
   display_order: number
+  /** Core field that also syncs to the candidate's profile (smart-field behavior). */
+  is_smart?: boolean
 }
 
 export const CORE_FIELDS: CoreField[] = [
@@ -53,7 +55,8 @@ export const CORE_FIELDS: CoreField[] = [
     field_type: 'url',
     is_required: false,
     placeholder_text: 'https://linkedin.com/in/yourprofile',
-    display_order: 4
+    display_order: 4,
+    is_smart: true,
   },
 ]
 
