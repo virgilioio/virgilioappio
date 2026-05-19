@@ -1,11 +1,11 @@
-import { ArrowRight, ClipboardCheck, Calendar, FileText, ThumbsDown } from 'lucide-react'
+import { ArrowRight, ClipboardCheck, ArrowLeftRight, FileText, ThumbsDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface ProfileQuickActionsCardProps {
   nextStageLabel?: string | null
   onAdvance?: () => void
   onSubmitScorecard?: () => void
-  onSchedule?: () => void
+  onAddTransfer?: () => void
   onCreateOffer?: () => void
   onReject?: () => void
   isOfferStatus?: boolean
@@ -14,7 +14,7 @@ interface ProfileQuickActionsCardProps {
 }
 
 export function ProfileQuickActionsCard({
-  nextStageLabel, onAdvance, onSubmitScorecard, onSchedule, onCreateOffer, onReject,
+  nextStageLabel, onAdvance, onSubmitScorecard, onAddTransfer, onCreateOffer, onReject,
   isOfferStatus, isRejected, isHired,
 }: ProfileQuickActionsCardProps) {
   return (
@@ -31,8 +31,8 @@ export function ProfileQuickActionsCard({
         <Button variant="secondary" size="md" icon={ClipboardCheck} onClick={onSubmitScorecard} className="w-full justify-center">
           Submit scorecard
         </Button>
-        <Button variant="secondary" size="md" icon={Calendar} onClick={onSchedule} className="w-full justify-center">
-          Schedule
+        <Button variant="secondary" size="md" icon={ArrowLeftRight} onClick={onAddTransfer} className="w-full justify-center">
+          Add/Transfer to job
         </Button>
         {isOfferStatus && (
           <Button variant="purple" size="md" icon={FileText} onClick={onCreateOffer} className="w-full justify-center">

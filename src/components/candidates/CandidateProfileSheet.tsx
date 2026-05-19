@@ -1583,7 +1583,7 @@ const stageHasAutomation = useMemo(() => {
                               setScoreStageName(currentStage.stage.stage_name)
                               setScoreOpen(true)
                             }}
-                            onSchedule={() => setSimpleScheduleOpen(true)}
+                            onAddTransfer={() => setAddTransferOpen(true)}
                             onCreateOffer={() => setOfferFormOpen(true)}
                             onReject={handleReject}
                             isOfferStatus={associationStatus === 'offer'}
