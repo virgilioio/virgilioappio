@@ -11,6 +11,9 @@ import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { logActivity } from '@/lib/activityLogger'
 import { useUserJobRoles } from './useUserJobRoles'
 
+export type JobWorkMode = 'remote' | 'hybrid' | 'onsite'
+export type JobEmploymentType = 'full_time' | 'part_time' | 'contract' | 'internship' | 'temporary'
+
 export interface Job {
   id: string
   title: string
@@ -35,6 +38,17 @@ export interface Job {
   standardized_title?: string | null
   standardized_location?: string | null
   normalization_metadata?: any
+  // New Job-information wizard fields
+  internal_title?: string | null
+  job_level?: string | null
+  work_mode?: JobWorkMode | null
+  employment_type?: JobEmploymentType | null
+  additional_locations?: string[] | null
+  show_salary_public?: boolean | null
+  include_equity?: boolean | null
+  include_signing_bonus?: boolean | null
+  min_years_experience?: number | null
+  max_years_experience?: number | null
 }
 
 export interface CreateJobData {
@@ -51,6 +65,16 @@ export interface CreateJobData {
   last_skills_generation?: string
   hiring_team?: any[]
   organization_id?: string
+  internal_title?: string
+  job_level?: string
+  work_mode?: JobWorkMode
+  employment_type?: JobEmploymentType
+  additional_locations?: string[]
+  show_salary_public?: boolean
+  include_equity?: boolean
+  include_signing_bonus?: boolean
+  min_years_experience?: number
+  max_years_experience?: number
 }
 
 export interface UpdateJobData {
@@ -66,6 +90,16 @@ export interface UpdateJobData {
   auto_generated_skills?: any
   last_skills_generation?: string
   hiring_team?: any[]
+  internal_title?: string | null
+  job_level?: string | null
+  work_mode?: JobWorkMode | null
+  employment_type?: JobEmploymentType | null
+  additional_locations?: string[]
+  show_salary_public?: boolean
+  include_equity?: boolean
+  include_signing_bonus?: boolean
+  min_years_experience?: number | null
+  max_years_experience?: number | null
 }
 
 // Cached tenant_id per organization to avoid repeated lookups
