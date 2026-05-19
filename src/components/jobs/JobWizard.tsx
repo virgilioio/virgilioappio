@@ -27,7 +27,8 @@ const STEPS = [
   { id: 1, title: 'Job information' },
   { id: 2, title: 'Hiring plan' },
   { id: 3, title: 'Hiring team' },
-  { id: 4, title: 'Summary' },
+  { id: 4, title: 'Job posting' },
+  { id: 5, title: 'Summary' },
 ]
 
 const STEP_META: Record<
@@ -35,26 +36,33 @@ const STEP_META: Record<
   { eyebrow: string; title: string; subtitle: string; ai?: boolean }
 > = {
   1: {
-    eyebrow: 'Create job · Step 1 of 4',
+    eyebrow: 'Create job · Step 1 of 5',
     title: 'Job information',
     subtitle:
       'The basics, description, and skills. Department, salary, and currency become part of the public posting.',
     ai: true,
   },
   2: {
-    eyebrow: 'Create job · Step 2 of 4',
+    eyebrow: 'Create job · Step 2 of 5',
     title: 'Hiring plan',
     subtitle:
       'The stages candidates progress through. Drag to reorder. Application review and Offer are required system stages.',
   },
   3: {
-    eyebrow: 'Create job · Step 3 of 4',
+    eyebrow: 'Create job · Step 3 of 5',
     title: 'Hiring team',
     subtitle:
       "Who can see this job, and what they can do. Add as many people as needed; assign roles for what they'll do on this job specifically.",
   },
   4: {
-    eyebrow: 'Create job · Step 4 of 4',
+    eyebrow: 'Create job · Step 4 of 5',
+    title: 'Job posting',
+    subtitle:
+      'The public-facing listing — how candidates discover, read, and apply to this role. You can publish to your careers page and cross-post to job boards.',
+    ai: true,
+  },
+  5: {
+    eyebrow: 'Create job · Step 5 of 5',
     title: 'Summary',
     subtitle: 'Review everything and publish.',
   },
