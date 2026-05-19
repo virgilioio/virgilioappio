@@ -491,9 +491,7 @@ export function SummaryStep({
                 Publishing to · {postingMeta.channels} {postingMeta.channels === 1 ? 'channel' : 'channels'}
               </p>
               <div className="flex flex-wrap gap-2">
-                <Badge tone="neutral" size="sm" icon={<Globe className="h-3 w-3" />}>
-                  Careers page
-                </Badge>
+                <Badge tone="neutral" size="sm">Careers page</Badge>
                 <Badge tone="blue" size="sm">LinkedIn</Badge>
                 <Badge tone="green" size="sm">WTTJ · free</Badge>
                 <Badge tone="orange" size="sm">ZipRecruiter · $99</Badge>
