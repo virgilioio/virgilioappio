@@ -67,7 +67,10 @@ export function JobHeader({
               {title}
             </h1>
             {subtitle && (
-              <div className="font-instrument-serif text-[#5a6072] text-[34px] sm:text-[44px] leading-[1.05] italic mt-0.5">
+              <div
+                className="text-[#5a6072] text-[34px] sm:text-[44px] leading-[1.05] italic mt-0.5 font-normal"
+                style={{ fontFamily: 'Instrument Serif, Cormorant, Georgia, serif' }}
+              >
                 {subtitle}
               </div>
             )}
