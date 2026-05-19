@@ -205,61 +205,58 @@ function PanelistComboField({
           </RemovableChip>
         ))}
         <PopoverAnchor asChild>
-          {editing ? (
-            <div
-              className={cn(
-                'inline-flex items-center h-7 px-3 rounded-full bg-white',
-                'border border-dashed border-virgilio-purple/50',
-                'focus-within:ring-2 focus-within:ring-virgilio-purple/30',
-              )}
-            >
-              <input
-                ref={inputRef}
-                value={query}
-                disabled={disabled}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  setOpen(true);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Backspace' && !query && selected.length > 0) {
-                    onRemove(selected[selected.length - 1].id);
-                  } else if (e.key === 'Escape') {
-                    e.preventDefault();
-                    deactivate();
-                  }
-                }}
-                onBlur={() => {
-                  // Defer so PopoverContent click can register first
-                  setTimeout(() => {
-                    if (!document.activeElement?.closest('[data-radix-popper-content-wrapper]')) {
+          <div className="inline-flex">
+            {editing ? (
+              <div
+                className={cn(
+                  'inline-flex items-center h-7 px-3 rounded-full bg-white',
+                  'border border-dashed border-virgilio-purple/50',
+                  'focus-within:ring-2 focus-within:ring-virgilio-purple/30',
+                )}
+              >
+                <input
+                  ref={inputRef}
+                  value={query}
+                  disabled={disabled}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setOpen(true);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Backspace' && !query && selected.length > 0) {
+                      onRemove(selected[selected.length - 1].id);
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault();
                       deactivate();
                     }
-                  }, 120);
+                  }}
+                  placeholder="Type a name…"
+                  className="bg-transparent border-0 outline-none text-[12px] font-poppins font-medium text-virgilio-ink placeholder:text-virgilio-ink/50"
+                  style={{ width: `${Math.max(140, query.length * 8 + 40)}px` }}
+                />
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={disabled}
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  activate();
                 }}
-                placeholder="Type a name…"
-                className="bg-transparent border-0 outline-none text-[12px] font-poppins font-medium text-virgilio-ink placeholder:text-virgilio-ink/50 min-w-[140px] w-[140px]"
-                style={{ width: `${Math.max(140, query.length * 8 + 40)}px` }}
-              />
-            </div>
-          ) : (
-            <button
-              type="button"
-              disabled={disabled}
-              onClick={activate}
-              className={cn(
-                'inline-flex items-center h-7 px-3 rounded-full',
-                'border border-dashed border-virgilio-border bg-transparent',
-                'text-[12px] font-poppins font-medium text-virgilio-ink/70',
-                'transition-colors',
-                'hover:border-virgilio-purple/50 hover:bg-[hsl(var(--badge-lilac))]/40 hover:text-virgilio-ink',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/30',
-                disabled && 'opacity-50 cursor-not-allowed',
-              )}
-            >
-              + Add panelist
-            </button>
-          )}
+                className={cn(
+                  'inline-flex items-center h-7 px-3 rounded-full',
+                  'border border-dashed border-virgilio-border bg-transparent',
+                  'text-[12px] font-poppins font-medium text-virgilio-ink/70',
+                  'transition-colors',
+                  'hover:border-virgilio-purple/50 hover:bg-[hsl(var(--badge-lilac))]/40 hover:text-virgilio-ink',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/30',
+                  disabled && 'opacity-50 cursor-not-allowed',
+                )}
+              >
+                + Add panelist
+              </button>
+            )}
+          </div>
         </PopoverAnchor>
       </div>
       <PopoverContent
