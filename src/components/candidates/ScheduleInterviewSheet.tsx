@@ -1464,19 +1464,33 @@ export function ScheduleInterviewSheet({
                     ))}
                   </div>
 
-                  <div className="pt-3 border-t border-virgilio-border/70">
+                </SectionCard>
+
+                <SectionCard
+                  label="GUESTS"
+                  rightSlot={
+                    <span className="text-[11px] font-inter text-virgilio-muted tabular-nums">
+                      {guestEmails.length}/10
+                    </span>
+                  }
+                >
+                  <div className="space-y-2">
                     <Label className="text-form-label text-virgilio-muted">
-                      Cc additional guests
+                      Cc'd guests <span className="text-virgilio-muted/70">(optional)</span>
                     </Label>
-                    <div className="mt-1.5">
-                      <GuestEmailInput
-                        emails={guestEmails}
-                        onChange={setGuestEmails}
-                        organizationId={organizationId}
-                      />
-                    </div>
+                    <GuestComboField
+                      emails={guestEmails}
+                      onChange={setGuestEmails}
+                      members={tenantMembers}
+                      excludeEmails={[candidateEmail]}
+                    />
+                    <p className="text-body-xs text-virgilio-muted">
+                      Teammates appear with their name. External emails are added as-is and receive the calendar invite.
+                    </p>
                   </div>
                 </SectionCard>
+
+
 
               </form>
             </Form>
