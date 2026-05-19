@@ -206,7 +206,7 @@ function PanelistComboField({
           </RemovableChip>
         ))}
         <PopoverAnchor asChild>
-          <div className="inline-flex">
+          <div ref={anchorRef} className="inline-flex">
             {editing ? (
               <div
                 className={cn(
