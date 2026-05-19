@@ -158,8 +158,26 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
     onClose()
   }
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     setWizardState((prev) => ({ ...prev, isComplete: true }))
+    if (
+      autoSource &&
+      wizardState.createdJobId &&
+      wizardState.createdJobId !== 'created'
+    ) {
+      try {
+        await ensureSourcingProject({
+          name: `Sourcing — ${wizardState.jobData.title ?? 'Job'}`,
+          seed: {
+            skills: (wizardState.jobData as any).required_skills ?? [],
+            location: wizardState.jobData.location ?? null,
+            level: (wizardState.jobData as any).level ?? null,
+          },
+        })
+      } catch (e) {
+        console.error('Failed to create sourcing project', e)
+      }
+    }
     toast({
       title: 'Job Created Successfully!',
       description: 'Your job has been created and is ready for candidates.',
