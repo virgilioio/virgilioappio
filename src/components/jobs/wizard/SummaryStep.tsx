@@ -31,6 +31,8 @@ import { useOrganizations } from '@/hooks/useOrganizations'
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { useJobPostings } from '@/hooks/useJobPostings'
+import { useMembers } from '@/hooks/useMembers'
+import { MemberAvatar } from './_parts'
 import type { JobStage } from '@/hooks/useJobStages'
 import { cn } from '@/lib/utils'
 
