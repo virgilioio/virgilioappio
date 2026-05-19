@@ -10,7 +10,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Sliders, UserPlus, User as UserIcon, Calendar as CalendarIcon } from 'lucide-react'
+import { Sliders, UserPlus, User as UserIcon, Calendar as CalendarIcon, Search } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+
 import { useJobAssignments, type JobAssignmentRole } from '@/hooks/useJobAssignments'
 import { useMembers } from '@/hooks/useMembers'
 import { SectionCard, FieldLabel, FieldHint, ToggleRow, MemberAvatar, RoleCard, InfoLink } from './_parts'
