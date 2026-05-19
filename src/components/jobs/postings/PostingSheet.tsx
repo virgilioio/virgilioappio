@@ -664,7 +664,7 @@ export function PostingSheet({
             chip={!isEdit ? 'Will auto-generate' : undefined}
           >
             <div className="space-y-4">
-              <FormField label="Meta title" helper={`${metaTitle.length} / 60`}>
+              <FormField label="Meta title" helpText={`${metaTitle.length} / 60`}>
                 <Input
                   value={metaTitle}
                   onChange={(e) => setMetaTitle(e.target.value)}
@@ -673,7 +673,7 @@ export function PostingSheet({
                   disabled={readOnly}
                 />
               </FormField>
-              <FormField label="Meta description" helper={`${metaDescription.length} / 155`}>
+              <FormField label="Meta description" helpText={`${metaDescription.length} / 155`}>
                 <Textarea
                   value={metaDescription}
                   onChange={(e) => setMetaDescription(e.target.value)}
