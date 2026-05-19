@@ -22,9 +22,11 @@ export default function Jobs() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
   const [archiveJobId, setArchiveJobId] = useState<string | null>(null)
+  const [deleteJobId, setDeleteJobId] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [statusFilter, setStatusFilter] = useState<StatusSegment>('active')
 
-  const { jobs, isLoading, createJob, updateJob, archiveJob } = useJobs()
+  const { jobs, isLoading, createJob, updateJob, archiveJob, deleteJob } = useJobs()
 
   const counts = useMemo(() => {
     const c = { active: 0, all: jobs.length, paused: 0, closed: 0, archived: 0 }
@@ -43,6 +45,17 @@ export default function Jobs() {
   const handleArchive = (id: string) => setArchiveJobId(id)
   const handleConfirmArchive = async () => {
     if (archiveJobId) { await archiveJob(archiveJobId); setArchiveJobId(null) }
+  }
+  const handleDelete = (id: string) => setDeleteJobId(id)
+  const handleConfirmDelete = async () => {
+    if (!deleteJobId) return
+    setIsDeleting(true)
+    try {
+      await deleteJob(deleteJobId)
+      setDeleteJobId(null)
+    } finally {
+      setIsDeleting(false)
+    }
   }
   const handleFormSubmit = async (data: any) => {
     if (selectedJob) await updateJob(selectedJob.id, data)
