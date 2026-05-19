@@ -574,6 +574,7 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
                           required: false,
                           icon: sf.icon,
                           hint: sf.hint,
+                          isSmart: true,
                         }])
                       }}
                     >
