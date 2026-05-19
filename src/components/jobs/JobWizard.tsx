@@ -21,6 +21,7 @@ interface WizardState {
   isComplete: boolean
   createdJobId: string | null
   jobData: Partial<CreateJobData>
+  hasPosting: boolean
 }
 
 const STEPS = [
