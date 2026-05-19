@@ -358,7 +358,7 @@ export default function JobDetail() {
   } = useJobAssignments(id!)
 
   // Sourcing project shortcut
-  const { projects: sourcingProjects } = useJobSourcingProject(id)
+  const { project: sourcingProject, ensureProject: ensureSourcingProject } = useJobSourcingProject(id)
   const { postings: jobPostings, refetch: refetchJobPostings } = useJobPostings(id!)
   const activePosting = (jobPostings || []).find((p) => p.is_active) || (jobPostings || [])[0] || null
   const hasJobPosting = (jobPostings || []).length > 0
