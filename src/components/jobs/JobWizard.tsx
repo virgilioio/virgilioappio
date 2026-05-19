@@ -341,9 +341,10 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
             </aside>
 
             {/* Main content */}
-            <main className="flex-1 min-w-0 overflow-y-auto px-6 sm:px-10 pb-8">
+            <main ref={mainRef} className="flex-1 min-w-0 overflow-y-auto px-6 sm:px-10 pb-8">
               {renderStepContent()}
             </main>
+
           </div>
 
           {/* Sticky footer */}
