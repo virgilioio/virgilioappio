@@ -628,6 +628,8 @@ export function ScheduleInterviewSheet({
   const [autoRecord, setAutoRecord] = useState(true);
   const [reminder24h, setReminder24h] = useState(true);
 
+  const { data: tenantMembers } = useCustomerMembers(organizationId);
+
   const meetingType: 'google_meet' | 'custom' = formatOption === 'video' ? 'google_meet' : 'custom';
   const customLocation =
     formatOption === 'phone'
