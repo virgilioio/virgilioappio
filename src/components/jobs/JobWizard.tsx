@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
-import { Check, ChevronRight, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useJobs, CreateJobData } from '@/hooks/useJobs'
 import { toast } from '@/hooks/use-toast'
