@@ -667,6 +667,9 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-[13px] font-poppins font-medium text-text-primary truncate">{f.label}</p>
+                      {(f.isSmart || SMART_FIELD_TYPES.has(f.type)) && !f.locked && (
+                        <Badge tone="lilac" size="xs" icon={Sparkles}>Syncs to profile</Badge>
+                      )}
                       {f.locked && <span className="text-[10.5px] uppercase tracking-[0.08em] font-poppins font-semibold text-virgilio-purple bg-[#EDE4FF] rounded-full px-2 py-0.5">Required by Gio</span>}
                     </div>
                     {f.hint && <p className="text-[11.5px] text-text-tertiary">{f.hint}</p>}
