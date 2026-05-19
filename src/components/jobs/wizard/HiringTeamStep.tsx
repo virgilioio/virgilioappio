@@ -131,13 +131,20 @@ export function HiringTeamStep({ jobId, onNext, onBack }: HiringTeamStepProps) {
     const ownerIds = new Set(
       [recruiterAssignment?.user_id, hmAssignment?.user_id].filter(Boolean) as string[]
     )
+    const q = memberSearch.trim().toLowerCase()
     return members
       .filter((m) => m.user_id && !ownerIds.has(m.user_id))
+      .filter((m) => {
+        if (!q) return true
+        const haystack = `${m.user_first_name ?? ''} ${m.user_last_name ?? ''} ${m.user_email ?? ''}`.toLowerCase()
+        return haystack.includes(q)
+      })
       .map((m) => {
         const assignment = assignments.find((a) => a.user_id === m.user_id)
         return { member: m, assignment }
       })
-  }, [members, assignments, recruiterAssignment, hmAssignment])
+  }, [members, assignments, recruiterAssignment, hmAssignment, memberSearch])
+
 
   const togglePanelist = async (
     userId: string,
