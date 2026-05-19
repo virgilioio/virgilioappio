@@ -156,6 +156,20 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
   const canProceedStep1 = () =>
     !!wizardState.jobData.title && !!wizardState.jobData.organization_id
 
+  const handlePostingContinue = async () => {
+    setIsSubmitting(true)
+    try {
+      const ok = await postingRef.current?.savePosting()
+      if (ok === false) return
+      setWizardState((prev) => ({ ...prev, currentStep: 5 }))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handlePostingSkip = () =>
+    setWizardState((prev) => ({ ...prev, currentStep: 5 }))
+
   const renderStepContent = () => {
     switch (wizardState.currentStep) {
       case 1:
@@ -178,6 +192,15 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
         )
       case 4:
         return (
+          <JobPostingStep
+            ref={postingRef}
+            jobData={wizardState.jobData}
+            jobId={wizardState.createdJobId}
+            onPostingMeta={setPostingMeta}
+          />
+        )
+      case 5:
+        return (
           <SummaryStep
             jobData={wizardState.jobData}
             jobId={wizardState.createdJobId}
@@ -191,11 +214,7 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
   }
 
   const meta = STEP_META[wizardState.currentStep]
-  const showFooter =
-    wizardState.currentStep === 1 ||
-    wizardState.currentStep === 2 ||
-    wizardState.currentStep === 3 ||
-    wizardState.currentStep === 4
+  const showFooter = wizardState.currentStep >= 1 && wizardState.currentStep <= 5
 
   const primaryCta = (() => {
     switch (wizardState.currentStep) {
@@ -204,8 +223,10 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
       case 2:
         return { label: 'Continue to team', onClick: handleNextStep, disabled: false, loading: false }
       case 3:
-        return { label: 'Review & create', onClick: handleNextStep, disabled: false, loading: false }
+        return { label: 'Continue to posting', onClick: handleNextStep, disabled: false, loading: false }
       case 4:
+        return { label: 'Continue to review', onClick: handlePostingContinue, disabled: isSubmitting, loading: isSubmitting }
+      case 5:
       default:
         return { label: 'Publish job', onClick: handleComplete, disabled: false, loading: false }
     }
