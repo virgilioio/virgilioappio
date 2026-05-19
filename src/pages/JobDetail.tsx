@@ -93,6 +93,18 @@ export default function JobDetail() {
       setActiveTab('pipeline')
     }
   }, [isRestrictedViewer, activeTab])
+
+  // Setup quick-links can ask the page to switch tabs via a custom event.
+  useEffect(() => {
+    const onNav = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (detail === 'postings' || detail === 'job-setup' || detail === 'pipeline' || detail === 'candidates' || detail === 'sourcing') {
+        setActiveTab(detail)
+      }
+    }
+    window.addEventListener('job-detail:nav', onNav as EventListener)
+    return () => window.removeEventListener('job-detail:nav', onNav as EventListener)
+  }, [])
   const [showEditJobModal, setShowEditJobModal] = useState(false)
   const [pipelineView, setPipelineView] = useState<'board' | 'list'>(() => {
     if (typeof window === 'undefined') return isMobile ? 'list' : 'board'
