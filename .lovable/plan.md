@@ -1,100 +1,40 @@
-# Public Job Application Form — Editorial Redesign
+# Promote LinkedIn Profile from core field to smart field
 
-Redesign the **Application** tab of `PublicJobPosting.tsx` to match the new mockup (`42_Job_post_application_form`), keeping the visual language of the Careers page and Job Post overview tab. All existing submission logic, validation, file handling, throttling, and confirmation dialog stay intact — this is a UI/layout pass only.
+## Answer
+Yes. `LinkedIn Profile` is currently hardcoded as a core field in `useCoreFields.ts` (locked at the top of every application form, alongside Resume / Name / Email / Phone). The smart-field registry already defines a `linkedin` smart field (`SMART_FIELDS` in `ApplicationFormBuilder.tsx`), and the candidates table already has a dedicated `candidates.linkedin_url` column — so we can drop it from the core list and let it behave like any other smart field (optional, removable, reorderable, with a "Syncs to profile" badge).
 
-## What changes
+## Scope
+Frontend + light data-mapping. No DB schema change. Apply consistently across:
+- Wizard Step 4 application form (`JobPostingStep.tsx` / `ApplicationFormBuilder.tsx`)
+- Posting Setup sheet (`SheetApplicationFormBuilder.tsx`)
+- Public application form renderer (`PublicJobPosting.tsx` / `CoreFieldsRenderer.tsx`)
+- Candidate application responses view (`CandidateApplicationResponses.tsx`)
+- Submission pipeline that writes to `candidates.linkedin_url`
 
-- The Application tab gets the same editorial two-column layout as the overview tab: form on the left, the existing aside (Reply card, Summary, Hiring Panel, Referral) on the right.
-- The page header (badges, H1/subtitle, meta chips, breadcrumb) and `CareersTopBar` / `CareersFooter` stay visible above/below — so the user keeps full context when they switch into the form.
-- The minimal "Job overview / Application" `TabsList` is removed in favor of a single dedicated "APPLY" eyebrow on the form card. Tab switching still happens internally; "Apply for this role" CTAs jump to `#application-form` and the Reply card aside also remains as the sticky CTA. A small "Back to overview" link returns the user to the overview tab.
-- New form shell `ApplyCard` (white, `rounded-2xl`, `border-black/5`, padded ≈40px) containing:
-  - APPLY eyebrow chip + small "We never share your data" lock pill (top-right).
-  - H2 "Tell us about you." in Poppins (with subtle "." purple accent).
-  - Lead paragraph: "{N} short questions, your resume, and a portfolio link. We'll reply within **48 hours** — every time."
-  - 2-column responsive grid (`grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5`) hosting all fields.
+## Changes
 
-## Fields & layout (driven by posting config)
+1. **Remove LinkedIn from core fields**
+   - `src/hooks/useCoreFields.ts`: delete the `linkedin_url` entry from `CORE_FIELDS`. Core list becomes Resume, Full Name, Email, Phone (all still locked / required-by-Gio).
 
-The form is **fully dynamic** — nothing is hard-coded. Fields and their order come from:
+2. **Keep LinkedIn as a smart field**
+   - `SMART_FIELDS` already exposes `{ id: 'sf_linkedin', label: 'LinkedIn', type: 'linkedin' }` — no change. It will now appear in the "+ Add question → Smart fields" menu like the others, with the "Syncs to profile" badge, optional toggle, and drag-to-reorder.
 
-- The active **core fields** (`useCoreFields`) → resume, name, email, phone, linkedin, etc. — whichever the workspace enabled for this posting.
-- The posting's **custom fields** (`job_posting_application_fields` + `posting_field_select_options`) → already loaded into `customFields` / `options` state.
+3. **Profile sync on submit**
+   - In the public application submit handler, when a posting field of type `linkedin` is present, write its value to `candidates.linkedin_url` (same pattern already used for other smart fields that sync to profile).
+   - If a posting has no LinkedIn field configured, `linkedin_url` stays null — that is the intended consequence of making it optional.
 
-The redesign is purely a **rendering shell** around these existing sources. The mockup (name/email/phone/linkedin/resume/yes-no/notice period/salary/why) is an *example* of one configuration, not a fixed layout.
+4. **Backfill for existing postings**
+   - Existing postings that relied on the implicit core LinkedIn field will simply stop showing it. That is acceptable (it was optional), but to preserve continuity we will: on the first load of the posting builder, if the posting was created before this change AND has no `linkedin` posting field, auto-insert one as a smart field (non-locked, optional). One-time, idempotent, client-side — no migration needed.
 
-Render order:
-1. Resume/CV first (if the core resume field is enabled) — full-width, with the new lilac uploaded-file chip (file icon, name, size, "uploaded just now", remove ×) replacing the dropzone after capture.
-2. Remaining enabled core fields, in the order returned by `useCoreFields`, rendered through `CoreFieldsRenderer` (unchanged logic).
-3. Custom fields, in `display_order`, rendered through `ApplicationFieldsRenderer` (unchanged logic, every existing `field_type` still supported: text, email, number, url, textarea, select, checkbox, checkbox_group, date, file, salary, location, phone, recruiter, employment_type, work_location, linkedin).
-
-Layout:
-- Wrap everything in a CSS grid `grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5`.
-- Column span per field is taken from the existing `column_span` value on `job_posting_application_fields` (1 or 2). Core fields default to span 1 except `resume`, `profile_summary`, and any `textarea`-type custom field which default to span 2.
-- Textareas show a live `value.length / maxLength` counter when the field has a `max_length` (or default 600 for the long-text "why" pattern). No new state — derived from `customFieldResponses[field.id]`.
-- No field is added, removed, renamed, or reordered by this redesign — the eyebrow, title, lead paragraph, consent row, and submit footer are the only static chrome.
-
-All restyled through a new wrapper `<ApplyField label helper required colSpan>` that wraps the existing `Input` / `Textarea` / `Select` / `PhoneInput` / `DatePickerVirgilio` controls so we don't fork `CoreFieldsRenderer` / `ApplicationFieldsRenderer` — we pass it as their `wrapper` slot (or, if simpler, post-process their `className` via a parent container). Field controls themselves stay on the existing components.
-
-The lead-paragraph "{N} short questions" count is derived from `customFields.length` at runtime, so it always matches what's actually configured.
-
-## Consent + footer of the form card
-
-- Privacy consent: lilac-tinted checkbox + line "I agree to {Company}'s **candidate privacy policy** and to be contacted about this role and future fits. You can withdraw consent or request deletion anytime." (required to submit). New state `consentAccepted`; submit button disabled until checked.
-- Small muted note below: "A short anonymous demographic survey will appear after submit. Optional, anonymized, and never tied to your application."
-- Action row: ghost "Save as draft" link (left, uses existing `localStorage` `gio:draft-application:{slug}` — saves `coreFieldValues` + `customFieldResponses` + `consentAccepted`; restored on mount) and a dark "Submit application →" primary button (right). Submit reuses `handleSubmitApplication`.
-
-## Aside (right column)
-
-Reuses the same components already built for the overview tab: `JobAsideReplyCard`, `JobAsideSummary`, `JobAsideHiringPanel`, `JobAsideReferral`. On the application tab, `JobAsideReplyCard.onApply` becomes a no-op scroll-to-form-top.
-
-## Visual tokens
-
-Matches Job Post overview: page `#FAF7F2`, card `#FFFFFF` with `border-black/5` `rounded-2xl`, lilac accents `#EDE4FF` / `#6F3FF5`, dark CTAs `#0d0d09` / `#FFFCF9`, Poppins headings, Inter body, 13/13.5px form labels, 14/15px inputs.
-
-## Files
-
-- `src/pages/PublicJobPosting.tsx` — replace the `TabsContent value="application"` block with the new two-column layout; remove the top `TabsList`; add consent state and draft persistence.
-- `src/components/careers/public/job/ApplyCard.tsx` — new card shell (eyebrow, title, lead, footer slot).
-- `src/components/careers/public/job/ApplyField.tsx` — new field wrapper (label, helper, required marker, col-span).
-- `src/components/careers/public/job/ApplyResumeChip.tsx` — new uploaded-file chip used after `EnhancedResumeDropzone` capture.
-- `src/components/careers/public/job/ApplyConsentRow.tsx` — new consent checkbox + footer note.
+5. **Candidate detail view**
+   - `CandidateApplicationResponses.tsx`: render LinkedIn answers from posting fields rather than from the core block (it already iterates posting fields generically, so this should be a no-op once core entry is removed — verify).
 
 ## Out of scope
+- Schema changes to `candidates` or `posting_fields`.
+- Changing other core fields.
+- Auto-enriching LinkedIn data (separate feature).
 
-- Backend changes, schema changes, new fields in `job_posting_application_fields`.
-- The post-submit demographic survey itself (only the helper line is added).
-- Admin UI for editing `column_span`, helper text, or consent copy.
-- The application limits banner stays as a small muted line at the top of the form, unchanged.
-
-## Preserved
-
-Route, data fetching, `handleSubmitApplication`, validation rules, file size/type checks, `ApplicationConfirmationDialog`, toast/violation handling, throttling, `useCoreFields`, `CoreFieldsRenderer`, `ApplicationFieldsRenderer` field types, and the overview tab.
-
----
-
-## Consistency pass — Setup tab "Application form" section
-
-The **Application form** section in the **New / Edit Posting sheet** (`src/components/jobs/postings/PostingSheet.tsx`, currently rendering `CoreFieldsPreview` + `PostingFieldsBuilder`) must use the **exact same UI** as **Step 4 (Job Posting) of the Job Wizard** (`src/components/jobs/wizard/JobPostingStep.tsx`, "Application form" section). One surface, one component — no parallel designs.
-
-### Approach
-
-1. **Extract** the wizard's Application-form block (section chrome, "+ Add question" affordance, smart-fields library row, DnD-sortable list of field cards, inline editor, required/locked toggles, smart-field badges, empty state) into a single reusable component:
-   - `src/components/jobs/postings/ApplicationFormBuilder.tsx`
-   - Props: `{ postingId?: string; fields; onChange; smartFieldsLibrary; readOnly?: boolean; mode: 'wizard' | 'sheet' }`.
-   - It owns: the section header, the add-question control, the smart-field chip rail, the sortable list, the inline FieldEditor, and the empty state — visually identical to the wizard today.
-
-2. **Wizard** (`JobPostingStep.tsx`) — replace its inline "Application form" block with `<ApplicationFormBuilder mode="wizard" fields={fields} onChange={setFields} smartFieldsLibrary={smartFieldsLibrary} />`. Keep the wizard's local state, `application_fields` serialization on submit, and the `SMART_FIELD_TYPES` mapping unchanged.
-
-3. **Posting sheet** (`PostingSheet.tsx`) — replace the current `<Section title="Application form">` body (`CoreFieldsPreview` + `PostingFieldsBuilder`) with `<ApplicationFormBuilder mode="sheet" postingId={localId} readOnly={readOnly} />`. In sheet mode the component reads/writes via the existing posting-fields hook so persistence keeps working without backend changes.
-
-4. **Deprecate** `PostingFieldsBuilder.tsx` and `CoreFieldsPreview.tsx` once both call sites use `ApplicationFormBuilder`. Remove the files in the same PR — no parallel implementations.
-
-### Acceptance check
-
-Side-by-side screenshots of Wizard Step 4 and the Posting sheet's Application form section must be visually identical: same section header, same "+ Add question" placement, same smart-field row, same field card design (drag handle, label input, type chip, required toggle, locked indicator, delete), same empty state, same spacing, same typography.
-
-### Out of scope for this consistency pass
-
-- Changing what smart fields are available, their behavior, or persistence schema.
-- Renaming `field_type` values.
-- Reordering or hiding sections elsewhere in the sheet/wizard.
+## Acceptance
+- Wizard Step 4 and Posting Setup sheet show only 4 locked core rows (Resume, Name, Email, Phone). LinkedIn appears under "+ Add question → Smart fields → LinkedIn", with the "Syncs to profile" badge.
+- Adding LinkedIn, submitting an application on the public page, and opening the candidate writes the URL to `candidates.linkedin_url` and shows it on the profile.
+- Existing postings still display a LinkedIn field (auto-inserted as smart, optional) on first edit.
