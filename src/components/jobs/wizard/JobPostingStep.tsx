@@ -2,17 +2,30 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Sparkles, GripVertical, Lock, Trash2, Plus, ExternalLink, Eye,
   User, Mail, Phone, FileText, Link2, Globe2, Briefcase, DollarSign, MessageSquare, Puzzle,
+  Calendar as CalendarIcon, Hash, AlignLeft, ToggleLeft, List, Type,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { SectionCard, FieldLabel, FieldHint, ToggleRow, AiAssistedBadge } from './_parts'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { CurrencySelect } from '@/components/ui/currency-select'
+import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
+import { SectionCard, FieldLabel, FieldHint, ToggleRow, AiAssistedBadge, SalaryInput } from './_parts'
 import type { CreateJobData } from '@/hooks/useJobs'
 import { useJobPostings } from '@/hooks/useJobPostings'
+import { useApplicationFields } from '@/hooks/useApplicationFields'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+
 
 /* ---------------- helpers ---------------- */
 function slugify(s: string) {
