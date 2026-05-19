@@ -42,6 +42,8 @@ interface SummaryStepProps {
   hasPosting: boolean
   postingMeta: { channels: number; fields: number }
   onGoToStep: (step: number) => void
+  autoSource?: boolean
+  onAutoSourceChange?: (v: boolean) => void
 }
 
 const STAGE_TONES = ['blue', 'purple', 'yellow', 'pink', 'green', 'orange', 'lilac'] as const
