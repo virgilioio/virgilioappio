@@ -1174,7 +1174,7 @@ export default function PublicJobPosting() {
         logoUrl={companyLogoUrl}
         websiteUrl={companyWebsiteUrl}
       />
-      </CareersFooter>
+
 
     </div>
   )
