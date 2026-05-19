@@ -11,6 +11,7 @@ import { useJobs } from '@/hooks/useJobs'
 import { useJobSourcingProject } from '@/hooks/useJobSourcingProject'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { JobSetupLayout } from '@/components/jobs/JobSetupLayout'
+import { JobPostingsTab } from '@/components/jobs/JobPostingsTab'
 import { HiringTeamManageDialog } from '@/components/jobs/HiringTeamManageDialog'
 import { PostingSheet } from '@/components/jobs/postings/PostingSheet'
 
@@ -93,6 +94,18 @@ export default function JobDetail() {
       setActiveTab('pipeline')
     }
   }, [isRestrictedViewer, activeTab])
+
+  // Setup quick-links can ask the page to switch tabs via a custom event.
+  useEffect(() => {
+    const onNav = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (detail === 'postings' || detail === 'job-setup' || detail === 'pipeline' || detail === 'candidates' || detail === 'sourcing') {
+        setActiveTab(detail)
+      }
+    }
+    window.addEventListener('job-detail:nav', onNav as EventListener)
+    return () => window.removeEventListener('job-detail:nav', onNav as EventListener)
+  }, [])
   const [showEditJobModal, setShowEditJobModal] = useState(false)
   const [pipelineView, setPipelineView] = useState<'board' | 'list'>(() => {
     if (typeof window === 'undefined') return isMobile ? 'list' : 'board'
@@ -940,6 +953,9 @@ export default function JobDetail() {
                   <TabsTrigger value="candidates" className={triggerCls}>Job Dashboard</TabsTrigger>
                 )}
                 {!isRestrictedViewer && (
+                  <TabsTrigger value="postings" className={triggerCls}>Postings</TabsTrigger>
+                )}
+                {!isRestrictedViewer && (
                   <TabsTrigger value="sourcing" className={triggerCls}>Sourcing</TabsTrigger>
                 )}
                 {!isRestrictedViewer && (
@@ -995,6 +1011,18 @@ export default function JobDetail() {
                 candidates={allAssociatedCandidates.length ? allAssociatedCandidates : applicationReviewCandidates}
                 jobCurrency={job.currency || 'USD'}
               />
+            </TabsContent>
+          )}
+
+          {/* Postings */}
+          {!isRestrictedViewer && (
+            <TabsContent
+              value="postings"
+              className="flex-1 min-h-0 overflow-hidden data-[state=inactive]:hidden mt-0"
+            >
+              <div className="h-full overflow-auto bg-[#FAFAF7] -mx-1 px-1 pb-6">
+                <JobPostingsTab jobId={id!} jobTitle={job.title} />
+              </div>
             </TabsContent>
           )}
 
