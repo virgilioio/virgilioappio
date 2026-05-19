@@ -232,7 +232,8 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           return false
         }
         const details = {
-          slug, reference_id: refId || null, language, deadline: deadline || null,
+          slug, reference_id: refId || null, language,
+          deadline: deadline ? deadline.toISOString().slice(0, 10) : null,
           show_in_search: showInSearch, show_response_badge: showResponseBadge,
           brand_color: brandColor, banner_name: bannerName || null,
           team_photos: teamPhotos, culture_video: cultureVideo,
@@ -241,7 +242,13 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           channels: Object.entries(channelOn).filter(([, v]) => v).map(([id]) => id),
           apply_experience: { send_confirm: sendConfirm, promise_48h: promise48, allow_message: allowMessage, enable_referral: enableReferral },
           seo: { meta_title: metaTitle, meta_description: metaDescription },
+          compensation: {
+            variable_enabled: variableEnabled,
+            commission_currency: variableEnabled ? commissionCurrency : null,
+            commission_amount: variableEnabled ? commissionAmount ?? null : null,
+          },
         }
+
         try {
           const created = await createPosting({ title: publicTitle, description, details })
           return !!created
