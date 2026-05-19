@@ -31,8 +31,8 @@ export function ProfileQuickActionsCard({
         <Button variant="secondary" size="md" icon={ClipboardCheck} onClick={onSubmitScorecard} className="w-full justify-center">
           Submit scorecard
         </Button>
-        <Button variant="secondary" size="md" icon={Calendar} onClick={onSchedule} className="w-full justify-center">
-          Schedule
+        <Button variant="secondary" size="md" icon={ArrowLeftRight} onClick={onAddTransfer} className="w-full justify-center">
+          Add/Transfer to job
         </Button>
         {isOfferStatus && (
           <Button variant="purple" size="md" icon={FileText} onClick={onCreateOffer} className="w-full justify-center">
