@@ -15,6 +15,7 @@ import { useJobSourcingProject } from '@/hooks/useJobSourcingProject'
 interface JobWizardProps {
   isOpen: boolean
   onClose: () => void
+  initialData?: Partial<CreateJobData> & { sourceJobTitle?: string }
 }
 
 interface WizardState {
