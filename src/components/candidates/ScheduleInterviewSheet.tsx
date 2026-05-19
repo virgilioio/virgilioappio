@@ -150,6 +150,137 @@ function busyBarsForPanelist(
     .filter(Boolean) as { left: number; width: number; key: string }[];
 }
 
+function PanelistComboField({
+  selected,
+  available,
+  unavailable,
+  onSelect,
+  onRemove,
+  disabled,
+}: {
+  selected: StageInterviewer[];
+  available: StageInterviewer[];
+  unavailable: { name: string }[];
+  onSelect: (p: StageInterviewer) => void;
+  onRemove: (id: string) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const selectedIds = new Set(selected.map((s) => s.id));
+  const q = query.toLowerCase();
+  const filteredAvailable = available.filter(
+    (a) => !selectedIds.has(a.id) && fullName(a).toLowerCase().includes(q),
+  );
+  const filteredUnavailable = unavailable.filter((u) => u.name.toLowerCase().includes(q));
+
+  return (
+    <Popover open={open && !disabled} onOpenChange={setOpen}>
+      <PopoverAnchor asChild>
+        <div
+          role="group"
+          onMouseDown={(e) => {
+            if ((e.target as HTMLElement).tagName !== 'INPUT') {
+              e.preventDefault();
+              inputRef.current?.focus();
+              setOpen(true);
+            }
+          }}
+          className={cn(
+            'flex flex-wrap items-center gap-1.5 min-h-10 px-2 py-1.5 rounded-lg border border-virgilio-border bg-white cursor-text transition-shadow',
+            'focus-within:ring-2 focus-within:ring-virgilio-purple/30 focus-within:border-virgilio-purple',
+            disabled && 'opacity-60 cursor-not-allowed bg-[#FAFAF7]',
+          )}
+        >
+          {selected.map((p) => (
+            <RemovableChip
+              key={p.id}
+              tone="purple"
+              size="md"
+              onRemove={() => onRemove(p.id)}
+            >
+              {fullName(p)}
+            </RemovableChip>
+          ))}
+          <input
+            ref={inputRef}
+            value={query}
+            disabled={disabled}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setOpen(true);
+            }}
+            onFocus={() => setOpen(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Backspace' && !query && selected.length > 0) {
+                onRemove(selected[selected.length - 1].id);
+              } else if (e.key === 'Escape') {
+                setOpen(false);
+              }
+            }}
+            placeholder={
+              selected.length > 0 ? 'Add panelist…' : 'Search hiring team…'
+            }
+            className="flex-1 min-w-[140px] bg-transparent border-0 outline-none text-[13px] font-inter text-virgilio-text placeholder:text-virgilio-muted py-0.5"
+          />
+        </div>
+      </PopoverAnchor>
+      <PopoverContent
+        className="w-[--radix-popover-trigger-width] min-w-[280px] p-[var(--menu-pad)]"
+        align="start"
+        sideOffset={6}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <Command shouldFilter={false}>
+          <CommandList className="max-h-[280px]">
+            {filteredAvailable.length === 0 && filteredUnavailable.length === 0 && (
+              <CommandEmpty>No teammates match.</CommandEmpty>
+            )}
+            {filteredAvailable.length > 0 && (
+              <CommandGroup>
+                {filteredAvailable.map((p) => (
+                  <CommandItem
+                    key={p.id}
+                    value={p.id}
+                    onSelect={() => {
+                      onSelect(p);
+                      setQuery('');
+                      setOpen(false);
+                    }}
+                  >
+                    <Avatar className="h-5 w-5">
+                      <AvatarImage src={p.profiles?.avatar_url || undefined} />
+                      <AvatarFallback className="text-[9px]">{initials(p)}</AvatarFallback>
+                    </Avatar>
+                    <span className="flex-1 truncate">{fullName(p)}</span>
+                    <span className="text-[10.5px] text-virgilio-muted capitalize">
+                      {p.assignment_type}
+                    </span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+            {filteredUnavailable.length > 0 && (
+              <CommandGroup heading="No calendar connected">
+                {filteredUnavailable.map((u) => (
+                  <CommandItem key={u.name} value={u.name} disabled>
+                    <span className="flex-1 truncate text-virgilio-muted">{u.name}</span>
+                    <span className="text-[10.5px] text-virgilio-muted">No calendar</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+
+
 export function ScheduleInterviewSheet({
   open,
   onOpenChange,
