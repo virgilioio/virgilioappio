@@ -223,7 +223,17 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
   const renderStepContent = () => {
     switch (wizardState.currentStep) {
       case 1:
-        return <JobInfoStep jobData={wizardState.jobData} onUpdate={updateJobData} />
+        return (
+          <>
+            {initialData?.sourceJobTitle && (
+              <div className="mb-6 rounded-xl border border-virgilio-purple/20 bg-virgilio-purple/[0.06] px-4 py-3 text-[13px] font-inter text-text-primary">
+                <span className="font-poppins font-medium">Duplicating from {initialData.sourceJobTitle}</span>
+                <span className="text-text-secondary"> — review and edit before publishing.</span>
+              </div>
+            )}
+            <JobInfoStep jobData={wizardState.jobData} onUpdate={updateJobData} />
+          </>
+        )
       case 2:
         return (
           <HiringPlanStep
