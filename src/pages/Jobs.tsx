@@ -116,6 +116,7 @@ export default function Jobs() {
                 onView={handleView}
                 onEdit={handleEdit}
                 onArchive={handleArchive}
+                onDelete={handleDelete}
                 onCreateNew={handleCreateNew}
                 statusFilter={statusFilter}
                 onStatusFilterChange={setStatusFilter}
