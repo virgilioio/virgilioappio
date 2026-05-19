@@ -176,7 +176,24 @@ export function SummaryStep({
 
   const { assignments } = useJobAssignments(jobId && jobId !== 'created' ? jobId : undefined)
   const { postings } = useJobPostings(jobId && jobId !== 'created' ? jobId : '')
+  const { members } = useMembers(true)
   const posting = postings[0]
+
+  const memberByUserId = React.useMemo(() => {
+    const map = new Map<string, (typeof members)[number]>()
+    for (const m of members) if (m.user_id) map.set(m.user_id, m)
+    return map
+  }, [members])
+
+  const resolveMember = (userId: string) => {
+    const m = memberByUserId.get(userId)
+    if (!m) return { name: 'Unknown user', subtitle: '', avatarUrl: null as string | null }
+    const name =
+      `${m.user_first_name ?? ''} ${m.user_last_name ?? ''}`.trim() ||
+      m.user_email ||
+      'Unknown user'
+    return { name, subtitle: m.user_email ?? '', avatarUrl: m.user_avatar_url ?? null }
+  }
 
   const formatSalary = () => {
     const { salary_min, salary_max, currency } = jobData
