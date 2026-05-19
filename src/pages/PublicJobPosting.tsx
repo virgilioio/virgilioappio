@@ -670,7 +670,7 @@ export default function PublicJobPosting() {
   }
 
   const summaryRows = [
-    { label: 'Posted', value: formatDate(new Date(), 'MMM d, yyyy') },
+    { label: 'Posted', value: posting.created_at ? formatDate(new Date(posting.created_at), 'MMM d, yyyy') : null },
     { label: 'Location', value: details.location || null },
     { label: 'Type', value: formatLabel(details.employmentType) || null },
     { label: 'Compensation', value: compensationLabel },
