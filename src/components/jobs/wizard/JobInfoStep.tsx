@@ -22,6 +22,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
 import { OrganizationFormSheet } from '@/components/organizations/OrganizationFormSheet'
 import { useOrganizations } from '@/hooks/useOrganizations'
+import { supabase } from '@/integrations/supabase/client'
+import { toast } from 'sonner'
 
 interface JobInfoStepProps {
   jobData: Partial<CreateJobData>
