@@ -522,8 +522,8 @@ export function ScheduleInterviewSheet({
       setSelectedDate(new Date());
       setSelectedSlot(null);
       setSelectedDuration(30);
-      setMeetingType('google_meet');
-      setCustomLocation('');
+      setFormatOption('video');
+      setSiteAddress('');
       setGuestEmails([]);
       onOpenChange(false);
     },
