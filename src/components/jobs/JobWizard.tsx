@@ -10,6 +10,7 @@ import { HiringPlanStep } from './wizard/HiringPlanStep'
 import { HiringTeamStep } from './wizard/HiringTeamStep'
 import { SummaryStep } from './wizard/SummaryStep'
 import { JobPostingStep, type JobPostingStepHandle } from './wizard/JobPostingStep'
+import { useJobSourcingProject } from '@/hooks/useJobSourcingProject'
 
 interface JobWizardProps {
   isOpen: boolean
