@@ -81,8 +81,10 @@ interface Posting {
   id: string
   job_id: string
   title: string
+  slug: string
   description: string | null
   details: any | null
+  created_at?: string
 }
 
 interface PostingField {
