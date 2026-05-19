@@ -818,7 +818,13 @@ export function ScheduleInterviewSheet({
                               {p.profiles?.first_name || 'Unknown'}
                             </span>
                           </div>
-                          <div className="relative h-6 flex-1 rounded-md bg-white border border-virgilio-border/60">
+                          <div
+                            className="relative h-6 flex-1 rounded-md bg-white border border-virgilio-border/60 overflow-hidden"
+                            style={{
+                              backgroundImage:
+                                'repeating-linear-gradient(to right, transparent 0, transparent calc(12.5% - 1px), hsl(var(--border) / 0.5) calc(12.5% - 1px), hsl(var(--border) / 0.5) 12.5%)',
+                            }}
+                          >
                             {bars.map((b) => (
                               <div
                                 key={b.key}
@@ -831,35 +837,53 @@ export function ScheduleInterviewSheet({
                       );
                     })}
 
-                    <div className="flex items-start gap-3 pt-2 border-t border-virgilio-border/60">
-                      <div className="flex items-center gap-2 w-[140px] min-w-[140px] pt-1">
+                    <div className="flex items-center gap-3 pt-2 border-t border-virgilio-border/60">
+                      <div className="flex items-center gap-2 w-[140px] min-w-[140px]">
                         <span className="text-[10.5px] font-inter font-semibold uppercase tracking-[0.08em] text-virgilio-purple">
                           FREE
                         </span>
                       </div>
-                      <div className="flex-1 flex flex-wrap gap-1.5">
+                      <div
+                        className="relative h-7 flex-1 rounded-md bg-white border border-virgilio-border/60 overflow-visible"
+                        style={{
+                          backgroundImage:
+                            'repeating-linear-gradient(to right, transparent 0, transparent calc(12.5% - 1px), hsl(var(--border) / 0.5) calc(12.5% - 1px), hsl(var(--border) / 0.5) 12.5%)',
+                        }}
+                      >
                         {isLoadingAvailability ? (
-                          <Skeleton className="h-7 w-full" />
+                          <Skeleton className="absolute inset-0" />
                         ) : timeSlotsForSelectedDate.length === 0 ? (
-                          <span className="text-body-xs text-virgilio-muted py-1">
-                            No slots available — try another day.
+                          <span className="absolute inset-0 flex items-center justify-center text-body-xs text-virgilio-muted">
+                            No slots — try another day.
                           </span>
                         ) : (
                           timeSlotsForSelectedDate.map((slot) => {
                             const isSelected = selectedSlot?.start === slot.start;
+                            const slotStart = parseISO(slot.start);
+                            const hours = slotStart.getHours() + slotStart.getMinutes() / 60;
+                            const left = Math.max(0, ((hours - 9) / 8) * 100);
+                            const width = Math.min(
+                              100 - left,
+                              (selectedDuration / 60 / 8) * 100,
+                            );
                             return (
                               <button
                                 key={slot.start}
                                 type="button"
                                 onClick={() => setSelectedSlot(slot)}
+                                title={`${format(slotStart, 'h:mm a')} – ${format(
+                                  new Date(slotStart.getTime() + selectedDuration * 60000),
+                                  'h:mm a',
+                                )}`}
                                 className={cn(
-                                  'h-7 px-2.5 rounded-md text-[12px] font-inter font-medium transition-colors',
+                                  'absolute top-0 bottom-0 rounded-md flex items-center justify-center text-[10.5px] font-poppins font-medium transition-all',
                                   isSelected
-                                    ? 'bg-virgilio-ink text-white ring-2 ring-virgilio-ink'
-                                    : 'bg-[hsl(var(--badge-lilac))] text-[hsl(var(--badge-lilac-foreground))] hover:bg-pastel-purple',
+                                    ? 'bg-virgilio-purple text-white ring-2 ring-virgilio-ink z-10'
+                                    : 'bg-[hsl(var(--badge-lilac))] hover:bg-pastel-purple text-[hsl(var(--badge-lilac-foreground))]',
                                 )}
+                                style={{ left: `${left}%`, width: `${width}%` }}
                               >
-                                {format(parseISO(slot.start), 'h:mm a')}
+                                {isSelected ? format(slotStart, 'h:mm') : ''}
                               </button>
                             );
                           })
@@ -867,6 +891,7 @@ export function ScheduleInterviewSheet({
                       </div>
                     </div>
                   </div>
+
 
                   <p className="text-body-xs text-virgilio-muted">
                     Found {timeSlotsForSelectedDate.length} slot
