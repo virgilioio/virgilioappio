@@ -21,6 +21,7 @@ interface WizardState {
   isComplete: boolean
   createdJobId: string | null
   jobData: Partial<CreateJobData>
+  hasPosting: boolean
 }
 
 const STEPS = [
@@ -74,6 +75,7 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
     isComplete: false,
     createdJobId: null,
     jobData: { status: 'draft' },
+    hasPosting: false,
   })
 
   const { createJob } = useJobs()
@@ -94,6 +96,7 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
       isComplete: false,
       createdJobId: null,
       jobData: { status: 'draft' },
+      hasPosting: false,
     })
 
   useEffect(() => {
@@ -168,14 +171,17 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
     try {
       const ok = await postingRef.current?.savePosting()
       if (ok === false) return
-      setWizardState((prev) => ({ ...prev, currentStep: 5 }))
+      setWizardState((prev) => ({ ...prev, currentStep: 5, hasPosting: true }))
     } finally {
       setIsSubmitting(false)
     }
   }
 
   const handlePostingSkip = () =>
-    setWizardState((prev) => ({ ...prev, currentStep: 5 }))
+    setWizardState((prev) => ({ ...prev, currentStep: 5, hasPosting: false }))
+
+  const goToStep = (step: number) =>
+    setWizardState((prev) => ({ ...prev, currentStep: step }))
 
   const renderStepContent = () => {
     switch (wizardState.currentStep) {
@@ -213,8 +219,9 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
           <SummaryStep
             jobData={wizardState.jobData}
             jobId={wizardState.createdJobId}
-            onComplete={handleComplete}
-            onBack={handlePrevStep}
+            hasPosting={wizardState.hasPosting}
+            postingMeta={postingMeta}
+            onGoToStep={goToStep}
           />
         )
       default:
@@ -237,7 +244,12 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
         return { label: 'Continue to review', onClick: handlePostingContinue, disabled: isSubmitting, loading: isSubmitting }
       case 5:
       default:
-        return { label: 'Publish job', onClick: handleComplete, disabled: false, loading: false }
+        return {
+          label: wizardState.hasPosting ? 'Create & publish' : 'Create job (internal)',
+          onClick: handleComplete,
+          disabled: false,
+          loading: false,
+        }
     }
   })()
 
