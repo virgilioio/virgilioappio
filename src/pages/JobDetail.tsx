@@ -727,6 +727,57 @@ export default function JobDetail() {
     }
   }
 
+  const handleCloseJob = async () => {
+    if (!id) return
+    try {
+      await updateJob(id, { status: 'closed' })
+      refetch()
+      setConfirmCloseJob(false)
+      toast({ title: 'Job closed', description: 'New applications are no longer accepted.' })
+    } catch (e) {
+      console.error('Error closing job:', e)
+    }
+  }
+
+  const handleDeleteJob = async () => {
+    if (!id) return
+    try {
+      await deleteJob(id)
+      setConfirmDelete(false)
+      navigate('/jobs')
+    } catch (e) {
+      console.error('Error deleting job:', e)
+    }
+  }
+
+  const handleDuplicateJob = () => {
+    if (!job) return
+    setDuplicateInitialData({
+      title: `${job.title} (copy)`,
+      description: job.description || '',
+      location: job.location || '',
+      salary_min: job.salary_min ?? undefined,
+      salary_max: job.salary_max ?? undefined,
+      currency: job.currency || 'USD',
+      organization_id: job.organization_id,
+      skills: job.skills || [],
+      internal_title: job.internal_title || undefined,
+      job_level: job.job_level || undefined,
+      work_mode: job.work_mode || undefined,
+      employment_type: job.employment_type || undefined,
+      additional_locations: job.additional_locations || [],
+      show_salary_public: job.show_salary_public ?? true,
+      include_equity: job.include_equity ?? false,
+      include_signing_bonus: job.include_signing_bonus ?? false,
+      min_years_experience: job.min_years_experience ?? undefined,
+      max_years_experience: job.max_years_experience ?? undefined,
+      status: 'draft',
+      sourceJobTitle: job.title,
+    })
+    setShowDuplicateWizard(true)
+  }
+
+
   const handleBulkRejectionSuccess = () => {
     setPipelineRefresh((v) => v + 1)
     setSelectedCandidateIds([])
