@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Briefcase,
   CheckCircle2,
+  Mail,
   MapPin,
   Paperclip,
   Phone,
@@ -20,6 +21,7 @@ import {
   Save,
   Send,
   Sparkles,
+  UserPlus,
   Users,
   Video,
   X,
@@ -27,7 +29,8 @@ import {
 import { startOfMonth, endOfMonth, isSameDay, parseISO, format } from 'date-fns';
 import { useBookingAvailability } from '@/hooks/useBookingAvailability';
 import { DraggableFreeRow } from './DraggableFreeRow';
-import { GuestEmailInput } from '@/components/scheduling/GuestEmailInput';
+import { useCustomerMembers, type Member } from '@/hooks/useCustomerMembers';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
