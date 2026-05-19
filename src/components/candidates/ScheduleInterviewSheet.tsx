@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
@@ -12,18 +12,20 @@ import { toast } from '@/hooks/use-toast';
 import {
   AlertCircle,
   Briefcase,
-  Calendar as CalendarIcon,
   CheckCircle2,
+  MapPin,
+  Paperclip,
+  Phone,
   Plus,
   Save,
   Send,
+  Sparkles,
   Users,
+  Video,
   X,
 } from 'lucide-react';
 import { startOfMonth, endOfMonth, isSameDay, parseISO, format } from 'date-fns';
 import { useBookingAvailability } from '@/hooks/useBookingAvailability';
-import { ManualInterviewerSelector } from '@/components/scheduling/ManualInterviewerSelector';
-import { MeetingLocationSelector } from '@/components/scheduling/MeetingLocationSelector';
 import { GuestEmailInput } from '@/components/scheduling/GuestEmailInput';
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -31,18 +33,19 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { useAuth } from '@/contexts/AuthContext';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { Form } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
@@ -147,6 +150,137 @@ function busyBarsForPanelist(
     .filter(Boolean) as { left: number; width: number; key: string }[];
 }
 
+function PanelistComboField({
+  selected,
+  available,
+  unavailable,
+  onSelect,
+  onRemove,
+  disabled,
+}: {
+  selected: StageInterviewer[];
+  available: StageInterviewer[];
+  unavailable: { name: string }[];
+  onSelect: (p: StageInterviewer) => void;
+  onRemove: (id: string) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const selectedIds = new Set(selected.map((s) => s.id));
+  const q = query.toLowerCase();
+  const filteredAvailable = available.filter(
+    (a) => !selectedIds.has(a.id) && fullName(a).toLowerCase().includes(q),
+  );
+  const filteredUnavailable = unavailable.filter((u) => u.name.toLowerCase().includes(q));
+
+  return (
+    <Popover open={open && !disabled} onOpenChange={setOpen}>
+      <PopoverAnchor asChild>
+        <div
+          role="group"
+          onMouseDown={(e) => {
+            if ((e.target as HTMLElement).tagName !== 'INPUT') {
+              e.preventDefault();
+              inputRef.current?.focus();
+              setOpen(true);
+            }
+          }}
+          className={cn(
+            'flex flex-wrap items-center gap-1.5 min-h-10 px-2 py-1.5 rounded-lg border border-virgilio-border bg-white cursor-text transition-shadow',
+            'focus-within:ring-2 focus-within:ring-virgilio-purple/30 focus-within:border-virgilio-purple',
+            disabled && 'opacity-60 cursor-not-allowed bg-[#FAFAF7]',
+          )}
+        >
+          {selected.map((p) => (
+            <RemovableChip
+              key={p.id}
+              tone="purple"
+              size="md"
+              onRemove={() => onRemove(p.id)}
+            >
+              {fullName(p)}
+            </RemovableChip>
+          ))}
+          <input
+            ref={inputRef}
+            value={query}
+            disabled={disabled}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setOpen(true);
+            }}
+            onFocus={() => setOpen(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Backspace' && !query && selected.length > 0) {
+                onRemove(selected[selected.length - 1].id);
+              } else if (e.key === 'Escape') {
+                setOpen(false);
+              }
+            }}
+            placeholder={
+              selected.length > 0 ? 'Add panelist…' : 'Search hiring team…'
+            }
+            className="flex-1 min-w-[140px] bg-transparent border-0 outline-none text-[13px] font-inter text-virgilio-text placeholder:text-virgilio-muted py-0.5"
+          />
+        </div>
+      </PopoverAnchor>
+      <PopoverContent
+        className="w-[--radix-popover-trigger-width] min-w-[280px] p-[var(--menu-pad)]"
+        align="start"
+        sideOffset={6}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <Command shouldFilter={false}>
+          <CommandList className="max-h-[280px]">
+            {filteredAvailable.length === 0 && filteredUnavailable.length === 0 && (
+              <CommandEmpty>No teammates match.</CommandEmpty>
+            )}
+            {filteredAvailable.length > 0 && (
+              <CommandGroup>
+                {filteredAvailable.map((p) => (
+                  <CommandItem
+                    key={p.id}
+                    value={p.id}
+                    onSelect={() => {
+                      onSelect(p);
+                      setQuery('');
+                      setOpen(false);
+                    }}
+                  >
+                    <Avatar className="h-5 w-5">
+                      <AvatarImage src={p.profiles?.avatar_url || undefined} />
+                      <AvatarFallback className="text-[9px]">{initials(p)}</AvatarFallback>
+                    </Avatar>
+                    <span className="flex-1 truncate">{fullName(p)}</span>
+                    <span className="text-[10.5px] text-virgilio-muted capitalize">
+                      {p.assignment_type}
+                    </span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+            {filteredUnavailable.length > 0 && (
+              <CommandGroup heading="No calendar connected">
+                {filteredUnavailable.map((u) => (
+                  <CommandItem key={u.name} value={u.name} disabled>
+                    <span className="flex-1 truncate text-virgilio-muted">{u.name}</span>
+                    <span className="text-[10.5px] text-virgilio-muted">No calendar</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+
+
 export function ScheduleInterviewSheet({
   open,
   onOpenChange,
@@ -172,11 +306,23 @@ export function ScheduleInterviewSheet({
   const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string } | null>(null);
   const [selectedDuration, setSelectedDuration] = useState<number>(30);
   const [bufferMinutes, setBufferMinutes] = useState<number>(0);
-  const [meetingType, setMeetingType] = useState<'google_meet' | 'custom'>('google_meet');
-  const [customLocation, setCustomLocation] = useState('');
+  const [formatOption, setFormatOption] = useState<'video' | 'phone' | 'onsite'>('video');
+  const [siteAddress, setSiteAddress] = useState('');
   const [guestEmails, setGuestEmails] = useState<string[]>([]);
-  const [sendInvitation, setSendInvitation] = useState(true);
-  const [showPanelistPicker, setShowPanelistPicker] = useState(false);
+  const [inviteSubject, setInviteSubject] = useState('');
+  const [inviteMessage, setInviteMessage] = useState('');
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [includeScorecardPrompt, setIncludeScorecardPrompt] = useState(true);
+  const [autoRecord, setAutoRecord] = useState(true);
+  const [reminder24h, setReminder24h] = useState(true);
+
+  const meetingType: 'google_meet' | 'custom' = formatOption === 'video' ? 'google_meet' : 'custom';
+  const customLocation =
+    formatOption === 'phone'
+      ? "Phone — we'll dial out"
+      : formatOption === 'onsite'
+      ? siteAddress
+      : '';
   const candidateTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const { data: stageMeta } = useQuery({
@@ -376,8 +522,8 @@ export function ScheduleInterviewSheet({
       setSelectedDate(new Date());
       setSelectedSlot(null);
       setSelectedDuration(30);
-      setMeetingType('google_meet');
-      setCustomLocation('');
+      setFormatOption('video');
+      setSiteAddress('');
       setGuestEmails([]);
       onOpenChange(false);
     },
@@ -438,13 +584,13 @@ export function ScheduleInterviewSheet({
         new Date(selectedSlot.start).getTime() + selectedDuration * 60 * 1000,
       ).toISOString(),
       duration_minutes: selectedDuration,
-      notes: formData.notes || null,
+      notes: inviteMessage || formData.notes || null,
       job_id: jobId,
       candidate_id: candidateId,
       job_candidate_association_id: associationId,
       job_hiring_stage_id: jhsId,
       booked_by_user_id: user?.id,
-      send_invitation: sendInvitation,
+      send_invitation: true,
       meeting_type_preference: meetingType,
       custom_meeting_location: meetingType === 'custom' ? customLocation : null,
       guest_emails: guestEmails.length > 0 ? guestEmails : undefined,
@@ -456,10 +602,9 @@ export function ScheduleInterviewSheet({
       setSelectedInterviewer(null);
       setSelectedDate(new Date());
       setSelectedSlot(null);
-      setMeetingType('google_meet');
-      setCustomLocation('');
+      setFormatOption('video');
+      setSiteAddress('');
       setGuestEmails([]);
-      setShowPanelistPicker(false);
     }
     onOpenChange(newOpen);
   };
@@ -577,61 +722,32 @@ export function ScheduleInterviewSheet({
                   </div>
 
                   <div className="space-y-2">
-                    <div className="text-body-xs text-virgilio-muted">Interviewers</div>
-                    <div className="flex flex-wrap gap-2 items-center">
-                      {displayedPanelists.length === 0 && !showPanelistPicker && (
-                        <span className="text-body-xs text-virgilio-muted italic">
-                          No panelist selected.
-                        </span>
-                      )}
-                      {displayedPanelists.map((p) => {
-                        const removable = !isGroupMode && availableInterviewers.length > 1;
-                        return removable ? (
-                          <RemovableChip
-                            key={p.id}
-                            tone="purple"
-                            size="md"
-                            onRemove={() => setSelectedInterviewer(null)}
-                          >
-                            {fullName(p)}
-                          </RemovableChip>
-                        ) : (
+                    <Label className="text-form-label text-virgilio-muted">
+                      Interviewers <span className="text-destructive">*</span>
+                    </Label>
+                    {isGroupMode ? (
+                      <div className="flex flex-wrap gap-2 items-center">
+                        {displayedPanelists.map((p) => (
                           <Badge key={p.id} tone="purple" size="md">
                             {fullName(p)}
                           </Badge>
-                        );
-                      })}
-                      {!isGroupMode && (
-                        <button
-                          type="button"
-                          onClick={() => setShowPanelistPicker((v) => !v)}
-                          className="inline-flex items-center gap-1 h-[26px] px-2.5 rounded-full border border-dashed border-virgilio-border text-[12px] font-inter font-medium text-virgilio-muted hover:text-virgilio-purple hover:border-virgilio-purple/50 transition-colors"
-                        >
-                          <Plus className="h-3 w-3" />
-                          Add panelist
-                        </button>
-                      )}
-                    </div>
-
-                    {showPanelistPicker && !isGroupMode && (
-                      <div className="pt-2">
-                        <ManualInterviewerSelector
-                          jobId={jobId}
-                          organizationId={organizationId}
-                          onSelect={(i) => {
-                            setSelectedInterviewer(i);
-                            setShowPanelistPicker(false);
-                          }}
-                          unavailableInterviewers={interviewersWithoutBookingConfig}
-                        />
+                        ))}
                       </div>
+                    ) : (
+                      <PanelistComboField
+                        selected={displayedPanelists}
+                        available={availableInterviewers}
+                        unavailable={interviewersWithoutBookingConfig}
+                        onSelect={(p) => setSelectedInterviewer(p)}
+                        onRemove={() => setSelectedInterviewer(null)}
+                      />
                     )}
-
                     <p className="text-body-xs text-virgilio-muted">
-                      We'll send the invite to the candidate and all panelists.
+                      Calendars sync from Google Workspace. Gio finds shared slots in real time.
                     </p>
                   </div>
                 </SectionCard>
+
 
                 <SectionCard
                   label="WHEN"
@@ -702,7 +818,13 @@ export function ScheduleInterviewSheet({
                               {p.profiles?.first_name || 'Unknown'}
                             </span>
                           </div>
-                          <div className="relative h-6 flex-1 rounded-md bg-white border border-virgilio-border/60">
+                          <div
+                            className="relative h-6 flex-1 rounded-md bg-white border border-virgilio-border/60 overflow-hidden"
+                            style={{
+                              backgroundImage:
+                                'repeating-linear-gradient(to right, transparent 0, transparent calc(12.5% - 1px), hsl(var(--border) / 0.5) calc(12.5% - 1px), hsl(var(--border) / 0.5) 12.5%)',
+                            }}
+                          >
                             {bars.map((b) => (
                               <div
                                 key={b.key}
@@ -715,35 +837,53 @@ export function ScheduleInterviewSheet({
                       );
                     })}
 
-                    <div className="flex items-start gap-3 pt-2 border-t border-virgilio-border/60">
-                      <div className="flex items-center gap-2 w-[140px] min-w-[140px] pt-1">
+                    <div className="flex items-center gap-3 pt-2 border-t border-virgilio-border/60">
+                      <div className="flex items-center gap-2 w-[140px] min-w-[140px]">
                         <span className="text-[10.5px] font-inter font-semibold uppercase tracking-[0.08em] text-virgilio-purple">
                           FREE
                         </span>
                       </div>
-                      <div className="flex-1 flex flex-wrap gap-1.5">
+                      <div
+                        className="relative h-7 flex-1 rounded-md bg-white border border-virgilio-border/60 overflow-visible"
+                        style={{
+                          backgroundImage:
+                            'repeating-linear-gradient(to right, transparent 0, transparent calc(12.5% - 1px), hsl(var(--border) / 0.5) calc(12.5% - 1px), hsl(var(--border) / 0.5) 12.5%)',
+                        }}
+                      >
                         {isLoadingAvailability ? (
-                          <Skeleton className="h-7 w-full" />
+                          <Skeleton className="absolute inset-0" />
                         ) : timeSlotsForSelectedDate.length === 0 ? (
-                          <span className="text-body-xs text-virgilio-muted py-1">
-                            No slots available — try another day.
+                          <span className="absolute inset-0 flex items-center justify-center text-body-xs text-virgilio-muted">
+                            No slots — try another day.
                           </span>
                         ) : (
                           timeSlotsForSelectedDate.map((slot) => {
                             const isSelected = selectedSlot?.start === slot.start;
+                            const slotStart = parseISO(slot.start);
+                            const hours = slotStart.getHours() + slotStart.getMinutes() / 60;
+                            const left = Math.max(0, ((hours - 9) / 8) * 100);
+                            const width = Math.min(
+                              100 - left,
+                              (selectedDuration / 60 / 8) * 100,
+                            );
                             return (
                               <button
                                 key={slot.start}
                                 type="button"
                                 onClick={() => setSelectedSlot(slot)}
+                                title={`${format(slotStart, 'h:mm a')} – ${format(
+                                  new Date(slotStart.getTime() + selectedDuration * 60000),
+                                  'h:mm a',
+                                )}`}
                                 className={cn(
-                                  'h-7 px-2.5 rounded-md text-[12px] font-inter font-medium transition-colors',
+                                  'absolute top-0 bottom-0 rounded-md flex items-center justify-center text-[10.5px] font-poppins font-medium transition-all',
                                   isSelected
-                                    ? 'bg-virgilio-ink text-white ring-2 ring-virgilio-ink'
-                                    : 'bg-[hsl(var(--badge-lilac))] text-[hsl(var(--badge-lilac-foreground))] hover:bg-pastel-purple',
+                                    ? 'bg-virgilio-purple text-white ring-2 ring-virgilio-ink z-10'
+                                    : 'bg-[hsl(var(--badge-lilac))] hover:bg-pastel-purple text-[hsl(var(--badge-lilac-foreground))]',
                                 )}
+                                style={{ left: `${left}%`, width: `${width}%` }}
                               >
-                                {format(parseISO(slot.start), 'h:mm a')}
+                                {isSelected ? format(slotStart, 'h:mm') : ''}
                               </button>
                             );
                           })
@@ -751,6 +891,7 @@ export function ScheduleInterviewSheet({
                       </div>
                     </div>
                   </div>
+
 
                   <p className="text-body-xs text-virgilio-muted">
                     Found {timeSlotsForSelectedDate.length} slot
@@ -805,89 +946,218 @@ export function ScheduleInterviewSheet({
                   </div>
                 </SectionCard>
 
-                <SectionCard label="LOCATION & NOTES">
-                  <MeetingLocationSelector
-                    meetingType={meetingType}
-                    onMeetingTypeChange={setMeetingType}
-                    customLocation={customLocation}
-                    onCustomLocationChange={setCustomLocation}
-                  />
+                <SectionCard label="LOCATION">
+                  <div className="space-y-1.5">
+                    <Label className="text-form-label text-virgilio-muted">
+                      Format <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {(
+                        [
+                          {
+                            value: 'video' as const,
+                            label: 'Video call',
+                            sub: 'Google Meet · auto-generated',
+                            Icon: Video,
+                          },
+                          {
+                            value: 'phone' as const,
+                            label: 'Phone',
+                            sub: "We'll dial out",
+                            Icon: Phone,
+                          },
+                          {
+                            value: 'onsite' as const,
+                            label: 'On-site',
+                            sub: 'Address optional',
+                            Icon: MapPin,
+                          },
+                        ]
+                      ).map((opt) => {
+                        const active = formatOption === opt.value;
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setFormatOption(opt.value)}
+                            className={cn(
+                              'text-left rounded-xl border p-3.5 transition-all',
+                              active
+                                ? 'border-virgilio-purple ring-1 ring-virgilio-purple/30 bg-[hsl(var(--badge-lilac))]/40'
+                                : 'border-virgilio-border bg-white hover:bg-[#FAFAF7]',
+                            )}
+                          >
+                            <opt.Icon
+                              className={cn(
+                                'h-4 w-4 mb-2',
+                                active ? 'text-virgilio-purple' : 'text-virgilio-muted',
+                              )}
+                            />
+                            <div className="text-[13px] font-poppins font-medium text-virgilio-text">
+                              {opt.label}
+                            </div>
+                            <div className="text-[12px] font-inter text-virgilio-muted mt-0.5">
+                              {opt.sub}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 border-t border-virgilio-border/70">
-                    <FormField
-                      control={form.control}
-                      name="candidate_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-form-label text-virgilio-muted">
-                            Candidate name
-                          </FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="candidate_email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-form-label text-virgilio-muted">
-                            Candidate email
-                          </FormLabel>
-                          <FormControl>
-                            <Input type="email" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                  {formatOption === 'onsite' && (
+                    <div className="space-y-1.5">
+                      <Label className="text-form-label text-virgilio-muted">Address</Label>
+                      <Input
+                        value={siteAddress}
+                        onChange={(e) => setSiteAddress(e.target.value)}
+                        placeholder="e.g. 228 Park Ave, NYC"
+                      />
+                    </div>
+                  )}
+                </SectionCard>
+
+                <SectionCard
+                  label="INVITATION"
+                  rightSlot={
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toast({
+                          title: 'Coming soon',
+                          description: 'Gio will draft the invite for you.',
+                        });
+                      }}
+                      className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-[12px] font-poppins font-medium text-virgilio-purple hover:bg-[hsl(var(--badge-lilac))]/60 transition-colors"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Generate with Gio
+                    </button>
+                  }
+                >
+                  <div className="space-y-1.5">
+                    <Label className="text-form-label text-virgilio-muted">
+                      Subject <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      value={inviteSubject}
+                      onChange={(e) => setInviteSubject(e.target.value)}
+                      placeholder={`${stageName} — ${jobTitle}`}
                     />
                   </div>
 
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-form-label text-virgilio-muted">
-                          Notes for the panel (optional)
-                        </FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Anything the panelists should know before the call…"
-                            className="resize-none min-h-[72px]"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <GuestEmailInput
-                    emails={guestEmails}
-                    onChange={setGuestEmails}
-                    organizationId={organizationId}
-                  />
-
-                  <div className="flex items-center justify-between pt-3 border-t border-virgilio-border/70">
-                    <div>
-                      <Label htmlFor="send-invitation" className="text-[13px] font-poppins font-medium text-virgilio-text">
-                        Send email invitation to candidate
-                      </Label>
-                      <p className="text-body-xs text-virgilio-muted mt-0.5">
-                        Off = booked silently with no email to the candidate.
-                      </p>
-                    </div>
-                    <Switch
-                      id="send-invitation"
-                      checked={sendInvitation}
-                      onCheckedChange={setSendInvitation}
+                  <div className="space-y-1.5">
+                    <Label className="text-form-label text-virgilio-muted">
+                      Message <span className="text-virgilio-muted/70">(optional)</span>
+                    </Label>
+                    <Textarea
+                      value={inviteMessage}
+                      onChange={(e) => setInviteMessage(e.target.value)}
+                      placeholder={`Hi ${candidateName.split(' ')[0]},\n\nLooking forward to your ${stageName.toLowerCase()}…`}
+                      className="resize-none min-h-[140px]"
                     />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-form-label text-virgilio-muted">
+                      Attachments <span className="text-virgilio-muted/70">(optional)</span>
+                    </Label>
+                    <div className="flex flex-wrap gap-2 items-center">
+                      {attachments.map((file, idx) => (
+                        <RemovableChip
+                          key={`${file.name}-${idx}`}
+                          tone="neutral"
+                          size="sm"
+                          onRemove={() =>
+                            setAttachments((prev) => prev.filter((_, i) => i !== idx))
+                          }
+                        >
+                          <Paperclip className="h-3 w-3" />
+                          {file.name}
+                        </RemovableChip>
+                      ))}
+                      <label className="inline-flex items-center gap-1 h-[26px] px-2.5 rounded-full border border-dashed border-virgilio-border text-[12px] font-inter font-medium text-virgilio-muted hover:text-virgilio-purple hover:border-virgilio-purple/50 transition-colors cursor-pointer">
+                        <Plus className="h-3 w-3" />
+                        Add file
+                        <input
+                          type="file"
+                          multiple
+                          className="sr-only"
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files || []);
+                            if (files.length) setAttachments((prev) => [...prev, ...files]);
+                            e.target.value = '';
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 pt-2 border-t border-virgilio-border/70">
+                    {(
+                      [
+                        {
+                          id: 'scorecard',
+                          label: 'Include scorecard prompt in invite',
+                          help: 'Each panelist gets a link to fill out their scorecard right after.',
+                          checked: includeScorecardPrompt,
+                          onChange: setIncludeScorecardPrompt,
+                        },
+                        {
+                          id: 'autorecord',
+                          label: 'Auto-record with Gio note-taker',
+                          help: 'Transcribes the meeting and drafts a summary.',
+                          checked: autoRecord,
+                          onChange: setAutoRecord,
+                        },
+                        {
+                          id: 'reminder',
+                          label: 'Reminder 24h before',
+                          help: `Sends a friendly nudge to ${candidateName.split(' ')[0]} and the panel.`,
+                          checked: reminder24h,
+                          onChange: setReminder24h,
+                        },
+                      ]
+                    ).map((row, idx, arr) => (
+                      <div
+                        key={row.id}
+                        className={cn(
+                          'flex items-start justify-between gap-4',
+                          idx < arr.length - 1 && 'pb-3 border-b border-virgilio-border/60',
+                        )}
+                      >
+                        <div className="min-w-0">
+                          <Label
+                            htmlFor={row.id}
+                            className="text-[13px] font-poppins font-medium text-virgilio-text"
+                          >
+                            {row.label}
+                          </Label>
+                          <p className="text-body-xs text-virgilio-muted mt-0.5">{row.help}</p>
+                        </div>
+                        <Switch
+                          id={row.id}
+                          checked={row.checked}
+                          onCheckedChange={row.onChange}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-3 border-t border-virgilio-border/70">
+                    <Label className="text-form-label text-virgilio-muted">
+                      Cc additional guests
+                    </Label>
+                    <div className="mt-1.5">
+                      <GuestEmailInput
+                        emails={guestEmails}
+                        onChange={setGuestEmails}
+                        organizationId={organizationId}
+                      />
+                    </div>
                   </div>
                 </SectionCard>
+
               </form>
             </Form>
           )}
