@@ -10,6 +10,8 @@ export interface CoreField {
   accepted_file_types?: string
   max_file_size_mb?: number
   display_order: number
+  /** Core field that also syncs to the candidate's profile (smart-field behavior). */
+  is_smart?: boolean
 }
 
 export const CORE_FIELDS: CoreField[] = [
