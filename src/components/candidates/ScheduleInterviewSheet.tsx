@@ -306,11 +306,23 @@ export function ScheduleInterviewSheet({
   const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string } | null>(null);
   const [selectedDuration, setSelectedDuration] = useState<number>(30);
   const [bufferMinutes, setBufferMinutes] = useState<number>(0);
-  const [meetingType, setMeetingType] = useState<'google_meet' | 'custom'>('google_meet');
-  const [customLocation, setCustomLocation] = useState('');
+  const [formatOption, setFormatOption] = useState<'video' | 'phone' | 'onsite'>('video');
+  const [siteAddress, setSiteAddress] = useState('');
   const [guestEmails, setGuestEmails] = useState<string[]>([]);
-  const [sendInvitation, setSendInvitation] = useState(true);
-  const [showPanelistPicker, setShowPanelistPicker] = useState(false);
+  const [inviteSubject, setInviteSubject] = useState('');
+  const [inviteMessage, setInviteMessage] = useState('');
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [includeScorecardPrompt, setIncludeScorecardPrompt] = useState(true);
+  const [autoRecord, setAutoRecord] = useState(true);
+  const [reminder24h, setReminder24h] = useState(true);
+
+  const meetingType: 'google_meet' | 'custom' = formatOption === 'video' ? 'google_meet' : 'custom';
+  const customLocation =
+    formatOption === 'phone'
+      ? "Phone — we'll dial out"
+      : formatOption === 'onsite'
+      ? siteAddress
+      : '';
   const candidateTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const { data: stageMeta } = useQuery({
