@@ -108,7 +108,7 @@ export function JobFormSheet({
     const headers = SECTIONS.map((s) => root.querySelector<HTMLElement>(`[data-section="${s.id}"]`)).filter(Boolean) as HTMLElement[]
     const onScroll = () => {
       const top = root.scrollTop + 80
-      let current = SECTIONS[0].id
+      let current: string = SECTIONS[0].id
       for (const h of headers) {
         if (h.offsetTop <= top) current = h.dataset.section || current
       }
