@@ -1,20 +1,20 @@
-# Fix: "+ Add panelist" pill closes immediately on click
+# Fix: "+ Add panelist" pill still closes on click
 
 ## Root cause
 
-In `PanelistComboField` the `<PopoverAnchor asChild>` wraps a conditional that swaps the resting `<button>` for the active `<input>` on click. The anchor child unmounts and a new node mounts in the same tick, which makes Radix Popover see a focus/pointer change outside its tree and trigger `onOpenChange(false)` — the menu closes before the input is usable. The `onBlur` auto-close on the input compounds the problem: as React re-renders, the input briefly loses focus and `deactivate()` fires.
+The previous fix stabilized the visual anchor, but the pill is still rendered as a `PopoverAnchor`, not a `PopoverTrigger`. Radix uses the trigger/content relationship for dismissal handling; an anchor is only a positioning reference. Because the clicked pill is not the trigger, Radix can still treat that click/focus as an outside interaction and close the popover immediately.
 
 ## Fix
 
 Stabilize the anchor and stop fighting the popover lifecycle.
 
-1. Keep a single, always-mounted anchor element (a `<div>`) that contains either the button or the input. The Popover anchor never unmounts during the morph, so Radix keeps the open state.
-2. Remove the `onBlur` auto-close handler. Rely on Popover's own outside-click + Escape handling for closing. Escape inside the input also calls `deactivate()` explicitly.
-3. On `onOpenChange(false)` from Radix, run `deactivate()` so the pill returns to its dotted resting state when the user clicks outside.
-4. Call `activate()` on `pointerDown` (not `click`) for the resting pill so the focus + open happens before Radix's outside-click detector evaluates pointer-up.
-5. Add `onPointerDownOutside` passthrough on `PopoverContent` left at default — no custom handling.
+1. Replace `PopoverAnchor` with `PopoverTrigger asChild` around one stable wrapper so Radix knows the pill/input is the trigger, not an outside element.
+2. Move activation to the stable trigger wrapper: clicking the dotted pill sets `editing`, opens the popover, and focuses the input after render.
+3. Keep the wrapper mounted while switching between dotted pill and input, so focus/positioning stay stable.
+4. Keep outside-click and Escape behavior: outside click closes and returns to dotted pill; Escape closes and clears the query.
+5. If Radix trigger toggling conflicts with the controlled open state, explicitly prevent the default trigger toggle and drive `open/editing` from our handler.
 
-No visual or behavioral changes beyond the pill morph working as designed: dotted pill → input + dropdown stays open → type to filter → Enter/click to add chip → input clears, stays open for next add → Esc or outside click reverts to dotted pill.
+No visual or behavioral changes beyond the pill morph working as designed: dotted pill → input + dropdown stays open → type to filter → click to add chip → input clears and stays open for next add → Esc or outside click reverts to dotted pill.
 
 ## Files
 
