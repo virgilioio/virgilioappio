@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Briefcase,
   CheckCircle2,
+  Mail,
   MapPin,
   Paperclip,
   Phone,
@@ -20,6 +21,7 @@ import {
   Save,
   Send,
   Sparkles,
+  UserPlus,
   Users,
   Video,
   X,
@@ -27,7 +29,8 @@ import {
 import { startOfMonth, endOfMonth, isSameDay, parseISO, format } from 'date-fns';
 import { useBookingAvailability } from '@/hooks/useBookingAvailability';
 import { DraggableFreeRow } from './DraggableFreeRow';
-import { GuestEmailInput } from '@/components/scheduling/GuestEmailInput';
+import { useCustomerMembers, type Member } from '@/hooks/useCustomerMembers';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -322,6 +325,273 @@ function PanelistComboField({
 }
 
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function GuestComboField({
+  emails,
+  onChange,
+  members,
+  excludeEmails,
+  max = 10,
+}: {
+  emails: string[];
+  onChange: (emails: string[]) => void;
+  members: Member[] | undefined;
+  excludeEmails: string[];
+  max?: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [query, setQuery] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
+
+  const memberByEmail = useMemo(() => {
+    const map = new Map<string, Member>();
+    members?.forEach((m) => {
+      const e = m.profile?.email?.toLowerCase();
+      if (e) map.set(e, m);
+    });
+    return map;
+  }, [members]);
+
+  const excludedSet = useMemo(() => {
+    const s = new Set<string>();
+    emails.forEach((e) => s.add(e.toLowerCase()));
+    excludeEmails.forEach((e) => e && s.add(e.toLowerCase()));
+    return s;
+  }, [emails, excludeEmails]);
+
+  const q = query.trim().toLowerCase();
+  const filteredMembers = useMemo(() => {
+    if (!members) return [];
+    return members
+      .filter((m) => {
+        const email = m.profile?.email?.toLowerCase() || '';
+        if (!email || excludedSet.has(email)) return false;
+        if (!q) return true;
+        const first = m.profile?.first_name?.toLowerCase() || '';
+        const last = m.profile?.last_name?.toLowerCase() || '';
+        return (
+          email.includes(q) ||
+          first.includes(q) ||
+          last.includes(q) ||
+          `${first} ${last}`.includes(q)
+        );
+      })
+      .slice(0, 8);
+  }, [members, q, excludedSet]);
+
+  const isValidEmail = q.length > 0 && EMAIL_REGEX.test(q);
+  const queryMatchesMember = !!q && filteredMembers.some(
+    (m) => (m.profile?.email || '').toLowerCase() === q,
+  );
+  const showExternalOption = isValidEmail && !queryMatchesMember && !excludedSet.has(q);
+  const atCap = emails.length >= max;
+
+  const addEmail = (raw: string) => {
+    const email = raw.trim().toLowerCase();
+    if (!email || !EMAIL_REGEX.test(email)) return;
+    if (excludedSet.has(email)) return;
+    if (emails.length >= max) return;
+    onChange([...emails, email]);
+    setQuery('');
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
+  const removeEmail = (email: string) => {
+    onChange(emails.filter((e) => e !== email));
+  };
+
+  const activate = () => {
+    if (atCap) return;
+    setEditing(true);
+    setOpen(true);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
+  const deactivate = () => {
+    setEditing(false);
+    setOpen(false);
+    setQuery('');
+  };
+
+  const guestLabel = (email: string) => {
+    const m = memberByEmail.get(email.toLowerCase());
+    if (!m?.profile) return null;
+    const name = [m.profile.first_name, m.profile.last_name].filter(Boolean).join(' ');
+    return name || null;
+  };
+
+  return (
+    <TooltipProvider>
+      <Popover open={open && editing && !atCap} onOpenChange={(o) => { if (!o) deactivate(); }}>
+        <div role="group" className="flex flex-wrap items-center gap-1.5">
+          {emails.map((email) => {
+            const name = guestLabel(email);
+            const isTeammate = !!name;
+            return (
+              <Tooltip key={email}>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex">
+                    <RemovableChip
+                      tone={isTeammate ? 'purple' : 'neutral'}
+                      size="md"
+                      onRemove={() => removeEmail(email)}
+                      icon={isTeammate ? undefined : Mail}
+                    >
+                      {name || email}
+                    </RemovableChip>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  {isTeammate ? email : 'External guest'}
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+          <PopoverAnchor asChild>
+            <div ref={anchorRef} className="inline-flex">
+              {editing && !atCap ? (
+                <div
+                  className={cn(
+                    'inline-flex items-center h-7 px-3 rounded-full bg-white',
+                    'border border-dashed border-virgilio-purple/50',
+                    'focus-within:ring-2 focus-within:ring-virgilio-purple/30',
+                  )}
+                >
+                  <input
+                    ref={inputRef}
+                    value={query}
+                    onChange={(e) => {
+                      setQuery(e.target.value);
+                      setOpen(true);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Backspace' && !query && emails.length > 0) {
+                        removeEmail(emails[emails.length - 1]);
+                      } else if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (filteredMembers.length > 0 && !showExternalOption) {
+                          const email = filteredMembers[0].profile?.email;
+                          if (email) addEmail(email);
+                        } else if (showExternalOption) {
+                          addEmail(q);
+                        }
+                      } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        deactivate();
+                      }
+                    }}
+                    placeholder="Name or email…"
+                    className="bg-transparent border-0 outline-none text-[12px] font-poppins font-medium text-virgilio-ink placeholder:text-virgilio-ink/50"
+                    style={{ width: `${Math.max(160, query.length * 8 + 40)}px` }}
+                  />
+                </div>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      disabled={atCap}
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        activate();
+                      }}
+                      className={cn(
+                        'inline-flex items-center h-7 px-3 rounded-full',
+                        'border border-dashed border-virgilio-border bg-transparent',
+                        'text-[12px] font-poppins font-medium text-virgilio-ink/70',
+                        'transition-colors',
+                        'hover:border-virgilio-purple/50 hover:bg-[hsl(var(--badge-lilac))]/40 hover:text-virgilio-ink',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/30',
+                        atCap && 'opacity-50 cursor-not-allowed',
+                      )}
+                    >
+                      + Add guest
+                    </button>
+                  </TooltipTrigger>
+                  {atCap && (
+                    <TooltipContent side="top" className="text-xs">
+                      Maximum {max} guests
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              )}
+            </div>
+          </PopoverAnchor>
+        </div>
+        <PopoverContent
+          className="w-[--radix-popover-trigger-width] min-w-[300px] p-[var(--menu-pad)]"
+          align="start"
+          sideOffset={6}
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onFocusOutside={(e) => {
+            const t = e.target as Node | null;
+            if (t && anchorRef.current?.contains(t)) e.preventDefault();
+          }}
+          onInteractOutside={(e) => {
+            const t = e.target as Node | null;
+            if (t && anchorRef.current?.contains(t)) e.preventDefault();
+          }}
+        >
+          <Command shouldFilter={false}>
+            <CommandList className="max-h-[280px]">
+              {filteredMembers.length === 0 && !showExternalOption && (
+                <CommandEmpty>
+                  {q
+                    ? isValidEmail
+                      ? 'Already added.'
+                      : 'Type a name or valid email.'
+                    : 'Start typing to search teammates…'}
+                </CommandEmpty>
+              )}
+              {filteredMembers.length > 0 && (
+                <CommandGroup heading="Teammates">
+                  {filteredMembers.map((m) => {
+                    const email = m.profile?.email || '';
+                    const first = m.profile?.first_name || '';
+                    const last = m.profile?.last_name || '';
+                    const name = [first, last].filter(Boolean).join(' ') || email;
+                    const init = `${first[0] || '?'}${last[0] || ''}`.toUpperCase();
+                    return (
+                      <CommandItem
+                        key={m.id}
+                        value={email}
+                        onSelect={() => addEmail(email)}
+                      >
+                        <Avatar className="h-5 w-5">
+                          <AvatarImage src={m.profile?.avatar_url || undefined} />
+                          <AvatarFallback className="text-[9px]">{init}</AvatarFallback>
+                        </Avatar>
+                        <span className="flex-1 truncate">{name}</span>
+                        <span className="text-[10.5px] text-virgilio-muted truncate">{email}</span>
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              )}
+              {showExternalOption && (
+                <CommandGroup heading="External">
+                  <CommandItem value={`__ext_${q}`} onSelect={() => addEmail(q)}>
+                    <UserPlus className="h-3.5 w-3.5 text-virgilio-purple" />
+                    <span className="flex-1 truncate">
+                      Add <span className="font-medium">{q}</span> as external guest
+                    </span>
+                  </CommandItem>
+                </CommandGroup>
+              )}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </TooltipProvider>
+  );
+}
+
+
+
+
 
 export function ScheduleInterviewSheet({
   open,
@@ -357,6 +627,8 @@ export function ScheduleInterviewSheet({
   const [includeScorecardPrompt, setIncludeScorecardPrompt] = useState(true);
   const [autoRecord, setAutoRecord] = useState(true);
   const [reminder24h, setReminder24h] = useState(true);
+
+  const { data: tenantMembers } = useCustomerMembers(organizationId);
 
   const meetingType: 'google_meet' | 'custom' = formatOption === 'video' ? 'google_meet' : 'custom';
   const customLocation =
@@ -1194,19 +1466,33 @@ export function ScheduleInterviewSheet({
                     ))}
                   </div>
 
-                  <div className="pt-3 border-t border-virgilio-border/70">
+                </SectionCard>
+
+                <SectionCard
+                  label="GUESTS"
+                  rightSlot={
+                    <span className="text-[11px] font-inter text-virgilio-muted tabular-nums">
+                      {guestEmails.length}/10
+                    </span>
+                  }
+                >
+                  <div className="space-y-2">
                     <Label className="text-form-label text-virgilio-muted">
-                      Cc additional guests
+                      Cc'd guests <span className="text-virgilio-muted/70">(optional)</span>
                     </Label>
-                    <div className="mt-1.5">
-                      <GuestEmailInput
-                        emails={guestEmails}
-                        onChange={setGuestEmails}
-                        organizationId={organizationId}
-                      />
-                    </div>
+                    <GuestComboField
+                      emails={guestEmails}
+                      onChange={setGuestEmails}
+                      members={tenantMembers}
+                      excludeEmails={[candidateEmail]}
+                    />
+                    <p className="text-body-xs text-virgilio-muted">
+                      Teammates appear with their name. External emails are added as-is and receive the calendar invite.
+                    </p>
                   </div>
                 </SectionCard>
+
+
 
               </form>
             </Form>
