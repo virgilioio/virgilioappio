@@ -9,6 +9,7 @@ import { JobInfoStep, AiAssistedBadge } from './wizard/JobInfoStep'
 import { HiringPlanStep } from './wizard/HiringPlanStep'
 import { HiringTeamStep } from './wizard/HiringTeamStep'
 import { SummaryStep } from './wizard/SummaryStep'
+import { JobPostingStep, type JobPostingStepHandle } from './wizard/JobPostingStep'
 
 interface JobWizardProps {
   isOpen: boolean
