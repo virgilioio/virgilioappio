@@ -164,6 +164,8 @@ export function SummaryStep({
   hasPosting,
   postingMeta,
   onGoToStep,
+  autoSource = true,
+  onAutoSourceChange,
 }: SummaryStepProps) {
   const { organizations } = useOrganizations()
   const organization = organizations.find((o) => o.id === jobData.organization_id)
