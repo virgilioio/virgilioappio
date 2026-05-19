@@ -396,6 +396,15 @@ export function JobsTable({
                                 <Archive className="h-3.5 w-3.5" /> <span>Archive</span>
                               </DropdownMenuItem>
                             </PermissionGate>
+                            <PermissionGate permission="canDeleteJobs">
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={(e) => { e.stopPropagation(); onDelete(job.id) }}
+                                className="text-destructive focus:bg-destructive/10 focus:text-destructive data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" /> <span>Delete job</span>
+                              </DropdownMenuItem>
+                            </PermissionGate>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </ActionCell>
