@@ -928,6 +928,16 @@ export default function JobDetail() {
             </TabsContent>
           )}
 
+          {/* Sourcing */}
+          {!isRestrictedViewer && (
+            <TabsContent
+              value="sourcing"
+              className="flex-1 min-h-0 overflow-auto data-[state=inactive]:hidden mt-0"
+            >
+              <JobSourcingTab jobId={id!} jobTitle={job.title} />
+            </TabsContent>
+          )}
+
           {/* Setup */}
           {!isRestrictedViewer && (
             <TabsContent
