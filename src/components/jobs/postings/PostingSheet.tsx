@@ -30,8 +30,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useTenant } from '@/hooks/useTenant'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { useJobBoardIntegration } from '@/hooks/useJobBoardIntegration'
-import { PostingFieldsBuilder } from './PostingFieldsBuilder'
-import { CoreFieldsPreview } from './CoreFieldsPreview'
+import { SheetApplicationFormBuilder } from './SheetApplicationFormBuilder'
 import {
   PostingChannelsCard,
   type ChannelsValue,
@@ -570,35 +569,23 @@ export function PostingSheet({
           </Section>
 
           {/* 4. APPLICATION FORM */}
-          <Section title="Application form" chip="+ Add question">
-            <p className="text-[12.5px] text-text-secondary mb-4">
-              What candidates fill in to apply. Drag to reorder, click to edit.
-            </p>
-            {localId ? (
-              <>
-                <CoreFieldsPreview />
-                <div className="mt-4">
-                  <PostingFieldsBuilder postingId={localId} readOnly={readOnly} />
-                </div>
-              </>
-            ) : (
+          {localId ? (
+            <SheetApplicationFormBuilder
+              postingId={localId}
+              readOnly={readOnly}
+              eeoEnabled={eeoEnabled}
+              onEeoChange={setEeoEnabled}
+            />
+          ) : (
+            <Section title="Application form">
               <Alert className="bg-[#FAFAF7] border-virgilio-border">
                 <Info className="h-4 w-4" />
                 <AlertDescription className="text-[12.5px]">
                   Save the draft to start adding custom questions.
                 </AlertDescription>
               </Alert>
-            )}
-            <div className="mt-5 pt-4 border-t border-virgilio-border/60">
-              <ToggleRow
-                title="Demographic survey (EEO)"
-                helper="Optional self-id questions, anonymized in reporting"
-                checked={eeoEnabled}
-                onChange={setEeoEnabled}
-                disabled={readOnly}
-              />
-            </div>
-          </Section>
+            </Section>
+          )}
 
           {/* 5. WHERE TO PUBLISH */}
           <Section
