@@ -69,3 +69,32 @@ Matches Job Post overview: page `#FAF7F2`, card `#FFFFFF` with `border-black/5` 
 ## Preserved
 
 Route, data fetching, `handleSubmitApplication`, validation rules, file size/type checks, `ApplicationConfirmationDialog`, toast/violation handling, throttling, `useCoreFields`, `CoreFieldsRenderer`, `ApplicationFieldsRenderer` field types, and the overview tab.
+
+---
+
+## Consistency pass — Setup tab "Application form" section
+
+The **Application form** section in the **New / Edit Posting sheet** (`src/components/jobs/postings/PostingSheet.tsx`, currently rendering `CoreFieldsPreview` + `PostingFieldsBuilder`) must use the **exact same UI** as **Step 4 (Job Posting) of the Job Wizard** (`src/components/jobs/wizard/JobPostingStep.tsx`, "Application form" section). One surface, one component — no parallel designs.
+
+### Approach
+
+1. **Extract** the wizard's Application-form block (section chrome, "+ Add question" affordance, smart-fields library row, DnD-sortable list of field cards, inline editor, required/locked toggles, smart-field badges, empty state) into a single reusable component:
+   - `src/components/jobs/postings/ApplicationFormBuilder.tsx`
+   - Props: `{ postingId?: string; fields; onChange; smartFieldsLibrary; readOnly?: boolean; mode: 'wizard' | 'sheet' }`.
+   - It owns: the section header, the add-question control, the smart-field chip rail, the sortable list, the inline FieldEditor, and the empty state — visually identical to the wizard today.
+
+2. **Wizard** (`JobPostingStep.tsx`) — replace its inline "Application form" block with `<ApplicationFormBuilder mode="wizard" fields={fields} onChange={setFields} smartFieldsLibrary={smartFieldsLibrary} />`. Keep the wizard's local state, `application_fields` serialization on submit, and the `SMART_FIELD_TYPES` mapping unchanged.
+
+3. **Posting sheet** (`PostingSheet.tsx`) — replace the current `<Section title="Application form">` body (`CoreFieldsPreview` + `PostingFieldsBuilder`) with `<ApplicationFormBuilder mode="sheet" postingId={localId} readOnly={readOnly} />`. In sheet mode the component reads/writes via the existing posting-fields hook so persistence keeps working without backend changes.
+
+4. **Deprecate** `PostingFieldsBuilder.tsx` and `CoreFieldsPreview.tsx` once both call sites use `ApplicationFormBuilder`. Remove the files in the same PR — no parallel implementations.
+
+### Acceptance check
+
+Side-by-side screenshots of Wizard Step 4 and the Posting sheet's Application form section must be visually identical: same section header, same "+ Add question" placement, same smart-field row, same field card design (drag handle, label input, type chip, required toggle, locked indicator, delete), same empty state, same spacing, same typography.
+
+### Out of scope for this consistency pass
+
+- Changing what smart fields are available, their behavior, or persistence schema.
+- Renaming `field_type` values.
+- Reordering or hiding sections elsewhere in the sheet/wizard.
