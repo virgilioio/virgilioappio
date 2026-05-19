@@ -49,7 +49,8 @@ const STEP_META: Record<
   3: {
     eyebrow: 'Create job · Step 3 of 4',
     title: 'Hiring team',
-    subtitle: 'Assign recruiters, hiring managers, and interviewers.',
+    subtitle:
+      "Who can see this job, and what they can do. Add as many people as needed; assign roles for what they'll do on this job specifically.",
   },
   4: {
     eyebrow: 'Create job · Step 4 of 4',
