@@ -557,6 +557,15 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
         <SectionCard
           title="Application form"
           trailing={
+            <div className="flex items-center gap-2">
+              <CopyFromAnotherJobButton
+                excludeJobId={jobId}
+                currentFieldCount={fields.length}
+                onCopy={(jobTitle, copied) => {
+                  setFields(copied)
+                  toast.success(`Copied ${copied.length} fields from ${jobTitle}`)
+                }}
+              />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="secondary" size="sm" icon={Plus} dropdown>
