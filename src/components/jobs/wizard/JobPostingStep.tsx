@@ -111,9 +111,9 @@ const iconForType = (t: string) => TYPE_ICON[t] || MessageSquare
 const DEFAULT_FIELDS: AppField[] = [
   { id: 'full_name', label: 'Full name', type: 'text', hint: 'Short text', required: true, locked: true, icon: User },
   { id: 'email', label: 'Email', type: 'email', hint: 'Email', required: true, locked: true, icon: Mail },
-  { id: 'phone', label: 'Phone', type: 'phone', hint: 'Phone', required: true, icon: Phone },
-  { id: 'resume', label: 'Resume / CV', type: 'file', hint: 'File upload · PDF, DOC', required: true, icon: FileText },
-  { id: 'linkedin', label: 'LinkedIn / portfolio', type: 'url', hint: 'URL · multi-line', required: true, icon: Link2 },
+  { id: 'phone', label: 'Phone', type: 'phone', hint: 'Phone', required: true, locked: true, icon: Phone },
+  { id: 'resume', label: 'Resume / CV', type: 'file', hint: 'File upload · PDF, DOC', required: true, locked: true, icon: FileText },
+  { id: 'linkedin', label: 'LinkedIn Profile', type: 'linkedin', hint: 'Profile URL · syncs to candidate', required: false, locked: true, isSmart: true, icon: Linkedin },
   { id: 'work_auth', label: 'Are you authorized to work in the US?', type: 'yesno', hint: 'Yes / No', required: true, icon: Globe2 },
   { id: 'notice', label: 'Notice period', type: 'select', hint: 'Single-select · 6 options', required: false, icon: Briefcase },
   { id: 'salary', label: 'Salary expectations (optional)', type: 'number', hint: 'Number · currency-aware', required: false, icon: DollarSign },
