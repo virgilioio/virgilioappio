@@ -167,9 +167,11 @@ export default function PublicJobPosting() {
           id,
           job_id,
           title,
+          slug,
           description,
           details,
-          tenant_id
+          tenant_id,
+          created_at
         `)
         .eq('slug', slug)
         .maybeSingle()
@@ -178,7 +180,7 @@ export default function PublicJobPosting() {
         setLoading(false)
         return
       }
-      setPosting(p as Posting)
+      setPosting(p as unknown as Posting)
       setOrganizationName('our company')
 
       // Fetch tenant data (about and company slug)
