@@ -658,6 +658,7 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
+            </div>
           }
 
         >
