@@ -10,7 +10,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Sliders, UserPlus, User as UserIcon, Calendar as CalendarIcon } from 'lucide-react'
+import { Sliders, UserPlus, User as UserIcon, Calendar as CalendarIcon, Search } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+
 import { useJobAssignments, type JobAssignmentRole } from '@/hooks/useJobAssignments'
 import { useMembers } from '@/hooks/useMembers'
 import { SectionCard, FieldLabel, FieldHint, ToggleRow, MemberAvatar, RoleCard, InfoLink } from './_parts'
@@ -49,6 +51,8 @@ export function HiringTeamStep({ jobId, onNext, onBack }: HiringTeamStepProps) {
   const [notifyOnApplications, setNotifyOnApplications] = useState(true)
   const [dailyDigest, setDailyDigest] = useState(true)
   const [notifyStageMoves, setNotifyStageMoves] = useState(false)
+  const [memberSearch, setMemberSearch] = useState('')
+
 
   const memberOptions = useMemo(
     () =>
@@ -79,22 +83,41 @@ export function HiringTeamStep({ jobId, onNext, onBack }: HiringTeamStepProps) {
   const recruiterAssignment = assignments.find((a) => a.role === 'recruiter')
   const hmAssignment = assignments.find((a) => a.role === 'hiring_manager')
 
-  // Generic owner setter — swaps the single recruiter / hiring_manager slot
+  // Generic owner setter — swaps the single recruiter / hiring_manager slot.
+  // Handles the case where the target user already has a different role on the job
+  // (would otherwise collide on the unique (job, user, role) constraint).
   const setOwner = async (role: JobAssignmentRole, newUserId: string) => {
     if (!jobId) return
     const current = assignments.find((a) => a.role === role)
     if (current?.user_id === newUserId) return
-    if (current) await removeUserFromJob(current.id)
     if (!newUserId) return
     const m = findMember(newUserId)
     if (!m) return
-    await assignUserToJob({
-      job_id: jobId,
-      user_id: newUserId,
-      organization_id: m.organization_id,
-      role,
-    })
+
+    try {
+      const existingForUser = assignments.find((a) => a.user_id === newUserId)
+
+      // Free the slot only if a *different* user holds it.
+      if (current && current.user_id !== newUserId) {
+        await removeUserFromJob(current.id)
+      }
+
+      if (existingForUser && existingForUser.role !== role) {
+        // Promote/demote in place — no insert, no collision.
+        await updateAssignmentRole(existingForUser.id, role)
+      } else if (!existingForUser) {
+        await assignUserToJob({
+          job_id: jobId,
+          user_id: newUserId,
+          organization_id: m.organization_id,
+          role,
+        })
+      }
+    } catch (e) {
+      console.error('setOwner failed:', e)
+    }
   }
+
 
   // Counts per role for the "Roles on this job" tiles
   const roleCounts = {
@@ -108,13 +131,20 @@ export function HiringTeamStep({ jobId, onNext, onBack }: HiringTeamStepProps) {
     const ownerIds = new Set(
       [recruiterAssignment?.user_id, hmAssignment?.user_id].filter(Boolean) as string[]
     )
+    const q = memberSearch.trim().toLowerCase()
     return members
       .filter((m) => m.user_id && !ownerIds.has(m.user_id))
+      .filter((m) => {
+        if (!q) return true
+        const haystack = `${m.user_first_name ?? ''} ${m.user_last_name ?? ''} ${m.user_email ?? ''}`.toLowerCase()
+        return haystack.includes(q)
+      })
       .map((m) => {
         const assignment = assignments.find((a) => a.user_id === m.user_id)
         return { member: m, assignment }
       })
-  }, [members, assignments, recruiterAssignment, hmAssignment])
+  }, [members, assignments, recruiterAssignment, hmAssignment, memberSearch])
+
 
   const togglePanelist = async (
     userId: string,
@@ -233,11 +263,21 @@ export function HiringTeamStep({ jobId, onNext, onBack }: HiringTeamStepProps) {
           </Button>
         }
       >
+        <div className="relative mb-3 max-w-[280px]">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-tertiary pointer-events-none" />
+          <Input
+            value={memberSearch}
+            onChange={(e) => setMemberSearch(e.target.value)}
+            placeholder="Search team members…"
+            className="h-[30px] pl-8 text-[12.5px]"
+          />
+        </div>
         {teamRows.length === 0 ? (
           <p className="text-[13px] text-text-tertiary py-4 text-center">
-            No other workspace members available.
+            {memberSearch ? 'No members match your search.' : 'No other workspace members available.'}
           </p>
         ) : (
+
           <ul className="divide-y divide-virgilio-border/60 -mx-1">
             {teamRows.map(({ member, assignment }) => {
               const name = nameOf(member.user_id!)

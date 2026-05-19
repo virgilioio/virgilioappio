@@ -2,17 +2,30 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Sparkles, GripVertical, Lock, Trash2, Plus, ExternalLink, Eye,
   User, Mail, Phone, FileText, Link2, Globe2, Briefcase, DollarSign, MessageSquare, Puzzle,
+  Calendar as CalendarIcon, Hash, AlignLeft, ToggleLeft, List, Type,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { SectionCard, FieldLabel, FieldHint, ToggleRow, AiAssistedBadge } from './_parts'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { CurrencySelect } from '@/components/ui/currency-select'
+import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
+import { SectionCard, FieldLabel, FieldHint, ToggleRow, AiAssistedBadge, SalaryInput } from './_parts'
 import type { CreateJobData } from '@/hooks/useJobs'
 import { useJobPostings } from '@/hooks/useJobPostings'
+import { useApplicationFields } from '@/hooks/useApplicationFields'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+
 
 /* ---------------- helpers ---------------- */
 function slugify(s: string) {
@@ -82,6 +95,7 @@ const CHANNELS: Channel[] = [
 /* ---------------- component ---------------- */
 interface JobPostingStepProps {
   jobData: Partial<CreateJobData>
+  onUpdate: (data: Partial<CreateJobData>) => void
   jobId: string | null
   onPostingMeta?: (meta: { channels: number; fields: number }) => void
 }
@@ -92,17 +106,32 @@ export interface JobPostingStepHandle {
 }
 
 export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingStepProps>(
-  function JobPostingStep({ jobData, jobId, onPostingMeta }, ref) {
+  function JobPostingStep({ jobData, onUpdate, jobId, onPostingMeta }, ref) {
     const { createPosting, updatePosting } = useJobPostings(jobId || '')
+    const { fields: smartFieldsLibrary } = useApplicationFields()
+
+    const setJob = <K extends keyof CreateJobData>(field: K, value: CreateJobData[K]) =>
+      onUpdate({ [field]: value } as Partial<CreateJobData>)
 
     /* --- basics --- */
     const [publicTitle, setPublicTitle] = useState(jobData.title || '')
     const [slug, setSlug] = useState(slugify(jobData.title || ''))
     const [refId, setRefId] = useState('')
     const [language, setLanguage] = useState('en-US')
-    const [deadline, setDeadline] = useState('')
+    const [deadline, setDeadline] = useState<Date | undefined>(undefined)
     const [showInSearch, setShowInSearch] = useState(true)
     const [showResponseBadge, setShowResponseBadge] = useState(true)
+
+    /* --- compensation (commissions only — base salary lives on jobData) --- */
+    const [variableEnabled, setVariableEnabled] = useState(false)
+    const [commissionCurrency, setCommissionCurrency] = useState(jobData.currency || 'USD')
+    const [commissionAmount, setCommissionAmount] = useState<number | undefined>(undefined)
+
+    const salaryInvalid =
+      jobData.salary_min != null &&
+      jobData.salary_max != null &&
+      jobData.salary_min > jobData.salary_max
+
 
     // keep slug in sync with title until user manually edits it
     const slugTouched = useRef(false)
@@ -203,7 +232,8 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           return false
         }
         const details = {
-          slug, reference_id: refId || null, language, deadline: deadline || null,
+          slug, reference_id: refId || null, language,
+          deadline: deadline ? deadline.toISOString().slice(0, 10) : null,
           show_in_search: showInSearch, show_response_badge: showResponseBadge,
           brand_color: brandColor, banner_name: bannerName || null,
           team_photos: teamPhotos, culture_video: cultureVideo,
@@ -212,7 +242,13 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           channels: Object.entries(channelOn).filter(([, v]) => v).map(([id]) => id),
           apply_experience: { send_confirm: sendConfirm, promise_48h: promise48, allow_message: allowMessage, enable_referral: enableReferral },
           seo: { meta_title: metaTitle, meta_description: metaDescription },
+          compensation: {
+            variable_enabled: variableEnabled,
+            commission_currency: variableEnabled ? commissionCurrency : null,
+            commission_amount: variableEnabled ? commissionAmount ?? null : null,
+          },
         }
+
         try {
           const created = await createPosting({ title: publicTitle, description, details })
           return !!created
@@ -264,9 +300,18 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
             </div>
             <div>
               <FieldLabel optional>Application deadline</FieldLabel>
-              <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="mt-2 h-11" />
+              <div className="mt-2">
+                <DatePickerVirgilio
+                  value={deadline}
+                  onChange={setDeadline}
+                  placeholder="Pick a date"
+                  minDate={new Date()}
+                  className="h-11 w-full"
+                />
+              </div>
               <FieldHint>Leave empty for rolling.</FieldHint>
             </div>
+
           </div>
           <div className="border-t border-virgilio-border pt-4 space-y-1">
             <ToggleRow
@@ -283,6 +328,91 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
             />
           </div>
         </SectionCard>
+
+        {/* ---------- COMPENSATION ---------- */}
+        <SectionCard title="Compensation">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <div>
+              <FieldLabel required>Currency</FieldLabel>
+              <div className="mt-2">
+                <CurrencySelect
+                  value={jobData.currency || 'USD'}
+                  onChange={(v) => setJob('currency', v)}
+                />
+              </div>
+            </div>
+            <div>
+              <FieldLabel required>Min salary</FieldLabel>
+              <div className="mt-2">
+                <SalaryInput
+                  value={jobData.salary_min ?? undefined}
+                  onChange={(v) => setJob('salary_min', v)}
+                  placeholder="80,000"
+                  invalid={salaryInvalid}
+                />
+              </div>
+              {salaryInvalid && <FieldHint tone="error">Min must be lower than max</FieldHint>}
+            </div>
+            <div>
+              <FieldLabel required>Max salary</FieldLabel>
+              <div className="mt-2">
+                <SalaryInput
+                  value={jobData.salary_max ?? undefined}
+                  onChange={(v) => setJob('salary_max', v)}
+                  placeholder="120,000"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-virgilio-border pt-4 space-y-1">
+            <ToggleRow
+              label="Show salary on public posting"
+              hint="Recommended — applicant quality jumps 40% on jobs that publish salary."
+              checked={!!jobData.show_salary_public}
+              onChange={(v) => setJob('show_salary_public', v)}
+            />
+            <ToggleRow
+              label="Include equity"
+              checked={!!jobData.include_equity}
+              onChange={(v) => setJob('include_equity', v)}
+            />
+            <ToggleRow
+              label="Include signing bonus"
+              checked={!!jobData.include_signing_bonus}
+              onChange={(v) => setJob('include_signing_bonus', v)}
+            />
+            <ToggleRow
+              label="Include variable / commission"
+              hint="On-target earnings, sales commission, or bonus structure."
+              checked={variableEnabled}
+              onChange={setVariableEnabled}
+            />
+          </div>
+
+          {variableEnabled && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 pt-2">
+              <div>
+                <FieldLabel>Commission currency</FieldLabel>
+                <div className="mt-2">
+                  <CurrencySelect value={commissionCurrency} onChange={setCommissionCurrency} />
+                </div>
+              </div>
+              <div className="sm:col-span-2">
+                <FieldLabel>Commission / variable amount</FieldLabel>
+                <div className="mt-2">
+                  <SalaryInput
+                    value={commissionAmount}
+                    onChange={setCommissionAmount}
+                    placeholder="e.g. 20,000 OTE"
+                  />
+                </div>
+                <FieldHint>On-target earnings or % — your call.</FieldHint>
+              </div>
+            </div>
+          )}
+        </SectionCard>
+
 
         {/* ---------- PUBLIC DESCRIPTION ---------- */}
         <SectionCard
@@ -379,11 +509,57 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
         <SectionCard
           title="Application form"
           trailing={
-            <Button variant="secondary" size="sm" icon={Plus}
-              onClick={() => setFields((f) => [...f, { id: `q_${Date.now()}`, label: 'New question', type: 'text', required: false, icon: MessageSquare }])}>
-              Add question
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" size="sm" icon={Plus} dropdown>
+                  Add question
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" sideOffset={8} className="w-[280px]">
+                {smartFieldsLibrary.length > 0 && (
+                  <>
+                    <DropdownMenuLabel>Smart fields</DropdownMenuLabel>
+                    {smartFieldsLibrary.map((lf) => {
+                      const already = fields.some((f) => f.id === lf.id)
+                      const typeIcon: Record<string, any> = {
+                        text: Type, email: Mail, number: Hash, textarea: AlignLeft,
+                        select: List, checkbox: ToggleLeft, date: CalendarIcon, file: FileText, url: Link2,
+                      }
+                      const Icon = typeIcon[lf.field_type] || MessageSquare
+                      return (
+                        <DropdownMenuItem
+                          key={lf.id}
+                          disabled={already}
+                          onSelect={() => {
+                            setFields((arr) => [...arr, {
+                              id: lf.id,
+                              label: lf.field_label,
+                              type: (lf.field_type as any) === 'textarea' ? 'longtext' : (lf.field_type as any),
+                              required: lf.is_required,
+                              icon: Icon,
+                              hint: lf.help_text || undefined,
+                            }])
+                          }}
+                        >
+                          <Icon className="h-3.5 w-3.5 text-text-tertiary" />
+                          <span className="flex-1 truncate">{lf.field_label}</span>
+                          <span className="text-[10.5px] uppercase tracking-[0.06em] text-text-tertiary">{lf.field_type}</span>
+                        </DropdownMenuItem>
+                      )
+                    })}
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                <DropdownMenuItem
+                  onSelect={() => setFields((f) => [...f, { id: `q_${Date.now()}`, label: 'New question', type: 'text', required: false, icon: MessageSquare }])}
+                >
+                  <Plus className="h-3.5 w-3.5 text-text-tertiary" />
+                  Custom question…
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           }
+
         >
           <p className="text-[12.5px] text-text-secondary -mt-1">
             What candidates fill in to apply. Drag to reorder. Keep it short — every extra field drops completion by ~6%.
