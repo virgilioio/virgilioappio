@@ -1,98 +1,74 @@
-# Step 4 — "Copy from another job" button
+# Edit Job sheet redesign + Job hero "More actions" menu + Duplicate Job
 
-Add a pill-shaped dropdown button next to **+ Add question** in the Application form section of Step 4 (Job posting) that lets the user copy the application form (fields list) from another job that already has a job posting.
+Two related changes to bring the Job detail experience in line with the new Create Job wizard.
 
-## UI
+## 1. Redesign the Edit Job sheet
 
-- Placement: Application form section header, immediately to the left of **+ Add question** (same `trailing` slot in `SectionCard`).
-- Visual: identical to `+ Add question` — `<Button variant="secondary" size="sm" icon={Copy} dropdown>Copy from another job</Button>`.
-- Dropdown panel (320px, `align="end"`):
-  - `DropdownMenuLabel`: "Copy application form"
-  - Search input (shown when 7+ jobs) — reuses our standard menu search pattern.
-  - List of eligible jobs: each row shows job title + small muted department/location line, and a right-side chip with field count (e.g., "8 fields").
-  - Empty state: "No other jobs have a posting yet."
-  - Loading state: 3 skeleton rows.
+Replace the current `JobFormSheet` content with a single-pane, scrollable sheet matching the reference screenshots (`30h_Edit_job`). Same Gio Foundation tokens used by `JobWizard` / `JobInfoStep`.
 
-## Eligibility
+**Header (sticky top)**
+- Eyebrow: `EDIT JOB` (virgilio-purple, caps, 11.5px Poppins)
+- Title: job title + purple period · status badge (Open/Draft/Closed/Archived using `Badge` tones) · candidate count chip (`Badge tone="neutral"`)
+- Subtitle (two lines): "Update the role's basics, location, compensation, description, and skills. Changes go live the moment you save."
+- Close `X` (top-right ghost iconOnly button)
 
-A job is shown only if it has at least one `job_postings` row (i.e., `hasPosting`). Current job is excluded. Most-recently-updated first, capped at ~50.
+**Section nav (pill tabs, scroll-spy)**
+`Basics · Location & employment · Compensation · Description · Skills`. Clicking scrolls to the section; visible section becomes the active pill. Uses the same pill style as the wizard's secondary chips.
 
-## Behaviour
+**Sections (all in one scroll, grouped by labeled card)**
+- **BASICS** — Job title*, Internal title (optional, "Used in CRM & analytics only"), Status segmented (Draft / Open / Closed / Archived), Department / Organization*, Job level.
+- **LOCATION & EMPLOYMENT** — Work mode*, Employment type*, Primary location, Additional locations (chip input).
+- **COMPENSATION** — Currency*, Min salary*, Max salary*, three toggle rows: "Show salary on public posting" (recommended), "Include equity", "Include signing bonus".
+- **JOB DESCRIPTION** — Right-aligned "Last edited by Gio" lilac badge (when applicable) + "Rewrite" ghost button. `RichTextEditor` (Markdown). Inline lilac "Generate with Gio" CTA bottom-right inside the textarea container. Helper: "Markdown supported. Includes overview, responsibilities, requirements."
+- **REQUIRED SKILLS** — `Gio added N` lilac badge top-right. Skill chips with color tones, Add skill input, Min years / Max years (optional).
+- **EDITED ELSEWHERE** (read-only card group) — three rows linking to Job Setup subtabs: Hiring plan → Setup · Plan, Hiring team → Setup · Team, Job posting → Setup · Posting. Each row has icon, title, subline, right-aligned link with arrow.
+- **DANGER ZONE** (soft red-tinted card) — "Close or archive this job" with `Close job` (secondary) and `Archive` (danger outline) buttons. Delete stays in the hero `More actions` menu, not here.
 
-- Selecting a job fetches that job's posting custom fields and **replaces** the current `fields` array (after a confirm dialog if the current form already has user-modified fields beyond defaults). Replace, not merge — keeps mental model simple and matches "copy from".
-- Toast: "Copied {N} fields from {Job title}".
-- Does not copy: banner, brand color, channels, description — only the application-form questions.
+**Footer (sticky bottom)**
+- Left: `Cancel` link + small clock icon "Last edited Xd ago by {member}"
+- Right: `Preview posting` (secondary, eye icon) + `Save changes` (primary)
+- Primary save disabled until validation passes; shows loading state while saving.
+
+**Behavior**
+- Reuse all current `JobFormSheet` data flow (`onSubmit`, hooks). Add only the new fields that map to existing job columns (`internal_title`, `job_level`, `work_mode`, `employment_type`, `additional_locations`, `show_salary`, `include_equity`, `include_signing_bonus`) — wire them where they already exist; for any not yet in `useJobs`, render the control but mark TODO in code without schema changes (no migrations in this plan).
+- Hiring team editor is removed from the sheet (handled in Setup · Team).
+- Sheet width grows: `sm:max-w-[860px]`.
+
+## 2. Job hero "More actions" dropdown
+
+Replace the existing `MoreHorizontal` icon button to the right of `Add candidate` in `JobHero.tsx` with a real `DropdownMenu` (Gio dropdown chrome, `align="end"`, sideOffset 8). Items, in order:
+
+1. `Edit job` (Pencil)
+2. `Duplicate job` (Copy)
+3. `Close job` (XCircle) — hidden if already closed/archived
+4. `Archive` (Archive)
+5. — divider —
+6. `Delete job` (Trash, danger styling, last position per style guide)
+
+Wire each item to existing handlers from `JobDetail.tsx` (`onEdit`, `onArchive`, `onDelete`, close = status update to `closed`). Confirmation dialogs already exist for archive/delete; add a small confirm for Close.
+
+## 3. Duplicate job
+
+New handler `handleDuplicate(job)` on `JobDetail.tsx` that opens the existing `JobWizard` pre-filled from the source job.
+
+- Extend `JobWizard` props with optional `initialData?: Partial<CreateJobData> & { sourceJobId?: string }`.
+- When `initialData` is set, seed `wizardState.jobData` in `resetWizard` / on open. Title becomes `"<Original title> (copy)"`. Status forced to `draft`. `organization_id`, description, skills, salary, location, level, work mode, employment type, additional locations all copied.
+- Do NOT carry over: candidates, hiring team assignments, hiring plan customizations, job postings (user can opt into copying the application form on Step 4 via the already-built "Copy from another job" pill, pre-selected to the source).
+- Add a top callout in Step 1 of the wizard when duplicating: lilac `Alert` "Duplicating from {Original title} — review and edit before publishing."
+
+## Out of scope
+
+- New database columns/migrations.
+- Changes to Setup tabs (Plan / Team / Postings / Sourcing).
+- Bulk duplicate or templating.
 
 ## Technical notes
 
-- New hook `useJobsWithPostings(excludeJobId)` in `src/hooks/` — selects `jobs` joined/filtered by existence in `job_postings` (single query: `from('jobs').select('id, title, department, ..., job_postings!inner(id, details)')`), scoped by tenant via existing RLS.
-- Field extraction: read `job_postings.details.fields` (current shape used by `JobPostingStep` when persisting). Map to the local `FieldDef` shape used in state.
 - Files touched:
-  - `src/components/jobs/wizard/JobPostingStep.tsx` — add the button + dropdown in the Application form `trailing` slot; wire copy handler.
-  - `src/hooks/useJobsWithPostings.ts` — new.
-- No schema changes, no migrations, no edge functions.
-
-## Out of scope
-
-- Copying posting description, branding, channels, or hiring plan.
-- Cross-tenant copy.
-- Versioning / undo (toast is enough; user can still edit/remove fields after copying).
-
-# Smart Field — "Syncs to profile" badge
-
-Replace the inline "syncs to profile" hint text on smart fields placed in the Application form with a proper Gio `<Badge>` so it visually reads as a smart-field marker.
-
-## UI
-
-- On each rendered field card in the Application form list, when the field is a Smart Field (its `type` matches a `SMART_FIELDS` entry), show a `<Badge tone="lilac" size="xs" icon={Sparkles}>Syncs to profile</Badge>` next to the field label (right side of the label row, before the required/locked badges).
-- Remove "· syncs to profile" suffix from the salary smart-field `hint` string (and any other smart-field hints that include it) so the info isn't duplicated.
-- Tone `lilac` matches the existing "Smart" badge already used in the Add-question dropdown — keeps semantic consistency across the screen.
-
-## Technical notes
-
-- File touched: `src/components/jobs/wizard/JobPostingStep.tsx`.
-  - Track smart-field membership via the existing `SMART_FIELDS` array (compare by `type`) or set `isSmart: true` when pushing into `fields` in the Add-question handler so the renderer doesn't need to re-scan.
-  - Render the badge in the field row near line ~668 where the label + hint are displayed.
-- No schema changes.
-
-# Step 5 — Hiring Team shows user IDs
-
-Bug: the Summary step's **HIRING TEAM** list renders `a.user_id` (raw UUID) as both the avatar initials and the row label.
-
-## Fix
-
-- Resolve each `assignment.user_id` to a `profiles` row (`full_name`, `avatar_url`, `email`).
-- Reuse the existing pattern used elsewhere in Job Detail — likely `useProfiles` / `useMembers` hook (or fetch profiles by id list). Check what `HiringTeamPanel` / `JobAssignmentsManager` use and mirror that.
-- Render: real avatar (`<Avatar src={profile.avatar_url} fallback={initials(full_name)}>`), full name as the primary label, role badge unchanged.
-- Fallback when profile is missing: show email, else "Unknown user" — never the UUID.
-- File: `src/components/jobs/wizard/SummaryStep.tsx` (~lines 376–401).
-
-# Step 5 — "Open sourcing project" toggle wires to a real Sourcing tab
-
-When the **Open sourcing project linked to this job** toggle is ON at job creation, create a sourcing project tied to the job and expose it as a new tab inside the Job Detail page.
-
-## New tab layout
-
-`JobDetail.tsx` tabs become: **Pipeline · Job Dashboard · Sourcing · Setup** (Sourcing inserted between Job Dashboard and Setup). Visibility rule: tab is always present, but its content shows an empty-state CTA when no sourcing project is linked yet.
-
-## Behaviour
-
-- On wizard "Create job":
-  - If `autoSource` toggle is ON → after job insert, create a `sourcing_projects` row linked to `job_id` (name defaults to job title, seeded with the job's required skills + location + level as initial query hints).
-  - If OFF → no project is created; the Sourcing tab shows an empty state with a "Start sourcing for this job" CTA that creates one on demand.
-- The Sourcing tab embeds the existing Find/Sourcing UI scoped to that project — reuses the current sourcing components, just with `projectId` preset and the project switcher hidden (or locked to this job's project).
-
-## Technical notes
-
-- Need to confirm the existing sourcing schema (likely `sourcing_projects` table from the Find module) supports a `job_id` foreign key. If not, a migration adds a nullable `job_id uuid references jobs(id) on delete set null` column + index — non-breaking for existing projects.
-- New hook `useJobSourcingProject(jobId)` returns the linked project (or null) and an `ensureProject()` mutation.
-- `JobWizard` creation step: after `jobs.insert`, if `autoSource` → call `ensureProject(jobId, { seed: { skills, locations, level } })`.
-- `JobDetail.tsx`: add `<TabsTrigger value="sourcing">Sourcing</TabsTrigger>` + `<TabsContent value="sourcing">` rendering a new `JobSourcingTab` component that wraps the existing Find UI scoped by `projectId`.
-- New file: `src/components/jobs/JobSourcingTab.tsx`.
-- Find/Sourcing components stay in place; only a thin "scoped mode" prop is added so the project selector is hidden when embedded in a job.
-
-## Out of scope
-
-- Bidirectional sync of candidates between sourcing project and pipeline (separate feature — sourcing already supports "Add to job" actions).
-- Renaming/archiving the linked project from inside the job tab (use the global Find module for that).
-- Multiple sourcing projects per job — one linked project per job for v1.
+  - `src/components/jobs/JobFormSheet.tsx` — full rewrite of the sheet body; keep exported component name + props so `Jobs.tsx` and `JobDetail.tsx` callers don't change.
+  - `src/components/jobs/JobHero.tsx` — replace inline `MoreHorizontal` button with `DropdownMenu`; add `onEdit`, `onDuplicate`, `onClose`, `onArchive`, `onDelete` callback props (keep `onMoreActions` as deprecated fallback).
+  - `src/pages/JobDetail.tsx` — wire new hero callbacks + duplicate flow; open `JobWizard` with `initialData`.
+  - `src/components/jobs/JobWizard.tsx` — accept `initialData`; seed `wizardState.jobData`; add duplicating banner in step 1.
+  - `src/pages/Jobs.tsx` — pass duplicate handler through if list rows also expose it (optional follow-up; not required this pass).
+- Reuse: `Badge`, `Button`, `DropdownMenu`, `Switch`, `Input`, `Select`, `RichTextEditor`, `MemberAvatar` (none needed here), `Alert`.
+- All section cards use existing `bg-virgilio-cream`/hairline border pattern from `JobInfoStep` for visual parity with the wizard.
