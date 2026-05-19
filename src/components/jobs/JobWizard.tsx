@@ -71,12 +71,18 @@ const STEP_META: Record<
   },
 }
 
-export function JobWizard({ isOpen, onClose }: JobWizardProps) {
+export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
+  const seedData = (): Partial<CreateJobData> => {
+    if (!initialData) return { status: 'draft' }
+    const { sourceJobTitle, ...rest } = initialData as any
+    return { status: 'draft', ...rest }
+  }
+
   const [wizardState, setWizardState] = useState<WizardState>({
     currentStep: 1,
     isComplete: false,
     createdJobId: null,
-    jobData: { status: 'draft' },
+    jobData: seedData(),
     hasPosting: false,
   })
 
@@ -103,12 +109,17 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
       currentStep: 1,
       isComplete: false,
       createdJobId: null,
-      jobData: { status: 'draft' },
+      jobData: seedData(),
       hasPosting: false,
     })
 
   useEffect(() => {
     if (!isOpen) resetWizard()
+    else if (initialData) {
+      // Re-seed when opening with new initialData
+      setWizardState((prev) => ({ ...prev, jobData: seedData() }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
 
   const updateJobData = (data: Partial<CreateJobData>) =>
