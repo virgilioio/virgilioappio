@@ -79,22 +79,41 @@ export function HiringTeamStep({ jobId, onNext, onBack }: HiringTeamStepProps) {
   const recruiterAssignment = assignments.find((a) => a.role === 'recruiter')
   const hmAssignment = assignments.find((a) => a.role === 'hiring_manager')
 
-  // Generic owner setter — swaps the single recruiter / hiring_manager slot
+  // Generic owner setter — swaps the single recruiter / hiring_manager slot.
+  // Handles the case where the target user already has a different role on the job
+  // (would otherwise collide on the unique (job, user, role) constraint).
   const setOwner = async (role: JobAssignmentRole, newUserId: string) => {
     if (!jobId) return
     const current = assignments.find((a) => a.role === role)
     if (current?.user_id === newUserId) return
-    if (current) await removeUserFromJob(current.id)
     if (!newUserId) return
     const m = findMember(newUserId)
     if (!m) return
-    await assignUserToJob({
-      job_id: jobId,
-      user_id: newUserId,
-      organization_id: m.organization_id,
-      role,
-    })
+
+    try {
+      const existingForUser = assignments.find((a) => a.user_id === newUserId)
+
+      // Free the slot only if a *different* user holds it.
+      if (current && current.user_id !== newUserId) {
+        await removeUserFromJob(current.id)
+      }
+
+      if (existingForUser && existingForUser.role !== role) {
+        // Promote/demote in place — no insert, no collision.
+        await updateAssignmentRole(existingForUser.id, role)
+      } else if (!existingForUser) {
+        await assignUserToJob({
+          job_id: jobId,
+          user_id: newUserId,
+          organization_id: m.organization_id,
+          role,
+        })
+      }
+    } catch (e) {
+      console.error('setOwner failed:', e)
+    }
   }
+
 
   // Counts per role for the "Roles on this job" tiles
   const roleCounts = {
