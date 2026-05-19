@@ -392,32 +392,38 @@ export function SummaryStep({
             <p className="p-4 text-[12.5px] text-text-tertiary">No team members assigned.</p>
           ) : (
             <ul className="divide-y divide-virgilio-border">
-              {assignments.map((a) => (
-                <li key={a.id} className="flex items-center gap-3 px-3 py-2.5">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#F6F5F1] text-[11px] font-poppins font-semibold text-text-secondary">
-                    {a.user_id.slice(0, 2).toUpperCase()}
-                  </span>
-                  <span className="flex-1 text-[13px] font-poppins font-medium text-text-primary truncate">
-                    {a.user_id}
-                  </span>
-                  <Badge
-                    tone={
-                      a.role === 'recruiter'
-                        ? 'purple'
+              {assignments.map((a) => {
+                const { name, subtitle, avatarUrl } = resolveMember(a.user_id)
+                return (
+                  <li key={a.id} className="flex items-center gap-3 px-3 py-2.5">
+                    <MemberAvatar name={name} url={avatarUrl} size={28} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-poppins font-medium text-text-primary truncate">
+                        {name}
+                      </p>
+                      {subtitle && (
+                        <p className="text-[11.5px] text-text-tertiary truncate">{subtitle}</p>
+                      )}
+                    </div>
+                    <Badge
+                      tone={
+                        a.role === 'recruiter'
+                          ? 'purple'
+                          : a.role === 'hiring_manager'
+                            ? 'yellow'
+                            : 'neutral'
+                      }
+                      size="xs"
+                    >
+                      {a.role === 'recruiter'
+                        ? 'Recruiter'
                         : a.role === 'hiring_manager'
-                          ? 'yellow'
-                          : 'neutral'
-                    }
-                    size="xs"
-                  >
-                    {a.role === 'recruiter'
-                      ? 'Recruiter'
-                      : a.role === 'hiring_manager'
-                        ? 'Hiring manager'
-                        : 'Interviewer'}
-                  </Badge>
-                </li>
-              ))}
+                          ? 'Hiring manager'
+                          : 'Interviewer'}
+                    </Badge>
+                  </li>
+                )
+              })}
             </ul>
           )}
         </div>
