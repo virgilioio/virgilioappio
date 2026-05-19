@@ -49,6 +49,11 @@ interface JobHeroProps {
   hasPosting?: boolean
   onAddCandidate?: () => void
   onMoreActions?: () => void
+  onEdit?: () => void
+  onDuplicate?: () => void
+  onCloseJob?: () => void
+  onArchive?: () => void
+  onDelete?: () => void
   canEdit?: boolean
 }
 
