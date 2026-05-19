@@ -110,10 +110,17 @@ export function JobHero({
   hasPosting = true,
   onAddCandidate,
   onMoreActions,
+  onEdit,
+  onDuplicate,
+  onCloseJob,
+  onArchive,
+  onDelete,
   canEdit = true,
 }: JobHeroProps) {
   const statusInfo = STATUS_TONE[(status || 'open').toLowerCase()] || STATUS_TONE.open
   const posted = createdAt ? formatDistanceToNowStrict(new Date(createdAt), { addSuffix: true }) : null
+  const hasMenu = !!(onEdit || onDuplicate || onCloseJob || onArchive || onDelete)
+  const isClosed = status === 'closed' || status === 'archived'
 
   return (
     <header className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 pb-4">
