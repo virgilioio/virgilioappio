@@ -1,63 +1,83 @@
-# Promote "Cc additional guests" into a formal GUESTS section
+# Two-part plan
 
-## What changes
+## Part A — Primary buttons go black everywhere
 
-Today the guest field lives at the bottom of the **INVITATION** card as a small `<Label>` + `<GuestEmailInput>` (a plain Input + portal dropdown + secondary Badges). It looks like an afterthought compared to **WHAT & WHO**, **WHEN**, **INVITATION**.
+### Problem
+Across forms, sheets, modals, email composers, job-post forms, and the wizard, the "primary action" button (Save / Create & continue / Add candidate / Send invitation, etc.) renders **purple** instead of **black + Opaline-white text** as required by the Gio Foundation style guide §2.
 
-We promote it to its own top-level `SectionCard` directly after **INVITATION**, with the exact same visual language as the **Interviewers** field — pill chips + dashed "+ Add guest" pill + popover autocomplete.
+Root cause: `<Button>` with no `variant` falls back to the legacy `default` variant in `src/components/ui/button.tsx`, which is still wired to purple. Hundreds of call sites use plain `<Button>` and inherit this.
 
-## New section structure
+### Fix (one-line origin, large reach)
+Flip the legacy `default` variant in `src/components/ui/button.tsx` to mirror `primary` (citron-noir `#0d0d09` fill, `#fffcf9` text, button shadow, correct hover/active). This is the change the style-guide comment in that same file already anticipates ("default → purple (will flip to primary later)").
 
-```text
-┌─ GUESTS ─────────────────────────────────────────── (0/10) ──┐
-│  People to Cc on the invite (optional)                       │
-│                                                              │
-│  Cc'd guests                                                 │
-│  [● Jane Doe ×] [● Mark Smith ×] [● ana@acme.io ×] (+ Add guest)
-│                                                              │
-│  Tip: teammates appear with their name, external emails are  │
-│  added as-is and receive the calendar invite.                │
-└──────────────────────────────────────────────────────────────┘
-```
+Effect: every plain `<Button>` across the app — form submits, sheet footers, modal confirms, wizard CTAs, email composers, job-post forms — automatically becomes the spec-correct black primary, with zero call-site edits.
 
-- `SectionCard label="GUESTS"` with `rightSlot` = small `(N/10)` counter badge.
-- One-line subtitle under the title to explain purpose.
-- Field label "Cc'd guests" using `text-form-label text-virgilio-muted` (same as Interviewers).
-- Chip row + dashed pill trigger + popover, identical chrome to `PanelistComboField`.
-- Helper text below in `text-body-xs text-virgilio-muted`.
+### Cleanup pass (small, targeted)
+1. **Remove redundant overrides** on call sites that hand-rolled white text to fake the look. Example: `src/pages/Jobs.tsx` uses `variant="primary" … className="text-white [&_svg]:text-white"` — drop the className.
+2. **Preserve intentional purple actions** (Gio / AI / CRM commits) by giving them an explicit `variant="purple"` if they were silently relying on default. Audit targets: AI banners, "Generate with Gio" buttons, CRM deal confirms. If any of these currently use plain `<Button>` expecting purple, switch them to `variant="purple"` so they don't flip to black.
+3. **Wizard footer**: `JobWizard.tsx` "Create & continue" and step-level "Continue to Team" already use plain `<Button>` → will become black automatically. No edit needed.
+4. **Update the Core memory note** "Form submit + datepicker standard" to reflect that "default Button" now means black (per spec), not purple.
 
-## Picker behavior (autocomplete)
+### Verification
+- Spot-check screens: Candidates → Add candidate, Jobs → New job wizard, Email composer, Settings → invitations, Offer creation.
+- Confirm Gio/AI/CRM purple actions still render purple.
+- No layout shift — `primary` and `default` share the same size tokens.
 
-- Source: `useCustomerMembers(organizationId)` — every teammate in the tenant.
-- As the user types in the dashed pill input:
-  - Filter teammates by first name, last name, full name, email.
-  - Exclude teammates whose email is already chipped.
-  - Exclude the candidate's email (defensive) and the already-selected panelists' emails (they're already on the invite).
-- Results render as `CommandItem` rows: avatar · name · email muted (mirrors current GuestEmailInput suggestion row but inside the shared Command popover).
-- Selecting a teammate adds a **purple chip** (tone="purple", same as panelists) showing their display name; the underlying value stored is the email.
-- If the query is a valid email (`EMAIL_REGEX`) and matches no teammate, show a final `CommandItem` "Add 'foo@bar.com' as external guest" (icon: UserPlus). Pressing Enter or clicking adds a **neutral chip** (tone="neutral") showing the raw email.
-- Enter on a valid-email query with no teammate match also adds external. Enter on no-match + non-email shows inline hint "Enter a valid email".
-- Backspace on empty input removes the last chip (parity with PanelistComboField).
-- Escape closes the popover.
-- Cap at 10 (existing limit), surface counter in section header right slot; once reached, dashed trigger disables with tooltip "Maximum 10 guests".
+---
 
-## Chip styling
+## Part B — Job wizard Step 2: Hiring plan
 
-- Teammate guest → `RemovableChip tone="purple" size="md"` with name.
-- External email guest → `RemovableChip tone="neutral" size="md"` with email + tiny `Mail` icon to differentiate.
-- Hovering a teammate chip shows tooltip with the email; hovering an external chip shows tooltip "External guest".
+Rebuild `src/components/jobs/wizard/HiringPlanStep.tsx` to match the reference (`30b_Create_job_2_Hiring_plan.html` + screenshots). The wizard chrome (left rail, header eyebrow, sticky footer) is already in place from Step 1 — only the step body changes, plus footer label tweaks.
 
-## Files
+### Header
+- Eyebrow: `CREATE JOB · STEP 2 OF 4`
+- Title: `Hiring plan.`
+- Subtitle: "The stages candidates progress through. Drag to reorder. Application review and Offer are required system stages."
+- Left rail item 2 active; item 1 shows green check.
 
-- **Edit** `src/components/candidates/ScheduleInterviewSheet.tsx`
-  - Remove the current `<div className="pt-3 border-t …"> Cc additional guests …` block (lines ~1197–1208) from the INVITATION SectionCard.
-  - Add a new `<SectionCard label="GUESTS" rightSlot={…counter…}>` right after the INVITATION SectionCard, rendering `<GuestComboField …>`.
-  - Add a `GuestComboField` component in the same file (mirrors `PanelistComboField` structure) since it is tightly coupled to the sheet's data flow (members, candidate email, selected panelists).
-- **No changes** to `GuestEmailInput.tsx` (keep it for any other call sites; not used here anymore).
-- **No backend / schema / RLS changes.** `guestEmails: string[]` payload contract is unchanged.
+### Section 1 — TEMPLATE
+Three selectable template cards with a top-right `✨ Gio recommends` lilac chip:
+1. **Workspace default** — black icon tile, "Application → Screen → Take-home → Onsite → Final → Offer" (selected by default; lilac border/fill highlight).
+2. **Lean tech hire** — blue icon tile, "Application → Screen → Tech onsite → Offer · 4 stages".
+3. **Exec / leadership** — purple icon tile, "Adds 2 leadership rounds + back-channel references".
 
-## Out of scope
+Selecting a template replaces the stages list below.
 
-- Persisting guests beyond what already happens via `createBookingMutation`.
-- Inviting guests as panelists (they remain Cc-only).
-- Removing or refactoring the legacy `GuestEmailInput` component.
+### Section 2 — STAGES
+- Section header with right-aligned `+ Add stage` secondary button.
+- Reorderable list (dnd-kit, CSS Translate per design philosophy).
+- Each row: drag handle · numbered colored circle · stage name + meta · optional badges (`Required`, `• AI` lilac dot, `SLA <value>`) · `Configure` ghost link · `Rename` ghost link · trash icon (hidden for required stages).
+- Color cycle for circle: purple, blue, pink, purple, orange, green, green (matches reference).
+- First stage (`Application review`) and last stage (`Offer`) are required system stages: no trash, `Required` badge.
+
+### Section 3 — AUTO-REJECTION RULES
+Card with toggle rows (reuse `ToggleRow` from `_parts.tsx`):
+- Outside listed locations — "Reject candidates not in the job's open regions." (on)
+- Salary expectation >25% above range — "Reject and keep on file." (on)
+- Same candidate, last 90 days — "Auto-reject re-applicants for the same role." (off)
+
+### Section 4 — AI AUTO-SCREEN
+Card with `✨ Gio` lilac chip top-right. Toggle rows:
+- Auto-score every application — "Scores 0–100 based on required skills and experience." (on)
+- Auto-reject scores below — same row exposes a small numeric input (default 35) with `/100` suffix, plus toggle (on).
+- Generate AI candidate summary — "3-paragraph summary attached to each candidate profile." (on)
+
+### Sticky footer (existing chrome)
+- Left: `‹ Back`
+- Center: `7 stages · avg time-to-hire estimate 32 days` (computed from stages list)
+- Right: `Save and exit` (secondary) · `Continue to team ›` (primary, now black)
+
+### Persistence
+Reuses the existing `useJobStages` / `useStageAutomations` / hiring-plan hooks already powering `HiringPlanTab`. New AI auto-screen + auto-rejection toggles persist via `useStageAutomations` / `useWorkspaceAutomation` (or a per-job extension if needed). Template selection writes a stage preset; switching templates after manual edits prompts a confirm.
+
+### Files touched
+- `src/components/ui/button.tsx` — flip legacy `default` variant to black.
+- `src/pages/Jobs.tsx` and a small handful of other call sites — drop redundant `text-white` overrides.
+- `src/components/jobs/wizard/HiringPlanStep.tsx` — full rebuild.
+- `src/components/jobs/wizard/_parts.tsx` — add `TemplateCard`, `StageRow`, `GioRecommendsBadge`, reuse `SectionCard` + `ToggleRow`.
+- `src/components/jobs/JobWizard.tsx` — Step 2 footer label ("Continue to team"), footer meta string.
+- `mem://index.md` — refresh the Core note about primary submit being black.
+
+### Out of scope
+- Steps 3 (Hiring team) and 4 (Summary) — waiting for refs.
+- New backend columns — none needed; existing stages/automations tables back this step.
