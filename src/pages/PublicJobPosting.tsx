@@ -30,7 +30,8 @@ import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 import { markdownToHtml } from '@/utils/markdown'
 import { format } from 'date-fns'
 import { EnhancedResumeDropzone, type ParsedResumeData } from '@/components/candidates/EnhancedResumeDropzone'
-import { ApplicationConfirmationDialog } from '@/components/candidates/ApplicationConfirmationDialog'
+import { ApplicationSubmittedScreen } from '@/components/careers/public/ApplicationSubmittedScreen'
+import { buildReferenceId, firstNameOf } from '@/utils/applicationReference'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Clock, Shield } from 'lucide-react'
 import { useCoreFields } from '@/hooks/useCoreFields'
@@ -126,7 +127,12 @@ export default function PublicJobPosting() {
   })
   const [customFieldResponses, setCustomFieldResponses] = useState<Record<string, any>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showConfirmationDialog, setShowConfirmationDialog] = useState(false)
+  const [submittedMeta, setSubmittedMeta] = useState<{
+    firstName: string
+    email: string
+    referenceId: string
+    candidateName: string
+  } | null>(null)
   const [organizationName, setOrganizationName] = useState<string>('')
   const [companySlug, setCompanySlug] = useState<string | null>(null)
   const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null)
@@ -560,7 +566,22 @@ export default function PublicJobPosting() {
         }
       }
 
-      setShowConfirmationDialog(true)
+      const submittedCandidateId =
+        (response && (response.candidateId || response.globalCandidateId)) ||
+        (data as any)?.candidateId ||
+        (data as any)?.globalCandidateId ||
+        null
+      const submittedName = coreFieldValues.candidate_name.trim()
+      setSubmittedMeta({
+        candidateName: submittedName,
+        firstName: firstNameOf(submittedName),
+        email: coreFieldValues.email.trim(),
+        referenceId: buildReferenceId({
+          roleTitle: posting?.title,
+          candidateName: submittedName,
+          applicationId: submittedCandidateId,
+        }),
+      })
     } catch (err) {
       console.error('Submit application error:', err)
       toast({
@@ -677,6 +698,32 @@ export default function PublicJobPosting() {
     { label: 'Ref', value: referenceCode },
   ]
 
+  if (submittedMeta) {
+    return (
+      <div className="min-h-screen bg-[#FAF7F2] flex flex-col">
+        <CareersTopBar
+          logoUrl={companyLogoUrl}
+          companyName={organizationName || 'Company'}
+          websiteUrl={companyWebsiteUrl}
+          showCompanyName
+        />
+        <ApplicationSubmittedScreen
+          firstName={submittedMeta.firstName}
+          roleName={posting?.title || 'this position'}
+          email={submittedMeta.email}
+          referenceId={submittedMeta.referenceId}
+          recruiterFirstName={firstNameOf(hiringPanel[0]?.name) === 'there' ? '' : firstNameOf(hiringPanel[0]?.name)}
+          postingUrl={typeof window !== 'undefined' ? window.location.href : ''}
+        />
+        <CareersFooter
+          companyName={organizationName || 'Company'}
+          logoUrl={companyLogoUrl}
+          websiteUrl={companyWebsiteUrl}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-[#FAF7F2] flex flex-col">
       <CareersTopBar
@@ -685,6 +732,7 @@ export default function PublicJobPosting() {
         websiteUrl={companyWebsiteUrl}
         showCompanyName
       />
+
 
       <JobHeader
         careersHref={careersHref}
@@ -1153,13 +1201,8 @@ export default function PublicJobPosting() {
         logoUrl={companyLogoUrl}
         websiteUrl={companyWebsiteUrl}
       />
-      
-      <ApplicationConfirmationDialog
-        open={showConfirmationDialog}
-        onOpenChange={setShowConfirmationDialog}
-        roleName={posting?.title || 'this position'}
-        organizationName={organizationName}
-      />
+
+
     </div>
   )
 }
