@@ -430,26 +430,72 @@ export function ScheduleInterviewSheet({
     enabled: open,
   });
 
+  const { data: hiringTeam } = useQuery({
+    queryKey: ['job-hiring-team-for-scheduling', jobId],
+    queryFn: async () => {
+      const { data: assignments, error } = await supabase
+        .from('job_assignments')
+        .select('user_id')
+        .eq('job_id', jobId)
+        .is('deleted_at', null);
+      if (error) throw error;
+      const userIds = Array.from(new Set((assignments || []).map((a) => a.user_id).filter(Boolean)));
+      if (userIds.length === 0) return [] as StageInterviewer[];
+
+      const [{ data: profiles }, { data: bookingConfigs }] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('user_id, first_name, last_name, avatar_url')
+          .in('user_id', userIds),
+        supabase.from('booking_configurations').select('*').in('user_id', userIds),
+      ]);
+
+      return userIds.map((uid) => ({
+        id: `hiring-team-${uid}`,
+        member_id: uid,
+        assignment_type: 'manual' as const,
+        member_user_id: uid,
+        profiles: profiles?.find((p) => p.user_id === uid) || null,
+        booking_configurations: bookingConfigs?.find((bc) => bc.user_id === uid) || null,
+      })) as StageInterviewer[];
+    },
+    enabled: open && !!jobId,
+  });
+
+  const mergedInterviewers = useMemo(() => {
+    const byUserId = new Map<string, StageInterviewer>();
+    // Hiring team first (lowest priority assignment_type).
+    (hiringTeam || []).forEach((i) => {
+      if (i.member_user_id) byUserId.set(i.member_user_id, i);
+    });
+    // Stage assignments override (keep their assignment_type and id).
+    (interviewers || []).forEach((i) => {
+      if (i.member_user_id) byUserId.set(i.member_user_id, i);
+    });
+    return Array.from(byUserId.values());
+  }, [interviewers, hiringTeam]);
+
   const availableInterviewers = useMemo(() => {
-    if (!interviewers) return [];
-    return interviewers
+    return mergedInterviewers
       .filter((i) => i.assignment_type !== 'backup' && i.booking_configurations?.is_active)
       .sort((a, b) => {
-        const order = { required: 1, optional: 2, backup: 3, manual: 4 } as const;
-        return order[a.assignment_type] - order[b.assignment_type];
+        const order = { required: 1, optional: 2, manual: 3, backup: 4 } as const;
+        const diff = order[a.assignment_type] - order[b.assignment_type];
+        if (diff !== 0) return diff;
+        return fullName(a).localeCompare(fullName(b));
       });
-  }, [interviewers]);
+  }, [mergedInterviewers]);
 
   const interviewersWithoutBookingConfig = useMemo(() => {
-    if (!interviewers) return [];
-    return interviewers
+    return mergedInterviewers
       .filter((i) => i.assignment_type !== 'backup' && !i.booking_configurations?.is_active)
       .map((i) => ({
         name: fullName(i),
         hasConfig: !!i.booking_configurations,
         isActive: i.booking_configurations?.is_active || false,
       }));
-  }, [interviewers]);
+  }, [mergedInterviewers]);
+
 
   const groupInterviewers = useMemo(
     () => (isGroupMode ? availableInterviewers : []),
