@@ -205,11 +205,50 @@ export function JobHero({
               Add candidate
             </Button>
           )}
-          {onMoreActions && (
+          {hasMenu ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" size="md" iconOnly icon={MoreHorizontal} aria-label="More actions" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" sideOffset={8}>
+                {onEdit && (
+                  <DropdownMenuItem onSelect={() => onEdit()}>
+                    <Pencil className="h-3.5 w-3.5" />
+                    <span>Edit job</span>
+                  </DropdownMenuItem>
+                )}
+                {onDuplicate && (
+                  <DropdownMenuItem onSelect={() => onDuplicate()}>
+                    <Copy className="h-3.5 w-3.5" />
+                    <span>Duplicate job</span>
+                  </DropdownMenuItem>
+                )}
+                {onCloseJob && !isClosed && (
+                  <DropdownMenuItem onSelect={() => onCloseJob()}>
+                    <XCircle className="h-3.5 w-3.5" />
+                    <span>Close job</span>
+                  </DropdownMenuItem>
+                )}
+                {onArchive && status !== 'archived' && (
+                  <DropdownMenuItem onSelect={() => onArchive()}>
+                    <ArchiveIcon className="h-3.5 w-3.5" />
+                    <span>Archive</span>
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" onSelect={() => onDelete()}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span>Delete job</span>
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : onMoreActions ? (
             <Button variant="secondary" size="md" iconOnly icon={MoreHorizontal} aria-label="More actions" onClick={onMoreActions} />
-          )}
-        </div>
-      )}
+          ) : null}
     </header>
   )
 }
