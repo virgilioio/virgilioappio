@@ -76,6 +76,7 @@ export function SheetApplicationFormBuilder({ postingId, readOnly, eeoEnabled, o
         type: dbTypeToShared(cf.field_type as DbFieldType),
         required: cf.is_required,
         locked: true,
+        isSmart: !!cf.is_smart,
         icon: CORE_FIELD_ICONS[cf.field_name] || iconForType(cf.field_type),
         hint: cf.help_text || undefined,
       })),
