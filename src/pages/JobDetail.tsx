@@ -1329,7 +1329,59 @@ export default function JobDetail() {
             hiring_team: Array.isArray(job.hiring_team) ? job.hiring_team : []
           } : null}
           isLoading={jobUpdateLoading}
+          candidateCount={allAssociatedCandidates.length}
+          onPreviewPosting={() => {
+            if (activePosting) window.open(`/p/${activePosting.slug}`, '_blank', 'noopener')
+          }}
+          onCloseJob={() => { setShowEditJobModal(false); setConfirmCloseJob(true) }}
+          onArchiveJob={async () => { setShowEditJobModal(false); await archiveJob(id!); navigate('/jobs') }}
+          onGoToSetup={(sub) => {
+            setShowEditJobModal(false)
+            setActiveTab('job-setup')
+            // Subtab navigation: JobSetupLayout reads its own state; deep-link not wired here.
+          }}
         />
+
+        {/* Duplicate Job Wizard */}
+        <JobWizard
+          isOpen={showDuplicateWizard}
+          onClose={() => { setShowDuplicateWizard(false); setDuplicateInitialData(null) }}
+          initialData={duplicateInitialData || undefined}
+        />
+
+        {/* Confirm Close Job */}
+        <AlertDialog open={confirmCloseJob} onOpenChange={setConfirmCloseJob}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Close this job?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Closing stops new applications. Candidates already in the pipeline are unaffected.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleCloseJob}>Close job</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Confirm Delete Job */}
+        <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete job permanently?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently remove the job, its postings, and detach related candidates. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteJob} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Delete job
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Manage Hiring Team Dialog */}
         {job && (
