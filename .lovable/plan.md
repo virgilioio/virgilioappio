@@ -1,41 +1,66 @@
-# Make the core LinkedIn Profile field a Core Smart Field
+# Application Submitted screen — redesign to match reference
 
-## Current behavior
-- `LinkedIn Profile` is a locked core field defined in `src/hooks/useCoreFields.ts` and rendered on every public application form.
-- On submit (`supabase/functions/public-submit-application/index.ts`):
-  - **New candidate:** `linkedin_url` is written to `candidates.linkedin_url` on insert (line 240). ✅ syncs
-  - **Existing candidate re-applying:** only the *custom* smart `linkedin` field (sent as `linkedin_sync`) updates the profile (line 370). The core `linkedin_url` is ignored on update. ❌ does not sync
-- In the builder UI (Wizard Step 4 + Posting Setup sheet), the core LinkedIn row is **not** marked as a smart field — no "Syncs to profile" badge, no lilac smart styling.
+Replace the current small "Application Submitted" dialog with a full-page confirmation screen on the public job posting, matching the attached reference (`43_Application_submitted.png`). The new screen reuses the same Careers top bar + footer chrome already wrapping the public posting, so the candidate stays inside the company's branded experience.
 
-## Goal
-Keep LinkedIn as a locked, default core field on every posting, but elevate it to a **Core Smart Field**: visually badged as "Syncs to profile" and reliably writing to `candidates.linkedin_url` for both new and returning candidates.
+## What the candidate sees
 
-## Changes
+1. **Hero block** (centered)
+   - Soft mint circle with a checkmark icon
+   - A "Reference" pill chip next to it showing the application reference ID (e.g. `DES-2026-014-LP-9821`)
+   - Large headline: `Got it, {FirstName} — thanks.` with the trailing purple period (reuses `StyledPageTitle` styling: Poppins, tracking-page-title, purple `.`)
+   - Sub-line: `Your application for {RoleName} is in. We sent a confirmation to {email}.`
 
-### 1. Mark the core LinkedIn field as smart (UI)
-- `src/hooks/useCoreFields.ts`: add an `is_smart: true` flag (and reuse the existing `linkedin` `FieldType`) on the `linkedin_url` core entry. Other core fields stay non-smart.
-- `src/components/jobs/postings/SheetApplicationFormBuilder.tsx`: when synthesizing locked core rows, set `isSmart: true` for the LinkedIn row so it inherits the existing smart styling (lilac icon tile, "Syncs to profile" badge) already implemented in `ApplicationFormBuilder.tsx`.
-- `src/components/jobs/wizard/JobPostingStep.tsx`: same treatment for the wizard's locked LinkedIn core row, so wizard and sheet stay identical.
-- Locked + required toggles continue to behave as today (locked stays locked, required stays as configured).
+2. **"What happens next" card** — single white card, rounded, hairline border. Vertical timeline with 4 steps connected by a faint line:
+   - **1. Application received** — green filled circle with check · `Just now · {ReferenceID}` · right-aligned check glyph
+   - **2. Recruiter review** — purple filled circle with `2` · "Maya from our team will read every word — promise." · right-aligned `Within 48h` in purple
+   - **3. Intro chat** — muted outline circle `3` · "If there's a fit, we'll send 3 calendar slots within 24h of the reply." · right-aligned `~ next week` muted
+   - **4. Decision** — muted outline circle `4` · "Whichever way it goes, you'll hear from us with notes. We don't ghost." · right-aligned `~ 2–3 weeks` muted
 
-### 2. Always sync LinkedIn to the candidate profile (backend)
-- `supabase/functions/public-submit-application/index.ts`:
-  - When `body.linkedin_url` is present, also use it as the sync source for **existing** candidates (today only `body.linkedin_sync` triggers the update at line 370).
-  - Simplest fix: in the existing-candidate update block, coalesce `body.linkedin_sync ?? body.linkedin_url` and update `candidates.linkedin_url` if a normalized URL is produced and the current value is empty or differs.
-  - Keep the new-candidate insert path unchanged (already writes `linkedin_url`).
-  - Same URL normalization (`https://` prefix, 512-char cap) as today; reuse the helper.
+3. **Two side-by-side action cards** (2-column grid, stack on mobile)
+   - **Set alerts for similar roles** — lilac bell icon tile · copy · `Set up alerts` secondary button
+   - **Share the role** — lilac share icon tile · copy · `Copy link` secondary button (copies the posting URL to clipboard)
 
-### 3. Public form payload (no shape change)
-- `src/pages/PublicJobPosting.tsx` already sends `linkedin_url` in the submit body — no change needed. The optional `linkedin_sync` path stays for custom smart-field setups; both routes now converge in the edge function.
+4. **Footer line**: "Need to change something? **Reply to your confirmation email** — it goes straight to {RecruiterFirstName}."
+
+The existing `CareersTopBar` and `CareersFooter` continue to wrap the page (they already do on the posting itself), so nothing changes about the page chrome.
+
+## Dynamic data
+
+| Placeholder | Source |
+|---|---|
+| `{FirstName}` | First token of the submitted candidate name; falls back to "there" |
+| `{RoleName}` | `posting.title` |
+| `{email}` | The email the candidate submitted |
+| `{ReferenceID}` | Short ID derived from the new candidate/application row (format `{ROLE3}-{YYYY}-{NNN}-{INIT}-{4digits}`); falls back to the application UUID's first 8 chars uppercased if generation fails |
+| `{RecruiterFirstName}` | Job's primary recruiter first name; falls back to "our team" |
+| Step 2 name "Maya" | Same recruiter first name; falls back to "Our team" with rephrased sentence |
+| `Within 48h` / `~ next week` / `~ 2–3 weeks` | Static for now |
+
+No new tables. The reference ID is computed client-side from existing data (no schema change).
+
+## Behavior
+
+- After a successful submit, replace the page content (between top bar and footer) with the new confirmation screen instead of opening `ApplicationConfirmationDialog`.
+- `Set up alerts` opens a lightweight email-capture popover (single input + submit) that writes to a new client-only state for now and shows a toast — wiring to a real alerts table is out of scope; the button is fully styled and functional in the UI.
+- `Copy link` copies `window.location.href` (the posting URL) and shows a toast.
+- The screen is reachable only after a real submit (state-driven, not a route), matching today's behavior.
+
+## Technical notes
+
+- **New file**: `src/components/careers/public/ApplicationSubmittedScreen.tsx` — pure presentational component receiving `{ firstName, roleName, email, referenceId, recruiterFirstName, postingUrl }`.
+- **Edit**: `src/pages/PublicJobPosting.tsx`
+  - Add `submittedMeta` state (`{ firstName, email, referenceId } | null`)
+  - On success path (~line 556–563), populate `submittedMeta` instead of `setShowConfirmationDialog(true)`
+  - When `submittedMeta` is set, render `<ApplicationSubmittedScreen … />` in place of the application form section (keep `CareersTopBar` + `CareersFooter` wrappers)
+  - Remove `ApplicationConfirmationDialog` import + usage
+- **Delete**: `src/components/candidates/ApplicationConfirmationDialog.tsx` (no other consumers per repo search)
+- **Reference ID helper**: small util `src/utils/applicationReference.ts` — pure function `buildReferenceId({ roleTitle, candidateName, applicationId })`
+- All colors via semantic tokens / existing public-careers palette (`#FAF7F2` page bg, `virgilio-purple` for accents, `success` for the green check, lilac `#EDE4FF` for icon tiles). Poppins for headline, Inter for body — already loaded.
+- Mobile: hero text scales down (`text-h1-mobile`), action cards stack, timeline stays single column.
 
 ## Out of scope
-- Removing or reordering other core fields.
-- Schema changes (`candidates.linkedin_url` and `social_profiles` already exist).
-- LinkedIn auto-enrichment (the existing `enrich-by-linkedin` invocation is already triggered for new candidates and is untouched here).
-- Backfilling historical applications.
 
-## Acceptance
-- Wizard Step 4 and Posting Setup sheet show LinkedIn as a locked core row with the **"Syncs to profile"** badge and smart-field styling, identical in both surfaces.
-- Submitting a public application as a **new** candidate writes the URL to `candidates.linkedin_url` (already works, verified unchanged).
-- Submitting as an **existing** candidate (same email re-applying) updates `candidates.linkedin_url` when the form value is non-empty.
-- No regression for postings that also configured a custom `linkedin` smart field — that path keeps working via `linkedin_sync`.
+- Persisting job alert subscriptions to a real table
+- Email/Calendar deep links beyond "Copy link"
+- Sending the reference ID inside the confirmation email (display-only for now)
+- Animations beyond a subtle fade-in on mount
