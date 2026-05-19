@@ -39,6 +39,7 @@ import { SuggestedCandidatesLoader } from '@/components/sourcing/SuggestedCandid
 import { toast } from '@/hooks/use-toast'
 import { SalaryInsightsCard } from '@/components/jobs/SalaryInsightsCard'
 import { JobAnalyticsDashboard } from '@/components/jobs/JobAnalyticsDashboard'
+import { JobSourcingTab } from '@/components/jobs/JobSourcingTab'
 import { PipelineOverview } from '@/components/jobs/PipelineOverview'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -358,7 +359,7 @@ export default function JobDetail() {
   } = useJobAssignments(id!)
 
   // Sourcing project shortcut
-  const { projects: sourcingProjects } = useJobSourcingProject(id)
+  const { project: sourcingProject, ensureProject: ensureSourcingProject } = useJobSourcingProject(id)
   const { postings: jobPostings, refetch: refetchJobPostings } = useJobPostings(id!)
   const activePosting = (jobPostings || []).find((p) => p.is_active) || (jobPostings || [])[0] || null
   const hasJobPosting = (jobPostings || []).length > 0
@@ -873,6 +874,9 @@ export default function JobDetail() {
                   <TabsTrigger value="candidates" className={triggerCls}>Job Dashboard</TabsTrigger>
                 )}
                 {!isRestrictedViewer && (
+                  <TabsTrigger value="sourcing" className={triggerCls}>Sourcing</TabsTrigger>
+                )}
+                {!isRestrictedViewer && (
                   <TabsTrigger value="job-setup" className={triggerCls}>Setup</TabsTrigger>
                 )}
               </>
@@ -921,6 +925,16 @@ export default function JobDetail() {
                 candidates={allAssociatedCandidates.length ? allAssociatedCandidates : applicationReviewCandidates}
                 jobCurrency={job.currency || 'USD'}
               />
+            </TabsContent>
+          )}
+
+          {/* Sourcing */}
+          {!isRestrictedViewer && (
+            <TabsContent
+              value="sourcing"
+              className="flex-1 min-h-0 overflow-auto data-[state=inactive]:hidden mt-0"
+            >
+              <JobSourcingTab jobId={id!} jobTitle={job.title} />
             </TabsContent>
           )}
 

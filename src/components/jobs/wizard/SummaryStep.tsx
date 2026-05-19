@@ -31,6 +31,8 @@ import { useOrganizations } from '@/hooks/useOrganizations'
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { useJobPostings } from '@/hooks/useJobPostings'
+import { useMembers } from '@/hooks/useMembers'
+import { MemberAvatar } from './_parts'
 import type { JobStage } from '@/hooks/useJobStages'
 import { cn } from '@/lib/utils'
 
@@ -40,6 +42,8 @@ interface SummaryStepProps {
   hasPosting: boolean
   postingMeta: { channels: number; fields: number }
   onGoToStep: (step: number) => void
+  autoSource?: boolean
+  onAutoSourceChange?: (v: boolean) => void
 }
 
 const STAGE_TONES = ['blue', 'purple', 'yellow', 'pink', 'green', 'orange', 'lilac'] as const
@@ -127,15 +131,27 @@ function ToggleRow({
   title,
   helper,
   defaultOn,
+  checked,
+  onChange,
   disabled,
 }: {
   title: string
   helper: string
-  defaultOn: boolean
+  defaultOn?: boolean
+  checked?: boolean
+  onChange?: (v: boolean) => void
   disabled?: boolean
 }) {
-  const [on, setOn] = useState(defaultOn)
-  useEffect(() => setOn(defaultOn), [defaultOn])
+  const [internal, setInternal] = useState(defaultOn ?? false)
+  useEffect(() => {
+    if (defaultOn !== undefined) setInternal(defaultOn)
+  }, [defaultOn])
+  const isControlled = checked !== undefined
+  const on = isControlled ? !!checked : internal
+  const handle = (v: boolean) => {
+    if (!isControlled) setInternal(v)
+    onChange?.(v)
+  }
   return (
     <div className="flex items-start justify-between gap-4 py-3.5">
       <div className="min-w-0">
@@ -149,7 +165,7 @@ function ToggleRow({
         </p>
         <p className="mt-0.5 text-[12px] text-text-secondary leading-snug">{helper}</p>
       </div>
-      <Switch checked={on && !disabled} onCheckedChange={setOn} disabled={disabled} />
+      <Switch checked={on && !disabled} onCheckedChange={handle} disabled={disabled} />
     </div>
   )
 }
@@ -160,6 +176,8 @@ export function SummaryStep({
   hasPosting,
   postingMeta,
   onGoToStep,
+  autoSource = true,
+  onAutoSourceChange,
 }: SummaryStepProps) {
   const { organizations } = useOrganizations()
   const organization = organizations.find((o) => o.id === jobData.organization_id)
@@ -174,7 +192,24 @@ export function SummaryStep({
 
   const { assignments } = useJobAssignments(jobId && jobId !== 'created' ? jobId : undefined)
   const { postings } = useJobPostings(jobId && jobId !== 'created' ? jobId : '')
+  const { members } = useMembers(true)
   const posting = postings[0]
+
+  const memberByUserId = React.useMemo(() => {
+    const map = new Map<string, (typeof members)[number]>()
+    for (const m of members) if (m.user_id) map.set(m.user_id, m)
+    return map
+  }, [members])
+
+  const resolveMember = (userId: string) => {
+    const m = memberByUserId.get(userId)
+    if (!m) return { name: 'Unknown user', subtitle: '', avatarUrl: null as string | null }
+    const name =
+      `${m.user_first_name ?? ''} ${m.user_last_name ?? ''}`.trim() ||
+      m.user_email ||
+      'Unknown user'
+    return { name, subtitle: m.user_email ?? '', avatarUrl: m.user_avatar_url ?? null }
+  }
 
   const formatSalary = () => {
     const { salary_min, salary_max, currency } = jobData
@@ -373,32 +408,38 @@ export function SummaryStep({
             <p className="p-4 text-[12.5px] text-text-tertiary">No team members assigned.</p>
           ) : (
             <ul className="divide-y divide-virgilio-border">
-              {assignments.map((a) => (
-                <li key={a.id} className="flex items-center gap-3 px-3 py-2.5">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#F6F5F1] text-[11px] font-poppins font-semibold text-text-secondary">
-                    {a.user_id.slice(0, 2).toUpperCase()}
-                  </span>
-                  <span className="flex-1 text-[13px] font-poppins font-medium text-text-primary truncate">
-                    {a.user_id}
-                  </span>
-                  <Badge
-                    tone={
-                      a.role === 'recruiter'
-                        ? 'purple'
+              {assignments.map((a) => {
+                const { name, subtitle, avatarUrl } = resolveMember(a.user_id)
+                return (
+                  <li key={a.id} className="flex items-center gap-3 px-3 py-2.5">
+                    <MemberAvatar name={name} url={avatarUrl} size={28} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-poppins font-medium text-text-primary truncate">
+                        {name}
+                      </p>
+                      {subtitle && (
+                        <p className="text-[11.5px] text-text-tertiary truncate">{subtitle}</p>
+                      )}
+                    </div>
+                    <Badge
+                      tone={
+                        a.role === 'recruiter'
+                          ? 'purple'
+                          : a.role === 'hiring_manager'
+                            ? 'yellow'
+                            : 'neutral'
+                      }
+                      size="xs"
+                    >
+                      {a.role === 'recruiter'
+                        ? 'Recruiter'
                         : a.role === 'hiring_manager'
-                          ? 'yellow'
-                          : 'neutral'
-                    }
-                    size="xs"
-                  >
-                    {a.role === 'recruiter'
-                      ? 'Recruiter'
-                      : a.role === 'hiring_manager'
-                        ? 'Hiring manager'
-                        : 'Interviewer'}
-                  </Badge>
-                </li>
-              ))}
+                          ? 'Hiring manager'
+                          : 'Interviewer'}
+                    </Badge>
+                  </li>
+                )
+              })}
             </ul>
           )}
         </div>
@@ -591,7 +632,8 @@ export function SummaryStep({
                 ? 'Gio starts surfacing candidates automatically.'
                 : 'Gio can still source candidates directly without a public listing.'
             }
-            defaultOn={true}
+            checked={autoSource}
+            onChange={(v) => onAutoSourceChange?.(v)}
           />
           <ToggleRow
             title="Notify hiring team in Slack"

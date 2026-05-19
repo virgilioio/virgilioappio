@@ -10,6 +10,7 @@ import { HiringPlanStep } from './wizard/HiringPlanStep'
 import { HiringTeamStep } from './wizard/HiringTeamStep'
 import { SummaryStep } from './wizard/SummaryStep'
 import { JobPostingStep, type JobPostingStepHandle } from './wizard/JobPostingStep'
+import { useJobSourcingProject } from '@/hooks/useJobSourcingProject'
 
 interface JobWizardProps {
   isOpen: boolean
@@ -83,6 +84,12 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
   const postingRef = React.useRef<JobPostingStepHandle>(null)
   const mainRef = React.useRef<HTMLElement>(null)
   const [postingMeta, setPostingMeta] = useState({ channels: 1, fields: 9 })
+  const [autoSource, setAutoSource] = useState(true)
+  const { ensureProject: ensureSourcingProject } = useJobSourcingProject(
+    wizardState.createdJobId && wizardState.createdJobId !== 'created'
+      ? wizardState.createdJobId
+      : null,
+  )
 
   // Reset scroll position on step change — UX: always start at top of new step.
   useEffect(() => {
@@ -151,8 +158,26 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
     onClose()
   }
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     setWizardState((prev) => ({ ...prev, isComplete: true }))
+    if (
+      autoSource &&
+      wizardState.createdJobId &&
+      wizardState.createdJobId !== 'created'
+    ) {
+      try {
+        await ensureSourcingProject({
+          name: `Sourcing — ${wizardState.jobData.title ?? 'Job'}`,
+          seed: {
+            skills: (wizardState.jobData as any).required_skills ?? [],
+            location: wizardState.jobData.location ?? null,
+            level: (wizardState.jobData as any).level ?? null,
+          },
+        })
+      } catch (e) {
+        console.error('Failed to create sourcing project', e)
+      }
+    }
     toast({
       title: 'Job Created Successfully!',
       description: 'Your job has been created and is ready for candidates.',
@@ -222,6 +247,8 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
             hasPosting={wizardState.hasPosting}
             postingMeta={postingMeta}
             onGoToStep={goToStep}
+            autoSource={autoSource}
+            onAutoSourceChange={setAutoSource}
           />
         )
       default:

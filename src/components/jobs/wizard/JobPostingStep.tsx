@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Sparkles, GripVertical, Lock, Trash2, Plus, ExternalLink, Eye,
+  Sparkles, GripVertical, Lock, Trash2, Plus, ExternalLink, Eye, Copy, Search,
   User, Mail, Phone, FileText, Link2, Globe2, Briefcase, DollarSign, MessageSquare, Puzzle,
   Calendar as CalendarIcon, Hash, AlignLeft, ToggleLeft, List, Type, MapPin, Linkedin, Users, Building2,
 } from 'lucide-react'
@@ -26,6 +26,7 @@ import { useApplicationFields } from '@/hooks/useApplicationFields'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useJobsWithPostings } from '@/hooks/useJobsWithPostings'
 
 
 /* ---------------- helpers ---------------- */
@@ -63,7 +64,7 @@ interface SmartFieldDef {
 }
 
 const SMART_FIELDS: SmartFieldDef[] = [
-  { id: 'sf_salary',          label: 'Salary expectations', type: 'salary',          icon: DollarSign, hint: 'Currency-aware · syncs to profile', description: 'Expected compensation' },
+  { id: 'sf_salary',          label: 'Salary expectations', type: 'salary',          icon: DollarSign, hint: 'Currency-aware',                    description: 'Expected compensation' },
   { id: 'sf_location',        label: 'Location',            type: 'location',        icon: MapPin,     hint: 'City · state · country',            description: 'Where the candidate is based' },
   { id: 'sf_phone',           label: 'Phone',               type: 'phone',           icon: Phone,      hint: 'International format',              description: 'Contact phone number' },
   { id: 'sf_linkedin',        label: 'LinkedIn',            type: 'linkedin',        icon: Linkedin,   hint: 'Profile URL',                       description: 'LinkedIn profile' },
@@ -92,8 +93,19 @@ interface AppField {
   hint?: string
   required: boolean
   locked?: boolean
+  isSmart?: boolean
   icon: React.ComponentType<{ className?: string }>
 }
+
+const SMART_FIELD_TYPES = new Set<FieldType>(SMART_FIELDS.map((s) => s.type))
+
+const TYPE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
+  text: Type, longtext: AlignLeft, number: Hash, email: Mail, url: Link2,
+  date: CalendarIcon, select: List, yesno: ToggleLeft, file: FileText, phone: Phone,
+  linkedin: Linkedin, location: MapPin, salary: DollarSign, employment_type: Briefcase,
+  work_location: Building2, recruiter: Users,
+}
+const iconForType = (t: string) => TYPE_ICON[t] || MessageSquare
 
 const DEFAULT_FIELDS: AppField[] = [
   { id: 'full_name', label: 'Full name', type: 'text', hint: 'Short text', required: true, locked: true, icon: User },
@@ -273,7 +285,7 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           show_in_search: showInSearch, show_response_badge: showResponseBadge,
           brand_color: brandColor, banner_name: bannerName || null,
           team_photos: teamPhotos, culture_video: cultureVideo,
-          application_fields: fields.map((f) => ({ id: f.id, label: f.label, type: f.type, required: f.required, locked: !!f.locked })),
+          application_fields: fields.map((f) => ({ id: f.id, label: f.label, type: f.type, required: f.required, locked: !!f.locked, hint: f.hint, isSmart: !!f.isSmart || SMART_FIELD_TYPES.has(f.type) })),
           eeo_survey: eeo,
           channels: Object.entries(channelOn).filter(([, v]) => v).map(([id]) => id),
           apply_experience: { send_confirm: sendConfirm, promise_48h: promise48, allow_message: allowMessage, enable_referral: enableReferral },
@@ -545,6 +557,15 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
         <SectionCard
           title="Application form"
           trailing={
+            <div className="flex items-center gap-2">
+              <CopyFromAnotherJobButton
+                excludeJobId={jobId}
+                currentFieldCount={fields.length}
+                onCopy={(jobTitle, copied) => {
+                  setFields(copied)
+                  toast.success(`Copied ${copied.length} fields from ${jobTitle}`)
+                }}
+              />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="secondary" size="sm" icon={Plus} dropdown>
@@ -571,6 +592,7 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
                           required: false,
                           icon: sf.icon,
                           hint: sf.hint,
+                          isSmart: true,
                         }])
                       }}
                     >
@@ -636,6 +658,7 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
+            </div>
           }
 
         >
@@ -663,6 +686,9 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-[13px] font-poppins font-medium text-text-primary truncate">{f.label}</p>
+                      {(f.isSmart || SMART_FIELD_TYPES.has(f.type)) && !f.locked && (
+                        <Badge tone="lilac" size="xs" icon={Sparkles}>Syncs to profile</Badge>
+                      )}
                       {f.locked && <span className="text-[10.5px] uppercase tracking-[0.08em] font-poppins font-semibold text-virgilio-purple bg-[#EDE4FF] rounded-full px-2 py-0.5">Required by Gio</span>}
                     </div>
                     {f.hint && <p className="text-[11.5px] text-text-tertiary">{f.hint}</p>}
@@ -815,3 +841,123 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
     )
   }
 )
+
+/* ---------------- Copy from another job ---------------- */
+
+function fieldsFromPostingDetails(details: any): AppField[] {
+  const raw = (details?.application_fields ?? details?.fields ?? []) as any[]
+  return raw.map((f, i) => ({
+    id: f.id ?? `copied_${i}_${Date.now()}`,
+    label: f.label ?? 'Untitled',
+    type: (f.type ?? 'text') as FieldType,
+    hint: f.hint,
+    required: !!f.required,
+    locked: !!f.locked,
+    isSmart: !!f.isSmart || SMART_FIELD_TYPES.has(f.type),
+    icon: iconForType(f.type),
+  }))
+}
+
+function CopyFromAnotherJobButton({
+  excludeJobId,
+  currentFieldCount,
+  onCopy,
+}: {
+  excludeJobId: string | null
+  currentFieldCount: number
+  onCopy: (jobTitle: string, copied: AppField[]) => void
+}) {
+  const { jobs, isLoading } = useJobsWithPostings(excludeJobId)
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return jobs
+    return jobs.filter(
+      (j) =>
+        j.title.toLowerCase().includes(q) ||
+        (j.department ?? '').toLowerCase().includes(q),
+    )
+  }, [jobs, query])
+
+  const handleSelect = (j: (typeof jobs)[number]) => {
+    const copied = fieldsFromPostingDetails(j.posting_details)
+    if (copied.length === 0) {
+      toast.error('That job has no application fields to copy')
+      return
+    }
+    if (currentFieldCount > 0) {
+      const ok = window.confirm(
+        `Replace the current ${currentFieldCount} application field${currentFieldCount === 1 ? '' : 's'} with ${copied.length} from "${j.title}"?`,
+      )
+      if (!ok) return
+    }
+    onCopy(j.title, copied)
+    setOpen(false)
+    setQuery('')
+  }
+
+  return (
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger asChild>
+        <Button variant="secondary" size="sm" icon={Copy} dropdown>
+          Copy from another job
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" sideOffset={8} className="w-[320px]">
+        <DropdownMenuLabel>Copy application form</DropdownMenuLabel>
+        {jobs.length >= 7 && (
+          <div className="px-2 pt-1 pb-2">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-tertiary" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search jobs…"
+                className="w-full h-8 rounded-md border border-virgilio-border bg-white pl-7 pr-2 text-[12.5px] outline-none focus:ring-2 focus:ring-virgilio-purple/30"
+              />
+            </div>
+          </div>
+        )}
+        {isLoading ? (
+          <div className="space-y-1.5 p-2">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-9 rounded-md bg-[#F1F0EC] animate-pulse" />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="px-3 py-6 text-center text-[12.5px] text-text-tertiary">
+            {jobs.length === 0
+              ? 'No other jobs have a posting yet.'
+              : 'No jobs match your search.'}
+          </div>
+        ) : (
+          <div className="max-h-[280px] overflow-y-auto">
+            {filtered.map((j) => (
+              <DropdownMenuItem
+                key={j.id}
+                onSelect={(e) => {
+                  e.preventDefault()
+                  handleSelect(j)
+                }}
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12.5px] font-poppins font-medium text-text-primary truncate">
+                    {j.title}
+                  </p>
+                  {j.department && (
+                    <p className="text-[11px] text-text-tertiary truncate">{j.department}</p>
+                  )}
+                </div>
+                <Badge tone="neutral" size="xs">
+                  {j.field_count} {j.field_count === 1 ? 'field' : 'fields'}
+                </Badge>
+              </DropdownMenuItem>
+            ))}
+          </div>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
