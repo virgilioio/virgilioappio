@@ -63,7 +63,7 @@ interface SmartFieldDef {
 }
 
 const SMART_FIELDS: SmartFieldDef[] = [
-  { id: 'sf_salary',          label: 'Salary expectations', type: 'salary',          icon: DollarSign, hint: 'Currency-aware · syncs to profile', description: 'Expected compensation' },
+  { id: 'sf_salary',          label: 'Salary expectations', type: 'salary',          icon: DollarSign, hint: 'Currency-aware',                    description: 'Expected compensation' },
   { id: 'sf_location',        label: 'Location',            type: 'location',        icon: MapPin,     hint: 'City · state · country',            description: 'Where the candidate is based' },
   { id: 'sf_phone',           label: 'Phone',               type: 'phone',           icon: Phone,      hint: 'International format',              description: 'Contact phone number' },
   { id: 'sf_linkedin',        label: 'LinkedIn',            type: 'linkedin',        icon: Linkedin,   hint: 'Profile URL',                       description: 'LinkedIn profile' },
