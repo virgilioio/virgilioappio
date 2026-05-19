@@ -115,7 +115,11 @@ function GioRecommendsChip({ label = 'Gio recommends' }: { label?: string }) {
 }
 
 export function HiringPlanStep({ jobId }: HiringPlanStepProps) {
-  const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>('workspace_default')
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateId | null>(null)
+  const [applyingTemplate, setApplyingTemplate] = useState<TemplateId | null>(null)
+  const [planVersion, setPlanVersion] = useState(0) // bump → remount HiringPlanTab
+  const { stages: libraryStages, isLoading: stagesLoading } = useJobStages()
+  const { saveHiringPlan } = useJobHiringPlan()
 
   // Auto-rejection rules (UI state — wired to backend in a follow-up)
   const [rejectOutsideLocations, setRejectOutsideLocations] = useState(true)
@@ -127,6 +131,75 @@ export function HiringPlanStep({ jobId }: HiringPlanStepProps) {
   const [autoRejectBelow, setAutoRejectBelow] = useState(true)
   const [autoRejectThreshold, setAutoRejectThreshold] = useState(35)
   const [generateSummary, setGenerateSummary] = useState(true)
+
+  const applyTemplate = async (template: (typeof TEMPLATES)[number]) => {
+    if (!jobId) {
+      toast.error('Create the job first before applying a template.')
+      return
+    }
+    if (stagesLoading || libraryStages.length === 0) {
+      toast.error('Stage library is still loading — try again in a moment.')
+      return
+    }
+
+    setApplyingTemplate(template.id)
+    try {
+      // Resolve each stage_type to the first matching active library stage.
+      // Prefer platform defaults so the same stage_type repeats consistently.
+      const usedIds = new Set<string>()
+      const resolved: JobStage[] = []
+      let skipped = 0
+
+      for (const type of template.stageTypes) {
+        const candidates = libraryStages
+          .filter((s) => s.stage_type === type)
+          .sort((a, b) => {
+            // Platform > tenant, then is_default first
+            if (a.source !== b.source) return a.source === 'platform' ? -1 : 1
+            return Number(b.is_default) - Number(a.is_default)
+          })
+
+        // Same stage_type can appear multiple times (e.g. interview twice).
+        // Allow reuse — saveHiringPlan dedupes by id, so distinct stages are needed.
+        // Fall back to any candidate, even if already used.
+        const fresh = candidates.find((c) => !usedIds.has(c.id))
+        const pick = fresh || candidates[0]
+        if (!pick) {
+          skipped += 1
+          continue
+        }
+        if (!usedIds.has(pick.id)) {
+          usedIds.add(pick.id)
+          resolved.push(pick as unknown as JobStage)
+        } else {
+          // Already in the plan — duplicate not possible without a distinct stage row.
+          skipped += 1
+        }
+      }
+
+      if (resolved.length === 0) {
+        toast.error("None of this template's stages exist in your library.")
+        return
+      }
+
+      await saveHiringPlan(jobId, resolved.map((s) => ({ id: s.id })))
+      setSelectedTemplate(template.id)
+      setPlanVersion((v) => v + 1)
+
+      if (skipped > 0) {
+        toast.success(`Template applied · ${resolved.length} stages`, {
+          description: `${skipped} stage${skipped > 1 ? 's were' : ' was'} skipped (not in your library).`,
+        })
+      } else {
+        toast.success(`Template applied · ${resolved.length} stages`)
+      }
+    } catch (err: any) {
+      console.error('Apply template failed:', err)
+      toast.error(err?.message || 'Failed to apply template')
+    } finally {
+      setApplyingTemplate(null)
+    }
+  }
 
   return (
     <div className="space-y-8 pb-6">
@@ -142,7 +215,8 @@ export function HiringPlanStep({ jobId }: HiringPlanStepProps) {
               key={t.id}
               template={t}
               selected={selectedTemplate === t.id}
-              onSelect={() => setSelectedTemplate(t.id)}
+              applying={applyingTemplate === t.id}
+              onSelect={() => applyTemplate(t)}
             />
           ))}
         </div>
@@ -155,7 +229,7 @@ export function HiringPlanStep({ jobId }: HiringPlanStepProps) {
         </h3>
         <div className="rounded-2xl border border-virgilio-border bg-white p-2 sm:p-3">
           {jobId ? (
-            <HiringPlanTab jobId={jobId} hideHeader />
+            <HiringPlanTab key={planVersion} jobId={jobId} hideHeader />
           ) : (
             <div className="flex items-center justify-center py-12 text-[13px] text-text-secondary">
               Job must be created before configuring hiring plan.
@@ -163,6 +237,7 @@ export function HiringPlanStep({ jobId }: HiringPlanStepProps) {
           )}
         </div>
       </section>
+
 
       {/* AUTO-REJECTION RULES */}
       <SectionCard title="Auto-rejection rules">
