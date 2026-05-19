@@ -1012,7 +1012,7 @@ export default function JobDetail() {
           {!isRestrictedViewer && (
             <TabsContent
               value="job-setup"
-              className="flex-1 min-h-0 overflow-auto data-[state=inactive]:hidden mt-0"
+              className="flex-1 min-h-0 overflow-hidden data-[state=inactive]:hidden mt-0"
             >
               <JobSetupLayout
                 jobId={id!}
