@@ -131,15 +131,27 @@ function ToggleRow({
   title,
   helper,
   defaultOn,
+  checked,
+  onChange,
   disabled,
 }: {
   title: string
   helper: string
-  defaultOn: boolean
+  defaultOn?: boolean
+  checked?: boolean
+  onChange?: (v: boolean) => void
   disabled?: boolean
 }) {
-  const [on, setOn] = useState(defaultOn)
-  useEffect(() => setOn(defaultOn), [defaultOn])
+  const [internal, setInternal] = useState(defaultOn ?? false)
+  useEffect(() => {
+    if (defaultOn !== undefined) setInternal(defaultOn)
+  }, [defaultOn])
+  const isControlled = checked !== undefined
+  const on = isControlled ? !!checked : internal
+  const handle = (v: boolean) => {
+    if (!isControlled) setInternal(v)
+    onChange?.(v)
+  }
   return (
     <div className="flex items-start justify-between gap-4 py-3.5">
       <div className="min-w-0">
@@ -153,7 +165,7 @@ function ToggleRow({
         </p>
         <p className="mt-0.5 text-[12px] text-text-secondary leading-snug">{helper}</p>
       </div>
-      <Switch checked={on && !disabled} onCheckedChange={setOn} disabled={disabled} />
+      <Switch checked={on && !disabled} onCheckedChange={handle} disabled={disabled} />
     </div>
   )
 }
