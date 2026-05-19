@@ -778,7 +778,7 @@ export default function PublicJobPosting() {
                 <JobAsideSummary rows={summaryRows} />
                 <JobAsideHiringPanel members={hiringPanel} />
                 <JobAsideReferral
-                  slug={posting.title /* fallback for type */ as any && (window as any) ? (posting as any).slug || '' : ''}
+                  slug={posting.slug}
                   amount={referralBonus?.amount ?? null}
                   currency={referralBonus?.currency ?? null}
                 />
