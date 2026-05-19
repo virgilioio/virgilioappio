@@ -2,7 +2,29 @@ import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { ChevronRight, MapPin, Building2, Clock, ExternalLink, Share2, UserPlus, MoreHorizontal, Plus } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  ChevronRight,
+  MapPin,
+  Building2,
+  Clock,
+  ExternalLink,
+  Share2,
+  UserPlus,
+  MoreHorizontal,
+  Plus,
+  Pencil,
+  Copy,
+  XCircle,
+  Archive as ArchiveIcon,
+  Trash2,
+} from 'lucide-react'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { cn } from '@/lib/utils'
 
@@ -27,6 +49,11 @@ interface JobHeroProps {
   hasPosting?: boolean
   onAddCandidate?: () => void
   onMoreActions?: () => void
+  onEdit?: () => void
+  onDuplicate?: () => void
+  onCloseJob?: () => void
+  onArchive?: () => void
+  onDelete?: () => void
   canEdit?: boolean
 }
 
@@ -83,10 +110,17 @@ export function JobHero({
   hasPosting = true,
   onAddCandidate,
   onMoreActions,
+  onEdit,
+  onDuplicate,
+  onCloseJob,
+  onArchive,
+  onDelete,
   canEdit = true,
 }: JobHeroProps) {
   const statusInfo = STATUS_TONE[(status || 'open').toLowerCase()] || STATUS_TONE.open
   const posted = createdAt ? formatDistanceToNowStrict(new Date(createdAt), { addSuffix: true }) : null
+  const hasMenu = !!(onEdit || onDuplicate || onCloseJob || onArchive || onDelete)
+  const isClosed = status === 'closed' || status === 'archived'
 
   return (
     <header className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 pb-4">
@@ -171,9 +205,50 @@ export function JobHero({
               Add candidate
             </Button>
           )}
-          {onMoreActions && (
+          {hasMenu ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" size="md" iconOnly icon={MoreHorizontal} aria-label="More actions" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" sideOffset={8}>
+                {onEdit && (
+                  <DropdownMenuItem onSelect={() => onEdit()}>
+                    <Pencil className="h-3.5 w-3.5" />
+                    <span>Edit job</span>
+                  </DropdownMenuItem>
+                )}
+                {onDuplicate && (
+                  <DropdownMenuItem onSelect={() => onDuplicate()}>
+                    <Copy className="h-3.5 w-3.5" />
+                    <span>Duplicate job</span>
+                  </DropdownMenuItem>
+                )}
+                {onCloseJob && !isClosed && (
+                  <DropdownMenuItem onSelect={() => onCloseJob()}>
+                    <XCircle className="h-3.5 w-3.5" />
+                    <span>Close job</span>
+                  </DropdownMenuItem>
+                )}
+                {onArchive && status !== 'archived' && (
+                  <DropdownMenuItem onSelect={() => onArchive()}>
+                    <ArchiveIcon className="h-3.5 w-3.5" />
+                    <span>Archive</span>
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => onDelete()} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span>Delete job</span>
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : onMoreActions ? (
             <Button variant="secondary" size="md" iconOnly icon={MoreHorizontal} aria-label="More actions" onClick={onMoreActions} />
-          )}
+          ) : null}
         </div>
       )}
     </header>

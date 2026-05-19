@@ -23,6 +23,17 @@ import { CandidateTable } from '@/components/candidates/CandidateTable'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 
 import { JobFormSheet } from '@/components/jobs/JobFormSheet'
+import { JobWizard } from '@/components/jobs/JobWizard'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -348,7 +359,11 @@ export default function JobDetail() {
   const [statusListsLoading, setStatusListsLoading] = useState(false)
 
   // Jobs hook for updating
-  const { updateJob, isLoading: jobUpdateLoading } = useJobs()
+  const { updateJob, archiveJob, deleteJob, isLoading: jobUpdateLoading } = useJobs()
+  const [showDuplicateWizard, setShowDuplicateWizard] = useState(false)
+  const [duplicateInitialData, setDuplicateInitialData] = useState<any>(null)
+  const [confirmCloseJob, setConfirmCloseJob] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   // Job assignments hook
   const {
@@ -712,6 +727,57 @@ export default function JobDetail() {
     }
   }
 
+  const handleCloseJob = async () => {
+    if (!id) return
+    try {
+      await updateJob(id, { status: 'closed' })
+      refetch()
+      setConfirmCloseJob(false)
+      toast({ title: 'Job closed', description: 'New applications are no longer accepted.' })
+    } catch (e) {
+      console.error('Error closing job:', e)
+    }
+  }
+
+  const handleDeleteJob = async () => {
+    if (!id) return
+    try {
+      await deleteJob(id)
+      setConfirmDelete(false)
+      navigate('/jobs')
+    } catch (e) {
+      console.error('Error deleting job:', e)
+    }
+  }
+
+  const handleDuplicateJob = () => {
+    if (!job) return
+    setDuplicateInitialData({
+      title: `${job.title} (copy)`,
+      description: job.description || '',
+      location: job.location || '',
+      salary_min: job.salary_min ?? undefined,
+      salary_max: job.salary_max ?? undefined,
+      currency: job.currency || 'USD',
+      organization_id: job.organization_id,
+      skills: job.skills || [],
+      internal_title: job.internal_title || undefined,
+      job_level: job.job_level || undefined,
+      work_mode: job.work_mode || undefined,
+      employment_type: job.employment_type || undefined,
+      additional_locations: job.additional_locations || [],
+      show_salary_public: job.show_salary_public ?? true,
+      include_equity: job.include_equity ?? false,
+      include_signing_bonus: job.include_signing_bonus ?? false,
+      min_years_experience: job.min_years_experience ?? undefined,
+      max_years_experience: job.max_years_experience ?? undefined,
+      status: 'draft',
+      sourceJobTitle: job.title,
+    })
+    setShowDuplicateWizard(true)
+  }
+
+
   const handleBulkRejectionSuccess = () => {
     setPipelineRefresh((v) => v + 1)
     setSelectedCandidateIds([])
@@ -899,7 +965,11 @@ export default function JobDetail() {
                   onCreatePosting={() => setShowCreatePostingSheet(true)}
                   hasPosting={hasJobPosting}
                   onAddCandidate={() => setShowAddCandidate(true)}
-                  onMoreActions={() => setShowEditJobModal(true)}
+                  onEdit={handleEditJob}
+                  onDuplicate={handleDuplicateJob}
+                  onCloseJob={() => setConfirmCloseJob(true)}
+                  onArchive={() => archiveJob(id!).then(() => navigate('/jobs'))}
+                  onDelete={() => setConfirmDelete(true)}
                   canEdit={!isRestrictedViewer}
                 />
                 <TabsList className="h-auto bg-transparent p-0 shadow-none border-0 rounded-none w-full justify-start gap-6 mt-4">
@@ -1259,7 +1329,59 @@ export default function JobDetail() {
             hiring_team: Array.isArray(job.hiring_team) ? job.hiring_team : []
           } : null}
           isLoading={jobUpdateLoading}
+          candidateCount={allAssociatedCandidates.length}
+          onPreviewPosting={() => {
+            if (activePosting) window.open(`/p/${activePosting.slug}`, '_blank', 'noopener')
+          }}
+          onCloseJob={() => { setShowEditJobModal(false); setConfirmCloseJob(true) }}
+          onArchiveJob={async () => { setShowEditJobModal(false); await archiveJob(id!); navigate('/jobs') }}
+          onGoToSetup={(sub) => {
+            setShowEditJobModal(false)
+            setActiveTab('job-setup')
+            // Subtab navigation: JobSetupLayout reads its own state; deep-link not wired here.
+          }}
         />
+
+        {/* Duplicate Job Wizard */}
+        <JobWizard
+          isOpen={showDuplicateWizard}
+          onClose={() => { setShowDuplicateWizard(false); setDuplicateInitialData(null) }}
+          initialData={duplicateInitialData || undefined}
+        />
+
+        {/* Confirm Close Job */}
+        <AlertDialog open={confirmCloseJob} onOpenChange={setConfirmCloseJob}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Close this job?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Closing stops new applications. Candidates already in the pipeline are unaffected.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleCloseJob}>Close job</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Confirm Delete Job */}
+        <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete job permanently?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently remove the job, its postings, and detach related candidates. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteJob} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Delete job
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Manage Hiring Team Dialog */}
         {job && (

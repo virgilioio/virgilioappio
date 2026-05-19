@@ -15,6 +15,7 @@ import { useJobSourcingProject } from '@/hooks/useJobSourcingProject'
 interface JobWizardProps {
   isOpen: boolean
   onClose: () => void
+  initialData?: Partial<CreateJobData> & { sourceJobTitle?: string }
 }
 
 interface WizardState {
@@ -70,12 +71,18 @@ const STEP_META: Record<
   },
 }
 
-export function JobWizard({ isOpen, onClose }: JobWizardProps) {
+export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
+  const seedData = (): Partial<CreateJobData> => {
+    if (!initialData) return { status: 'draft' }
+    const { sourceJobTitle, ...rest } = initialData as any
+    return { status: 'draft', ...rest }
+  }
+
   const [wizardState, setWizardState] = useState<WizardState>({
     currentStep: 1,
     isComplete: false,
     createdJobId: null,
-    jobData: { status: 'draft' },
+    jobData: seedData(),
     hasPosting: false,
   })
 
@@ -102,12 +109,17 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
       currentStep: 1,
       isComplete: false,
       createdJobId: null,
-      jobData: { status: 'draft' },
+      jobData: seedData(),
       hasPosting: false,
     })
 
   useEffect(() => {
     if (!isOpen) resetWizard()
+    else if (initialData) {
+      // Re-seed when opening with new initialData
+      setWizardState((prev) => ({ ...prev, jobData: seedData() }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
 
   const updateJobData = (data: Partial<CreateJobData>) =>
@@ -211,7 +223,17 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
   const renderStepContent = () => {
     switch (wizardState.currentStep) {
       case 1:
-        return <JobInfoStep jobData={wizardState.jobData} onUpdate={updateJobData} />
+        return (
+          <>
+            {initialData?.sourceJobTitle && (
+              <div className="mb-6 rounded-xl border border-virgilio-purple/20 bg-virgilio-purple/[0.06] px-4 py-3 text-[13px] font-inter text-text-primary">
+                <span className="font-poppins font-medium">Duplicating from {initialData.sourceJobTitle}</span>
+                <span className="text-text-secondary"> — review and edit before publishing.</span>
+              </div>
+            )}
+            <JobInfoStep jobData={wizardState.jobData} onUpdate={updateJobData} />
+          </>
+        )
       case 2:
         return (
           <HiringPlanStep
