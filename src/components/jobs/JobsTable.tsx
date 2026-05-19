@@ -41,6 +41,7 @@ interface JobsTableProps {
   onView: (job: Job) => void
   onEdit: (job: Job) => void
   onArchive: (id: string) => void
+  onDelete: (id: string) => void
   onCreateNew: () => void
   statusFilter: StatusSegment
   onStatusFilterChange: (v: StatusSegment) => void
