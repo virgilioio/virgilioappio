@@ -17,12 +17,15 @@ interface HiringPlanStepProps {
 /* ---------- Template cards (UI-level preset chooser) ---------- */
 type TemplateId = 'workspace_default' | 'lean_tech' | 'exec_leadership'
 
+// Each template is a desired sequence of stage_types resolved against the
+// user's stage library (platform defaults + tenant stages).
 const TEMPLATES: Array<{
   id: TemplateId
   name: string
   description: string
   tileBg: string
   tileFg: string
+  stageTypes: string[]
 }> = [
   {
     id: 'workspace_default',
@@ -30,6 +33,7 @@ const TEMPLATES: Array<{
     description: 'Application → Screen → Take-home → Onsite → Final → Offer',
     tileBg: '#0d0d09',
     tileFg: '#fffcf9',
+    stageTypes: ['application_review', 'screening', 'assessment', 'interview', 'interview', 'offer'],
   },
   {
     id: 'lean_tech',
@@ -37,6 +41,7 @@ const TEMPLATES: Array<{
     description: 'Application → Screen → Tech onsite → Offer · 4 stages',
     tileBg: '#3FA7F2',
     tileFg: '#FFFFFF',
+    stageTypes: ['application_review', 'screening', 'interview', 'offer'],
   },
   {
     id: 'exec_leadership',
@@ -44,8 +49,10 @@ const TEMPLATES: Array<{
     description: 'Adds 2 leadership rounds + back-channel references',
     tileBg: '#8B5CF6',
     tileFg: '#FFFFFF',
+    stageTypes: ['application_review', 'screening', 'interview', 'interview', 'interview', 'reference_check', 'offer'],
   },
 ]
+
 
 function TemplateCard({
   template,
