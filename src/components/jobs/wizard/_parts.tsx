@@ -93,7 +93,7 @@ export function AiAssistedBadge({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full bg-virgilio-lilac/40 px-2.5 py-1 text-[11.5px] font-poppins font-medium text-virgilio-purple',
+        'inline-flex items-center gap-1.5 rounded-full bg-[#EDE4FF] px-2.5 py-1 text-[11.5px] font-poppins font-medium text-virgilio-purple',
         className
       )}
     >
@@ -138,7 +138,7 @@ export function Segmented<T extends string>({
               'relative flex-1 h-full rounded-lg text-[13px] font-poppins font-medium tracking-[-0.005em] transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/30',
               active
-                ? 'bg-virgilio-cream text-text-primary shadow-[inset_0_0_0_1px_hsl(var(--border))]'
+                ? 'bg-[#F6F5F1] text-text-primary shadow-[inset_0_0_0_1px_hsl(var(--border))]'
                 : 'text-text-tertiary hover:text-text-primary'
             )}
           >
@@ -245,8 +245,8 @@ export function ChipInput({
 
   const toneCls =
     tone === 'purple'
-      ? 'bg-virgilio-lilac/40 text-virgilio-purple'
-      : 'bg-virgilio-cream text-text-primary border border-virgilio-border'
+      ? 'bg-[#EDE4FF] text-virgilio-purple'
+      : 'bg-[#F6F5F1] text-text-primary border border-virgilio-border'
 
   return (
     <div

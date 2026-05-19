@@ -184,7 +184,7 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-[1080px] p-0 bg-virgilio-cream border-l border-virgilio-border"
+        className="w-full sm:max-w-[1080px] p-0 bg-[#F6F5F1] border-l border-virgilio-border"
       >
         <div className="flex h-full flex-col">
           {/* Top bar — close button only; eyebrow + title live inside the content header */}
@@ -251,7 +251,7 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
                             isCompleted
                               ? 'bg-virgilio-purple text-white'
                               : isActive
-                              ? 'bg-virgilio-citron-noir text-white'
+                              ? 'bg-[#0d0d09] text-white'
                               : 'bg-virgilio-border text-text-tertiary'
                           )}
                         >
@@ -271,7 +271,7 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
                 })}
               </ol>
 
-              <div className="mt-4 rounded-xl bg-virgilio-lilac/30 p-4">
+              <div className="mt-4 rounded-xl bg-[#F2EBFF] p-4">
                 <p className="text-[10.5px] font-poppins font-semibold uppercase tracking-[0.12em] text-virgilio-purple">
                   Auto-saved as draft
                 </p>
@@ -289,7 +289,7 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
 
           {/* Sticky footer */}
           {showFooter && (
-            <div className="border-t border-virgilio-border bg-virgilio-cream/95 backdrop-blur px-6 sm:px-10 py-4 flex items-center justify-between gap-4">
+            <div className="border-t border-virgilio-border bg-[#F6F5F1]/95 backdrop-blur px-6 sm:px-10 py-4 flex items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <Button variant="ghost" onClick={onClose} type="button">
                   Cancel
