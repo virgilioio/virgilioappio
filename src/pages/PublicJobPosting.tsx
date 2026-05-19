@@ -698,6 +698,32 @@ export default function PublicJobPosting() {
     { label: 'Ref', value: referenceCode },
   ]
 
+  if (submittedMeta) {
+    return (
+      <div className="min-h-screen bg-[#FAF7F2] flex flex-col">
+        <CareersTopBar
+          logoUrl={companyLogoUrl}
+          companyName={organizationName || 'Company'}
+          websiteUrl={companyWebsiteUrl}
+          showCompanyName
+        />
+        <ApplicationSubmittedScreen
+          firstName={submittedMeta.firstName}
+          roleName={posting?.title || 'this position'}
+          email={submittedMeta.email}
+          referenceId={submittedMeta.referenceId}
+          recruiterFirstName={firstNameOf(hiringPanel[0]?.name) === 'there' ? '' : firstNameOf(hiringPanel[0]?.name)}
+          postingUrl={typeof window !== 'undefined' ? window.location.href : ''}
+        />
+        <CareersFooter
+          companyName={organizationName || 'Company'}
+          logoUrl={companyLogoUrl}
+          websiteUrl={companyWebsiteUrl}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-[#FAF7F2] flex flex-col">
       <CareersTopBar
@@ -706,6 +732,7 @@ export default function PublicJobPosting() {
         websiteUrl={companyWebsiteUrl}
         showCompanyName
       />
+
 
       <JobHeader
         careersHref={careersHref}
