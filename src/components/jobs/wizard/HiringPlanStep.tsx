@@ -1,8 +1,12 @@
 import React, { useState } from 'react'
-import { GitBranch, Sparkles } from 'lucide-react'
+import { GitBranch, Sparkles, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { HiringPlanTab } from '../HiringPlanTab'
 import { SectionCard, ToggleRow } from './_parts'
+import { useJobStages, type JobStage } from '@/hooks/useJobStages'
+import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
+
 
 interface HiringPlanStepProps {
   jobId: string | null
