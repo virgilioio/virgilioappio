@@ -54,3 +54,45 @@ Replace the inline "syncs to profile" hint text on smart fields placed in the Ap
   - Track smart-field membership via the existing `SMART_FIELDS` array (compare by `type`) or set `isSmart: true` when pushing into `fields` in the Add-question handler so the renderer doesn't need to re-scan.
   - Render the badge in the field row near line ~668 where the label + hint are displayed.
 - No schema changes.
+
+# Step 5 — Hiring Team shows user IDs
+
+Bug: the Summary step's **HIRING TEAM** list renders `a.user_id` (raw UUID) as both the avatar initials and the row label.
+
+## Fix
+
+- Resolve each `assignment.user_id` to a `profiles` row (`full_name`, `avatar_url`, `email`).
+- Reuse the existing pattern used elsewhere in Job Detail — likely `useProfiles` / `useMembers` hook (or fetch profiles by id list). Check what `HiringTeamPanel` / `JobAssignmentsManager` use and mirror that.
+- Render: real avatar (`<Avatar src={profile.avatar_url} fallback={initials(full_name)}>`), full name as the primary label, role badge unchanged.
+- Fallback when profile is missing: show email, else "Unknown user" — never the UUID.
+- File: `src/components/jobs/wizard/SummaryStep.tsx` (~lines 376–401).
+
+# Step 5 — "Open sourcing project" toggle wires to a real Sourcing tab
+
+When the **Open sourcing project linked to this job** toggle is ON at job creation, create a sourcing project tied to the job and expose it as a new tab inside the Job Detail page.
+
+## New tab layout
+
+`JobDetail.tsx` tabs become: **Pipeline · Job Dashboard · Sourcing · Setup** (Sourcing inserted between Job Dashboard and Setup). Visibility rule: tab is always present, but its content shows an empty-state CTA when no sourcing project is linked yet.
+
+## Behaviour
+
+- On wizard "Create job":
+  - If `autoSource` toggle is ON → after job insert, create a `sourcing_projects` row linked to `job_id` (name defaults to job title, seeded with the job's required skills + location + level as initial query hints).
+  - If OFF → no project is created; the Sourcing tab shows an empty state with a "Start sourcing for this job" CTA that creates one on demand.
+- The Sourcing tab embeds the existing Find/Sourcing UI scoped to that project — reuses the current sourcing components, just with `projectId` preset and the project switcher hidden (or locked to this job's project).
+
+## Technical notes
+
+- Need to confirm the existing sourcing schema (likely `sourcing_projects` table from the Find module) supports a `job_id` foreign key. If not, a migration adds a nullable `job_id uuid references jobs(id) on delete set null` column + index — non-breaking for existing projects.
+- New hook `useJobSourcingProject(jobId)` returns the linked project (or null) and an `ensureProject()` mutation.
+- `JobWizard` creation step: after `jobs.insert`, if `autoSource` → call `ensureProject(jobId, { seed: { skills, locations, level } })`.
+- `JobDetail.tsx`: add `<TabsTrigger value="sourcing">Sourcing</TabsTrigger>` + `<TabsContent value="sourcing">` rendering a new `JobSourcingTab` component that wraps the existing Find UI scoped by `projectId`.
+- New file: `src/components/jobs/JobSourcingTab.tsx`.
+- Find/Sourcing components stay in place; only a thin "scoped mode" prop is added so the project selector is hidden when embedded in a job.
+
+## Out of scope
+
+- Bidirectional sync of candidates between sourcing project and pipeline (separate feature — sourcing already supports "Add to job" actions).
+- Renaming/archiving the linked project from inside the job tab (use the global Find module for that).
+- Multiple sourcing projects per job — one linked project per job for v1.
