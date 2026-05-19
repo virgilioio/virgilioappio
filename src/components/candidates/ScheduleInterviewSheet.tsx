@@ -176,57 +176,92 @@ function PanelistComboField({
   );
   const filteredUnavailable = unavailable.filter((u) => u.name.toLowerCase().includes(q));
 
+  const [editing, setEditing] = useState(false);
+
+  const activate = () => {
+    if (disabled) return;
+    setEditing(true);
+    setOpen(true);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
+  const deactivate = () => {
+    setEditing(false);
+    setOpen(false);
+    setQuery('');
+  };
+
   return (
-    <Popover open={open && !disabled} onOpenChange={setOpen}>
-      <PopoverAnchor asChild>
-        <div
-          role="group"
-          onMouseDown={(e) => {
-            if ((e.target as HTMLElement).tagName !== 'INPUT') {
-              e.preventDefault();
-              inputRef.current?.focus();
-              setOpen(true);
-            }
-          }}
-          className={cn(
-            'flex flex-wrap items-center gap-1.5 min-h-10 px-2 py-1.5 rounded-lg border border-virgilio-border bg-white cursor-text transition-shadow',
-            'focus-within:ring-2 focus-within:ring-virgilio-purple/30 focus-within:border-virgilio-purple',
-            disabled && 'opacity-60 cursor-not-allowed bg-[#FAFAF7]',
-          )}
-        >
-          {selected.map((p) => (
-            <RemovableChip
-              key={p.id}
-              tone="purple"
-              size="md"
-              onRemove={() => onRemove(p.id)}
+    <Popover open={open && editing && !disabled} onOpenChange={(o) => { if (!o) deactivate(); }}>
+      <div role="group" className="flex flex-wrap items-center gap-1.5">
+        {selected.map((p) => (
+          <RemovableChip
+            key={p.id}
+            tone="purple"
+            size="md"
+            onRemove={() => onRemove(p.id)}
+          >
+            {fullName(p)}
+          </RemovableChip>
+        ))}
+        <PopoverAnchor asChild>
+          {editing ? (
+            <div
+              className={cn(
+                'inline-flex items-center h-7 px-3 rounded-full bg-white',
+                'border border-dashed border-virgilio-purple/50',
+                'focus-within:ring-2 focus-within:ring-virgilio-purple/30',
+              )}
             >
-              {fullName(p)}
-            </RemovableChip>
-          ))}
-          <input
-            ref={inputRef}
-            value={query}
-            disabled={disabled}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setOpen(true);
-            }}
-            onFocus={() => setOpen(true)}
-            onKeyDown={(e) => {
-              if (e.key === 'Backspace' && !query && selected.length > 0) {
-                onRemove(selected[selected.length - 1].id);
-              } else if (e.key === 'Escape') {
-                setOpen(false);
-              }
-            }}
-            placeholder={
-              selected.length > 0 ? 'Add panelist…' : 'Search hiring team…'
-            }
-            className="flex-1 min-w-[140px] bg-transparent border-0 outline-none text-[13px] font-inter text-virgilio-text placeholder:text-virgilio-muted py-0.5"
-          />
-        </div>
-      </PopoverAnchor>
+              <input
+                ref={inputRef}
+                value={query}
+                disabled={disabled}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setOpen(true);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Backspace' && !query && selected.length > 0) {
+                    onRemove(selected[selected.length - 1].id);
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    deactivate();
+                  }
+                }}
+                onBlur={() => {
+                  // Defer so PopoverContent click can register first
+                  setTimeout(() => {
+                    if (!document.activeElement?.closest('[data-radix-popper-content-wrapper]')) {
+                      deactivate();
+                    }
+                  }, 120);
+                }}
+                placeholder="Type a name…"
+                className="bg-transparent border-0 outline-none text-[12px] font-poppins font-medium text-virgilio-ink placeholder:text-virgilio-ink/50 min-w-[140px] w-[140px]"
+                style={{ width: `${Math.max(140, query.length * 8 + 40)}px` }}
+              />
+            </div>
+          ) : (
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={activate}
+              className={cn(
+                'inline-flex items-center h-7 px-3 rounded-full',
+                'border border-dashed border-virgilio-border bg-transparent',
+                'text-[12px] font-poppins font-medium text-virgilio-ink/70',
+                'transition-colors',
+                'hover:border-virgilio-purple/50 hover:bg-[hsl(var(--badge-lilac))]/40 hover:text-virgilio-ink',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/30',
+                disabled && 'opacity-50 cursor-not-allowed',
+              )}
+            >
+              + Add panelist
+            </button>
+          )}
+        </PopoverAnchor>
+      </div>
       <PopoverContent
         className="w-[--radix-popover-trigger-width] min-w-[280px] p-[var(--menu-pad)]"
         align="start"
