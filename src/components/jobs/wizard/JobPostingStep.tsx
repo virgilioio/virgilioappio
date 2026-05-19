@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Sparkles, GripVertical, Lock, Trash2, Plus, ExternalLink, Eye,
   User, Mail, Phone, FileText, Link2, Globe2, Briefcase, DollarSign, MessageSquare, Puzzle,
-  Calendar as CalendarIcon, Hash, AlignLeft, ToggleLeft, List, Type,
+  Calendar as CalendarIcon, Hash, AlignLeft, ToggleLeft, List, Type, MapPin, Linkedin, Users, Building2,
 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
@@ -48,7 +49,42 @@ const LANGUAGE_OPTIONS = [
 
 const BRAND_SWATCHES = ['#6F3FF5', '#3B82F6', '#10B981', '#F59E0B', '#EC4899', '#0d0d09']
 
-type FieldType = 'text' | 'email' | 'phone' | 'file' | 'url' | 'yesno' | 'select' | 'number' | 'longtext'
+type FieldType =
+  | 'text' | 'email' | 'phone' | 'file' | 'url' | 'yesno' | 'select' | 'number' | 'longtext' | 'date'
+  | 'salary' | 'location' | 'linkedin' | 'recruiter' | 'employment_type' | 'work_location'
+
+interface SmartFieldDef {
+  id: string
+  label: string
+  type: FieldType
+  icon: React.ComponentType<{ className?: string }>
+  hint: string
+  description: string
+}
+
+const SMART_FIELDS: SmartFieldDef[] = [
+  { id: 'sf_salary',          label: 'Salary expectations', type: 'salary',          icon: DollarSign, hint: 'Currency-aware · syncs to profile', description: 'Expected compensation' },
+  { id: 'sf_location',        label: 'Location',            type: 'location',        icon: MapPin,     hint: 'City · state · country',            description: 'Where the candidate is based' },
+  { id: 'sf_phone',           label: 'Phone',               type: 'phone',           icon: Phone,      hint: 'International format',              description: 'Contact phone number' },
+  { id: 'sf_linkedin',        label: 'LinkedIn',            type: 'linkedin',        icon: Linkedin,   hint: 'Profile URL',                       description: 'LinkedIn profile' },
+  { id: 'sf_employment_type', label: 'Employment type',     type: 'employment_type', icon: Briefcase,  hint: 'Full-time · part-time · contract',  description: 'Preferred employment type' },
+  { id: 'sf_work_location',   label: 'Work location',       type: 'work_location',   icon: Building2,  hint: 'Remote · hybrid · on-site',         description: 'Preferred work arrangement' },
+  { id: 'sf_recruiter',       label: 'Preferred recruiter', type: 'recruiter',       icon: Users,      hint: 'Team member assignment',            description: 'Routes the application to a recruiter' },
+]
+
+const BASIC_TYPES: { type: FieldType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { type: 'text',     label: 'Short text',    icon: Type },
+  { type: 'longtext', label: 'Long text',     icon: AlignLeft },
+  { type: 'number',   label: 'Number',        icon: Hash },
+  { type: 'email',    label: 'Email',         icon: Mail },
+  { type: 'url',      label: 'URL',           icon: Link2 },
+  { type: 'date',     label: 'Date',          icon: CalendarIcon },
+  { type: 'select',   label: 'Single select', icon: List },
+  { type: 'yesno',    label: 'Yes / No',      icon: ToggleLeft },
+  { type: 'file',     label: 'File upload',   icon: FileText },
+]
+
+
 interface AppField {
   id: string
   label: string
@@ -515,12 +551,62 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
                   Add question
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" sideOffset={8} className="w-[280px]">
+              <DropdownMenuContent align="end" sideOffset={8} className="w-[320px]">
+                <DropdownMenuLabel className="flex items-center gap-1.5">
+                  <Sparkles className="h-3 w-3 text-virgilio-purple" />
+                  Smart fields
+                </DropdownMenuLabel>
+                {SMART_FIELDS.map((sf) => {
+                  const already = fields.some((f) => f.type === sf.type)
+                  const Icon = sf.icon
+                  return (
+                    <DropdownMenuItem
+                      key={sf.id}
+                      disabled={already}
+                      onSelect={() => {
+                        setFields((arr) => [...arr, {
+                          id: `${sf.id}_${Date.now()}`,
+                          label: sf.label,
+                          type: sf.type,
+                          required: false,
+                          icon: sf.icon,
+                          hint: sf.hint,
+                        }])
+                      }}
+                    >
+                      <Icon className="h-3.5 w-3.5 text-text-tertiary" />
+                      <span className="flex-1 truncate">{sf.label}</span>
+                      <Badge tone="lilac" size="xs">Smart</Badge>
+                    </DropdownMenuItem>
+                  )
+                })}
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Basic question types</DropdownMenuLabel>
+                {BASIC_TYPES.map((bt) => {
+                  const Icon = bt.icon
+                  return (
+                    <DropdownMenuItem
+                      key={bt.type}
+                      onSelect={() => {
+                        setFields((arr) => [...arr, {
+                          id: `q_${Date.now()}`,
+                          label: `New ${bt.label.toLowerCase()} question`,
+                          type: bt.type,
+                          required: false,
+                          icon: bt.icon,
+                        }])
+                      }}
+                    >
+                      <Icon className="h-3.5 w-3.5 text-text-tertiary" />
+                      <span className="flex-1 truncate">{bt.label}</span>
+                    </DropdownMenuItem>
+                  )
+                })}
                 {smartFieldsLibrary.length > 0 && (
                   <>
-                    <DropdownMenuLabel>Smart fields</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>From your library</DropdownMenuLabel>
                     {smartFieldsLibrary.map((lf) => {
-                      const already = fields.some((f) => f.id === lf.id)
                       const typeIcon: Record<string, any> = {
                         text: Type, email: Mail, number: Hash, textarea: AlignLeft,
                         select: List, checkbox: ToggleLeft, date: CalendarIcon, file: FileText, url: Link2,
@@ -529,10 +615,9 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
                       return (
                         <DropdownMenuItem
                           key={lf.id}
-                          disabled={already}
                           onSelect={() => {
                             setFields((arr) => [...arr, {
-                              id: lf.id,
+                              id: `lib_${lf.id}_${Date.now()}`,
                               label: lf.field_label,
                               type: (lf.field_type as any) === 'textarea' ? 'longtext' : (lf.field_type as any),
                               required: lf.is_required,
@@ -547,15 +632,8 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
                         </DropdownMenuItem>
                       )
                     })}
-                    <DropdownMenuSeparator />
                   </>
                 )}
-                <DropdownMenuItem
-                  onSelect={() => setFields((f) => [...f, { id: `q_${Date.now()}`, label: 'New question', type: 'text', required: false, icon: MessageSquare }])}
-                >
-                  <Plus className="h-3.5 w-3.5 text-text-tertiary" />
-                  Custom question…
-                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           }
