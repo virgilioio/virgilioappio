@@ -930,52 +930,14 @@ export function ScheduleInterviewSheet({
                           FREE
                         </span>
                       </div>
-                      <div
-                        className="relative h-7 flex-1 rounded-md bg-white border border-virgilio-border/60 overflow-visible"
-                        style={{
-                          backgroundImage:
-                            'repeating-linear-gradient(to right, transparent 0, transparent calc(12.5% - 1px), hsl(var(--border) / 0.5) calc(12.5% - 1px), hsl(var(--border) / 0.5) 12.5%)',
-                        }}
-                      >
-                        {isLoadingAvailability ? (
-                          <Skeleton className="absolute inset-0" />
-                        ) : timeSlotsForSelectedDate.length === 0 ? (
-                          <span className="absolute inset-0 flex items-center justify-center text-body-xs text-virgilio-muted">
-                            No slots — try another day.
-                          </span>
-                        ) : (
-                          timeSlotsForSelectedDate.map((slot) => {
-                            const isSelected = selectedSlot?.start === slot.start;
-                            const slotStart = parseISO(slot.start);
-                            const hours = slotStart.getHours() + slotStart.getMinutes() / 60;
-                            const left = Math.max(0, ((hours - 9) / 8) * 100);
-                            const width = Math.min(
-                              100 - left,
-                              (selectedDuration / 60 / 8) * 100,
-                            );
-                            return (
-                              <button
-                                key={slot.start}
-                                type="button"
-                                onClick={() => setSelectedSlot(slot)}
-                                title={`${format(slotStart, 'h:mm a')} – ${format(
-                                  new Date(slotStart.getTime() + selectedDuration * 60000),
-                                  'h:mm a',
-                                )}`}
-                                className={cn(
-                                  'absolute top-0 bottom-0 rounded-md flex items-center justify-center text-[10.5px] font-poppins font-medium transition-all',
-                                  isSelected
-                                    ? 'bg-virgilio-purple text-white ring-2 ring-virgilio-ink z-10'
-                                    : 'bg-[hsl(var(--badge-lilac))] hover:bg-pastel-purple text-[hsl(var(--badge-lilac-foreground))]',
-                                )}
-                                style={{ left: `${left}%`, width: `${width}%` }}
-                              >
-                                {isSelected ? format(slotStart, 'h:mm') : ''}
-                              </button>
-                            );
-                          })
-                        )}
-                      </div>
+                      <DraggableFreeRow
+                        slots={timeSlotsForSelectedDate}
+                        selectedSlot={selectedSlot}
+                        onSelect={setSelectedSlot}
+                        durationMinutes={selectedDuration}
+                        isLoading={isLoadingAvailability}
+                      />
+
                     </div>
                   </div>
 
