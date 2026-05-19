@@ -946,89 +946,218 @@ export function ScheduleInterviewSheet({
                   </div>
                 </SectionCard>
 
-                <SectionCard label="LOCATION & NOTES">
-                  <MeetingLocationSelector
-                    meetingType={meetingType}
-                    onMeetingTypeChange={setMeetingType}
-                    customLocation={customLocation}
-                    onCustomLocationChange={setCustomLocation}
-                  />
+                <SectionCard label="LOCATION">
+                  <div className="space-y-1.5">
+                    <Label className="text-form-label text-virgilio-muted">
+                      Format <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {(
+                        [
+                          {
+                            value: 'video' as const,
+                            label: 'Video call',
+                            sub: 'Google Meet · auto-generated',
+                            Icon: Video,
+                          },
+                          {
+                            value: 'phone' as const,
+                            label: 'Phone',
+                            sub: "We'll dial out",
+                            Icon: Phone,
+                          },
+                          {
+                            value: 'onsite' as const,
+                            label: 'On-site',
+                            sub: 'Address optional',
+                            Icon: MapPin,
+                          },
+                        ]
+                      ).map((opt) => {
+                        const active = formatOption === opt.value;
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setFormatOption(opt.value)}
+                            className={cn(
+                              'text-left rounded-xl border p-3.5 transition-all',
+                              active
+                                ? 'border-virgilio-purple ring-1 ring-virgilio-purple/30 bg-[hsl(var(--badge-lilac))]/40'
+                                : 'border-virgilio-border bg-white hover:bg-[#FAFAF7]',
+                            )}
+                          >
+                            <opt.Icon
+                              className={cn(
+                                'h-4 w-4 mb-2',
+                                active ? 'text-virgilio-purple' : 'text-virgilio-muted',
+                              )}
+                            />
+                            <div className="text-[13px] font-poppins font-medium text-virgilio-text">
+                              {opt.label}
+                            </div>
+                            <div className="text-[12px] font-inter text-virgilio-muted mt-0.5">
+                              {opt.sub}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 border-t border-virgilio-border/70">
-                    <FormField
-                      control={form.control}
-                      name="candidate_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-form-label text-virgilio-muted">
-                            Candidate name
-                          </FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="candidate_email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-form-label text-virgilio-muted">
-                            Candidate email
-                          </FormLabel>
-                          <FormControl>
-                            <Input type="email" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                  {formatOption === 'onsite' && (
+                    <div className="space-y-1.5">
+                      <Label className="text-form-label text-virgilio-muted">Address</Label>
+                      <Input
+                        value={siteAddress}
+                        onChange={(e) => setSiteAddress(e.target.value)}
+                        placeholder="e.g. 228 Park Ave, NYC"
+                      />
+                    </div>
+                  )}
+                </SectionCard>
+
+                <SectionCard
+                  label="INVITATION"
+                  rightSlot={
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toast({
+                          title: 'Coming soon',
+                          description: 'Gio will draft the invite for you.',
+                        });
+                      }}
+                      className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-[12px] font-poppins font-medium text-virgilio-purple hover:bg-[hsl(var(--badge-lilac))]/60 transition-colors"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Generate with Gio
+                    </button>
+                  }
+                >
+                  <div className="space-y-1.5">
+                    <Label className="text-form-label text-virgilio-muted">
+                      Subject <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      value={inviteSubject}
+                      onChange={(e) => setInviteSubject(e.target.value)}
+                      placeholder={`${stageName} — ${jobTitle}`}
                     />
                   </div>
 
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-form-label text-virgilio-muted">
-                          Notes for the panel (optional)
-                        </FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Anything the panelists should know before the call…"
-                            className="resize-none min-h-[72px]"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <GuestEmailInput
-                    emails={guestEmails}
-                    onChange={setGuestEmails}
-                    organizationId={organizationId}
-                  />
-
-                  <div className="flex items-center justify-between pt-3 border-t border-virgilio-border/70">
-                    <div>
-                      <Label htmlFor="send-invitation" className="text-[13px] font-poppins font-medium text-virgilio-text">
-                        Send email invitation to candidate
-                      </Label>
-                      <p className="text-body-xs text-virgilio-muted mt-0.5">
-                        Off = booked silently with no email to the candidate.
-                      </p>
-                    </div>
-                    <Switch
-                      id="send-invitation"
-                      checked={sendInvitation}
-                      onCheckedChange={setSendInvitation}
+                  <div className="space-y-1.5">
+                    <Label className="text-form-label text-virgilio-muted">
+                      Message <span className="text-virgilio-muted/70">(optional)</span>
+                    </Label>
+                    <Textarea
+                      value={inviteMessage}
+                      onChange={(e) => setInviteMessage(e.target.value)}
+                      placeholder={`Hi ${candidateName.split(' ')[0]},\n\nLooking forward to your ${stageName.toLowerCase()}…`}
+                      className="resize-none min-h-[140px]"
                     />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-form-label text-virgilio-muted">
+                      Attachments <span className="text-virgilio-muted/70">(optional)</span>
+                    </Label>
+                    <div className="flex flex-wrap gap-2 items-center">
+                      {attachments.map((file, idx) => (
+                        <RemovableChip
+                          key={`${file.name}-${idx}`}
+                          tone="neutral"
+                          size="sm"
+                          onRemove={() =>
+                            setAttachments((prev) => prev.filter((_, i) => i !== idx))
+                          }
+                        >
+                          <Paperclip className="h-3 w-3" />
+                          {file.name}
+                        </RemovableChip>
+                      ))}
+                      <label className="inline-flex items-center gap-1 h-[26px] px-2.5 rounded-full border border-dashed border-virgilio-border text-[12px] font-inter font-medium text-virgilio-muted hover:text-virgilio-purple hover:border-virgilio-purple/50 transition-colors cursor-pointer">
+                        <Plus className="h-3 w-3" />
+                        Add file
+                        <input
+                          type="file"
+                          multiple
+                          className="sr-only"
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files || []);
+                            if (files.length) setAttachments((prev) => [...prev, ...files]);
+                            e.target.value = '';
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 pt-2 border-t border-virgilio-border/70">
+                    {(
+                      [
+                        {
+                          id: 'scorecard',
+                          label: 'Include scorecard prompt in invite',
+                          help: 'Each panelist gets a link to fill out their scorecard right after.',
+                          checked: includeScorecardPrompt,
+                          onChange: setIncludeScorecardPrompt,
+                        },
+                        {
+                          id: 'autorecord',
+                          label: 'Auto-record with Gio note-taker',
+                          help: 'Transcribes the meeting and drafts a summary.',
+                          checked: autoRecord,
+                          onChange: setAutoRecord,
+                        },
+                        {
+                          id: 'reminder',
+                          label: 'Reminder 24h before',
+                          help: `Sends a friendly nudge to ${candidateName.split(' ')[0]} and the panel.`,
+                          checked: reminder24h,
+                          onChange: setReminder24h,
+                        },
+                      ]
+                    ).map((row, idx, arr) => (
+                      <div
+                        key={row.id}
+                        className={cn(
+                          'flex items-start justify-between gap-4',
+                          idx < arr.length - 1 && 'pb-3 border-b border-virgilio-border/60',
+                        )}
+                      >
+                        <div className="min-w-0">
+                          <Label
+                            htmlFor={row.id}
+                            className="text-[13px] font-poppins font-medium text-virgilio-text"
+                          >
+                            {row.label}
+                          </Label>
+                          <p className="text-body-xs text-virgilio-muted mt-0.5">{row.help}</p>
+                        </div>
+                        <Switch
+                          id={row.id}
+                          checked={row.checked}
+                          onCheckedChange={row.onChange}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-3 border-t border-virgilio-border/70">
+                    <Label className="text-form-label text-virgilio-muted">
+                      Cc additional guests
+                    </Label>
+                    <div className="mt-1.5">
+                      <GuestEmailInput
+                        emails={guestEmails}
+                        onChange={setGuestEmails}
+                        organizationId={organizationId}
+                      />
+                    </div>
                   </div>
                 </SectionCard>
+
               </form>
             </Form>
           )}
