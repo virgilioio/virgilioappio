@@ -118,6 +118,53 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
     jobData.salary_max != null &&
     jobData.salary_min > jobData.salary_max
 
+  const [isGenerating, setIsGenerating] = React.useState(false)
+  const [genValidationMsg, setGenValidationMsg] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    if (!genValidationMsg) return
+    const t = setTimeout(() => setGenValidationMsg(null), 4000)
+    return () => clearTimeout(t)
+  }, [genValidationMsg])
+
+  const handleGenerateDescription = async () => {
+    const title = (jobData.title || '').trim()
+    const level = (jobData.job_level || '').trim()
+    if (!title || !level) {
+      setGenValidationMsg('Add at least a job title and job level so Gio can draft a description.')
+      return
+    }
+    const existing = (jobData.description || '').trim()
+    if (existing.length > 20) {
+      const ok = window.confirm('Replace the current description with an AI-generated one?')
+      if (!ok) return
+    }
+    setGenValidationMsg(null)
+    setIsGenerating(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-job-description', {
+        body: { jobData },
+      })
+      if (error) throw error
+      if (!data?.description) throw new Error('Empty response')
+      set('description', data.description as string)
+      toast.success('Description generated')
+    } catch (err: any) {
+      const ctx = err?.context
+      const status = ctx?.status as number | undefined
+      let msg = 'Could not generate description. Please try again.'
+      try {
+        const parsed = ctx ? await ctx.json?.() : null
+        if (parsed?.message) msg = parsed.message
+      } catch { /* ignore */ }
+      if (status === 429) msg = 'Too many requests. Try again in a moment.'
+      else if (status === 402) msg = 'AI credits exhausted. Add credits in Settings → Workspace → Usage.'
+      toast.error(msg)
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
   return (
     <div className="space-y-8">
       {/* ------------------------------------------------ BASICS */}
