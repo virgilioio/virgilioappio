@@ -1,11 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { Loader2 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { GoGioLogo } from '@/components/GoGioLogo'
-import { PageTitle } from '@/components/ui/page-title'
-import { MapPin, Clock, Loader2 } from 'lucide-react'
+import { CareersTopBar } from '@/components/careers/public/CareersTopBar'
+import { CareersHero } from '@/components/careers/public/CareersHero'
+import { CareersFilterBar } from '@/components/careers/public/CareersFilterBar'
+import { CareersRoleList, type CareersRole } from '@/components/careers/public/CareersRoleList'
+import { CareersHowWeHireCard } from '@/components/careers/public/CareersHowWeHireCard'
+import { CareersOpenApplicationBand } from '@/components/careers/public/CareersOpenApplicationBand'
+import { CareersFooter } from '@/components/careers/public/CareersFooter'
 import gioEmptyState from '@/assets/gio-empty-state.png'
 
 interface CareersSettings {
@@ -19,12 +23,9 @@ interface CareersSettings {
   show_company_name: boolean
 }
 
-interface TenantInfo {
-  id: string
-  name: string
-}
+interface TenantInfo { id: string; name: string }
 
-interface JobPosting {
+interface RawPosting {
   id: string
   title: string
   slug: string
@@ -40,82 +41,88 @@ export default function PublicCareersPage() {
   const { companySlug } = useParams<{ companySlug: string }>()
   const [settings, setSettings] = useState<CareersSettings | null>(null)
   const [tenantInfo, setTenantInfo] = useState<TenantInfo | null>(null)
-  const [postings, setPostings] = useState<JobPosting[]>([])
+  const [postings, setPostings] = useState<RawPosting[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const [search, setSearch] = useState('')
+  const [department, setDepartment] = useState('all')
+  const [location, setLocation] = useState('all')
+  const [type, setType] = useState('all')
+
+  const rolesRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     const fetchData = async () => {
-      if (!companySlug) {
-        setError('No company slug provided')
-        setIsLoading(false)
-        return
-      }
-
+      if (!companySlug) { setError('No company slug provided'); setIsLoading(false); return }
       try {
-        // Fetch careers page settings
-        const { data: settingsData, error: settingsError } = await supabase
-          .from('careers_page_settings')
-          .select('*')
-          .eq('company_slug', companySlug)
-          .eq('is_active', true)
-          .single()
+        const { data: s, error: se } = await supabase
+          .from('careers_page_settings').select('*')
+          .eq('company_slug', companySlug).eq('is_active', true).single()
+        if (se || !s) { setError('Company careers page not found'); setIsLoading(false); return }
+        setSettings(s)
 
-        if (settingsError || !settingsData) {
-          setError('Company careers page not found')
-          setIsLoading(false)
-          return
-        }
+        const { data: t } = await supabase
+          .from('tenants').select('id, name').eq('id', s.tenant_id).single()
+        if (t) setTenantInfo(t)
 
-        setSettings(settingsData)
-
-        // Fetch tenant info
-        const { data: tenantData, error: tenantError } = await supabase
-          .from('tenants')
-          .select('id, name')
-          .eq('id', settingsData.tenant_id)
-          .single()
-
-        if (!tenantError && tenantData) {
-          setTenantInfo(tenantData)
-        }
-
-        // Fetch active job postings for this tenant
-        const { data: postingsData, error: postingsError } = await supabase
+        const { data: p } = await supabase
           .from('job_postings')
-          .select(`
-            id,
-            title,
-            slug,
-            details,
-            created_at,
-            job_id,
-            tenant_id,
-            location,
-            job_type
-          `)
-          .eq('is_active', true)
-          .eq('tenant_id', settingsData.tenant_id)
+          .select('id, title, slug, details, created_at, job_id, tenant_id, location, job_type')
+          .eq('is_active', true).eq('tenant_id', s.tenant_id)
           .order('created_at', { ascending: false })
-
-        if (!postingsError && postingsData) {
-          setPostings(postingsData as JobPosting[])
-        }
+        if (p) setPostings(p as RawPosting[])
 
         setIsLoading(false)
-      } catch (err) {
-        console.error('Error fetching careers page:', err)
-        setError('Failed to load careers page')
-        setIsLoading(false)
+      } catch (e) {
+        console.error(e); setError('Failed to load careers page'); setIsLoading(false)
       }
     }
-
     fetchData()
   }, [companySlug])
 
+  const roles: CareersRole[] = useMemo(() => postings.map((p) => ({
+    id: p.id,
+    slug: p.slug,
+    title: p.title,
+    department: (p.details?.department as string) || 'Open roles',
+    location: p.location,
+    type: p.job_type,
+    workMode: (p.details?.work_mode as string) || (p.location?.toLowerCase().includes('remote') ? 'Remote' : null),
+    postedAt: p.created_at,
+    featured: !!p.details?.featured,
+  })), [postings])
+
+  const departments = useMemo(() => Array.from(new Set(roles.map((r) => r.department))).sort(), [roles])
+  const locations = useMemo(() => Array.from(new Set(roles.map((r) => r.location).filter(Boolean) as string[])).sort(), [roles])
+  const types = useMemo(() => Array.from(new Set(roles.map((r) => r.type).filter(Boolean) as string[])).sort(), [roles])
+
+  const filtered = useMemo(() => roles.filter((r) => {
+    if (department !== 'all' && r.department !== department) return false
+    if (location !== 'all' && r.location !== location) return false
+    if (type !== 'all' && r.type !== type) return false
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      if (!r.title.toLowerCase().includes(q) && !r.department.toLowerCase().includes(q) && !(r.location || '').toLowerCase().includes(q)) return false
+    }
+    return true
+  }), [roles, department, location, type, search])
+
+  const groups = useMemo(() => {
+    const map = new Map<string, CareersRole[]>()
+    for (const r of filtered) {
+      const arr = map.get(r.department) || []
+      arr.push(r); map.set(r.department, arr)
+    }
+    return Array.from(map.entries()).map(([dep, arr]) => ({ department: dep, roles: arr }))
+  }, [filtered])
+
+  const handleOpen = (slug: string) => window.open(`/p/${slug}`, '_blank', 'noopener,noreferrer')
+  const scrollToRoles = () => rolesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-surface-primary">
+      <div className="min-h-screen flex items-center justify-center bg-[#FAF7F2]">
         <Loader2 className="h-8 w-8 animate-spin text-virgilio-purple" />
       </div>
     )
@@ -123,136 +130,58 @@ export default function PublicCareersPage() {
 
   if (error || !settings) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-surface-primary">
+      <div className="min-h-screen flex items-center justify-center bg-[#FAF7F2]">
         <Card className="max-w-md w-full mx-4 p-6 text-center">
-          <h1 className="text-2xl font-bold text-virgilio-text mb-2">
-            {error || 'Page Not Found'}
-          </h1>
-          <p className="text-text-tertiary">
-            The careers page you're looking for doesn't exist or is no longer available.
-          </p>
+          <h1 className="text-2xl font-bold text-virgilio-text mb-2">{error || 'Page Not Found'}</h1>
+          <p className="text-text-tertiary">The careers page you're looking for doesn't exist or is no longer available.</p>
         </Card>
       </div>
     )
   }
 
-  const handleLogoClick = () => {
-    if (settings.company_website_url) {
-      window.open(settings.company_website_url, '_blank', 'noopener,noreferrer')
-    }
-  }
-
-  const handleViewJob = (slug: string) => {
-    window.open(`/p/${slug}`, '_blank', 'noopener,noreferrer')
-  }
+  const companyName = tenantInfo?.name || settings.page_title || 'Company'
 
   return (
-    <div className="min-h-screen bg-surface-primary">
-      {/* Header */}
-      <header className="border-b border-virgilio-border bg-surface-primary">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="space-y-4">
-            <div className="flex">
-              {settings.logo_url ? (
-                <img
-                  src={settings.logo_url}
-                  alt={tenantInfo?.name || 'Company logo'}
-                  className={`max-h-11 object-contain ${settings.company_website_url ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
-                  onClick={handleLogoClick}
-                />
-              ) : (
-                <div 
-                  className={settings.company_website_url ? 'cursor-pointer' : ''}
-                  onClick={handleLogoClick}
-                >
-                  <GoGioLogo size="lg" />
-                </div>
-              )}
-            </div>
-            {settings.show_company_name && !settings.logo_url && tenantInfo && (
-              <div className="flex">
-                <PageTitle as="h1">
-                  {tenantInfo.name}
-                </PageTitle>
-              </div>
-            )}
-            {settings.header_text && (
-              <p className="text-text-secondary max-w-2xl">
-                {settings.header_text}
+    <div className="min-h-screen bg-[#FAF7F2]">
+      <CareersTopBar
+        logoUrl={settings.logo_url}
+        companyName={companyName}
+        websiteUrl={settings.company_website_url}
+        showCompanyName={settings.show_company_name}
+      />
+      <CareersHero
+        openRolesCount={roles.length}
+        departmentsCount={departments.length}
+        companyName={companyName}
+        headerText={settings.header_text}
+        onScrollToRoles={scrollToRoles}
+      />
+      <div ref={rolesRef}>
+        <CareersFilterBar
+          search={search} onSearch={setSearch}
+          department={department} onDepartment={setDepartment}
+          location={location} onLocation={setLocation}
+          type={type} onType={setType}
+          departments={departments} locations={locations} types={types}
+        />
+        {groups.length === 0 ? (
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+            <Card className="p-12 text-center bg-white border-black/5">
+              <img src={gioEmptyState} alt="No open roles" className="h-28 w-28 mx-auto mb-5" />
+              <p className="text-[14px] text-[#5a6072]">
+                {roles.length === 0
+                  ? 'No open positions at this time. Check back soon.'
+                  : 'No roles match your filters. Try clearing them.'}
               </p>
-            )}
+            </Card>
           </div>
-        </div>
-      </header>
-
-      {/* Job Listings */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h2 className="text-xl font-semibold text-virgilio-text mb-6">
-          Open Jobs ({postings.length})
-        </h2>
-        {postings.length === 0 ? (
-          <Card className="p-12 text-center">
-            <img 
-              src={gioEmptyState} 
-              alt="No open positions" 
-              className="h-32 w-32 mx-auto mb-6"
-            />
-            <p className="text-text-tertiary">
-              No open positions at this time. Check back soon for new opportunities!
-            </p>
-          </Card>
         ) : (
-          <div className="space-y-4">
-            {postings.map((posting) => (
-              <Card
-                key={posting.id}
-                className="p-6 hover:shadow-[var(--shadow-lg)] transition-all cursor-pointer"
-                onClick={() => handleViewJob(posting.slug)}
-              >
-                <div className="flex justify-between items-start gap-4">
-                  <div className="flex-1">
-                    <h3 className="text-xl font-semibold text-virgilio-text mb-2">
-                      {posting.title}
-                    </h3>
-                    <div className="flex flex-wrap gap-3 text-sm text-text-secondary">
-                      {posting.location && (
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4" />
-                          <span>{posting.location}</span>
-                        </div>
-                      )}
-                      {posting.job_type && (
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          <span>{posting.job_type}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <Button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleViewJob(posting.slug)
-                    }}
-                  >
-                    View Details
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
+          <CareersRoleList groups={groups} onOpen={handleOpen} />
         )}
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t border-virgilio-border bg-surface-primary mt-16">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-center gap-2 text-sm text-text-tertiary">
-            <span>Powered by</span>
-            <GoGioLogo size="sm" />
-          </div>
-        </div>
-      </footer>
+      </div>
+      <CareersHowWeHireCard />
+      <CareersOpenApplicationBand companyName={companyName} />
+      <CareersFooter companyName={companyName} logoUrl={settings.logo_url} websiteUrl={settings.company_website_url} />
     </div>
   )
 }
