@@ -566,7 +566,22 @@ export default function PublicJobPosting() {
         }
       }
 
-      setShowConfirmationDialog(true)
+      const submittedCandidateId =
+        (response && (response.candidateId || response.globalCandidateId)) ||
+        (data as any)?.candidateId ||
+        (data as any)?.globalCandidateId ||
+        null
+      const submittedName = coreFieldValues.candidate_name.trim()
+      setSubmittedMeta({
+        candidateName: submittedName,
+        firstName: firstNameOf(submittedName),
+        email: coreFieldValues.email.trim(),
+        referenceId: buildReferenceId({
+          roleTitle: posting?.title,
+          candidateName: submittedName,
+          applicationId: submittedCandidateId,
+        }),
+      })
     } catch (err) {
       console.error('Submit application error:', err)
       toast({
@@ -1159,13 +1174,8 @@ export default function PublicJobPosting() {
         logoUrl={companyLogoUrl}
         websiteUrl={companyWebsiteUrl}
       />
-      
-      <ApplicationConfirmationDialog
-        open={showConfirmationDialog}
-        onOpenChange={setShowConfirmationDialog}
-        roleName={posting?.title || 'this position'}
-        organizationName={organizationName}
-      />
+      </CareersFooter>
+
     </div>
   )
 }
