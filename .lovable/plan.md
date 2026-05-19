@@ -37,3 +37,20 @@ A job is shown only if it has at least one `job_postings` row (i.e., `hasPosting
 - Copying posting description, branding, channels, or hiring plan.
 - Cross-tenant copy.
 - Versioning / undo (toast is enough; user can still edit/remove fields after copying).
+
+# Smart Field — "Syncs to profile" badge
+
+Replace the inline "syncs to profile" hint text on smart fields placed in the Application form with a proper Gio `<Badge>` so it visually reads as a smart-field marker.
+
+## UI
+
+- On each rendered field card in the Application form list, when the field is a Smart Field (its `type` matches a `SMART_FIELDS` entry), show a `<Badge tone="lilac" size="xs" icon={Sparkles}>Syncs to profile</Badge>` next to the field label (right side of the label row, before the required/locked badges).
+- Remove "· syncs to profile" suffix from the salary smart-field `hint` string (and any other smart-field hints that include it) so the info isn't duplicated.
+- Tone `lilac` matches the existing "Smart" badge already used in the Add-question dropdown — keeps semantic consistency across the screen.
+
+## Technical notes
+
+- File touched: `src/components/jobs/wizard/JobPostingStep.tsx`.
+  - Track smart-field membership via the existing `SMART_FIELDS` array (compare by `type`) or set `isSmart: true` when pushing into `fields` in the Add-question handler so the renderer doesn't need to re-scan.
+  - Render the badge in the field row near line ~668 where the label + hint are displayed.
+- No schema changes.
