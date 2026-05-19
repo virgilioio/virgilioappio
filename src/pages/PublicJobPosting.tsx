@@ -658,11 +658,7 @@ export default function PublicJobPosting() {
     }
   }
 
-  const savedKey = `gio:saved-job:${posting.id}`
-  const [isSaved, setIsSaved] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false
-    return window.localStorage.getItem(savedKey) === '1'
-  })
+  const savedKey = `gio:saved-job:${slug}`
   const handleSave = () => {
     const next = !isSaved
     setIsSaved(next)
