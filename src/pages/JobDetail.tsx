@@ -39,6 +39,7 @@ import { SuggestedCandidatesLoader } from '@/components/sourcing/SuggestedCandid
 import { toast } from '@/hooks/use-toast'
 import { SalaryInsightsCard } from '@/components/jobs/SalaryInsightsCard'
 import { JobAnalyticsDashboard } from '@/components/jobs/JobAnalyticsDashboard'
+import { JobSourcingTab } from '@/components/jobs/JobSourcingTab'
 import { PipelineOverview } from '@/components/jobs/PipelineOverview'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
