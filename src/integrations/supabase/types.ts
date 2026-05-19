@@ -3019,6 +3019,7 @@ export type Database = {
       }
       jobs: {
         Row: {
+          additional_locations: string[]
           auto_generated_skills: Json | null
           created_at: string | null
           created_by: string | null
@@ -3026,15 +3027,25 @@ export type Database = {
           deleted_at: string | null
           department: string | null
           description: string | null
+          employment_type:
+            | Database["public"]["Enums"]["job_employment_type"]
+            | null
           hiring_team: Json | null
           id: string
+          include_equity: boolean
+          include_signing_bonus: boolean
+          internal_title: string | null
+          job_level: string | null
           last_skills_generation: string | null
           location: string | null
+          max_years_experience: number | null
+          min_years_experience: number | null
           normalization_metadata: Json | null
           organization_id: string
           priority_keywords: Json | null
           salary_max: number | null
           salary_min: number | null
+          show_salary_public: boolean
           skills: string[] | null
           standardized_location: string | null
           standardized_skills: string[] | null
@@ -3043,8 +3054,10 @@ export type Database = {
           tenant_id: string
           title: string
           updated_at: string | null
+          work_mode: Database["public"]["Enums"]["job_work_mode"] | null
         }
         Insert: {
+          additional_locations?: string[]
           auto_generated_skills?: Json | null
           created_at?: string | null
           created_by?: string | null
@@ -3052,15 +3065,25 @@ export type Database = {
           deleted_at?: string | null
           department?: string | null
           description?: string | null
+          employment_type?:
+            | Database["public"]["Enums"]["job_employment_type"]
+            | null
           hiring_team?: Json | null
           id?: string
+          include_equity?: boolean
+          include_signing_bonus?: boolean
+          internal_title?: string | null
+          job_level?: string | null
           last_skills_generation?: string | null
           location?: string | null
+          max_years_experience?: number | null
+          min_years_experience?: number | null
           normalization_metadata?: Json | null
           organization_id: string
           priority_keywords?: Json | null
           salary_max?: number | null
           salary_min?: number | null
+          show_salary_public?: boolean
           skills?: string[] | null
           standardized_location?: string | null
           standardized_skills?: string[] | null
@@ -3069,8 +3092,10 @@ export type Database = {
           tenant_id: string
           title: string
           updated_at?: string | null
+          work_mode?: Database["public"]["Enums"]["job_work_mode"] | null
         }
         Update: {
+          additional_locations?: string[]
           auto_generated_skills?: Json | null
           created_at?: string | null
           created_by?: string | null
@@ -3078,15 +3103,25 @@ export type Database = {
           deleted_at?: string | null
           department?: string | null
           description?: string | null
+          employment_type?:
+            | Database["public"]["Enums"]["job_employment_type"]
+            | null
           hiring_team?: Json | null
           id?: string
+          include_equity?: boolean
+          include_signing_bonus?: boolean
+          internal_title?: string | null
+          job_level?: string | null
           last_skills_generation?: string | null
           location?: string | null
+          max_years_experience?: number | null
+          min_years_experience?: number | null
           normalization_metadata?: Json | null
           organization_id?: string
           priority_keywords?: Json | null
           salary_max?: number | null
           salary_min?: number | null
+          show_salary_public?: boolean
           skills?: string[] | null
           standardized_location?: string | null
           standardized_skills?: string[] | null
@@ -3095,6 +3130,7 @@ export type Database = {
           tenant_id?: string
           title?: string
           updated_at?: string | null
+          work_mode?: Database["public"]["Enums"]["job_work_mode"] | null
         }
         Relationships: [
           {
@@ -6671,7 +6707,14 @@ export type Database = {
         | "multi_select"
         | "salary_expectations"
       job_assignment_role: "recruiter" | "hiring_manager" | "interviewer"
+      job_employment_type:
+        | "full_time"
+        | "part_time"
+        | "contract"
+        | "internship"
+        | "temporary"
       job_status: "draft" | "open" | "closed" | "archived"
+      job_work_mode: "remote" | "hybrid" | "onsite"
       org_kind_enum: "tenant" | "client" | "department" | "root"
       payment_frequency_enum: "bi_monthly" | "monthly" | "custom"
       payment_period_enum:
@@ -6932,7 +6975,15 @@ export const Constants = {
         "salary_expectations",
       ],
       job_assignment_role: ["recruiter", "hiring_manager", "interviewer"],
+      job_employment_type: [
+        "full_time",
+        "part_time",
+        "contract",
+        "internship",
+        "temporary",
+      ],
       job_status: ["draft", "open", "closed", "archived"],
+      job_work_mode: ["remote", "hybrid", "onsite"],
       org_kind_enum: ["tenant", "client", "department", "root"],
       payment_frequency_enum: ["bi_monthly", "monthly", "custom"],
       payment_period_enum: [

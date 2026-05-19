@@ -1,11 +1,22 @@
 import React from 'react'
-import { useForm } from 'react-hook-form'
-import { Label } from '@/components/ui/label'
+import { Building2, Globe, Briefcase, MapPin, TrendingUp, Sparkles } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect, SearchableSelectOption } from '@/components/ui/searchable-select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CurrencySelect } from '@/components/ui/currency-select'
-import { CreateJobData } from '@/hooks/useJobs'
+import { Button } from '@/components/ui/button'
+import {
+  SectionCard,
+  FieldLabel,
+  FieldHint,
+  Segmented,
+  ToggleRow,
+  ChipInput,
+  SalaryInput,
+  AiAssistedBadge,
+} from './_parts'
+import { CreateJobData, JobWorkMode, JobEmploymentType } from '@/hooks/useJobs'
 import { useChildOrganizationsForJobCreation } from '@/hooks/useChildOrganizationsForJobCreation'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -19,6 +30,38 @@ interface JobInfoStepProps {
 
 type JobStatus = 'draft' | 'open' | 'closed' | 'archived'
 
+const STATUS_OPTIONS = [
+  { value: 'draft' as JobStatus, label: 'Draft' },
+  { value: 'open' as JobStatus, label: 'Open' },
+  { value: 'closed' as JobStatus, label: 'Closed' },
+  { value: 'archived' as JobStatus, label: 'Archived' },
+]
+
+const WORK_MODE_OPTIONS: { value: JobWorkMode; label: string; icon: React.ComponentType<any> }[] = [
+  { value: 'remote', label: 'Remote', icon: Globe },
+  { value: 'hybrid', label: 'Hybrid', icon: Building2 },
+  { value: 'onsite', label: 'On-site', icon: MapPin },
+]
+
+const EMPLOYMENT_TYPE_OPTIONS: { value: JobEmploymentType; label: string }[] = [
+  { value: 'full_time', label: 'Full-time' },
+  { value: 'part_time', label: 'Part-time' },
+  { value: 'contract', label: 'Contract' },
+  { value: 'internship', label: 'Internship' },
+  { value: 'temporary', label: 'Temporary' },
+]
+
+const JOB_LEVEL_OPTIONS: SearchableSelectOption[] = [
+  { value: 'L1 — Specialists', label: 'L1 — Specialists' },
+  { value: 'L2 — Senior Specialists', label: 'L2 — Senior Specialists' },
+  { value: 'L3 — Staff', label: 'L3 — Staff' },
+  { value: 'L4 — Principal', label: 'L4 — Principal' },
+  { value: 'L5 — Manager', label: 'L5 — Manager' },
+  { value: 'L6 — Director', label: 'L6 — Director' },
+  { value: 'L7 — VP', label: 'L7 — VP' },
+  { value: 'L8 — Executive', label: 'L8 — Executive' },
+]
+
 export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
   const [isOrgFormOpen, setIsOrgFormOpen] = React.useState(false)
   const { data: childOrgs = [], isLoading: isLoadingOrgs, refetch: refetchOrgs } = useChildOrganizationsForJobCreation()
@@ -26,150 +69,362 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
   const permissions = usePermissions()
   const { createOrganization, isLoading: isCreatingOrg } = useOrganizations()
 
-  // Transform child orgs for SearchableSelect
-  const organizationOptions: SearchableSelectOption[] = React.useMemo(() => 
-    childOrgs
-      .map(org => ({ value: org.id, label: org.name }))
-      .sort((a, b) => a.label.localeCompare(b.label)),
+  const organizationOptions: SearchableSelectOption[] = React.useMemo(
+    () =>
+      childOrgs
+        .map((org) => ({ value: org.id, label: org.name }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
     [childOrgs]
   )
-  
-  // Show org selector for platform admins, workspace owners, and recruiters
+
   const canSelectOrganization = permissions.isPlatformAdmin || permissions.isWorkspaceOwner
 
   React.useEffect(() => {
-    // Set default organization for non-platform-admin users
     if (!jobData.organization_id && userType !== 'platform_admin' && organizationId) {
       onUpdate({ organization_id: organizationId })
     }
   }, [jobData.organization_id, userType, organizationId, onUpdate])
 
-  const handleInputChange = (field: keyof CreateJobData, value: any) => {
-    onUpdate({ [field]: value })
-  }
+  // Defaults
+  React.useEffect(() => {
+    const patch: Partial<CreateJobData> = {}
+    if (jobData.show_salary_public === undefined) patch.show_salary_public = true
+    if (jobData.status === undefined) patch.status = 'draft'
+    if (jobData.currency === undefined) patch.currency = 'USD'
+    if (Object.keys(patch).length) onUpdate(patch)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const set = <K extends keyof CreateJobData>(field: K, value: CreateJobData[K]) =>
+    onUpdate({ [field]: value } as Partial<CreateJobData>)
 
   const handleCreateOrganization = async (data: any) => {
     try {
       const result = await createOrganization(data)
       await refetchOrgs()
       setIsOrgFormOpen(false)
-      // Auto-select the newly created organization
       if (result && typeof result === 'object' && 'id' in result) {
-        onUpdate({ organization_id: result.id })
+        onUpdate({ organization_id: (result as { id: string }).id })
       }
     } catch (error) {
       console.error('Failed to create organization:', error)
     }
   }
 
+  const salaryInvalid =
+    jobData.salary_min != null &&
+    jobData.salary_max != null &&
+    jobData.salary_min > jobData.salary_max
+
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Job Title */}
-        <div className="col-span-2 space-y-2">
-          <Label htmlFor="title">Job Title *</Label>
+    <div className="space-y-8">
+      {/* ------------------------------------------------ BASICS */}
+      <SectionCard title="Basics">
+        <div>
+          <FieldLabel htmlFor="title" required>
+            Job title
+          </FieldLabel>
           <Input
             id="title"
             value={jobData.title || ''}
-            onChange={(e) => handleInputChange('title', e.target.value)}
-            placeholder="e.g. Senior Frontend Developer"
-            required
+            onChange={(e) => set('title', e.target.value)}
+            placeholder="e.g. Senior Product Designer"
+            className="mt-2"
           />
+          <FieldHint>The public-facing title candidates will see.</FieldHint>
         </div>
 
-        {/* Status */}
-        <div className="space-y-2">
-          <Label htmlFor="status">Status</Label>
-          <Select 
-            value={jobData.status || 'draft'} 
-            onValueChange={(value) => handleInputChange('status', value as JobStatus)}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="open">Open</SelectItem>
-              <SelectItem value="closed">Closed</SelectItem>
-              <SelectItem value="archived">Archived</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Department - Only show for users who can select org */}
-        {canSelectOrganization && (
-          <div className="space-y-2">
-            <Label htmlFor="organization">
-              Department <span className="text-red-500">*</span>
-            </Label>
-            <SearchableSelect
-              options={organizationOptions}
-              value={jobData.organization_id || ''}
-              onValueChange={(value) => handleInputChange('organization_id', value)}
-              placeholder={isLoadingOrgs ? "Loading departments..." : "Select a department..."}
-              searchPlaceholder="Search departments..."
-              emptyMessage="No departments found."
-              disabled={isLoadingOrgs}
-              onCreateNew={() => setIsOrgFormOpen(true)}
-              createNewLabel="Create Department"
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div>
+            <FieldLabel htmlFor="internal_title" optional>
+              Internal title
+            </FieldLabel>
+            <Input
+              id="internal_title"
+              value={jobData.internal_title || ''}
+              onChange={(e) => set('internal_title', e.target.value)}
+              placeholder="e.g. Sr. PD, Design Systems"
+              className="mt-2"
             />
-            <p className="text-xs text-muted-foreground">
-              Select which department this job belongs to
-            </p>
+            <FieldHint>Used in CRM &amp; analytics only.</FieldHint>
           </div>
-        )}
 
-        {/* Location */}
-        <div className="space-y-2">
-          <Label htmlFor="location">Location</Label>
-          <Input
-            id="location"
-            value={jobData.location || ''}
-            onChange={(e) => handleInputChange('location', e.target.value)}
-            placeholder="e.g. San Francisco, CA"
-          />
+          <div>
+            <FieldLabel required>Status</FieldLabel>
+            <div className="mt-2">
+              <Segmented
+                ariaLabel="Job status"
+                options={STATUS_OPTIONS}
+                value={(jobData.status as JobStatus) || 'draft'}
+                onChange={(v) => set('status', v)}
+              />
+            </div>
+          </div>
         </div>
 
-        {/* Min Salary */}
-        <div className="space-y-2">
-          <Label htmlFor="salary_min">Min Salary</Label>
-          <Input
-            id="salary_min"
-            type="number"
-            value={jobData.salary_min?.toString() || ''}
-            onChange={(e) => handleInputChange('salary_min', e.target.value ? parseInt(e.target.value) : undefined)}
-            placeholder="80000"
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          {canSelectOrganization && (
+            <div>
+              <FieldLabel required>Department / Organization</FieldLabel>
+              <div className="mt-2">
+                <SearchableSelect
+                  options={organizationOptions}
+                  value={jobData.organization_id || ''}
+                  onValueChange={(value) => set('organization_id', value)}
+                  placeholder={isLoadingOrgs ? 'Loading…' : 'Select a department…'}
+                  searchPlaceholder="Search departments…"
+                  emptyMessage="No departments found."
+                  disabled={isLoadingOrgs}
+                  onCreateNew={() => setIsOrgFormOpen(true)}
+                  createNewLabel="Create Department"
+                />
+              </div>
+              <FieldHint>Which child org owns this req.</FieldHint>
+            </div>
+          )}
+
+          <div>
+            <FieldLabel>Job level</FieldLabel>
+            <div className="mt-2">
+              <SearchableSelect
+                options={JOB_LEVEL_OPTIONS}
+                value={jobData.job_level || ''}
+                onValueChange={(value) => set('job_level', value)}
+                placeholder="Select level…"
+                searchPlaceholder="Search levels…"
+                emptyMessage="No levels."
+              />
+            </div>
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* ----------------------------------- LOCATION & EMPLOYMENT */}
+      <SectionCard title="Location & Employment">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div>
+            <FieldLabel required>Work mode</FieldLabel>
+            <Select
+              value={jobData.work_mode || ''}
+              onValueChange={(v) => set('work_mode', v as JobWorkMode)}
+            >
+              <SelectTrigger className="mt-2 h-11">
+                <SelectValue placeholder="Select work mode…" />
+              </SelectTrigger>
+              <SelectContent>
+                {WORK_MODE_OPTIONS.map((opt) => {
+                  const Icon = opt.icon
+                  return (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      <span className="inline-flex items-center gap-2">
+                        <Icon className="h-3.5 w-3.5 text-text-tertiary" />
+                        {opt.label}
+                      </span>
+                    </SelectItem>
+                  )
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <FieldLabel required>Employment type</FieldLabel>
+            <Select
+              value={jobData.employment_type || ''}
+              onValueChange={(v) => set('employment_type', v as JobEmploymentType)}
+            >
+              <SelectTrigger className="mt-2 h-11">
+                <SelectValue placeholder="Select employment type…" />
+              </SelectTrigger>
+              <SelectContent>
+                {EMPLOYMENT_TYPE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    <span className="inline-flex items-center gap-2">
+                      <Briefcase className="h-3.5 w-3.5 text-text-tertiary" />
+                      {opt.label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
-        {/* Max Salary */}
-        <div className="space-y-2">
-          <Label htmlFor="salary_max">Max Salary</Label>
-          <Input
-            id="salary_max"
-            type="number"
-            value={jobData.salary_max?.toString() || ''}
-            onChange={(e) => handleInputChange('salary_max', e.target.value ? parseInt(e.target.value) : undefined)}
-            placeholder="120000"
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div>
+            <FieldLabel htmlFor="location">Primary location</FieldLabel>
+            <div className="relative mt-2">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary pointer-events-none" />
+              <Input
+                id="location"
+                value={jobData.location || ''}
+                onChange={(e) => set('location', e.target.value)}
+                placeholder="e.g. New York, NY"
+                className="pl-9"
+              />
+            </div>
+            <FieldHint>City, state — or 'Remote'.</FieldHint>
+          </div>
+
+          <div>
+            <FieldLabel optional>Additional locations</FieldLabel>
+            <div className="mt-2">
+              <ChipInput
+                values={jobData.additional_locations || []}
+                onChange={(next) => set('additional_locations', next)}
+                placeholder="Add location…"
+                tone="purple"
+              />
+            </div>
+            <FieldHint>Cities where the role may sit on-site.</FieldHint>
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* ------------------------------------------- COMPENSATION */}
+      <SectionCard title="Compensation">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          <div>
+            <FieldLabel required>Currency</FieldLabel>
+            <div className="mt-2">
+              <CurrencySelect
+                value={jobData.currency || ''}
+                onChange={(v) => set('currency', v)}
+              />
+            </div>
+          </div>
+
+          <div>
+            <FieldLabel required>Min salary</FieldLabel>
+            <div className="mt-2">
+              <SalaryInput
+                value={jobData.salary_min ?? undefined}
+                onChange={(v) => set('salary_min', v)}
+                placeholder="80,000"
+                invalid={salaryInvalid}
+              />
+            </div>
+            {salaryInvalid && <FieldHint tone="error">Min must be lower than max</FieldHint>}
+          </div>
+
+          <div>
+            <FieldLabel required>Max salary</FieldLabel>
+            <div className="mt-2">
+              <SalaryInput
+                value={jobData.salary_max ?? undefined}
+                onChange={(v) => set('salary_max', v)}
+                placeholder="120,000"
+              />
+            </div>
+          </div>
         </div>
 
-        {/* Currency */}
-        <div className="space-y-2">
-          <Label htmlFor="currency">Currency</Label>
-          <CurrencySelect
-            value={jobData.currency || ''}
-            onChange={(value) => handleInputChange('currency', value)}
+        <div className="border-t border-virgilio-border pt-4 space-y-1">
+          <ToggleRow
+            label="Show salary on public posting"
+            hint="Recommended — applicant quality jumps 40% on jobs that publish salary."
+            checked={!!jobData.show_salary_public}
+            onChange={(v) => set('show_salary_public', v)}
+          />
+          <ToggleRow
+            label="Include equity"
+            checked={!!jobData.include_equity}
+            onChange={(v) => set('include_equity', v)}
+          />
+          <ToggleRow
+            label="Include signing bonus"
+            checked={!!jobData.include_signing_bonus}
+            onChange={(v) => set('include_signing_bonus', v)}
           />
         </div>
-      </div>
+      </SectionCard>
 
-      <div className="mt-6 p-4 bg-muted rounded-lg">
-        <h4 className="text-sm font-medium text-text-primary mb-2">What's Next?</h4>
-        <p className="text-sm text-text-secondary">
-          After creating the basic job information, you'll be able to configure the hiring plan with custom stages and assign team members.
-        </p>
-      </div>
+      {/* ----------------------------------------- JOB DESCRIPTION */}
+      <SectionCard
+        title="Job description"
+        trailing={
+          <Button variant="ghost" size="xs" icon={Sparkles} className="text-virgilio-purple">
+            Generate with Gio
+          </Button>
+        }
+      >
+        <div>
+          <FieldLabel htmlFor="description" required>
+            Description
+          </FieldLabel>
+          <Textarea
+            id="description"
+            value={jobData.description || ''}
+            onChange={(e) => set('description', e.target.value)}
+            placeholder="## About the role
+We're hiring a…
+
+## What you'll do
+- …
+
+## What we're looking for
+- …"
+            className="mt-2 min-h-[220px] font-inter text-[13px] leading-relaxed"
+          />
+          <FieldHint>Markdown supported. Includes overview, responsibilities, requirements.</FieldHint>
+        </div>
+      </SectionCard>
+
+      {/* ------------------------------------------ REQUIRED SKILLS */}
+      <SectionCard title="Required skills">
+        <div>
+          <FieldLabel required>Skills</FieldLabel>
+          <div className="mt-2">
+            <ChipInput
+              values={jobData.skills || []}
+              onChange={(next) => set('skills', next)}
+              placeholder="Add skill…"
+              tone="purple"
+            />
+          </div>
+          <FieldHint>Used for AI matching when sourcing and reviewing applications. Press Enter to add.</FieldHint>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div>
+            <FieldLabel>Min years of experience</FieldLabel>
+            <div className="relative mt-2">
+              <TrendingUp className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary pointer-events-none" />
+              <Input
+                type="number"
+                min={0}
+                value={jobData.min_years_experience ?? ''}
+                onChange={(e) =>
+                  set('min_years_experience', e.target.value ? Number(e.target.value) : undefined)
+                }
+                placeholder="0"
+                className="pl-9 pr-14"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-text-tertiary pointer-events-none">
+                years
+              </span>
+            </div>
+          </div>
+          <div>
+            <FieldLabel optional>Max years</FieldLabel>
+            <div className="relative mt-2">
+              <Input
+                type="number"
+                min={0}
+                value={jobData.max_years_experience ?? ''}
+                onChange={(e) =>
+                  set('max_years_experience', e.target.value ? Number(e.target.value) : undefined)
+                }
+                placeholder="—"
+                className="pr-14"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-text-tertiary pointer-events-none">
+                years
+              </span>
+            </div>
+          </div>
+        </div>
+      </SectionCard>
 
       {/* Organization Creation Sheet */}
       <OrganizationFormSheet
@@ -181,3 +436,6 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
     </div>
   )
 }
+
+// Convenience re-export so JobWizard can render the badge in the header
+export { AiAssistedBadge }
