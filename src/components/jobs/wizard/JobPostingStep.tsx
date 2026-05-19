@@ -329,6 +329,91 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           </div>
         </SectionCard>
 
+        {/* ---------- COMPENSATION ---------- */}
+        <SectionCard title="Compensation">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <div>
+              <FieldLabel required>Currency</FieldLabel>
+              <div className="mt-2">
+                <CurrencySelect
+                  value={jobData.currency || 'USD'}
+                  onChange={(v) => setJob('currency', v)}
+                />
+              </div>
+            </div>
+            <div>
+              <FieldLabel required>Min salary</FieldLabel>
+              <div className="mt-2">
+                <SalaryInput
+                  value={jobData.salary_min ?? undefined}
+                  onChange={(v) => setJob('salary_min', v)}
+                  placeholder="80,000"
+                  invalid={salaryInvalid}
+                />
+              </div>
+              {salaryInvalid && <FieldHint tone="error">Min must be lower than max</FieldHint>}
+            </div>
+            <div>
+              <FieldLabel required>Max salary</FieldLabel>
+              <div className="mt-2">
+                <SalaryInput
+                  value={jobData.salary_max ?? undefined}
+                  onChange={(v) => setJob('salary_max', v)}
+                  placeholder="120,000"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-virgilio-border pt-4 space-y-1">
+            <ToggleRow
+              label="Show salary on public posting"
+              hint="Recommended — applicant quality jumps 40% on jobs that publish salary."
+              checked={!!jobData.show_salary_public}
+              onChange={(v) => setJob('show_salary_public', v)}
+            />
+            <ToggleRow
+              label="Include equity"
+              checked={!!jobData.include_equity}
+              onChange={(v) => setJob('include_equity', v)}
+            />
+            <ToggleRow
+              label="Include signing bonus"
+              checked={!!jobData.include_signing_bonus}
+              onChange={(v) => setJob('include_signing_bonus', v)}
+            />
+            <ToggleRow
+              label="Include variable / commission"
+              hint="On-target earnings, sales commission, or bonus structure."
+              checked={variableEnabled}
+              onChange={setVariableEnabled}
+            />
+          </div>
+
+          {variableEnabled && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 pt-2">
+              <div>
+                <FieldLabel>Commission currency</FieldLabel>
+                <div className="mt-2">
+                  <CurrencySelect value={commissionCurrency} onChange={setCommissionCurrency} />
+                </div>
+              </div>
+              <div className="sm:col-span-2">
+                <FieldLabel>Commission / variable amount</FieldLabel>
+                <div className="mt-2">
+                  <SalaryInput
+                    value={commissionAmount}
+                    onChange={setCommissionAmount}
+                    placeholder="e.g. 20,000 OTE"
+                  />
+                </div>
+                <FieldHint>On-target earnings or % — your call.</FieldHint>
+              </div>
+            </div>
+          )}
+        </SectionCard>
+
+
         {/* ---------- PUBLIC DESCRIPTION ---------- */}
         <SectionCard
           title="Public description"
