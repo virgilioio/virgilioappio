@@ -247,6 +247,8 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
             hasPosting={wizardState.hasPosting}
             postingMeta={postingMeta}
             onGoToStep={goToStep}
+            autoSource={autoSource}
+            onAutoSourceChange={setAutoSource}
           />
         )
       default:
