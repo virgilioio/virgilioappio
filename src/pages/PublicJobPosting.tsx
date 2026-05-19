@@ -133,6 +133,10 @@ export default function PublicJobPosting() {
   const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null)
   const [companyWebsiteUrl, setCompanyWebsiteUrl] = useState<string | null>(null)
   const [tenantAbout, setTenantAbout] = useState<string | null>(null)
+  const [isSaved, setIsSaved] = useState<boolean>(() => {
+    if (typeof window === 'undefined' || !slug) return false
+    return window.localStorage.getItem(`gio:saved-job:${slug}`) === '1'
+  })
   
   const { coreFields } = useCoreFields()
   // Canonical host redirect to app.gogio.io (skip local dev)
