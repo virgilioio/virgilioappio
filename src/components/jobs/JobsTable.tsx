@@ -68,6 +68,7 @@ export function JobsTable({
   onView,
   onEdit,
   onArchive,
+  onDelete,
   statusFilter,
   onStatusFilterChange,
   tabs,
