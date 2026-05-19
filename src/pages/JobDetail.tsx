@@ -1014,6 +1014,18 @@ export default function JobDetail() {
             </TabsContent>
           )}
 
+          {/* Postings */}
+          {!isRestrictedViewer && (
+            <TabsContent
+              value="postings"
+              className="flex-1 min-h-0 overflow-hidden data-[state=inactive]:hidden mt-0"
+            >
+              <div className="h-full overflow-auto bg-[#FAFAF7] -mx-1 px-1 pb-6">
+                <JobPostingsTab jobId={id!} jobTitle={job.title} />
+              </div>
+            </TabsContent>
+          )}
+
           {/* Sourcing */}
           {!isRestrictedViewer && (
             <TabsContent
