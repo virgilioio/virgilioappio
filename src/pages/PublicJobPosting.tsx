@@ -585,115 +585,203 @@ export default function PublicJobPosting() {
     )
   }
 
+  // ---- Derive editorial layout data from existing schema ----
+  const splitTitle = (full: string): { main: string; sub: string | null } => {
+    const m = full.split(/\s+[—–-]\s+|:\s+/)
+    if (m.length >= 2) return { main: m[0].trim(), sub: m.slice(1).join(' — ').trim() }
+    return { main: full, sub: null }
+  }
+  const { main: titleMain, sub: titleSub } = splitTitle(posting.title)
+
+  const d: any = posting.details || {}
+  const department: string | null = d.department || null
+  const featured: boolean = !!d.featured
+  const sections = d.sections || {}
+  const responsibilities: string[] = Array.isArray(sections.responsibilities) ? sections.responsibilities : []
+  const qualifications: string[] = Array.isArray(sections.qualifications) ? sections.qualifications : []
+  const niceToHaves: string[] = Array.isArray(sections.nice_to_haves) ? sections.nice_to_haves : []
+  const benefits: string[] = Array.isArray(sections.benefits) ? sections.benefits : []
+  const hiringProcess: Array<{ title: string; detail?: string }> = Array.isArray(sections.hiring_process)
+    ? sections.hiring_process.map((s: any) =>
+        typeof s === 'string' ? { title: s } : { title: s.title || '', detail: s.detail }
+      )
+    : []
+  const hiringPanel: PanelMember[] = Array.isArray(d.hiring_panel) ? d.hiring_panel : []
+  const referralBonus = d.referral_bonus || null
+  const reportsTo: string | null = d.reports_to || null
+  const referenceCode: string | null = d.reference_code || null
+  const teamSize: number | null = typeof d.team_size === 'number' ? d.team_size : null
+  const equityNote: string | null = d.equity_note || null
+  const eeoStatement: string | null = d.eeo_statement || null
+
+  const compensationLabel = (() => {
+    if (!details.showSalary || !details.salaryAmount) return null
+    return `${details.salaryCurrency || ''} ${Number(details.salaryAmount).toLocaleString()}${
+      details.salaryPeriod ? ' ' + formatLabel(details.salaryPeriod) : ''
+    }`.trim()
+  })()
+
+  const metaChips: { icon?: any; label: string }[] = []
+  if (details.location || details.locationType) {
+    metaChips.push({
+      icon: MapPin,
+      label: [details.location, formatLabel(details.locationType)].filter(Boolean).join(' · '),
+    })
+  }
+  if (details.employmentType) metaChips.push({ icon: Briefcase, label: formatLabel(details.employmentType)! })
+  if (compensationLabel) metaChips.push({ icon: DollarSign, label: compensationLabel + ' base' })
+  if (equityNote) metaChips.push({ icon: Sparkles, label: equityNote })
+  if (teamSize) metaChips.push({ icon: Users, label: `Team of ${teamSize}` })
+  metaChips.push({ icon: ClockIcon, label: 'Reply in < 48h' })
+
+  const careersHref = companySlug ? `/careers/${companySlug}` : null
+
+  const handleShare = async () => {
+    const url = window.location.href
+    if ((navigator as any).share) {
+      try { await (navigator as any).share({ title: posting.title, url }) } catch { /* dismissed */ }
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(url)
+      toast({ title: 'Link copied', description: 'Job link copied to clipboard.' })
+    } catch {
+      toast({ title: 'Unable to copy', description: 'Copy the URL from your browser bar.' })
+    }
+  }
+
+  const savedKey = `gio:saved-job:${posting.id}`
+  const [isSaved, setIsSaved] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    return window.localStorage.getItem(savedKey) === '1'
+  })
+  const handleSave = () => {
+    const next = !isSaved
+    setIsSaved(next)
+    if (typeof window !== 'undefined') {
+      if (next) window.localStorage.setItem(savedKey, '1')
+      else window.localStorage.removeItem(savedKey)
+    }
+    toast({ title: next ? 'Saved for later' : 'Removed from saved' })
+  }
+
+  const summaryRows = [
+    { label: 'Posted', value: formatDate(new Date(), 'MMM d, yyyy') },
+    { label: 'Location', value: details.location || null },
+    { label: 'Type', value: formatLabel(details.employmentType) || null },
+    { label: 'Compensation', value: compensationLabel },
+    { label: 'Reports to', value: reportsTo },
+    { label: 'Ref', value: referenceCode },
+  ]
+
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Header with logo and back button */}
-      <header className={`fixed top-0 left-0 right-0 z-50 border-b border-border transition-shadow supports-[backdrop-filter]:bg-surface-primary/60 bg-surface-primary/90 backdrop-blur ${scrolled ? 'shadow-sm' : ''}`}>
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-3 sm:px-8">
-          <div className="flex items-center gap-4">
-            {companySlug && (
-              <button
-                type="button"
-                onClick={() => navigate(`/careers/${companySlug}`)}
-                className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors"
+    <div className="min-h-screen bg-[#FAF7F2] flex flex-col">
+      <CareersTopBar
+        logoUrl={companyLogoUrl}
+        companyName={organizationName || 'Company'}
+        websiteUrl={companyWebsiteUrl}
+        showCompanyName
+      />
+
+      <JobHeader
+        careersHref={careersHref}
+        department={department}
+        title={titleMain}
+        subtitle={titleSub}
+        featured={featured}
+        metaChips={metaChips}
+        onApply={handleApplyClick}
+        onShare={handleShare}
+        onSave={handleSave}
+        saved={isSaved}
+      />
+
+      <main className="flex-1 w-full">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as 'overview' | 'application')} className="space-y-8">
+          {/* Tab switcher kept accessible but visually minimal */}
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+            <TabsList className="bg-transparent p-0 h-auto gap-2">
+              <TabsTrigger
+                value="overview"
+                className="data-[state=active]:bg-white data-[state=active]:text-[#0d0d09] data-[state=active]:border-black/10 border border-transparent rounded-lg h-8 px-3 text-[12.5px]"
               >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Careers Page
-              </button>
-            )}
+                Job overview
+              </TabsTrigger>
+              <TabsTrigger
+                value="application"
+                className="data-[state=active]:bg-white data-[state=active]:text-[#0d0d09] data-[state=active]:border-black/10 border border-transparent rounded-lg h-8 px-3 text-[12.5px]"
+              >
+                Application
+              </TabsTrigger>
+            </TabsList>
           </div>
-          {companyLogoUrl ? (
-            companyWebsiteUrl || companySlug ? (
-              <a
-                href={companyWebsiteUrl || `/careers/${companySlug}`}
-                target={companyWebsiteUrl ? '_blank' : undefined}
-                rel={companyWebsiteUrl ? 'noopener noreferrer' : undefined}
-                className="inline-flex items-center"
-              >
-                <img
-                  src={companyLogoUrl}
-                  alt={organizationName || 'Company logo'}
-                  className="max-h-7 w-auto object-contain"
-                />
-              </a>
-            ) : (
-              <img
-                src={companyLogoUrl}
-                alt={organizationName || 'Company logo'}
-                className="max-h-7 w-auto object-contain"
-              />
-            )
-          ) : (
-            <GoGioLogo className="h-7 w-auto" />
-          )}
-        </div>
-      </header>
 
-      {/* Main content */}
-      <main className="max-w-6xl mx-auto px-6 sm:px-8 pt-20 pb-10 flex-1 w-full">
-        <section aria-labelledby="job-title" className="pt-12 pb-6">
-          <h1 id="job-title" className="text-3xl sm:text-[40px] leading-[1.15] font-semibold tracking-tight text-text-primary">{posting.title}</h1>
-          {(details.location || details.employmentType || details.locationType) && (
-            <p className="mt-3 text-sm text-text-secondary">
-              {[
-                details.location,
-                formatLabel(details.locationType),
-                formatLabel(details.employmentType)
-              ].filter(Boolean).join(' · ')}
-            </p>
-          )}
-        </section>
-        <Tabs value={tab} onValueChange={(v) => setTab(v as 'overview' | 'application')} className="space-y-8 mt-8">
-          <TabsList>
-            <TabsTrigger value="overview">Job Overview</TabsTrigger>
-            <TabsTrigger value="application">Application</TabsTrigger>
-          </TabsList>
+          <TabsContent value="overview" className="mt-0">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-12 gap-10">
+              <div className="lg:col-span-7 space-y-10 order-2 lg:order-1">
+                {posting.description && (
+                  <JobBodySection title="About the role">
+                    <SafeHtml
+                      content={posting.description}
+                      className="prose prose-sm max-w-none text-[#3f4451] [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-3 [&_li]:my-1"
+                    />
+                  </JobBodySection>
+                )}
 
-          <TabsContent value="overview">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-              <div className="order-2 lg:order-1 lg:col-span-2 space-y-8">
-                <section aria-labelledby="job-description">
-                  {(tenantAbout || posting.description) && (
-                    <div className="space-y-6">
-                      {/* Tenant About comes first for company context */}
-                      {tenantAbout && (
-                        <div className="space-y-3">
-                          <h3 className="text-lg font-semibold text-text-primary">
-                            About {organizationName}
-                          </h3>
-                          <SafeHtml 
-                            content={tenantAbout} 
-                            className="prose prose-sm text-text-secondary max-w-none [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-3 [&_li]:my-1 [&_p]:my-2" 
-                          />
-                        </div>
-                      )}
-                      
-                      {/* Subtle separator if both exist */}
-                      {tenantAbout && posting.description && (
-                        <div className="border-t border-border/50 my-6" />
-                      )}
-                      
-                      {/* Job description */}
-                      {posting.description && (
-                        <SafeHtml 
-                          content={posting.description} 
-                          className="prose prose-sm text-text-secondary max-w-none [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-3 [&_li]:my-1 [&_p]:my-2" 
-                        />
-                      )}
-                    </div>
-                  )}
-                </section>
-                <div className="pt-4">
-                  <Button onClick={handleApplyClick} className="w-full sm:w-auto" aria-label="Apply for this job">
-                    Apply for this job
-                  </Button>
-                </div>
+                {responsibilities.length > 0 && (
+                  <JobBodySection title="What you'll do">
+                    <JobBulletList items={responsibilities} />
+                  </JobBodySection>
+                )}
+                {qualifications.length > 0 && (
+                  <JobBodySection title="You'll thrive if">
+                    <JobBulletList items={qualifications} />
+                  </JobBodySection>
+                )}
+                {niceToHaves.length > 0 && (
+                  <JobBodySection title="Nice to have">
+                    <JobBulletList items={niceToHaves} />
+                  </JobBodySection>
+                )}
+                {benefits.length > 0 && (
+                  <JobBodySection title="What we offer">
+                    <JobBulletList items={benefits} />
+                  </JobBodySection>
+                )}
+                {hiringProcess.length > 0 && (
+                  <JobBodySection title="The process">
+                    <JobProcessList steps={hiringProcess} />
+                  </JobBodySection>
+                )}
+
+                {tenantAbout && (
+                  <JobBodySection title={`About ${organizationName}`}>
+                    <SafeHtml
+                      content={tenantAbout}
+                      className="prose prose-sm max-w-none text-[#3f4451] [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-3 [&_li]:my-1"
+                    />
+                  </JobBodySection>
+                )}
+
+                <p className="text-[12.5px] text-[#8B8F9E] leading-relaxed border-t border-black/5 pt-6">
+                  {eeoStatement ||
+                    `${organizationName} is an equal opportunity employer. We don't discriminate on the basis of race, religion, gender, sexual orientation, age, disability, or veteran status. We're committed to building a team that reflects the breadth of our customers.`}
+                </p>
               </div>
 
-              <aside className="order-1 lg:order-2 lg:col-span-1 lg:sticky lg:top-24 space-y-4 self-start">
-                <JobDetailsCard details={details} className="border-border/60 shadow-none rounded-xl" />
+              <aside className="lg:col-span-5 order-1 lg:order-2 space-y-4 lg:sticky lg:top-6 self-start">
+                <JobAsideReplyCard onApply={handleApplyClick} />
+                <JobAsideSummary rows={summaryRows} />
+                <JobAsideHiringPanel members={hiringPanel} />
+                <JobAsideReferral
+                  slug={posting.title /* fallback for type */ as any && (window as any) ? (posting as any).slug || '' : ''}
+                  amount={referralBonus?.amount ?? null}
+                  currency={referralBonus?.currency ?? null}
+                />
               </aside>
             </div>
+
+            <JobCTABand onApply={handleApplyClick} />
           </TabsContent>
 
           <TabsContent value="application">
