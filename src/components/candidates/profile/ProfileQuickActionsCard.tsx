@@ -1,11 +1,11 @@
-import { ArrowRight, ClipboardCheck, Calendar, FileText, ThumbsDown } from 'lucide-react'
+import { ArrowRight, ClipboardCheck, ArrowLeftRight, FileText, ThumbsDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface ProfileQuickActionsCardProps {
   nextStageLabel?: string | null
   onAdvance?: () => void
   onSubmitScorecard?: () => void
-  onSchedule?: () => void
+  onAddTransfer?: () => void
   onCreateOffer?: () => void
   onReject?: () => void
   isOfferStatus?: boolean
@@ -14,7 +14,7 @@ interface ProfileQuickActionsCardProps {
 }
 
 export function ProfileQuickActionsCard({
-  nextStageLabel, onAdvance, onSubmitScorecard, onSchedule, onCreateOffer, onReject,
+  nextStageLabel, onAdvance, onSubmitScorecard, onAddTransfer, onCreateOffer, onReject,
   isOfferStatus, isRejected, isHired,
 }: ProfileQuickActionsCardProps) {
   return (
