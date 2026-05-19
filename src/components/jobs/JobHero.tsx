@@ -238,7 +238,7 @@ export function JobHero({
                 {onDelete && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem variant="destructive" onSelect={() => onDelete()}>
+                    <DropdownMenuItem onSelect={() => onDelete()} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                       <Trash2 className="h-3.5 w-3.5" />
                       <span>Delete job</span>
                     </DropdownMenuItem>
