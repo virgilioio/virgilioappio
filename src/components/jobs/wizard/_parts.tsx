@@ -1,6 +1,124 @@
 import * as React from 'react'
 import { cn } from '@/lib/utils'
-import { Sparkles, X } from 'lucide-react'
+import { Sparkles, X, Info } from 'lucide-react'
+
+/** Round avatar with initials — tone cycle by name hash. */
+const AVATAR_TONES = [
+  'bg-virgilio-purple text-white',
+  'bg-sky-500 text-white',
+  'bg-rose-500 text-white',
+  'bg-emerald-500 text-white',
+  'bg-amber-500 text-white',
+  'bg-indigo-500 text-white',
+]
+export function MemberAvatar({
+  name,
+  url,
+  size = 32,
+  className,
+}: {
+  name: string
+  url?: string | null
+  size?: number
+  className?: string
+}) {
+  const initials =
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase() ?? '')
+      .join('') || '?'
+  const tone = AVATAR_TONES[
+    Math.abs([...name].reduce((a, c) => a + c.charCodeAt(0), 0)) % AVATAR_TONES.length
+  ]
+  return (
+    <span
+      className={cn(
+        'inline-flex shrink-0 items-center justify-center rounded-full font-poppins font-semibold',
+        !url && tone,
+        className
+      )}
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.4) }}
+    >
+      {url ? (
+        <img src={url} alt={name} className="h-full w-full rounded-full object-cover" />
+      ) : (
+        initials
+      )}
+    </span>
+  )
+}
+
+/** Role explanation tile (Hiring team / Roles on this job). */
+const ROLE_TONE_CLASSES = {
+  lilac: 'bg-[#EDE4FF] text-virgilio-purple',
+  yellow: 'bg-[#FFF4C7] text-[#856404]',
+  orange: 'bg-[#FFE2C7] text-[#9A4D00]',
+  green: 'bg-[#D7F2DD] text-[#1B6B3A]',
+  blue: 'bg-[#D7E6FF] text-[#1E4A8E]',
+  pink: 'bg-[#FFD9E6] text-[#9B1F4F]',
+} as const
+export type RoleTone = keyof typeof ROLE_TONE_CLASSES
+export function RoleCard({
+  label,
+  description,
+  count,
+  tone = 'lilac',
+  active,
+}: {
+  label: string
+  description: string
+  count: number
+  tone?: RoleTone
+  active?: boolean
+}) {
+  return (
+    <div
+      className={cn(
+        'rounded-xl border p-4 transition-colors',
+        active
+          ? 'border-virgilio-border shadow-sm bg-[#FFFCF9]'
+          : 'border-virgilio-border bg-white'
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span
+          className={cn(
+            'inline-flex items-center rounded-full px-2.5 py-1 text-[11.5px] font-poppins font-medium',
+            ROLE_TONE_CLASSES[tone]
+          )}
+        >
+          {label}
+        </span>
+        <span className="text-[14px] font-poppins font-semibold tabular-nums text-text-primary">
+          {count}
+        </span>
+      </div>
+      <p className="mt-2 text-[12.5px] leading-snug text-text-secondary">{description}</p>
+    </div>
+  )
+}
+
+/** Inline info link (section trailing). */
+export function InfoLink({
+  children,
+  onClick,
+}: {
+  children: React.ReactNode
+  onClick?: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 text-[12px] text-text-secondary hover:text-text-primary transition-colors"
+    >
+      <Info className="h-3.5 w-3.5" />
+      {children}
+    </button>
+  )
+}
 
 /* ============================================================
  * Wizard shared building blocks — Gio Foundation, Job wizard v2
