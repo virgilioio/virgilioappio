@@ -92,8 +92,11 @@ interface AppField {
   hint?: string
   required: boolean
   locked?: boolean
+  isSmart?: boolean
   icon: React.ComponentType<{ className?: string }>
 }
+
+const SMART_FIELD_TYPES = new Set<FieldType>(SMART_FIELDS.map((s) => s.type))
 
 const DEFAULT_FIELDS: AppField[] = [
   { id: 'full_name', label: 'Full name', type: 'text', hint: 'Short text', required: true, locked: true, icon: User },
