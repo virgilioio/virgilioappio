@@ -965,7 +965,11 @@ export default function JobDetail() {
                   onCreatePosting={() => setShowCreatePostingSheet(true)}
                   hasPosting={hasJobPosting}
                   onAddCandidate={() => setShowAddCandidate(true)}
-                  onMoreActions={() => setShowEditJobModal(true)}
+                  onEdit={handleEditJob}
+                  onDuplicate={handleDuplicateJob}
+                  onCloseJob={() => setConfirmCloseJob(true)}
+                  onArchive={() => archiveJob(id!).then(() => navigate('/jobs'))}
+                  onDelete={() => setConfirmDelete(true)}
                   canEdit={!isRestrictedViewer}
                 />
                 <TabsList className="h-auto bg-transparent p-0 shadow-none border-0 rounded-none w-full justify-start gap-6 mt-4">
