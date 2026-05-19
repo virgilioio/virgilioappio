@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
@@ -12,18 +12,20 @@ import { toast } from '@/hooks/use-toast';
 import {
   AlertCircle,
   Briefcase,
-  Calendar as CalendarIcon,
   CheckCircle2,
+  MapPin,
+  Paperclip,
+  Phone,
   Plus,
   Save,
   Send,
+  Sparkles,
   Users,
+  Video,
   X,
 } from 'lucide-react';
 import { startOfMonth, endOfMonth, isSameDay, parseISO, format } from 'date-fns';
 import { useBookingAvailability } from '@/hooks/useBookingAvailability';
-import { ManualInterviewerSelector } from '@/components/scheduling/ManualInterviewerSelector';
-import { MeetingLocationSelector } from '@/components/scheduling/MeetingLocationSelector';
 import { GuestEmailInput } from '@/components/scheduling/GuestEmailInput';
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -31,18 +33,19 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { useAuth } from '@/contexts/AuthContext';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { Form } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
