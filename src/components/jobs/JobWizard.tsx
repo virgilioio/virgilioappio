@@ -202,10 +202,12 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
           <JobPostingStep
             ref={postingRef}
             jobData={wizardState.jobData}
+            onUpdate={updateJobData}
             jobId={wizardState.createdJobId}
             onPostingMeta={setPostingMeta}
           />
         )
+
       case 5:
         return (
           <SummaryStep
