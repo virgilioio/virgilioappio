@@ -30,8 +30,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useTenant } from '@/hooks/useTenant'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { useJobBoardIntegration } from '@/hooks/useJobBoardIntegration'
-import { PostingFieldsBuilder } from './PostingFieldsBuilder'
-import { CoreFieldsPreview } from './CoreFieldsPreview'
+import { SheetApplicationFormBuilder } from './SheetApplicationFormBuilder'
 import {
   PostingChannelsCard,
   type ChannelsValue,
