@@ -34,8 +34,10 @@ export const menuItem =
   'data-[highlighted]:bg-[hsl(var(--menu-hover))] data-[highlighted]:text-foreground ' +
   'data-[state=checked]:bg-[hsl(var(--menu-selected))] data-[state=checked]:text-foreground ' +
   'data-[selected=true]:bg-[hsl(var(--menu-hover))] data-[selected=true]:text-foreground ' +
-  'data-[disabled]:pointer-events-none data-[disabled]:opacity-45 ' +
-  'data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-45'
+  // cmdk emits data-disabled="false" on enabled items, so we must match exact
+  // values rather than mere attribute presence. Radix sets data-disabled="" when disabled.
+  "data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-45 " +
+  "data-[disabled='']:pointer-events-none data-[disabled='']:opacity-45"
 
 /** Danger item — always last after a separator. */
 export const menuItemDanger =
