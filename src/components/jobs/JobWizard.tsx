@@ -84,6 +84,12 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
   const postingRef = React.useRef<JobPostingStepHandle>(null)
   const mainRef = React.useRef<HTMLElement>(null)
   const [postingMeta, setPostingMeta] = useState({ channels: 1, fields: 9 })
+  const [autoSource, setAutoSource] = useState(true)
+  const { ensureProject: ensureSourcingProject } = useJobSourcingProject(
+    wizardState.createdJobId && wizardState.createdJobId !== 'created'
+      ? wizardState.createdJobId
+      : null,
+  )
 
   // Reset scroll position on step change — UX: always start at top of new step.
   useEffect(() => {
