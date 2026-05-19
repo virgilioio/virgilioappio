@@ -348,7 +348,11 @@ export default function JobDetail() {
   const [statusListsLoading, setStatusListsLoading] = useState(false)
 
   // Jobs hook for updating
-  const { updateJob, isLoading: jobUpdateLoading } = useJobs()
+  const { updateJob, archiveJob, deleteJob, isLoading: jobUpdateLoading } = useJobs()
+  const [showDuplicateWizard, setShowDuplicateWizard] = useState(false)
+  const [duplicateInitialData, setDuplicateInitialData] = useState<any>(null)
+  const [confirmCloseJob, setConfirmCloseJob] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   // Job assignments hook
   const {
