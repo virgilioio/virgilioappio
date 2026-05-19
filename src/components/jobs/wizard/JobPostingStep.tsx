@@ -95,6 +95,7 @@ const CHANNELS: Channel[] = [
 /* ---------------- component ---------------- */
 interface JobPostingStepProps {
   jobData: Partial<CreateJobData>
+  onUpdate: (data: Partial<CreateJobData>) => void
   jobId: string | null
   onPostingMeta?: (meta: { channels: number; fields: number }) => void
 }
@@ -105,17 +106,32 @@ export interface JobPostingStepHandle {
 }
 
 export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingStepProps>(
-  function JobPostingStep({ jobData, jobId, onPostingMeta }, ref) {
+  function JobPostingStep({ jobData, onUpdate, jobId, onPostingMeta }, ref) {
     const { createPosting, updatePosting } = useJobPostings(jobId || '')
+    const { fields: smartFieldsLibrary } = useApplicationFields()
+
+    const setJob = <K extends keyof CreateJobData>(field: K, value: CreateJobData[K]) =>
+      onUpdate({ [field]: value } as Partial<CreateJobData>)
 
     /* --- basics --- */
     const [publicTitle, setPublicTitle] = useState(jobData.title || '')
     const [slug, setSlug] = useState(slugify(jobData.title || ''))
     const [refId, setRefId] = useState('')
     const [language, setLanguage] = useState('en-US')
-    const [deadline, setDeadline] = useState('')
+    const [deadline, setDeadline] = useState<Date | undefined>(undefined)
     const [showInSearch, setShowInSearch] = useState(true)
     const [showResponseBadge, setShowResponseBadge] = useState(true)
+
+    /* --- compensation (commissions only — base salary lives on jobData) --- */
+    const [variableEnabled, setVariableEnabled] = useState(false)
+    const [commissionCurrency, setCommissionCurrency] = useState(jobData.currency || 'USD')
+    const [commissionAmount, setCommissionAmount] = useState<number | undefined>(undefined)
+
+    const salaryInvalid =
+      jobData.salary_min != null &&
+      jobData.salary_max != null &&
+      jobData.salary_min > jobData.salary_max
+
 
     // keep slug in sync with title until user manually edits it
     const slugTouched = useRef(false)
