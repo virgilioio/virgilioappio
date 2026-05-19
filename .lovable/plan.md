@@ -1,105 +1,60 @@
-# Public Job Post — Editorial Redesign
+# Public Job Application Form — Editorial Redesign
 
-Redesign the public job posting page (`/p/:slug`, `PublicJobPosting.tsx`) to match the new editorial layout while keeping the existing apply-form logic untouched (next iteration).
+Redesign the **Application** tab of `PublicJobPosting.tsx` to match the new mockup (`42_Job_post_application_form`), keeping the visual language of the Careers page and Job Post overview tab. All existing submission logic, validation, file handling, throttling, and confirmation dialog stay intact — this is a UI/layout pass only.
 
-## Scope
+## What changes
 
-- Redesign the **overview / job description** view only.
-- Keep the existing `application` tab (form rendering, parsing, submit, confirmation dialog, RLS, throttling) exactly as-is.
-- Reuse the public chrome from the Careers page (top bar, footer) for visual continuity.
+- The Application tab gets the same editorial two-column layout as the overview tab: form on the left, the existing aside (Reply card, Summary, Hiring Panel, Referral) on the right.
+- The page header (badges, H1/subtitle, meta chips, breadcrumb) and `CareersTopBar` / `CareersFooter` stay visible above/below — so the user keeps full context when they switch into the form.
+- The minimal "Job overview / Application" `TabsList` is removed in favor of a single dedicated "APPLY" eyebrow on the form card. Tab switching still happens internally; "Apply for this role" CTAs jump to `#application-form` and the Reply card aside also remains as the sticky CTA. A small "Back to overview" link returns the user to the overview tab.
+- New form shell `ApplyCard` (white, `rounded-2xl`, `border-black/5`, padded ≈40px) containing:
+  - APPLY eyebrow chip + small "We never share your data" lock pill (top-right).
+  - H2 "Tell us about you." in Poppins (with subtle "." purple accent).
+  - Lead paragraph: "{N} short questions, your resume, and a portfolio link. We'll reply within **48 hours** — every time."
+  - 2-column responsive grid (`grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5`) hosting all fields.
 
-## Page structure
+## Fields & layout (form body)
 
-```text
-┌─────────────────────────────────────────────────────────┐
-│ CareersTopBar (logo · company · nav · domain chip)      │
-├─────────────────────────────────────────────────────────┤
-│ Breadcrumb:  Careers › Design › Senior Product Designer │
-│ Badges:     DESIGN · FEATURED                           │
-│ H1:         Senior Product Designer                     │
-│ Subtitle:   Design Systems                              │
-│ Meta chips: Remote · Full-time · $180–220k · equity ... │
-│                          Share · Save · Apply CTA       │
-├──────────────────────────────┬──────────────────────────┤
-│ LEFT (≈ 7 cols)              │ RIGHT (≈ 4 cols, sticky) │
-│  About the role              │  Reply-in-48h pulse card │
-│  What you'll do              │   + Apply CTA            │
-│  You'll thrive if            │  Summary card            │
-│  Nice to have                │   Posted / Location /    │
-│  What we offer               │   Type / Compensation /  │
-│  The process (numbered)      │   Reports to / Ref       │
-│  About <Company>             │  Hiring panel (avatars)  │
-│  EEO statement               │  Referral bonus card     │
-├─────────────────────────────────────────────────────────┤
-│ Dark CTA band — "Ready when you are." · Apply now       │
-├─────────────────────────────────────────────────────────┤
-│ CareersFooter                                           │
-└─────────────────────────────────────────────────────────┘
-```
+Order matches the mockup; spans configurable per field via `column_span` (default 1, file/textarea = 2):
 
-## Data wiring (no migrations)
+1. **Full name** (col 1) · **Email** (col 1) — Email shows tiny helper "We'll send your confirmation here."
+2. **Phone** (col 1) · **LinkedIn / portfolio** (col 1)
+3. **Resume / CV** (col 2) — helper "PDF or DOC, up to 10 MB". After upload renders a lilac chip with file icon, name, size, "uploaded just now", and remove (×) — uses existing `EnhancedResumeDropzone` with a new `chip` post-upload state.
+4. Custom fields rendered via the existing `customFields` loop, respecting `column_span`. Yes/No appears as a pill toggle (`field_type==='checkbox'` with 2 options) shown like the "Authorized to work" pair in the mockup. Selects, textareas, dates, numbers continue to use existing renderers but restyled to the cream/white surface (height 44px, label 12.5px semibold, helper 11.5px muted).
+5. **Salary expectations (optional)** — when a `salary` custom field exists, shown full-width with currency prefix chip inside the input.
+6. **Why are you interested in this role?** — when a long-text custom field exists, full-width Textarea with live `XXX / 600` counter (existing state, new counter UI).
 
-All content is derived from existing rows: `job_postings`, `tenants`, `careers_page_settings`, and `job_postings.details` JSONB. When a field is missing, fall back to a sensible default and hide empty sections.
+All field styling uses semantic shells (`Input`, `Textarea`, `Select`, `PhoneInput`, `DatePickerVirgilio`) with a small wrapper component `<ApplyField label helper required colSpan>` to standardize spacing.
 
-| UI element | Source |
-|---|---|
-| Top bar / footer | `careers_page_settings` (logo, slug, website) + `tenants.name` |
-| Breadcrumb dept | `details.department` |
-| Badges | `details.department`, `details.featured` |
-| H1 / subtitle | `posting.title` (split on em-dash `—` or `:`; fallback = whole title in H1) |
-| Meta chips | `posting.location`, `details.location_type`, `posting.job_type`, salary fields, `details.equity_note`, `details.team_size`, static "Reply in <48h" |
-| About the role | first paragraph of `posting.description` (sanitized) |
-| What you'll do / thrive / nice / offer / process | `details.sections.responsibilities`, `qualifications`, `nice_to_haves`, `benefits`, `hiring_process` (arrays of strings); if absent fall back to splitting `posting.description` headings (best-effort) |
-| Summary card | Posted = `created_at`, Location, Type, Compensation, `details.reports_to`, `details.reference_code` |
-| Hiring panel | `details.hiring_panel` array `{name, role, avatar_url}` — hidden if empty |
-| Referral bonus | `details.referral_bonus` `{amount, currency}` — hidden if absent |
-| About company | `tenants.about` |
-| EEO statement | `details.eeo_statement` or shared default copy |
-| Apply CTA | switches `tab` to `'application'` and scrolls to `#application-form` (existing behavior) |
+## Consent + footer of the form card
 
-No new DB columns. Editor UI to author the new `details.sections.*` and `details.hiring_panel` is **out of scope** — already-saved postings render with graceful fallbacks.
+- Privacy consent: lilac-tinted checkbox + line "I agree to {Company}'s **candidate privacy policy** and to be contacted about this role and future fits. You can withdraw consent or request deletion anytime." (required to submit). New state `consentAccepted`; submit button disabled until checked.
+- Small muted note below: "A short anonymous demographic survey will appear after submit. Optional, anonymized, and never tied to your application."
+- Action row: ghost "Save as draft" link (left, uses existing `localStorage` `gio:draft-application:{slug}` — saves `coreFieldValues` + `customFieldResponses` + `consentAccepted`; restored on mount) and a dark "Submit application →" primary button (right). Submit reuses `handleSubmitApplication`.
 
-## New components
+## Aside (right column)
 
-Under `src/components/careers/public/job/`:
+Reuses the same components already built for the overview tab: `JobAsideReplyCard`, `JobAsideSummary`, `JobAsideHiringPanel`, `JobAsideReferral`. On the application tab, `JobAsideReplyCard.onApply` becomes a no-op scroll-to-form-top.
 
-- `JobHeader.tsx` — breadcrumb, badges, H1+subtitle, meta chip row, share/save/apply actions.
-- `JobMetaChip.tsx` — small icon + label chip used in the meta row.
-- `JobBodySection.tsx` — generic titled section with bullet list or rich HTML.
-- `JobProcessList.tsx` — numbered step list (purple circle + title + helper text).
-- `JobAsideReplyCard.tsx` — lilac pulse "Reply in <48 hours" + Apply CTA.
-- `JobAsideSummary.tsx` — definition list (label left / value right).
-- `JobAsideHiringPanel.tsx` — avatar rows.
-- `JobAsideReferral.tsx` — "Know someone great?" + Copy referral link button (writes `${origin}/p/${slug}?ref=...` to clipboard).
-- `JobCTABand.tsx` — dark "Ready when you are." band with Apply button.
+## Visual tokens
 
-## Styling
+Matches Job Post overview: page `#FAF7F2`, card `#FFFFFF` with `border-black/5` `rounded-2xl`, lilac accents `#EDE4FF` / `#6F3FF5`, dark CTAs `#0d0d09` / `#FFFCF9`, Poppins headings, Inter body, 13/13.5px form labels, 14/15px inputs.
 
-- Cream background `#FAF7F2` (page) / white cards with `border-black/5` and `rounded-2xl`.
-- H1: Instrument Serif italic accent allowed, Poppins semibold base, ~48–56px desktop.
-- Body: Inter 15px, `#3f4451`; section H2: Poppins 16/600.
-- Lilac accents `#EDE4FF` / `#6F3FF5` for badges, pulse card, and process numerals.
-- Dark accents `#0d0d09` / `#FFFCF9` for primary CTAs, CTA band, and footer (matches Careers page).
-- Right column sticky at `top-24` on `lg+`; collapses below the body on mobile.
-- Two-column grid at `lg+` (`grid-cols-12` with `lg:col-span-7` + `lg:col-span-5`); single column below.
+## Files
 
-## Preserved behavior
+- `src/pages/PublicJobPosting.tsx` — replace the `TabsContent value="application"` block with the new two-column layout; remove the top `TabsList`; add consent state and draft persistence.
+- `src/components/careers/public/job/ApplyCard.tsx` — new card shell (eyebrow, title, lead, footer slot).
+- `src/components/careers/public/job/ApplyField.tsx` — new field wrapper (label, helper, required marker, col-span).
+- `src/components/careers/public/job/ApplyResumeChip.tsx` — new uploaded-file chip used after `EnhancedResumeDropzone` capture.
+- `src/components/careers/public/job/ApplyConsentRow.tsx` — new consent checkbox + footer note.
 
-- Route `/p/:slug` and canonical `app.gogio.io` host redirect.
-- `useEffect` data loading, tenant/careers lookup, custom field fetch + select options.
-- `tab` state (`overview` ↔ `application`) and `#application-form` scroll target.
-- `EnhancedResumeDropzone`, `CoreFieldsRenderer`, `ApplicationFieldsRenderer`, file validation, throttling, `ApplicationConfirmationDialog`, all submit logic.
-- All toasts, error states, loading spinner.
+## Out of scope
 
-## Out of scope (next steps)
+- Backend changes, schema changes, new fields in `job_posting_application_fields`.
+- The post-submit demographic survey itself (only the helper line is added).
+- Admin UI for editing `column_span`, helper text, or consent copy.
+- The application limits banner stays as a small muted line at the top of the form, unchanged.
 
-- Redesigning the **application form** (next iteration, per user).
-- Admin UI to edit `details.sections.*`, `details.hiring_panel`, `details.referral_bonus`, `details.reports_to`, `details.reference_code`, `details.team_size`, `details.equity_note`, `details.eeo_statement`.
-- Real referral tracking (v1 = clipboard copy of slug URL with `?ref=public`).
-- Share dialog (v1 = `navigator.share` if available, else copy link).
-- Save-for-later (v1 = client-side `localStorage` flag, no auth).
+## Preserved
 
-## Files touched
-
-- `src/pages/PublicJobPosting.tsx` — replace `overview` tab markup, keep `application` tab untouched.
-- `src/components/careers/public/job/*` — new components listed above.
+Route, data fetching, `handleSubmitApplication`, validation rules, file size/type checks, `ApplicationConfirmationDialog`, toast/violation handling, throttling, `useCoreFields`, `CoreFieldsRenderer`, `ApplicationFieldsRenderer` field types, and the overview tab.
