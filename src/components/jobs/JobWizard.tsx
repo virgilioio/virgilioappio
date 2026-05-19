@@ -353,10 +353,21 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
                   </Button>
                 )}
                 <p className="hidden sm:block text-[12px] text-text-tertiary">
-                  {wizardState.currentStep === 1
-                    ? <>Required fields marked with <span className="text-destructive">*</span></>
-                    : null}
+                  {wizardState.currentStep === 1 ? (
+                    <>Required fields marked with <span className="text-destructive">*</span></>
+                  ) : wizardState.currentStep === 4 ? (
+                    <>Posting to <span className="text-text-primary font-medium">{postingMeta.channels} channels</span> · application form <span className="text-text-primary font-medium">{postingMeta.fields} fields</span></>
+                  ) : null}
                 </p>
+                {wizardState.currentStep === 4 && (
+                  <button
+                    type="button"
+                    onClick={handlePostingSkip}
+                    className="text-[12px] text-text-secondary hover:text-text-primary underline underline-offset-2"
+                  >
+                    Skip — I'll create the posting later
+                  </button>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <Button
