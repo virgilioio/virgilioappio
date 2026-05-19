@@ -13,18 +13,29 @@ Redesign the **Application** tab of `PublicJobPosting.tsx` to match the new mock
   - Lead paragraph: "{N} short questions, your resume, and a portfolio link. We'll reply within **48 hours** — every time."
   - 2-column responsive grid (`grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5`) hosting all fields.
 
-## Fields & layout (form body)
+## Fields & layout (driven by posting config)
 
-Order matches the mockup; spans configurable per field via `column_span` (default 1, file/textarea = 2):
+The form is **fully dynamic** — nothing is hard-coded. Fields and their order come from:
 
-1. **Full name** (col 1) · **Email** (col 1) — Email shows tiny helper "We'll send your confirmation here."
-2. **Phone** (col 1) · **LinkedIn / portfolio** (col 1)
-3. **Resume / CV** (col 2) — helper "PDF or DOC, up to 10 MB". After upload renders a lilac chip with file icon, name, size, "uploaded just now", and remove (×) — uses existing `EnhancedResumeDropzone` with a new `chip` post-upload state.
-4. Custom fields rendered via the existing `customFields` loop, respecting `column_span`. Yes/No appears as a pill toggle (`field_type==='checkbox'` with 2 options) shown like the "Authorized to work" pair in the mockup. Selects, textareas, dates, numbers continue to use existing renderers but restyled to the cream/white surface (height 44px, label 12.5px semibold, helper 11.5px muted).
-5. **Salary expectations (optional)** — when a `salary` custom field exists, shown full-width with currency prefix chip inside the input.
-6. **Why are you interested in this role?** — when a long-text custom field exists, full-width Textarea with live `XXX / 600` counter (existing state, new counter UI).
+- The active **core fields** (`useCoreFields`) → resume, name, email, phone, linkedin, etc. — whichever the workspace enabled for this posting.
+- The posting's **custom fields** (`job_posting_application_fields` + `posting_field_select_options`) → already loaded into `customFields` / `options` state.
 
-All field styling uses semantic shells (`Input`, `Textarea`, `Select`, `PhoneInput`, `DatePickerVirgilio`) with a small wrapper component `<ApplyField label helper required colSpan>` to standardize spacing.
+The redesign is purely a **rendering shell** around these existing sources. The mockup (name/email/phone/linkedin/resume/yes-no/notice period/salary/why) is an *example* of one configuration, not a fixed layout.
+
+Render order:
+1. Resume/CV first (if the core resume field is enabled) — full-width, with the new lilac uploaded-file chip (file icon, name, size, "uploaded just now", remove ×) replacing the dropzone after capture.
+2. Remaining enabled core fields, in the order returned by `useCoreFields`, rendered through `CoreFieldsRenderer` (unchanged logic).
+3. Custom fields, in `display_order`, rendered through `ApplicationFieldsRenderer` (unchanged logic, every existing `field_type` still supported: text, email, number, url, textarea, select, checkbox, checkbox_group, date, file, salary, location, phone, recruiter, employment_type, work_location, linkedin).
+
+Layout:
+- Wrap everything in a CSS grid `grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5`.
+- Column span per field is taken from the existing `column_span` value on `job_posting_application_fields` (1 or 2). Core fields default to span 1 except `resume`, `profile_summary`, and any `textarea`-type custom field which default to span 2.
+- Textareas show a live `value.length / maxLength` counter when the field has a `max_length` (or default 600 for the long-text "why" pattern). No new state — derived from `customFieldResponses[field.id]`.
+- No field is added, removed, renamed, or reordered by this redesign — the eyebrow, title, lead paragraph, consent row, and submit footer are the only static chrome.
+
+All restyled through a new wrapper `<ApplyField label helper required colSpan>` that wraps the existing `Input` / `Textarea` / `Select` / `PhoneInput` / `DatePickerVirgilio` controls so we don't fork `CoreFieldsRenderer` / `ApplicationFieldsRenderer` — we pass it as their `wrapper` slot (or, if simpler, post-process their `className` via a parent container). Field controls themselves stay on the existing components.
+
+The lead-paragraph "{N} short questions" count is derived from `customFields.length` at runtime, so it always matches what's actually configured.
 
 ## Consent + footer of the form card
 
