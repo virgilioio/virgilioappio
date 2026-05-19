@@ -1149,12 +1149,11 @@ export default function PublicJobPosting() {
           </TabsContent>
         </Tabs>
       </main>
-      <footer className="border-t border-border bg-surface-primary">
-        <div className="max-w-6xl mx-auto px-6 sm:px-8 py-6 flex items-center">
-          <span className="text-sm text-muted-foreground mr-3">Powered by</span>
-          <GoGioLogo className="h-5 w-auto" />
-        </div>
-      </footer>
+      <CareersFooter
+        companyName={organizationName || 'Company'}
+        logoUrl={companyLogoUrl}
+        websiteUrl={companyWebsiteUrl}
+      />
       
       <ApplicationConfirmationDialog
         open={showConfirmationDialog}
