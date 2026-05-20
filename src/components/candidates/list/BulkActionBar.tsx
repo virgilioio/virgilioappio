@@ -24,6 +24,7 @@ export function BulkActionBar({
   onSelectAllFiltered, onClearSelection,
   onAddToJob, onEmail, onTag, onAddToSearch, onArchive,
   tagButtonSlot,
+  addToJobButtonSlot,
 }: BulkActionBarProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 h-12 px-4 rounded-xl bg-[#0d0d09] text-white">
