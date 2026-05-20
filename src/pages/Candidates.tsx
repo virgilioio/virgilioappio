@@ -41,7 +41,7 @@ import { MinimizableBulkUploadDialog } from '@/components/candidates/Minimizable
 import { CSVImportDialog } from '@/components/candidates/CSVImportDialog'
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 import { DeleteCandidateDialog } from '@/components/candidates/DeleteCandidateDialog'
-import BulkAddToJobPipelineDialog from '@/components/candidates/BulkAddToJobPipelineDialog'
+import { AddToJobPopover } from '@/components/candidates/bulk/AddToJobPopover'
 
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
