@@ -230,7 +230,7 @@ function CandidatesInner() {
   const [isCSVImportOpen, setIsCSVImportOpen] = useState(false)
   const [showMergeDialog, setShowMergeDialog] = useState(false)
   const [duplicateInfo, setDuplicateInfo] = useState<{ existing: any; incoming: any; merged: any } | null>(null)
-  const [bulkJobOpen, setBulkJobOpen] = useState(false)
+  
 
   // Auto-open candidate sheet from query param
   useEffect(() => {
