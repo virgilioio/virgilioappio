@@ -127,7 +127,7 @@ function CandidatesInner() {
 
 
   const setFiltersFromRecord = useCallback((rec: Partial<CandidateFilters>) => {
-    const arrayKeys = ['statuses','sources','countries','states','cities','companies','seniorityLevels','functionalAreas','specializations','skills','enrichmentStatuses','pipelineStatuses','jobs','stages','rejectedAtStages'] as const
+    const arrayKeys = ['statuses','sources','countries','states','cities','companies','seniorityLevels','functionalAreas','specializations','skills','enrichmentStatuses','pipelineStatuses','jobs','stages','rejectedAtStages','tagIds'] as const
     for (const k of arrayKeys) setArrayFilter(k, (rec[k] as string[]) ?? [])
     const numKeys = ['experienceMin','experienceMax','salaryMin','salaryMax'] as const
     for (const k of numKeys) setNumericFilter(k, (rec[k] as number | null) ?? null)
