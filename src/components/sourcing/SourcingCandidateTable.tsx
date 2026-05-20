@@ -623,33 +623,133 @@ export function SourcingCandidateTable({
   return (
     <div className="h-full min-h-0 flex flex-col gap-4 overflow-hidden">
 
-      {/* Bulk Action Bar */}
-      {selectedApolloIds.size > 0 && (
-        <div className="sticky top-0 z-10 bg-muted/95 backdrop-blur border border-border rounded-lg px-4 py-3 flex items-center justify-between shadow-sm shrink-0">
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium">
-              {selectedApolloIds.size} selected
+      {/* Toolbar / Bulk Action Bar — mutually exclusive */}
+      {selectedApolloIds.size > 0 ? (
+        // Dark bulk action bar
+        <div className="sticky top-0 z-10 rounded-lg bg-[#0d0d09] px-4 py-2.5 flex items-center justify-between shadow-[0_8px_24px_-12px_rgba(0,0,0,0.4)] shrink-0">
+          <div className="flex items-center gap-3 text-virgilio-cream">
+            <span className="font-poppins text-[13px] font-medium tabular-nums">
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-virgilio-cream/15 px-1.5 text-xs">
+                {selectedApolloIds.size}
+              </span>
+              <span className="ml-2">selected</span>
             </span>
-            <Button variant="ghost" size="sm" onClick={clearSelection} className="h-7 px-2">
-              <X className="h-3.5 w-3.5 mr-1" />
-              Clear
+            <span className="text-virgilio-cream/30">·</span>
+            <button
+              type="button"
+              onClick={() => {
+                // Select all collectible Apollo candidates across results
+                const all = new Set(selectedApolloIds)
+                sortedData.forEach(c => {
+                  if (c.source === 'apollo' && !c.candidate_id && c.apollo_id) all.add(c.apollo_id)
+                })
+                setSelectedApolloIds(all)
+              }}
+              className="text-[12.5px] text-virgilio-cream/80 hover:text-virgilio-cream underline-offset-2 hover:underline"
+            >
+              Select all {sortedData.filter(c => c.source === 'apollo' && !c.candidate_id && c.apollo_id).length}
+            </button>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Button
+              size="sm"
+              variant="purple"
+              icon={isBulkCollecting ? undefined : Download}
+              onClick={handleBulkCollect}
+              disabled={isBulkCollecting || isCollectDisabled}
+            >
+              {isBulkCollecting && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+              {isCollectDisabled
+                ? 'Credits exhausted'
+                : `Collect ${selectedApolloIds.size} · ${selectedApolloIds.size} credit${selectedApolloIds.size === 1 ? '' : 's'}`}
+            </Button>
+            <Button size="sm" variant="secondary" onDark icon={Heart}>
+              Save for later
+            </Button>
+            <Button size="sm" variant="ghost" onDark>
+              Not a fit
+            </Button>
+            <Button
+              size="xs"
+              variant="ghost"
+              onDark
+              iconOnly
+              icon={X}
+              aria-label="Clear selection"
+              onClick={clearSelection}
+            />
+          </div>
+        </div>
+      ) : (
+        // Results toolbar
+        <div className="flex flex-wrap items-center justify-between gap-3 shrink-0">
+          {/* Left: count */}
+          <div className="flex items-center gap-2 text-[12.5px] text-text-secondary">
+            <span>
+              Showing{' '}
+              <span className="font-medium text-text-primary tabular-nums">
+                {sortedData.length === 0 ? 0 : startIndex + 1}–{Math.min(startIndex + itemsPerPage, sortedData.length)}
+              </span>{' '}
+              of <span className="font-medium text-text-primary tabular-nums">{sortedData.length}</span>
+            </span>
+          </div>
+
+          {/* Center: fit segments */}
+          <div className="inline-flex items-center gap-0.5 rounded-lg bg-[#F1F0EC] p-0.5">
+            {([
+              { id: 'all', label: 'All', count: segmentCounts.all },
+              { id: 'strong', label: 'Strong fit', count: segmentCounts.strong },
+              { id: 'good', label: 'Good', count: segmentCounts.good },
+              { id: 'possible', label: 'Possible', count: segmentCounts.possible },
+              { id: 'collected', label: 'Collected', count: segmentCounts.collected },
+            ] as const).map(seg => (
+              <button
+                key={seg.id}
+                type="button"
+                onClick={() => { setFitSegment(seg.id); setCurrentPage(1) }}
+                className={cn(
+                  'h-7 px-2.5 rounded-md font-poppins text-[12px] font-medium tracking-[-0.005em] transition-colors',
+                  'inline-flex items-center gap-1.5',
+                  fitSegment === seg.id
+                    ? 'bg-white text-text-primary shadow-[0_1px_2px_rgba(0,0,0,0.06)]'
+                    : 'text-text-secondary hover:text-text-primary'
+                )}
+              >
+                <span>{seg.label}</span>
+                <span className={cn(
+                  'text-[11px] tabular-nums',
+                  fitSegment === seg.id ? 'text-text-tertiary' : 'text-text-tertiary/70'
+                )}>
+                  {seg.count}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Right: sort + select all */}
+          <div className="flex items-center gap-1.5">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="ghost" icon={ArrowUpDown} dropdown>
+                  Sort: {sortMode === 'ai_fit' ? 'AI fit' : sortMode === 'recent' ? 'Recent activity' : 'Experience'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" sideOffset={8}>
+                <DropdownMenuItem onSelect={() => setSortMode('ai_fit')}>AI fit</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setSortMode('recent')}>Recent activity</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setSortMode('experience')}>Experience</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={CheckCircle2}
+              onClick={toggleSelectAllApollo}
+              disabled={apolloCandidatesOnPage.length === 0}
+            >
+              Select all
             </Button>
           </div>
-          <Button
-            size="sm"
-            onClick={handleBulkCollect}
-            disabled={isBulkCollecting || isCollectDisabled}
-          >
-            {isBulkCollecting ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4 mr-2" />
-            )}
-            {isCollectDisabled 
-              ? 'Credits exhausted' 
-              : `Unlock ${selectedApolloIds.size} ${selectedApolloIds.size === 1 ? 'profile' : 'profiles'} (${selectedApolloIds.size} ${selectedApolloIds.size === 1 ? 'credit' : 'credits'})`
-            }
-          </Button>
         </div>
       )}
 
@@ -658,38 +758,6 @@ export function SourcingCandidateTable({
         <CardContent className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
           <div className="flex-1 min-h-0 overflow-y-auto">
             <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-10 px-3">
-                  <Checkbox
-                    checked={isAllApolloSelected && apolloCandidatesOnPage.length > 0}
-                    onCheckedChange={toggleSelectAllApollo}
-                    aria-label="Select all Apollo candidates on page"
-                    disabled={apolloCandidatesOnPage.length === 0}
-                  />
-                </TableHead>
-                <TableHead className="w-[280px]">
-                  <SortableHeader 
-                    sortKey="candidate_name" 
-                    currentSort={sortConfig} 
-                    onSort={requestSort}
-                  >
-                    Name
-                  </SortableHeader>
-                </TableHead>
-                <TableHead className="w-[280px]">
-                  <SortableHeader 
-                    sortKey="current_role" 
-                    currentSort={sortConfig} 
-                    onSort={requestSort}
-                  >
-                    Current Role
-                  </SortableHeader>
-                </TableHead>
-                <TableHead>Headline / Skills</TableHead>
-                <TableHead className="text-right w-[220px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
             <TableBody>
               {paginatedData.map((candidate, pIdx) => {
                 const isAdded = addedCandidates.has(candidate.id)
