@@ -351,95 +351,17 @@ export function SourcingProjectView({
   
   return (
     <div className="flex flex-col h-full min-h-0 overflow-hidden">
-
-      {/* Tabs Section */}
-      <Tabs 
-        value={activeTab} 
-        onValueChange={setActiveTab}
-        className="flex-1 flex flex-col min-h-0 overflow-hidden"
-      >
-        {/* Calm Gio Foundation tabs — minimal, no gradients */}
-        <div className="border-b border-border bg-background shrink-0 px-4">
-          <TabsList className="h-11 bg-transparent p-0 gap-1 justify-start">
-            <TabsTrigger
-              value="candidates"
-              className="h-11 px-3 rounded-none border-b-2 border-transparent bg-transparent text-text-secondary data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-virgilio-purple data-[state=active]:shadow-none"
-            >
-              <span className="flex items-center gap-1.5">
-                <span className="font-poppins text-[13px] font-medium tracking-[-0.01em]">Candidates</span>
-                {filteredCandidates.length > 0 && (
-                  <Badge tone="lilac" size="xs" className="font-mono tabular-nums">
-                    {filteredCandidates.length}
-                  </Badge>
-                )}
-              </span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="saved"
-              className="h-11 px-3 rounded-none border-b-2 border-transparent bg-transparent text-text-secondary data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-virgilio-purple data-[state=active]:shadow-none"
-            >
-              <span className="flex items-center gap-1.5">
-                <span className="font-poppins text-[13px] font-medium tracking-[-0.01em]">Saved</span>
-                {savedCandidates.length > 0 && (
-                  <Badge tone="yellow" size="xs" className="font-mono tabular-nums">
-                    {savedCandidates.length}
-                  </Badge>
-                )}
-              </span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="archived"
-              className="h-11 px-3 rounded-none border-b-2 border-transparent bg-transparent text-text-secondary data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-virgilio-purple data-[state=active]:shadow-none"
-            >
-              <span className="flex items-center gap-1.5">
-                <span className="font-poppins text-[13px] font-medium tracking-[-0.01em]">Archived</span>
-                {archivedCandidates.length > 0 && (
-                  <Badge tone="neutral" size="xs" className="font-mono tabular-nums">
-                    {archivedCandidates.length}
-                  </Badge>
-                )}
-              </span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="conversation"
-              className="h-11 px-3 ml-auto rounded-none border-b-2 border-transparent bg-transparent text-text-secondary data-[state=active]:bg-transparent data-[state=active]:text-virgilio-purple data-[state=active]:border-virgilio-purple data-[state=active]:shadow-none"
-            >
-              <span className="flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-virgilio-purple" />
-                <span className="font-poppins text-[13px] font-medium tracking-[-0.01em]">Chat with Gio</span>
-              </span>
-            </TabsTrigger>
-          </TabsList>
-        </div>
-
-        <TabsContent value="conversation" className="flex-1 min-h-0 overflow-hidden m-0">
-          <ConversationTab 
-            projectId={projectId}
-            onRefinementComplete={() => setActiveTab('candidates')}
-          />
-        </TabsContent>
-        
-        <TabsContent value="candidates" className="flex-1 min-h-0 overflow-hidden m-0">
-          <CandidatesTab 
-            project={project}
-            candidates={filteredCandidates as any}
-            isLoading={candidatesLoading}
-            jobId={project.job_id}
-            projectId={project.id}
-            searchCriteria={project.search_criteria}
-            sourceBreakdown={matchingResult?.source_breakdown}
-            onLinkToJob={handleLinkToJob}
-          />
-        </TabsContent>
-        
-        <TabsContent value="saved" className="flex-1 min-h-0 overflow-hidden m-0">
-          <SavedCandidatesTab projectId={projectId} jobId={project.job_id} />
-        </TabsContent>
-        
-        <TabsContent value="archived" className="flex-1 min-h-0 overflow-hidden m-0">
-          <ArchivedCandidatesTab projectId={projectId} />
-        </TabsContent>
-      </Tabs>
+      <CandidatesTab
+        project={project}
+        candidates={filteredCandidates as any}
+        isLoading={candidatesLoading}
+        jobId={project.job_id}
+        projectId={project.id}
+        searchCriteria={project.search_criteria}
+        sourceBreakdown={matchingResult?.source_breakdown}
+        onLinkToJob={handleLinkToJob}
+        savedCount={savedCandidates.length}
+      />
 
       {pendingJobId && (
         <AddCollectedToPipelineDialog
