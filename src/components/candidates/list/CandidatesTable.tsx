@@ -1,10 +1,10 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Heart, MoreHorizontal } from 'lucide-react'
+import { Heart, MoreHorizontal, Eye, Trash2 } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
-import { IdentityCell, NumericCell } from '@/components/ui/table-cells'
+import { IdentityCell, NumericCell, ActionCell } from '@/components/ui/table-cells'
 import { TableSkeleton, TableFilteredEmpty, TableEmpty } from '@/components/ui/table-states'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
@@ -203,17 +203,26 @@ export function CandidatesTable({
               <TableCell>
                 <span className="text-[12.5px] text-text-secondary tabular-nums">{relativeTime(c.created_at)}</span>
               </TableCell>
-              <TableCell onClick={(e) => e.stopPropagation()}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" iconOnly icon={MoreHorizontal} aria-label="Row actions" size="sm" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" sideOffset={8} className="w-44">
-                    <DropdownMenuItem onSelect={() => onOpenCandidate(c.id)}>View profile</DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={() => onDelete(c)} className="text-destructive">Delete</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+              <TableCell onClick={(e) => e.stopPropagation()} className="w-[32px] text-right">
+                <ActionCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="xs" iconOnly icon={MoreHorizontal} aria-label="Candidate actions" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-44">
+                      <DropdownMenuItem onSelect={() => onOpenCandidate(c.id)}>
+                        <Eye className="h-3.5 w-3.5" /> <span>View profile</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onSelect={() => onDelete(c)}
+                        className="text-destructive focus:bg-destructive/10 focus:text-destructive data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> <span>Delete</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </ActionCell>
               </TableCell>
             </TableRow>
           )
