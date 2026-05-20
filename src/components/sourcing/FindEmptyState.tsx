@@ -94,6 +94,7 @@ export function FindEmptyState({
             isGenerating ? 'opacity-0 scale-95 max-h-0 overflow-hidden pointer-events-none' : 'opacity-100 scale-100 max-h-[1200px]'
           )}>
             <AIJobAssistant
+              variant="find"
               onProjectCreated={onProjectCreated}
               onGeneratingChange={onGeneratingChange}
             />
