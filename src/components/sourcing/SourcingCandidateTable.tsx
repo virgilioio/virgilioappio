@@ -847,179 +847,231 @@ export function SourcingCandidateTable({
                   }
                 }
 
+                // Fit score band → tone for right rail
+                const fitScore = candidate.match_score ?? 0
+                const fitBand =
+                  fitScore >= 85 ? { label: 'text-emerald-700', bg: 'bg-emerald-50', ring: 'ring-emerald-200' } :
+                  fitScore >= 70 ? { label: 'text-blue-700', bg: 'bg-blue-50', ring: 'ring-blue-200' } :
+                  fitScore >= 55 ? { label: 'text-amber-700', bg: 'bg-amber-50', ring: 'ring-amber-200' } :
+                  { label: 'text-text-tertiary', bg: 'bg-[#F1F0EC]', ring: 'ring-border' }
+
+                // Initials for avatar
+                const displayName = getDisplayName(candidate)
+                const initials = displayName
+                  .split(/\s+/)
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map(s => s[0])
+                  .join('')
+                  .toUpperCase()
+
+                // Top match: position 0 in sorted data when sorted by AI fit
+                const isTopMatch = sortMode === 'ai_fit' && sortedData[0]?.id === candidate.id
+
+                // Matched skills (green check chips)
+                const matchedSkills = (candidate.matched_keywords ?? []).slice(0, 4)
+                const extraSkills = (candidate.skills ?? [])
+                  .filter(s => !matchedSkills.includes(s))
+                  .slice(0, Math.max(0, 5 - matchedSkills.length))
+
                 return (
                   <TableRow
                     key={`${candidate.apollo_id || candidate.id}-${pIdx}`}
                     className={cn(
-                      "cursor-pointer hover:bg-muted/40",
-                      isSelected && "bg-muted/30",
-                      isActiveRow && "bg-primary/5 border-l-2 border-l-primary"
+                      "cursor-pointer transition-colors border-b border-border/60",
+                      "hover:bg-[#FAFAF7]",
+                      isSelected && "bg-[#FAF8FF]",
+                      isActiveRow && "bg-[#FAF8FF] border-l-2 border-l-virgilio-purple"
                     )}
                     onClick={handleRowClick}
                   >
-                    <TableCell colSpan={5} className="py-3 px-4">
-                      <div className="flex items-start gap-3">
+                    <TableCell colSpan={5} className="py-4 px-5">
+                      <div className="flex items-start gap-4">
                         {/* Checkbox */}
-                        <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
+                        <div className="pt-1" onClick={(e) => e.stopPropagation()}>
                           {canSelect ? (
                             <Checkbox
                               checked={isSelected}
                               onCheckedChange={() => toggleSelectApollo(candidate.apollo_id!)}
-                              aria-label={`Select ${getDisplayName(candidate)}`}
+                              aria-label={`Select ${displayName}`}
                             />
                           ) : (
                             <div className="w-4 h-4" />
                           )}
                         </div>
-                        {/* Main content */}
-                        <div className="flex-1 min-w-0 space-y-1.5">
-                          {/* Top: badge + match */}
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5">
-                              <Badge className={cn("text-[10px] px-1.5 py-0 h-4 border-0", badgeClass)}>
-                                {badgeLabel}
-                              </Badge>
-                              {/* Keyword match indicator */}
-                              {candidate.matched_keywords && candidate.matched_keywords.length > 0 && (
-                                <Badge variant="keyword-match" className="text-[10px] px-1.5 py-0 h-4">
-                                  {candidate.matched_keywords.slice(0, 2).join(', ')}
-                                  {candidate.matched_keywords.length > 2 && ` +${candidate.matched_keywords.length - 2}`}
-                                </Badge>
-                              )}
-                            </div>
-                            <Badge className={cn("text-xs", getMatchBadgeColor(candidate.match_tier))}>
-                              {candidate.match_score}%
-                            </Badge>
-                          </div>
-                          {/* Name */}
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-sm">{getDisplayName(candidate)}</span>
+
+                        {/* Avatar */}
+                        <Avatar className="h-10 w-10 shrink-0 ring-1 ring-border bg-virgilio-purple/10 text-virgilio-purple">
+                          <AvatarFallback className="bg-virgilio-purple/10 text-virgilio-purple font-poppins text-[12px] font-semibold tracking-[-0.01em]">
+                            {initials || '?'}
+                          </AvatarFallback>
+                        </Avatar>
+
+                        {/* Identity block */}
+                        <div className="flex-1 min-w-0 space-y-1">
+                          {/* Name + tag row */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-poppins text-[14px] font-semibold tracking-[-0.01em] text-text-primary">
+                              {displayName}
+                            </span>
+                            {isTopMatch && (
+                              <Badge tone="purple" size="xs" icon={Sparkles}>Top match</Badge>
+                            )}
+                            {isInternal && (
+                              <Badge tone="green" size="xs">Collected</Badge>
+                            )}
+                            {isGio && (
+                              <Badge tone="purple" size="xs">Gio</Badge>
+                            )}
+                            {!isInternal && !isGio && isApollo && (
+                              <Badge tone="neutral" size="xs">Preview</Badge>
+                            )}
+                            {isPdl && (
+                              <Badge tone="blue" size="xs">LinkedIn</Badge>
+                            )}
                             {candidate.linkedin_url && (
                               <a
                                 href={candidate.linkedin_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
-                                className="text-blue-600 hover:text-blue-700"
+                                className="text-[#0A66C2] hover:opacity-80"
+                                aria-label="LinkedIn"
                               >
-                                <Linkedin className="h-3 w-3" />
+                                <Linkedin className="h-3.5 w-3.5" />
                               </a>
                             )}
                           </div>
-                          {/* Subtitle: role @ company */}
+
+                          {/* Headline / role at company */}
                           {(candidate.current_role || candidate.current_company) && (
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-[12.5px] text-text-secondary truncate">
                               {candidate.current_role}
                               {candidate.current_role && candidate.current_company && ' at '}
                               {candidate.current_company && (
-                                <a
-                                  href={`https://www.google.com/search?q=${encodeURIComponent(candidate.current_company)}+site:linkedin.com/company`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="hover:text-primary hover:underline"
-                                >
-                                  {candidate.current_company}
-                                </a>
+                                <span className="text-text-primary font-medium">{candidate.current_company}</span>
                               )}
                             </p>
                           )}
-                          {/* Metadata chips row */}
-                          <div className="flex items-center gap-3 flex-wrap">
-                            {/* Location chip */}
-                            {(isInternal || isPdl) && location ? (
-                              <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
-                                <MapPin className="h-2.5 w-2.5" />
-                                {location}
+
+                          {/* Metadata line */}
+                          <div className="flex items-center gap-x-3 gap-y-1 flex-wrap text-[11.5px] text-text-tertiary">
+                            {((isInternal || isPdl || isGio) && location) ? (
+                              <span className="inline-flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />{location}
                               </span>
                             ) : isApollo && candidate.has_location ? (
-                              <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
-                                <MapPin className="h-2.5 w-2.5" />
-                                Location
+                              <span className="inline-flex items-center gap-1 italic">
+                                <MapPin className="h-3 w-3" />Location
                               </span>
                             ) : null}
-                            {/* Email chip */}
-                            {(isInternal || isPdl) && candidate.email ? (
-                              <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
-                                <Mail className="h-2.5 w-2.5" />
-                                {candidate.email}
+                            {(candidate.years_experience || candidate.experience_years) ? (
+                              <span>{candidate.years_experience || candidate.experience_years}y exp.</span>
+                            ) : null}
+                            {((isInternal || isPdl) && candidate.email) ? (
+                              <span className="inline-flex items-center gap-1">
+                                <Mail className="h-3 w-3" />{candidate.email}
                               </span>
                             ) : isApollo && candidate.has_email ? (
-                              <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
-                                <Mail className="h-2.5 w-2.5" />
-                                Email
+                              <span className="inline-flex items-center gap-1 italic">
+                                <Mail className="h-3 w-3" />Email available
                               </span>
                             ) : null}
-                            {/* Phone chip */}
-                            {(isInternal || isPdl) && candidate.phone ? (
-                              <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
-                                <Phone className="h-2.5 w-2.5" />
-                                {candidate.phone}
+                            {((isInternal || isPdl) && candidate.phone) ? (
+                              <span className="inline-flex items-center gap-1">
+                                <Phone className="h-3 w-3" />{candidate.phone}
                               </span>
                             ) : isApollo && candidate.has_phone ? (
-                              <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
-                                <Phone className="h-2.5 w-2.5" />
-                                Phone
+                              <span className="inline-flex items-center gap-1 italic">
+                                <Phone className="h-3 w-3" />Phone available
                               </span>
                             ) : null}
                           </div>
-                        </div>
-                        {/* Right: Actions */}
-                        <div className="flex items-center gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
-                          {isApollo ? (
+
+                          {/* Matched + extra skill chips */}
+                          {(matchedSkills.length > 0 || extraSkills.length > 0) && (
+                            <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                              {matchedSkills.map(skill => (
+                                <span
+                                  key={`m-${skill}`}
+                                  className="inline-flex items-center gap-1 rounded-md bg-emerald-50 text-emerald-700 px-1.5 h-[18px] text-[10.5px] font-medium ring-1 ring-emerald-200/60"
+                                >
+                                  <CheckCircle2 className="h-2.5 w-2.5" />
+                                  {skill}
+                                </span>
+                              ))}
+                              {extraSkills.map(skill => (
+                                <span
+                                  key={`x-${skill}`}
+                                  className="inline-flex items-center rounded-md bg-[#F1F0EC] text-text-secondary px-1.5 h-[18px] text-[10.5px] font-medium"
+                                >
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-1.5 pt-2" onClick={(e) => e.stopPropagation()}>
+                            {isApollo ? (
+                              <Button
+                                size="sm"
+                                variant="primary"
+                                icon={isCollecting ? undefined : Download}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleCollectProfile(candidate.apollo_id!)
+                                }}
+                                disabled={isCollecting || isCollectDisabled}
+                                title={isCollectDisabled ? 'Monthly collect credit limit reached' : 'Reveal full profile (1 credit)'}
+                              >
+                                {isCollecting && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                                {isCollectDisabled ? 'Credits exhausted' : 'Collect · 1 credit'}
+                              </Button>
+                            ) : isAdded ? (
+                              <Button size="sm" variant="secondary" disabled icon={CheckCircle2}>
+                                Added to pipeline
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="primary"
+                                icon={isLoading ? undefined : Plus}
+                                onClick={(e) => handleAddToPipeline(candidate, e)}
+                                disabled={isLoading || !jobId}
+                              >
+                                {isLoading && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                                {jobId ? 'Add to job' : 'Link a job first'}
+                              </Button>
+                            )}
+                            <Button size="sm" variant="secondary" icon={Mail}>
+                              Reach out
+                            </Button>
                             <Button
                               size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleCollectProfile(candidate.apollo_id!)
-                              }}
-                              disabled={isCollecting || isCollectDisabled}
-                              title={isCollectDisabled ? 'Monthly collect credit limit reached' : 'Reveal full profile with LinkedIn, email & phone (uses 1 credit)'}
+                              variant="ghost"
+                              iconRight={ChevronRight}
+                              onClick={(e) => { e.stopPropagation(); handleRowClick() }}
                             >
-                              {isCollecting ? (
-                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                              ) : (
-                                <Download className="h-3 w-3 mr-1" />
-                              )}
-                              {isCollectDisabled ? 'Credits exhausted' : 'Reveal (1 credit)'}
+                              View profile
                             </Button>
-                          ) : (
-                            <>
-                              {isAdded ? (
-                                <Button size="sm" variant="secondary" disabled>
-                                  <CheckCircle2 className="h-3 w-3 mr-1" />
-                                  Added
-                                </Button>
-                              ) : (
-                                <Button
-                                  size="sm"
-                                  variant="default"
-                                  onClick={(e) => handleAddToPipeline(candidate, e)}
-                                  disabled={isLoading || !jobId}
-                                >
-                                  {isLoading ? (
-                                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                  ) : (
-                                    <Plus className="h-3 w-3 mr-1" />
-                                  )}
-                                  Add
-                                </Button>
-                              )}
-                            </>
+                          </div>
+                        </div>
+
+                        {/* Right rail: AI FIT score */}
+                        <div
+                          className={cn(
+                            "shrink-0 flex flex-col items-center justify-center gap-0.5 rounded-lg ring-1 px-3 py-2 min-w-[64px]",
+                            fitBand.bg,
+                            fitBand.ring
                           )}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-muted-foreground"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleRowClick()
-                            }}
-                          >
-                            View
-                            <ChevronRight className="h-3 w-3 ml-0.5" />
-                          </Button>
+                        >
+                          <span className="font-poppins text-[9px] uppercase tracking-[0.08em] text-text-tertiary">
+                            AI Fit
+                          </span>
+                          <span className={cn("font-poppins text-[22px] font-semibold leading-none tabular-nums tracking-[-0.02em]", fitBand.label)}>
+                            {fitScore}
+                          </span>
                         </div>
                       </div>
                     </TableCell>
