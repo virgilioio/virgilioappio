@@ -459,8 +459,8 @@ function CandidatesInner() {
       </div>
 
       {/* Body: rail + main */}
-      <div className="flex-1 min-h-0 flex overflow-hidden">
-        <div className="hidden md:block">
+      <div className="flex-1 min-h-0 flex gap-4 overflow-hidden px-6 pb-6">
+        <div className="hidden md:block h-full">
           <CandidatesSearchesRail
             views={views}
             activeViewId={activeViewId}
@@ -482,22 +482,21 @@ function CandidatesInner() {
         </div>
 
 
-        <main className="flex-1 min-w-0 overflow-y-auto px-4 sm:px-6 py-5 space-y-4">
-          <SavedSearchToolbar
-            activeView={activeView}
-            smartListLabel={smartListLabel}
-            resultsCount={finalAfterSmart.length}
-            totalCount={candidates.length}
-            isDirty={filtersDirty}
-            changesCount={changesCount}
-            onSaveChanges={handleSaveChanges}
-            onResetChanges={handleResetChanges}
-            onSaveAsNew={handleSavePopoverOpen}
-            onExport={handleExport}
-          />
+        <main className="flex-1 min-w-0 overflow-y-auto space-y-4">
+          <section className="bg-surface-primary border border-virgilio-border rounded-2xl shadow-sm p-4 space-y-3">
+            <SavedSearchToolbar
+              activeView={activeView}
+              smartListLabel={smartListLabel}
+              resultsCount={finalAfterSmart.length}
+              totalCount={candidates.length}
+              isDirty={filtersDirty}
+              changesCount={changesCount}
+              onSaveChanges={handleSaveChanges}
+              onResetChanges={handleResetChanges}
+              onSaveAsNew={handleSavePopoverOpen}
+              onExport={handleExport}
+            />
 
-
-          <div className="space-y-3">
             <SearchModeTabs value={mode} onChange={setMode} />
             <CandidateSearchBar
               value={query}
@@ -528,83 +527,86 @@ function CandidatesInner() {
               }
             />
             <FilterChipsRow filterOptions={filterOptions} />
-          </div>
+          </section>
 
 
-          {selectedIds.length > 0 ? (
-            <BulkActionBar
-              selectedCount={selectedIds.length}
-              totalCount={finalAfterSmart.length}
-              allFilteredSelected={selectedIds.length >= finalAfterSmart.length}
-              onSelectAllFiltered={selectAllFiltered}
-              onClearSelection={clearSelection}
-              onAddToJob={() => {}}
-              onEmail={() => toast({ title: 'Bulk email coming soon' })}
-              onTag={() => {}}
-              onAddToSearch={handleSavePopoverOpen}
-              onArchive={archiveSelected}
-              addToJobButtonSlot={
-                <AddToJobPopover
-                  candidateIds={selectedIds}
-                  candidateNames={candidates.filter(c => selectedIds.includes(c.id)).map(c => c.candidate_name)}
-                  onCompleted={() => { clearSelection(); getCandidates() }}
-                  trigger={
-                    <Button onDark size="sm" variant="ghost" icon={UsersIcon}>Add to job</Button>
-                  }
-                />
-              }
-              tagButtonSlot={
-                <AddTagPopover
-                  candidateIds={selectedIds}
-                  candidateNames={candidates.filter(c => selectedIds.includes(c.id)).map(c => c.candidate_name)}
-                  align="end"
-                  trigger={
-                    <Button onDark size="sm" variant="ghost" icon={TagIcon}>Tag</Button>
-                  }
-                />
-              }
-              shareButtonSlot={
-                <ShareListModal
-                  candidateIds={selectedIds}
-                  candidates={candidates.filter(c => selectedIds.includes(c.id)).map((c: any) => ({
-                    id: c.id,
-                    name: c.candidate_name,
-                    company: c.company_current ?? null,
-                    stage: c.current_job_title ?? null,
-                    score: typeof c.fit_score === 'number' ? c.fit_score : (typeof c.match_score === 'number' ? c.match_score : null),
-                  }))}
-                  trigger={
-                    <Button onDark size="sm" variant="ghost" icon={Share2Icon}>Share</Button>
-                  }
-                />
-              }
+
+          <section className="bg-surface-primary border border-virgilio-border rounded-2xl shadow-sm overflow-hidden">
+            {selectedIds.length > 0 ? (
+              <BulkActionBar
+                selectedCount={selectedIds.length}
+                totalCount={finalAfterSmart.length}
+                allFilteredSelected={selectedIds.length >= finalAfterSmart.length}
+                onSelectAllFiltered={selectAllFiltered}
+                onClearSelection={clearSelection}
+                onAddToJob={() => {}}
+                onEmail={() => toast({ title: 'Bulk email coming soon' })}
+                onTag={() => {}}
+                onAddToSearch={handleSavePopoverOpen}
+                onArchive={archiveSelected}
+                addToJobButtonSlot={
+                  <AddToJobPopover
+                    candidateIds={selectedIds}
+                    candidateNames={candidates.filter(c => selectedIds.includes(c.id)).map(c => c.candidate_name)}
+                    onCompleted={() => { clearSelection(); getCandidates() }}
+                    trigger={
+                      <Button onDark size="sm" variant="ghost" icon={UsersIcon}>Add to job</Button>
+                    }
+                  />
+                }
+                tagButtonSlot={
+                  <AddTagPopover
+                    candidateIds={selectedIds}
+                    candidateNames={candidates.filter(c => selectedIds.includes(c.id)).map(c => c.candidate_name)}
+                    align="end"
+                    trigger={
+                      <Button onDark size="sm" variant="ghost" icon={TagIcon}>Tag</Button>
+                    }
+                  />
+                }
+                shareButtonSlot={
+                  <ShareListModal
+                    candidateIds={selectedIds}
+                    candidates={candidates.filter(c => selectedIds.includes(c.id)).map((c: any) => ({
+                      id: c.id,
+                      name: c.candidate_name,
+                      company: c.company_current ?? null,
+                      stage: c.current_job_title ?? null,
+                      score: typeof c.fit_score === 'number' ? c.fit_score : (typeof c.match_score === 'number' ? c.match_score : null),
+                    }))}
+                    trigger={
+                      <Button onDark size="sm" variant="ghost" icon={Share2Icon}>Share</Button>
+                    }
+                  />
+                }
+              />
+            ) : null}
+
+            <PermissionGate permission="canViewCandidates">
+              <CandidatesTable
+                candidates={visible}
+                totalCount={finalAfterSmart.length}
+                associationsMap={associationsMap}
+                isLoading={isLoading}
+                isSearching={isSearching}
+                hasActiveFilters={activeFilterCount > 0 || !!query}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
+                onToggleSelectAll={toggleSelectAll}
+                onOpenCandidate={handleOpenCandidate}
+                onDelete={(c) => setDeleteTarget({ id: c.id, name: c.candidate_name })}
+              />
+            </PermissionGate>
+
+            <CandidatesFooter
+              shown={visible.length}
+              total={finalAfterSmart.length}
+              pageSize={pageSize}
+              onPageSizeChange={(n) => { setPageSize(n); setPage(1) }}
+              onLoadMore={() => setPage(p => p + 1)}
+              canLoadMore={shown < finalAfterSmart.length}
             />
-          ) : null}
-
-          <PermissionGate permission="canViewCandidates">
-            <CandidatesTable
-              candidates={visible}
-              totalCount={finalAfterSmart.length}
-              associationsMap={associationsMap}
-              isLoading={isLoading}
-              isSearching={isSearching}
-              hasActiveFilters={activeFilterCount > 0 || !!query}
-              selectedIds={selectedIds}
-              onToggleSelect={toggleSelect}
-              onToggleSelectAll={toggleSelectAll}
-              onOpenCandidate={handleOpenCandidate}
-              onDelete={(c) => setDeleteTarget({ id: c.id, name: c.candidate_name })}
-            />
-          </PermissionGate>
-
-          <CandidatesFooter
-            shown={visible.length}
-            total={finalAfterSmart.length}
-            pageSize={pageSize}
-            onPageSizeChange={(n) => { setPageSize(n); setPage(1) }}
-            onLoadMore={() => setPage(p => p + 1)}
-            canLoadMore={shown < finalAfterSmart.length}
-          />
+          </section>
         </main>
       </div>
 

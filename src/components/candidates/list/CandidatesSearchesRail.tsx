@@ -202,7 +202,7 @@ export function CandidatesSearchesRail({
   const visibleTags = showAllTags ? sortedTags : sortedTags.slice(0, 12)
 
   return (
-    <aside className="w-[260px] shrink-0 border-r border-virgilio-border bg-surface-primary h-full overflow-y-auto">
+    <aside className="w-[260px] shrink-0 bg-surface-primary border border-virgilio-border rounded-2xl shadow-sm h-full overflow-y-auto">
       <div className="p-3 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between px-1">
