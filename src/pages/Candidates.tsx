@@ -153,8 +153,20 @@ function CandidatesInner() {
   // Pagination
   const [pageSize, setPageSize] = useState(25)
   const [page, setPage] = useState(1)
-  useEffect(() => { setPage(1) }, [query, mode, filters, activeSmartList, activeViewId])
+  useEffect(() => { setPage(1) }, [query, committedQuery, mode, filters, activeSmartList, activeViewId])
   useEffect(() => { setAiError(null) }, [mode, query])
+  // Reset committed query when switching modes so the new mode starts clean.
+  useEffect(() => { setCommittedQuery('') }, [mode])
+
+  const handleSearchSubmit = useCallback(() => {
+    setCommittedQuery(query)
+    setSearchRunTick(t => t + 1)
+  }, [query])
+  const handleSearchClear = useCallback(() => {
+    setQuery('')
+    setCommittedQuery('')
+    setSearchRunTick(t => t + 1)
+  }, [])
   const shown = Math.min(page * pageSize, finalAfterSmart.length)
   const visible = finalAfterSmart.slice(0, shown)
 
@@ -319,9 +331,11 @@ function CandidatesInner() {
               value={query}
               onChange={setQuery}
               mode={mode}
-              onSubmit={mode === 'ai' ? handleAiSubmit : undefined}
+              onSubmit={mode === 'ai' ? handleAiSubmit : (mode === 'boolean' ? handleSearchSubmit : undefined)}
+              onClear={handleSearchClear}
               loading={aiLoading}
-              error={mode === 'ai' ? aiError : (mode === 'boolean' ? booleanError : null)}
+              isDirty={mode !== 'everything' && query !== committedQuery && query.trim().length > 0}
+              error={mode === 'ai' ? aiError : (mode === 'boolean' && committedQuery ? booleanError : null)}
             />
             <FilterChipsRow filterOptions={filterOptions} />
           </div>
@@ -347,6 +361,7 @@ function CandidatesInner() {
               totalCount={finalAfterSmart.length}
               associationsMap={associationsMap}
               isLoading={isLoading}
+              isSearching={isSearching}
               hasActiveFilters={activeFilterCount > 0 || !!query}
               selectedIds={selectedIds}
               onToggleSelect={toggleSelect}
