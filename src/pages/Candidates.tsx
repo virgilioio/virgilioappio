@@ -45,6 +45,10 @@ import BulkAddToJobPipelineDialog from '@/components/candidates/BulkAddToJobPipe
 
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
+import { AddTagPopover } from '@/components/candidates/tags/AddTagPopover'
+import { Button } from '@/components/ui/button'
+import { Tag as TagIcon } from 'lucide-react'
+import { useTags, useAllCandidateTagsMap } from '@/hooks/useTags'
 
 const SMART_LIST_FILTERS: Record<SmartListKey, Partial<CandidateFilters>> = {
   all: {},
