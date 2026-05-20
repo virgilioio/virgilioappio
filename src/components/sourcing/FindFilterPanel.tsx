@@ -75,16 +75,18 @@ interface FindFilterPanelProps {
   onResultFiltersChange: (filters: SourcingProjectFilters) => void
 }
 
-function CollapsibleSection({ 
-  label, 
+function CollapsibleSection({
+  label,
   icon: Icon,
-  defaultOpen = false, 
-  children 
-}: { 
+  defaultOpen = false,
+  rightAdornment,
+  children,
+}: {
   label: string
   icon?: LucideIcon
   defaultOpen?: boolean
-  children: React.ReactNode 
+  rightAdornment?: React.ReactNode
+  children: React.ReactNode
 }) {
   const [open, setOpen] = useState(defaultOpen)
   useEffect(() => {
@@ -92,17 +94,24 @@ function CollapsibleSection({
   }, [defaultOpen])
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger className="flex items-center justify-between w-full py-1.5 hover:text-foreground transition-colors group">
-        <span className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider group-hover:text-foreground transition-colors">
-          {Icon && <Icon className="h-3 w-3" />}
-          {label}
-        </span>
-        {open ? (
-          <ChevronDown className="h-3 w-3 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="h-3 w-3 text-muted-foreground" />
-        )}
-      </CollapsibleTrigger>
+      <div className="flex items-center justify-between w-full py-1.5">
+        <CollapsibleTrigger className="flex items-center gap-1.5 flex-1 text-left hover:text-foreground transition-colors group">
+          <span className="flex items-center gap-1.5 font-poppins font-semibold text-[13px] text-text-primary tracking-[-0.01em]">
+            {Icon && <Icon className="h-3.5 w-3.5 text-text-tertiary" />}
+            {label}
+          </span>
+        </CollapsibleTrigger>
+        <div className="flex items-center gap-1.5">
+          {rightAdornment}
+          <CollapsibleTrigger className="text-text-tertiary hover:text-text-primary transition-colors">
+            {open ? (
+              <ChevronDown className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronRight className="h-3.5 w-3.5" />
+            )}
+          </CollapsibleTrigger>
+        </div>
+      </div>
       <CollapsibleContent className="pt-1.5">
         {children}
       </CollapsibleContent>
