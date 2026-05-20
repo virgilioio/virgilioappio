@@ -450,6 +450,23 @@ export function FindFilterPanel({
           </CollapsibleSection>
         </div>
       </div>
+
+      {/* Sticky bottom CTA */}
+      <div className="shrink-0 border-t border-border px-4 py-3 space-y-2 bg-white">
+        <Button
+          variant="purple"
+          size="lg"
+          icon={Sparkles}
+          onClick={handleSearch}
+          className="w-full justify-center"
+          disabled={(c.title_keywords?.length ?? 0) === 0}
+        >
+          Find candidates
+        </Button>
+        <p className="text-[11px] text-text-tertiary text-center">
+          Preview is free · Collect uses 1 credit each{collectRemaining != null && ` · ${collectRemaining} remaining`}
+        </p>
+      </div>
     </Card>
   )
 }
