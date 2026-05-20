@@ -1,81 +1,54 @@
-# Share list with teammates — 4-step centered modal
+# Share List Modal — visual alignment with mockups
 
-A new 5th bulk-bar action ("Share") that bundles selected candidates into a named, workspace-internal **list** and shares it with teammates. Heavier than a popover — centered modal with 4 guided steps. External sharing is explicitly out of scope.
+Tighten the existing `ShareListModal` so each of the 4 steps matches the reference mockups. Functionality stays. This is pure visual/UX polish.
 
-## The four steps
+## Differences spotted (mockup vs current)
 
-```text
-[1] Name & describe       [2] Invite teammates       [3] Link & message        [4] Shared
-─────────────────────     ────────────────────────   ──────────────────────    ──────────────
-List name (req)           Add by name/email          Copyable link (active)    Success state
-Description (opt)         Per-person ACCESS          Expiry: 7/14/30d/never    Summary line
-Roster preview            Per-person NOTIFY          Block screenshots toggle  Find-it-later
-Add more candidates       Internal-only notice       Message + Rewrite w/ Gio  Share another
-                                                     Notify-on-comment toggle  Open list
-```
+### Global chrome (all steps)
 
-### 1. Name & describe (Bundle these candidates)
-- Heading "Bundle these candidates", helper "Give the list a clear, scannable name."
-- **List name** input (required, autofocus, max 80 chars). Default suggestion: `"<Job title> · <today>"` when all selected come from one job, else `"Shortlist · <today>"`.
-- **Description** textarea (optional, 280 chars).
-- **Candidates in this list** roster: avatar · name · sub-line (job · stage), fit score chip on the right, X to remove. "+ Add more" opens a small inline picker (search by name) that adds candidates from the same tenant.
-- Footer: "N candidates · auto-saved as draft" left, `Cancel` / `Next: who can see it`.
+- **Two-zone background.** Mockups have a clean white header + cream `#FAFAF7` body and footer. Current body is white. → Make body + footer cream; nest inner cards as white panels.
+- **Title accent dot.** Every step title ends with a small lilac period (e.g. `Bundle these candidates·`). Currently a plain `.`. → Render the trailing `.` as a `text-virgilio-purple` glyph.
+- **Header icon chip** is a slightly larger soft-lilac rounded square (~28px, rounded-lg). Current is 24px rounded-md. → Bump size, soften radius.
+- **Progress bar** segments are slightly thicker and black-on-`#E8E6E0` rather than `bg-foreground / bg-black/8`. Current is close enough; just darken inactive to `#E8E6E0`.
 
-### 2. Invite teammates (Who's reviewing?)
-- Helper: "Add anyone in the workspace. Permissions are per-person and changeable any time."
-- **Add by name or email** combobox sourced from tenant members (`useCustomerMembers`). Selected people appear as removable chips above the table. Email of a non-member shows a "Pending" chip and is queued as an invite (rendered, not sent in v1).
-- **Reviewer table** (3 columns): Reviewer · Access · Notify.
-  - Access dropdown: `View only`, `Comment`, `Comment + score` (default).
-  - Notify toggle (default on for invited, off for owner row).
-  - "You're inviting" badge on the current user (locked to owner).
-  - Row overflow `…`: Resend invite · Remove.
-- **Internal-only** info banner at the bottom (lilac): "External hiring managers? Use External share instead — different permission model." (External share is a link, not built in v1.)
-- Footer: "X invited · Y pending", `Back` / `Next: link & message`.
+### Step 1 — Bundle these candidates
 
-### 3. Generate link & message (Compose the share)
-- Helper: "They get a notification + email. Link works in-app only — login required."
-- **Share link** card: status pill "Active", read-only URL `<app>/lists/<slug>`, `Copy` button (clipboard).
-- Inline meta row: `Invited reviewers only` · `Expires in [7d|14d|30d|Never]` (select) · `Block screenshots [off]` (toggle, UI-only flag stored on row).
-- **Message to reviewers** textarea (optional, 600 chars) with `Rewrite with Gio` button (calls existing `useAIDraftEmail` / Gio rewrite endpoint).
-- `Notify me when reviewers comment or score` checkbox (default on).
-- Footer line: "Link · 14-day expiry · in-app only", `Back` / `Send & share`.
+- Candidate rows in the mockup show **avatar + name + sub-line (company · stage) + green score + ×**. Current rows show only name. → Accept richer candidate context (company, stage, fit score) from `Candidates.tsx` and render the sub-line and the green score.
+- **"+ Add more"** purple link sits in the top-right of the candidates panel. → Add a non-functional-yet link (opens a placeholder picker / disabled tooltip "Coming next") to match the visual.
+- Candidates panel is a white card on the cream body (already a bordered card — just confirm bg-white once body turns cream).
 
-### 4. Shared (Confirmation)
-- Centered check icon, "Shared with N teammates", summary line ("Maya, Sam, and Tom will get a notification in-app and an email with your message.").
-- Recap card: list name · "N candidates · N reviewers · expires <date>" · reviewer avatar stack · copyable URL with `Copy`.
-- Helper: "Find it later under **Lists → Shared by me** in the left rail."
-- Buttons: `Share another` (resets to step 1 with same selection) · `Open list` (navigates to `/lists/<id>`).
+### Step 2 — Who's reviewing?
 
-## Technical
+- **Owner row removed.** Mockup table shows only invited reviewers, not the current user. → Drop the owner row; instead show a small grey **"You're inviting"** chip next to the row for any reviewer added during this session.
+- Reviewer sub-line shows **role · team** (e.g. "Hiring manager · Design", "Recruiter", "Reviewer"). → Pull `system_role` from `useTenantMembersForShare` and render it.
+- Each row gets a trailing **`...` overflow** button (visual only for now; opens a small menu with "Remove" → reuse `removeReviewer`). → Add a 4th column `[1fr_180px_60px_28px]`.
+- **Chips in the picker** show full name with avatar (e.g. "MR Maya Reyes ×") on white with a purple ring — not purple-tinted background. → Restyle the selected chips.
+- **Internal-only banner** is a soft amber card with a small lock badge (not the current neutral cream). → Switch to `bg-[#FEF7E6] border-[#F5E3B3]` with amber lock icon and link-styled "External share" anchor.
 
-- **New component**: `src/components/candidates/bulk/ShareListModal.tsx` — `<Dialog>` (`max-w-[640px]`) with internal `step: 1|2|3|4` state machine. Step bar at top (1/4 → 4/4) matches existing popover pattern. Uses design tokens; submit is plain `<Button>` (no variant override).
-- **Bulk bar wiring**: extend `BulkActionBar` with `shareButtonSlot?: ReactNode` (mirror of `tagButtonSlot`, `addToJobButtonSlot`). Replace the existing 5th-action slot. `Candidates.tsx` mounts `<ShareListModal candidateIds={selectedIds} candidates={selectedCandidates} />`.
-- **Trigger**: `Share` button on bulk bar (icon `Share2`, label `Share`). Replaces — or sits next to — `Add to search`; defer placement to user.
-- **Data model** (new):
-  - `candidate_lists` (id, tenant_id, owner_user_id, name, description, slug, expires_at, block_screenshots, share_link_active, created_at, updated_at).
-  - `candidate_list_items` (id, list_id, candidate_id, added_by, added_at). Unique (list_id, candidate_id).
-  - `candidate_list_reviewers` (id, list_id, user_id NULL, invited_email NULL, access enum `view|comment|comment_score`, notify_enabled bool, status enum `pending|active|removed`, invited_by, invited_at). One of user_id / invited_email required.
-  - `candidate_list_messages` (id, list_id, author_user_id, body, sent_at) — stores the share message + future comments thread.
-  - RLS: tenant-scoped via `user_has_tenant_access(tenant_id)`; reviewer rows readable only by owner + listed reviewer; SECURITY DEFINER trigger to enforce org hierarchy; no CHECK constraints on dynamic state. Slug generation in a `before insert` trigger.
-- **Hooks** (new):
-  - `useCreateCandidateList` — insert list + items + reviewers in one mutation (Postgres function `create_candidate_list_with_reviewers`).
-  - `useTenantMembersForShare` — lightweight select on existing members query, filtered to current tenant, excluding self for the combobox.
-  - `useRewriteShareMessage` — wraps existing Gio endpoint (`useAIDraftEmail`) with a "share message" prompt template.
-- **Notifications**: on insert of `candidate_list_reviewers` (status=active or pending with email), enqueue email via existing `send-transactional-email` edge function + write a `notifications` row so the in-app bell updates. Reuse `LOVABLE_API_KEY` setup; no new secrets.
-- **Sidebar/Lists section**: out of scope for this PR. The success step copy ("Find it later under Lists → Shared by me") implies a forthcoming `/lists` route — track separately. For v1, `Open list` falls back to a minimal read-only page at `/lists/:id` that renders list name + roster (no comments thread yet).
+### Step 3 — Compose the share
+
+- **Card layout.** The whole step is one cream-toned bordered card containing link + meta + message + checkbox (mockup), not three stacked sections. → Wrap step 3 contents in a single cream panel (matches body) and use white sub-cards inside.
+- **Copy button** next to the URL is a **black pill** (`variant="primary"` or solid dark), not secondary. → Swap to primary.
+- **Meta row** below the URL is a **single horizontal row of 3 inline items** with icons: `👥 Invited reviewers only`, `🕐 Expires in 14 days ⌄`, `🚫 Block screenshots (off)`. Not a 3-column grid with uppercase eyebrow labels. → Replace the grid with an inline meta row; "Expires" stays a `<Select>` styled as inline link-button with chevron; "Block screenshots" toggles inline with the `(off)/(on)` suffix.
+- **"Rewrite with Gio"** button sits **inside the textarea, bottom-right**, not above the label. → Position absolutely inside a relative wrapper around the `Textarea`.
+- **Notify checkbox** is a square filled black checkbox (current `Checkbox` already matches when checked). Keep.
+
+### Step 4 — Shared with N teammates
+
+- **Big green check** in a larger white circle (h-14 w-14) with green check, not foreground. → Use `text-emerald-500` and bump the circle.
+- **Recap card** leads with a small lilac square Users icon (chip), keeps name + meta, and shows the **avatar stack on the right** (already present). URL row inside the card stays.
+- Helper "Find it later under **Lists → Shared by me** in the left rail." sits in its **own bordered info row** with a small `ⓘ` icon — not loose centered text.
+- **Footer on step 4** shows only the two action buttons; the left "Lives in Lists sidebar from now on." text should be removed for step 4.
+
+## Files to change
+
+- `src/components/candidates/bulk/ShareListModal.tsx` — all visual changes above.
+- `src/pages/Candidates.tsx` — pass richer candidate context to the modal (company, stage, fit score) so Step 1 rows can render sub-line + score.
+
+No DB, hook, or API changes. No new dependencies.
 
 ## Out of scope
 
-- External hiring-manager link sharing (different permission model — banner mentions it).
-- Comments/scoring inside the shared list page (only the entry point is shipped).
-- Editing an existing list's reviewers after the fact (handled in a follow-up screen).
-- Sidebar "Lists" section with categories (Shared by me / Shared with me / Drafts).
-
-## Files
-
-- New: `src/components/candidates/bulk/ShareListModal.tsx`
-- New: `src/hooks/useCandidateLists.ts` (create + fetch)
-- New: `src/pages/SharedList.tsx` + route `/lists/:id` (minimal read-only view)
-- Edited: `src/components/candidates/list/BulkActionBar.tsx` (add `Share` action + `shareButtonSlot`)
-- Edited: `src/pages/Candidates.tsx` (mount modal)
-- Migration: 4 tables + RLS + slug trigger + `create_candidate_list_with_reviewers` RPC
+- Wiring "+ Add more" to a real picker.
+- Wiring the row `...` menu beyond Remove.
+- External share flow.
