@@ -104,6 +104,8 @@ function CandidatesInner() {
   const [saving, setSaving] = useState(false)
   const [justSavedId, setJustSavedId] = useState<string | null>(null)
   const [hasPulsed, setHasPulsed] = useState(false)
+  const [deleteSavedView, setDeleteSavedView] = useState<SavedView | null>(null)
+  const [isDeletingSavedView, setIsDeletingSavedView] = useState(false)
 
 
   const setFiltersFromRecord = useCallback((rec: Partial<CandidateFilters>) => {
