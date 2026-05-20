@@ -112,13 +112,8 @@ export function GlobalSearchPanel({
     return () => { cancelled = true; clearTimeout(t) }
   }, [askMode, trimmed, hasQuery])
 
-  // Filter results by scope
-  const filteredResults = useMemo(() => {
-    if (scope === 'all') return results
-    if (scope === 'candidates') return results.filter(r => r.type === 'candidate')
-    if (scope === 'jobs') return results.filter(r => r.type === 'job')
-    return []
-  }, [results, scope])
+
+
 
   const filteredSaved = useMemo(() => {
     if (!hasQuery) return savedViews.slice(0, 5)
