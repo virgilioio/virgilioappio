@@ -627,27 +627,34 @@ export function SourcingCandidateTable({
       {selectedApolloIds.size > 0 ? (
         // Dark bulk action bar
         <div className="sticky top-0 z-10 rounded-lg bg-[#0d0d09] px-4 py-2.5 flex items-center justify-between shadow-[0_8px_24px_-12px_rgba(0,0,0,0.4)] shrink-0">
-          <div className="flex items-center gap-3 text-virgilio-cream">
-            <span className="font-poppins text-[13px] font-medium tabular-nums">
-              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-virgilio-cream/15 px-1.5 text-xs">
+          <div className="flex items-center gap-3 text-white">
+            <span className="font-poppins text-[13px] font-medium tabular-nums inline-flex items-center">
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-white/15 px-1.5 text-xs text-white">
                 {selectedApolloIds.size}
               </span>
-              <span className="ml-2">selected</span>
+              <span className="ml-2 text-white">selected</span>
             </span>
-            <span className="text-virgilio-cream/30">·</span>
+            <span className="text-white/30">·</span>
             <button
               type="button"
               onClick={() => {
-                // Select all collectible Apollo candidates across results
                 const all = new Set(selectedApolloIds)
                 sortedData.forEach(c => {
                   if (c.source === 'apollo' && !c.candidate_id && c.apollo_id) all.add(c.apollo_id)
                 })
                 setSelectedApolloIds(all)
               }}
-              className="text-[12.5px] text-virgilio-cream/80 hover:text-virgilio-cream underline-offset-2 hover:underline"
+              className="text-[12.5px] text-white/80 hover:text-white underline-offset-2 hover:underline"
             >
               Select all {sortedData.filter(c => c.source === 'apollo' && !c.candidate_id && c.apollo_id).length}
+            </button>
+            <span className="text-white/30">·</span>
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="text-[12.5px] text-white/60 hover:text-white"
+            >
+              Clear
             </button>
           </div>
           <div className="flex items-center gap-1.5">
