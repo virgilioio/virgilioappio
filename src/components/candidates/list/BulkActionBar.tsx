@@ -25,9 +25,10 @@ interface BulkActionBarProps {
 export function BulkActionBar({
   selectedCount, totalCount, allFilteredSelected,
   onSelectAllFiltered, onClearSelection,
-  onAddToJob, onEmail, onTag, onAddToSearch, onArchive,
+  onAddToJob, onEmail, onTag, onAddToSearch, onArchive, onShare,
   tagButtonSlot,
   addToJobButtonSlot,
+  shareButtonSlot,
 }: BulkActionBarProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 h-12 px-4 rounded-xl bg-[#0d0d09] text-white">
