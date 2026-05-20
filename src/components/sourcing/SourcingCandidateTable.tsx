@@ -694,7 +694,7 @@ export function SourcingCandidateTable({
             <span>
               Showing{' '}
               <span className="font-medium text-text-primary tabular-nums">
-                {sortedData.length === 0 ? 0 : startIndex + 1}–{Math.min(startIndex + itemsPerPage, sortedData.length)}
+                {sortedData.length === 0 ? 0 : 1}–{Math.min(visibleCount, sortedData.length)}
               </span>{' '}
               of <span className="font-medium text-text-primary tabular-nums">{sortedData.length}</span>
             </span>
