@@ -804,92 +804,113 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange, variant =
           </div>
         )}
         
-        {/* ChatGPT-style Input */}
-        <div className="relative max-w-3xl mx-auto">
-          <div className={`relative flex items-end gap-2 px-5 py-3 rounded-[28px] border transition-all ${
-            isFocused 
-              ? 'border-gray-300 shadow-md' 
-              : 'border-gray-200 shadow-sm'
-          } bg-white`}>
-            
-            {/* Textarea (auto-expanding) */}
-            <textarea
-              ref={textareaRef}
-              value={prompt}
-              onChange={handlePromptChange}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-              onKeyDown={handleKeyDown}
-              placeholder="Describe the role you're looking to fill..."
-              rows={1}
-              className="flex-1 resize-none bg-transparent border-none outline-none text-virgilio-text placeholder:text-gray-400 max-h-[200px] overflow-y-auto py-1"
-              style={{ 
-                minHeight: '24px',
-                scrollbarWidth: 'thin'
-              }}
-            />
-            
-            {/* Toggle and Send Button */}
-            <div className="flex items-center gap-2 flex-shrink-0 pb-1">
-              <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">
-                Chat with Gio
-              </span>
-              <Switch 
-                checked={chatMode} 
-                onCheckedChange={handleToggleChatMode}
-              />
-              {prompt.trim().length > 0 && (
-                <button
-                  onClick={chatMode ? handleSendChatMessage : handleGenerate}
-                  disabled={chatMode ? isChatLoading : (!canGenerate || isGenerating)}
-                  title={
-                    chatMode 
-                      ? 'Send message to Gio'
-                      : canGenerate ? 'Generate job specification' : 'Enter at least 10 words'
-                  }
-                  className="flex items-center justify-center h-8 w-8 rounded-full bg-virgilio-text hover:bg-black disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                >
-                  {(isGenerating || isChatLoading) ? (
-                    <Loader2 className="h-4 w-4 text-white animate-spin" />
-                  ) : (
-                    <ArrowUp className="h-4 w-4 text-white" />
+        {/* Composer */}
+        {variant === 'find' ? (
+          <FindComposer
+            prompt={prompt}
+            textareaRef={textareaRef}
+            handlePromptChange={handlePromptChange}
+            handleKeyDown={handleKeyDown}
+            setIsFocused={setIsFocused}
+            isFocused={isFocused}
+            chatMode={chatMode}
+            handleToggleChatMode={handleToggleChatMode}
+            onSubmit={chatMode ? handleSendChatMessage : handleGenerate}
+            canSubmit={chatMode ? !!prompt.trim() && !isChatLoading : (canGenerate && !isGenerating)}
+            isWorking={isGenerating || isChatLoading}
+            validation={currentValidation}
+            validCount={validItemsCount}
+          />
+        ) : (
+          <>
+            {/* ChatGPT-style Input */}
+            <div className="relative max-w-3xl mx-auto">
+              <div className={`relative flex items-end gap-2 px-5 py-3 rounded-[28px] border transition-all ${
+                isFocused 
+                  ? 'border-gray-300 shadow-md' 
+                  : 'border-gray-200 shadow-sm'
+              } bg-white`}>
+                
+                {/* Textarea (auto-expanding) */}
+                <textarea
+                  ref={textareaRef}
+                  value={prompt}
+                  onChange={handlePromptChange}
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Describe the role you're looking to fill..."
+                  rows={1}
+                  className="flex-1 resize-none bg-transparent border-none outline-none text-virgilio-text placeholder:text-gray-400 max-h-[200px] overflow-y-auto py-1"
+                  style={{ 
+                    minHeight: '24px',
+                    scrollbarWidth: 'thin'
+                  }}
+                />
+                
+                {/* Toggle and Send Button */}
+                <div className="flex items-center gap-2 flex-shrink-0 pb-1">
+                  <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">
+                    Chat with Gio
+                  </span>
+                  <Switch 
+                    checked={chatMode} 
+                    onCheckedChange={handleToggleChatMode}
+                  />
+                  {prompt.trim().length > 0 && (
+                    <button
+                      onClick={chatMode ? handleSendChatMessage : handleGenerate}
+                      disabled={chatMode ? isChatLoading : (!canGenerate || isGenerating)}
+                      title={
+                        chatMode 
+                          ? 'Send message to Gio'
+                          : canGenerate ? 'Generate job specification' : 'Enter at least 10 words'
+                      }
+                      className="flex items-center justify-center h-8 w-8 rounded-full bg-virgilio-text hover:bg-black disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {(isGenerating || isChatLoading) ? (
+                        <Loader2 className="h-4 w-4 text-white animate-spin" />
+                      ) : (
+                        <ArrowUp className="h-4 w-4 text-white" />
+                      )}
+                    </button>
                   )}
-                </button>
+                </div>
+              </div>
+              
+              {/* Word Count - hide in chat mode */}
+              {!chatMode && (
+                <div className="absolute -bottom-6 right-2 text-xs text-gray-400">
+                  {wordCount} words
+                </div>
               )}
             </div>
-          </div>
-          
-          {/* Word Count - hide in chat mode */}
-          {!chatMode && (
-            <div className="absolute -bottom-6 right-2 text-xs text-gray-400">
-              {wordCount} words
-            </div>
-          )}
-        </div>
 
-        {/* Validation Pills - only show in normal mode */}
-        {!chatMode && (
-          <div className="flex justify-center mt-10">
-            <div className="flex flex-wrap gap-3 justify-center">
-              {currentValidation.map((item) => (
-                <div 
-                  key={item.id} 
-                  className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                    item.checked 
-                      ? 'bg-green-50 border-green-200 text-green-700' 
-                      : 'bg-gray-50 border-gray-200 text-gray-500'
-                  }`}
-                >
-                  {item.checked ? (
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                  ) : (
-                    <Circle className="h-3.5 w-3.5" />
-                  )}
-                  <span>{item.label}</span>
+            {/* Validation Pills - only show in normal mode */}
+            {!chatMode && (
+              <div className="flex justify-center mt-10">
+                <div className="flex flex-wrap gap-3 justify-center">
+                  {currentValidation.map((item) => (
+                    <div 
+                      key={item.id} 
+                      className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                        item.checked 
+                          ? 'bg-green-50 border-green-200 text-green-700' 
+                          : 'bg-gray-50 border-gray-200 text-gray-500'
+                      }`}
+                    >
+                      {item.checked ? (
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      ) : (
+                        <Circle className="h-3.5 w-3.5" />
+                      )}
+                      <span>{item.label}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
