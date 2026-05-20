@@ -1,66 +1,88 @@
-# Application Submitted screen — redesign to match reference
+# Navigation Header — Gio Foundation v1.0
 
-Replace the current small "Application Submitted" dialog with a full-page confirmation screen on the public job posting, matching the attached reference (`43_Application_submitted.png`). The new screen reuses the same Careers top bar + footer chrome already wrapping the public posting, so the candidate stays inside the company's branded experience.
+Bring the top header in line with the uploaded spec. Same DNA as today (black pill bar, left section cluster, right utility cluster, white-pill active state), but every measurement, state, and band is locked to the spec.
 
-## What the candidate sees
+## Anatomy (locked tokens)
 
-1. **Hero block** (centered)
-   - Soft mint circle with a checkmark icon
-   - A "Reference" pill chip next to it showing the application reference ID (e.g. `DES-2026-014-LP-9821`)
-   - Large headline: `Got it, {FirstName} — thanks.` with the trailing purple period (reuses `StyledPageTitle` styling: Poppins, tracking-page-title, purple `.`)
-   - Sub-line: `Your application for {RoleName} is in. We sent a confirmation to {email}.`
+- Bar: height **44px**, radius **16px**, bg `#0d0d09`, hairline `rgba(255,255,255,0.06)` ring, padding-x **12px**, gap between clusters **24px**.
+- Section nav item: height **28px**, padding-x **10px**, radius **8px**, gap-icon-label **8px**, icon **14px**, label **13px Poppins 500 tracking -0.01em**.
+- Right cluster gap **8px** between controls.
 
-2. **"What happens next" card** — single white card, rounded, hairline border. Vertical timeline with 4 steps connected by a faint line:
-   - **1. Application received** — green filled circle with check · `Just now · {ReferenceID}` · right-aligned check glyph
-   - **2. Recruiter review** — purple filled circle with `2` · "Maya from our team will read every word — promise." · right-aligned `Within 48h` in purple
-   - **3. Intro chat** — muted outline circle `3` · "If there's a fit, we'll send 3 calendar slots within 24h of the reply." · right-aligned `~ next week` muted
-   - **4. Decision** — muted outline circle `4` · "Whichever way it goes, you'll hear from us with notes. We don't ghost." · right-aligned `~ 2–3 weeks` muted
+## Section nav (left)
 
-3. **Two side-by-side action cards** (2-column grid, stack on mobile)
-   - **Set alerts for similar roles** — lilac bell icon tile · copy · `Set up alerts` secondary button
-   - **Share the role** — lilac share icon tile · copy · `Copy link` secondary button (copies the posting URL to clipboard)
+States, all per spec:
 
-4. **Footer line**: "Need to change something? **Reply to your confirmation email** — it goes straight to {RecruiterFirstName}."
-
-The existing `CareersTopBar` and `CareersFooter` continue to wrap the page (they already do on the posting itself), so nothing changes about the page chrome.
-
-## Dynamic data
-
-| Placeholder | Source |
+| State | Treatment |
 |---|---|
-| `{FirstName}` | First token of the submitted candidate name; falls back to "there" |
-| `{RoleName}` | `posting.title` |
-| `{email}` | The email the candidate submitted |
-| `{ReferenceID}` | Short ID derived from the new candidate/application row (format `{ROLE3}-{YYYY}-{NNN}-{INIT}-{4digits}`); falls back to the application UUID's first 8 chars uppercased if generation fails |
-| `{RecruiterFirstName}` | Job's primary recruiter first name; falls back to "our team" |
-| Step 2 name "Maya" | Same recruiter first name; falls back to "Our team" with rephrased sentence |
-| `Within 48h` / `~ next week` / `~ 2–3 weeks` | Static for now |
+| Default | text `rgba(255,255,255,0.72)`, icon same |
+| Hover | bg `rgba(255,255,255,0.08)`, text `#fff` |
+| Active | bg `#fffcf9` (Opaline White), text `#0d0d09`, icon `#0d0d09`, weight 600 |
+| Active + notification | active pill + 6px lilac `#D7C5FB` dot top-right of icon |
+| With dropdown | trailing chevron 12px at 65% opacity; opens popover (e.g. Jobs → recent jobs, Candidates → saved views) |
+| Focus-visible | 2px `virgilio-purple/40` ring, no offset |
 
-No new tables. The reference ID is computed client-side from existing data (no schema change).
+Driven by a new `navigationItems` schema field: `{ notification?: boolean; dropdown?: () => ReactNode }`.
+
+## Right cluster
+
+Order: **Search · Create · Credits · Bell · (Workspace) · Avatar**.
+
+- Search: 30h, 280w default, **focused → 380w** (already partially in place), placeholder "Search candidates, jobs, companies…", kbd `⌘ /` chip right. Adopt focus ring `virgilio-purple/40`.
+- Create: dark-on-dark **`<Button variant="primary" size="sm" onDark dropdown>`**, label "Create", `⌘ N` opens menu (new shortcut). Uses existing `GlobalCreateButton`.
+- Credits chip: `SourcingCreditIndicator` restyled to 24h capsule, `rgba(255,255,255,0.08)` bg, lilac dot when low.
+- Bell: 28×28 icon button, notification dot uses `CounterBadge` overlay.
+- Avatar: 28×28, hover ring `rgba(255,255,255,0.15)`.
+
+All right-cluster controls inherit `onDark` color remap via a wrapper class.
+
+## Context bands (under the header)
+
+New stackable region directly beneath the header, owned by `Layout.tsx`. Three band types, all 36h, radius 12, full-width inside the same horizontal inset as the header:
+
+1. **Filter band** — lilac `#F3EEFF`, hosts active `RemovableChip`s + "Clear all". Rendered when `useFilterContext()` reports active filters on the current route.
+2. **Trial / billing band** — amber `#FFF6D6` border-l-4 `#E0A23A`, copy + right-aligned "Upgrade" `Button variant="purple" size="xs"`. Driven by `useBillingStatus()`.
+3. **Impersonation band** — citron-noir `#0d0d09` text on lilac, "Viewing as {name} · Exit" link. Driven by `AdminModeIndicator` state (re-homed from inside the bar to this band).
+
+A shared `<HeaderContextBands />` component composes them in priority order (impersonation → billing → filter).
 
 ## Behavior
 
-- After a successful submit, replace the page content (between top bar and footer) with the new confirmation screen instead of opening `ApplicationConfirmationDialog`.
-- `Set up alerts` opens a lightweight email-capture popover (single input + submit) that writes to a new client-only state for now and shows a toast — wiring to a real alerts table is out of scope; the button is fully styled and functional in the UI.
-- `Copy link` copies `window.location.href` (the posting URL) and shows a toast.
-- The screen is reachable only after a real submit (state-driven, not a route), matching today's behavior.
+- **Scroll**: at `scrollY > 2`, add `shadow-[0_6px_24px_-12px_rgba(0,0,0,0.45)]`. Already partial — just tune the shadow token.
+- **Keyboard**:
+  - `⌘ /` focus search (already wired)
+  - `⌘ K` open command palette (alias)
+  - `⌘ N` open Create menu (new — listen globally, forward to `GlobalCreateButton` trigger ref)
+- **Section switching** preserves scroll position via existing router.
 
-## Technical notes
+## Responsive cascade
 
-- **New file**: `src/components/careers/public/ApplicationSubmittedScreen.tsx` — pure presentational component receiving `{ firstName, roleName, email, referenceId, recruiterFirstName, postingUrl }`.
-- **Edit**: `src/pages/PublicJobPosting.tsx`
-  - Add `submittedMeta` state (`{ firstName, email, referenceId } | null`)
-  - On success path (~line 556–563), populate `submittedMeta` instead of `setShowConfirmationDialog(true)`
-  - When `submittedMeta` is set, render `<ApplicationSubmittedScreen … />` in place of the application form section (keep `CareersTopBar` + `CareersFooter` wrappers)
-  - Remove `ApplicationConfirmationDialog` import + usage
-- **Delete**: `src/components/candidates/ApplicationConfirmationDialog.tsx` (no other consumers per repo search)
-- **Reference ID helper**: small util `src/utils/applicationReference.ts` — pure function `buildReferenceId({ roleTitle, candidateName, applicationId })`
-- All colors via semantic tokens / existing public-careers palette (`#FAF7F2` page bg, `virgilio-purple` for accents, `success` for the green check, lilac `#EDE4FF` for icon tiles). Poppins for headline, Inter for body — already loaded.
-- Mobile: hero text scales down (`text-h1-mobile`), action cards stack, timeline stays single column.
+| Range | Behavior |
+|---|---|
+| ≥ 1280 | Full bar as specced |
+| 1024 – 1279 | Search collapses to 32×32 icon button that expands inline on click; nav labels remain |
+| 768 – 1023 | Nav labels hide, icons only with tooltip; search stays as icon |
+| < 768 | Header hidden; existing `MobileBottomNav` + hamburger sheet take over (no change) |
+
+Implemented with Tailwind `lg:` / `md:` breakpoints and a `useMediaQuery` toggle for the inline-expanding search.
+
+## Technical breakdown
+
+Files touched:
+
+- `src/components/layout/Header.tsx` — full rewrite of layout/states, schema extension for `notification` + `dropdown`, kbd shortcuts effect.
+- `src/components/layout/HeaderContextBands.tsx` — **new**, composes the 3 bands.
+- `src/components/layout/Layout.tsx` — mount `<HeaderContextBands />` between `<Header />` and `<main>`; adjust `main` top padding from 64 → 64 + dynamic band height (use `useResizeObserver` or a CSS var set by the bands component).
+- `src/components/layout/SourcingCreditIndicator.tsx` — capsule restyle (24h, transparent-on-dark variant).
+- `src/components/layout/GlobalCreateButton.tsx` — expose imperative `open()` for ⌘N, switch to `Button variant="primary" onDark dropdown`.
+- `src/components/admin/AdminModeIndicator.tsx` — strip in-bar styling, expose as a band-ready row.
+- `src/components/search/GlobalSearchBar.tsx` — focus-ring token swap, condensed-mode icon trigger for 1024–1279.
+- `tailwind.config.ts` / `index.css` — add `--header-band-h` CSS var, `shadow-header-scroll` token, `bg-opaline` if not present.
+
+No backend/RLS/edge function changes. Pure presentation + a tiny global shortcut listener.
 
 ## Out of scope
 
-- Persisting job alert subscriptions to a real table
-- Email/Calendar deep links beyond "Copy link"
-- Sending the reference ID inside the confirmation email (display-only for now)
-- Animations beyond a subtle fade-in on mount
+- New routes or new notification source (notification dots wire to existing `useNotificationCenter()` counts only).
+- Redesigning the Create menu contents.
+- Redesigning the user dropdown contents (only the trigger avatar styling).
+- Mobile bottom nav (untouched).
