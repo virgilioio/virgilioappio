@@ -139,6 +139,7 @@ function CandidatesInner() {
   const [pageSize, setPageSize] = useState(25)
   const [page, setPage] = useState(1)
   useEffect(() => { setPage(1) }, [query, mode, filters, activeSmartList, activeViewId])
+  useEffect(() => { setAiError(null) }, [mode, query])
   const shown = Math.min(page * pageSize, finalAfterSmart.length)
   const visible = finalAfterSmart.slice(0, shown)
 
