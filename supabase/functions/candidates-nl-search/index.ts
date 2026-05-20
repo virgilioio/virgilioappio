@@ -1,6 +1,6 @@
 // Translate a natural-language candidate search into a partial CandidateFilters
 // object + optional free-text query. Returns JSON via Lovable AI Gateway.
-import { getCorsHeaders, getCorsHeadersFromRequest } from '../_shared/cors.ts'
+import { corsHeadersFor, handlePreflight } from '../_shared/cors.ts'
 
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY')
 
@@ -62,8 +62,9 @@ function buildOptionsHint(opts: OptionsPayload): string {
 }
 
 Deno.serve(async (req: Request) => {
-  const corsHeaders = getCorsHeadersFromRequest(req) ?? getCorsHeaders()
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+  const corsHeaders = corsHeadersFor(req.headers.get('origin') ?? undefined)
+  const preflight = handlePreflight(req)
+  if (preflight) return preflight
 
   try {
     if (!LOVABLE_API_KEY) {
