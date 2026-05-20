@@ -148,7 +148,7 @@ function CandidatesInner() {
   // - boolean mode    → only runs on commit (Enter)
   // - ai mode         → runs via edge function on Enter (separate flow)
   const everythingTerm = mode === 'everything' ? query : ''
-  const baseFiltered = useCandidateFilteredData(candidates, filters, everythingTerm, associationsMap)
+  const baseFiltered = useCandidateFilteredData(candidates, filters, everythingTerm, associationsMap, allCandidateTagsMap)
   const booleanExpr = mode === 'boolean' ? committedQuery : ''
   const { matches: booleanMatches, error: booleanError } = useCandidateBooleanFilter(baseFiltered, booleanExpr, mode === 'boolean')
   const finalCandidates = mode === 'boolean' ? booleanMatches : baseFiltered
