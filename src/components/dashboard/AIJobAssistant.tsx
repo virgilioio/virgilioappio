@@ -1168,3 +1168,153 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange, variant =
     </>
   )
 }
+// ---------------------------------------------------------------------------
+// FindComposer — card-style composer used on the Find page (variant="find")
+// ---------------------------------------------------------------------------
+
+interface FindComposerProps {
+  prompt: string
+  textareaRef: React.RefObject<HTMLTextAreaElement>
+  handlePromptChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
+  handleKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void
+  setIsFocused: (v: boolean) => void
+  isFocused: boolean
+  chatMode: boolean
+  handleToggleChatMode: (enabled: boolean) => void
+  onSubmit: () => void
+  canSubmit: boolean
+  isWorking: boolean
+  validation: ValidationItem[]
+  validCount: number
+}
+
+function FindComposer({
+  prompt,
+  textareaRef,
+  handlePromptChange,
+  handleKeyDown,
+  setIsFocused,
+  isFocused,
+  chatMode,
+  handleToggleChatMode,
+  onSubmit,
+  canSubmit,
+  isWorking,
+  validation,
+  validCount,
+}: FindComposerProps) {
+  const total = validation.length || 5
+  const missing = validation.filter(v => !v.checked).map(v => v.label.toLowerCase())
+
+  let caption = ''
+  let captionClass = 'text-text-secondary'
+  if (validCount === 0) {
+    caption = 'Add a role, location, and what success looks like.'
+  } else if (validCount >= total) {
+    caption = 'Ready to search.'
+    captionClass = 'text-emerald-600'
+  } else if (validCount <= 2) {
+    caption = `Looking good — add ${missing.slice(0, 2).join(' and ')} for stronger matches.`
+  } else {
+    caption = `Strong prompt. Add ${missing[0]} to tighten results.`
+  }
+
+  return (
+    <div className="space-y-2">
+      <div
+        className={`rounded-2xl border bg-white transition-all ${
+          isFocused
+            ? 'border-virgilio-purple/40 ring-1 ring-virgilio-purple/30'
+            : 'border-border shadow-[0_1px_2px_rgba(0,0,0,0.04)]'
+        }`}
+      >
+        <textarea
+          ref={textareaRef}
+          value={prompt}
+          onChange={handlePromptChange}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          onKeyDown={handleKeyDown}
+          placeholder={
+            chatMode
+              ? 'Tell Gio what you need…'
+              : 'Senior product designer with design-systems experience at a B2B SaaS startup. Open to remote (US), 6+ years…'
+          }
+          rows={3}
+          className="w-full resize-none bg-transparent border-none outline-none px-4 pt-3.5 pb-2 text-[14px] leading-relaxed text-text-primary placeholder:text-text-tertiary min-h-[84px] max-h-[260px]"
+          style={{ scrollbarWidth: 'thin' }}
+        />
+
+        <div className="flex items-center justify-between gap-2 border-t border-border/70 px-3 py-2">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 h-[30px] px-2.5 rounded-lg text-[12.5px] font-poppins font-medium text-text-secondary hover:text-text-primary hover:bg-[#F1F0EC] transition-colors"
+            >
+              <Paperclip className="h-3.5 w-3.5" />
+              Attach JD
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 h-[30px] px-2.5 rounded-lg text-[12.5px] font-poppins font-medium text-text-secondary hover:text-text-primary hover:bg-[#F1F0EC] transition-colors"
+            >
+              <Link2 className="h-3.5 w-3.5" />
+              Paste LinkedIn URL
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 h-[30px] px-2.5 rounded-lg text-[12.5px] font-poppins font-medium text-text-secondary hover:text-text-primary hover:bg-[#F1F0EC] transition-colors"
+            >
+              <Briefcase className="h-3.5 w-3.5" />
+              Use an open job
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <span className="hidden sm:inline-flex items-center gap-1 text-[10.5px] text-text-tertiary">
+              <kbd className="px-1 py-0.5 rounded border border-border bg-[#FAFAF7] font-mono text-[10px]">⌘</kbd>
+              <span>+</span>
+              <kbd className="px-1 py-0.5 rounded border border-border bg-[#FAFAF7] font-mono text-[10px]">Enter</kbd>
+            </span>
+            <Button
+              variant="purple"
+              size="md"
+              icon={Sparkles}
+              iconRight={ArrowRight}
+              onClick={onSubmit}
+              disabled={!canSubmit}
+              loading={isWorking}
+            >
+              {chatMode ? 'Send' : 'Find candidates'}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Strength meter + Chat with Gio link */}
+      <div className="flex items-center justify-between gap-3 px-1">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-1 shrink-0">
+            {Array.from({ length: total }).map((_, i) => (
+              <span
+                key={i}
+                className={`h-1.5 w-1.5 rounded-full transition-colors ${
+                  i < validCount ? 'bg-virgilio-purple' : 'bg-text-tertiary/25'
+                }`}
+              />
+            ))}
+          </div>
+          <span className={`text-[11.5px] truncate ${captionClass}`}>{caption}</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => handleToggleChatMode(!chatMode)}
+          className="inline-flex items-center gap-1 text-[11.5px] font-poppins font-medium text-virgilio-purple hover:underline shrink-0"
+        >
+          {chatMode ? 'Switch back to prompt' : 'Chat with Gio instead'}
+          <ArrowRight className="h-3 w-3" />
+        </button>
+      </div>
+    </div>
+  )
+}
