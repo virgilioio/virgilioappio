@@ -1,67 +1,91 @@
-# Find page — align with Jobs / Candidates visual system
+# Find results — redesign candidate list to match screenshot
 
-Goal: bring the Find page header, padding, animations, sidebar and filters chrome in line with the Jobs and Candidates pages, matching the attached screenshot. Functional behavior (search, auto-create project, candidate fetching) stays exactly as-is.
+Goal: align the right pane (after a search loads) with the reference screenshot. Three visible blocks change: the tabs above the list, an AI summary banner, and the candidate rows themselves. Functional behavior — fetching, reveal/collect, add-to-job, profile sheet, bulk select — stays exactly as-is.
 
-## Reference cues from the screenshot
+## What differs today vs. the screenshot
 
-- Page header: `Find.` (Poppins semibold, purple period), with a sub-row "Sr. Product Designer · Last refreshed 2 min ago · 412 sourcing credits" using dot+text markers (same pattern Jobs uses for "open / paused / closed").
-- Top-right buttons: `My searches` (secondary) and `+ New search` (primary).
-- Left rail = white `Card` titled "Search criteria" with a `Reset` link, collapsible sections, and a full-width `Re-run search` primary CTA at the bottom + credits caption.
-- Right pane = white `Card` containing the saved-search trigger, project actions, AI summary banner, tab strip, and the candidate list (unchanged internals).
+Current:
+- Four big colorful pipeline-style tabs at the top (`Chat with Gio`, `Candidates`, `Saved`, `Archived`) with pastel gradients.
+- Candidate rows are dense single-column `<TableRow colSpan={5}>` blocks with a tiny source badge, name + role line, small meta chips, and `Add` / `Reveal` / `View` buttons. Match score sits as a small badge top-right.
+- Plain `Page 1 of N` pagination at the bottom.
+- No AI summary banner above the list.
+
+Screenshot:
+- AI summary banner — lilac sparkle tile + `107 candidates · 28 strong fit · 47 good · 32 possible`, sub-line `Sourced from LinkedIn (86), Apollo (21), Internal (12). Top match: Priya Iyer · 94 fit.`, right-aligned `Why these results?` link.
+- Meta row below banner: `Showing 1–25 of 107` (left) + flat tab strip `All 107 · Strong fit 28 · New 12 · Saved 8` (center) + `Sort: AI fit` and `Select` buttons (right).
+- Candidate rows as roomy cards: 44px purple avatar circle, name + inline status badge (`In project`, `Contacted`), role line, meta dots (location · exp · activity · source), skill chips (green with checkmark for matched, neutral for unmatched), bottom action row (`Add to job` primary, `Reach out`, `Saved`, `View profile`), AI FIT score boxed on the far right, thumbs-down + kebab bottom-right.
 
 ## Changes
 
-### 1. `src/pages/Find.tsx` — page shell
+### 1. `src/components/sourcing/SourcingProjectView.tsx` — drop the big colored tabs
 
-Replace the current header / Section / AppContainer block with the Jobs pattern:
+Replace the four-pastel `TabsList` with no chrome around the candidate body. The `Chat with Gio`, `Saved`, and `Archived` views still need to be reachable, but they move out of the top tab strip:
 
-- Wrapper: `h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden bg-virgilio-cream`.
-- Scrollable inner: `flex-1 min-h-0 overflow-auto`.
-- Content container: `container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8 space-y-6 animate-fade-in` (matches Jobs).
-- `<header>` block identical to Jobs:
-  - Left: `Find.` title (`text-[28px] sm:text-[32px]`, Poppins semibold, `-0.04em`, purple period) + dot+text counter row:
-    - active search name (purple dot) when a project is selected
-    - `Last refreshed Xm ago` (neutral dot) — driven by `currentProject.updated_at`
-    - `N sourcing credits` (neutral dot) — from `useSourcingCredits`
-  - Right: `<Button variant="secondary" size="md" icon={Bookmark}>My searches</Button>` (opens the existing SavedSearchSelector popover) + `<Button variant="primary" size="md" icon={Plus} onClick={handleNewSearch}>New search</Button>`.
-- Below the header, a two-column flex (`flex gap-6`) holding the left filter rail and the right project card. Both fill the remaining height inside the scroll area.
+- `Chat with Gio` → a small `purple` button in the project-card header (already has Sparkles icon) that opens the conversation panel as an overlay/drawer (reuse existing `ConversationTab` inside a `Sheet`). Out of scope for this round if too risky — fall back to a small purple link button under the AI summary banner that toggles inline.
+- `Saved` and `Archived` → become filter chips inside the new in-list tab strip alongside `All / Strong fit / New`. (`Saved` shows `savedCandidates`, `Archived` is demoted to a kebab item on the project actions menu.)
 
-Remove the in-card `SavedSearchSelector` and `SourcingProjectActions` row at the top of the right pane — the saved-search popover is now anchored to the top-right `My searches` button, and project actions move into the project card header (see step 3).
+For this round, scope the change to:
+- Remove the colorful `TabsList` block entirely.
+- Render `CandidatesTab` directly as the project body.
+- Move `Saved` into the new in-list tab strip; leave `Archived` and `Chat with Gio` accessible only via the project actions menu / existing routes (filed as follow-up if needed).
 
-### 2. `src/components/sourcing/FindFilterPanel.tsx` — left rail polish
+### 2. `src/components/sourcing/CandidatesTab.tsx` — host the new toolbar
 
-- Keep as a `Card` (rounded, hairline border, same `bg-card`) — already matches Candidates' filter card.
-- Header row: `Search criteria` (Poppins semibold 13.5px, text-text-primary) + right-aligned `Reset` ghost button (resets criteria + result filters in one click).
-- Add a small caption under the header: "Edit anything to re-run the search." (text-body-sm, text-text-tertiary).
-- Section labels: switch from 10px uppercase muted to the Candidates pattern — 11.5px Inter, `text-text-secondary`, `font-medium`, no uppercase. Keep icons.
-- Footer pinned inside the card: full-width primary `Re-run search` button (`variant="primary"`, Sparkles icon), plus tiny caption `Uses ~N sourcing credits · X remaining`.
-- No width change beyond making it `w-[280px] shrink-0` to match the screenshot.
+Add a header inside the tab, above the list, that renders three stacked blocks:
 
-### 3. `src/components/sourcing/SourcingProjectView.tsx` — project card chrome
+a) **AI summary banner** — a single lilac surface (`bg-virgilio-lilac/30`, hairline border, 12px radius, padded 16px). Left: sparkles icon in a purple tile. Center: stacked counts line + `Sourced from … Top match …` sub-line. Right: `Why these results?` ghost link with chevron. Counts come from `sourceBreakdown` and tier counts derived from `candidates` (`strong` = excellent, `good`, `possible` = fair+minimal). Top match = highest-score candidate name + score.
 
-Move the project header bar inside the project card to mirror the screenshot:
+b) **Toolbar row** — `Showing X–Y of Z` (left, text-body-sm, text-text-secondary) · flat tab strip (`All`, `Strong fit`, `New`, `Saved`) using the same `SearchModeTabs`-style chrome we standardized on Candidates (`bg-[#FAFAF7]` active, no background inactive) — each tab carries its count as a neutral badge after the label · `Sort: AI fit` button (secondary, ghost, with sort icon) and `Select` button (secondary with check-square icon) on the right.
 
-- First row: saved-search dropdown trigger (project name + "107 candidates · last refreshed 2 min ago") on the left, action cluster on the right (`Auto-refreshing` pill, `Refresh now`, `Link to job`, `Share`, kebab). Use existing `SourcingProjectActions` for the right cluster.
-- Second row: AI summary banner (sparkle icon + counts line + `Why these results?` link) — already exists; keep but normalize spacing.
-- Third row: tabs (`All`, `Strong fit`, `New`, `Saved`) using the same flat tab strip we standardized in Candidates (`SearchModeTabs` look — bg `#FAFAF7` for active, no background for inactive), plus right-aligned `Sort: AI fit` and `Select`.
-- Candidate list / table rendering stays untouched.
+c) The existing `SourcingCandidateTable` renders below, filtered by the selected tab.
 
-Only the visible structure and Tailwind classes change here — no edits to data, filters, or selection logic.
+Tab filter logic (client-side):
+- `All` = current full list.
+- `Strong fit` = `match_tier === 'excellent'`.
+- `New` = candidates created in the last 7 days (`created_at`).
+- `Saved` = bridge into existing saved candidates query (`useSavedCandidates({ projectId })`).
 
-### 4. `src/components/sourcing/SavedSearchSelector.tsx` — trigger only
+### 3. `src/components/sourcing/SourcingCandidateTable.tsx` — row redesign
 
-Expose an optional `trigger` prop (or hide the built-in trigger when an external trigger is provided) so the page can mount the popover under the new top-right `My searches` button. The dropdown panel itself stays unchanged.
+Replace the dense single-column body with a card-style row layout while keeping the `Table`/`TableRow` skeleton (so sorting and bulk-select stay). Each row renders one large cell with the new layout:
+
+```text
+[ ☐ ] [Avatar]  Name  [Status badge]                           AI FIT
+                Senior Product Designer at Figma                  94
+                · loc · 8y exp. · Active 2d · @ LinkedIn
+                ✓Skill ✓Skill ✓Skill ✓Skill +N
+                [Add to job] [Reach out] [Save] [@View profile]       👎  ⋯
+```
+
+Concrete styling:
+- Row container: white bg, `rounded-xl`, `border border-border`, `p-4 gap-3`, `hover:bg-[#FAFAF7]` (table hover token), no shadow.
+- Avatar: 44px, `bg-virgilio-purple text-white`, Poppins semibold initials.
+- Name: `text-[15px] font-semibold text-text-primary`, with inline status badge after the name:
+  - `In project` → `<Badge tone="lilac" size="xs" dot>In project</Badge>` (when `candidate.candidate_id` exists / already saved).
+  - `Contacted` → `<Badge tone="green" size="xs" dot>Contacted</Badge>` (when contacted flag exists; otherwise omit).
+- Role line: `text-body-md text-text-primary`, format `Role at Company` (Company still linked to LinkedIn search).
+- Meta dots: `text-body-sm text-text-tertiary`, separated by `·`, items: location (MapPin), `Xy exp.` (Briefcase), `Active Xd ago` (Activity), `@ LinkedIn` (link icon) when LinkedIn URL exists.
+- Skill chips: matched keywords → `Badge tone="green" size="xs"` with leading `Check` icon; remaining skills → `Badge tone="neutral" size="xs"`. Cap at 5; overflow via `+N`.
+- Action row: `<Button variant="primary" size="sm" icon={UserPlus}>Add to job</Button>`, `<Button variant="secondary" size="sm" icon={Mail}>Reach out</Button>`, `<Button variant="secondary" size="sm" icon={Bookmark}>Save</Button>` (becomes `Saved` filled when saved), `<Button variant="ghost" size="sm" icon={AtSign}>View profile</Button>`. For Apollo previews keep the `Reveal (1 credit)` button in place of `Add to job`.
+- AI FIT block (right side, vertical, ~80px wide): `text-[10.5px] uppercase tracking-wider text-text-tertiary` label `AI FIT`, big number `text-[28px] font-poppins font-semibold` colored by tier (`excellent` → `text-green-600`, `good` → `text-emerald-600`, `fair` → `text-amber-600`, `minimal` → `text-text-tertiary`).
+- Bottom-right corner: thumbs-down ghost icon button + kebab menu (existing actions: hide, report, etc. — wire only to the kebab; thumbs-down can stay no-op for now).
+- Selected/active row keeps the 2px purple left rail token from the Tables foundation.
+
+Pagination: swap the `Page X of Y` block for `TableFooterSummary` (the same primitive Candidates and Jobs use) — `Showing X–Y of Z candidates`, plus the existing prev/next buttons inline on the right.
+
+### 4. `src/components/sourcing/CandidateTableSkeleton.tsx` — match new row height
+
+Bump skeleton heights so the new card-style rows don't pop when data loads.
 
 ## Out of scope
 
-- Sidebar (`SourcingSidebar`) — already aligned, untouched.
-- Candidate card / table internals, AI banner copy, project actions logic.
-- Any data fetching, mutations, routing, or business rules.
-- Jobs page and Candidates page — reference only, no edits.
+- `ConversationTab`, `SavedCandidatesTab`, `ArchivedCandidatesTab` internals — only navigation/entry points change.
+- Profile sheet, enrichment, bulk collect, saved/archive mutations.
+- New search empty state, FilterPanel, page shell — already aligned.
 
 ## Technical notes
 
-- Counter dots: reuse the exact markup Jobs uses (`<span className="h-1.5 w-1.5 rounded-full bg-...">`) for color parity.
-- `Last refreshed`: format with `formatDistanceToNow(new Date(currentProject.updated_at), { addSuffix: true })`.
-- Sourcing credits: read from existing `useSourcingCredits` hook (already imported transitively via `useSourcingCreditWarnings`).
-- Animation: top-level container gets `animate-fade-in` (same class Jobs / Candidates use) for the slight enter transition.
+- AI summary counts: derive from `candidates` array client-side; `sourceBreakdown` is already passed through from `useSourcingProjectCandidates`.
+- `New` filter: gate on `created_at` within last 7 days, fallback to all if `created_at` missing.
+- Tab strip reuses the `SearchModeTabs` pattern but ships as a small local component inside `CandidatesTab` (no new shared primitive yet — promote later if reused).
+- Badge tones use the global compositional `<Badge>` API per the style guide; no ad-hoc color classes.
