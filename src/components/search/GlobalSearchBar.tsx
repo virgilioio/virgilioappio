@@ -1,118 +1,41 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Popover, PopoverContent, PopoverAnchor } from '@/components/ui/popover'
-import { useGlobalSearch, type SearchResult } from '@/hooks/useGlobalSearch'
-import { SearchDropdown } from './SearchDropdown'
+import { GlobalSearchPanel } from './v2/GlobalSearchPanel'
 import { SearchResultsDialog } from './SearchResultsDialog'
 import { IndependentCandidateProfileSheet } from '@/components/candidates/IndependentCandidateProfileSheet'
 
 export function GlobalSearchBar() {
-  const navigate = useNavigate()
   const inputRef = useRef<HTMLInputElement>(null)
-  
+
   const [query, setQuery] = useState('')
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
-  
-  const { results, isLoading, totalCounts } = useGlobalSearch(query, { limit: 5 })
 
-  // Global keyboard shortcut (Cmd+/ or Ctrl+/)
+  // Cmd+K (and legacy Cmd+/) shortcut
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === '/')) {
         e.preventDefault()
         inputRef.current?.focus()
+        setIsOpen(true)
       }
     }
-    
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
   }, [])
 
-  // Reset highlighted index when results change
-  useEffect(() => {
-    setHighlightedIndex(-1)
-  }, [results])
-
-  // Handle keyboard navigation in dropdown
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      e.preventDefault()
-      if (query) {
-        setQuery('')
-      } else {
-        inputRef.current?.blur()
-      }
-      setIsDropdownOpen(false)
-      return
-    }
-
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      if (highlightedIndex >= 0 && highlightedIndex < results.length) {
-        const result = results[highlightedIndex]
-        if (result.type === 'candidate') {
-          setSelectedCandidateId(result.id)
-          setSheetOpen(true)
-        } else {
-          navigate(result.route)
-        }
-        setQuery('')
-        setIsDropdownOpen(false)
-      } else if (query.length >= 2) {
-        // Open full results dialog
-        setIsDialogOpen(true)
-        setIsDropdownOpen(false)
-      }
-      return
-    }
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      setHighlightedIndex(prev => 
-        prev < results.length - 1 ? prev + 1 : prev
-      )
-      return
-    }
-
-    if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setHighlightedIndex(prev => prev > 0 ? prev - 1 : -1)
-      return
-    }
-  }, [query, results, highlightedIndex, navigate])
-
-  const handleResultClick = (result: SearchResult) => {
-    if (result.type === 'candidate') {
-      setSelectedCandidateId(result.id)
-      setSheetOpen(true)
-    } else {
-      navigate(result.route)
-    }
-    setQuery('')
-    setIsDropdownOpen(false)
-  }
-
-  const handleFocus = () => {
-    if (query.length >= 2) {
-      setIsDropdownOpen(true)
-    }
-  }
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setQuery(value)
-    setIsDropdownOpen(value.length >= 2)
-  }
+  const handleOpenCandidate = useCallback((id: string) => {
+    setSelectedCandidateId(id)
+    setSheetOpen(true)
+  }, [])
 
   return (
     <>
-      <Popover open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverAnchor asChild>
           <div className="relative hidden md:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-virgilio-muted pointer-events-none" />
@@ -120,59 +43,54 @@ export function GlobalSearchBar() {
               ref={inputRef}
               type="text"
               value={query}
-              onChange={handleInputChange}
-              onFocus={handleFocus}
-              onKeyDown={handleKeyDown}
-              placeholder="Search for anything..."
+              onChange={(e) => { setQuery(e.target.value); setIsOpen(true) }}
+              onFocus={() => setIsOpen(true)}
+              placeholder="Search candidates, jobs, companies…"
               className={cn(
-                "h-9 w-[280px] rounded-lg border border-virgilio-border bg-surface-primary pl-9 pr-12 text-sm font-poppins",
-                "placeholder:text-virgilio-muted transition-all duration-200",
-                "focus:outline-none focus:ring-2 focus:ring-virgilio-purple focus:border-virgilio-purple focus:w-[400px]",
-                "hover:border-virgilio-purple/50"
+                'h-9 w-[320px] rounded-lg border border-virgilio-border bg-surface-primary pl-9 pr-12 text-sm font-poppins',
+                'placeholder:text-virgilio-muted transition-all duration-200',
+                'focus:outline-none focus:ring-2 focus:ring-virgilio-purple/30 focus:border-virgilio-purple/50 focus:w-[420px]',
+                'hover:border-virgilio-purple/40'
               )}
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 text-[10px] text-virgilio-muted pointer-events-none">
               <kbd className="px-1.5 py-0.5 bg-virgilio-border/50 rounded font-mono">⌘</kbd>
-              <kbd className="px-1 py-0.5 bg-virgilio-border/50 rounded font-mono">/</kbd>
+              <kbd className="px-1 py-0.5 bg-virgilio-border/50 rounded font-mono">K</kbd>
             </div>
           </div>
         </PopoverAnchor>
-        
-        <PopoverContent 
-          className="w-[400px] p-0 shadow-elevated border-virgilio-border"
+
+        <PopoverContent
           align="start"
-          sideOffset={8}
+          sideOffset={10}
+          className="p-0 border-0 bg-transparent shadow-none w-auto"
           onOpenAutoFocus={(e) => e.preventDefault()}
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
-          <SearchDropdown
-            results={results}
-            isLoading={isLoading}
+          <GlobalSearchPanel
             query={query}
-            totalCounts={totalCounts}
-            highlightedIndex={highlightedIndex}
-            onResultClick={handleResultClick}
-            onClose={() => setIsDropdownOpen(false)}
+            onQueryChange={(q) => { setQuery(q); inputRef.current?.focus() }}
+            onClose={() => setIsOpen(false)}
+            onOpenCandidate={handleOpenCandidate}
           />
         </PopoverContent>
       </Popover>
 
-      {/* Mobile Search Button */}
+      {/* Mobile fallback */}
       <button
         onClick={() => setIsDialogOpen(true)}
         className="md:hidden h-9 w-9 rounded-lg border border-virgilio-border bg-surface-primary flex items-center justify-center hover:bg-virgilio-purple/5 transition-colors"
+        aria-label="Search"
       >
         <Search className="h-4 w-4 text-virgilio-muted" />
       </button>
 
-      {/* Full Results Dialog */}
       <SearchResultsDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         initialQuery={query}
       />
 
-      {/* Candidate Profile Sheet */}
       <IndependentCandidateProfileSheet
         open={sheetOpen}
         onOpenChange={setSheetOpen}
