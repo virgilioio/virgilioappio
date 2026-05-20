@@ -251,12 +251,14 @@ export function GlobalCreateButton() {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button 
-            className="rounded-full w-10 h-10 p-0 flex items-center justify-center transition-all duration-200 hover:scale-105 focus:scale-105" 
-            style={{ backgroundColor: '#d7c5fb' }}
+          <button
+            type="button"
+            aria-label="Create"
+            className="inline-flex items-center gap-1.5 h-7 pl-2 pr-2.5 rounded-lg bg-white text-[#0d0d09] font-poppins font-semibold text-[12.5px] tracking-[-0.01em] hover:bg-[#FAFAF7] active:bg-[#F1F0EC] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/40"
           >
-            <Plus className="h-4 w-4 text-gray-800" />
-          </Button>
+            <Plus className="h-3.5 w-3.5" />
+            <span>Create</span>
+          </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-60">
           {createOptions.map((option) => {
