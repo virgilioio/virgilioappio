@@ -184,7 +184,7 @@ export function GlobalSearchPanel({
 
     // Results mode
     if (scope === 'all' || scope === 'candidates') {
-      const cands = results.filter(r => r.type === 'candidate')
+      const cands = results.filter(x => x.type === 'candidate')
       for (const c of cands) {
         r.push({
           key: `cand-${c.id}`,
@@ -198,7 +198,7 @@ export function GlobalSearchPanel({
       }
     }
     if (scope === 'all' || scope === 'jobs') {
-      const jobs = results.filter(r => r.type === 'job')
+      const jobs = results.filter(x => x.type === 'job')
       for (const j of jobs) {
         r.push({
           key: `job-${j.id}`,
