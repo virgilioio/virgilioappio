@@ -523,9 +523,19 @@ function CandidatesInner() {
               onClearSelection={clearSelection}
               onAddToJob={() => setBulkJobOpen(true)}
               onEmail={() => toast({ title: 'Bulk email coming soon' })}
-              onTag={() => toast({ title: 'Tagging coming soon' })}
+              onTag={() => {}}
               onAddToSearch={handleSavePopoverOpen}
               onArchive={archiveSelected}
+              tagButtonSlot={
+                <AddTagPopover
+                  candidateIds={selectedIds}
+                  candidateNames={candidates.filter(c => selectedIds.includes(c.id)).map(c => c.candidate_name)}
+                  align="end"
+                  trigger={
+                    <Button onDark size="sm" variant="ghost" icon={TagIcon}>Tag</Button>
+                  }
+                />
+              }
             />
           ) : null}
 
