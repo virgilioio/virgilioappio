@@ -115,18 +115,45 @@ export function SourcingCandidateTable({
   const [selectedPdlData, setSelectedPdlData] = useState<MatchedCandidate | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const { isCollectDisabled } = useSourcingCreditWarnings()
-  
-  
+
+  // Fit segment filter (toolbar) — All / Strong fit / Good / Possible / Collected
+  type FitSegment = 'all' | 'strong' | 'good' | 'possible' | 'collected'
+  const [fitSegment, setFitSegment] = useState<FitSegment>('all')
+  // Sort mode (toolbar)
+  type SortMode = 'ai_fit' | 'recent' | 'experience'
+  const [sortMode, setSortMode] = useState<SortMode>('ai_fit')
+
   // Bulk selection state
   const [selectedApolloIds, setSelectedApolloIds] = useState<Set<string>>(new Set())
   const [isBulkCollecting, setIsBulkCollecting] = useState(false)
   const [showJobDialog, setShowJobDialog] = useState(false)
   const [pendingBulkIds, setPendingBulkIds] = useState<string[]>([])
-  
-  // Sortable table with default sort by match_score DESC
+
+  // Segment counts (computed from full candidate set, ignoring segment filter)
+  const segmentCounts = {
+    all: candidates.length,
+    strong: candidates.filter(c => c.match_tier === 'excellent').length,
+    good: candidates.filter(c => c.match_tier === 'good').length,
+    possible: candidates.filter(c => c.match_tier === 'fair' || c.match_tier === 'minimal').length,
+    collected: candidates.filter(c => c.source === 'apollo' && !!c.candidate_id).length,
+  }
+
+  // Apply fit segment filter
+  const segmentFiltered = candidates.filter(c => {
+    switch (fitSegment) {
+      case 'strong': return c.match_tier === 'excellent'
+      case 'good': return c.match_tier === 'good'
+      case 'possible': return c.match_tier === 'fair' || c.match_tier === 'minimal'
+      case 'collected': return c.source === 'apollo' && !!c.candidate_id
+      default: return true
+    }
+  })
+
+  // Sortable table — sort key derived from sortMode
+  const sortKey = sortMode === 'ai_fit' ? 'match_score' : sortMode === 'experience' ? 'experience_years' : 'created_at'
   const { sortedData, sortConfig, requestSort } = useSortableTable(
-    candidates,
-    { key: 'match_score', direction: 'desc' }
+    segmentFiltered,
+    { key: sortKey as any, direction: 'desc' }
   )
 
   // Pagination
