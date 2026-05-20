@@ -138,11 +138,11 @@ export function CandidatesTable({
     [candidates, selectedIds],
   )
 
-  if (isLoading) return <TableSkeleton rows={6} />
+  if (isLoading) return <TableSkeleton rows={6} columns={9} />
   if (candidates.length === 0) {
     return hasActiveFilters
-      ? <TableFilteredEmpty />
-      : <TableEmpty title="No candidates yet" description="Add your first candidate to get started." />
+      ? <TableFilteredEmpty colSpan={9} onClearFilters={() => { /* handled by parent */ }} />
+      : <TableEmpty colSpan={9} title="No candidates yet" description="Add your first candidate to get started." />
   }
 
   return (
