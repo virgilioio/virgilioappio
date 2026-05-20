@@ -1,64 +1,67 @@
-# Align Candidates page with Jobs page visuals
+# Find page — align with Jobs / Candidates visual system
 
-Five surgical, presentation-only fixes. Jobs page is the reference; nothing in Jobs changes.
+Goal: bring the Find page header, padding, animations, sidebar and filters chrome in line with the Jobs and Candidates pages, matching the attached screenshot. Functional behavior (search, auto-create project, candidate fetching) stays exactly as-is.
 
-## 1. Header — counters & top-right buttons
+## Reference cues from the screenshot
 
-**File:** `src/components/candidates/list/CandidatesHeader.tsx`
+- Page header: `Find.` (Poppins semibold, purple period), with a sub-row "Sr. Product Designer · Last refreshed 2 min ago · 412 sourcing credits" using dot+text markers (same pattern Jobs uses for "open / paused / closed").
+- Top-right buttons: `My searches` (secondary) and `+ New search` (primary).
+- Left rail = white `Card` titled "Search criteria" with a `Reset` link, collapsible sections, and a full-width `Re-run search` primary CTA at the bottom + credits caption.
+- Right pane = white `Card` containing the saved-search trigger, project actions, AI summary banner, tab strip, and the candidate list (unchanged internals).
 
-- Replace the pill-style `KpiChip` row with the Jobs-style "dot + count + label" markers (small colored dot, tabular number, muted label). Keep them clickable — clicking still toggles the smart list — but drop the chip background, height, and purple active fill. Active state = bolder text, no background, to stay calm like Jobs.
-  - `in active pipeline` → green dot (`bg-pastel-green-foreground`)
-  - `awaiting outreach` → neutral dot (`bg-text-tertiary`)
-  - `favorites` → pink dot (`bg-pastel-pink-foreground`)
-  - `new this week` → purple dot (`bg-virgilio-purple`)
-- Match Jobs typography: `text-body-sm text-text-secondary`, `gap-x-4 gap-y-1`.
-- **Remove the kebab `<DropdownMenu>` trigger entirely** (issue #3 — dead button). Keep the existing `Import CSV`, `Bulk upload`, `+ Add candidate` buttons in the top-right, in that order, matching Jobs spacing (`gap-2 shrink-0`).
-- On mobile (where `Import CSV` / `Bulk upload` were `hidden lg:inline-flex`), keep them visible at all widths like Jobs does, or drop only the labels — simplest: keep as-is on lg+, accept that small screens won't show them (matches current behavior, no regression).
+## Changes
 
-## 2. Search bar color
+### 1. `src/pages/Find.tsx` — page shell
 
-**File:** `src/components/candidates/list/CandidateSearchBar.tsx`
+Replace the current header / Section / AppContainer block with the Jobs pattern:
 
-- Outer wrapper currently: `bg-white border border-virgilio-border focus-within:border-virgilio-purple focus-within:ring-2 focus-within:ring-virgilio-purple/30` and `h-11 rounded-xl`.
-- Change to match Jobs search input: `h-10 rounded-xl bg-[#FAFAF7] border border-transparent focus-within:bg-white focus-within:border-virgilio-border`. Drop the purple ring/border treatment, including the AI-mode purple variant on the outer container (keep the purple Sparkles icon and the purple "Ask" button — those are intent signals, not chrome).
-- Adjust input height to match (`h-10`).
+- Wrapper: `h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden bg-virgilio-cream`.
+- Scrollable inner: `flex-1 min-h-0 overflow-auto`.
+- Content container: `container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8 space-y-6 animate-fade-in` (matches Jobs).
+- `<header>` block identical to Jobs:
+  - Left: `Find.` title (`text-[28px] sm:text-[32px]`, Poppins semibold, `-0.04em`, purple period) + dot+text counter row:
+    - active search name (purple dot) when a project is selected
+    - `Last refreshed Xm ago` (neutral dot) — driven by `currentProject.updated_at`
+    - `N sourcing credits` (neutral dot) — from `useSourcingCredits`
+  - Right: `<Button variant="secondary" size="md" icon={Bookmark}>My searches</Button>` (opens the existing SavedSearchSelector popover) + `<Button variant="primary" size="md" icon={Plus} onClick={handleNewSearch}>New search</Button>`.
+- Below the header, a two-column flex (`flex gap-6`) holding the left filter rail and the right project card. Both fill the remaining height inside the scroll area.
 
-## 3. Remove the dead ellipsis button
+Remove the in-card `SavedSearchSelector` and `SourcingProjectActions` row at the top of the right pane — the saved-search popover is now anchored to the top-right `My searches` button, and project actions move into the project card header (see step 3).
 
-Handled in #1 (removal of the `DropdownMenu` block in `CandidatesHeader.tsx`).
+### 2. `src/components/sourcing/FindFilterPanel.tsx` — left rail polish
 
-## 4. Search-mode tabs styled like Jobs status tabs
+- Keep as a `Card` (rounded, hairline border, same `bg-card`) — already matches Candidates' filter card.
+- Header row: `Search criteria` (Poppins semibold 13.5px, text-text-primary) + right-aligned `Reset` ghost button (resets criteria + result filters in one click).
+- Add a small caption under the header: "Edit anything to re-run the search." (text-body-sm, text-text-tertiary).
+- Section labels: switch from 10px uppercase muted to the Candidates pattern — 11.5px Inter, `text-text-secondary`, `font-medium`, no uppercase. Keep icons.
+- Footer pinned inside the card: full-width primary `Re-run search` button (`variant="primary"`, Sparkles icon), plus tiny caption `Uses ~N sourcing credits · X remaining`.
+- No width change beyond making it `w-[280px] shrink-0` to match the screenshot.
 
-**File:** `src/components/candidates/list/SearchModeTabs.tsx`
+### 3. `src/components/sourcing/SourcingProjectView.tsx` — project card chrome
 
-Adopt the Jobs filter-tabs aesthetic (from `JobsTable.tsx` lines 183–210):
+Move the project header bar inside the project card to mirror the screenshot:
 
-- Drop the `p-1 rounded-lg bg-[#F5F4EF]` segmented background. Render as a flat tab strip: `inline-flex items-center gap-1`.
-- Each tab: `inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg font-poppins text-[13.5px] tracking-[-0.01em] transition-colors`.
-- Active: `bg-[#FAFAF7] text-text-primary font-semibold`.
-- Inactive: `text-text-tertiary hover:text-text-primary font-medium`.
-- **Keep the icons** (Search / Code2 / Sparkles) at `h-3.5 w-3.5` to the left of the label. For the AI tab, when active, keep the icon `text-virgilio-purple` to preserve the AI cue.
+- First row: saved-search dropdown trigger (project name + "107 candidates · last refreshed 2 min ago") on the left, action cluster on the right (`Auto-refreshing` pill, `Refresh now`, `Link to job`, `Share`, kebab). Use existing `SourcingProjectActions` for the right cluster.
+- Second row: AI summary banner (sparkle icon + counts line + `Why these results?` link) — already exists; keep but normalize spacing.
+- Third row: tabs (`All`, `Strong fit`, `New`, `Saved`) using the same flat tab strip we standardized in Candidates (`SearchModeTabs` look — bg `#FAFAF7` for active, no background for inactive), plus right-aligned `Sort: AI fit` and `Select`.
+- Candidate list / table rendering stays untouched.
 
-## 5. Candidates list pagination = Jobs pagination
+Only the visible structure and Tailwind classes change here — no edits to data, filters, or selection logic.
 
-**File:** `src/pages/Candidates.tsx` (around line 601) and the CandidatesTable card footer.
+### 4. `src/components/sourcing/SavedSearchSelector.tsx` — trigger only
 
-- Replace `<CandidatesFooter ... />` with `<TableFooterSummary>` from `src/components/ui/table-pagination.tsx`, mirroring Jobs (`JobsTable.tsx` lines 419–426):
-  ```tsx
-  <TableFooterSummary
-    rangeStart={1}
-    rangeEnd={visible.length}
-    total={finalAfterSmart.length}
-    entityLabel="candidates"
-    onLoadMore={() => setPage(p => p + 1)}
-    loadMoreLabel={`Load ${pageSize} more`}
-  />
-  ```
-  Render only when `visible.length > 0 && !isLoading`, matching Jobs' guard.
-- Leave `CandidatesFooter.tsx` in place for now (unused) — safe to delete later; out of scope to avoid breaking other imports.
-- The page-size selector currently inside `CandidatesFooter` is dropped (Jobs has no per-page selector). If the user wants it back later we can revisit; spec says "use the exact same one."
+Expose an optional `trigger` prop (or hide the built-in trigger when an external trigger is provided) so the page can mount the popover under the new top-right `My searches` button. The dropdown panel itself stays unchanged.
 
 ## Out of scope
 
-- Sidebar/rail, filter card outer chrome, table internals, dialogs, bulk-action bar, business logic, data fetching.
-- Jobs page (untouched, it is the reference).
+- Sidebar (`SourcingSidebar`) — already aligned, untouched.
+- Candidate card / table internals, AI banner copy, project actions logic.
+- Any data fetching, mutations, routing, or business rules.
+- Jobs page and Candidates page — reference only, no edits.
+
+## Technical notes
+
+- Counter dots: reuse the exact markup Jobs uses (`<span className="h-1.5 w-1.5 rounded-full bg-...">`) for color parity.
+- `Last refreshed`: format with `formatDistanceToNow(new Date(currentProject.updated_at), { addSuffix: true })`.
+- Sourcing credits: read from existing `useSourcingCredits` hook (already imported transitively via `useSourcingCreditWarnings`).
+- Animation: top-level container gets `animate-fade-in` (same class Jobs / Candidates use) for the slight enter transition.
