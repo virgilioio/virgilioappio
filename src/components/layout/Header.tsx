@@ -215,7 +215,7 @@ export function Header() {
                   'focus:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/40',
                   isActive
                     ? 'bg-[#fffcf9] text-[#0d0d09] font-semibold'
-                    : 'text-white/72 hover:bg-white/[0.08] hover:text-white',
+                    : 'text-white/70 hover:bg-white/[0.08] hover:text-white',
                 )}
               >
                 <span className="relative">
