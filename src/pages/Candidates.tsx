@@ -87,6 +87,8 @@ function CandidatesInner() {
   const { associationsMap, associations } = useCandidateJobAssociationsMap(candidateIds)
   const filterOptions = useCandidateFilterOptions(candidates, associations)
   const { filters, setArrayFilter, setNumericFilter, setDateFilter, clearAll, activeFilterCount } = useCandidateFilters()
+  const { tags } = useTags()
+  const { data: allCandidateTagsMap } = useAllCandidateTagsMap()
 
   // Search state
   const [mode, setMode] = useState<SearchMode>('everything')
