@@ -60,7 +60,7 @@ export function FindEmptyState({
       </div>
 
       <div className="px-5 py-8 sm:py-10">
-        <div className="mx-auto w-full max-w-[680px] space-y-8">
+        <div className="mx-auto w-full max-w-[820px] space-y-8">
           {/* Hero */}
           <div className="text-center space-y-4 animate-fade-in">
             <div className="relative inline-flex items-center justify-center">
