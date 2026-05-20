@@ -659,12 +659,6 @@ function CandidatesInner() {
         />
       )}
 
-      {bulkJobOpen && (
-        <BulkAddToJobPipelineDialog
-          candidateIds={selectedIds}
-          onCompleted={() => { setBulkJobOpen(false); clearSelection(); getCandidates() }}
-        />
-      )}
 
       <AlertDialog open={!!deleteSavedView} onOpenChange={(open) => !open && !isDeletingSavedView && setDeleteSavedView(null)}>
         <AlertDialogContent className="mx-4 max-w-md sm:max-w-lg">
