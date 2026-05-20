@@ -68,6 +68,7 @@ const SaaSCustomerDetail = lazy(() =>
 )
 const Analytics = lazy(() => import('./pages/Analytics'))
 const TalentIntelligence = lazy(() => import('./pages/TalentIntelligence'))
+const SharedList = lazy(() => import('./pages/SharedList'))
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
