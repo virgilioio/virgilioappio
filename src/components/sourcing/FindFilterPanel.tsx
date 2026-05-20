@@ -198,11 +198,24 @@ export function FindFilterPanel({
     onCriteriaChange({ [key]: updated })
   }
 
+  const { data: creditsUsage } = useSourcingCredits()
+  const collectRemaining = creditsUsage
+    ? Math.max(0, (creditsUsage.collect_credits_limit || 0) - (creditsUsage.collect_credits_used || 0)) + (creditsUsage.bonus_credits_available || 0)
+    : null
+
+  const SUGGESTED_KEYWORDS = ['Prototyping', 'User research', 'UI engineering', 'Accessibility']
+  const visibleSuggestions = SUGGESTED_KEYWORDS.filter(s => !(c.keywords || []).map(k => k.toLowerCase()).includes(s.toLowerCase()))
+
+  const handleSearch = () => {
+    // Re-run search by touching criteria — the parent debounces and refetches.
+    onCriteriaChange({ title_keywords: [...(c.title_keywords || [])] })
+  }
+
   return (
     <Card className="w-[280px] shrink-0 flex flex-col min-h-0 overflow-hidden self-start max-h-full">
       <div className="px-4 pt-4 pb-2 shrink-0">
         <div className="flex items-center justify-between">
-          <span className="font-poppins font-semibold text-[13.5px] text-text-primary">Search criteria</span>
+          <span className="font-poppins font-semibold text-[14px] text-text-primary tracking-[-0.01em]">Search criteria</span>
           <Button
             variant="ghost"
             size="xs"
@@ -222,14 +235,20 @@ export function FindFilterPanel({
             Reset
           </Button>
         </div>
-        <p className="text-[11.5px] text-text-tertiary mt-1">Edit anything to re-run the search.</p>
+        <p className="text-[11.5px] text-text-tertiary mt-1">Start with a prompt — Gio will fill these in.</p>
       </div>
 
 
       <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4 space-y-3">
-        <CollapsibleSection label="Job Titles" icon={Briefcase} defaultOpen={(c.title_keywords?.length ?? 0) > 0}>
+        <CollapsibleSection
+          label="Job titles"
+          defaultOpen={(c.title_keywords?.length ?? 0) > 0}
+          rightAdornment={
+            <Badge tone="lilac" size="xs" icon={Sparkles}>AI</Badge>
+          }
+        >
           <AutocompleteTagInput
-            placeholder="Add title..."
+            placeholder="e.g. Senior Product Designer"
             tags={c.title_keywords || []}
             onAdd={(tag) => onCriteriaChange({ title_keywords: [...(c.title_keywords || []), tag] })}
             onRemove={(tag) => onCriteriaChange({ title_keywords: (c.title_keywords || []).filter(t => t !== tag) })}
@@ -238,16 +257,37 @@ export function FindFilterPanel({
           />
         </CollapsibleSection>
 
-        <CollapsibleSection label="Keywords" icon={Tag} defaultOpen={(c.keywords?.length ?? 0) > 0}>
+        <CollapsibleSection label="Skills & keywords" icon={Tag} defaultOpen={(c.keywords?.length ?? 0) > 0 || visibleSuggestions.length > 0}>
           <AutocompleteTagInput
-            placeholder="Add keyword..."
+            placeholder="Add skills..."
             tags={c.keywords || []}
             onAdd={(tag) => onCriteriaChange({ keywords: [...(c.keywords || []), tag] })}
             onRemove={(tag) => onCriteriaChange({ keywords: (c.keywords || []).filter(t => t !== tag) })}
             badgeVariant="keyword-match"
             table="standard_skills"
           />
+          {visibleSuggestions.length > 0 && (
+            <div className="mt-3 space-y-1.5">
+              <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-text-tertiary">
+                Suggested by Gio
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {visibleSuggestions.map(s => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => onCriteriaChange({ keywords: [...(c.keywords || []), s] })}
+                    className="inline-flex items-center gap-1 h-6 px-2 rounded-full bg-virgilio-lilac/40 hover:bg-virgilio-lilac/60 border border-virgilio-purple/15 text-virgilio-purple font-poppins font-medium text-[11.5px] tracking-[-0.005em] transition-colors"
+                  >
+                    <Plus className="h-3 w-3 opacity-65" />
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </CollapsibleSection>
+
 
         <CollapsibleSection label="Locations" icon={MapPin} defaultOpen={(c.locations?.length ?? 0) > 0}>
           <LocationSelector
