@@ -91,6 +91,7 @@ interface MarketSalaryData {
 interface AIJobAssistantProps {
   onProjectCreated?: (projectId: string) => void
   onGeneratingChange?: (isGenerating: boolean) => void
+  variant?: 'default' | 'find'
 }
 
 // Fallback: detect and fix Spanish job titles when prompt was in English
