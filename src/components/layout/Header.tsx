@@ -223,7 +223,7 @@ export function Header() {
                   {item.notification && (
                     <span
                       aria-hidden
-                      className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-virgilio-lilac ring-2 ring-[#0d0d09]"
+                      className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-[#D7C5FB] ring-2 ring-[#0d0d09]"
                     />
                   )}
                 </span>
