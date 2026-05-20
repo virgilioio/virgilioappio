@@ -41,6 +41,7 @@ const EMPTY_FILTERS: CandidateFilters = {
   jobs: [],
   stages: [],
   rejectedAtStages: [],
+  tagIds: [],
   experienceMin: null,
   experienceMax: null,
   salaryMin: null,
