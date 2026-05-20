@@ -459,8 +459,8 @@ function CandidatesInner() {
       </div>
 
       {/* Body: rail + main */}
-      <div className="flex-1 min-h-0 flex overflow-hidden">
-        <div className="hidden md:block">
+      <div className="flex-1 min-h-0 flex gap-4 overflow-hidden px-6 pb-6">
+        <div className="hidden md:block h-full">
           <CandidatesSearchesRail
             views={views}
             activeViewId={activeViewId}
@@ -482,7 +482,7 @@ function CandidatesInner() {
         </div>
 
 
-        <main className="flex-1 min-w-0 overflow-y-auto px-4 sm:px-6 py-5 space-y-4">
+        <main className="flex-1 min-w-0 overflow-y-auto space-y-4">
           <SavedSearchToolbar
             activeView={activeView}
             smartListLabel={smartListLabel}
