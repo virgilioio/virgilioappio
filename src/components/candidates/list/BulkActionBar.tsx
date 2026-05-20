@@ -17,6 +17,9 @@ interface BulkActionBarProps {
   tagButtonSlot?: ReactNode
   /** Optional render override for the Add to job button (used to wrap it in a Popover trigger). */
   addToJobButtonSlot?: ReactNode
+  /** Optional render override for the Share button (used to wrap it in a Modal trigger). */
+  shareButtonSlot?: ReactNode
+  onShare?: () => void
 }
 
 export function BulkActionBar({
