@@ -452,7 +452,9 @@ function CandidatesInner() {
             onSelectSmartList={handleSelectSmartList}
             onCreateView={handleSavePopoverOpen}
             justSavedId={justSavedId}
-
+            onEditView={handleSelectView}
+            onDuplicateView={handleDuplicateSavedView}
+            onDeleteView={(v) => setDeleteSavedView(v)}
           />
         </div>
 
