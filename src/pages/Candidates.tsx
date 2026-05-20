@@ -238,9 +238,10 @@ function CandidatesInner() {
       }
       clearAll()
       setFiltersFromRecord(partial)
-      setQuery(data.query ?? '')
+      setQuery('')
+      setCommittedQuery('')
       setMode('everything')
-      toast({ title: 'Filters applied' })
+      toast({ title: 'Filters applied from your prompt' })
     } catch (e: any) {
       setAiError(e?.message ?? 'Could not parse your query')
     } finally {
