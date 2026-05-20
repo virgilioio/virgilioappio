@@ -156,7 +156,16 @@ export function CandidatesSearchesRail({
             <div className="px-2 py-2 text-[12px] text-text-tertiary">No saved searches yet.</div>
           ) : (
             views.map(v => (
-              <SavedSearchItem key={v.id} view={v} active={v.id === activeViewId} justSaved={v.id === justSavedId} onClick={() => onSelectView(v)} />
+              <SavedSearchItem
+                key={v.id}
+                view={v}
+                active={v.id === activeViewId}
+                justSaved={v.id === justSavedId}
+                onClick={() => onSelectView(v)}
+                onEdit={onEditView ? () => onEditView(v) : undefined}
+                onDuplicate={onDuplicateView ? () => onDuplicateView(v) : undefined}
+                onDelete={onDeleteView ? () => onDeleteView(v) : undefined}
+              />
             ))
           )}
 
