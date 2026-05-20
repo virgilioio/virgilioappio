@@ -47,7 +47,8 @@ import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 import { AddTagPopover } from '@/components/candidates/tags/AddTagPopover'
 import { Button } from '@/components/ui/button'
-import { Tag as TagIcon, Users as UsersIcon } from 'lucide-react'
+import { Tag as TagIcon, Users as UsersIcon, Share2 as Share2Icon } from 'lucide-react'
+import { ShareListModal } from '@/components/candidates/bulk/ShareListModal'
 import { useTags, useAllCandidateTagsMap, useTagMutations, type Tag } from '@/hooks/useTags'
 
 const SMART_LIST_FILTERS: Record<SmartListKey, Partial<CandidateFilters>> = {
