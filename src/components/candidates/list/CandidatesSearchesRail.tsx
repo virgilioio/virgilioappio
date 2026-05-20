@@ -23,6 +23,9 @@ interface CandidatesSearchesRailProps {
   onSelectView: (view: SavedView) => void
   onSelectSmartList: (key: SmartListKey) => void
   onCreateView: () => void
+  onEditView?: (view: SavedView) => void
+  onDuplicateView?: (view: SavedView) => void
+  onDeleteView?: (view: SavedView) => void
 }
 
 
