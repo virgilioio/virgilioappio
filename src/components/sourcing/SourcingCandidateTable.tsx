@@ -303,10 +303,9 @@ export function SourcingCandidateTable({
         })
       }
       
-      // Update pagination if needed
-      const nextPage = Math.floor((currentIndex + 1) / itemsPerPage) + 1
-      if (nextPage !== currentPage) {
-        setCurrentPage(nextPage)
+      // Ensure next candidate is visible
+      if (currentIndex + 1 >= visibleCount) {
+        setVisibleCount(Math.ceil((currentIndex + 2) / PAGE_STEP) * PAGE_STEP)
       }
     }
   }
