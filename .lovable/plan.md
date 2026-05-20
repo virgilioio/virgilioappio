@@ -1,70 +1,69 @@
-# Find — empty/new-search canvas + header + sidebar polish
+# Find — composer redesign + saved-search chip flow
 
-Scope: this round refines the Find page in its **empty / new-search** state to match the screenshot. Three surfaces change: the page header counters, the left sidebar (Search criteria), and the main canvas ("Who are you looking for?"). No data layer or backend work.
+Three focused refinements on the empty-state canvas, all visual/presentation.
 
-## 1. Page header — `src/pages/Find.tsx`
+## 1. New composer shape (replaces the round chat input)
 
-- Replace the counter row with three dot-separated markers in this order:
-  - `● 4 saved searches` — lilac dot pill (`Badge tone="lilac" size="sm" dot`) showing `useSourcingProjects().data.length`.
-  - `412 sourcing credits` — plain text from `useSourcingCredits` (no pill).
-  - `Renews Jun 1` — plain text from credits renewal date.
-  - Separators: `·` middle-dot in `text-text-tertiary`.
-- Top-right buttons change from `My searches` + `+ New search` to **`My searches`** (secondary, Bookmark icon) + **`Sourcing settings`** (secondary, Sliders icon, routes to settings/sourcing). Remove the `+ New search` button — starting a new search is implicit on the canvas.
-- Header padding + `animate-fade-in` already match Jobs; keep as-is.
+Currently `AIJobAssistant` renders a rounded-[28px] pill with the textarea + a Chat-with-Gio switch + send arrow. On the Find page we render it inside `FindEmptyState`, so it inherits that shape. The screenshot calls for a card-style composer that matches the rest of the page chrome.
 
-## 2. Left sidebar — `src/components/sourcing/FindFilterPanel.tsx`
+Approach: introduce a `variant="find"` prop on `AIJobAssistant` (default behaviour unchanged for Dashboard). When `variant="find"` it renders this layout instead of the pill:
 
-- Add a one-line subtitle directly under `Search criteria` header: `Start with a prompt — Gio will fill these in.` (`text-body-sm text-text-tertiary`, no margin override).
-- `Job titles` section header: add a small lilac `✨ AI` pill on the right of the row (Badge `tone="lilac" size="xs"` with Sparkles icon, no `dot`). Implies Gio will autofill this section.
-- `Skills & keywords` block:
-  - Input placeholder `Add skills...` (already correct).
-  - Below the input, render a `SUGGESTED BY GIO` micro-label (`text-[10px] uppercase tracking-[0.06em] font-medium text-text-tertiary`).
-  - Render 4 suggestion chips: `+ Prototyping`, `+ User research`, `+ UI engineering`, `+ Accessibility`. Style: pill-shaped lilac (`bg-virgilio-lilac/40 text-virgilio-purple hover:bg-virgilio-lilac/60`), 24h, 11.5px Poppins medium, leading `Plus` icon at 0.65 opacity, `border border-virgilio-purple/15`. Click adds keyword to the skills array.
-  - For now suggestions are static; if `project.search_criteria.suggested_skills` exists later, swap in. Hide block when array empty.
-- `Locations`: keep current input + `Include remote candidates` toggle. Ensure label reads exactly `Include remote candidates` with the globe icon.
-- `Experience`: keep range slider, ensure label reads `Years` on the left and `0y – 30y` on the right (with en-dash).
-- Footer CTA: bottom-stuck button `<Button variant="purple" size="lg" icon={Sparkles}>Find candidates</Button>` full-width inside the card, with caption `Preview is free · Collect uses 1 credit each · {N} remaining` (`text-body-sm text-text-tertiary text-center`).
+```text
+┌──────────────────────────────────────────────────────────────┐
+│  Senior product designer with design-systems experience…    │  ← textarea, 3 rows min,
+│                                                              │     auto-grow, no border
+│                                                              │
+├──────────────────────────────────────────────────────────────┤
+│  📎 Attach JD   🔗 Paste LinkedIn URL   💼 Use an open job  │
+│                                          ⌘+Enter  [ ✨ Find  │
+│                                                  candidates→]│
+└──────────────────────────────────────────────────────────────┘
+```
 
-## 3. Empty canvas — `src/components/sourcing/SourcingProjectView.tsx` (or a new `FindEmptyState.tsx` when no `projectId`)
+- Outer container: white, `rounded-2xl`, `border border-border`, `shadow-[0_1px_2px_rgba(0,0,0,0.04)]`, focus-within ring `ring-1 ring-virgilio-purple/30 border-virgilio-purple/40`.
+- Top: textarea, `px-4 pt-3.5`, transparent, `placeholder:text-text-tertiary`, Inter 14px, `min-h-[84px]`.
+- Hairline divider, then footer row `px-3 py-2.5` with:
+  - Left cluster: three ghost chips (`Attach JD` / `Paste LinkedIn URL` / `Use an open job`) — 30h, `rounded-lg`, `hover:bg-[#F1F0EC]`, `text-[12.5px]` Poppins medium, leading icons `h-3.5 w-3.5`. No-op for now (handlers wired later).
+  - Right cluster: kbd hint `⌘ + Enter` (small stacked text, `text-[10.5px] text-text-tertiary`) + primary `<Button variant="purple" size="md" icon={Sparkles} iconRight={ArrowRight}>Find candidates</Button>`.
+- Chat-with-Gio toggle moves to a small ghost link below the composer, right-aligned: `Chat with Gio instead →` (keeps existing toggle handler).
+- Word-count and the existing send-arrow button are removed in this variant (the primary button replaces them).
 
-When the user has no active project / hasn't started a search, render this canvas inside the right card (white, rounded-xl, hairline border, no shadow):
+## 2. Re-imagine the AI validation feedback
 
-a) **Top bar inside the card** (between card top and content):
-- Left: small pill `[⬛sparkle] New search` over `0 candidates · refreshed —` (two-line, 32px black rounded-md tile with white sparkle icon, name in `text-ui-button-md`, sub in `text-body-sm text-text-tertiary`) + chevron-down (this is the saved-search dropdown trigger — wire to `SavedSearchSelector`'s `trigger` prop).
-- Right: ghost link `💡 Examples` opening a dialog/popover (out of scope: just render the button, no-op for now).
+Drop the row of green/grey pill badges (`Role`, `Responsibilities`, `Industry`, `Location`, `Outcomes`). Replace with one calm inline strength line directly under the composer card, right-aligned next to the `Chat with Gio` link:
 
-b) **Hero block** (centered, max-w ~640px, `pt-12 pb-8`):
-- Purple gradient circle 96px (`bg-gradient-to-br from-virgilio-purple to-virgilio-purple/70`) with a white sparkle icon and a 12px green status dot bottom-right.
-- Headline: `Who are you looking for?` — `text-h2 font-poppins font-semibold`, the `?` colored `text-virgilio-purple`. Use `StyledPageTitle` pattern but for `?` instead of `.`.
-- Sub copy: `Describe the role in your own words. Gio turns it into a search and pulls preview profiles you can browse for free — collect the ones you want.` (`text-body-md text-text-secondary text-center`).
+```text
+●●●○○  Gio has enough on role + location · add outcomes for better matches
+```
 
-c) **Prompt composer** (max-w ~720px, full-width white surface, hairline border `border-border`, `rounded-xl`):
-- `<Textarea>` borderless, 3 rows, placeholder `Senior product designer with design-systems experience at a B2B SaaS startup. Open to remote (US), 6+ years...`. On Enter (without Shift) → trigger search (existing handler).
-- Footer row inside same card, separated by `border-t`:
-  - Left chips (ghost buttons, `text-body-sm`): `📎 Attach JD`, `🔗 Paste LinkedIn URL`, `💼 Use an open job` (these stay no-op for now — handlers wired in a follow-up).
-  - Right: `⌘+Enter` kbd hint (`text-[10px] text-text-tertiary bg-[#F1F0EC] rounded px-1.5 py-0.5`) + primary `<Button variant="purple" icon={Sparkles} iconRight={ArrowRight}>Find candidates</Button>`.
+- 5 small 6px dots, filled in `virgilio-purple` as items get checked, empty dots `bg-text-tertiary/25`.
+- Caption text `text-[11.5px] text-text-secondary`, dynamic, generated from `currentValidation`:
+  - 0 checked → `Add a role, location, and what success looks like.`
+  - 1–2 → `Looking good — add {missing[0]} and {missing[1]} for stronger matches.`
+  - 3–4 → `Strong prompt. Add {missing[0]} to tighten results.`
+  - 5 → `Ready to search.` (dots all purple, caption in `text-emerald-600`).
+- No green chips, no checkmarks, no badge grid. The whole feedback area is one quiet line ~18px tall.
 
-d) **Info banner** (lilac surface, `bg-virgilio-lilac/25`, 12px radius, hairline `border-virgilio-purple/15`, `p-3`, Info icon purple): `Gio returns ~80–120 preview candidates. Browsing is free. Spend 1 credit per candidate to reveal email, phone, full work history and resume.`
+Logic stays in `validateJobPrompt`; only the rendering changes, gated behind `variant="find"`.
 
-e) **Try a starting point** section:
-- Section label `TRY A STARTING POINT` (small caps micro-label).
-- 2×2 grid of preset cards, each: 40px lilac square tile with a topic icon (Code2 / TrendingUp / Users / Sparkles), title bold (`text-body-md font-semibold`), one-line meta (`text-body-sm text-text-tertiary`), `↗` arrow top-right. Hairline border, white bg, hover `bg-[#FAFAF7]`. Click prefills the prompt textarea.
-- Presets (static): `Sr. Backend Engineer (Go)` / `5+ yr · Stripe / Plaid alumni`; `Growth PM, B2B SaaS` / `PLG · self-serve · NY or remote`; `Account Exec, US East` / `Enterprise · $50k+ ACV`; `Applied ML engineer` / `LLM eval · agents · 4+ yr`.
+## 3. Continue-a-saved-search chips — true horizontal wrap
 
-f) **Continue a saved search** section (only when projects exist):
-- Section label `CONTINUE A SAVED SEARCH`.
-- Inline row of rounded-full chips, one per recent project (max 4): `📑 {name} [count] 🔗 · {Xd ago}`. Pill chrome: white, hairline, `h-9 px-3`, bookmark icon purple, count as `Badge tone="neutral" size="xs"`, link icon green when project linked to a job, time `text-text-tertiary`. Click → navigate to that project.
+The chips already use `flex flex-wrap`, but each chip is wide enough (bookmark + name + count + link icon + dot + relative time) that two of them fill a row and most projects bump to a new line, reading as a vertical list. Fix by tightening the chip:
+
+- Drop the dot separator and `formatDistanceToNow(...) ago` text inside the chip — move the timestamp to a `title` tooltip only.
+- Keep: bookmark icon, name (truncate at `max-w-[160px]`), count `Badge tone="neutral" size="xs"` only when > 0, small `LinkIcon` only when `job_id` is set.
+- Reduce chip height to 30 (`h-[30px]`), `px-2.5`, `gap-1.5`, name text `text-[12px]`.
+- Container stays `flex flex-wrap gap-1.5`.
+
+Result: 4–6 chips per row at the current canvas width, wrapping to the next line only when they run out of horizontal space — matching the screenshot.
+
+## Files touched
+
+- `src/components/dashboard/AIJobAssistant.tsx` — add `variant?: 'default' | 'find'` prop; render the new card composer + inline strength meter when `variant="find"`; leave default branch untouched.
+- `src/components/sourcing/FindEmptyState.tsx` — pass `variant="find"` to `AIJobAssistant`; tighten the saved-search chip markup; minor spacing cleanup around the composer (info banner sits below as today).
 
 ## Out of scope
 
-- Actual `Examples` dialog content.
-- Wiring `Attach JD` / `Paste LinkedIn URL` / `Use an open job` actions.
-- Results view (rows, AI summary, tabs) — handled in a later round once the empty state ships.
-- Filter logic changes; the sidebar still drives `FindFilterPanel`'s existing state.
-
-## Technical notes
-
-- Counters in header use `useSourcingProjects` (length) and `useSourcingCredits` (balance + renewal). Format renewal as `Renews {MMM d}` via `date-fns`.
-- New empty-state component file: `src/components/sourcing/FindEmptyState.tsx`. `SourcingProjectView` renders it when `!project || project.total_candidates === 0 && !project.search_criteria?.prompt`. Otherwise renders the existing results view (unchanged this round).
-- Suggestion chips are local state in `FindFilterPanel` for now (hard-coded list); follow-up wires them to `project.search_criteria.suggested_skills`.
-- All colors come from semantic tokens (`virgilio-purple`, `virgilio-lilac`, `text-text-*`, `border-border`); no raw hex except the table hover `#FAFAF7` already in tokens.
+- Wiring `Attach JD` / `Paste LinkedIn URL` / `Use an open job` handlers (visual only for now).
+- Changes to results view, sidebar, top header, or `SavedSearchSelector` popover.
+- Validation rule changes inside `jobPromptValidation.ts`.
