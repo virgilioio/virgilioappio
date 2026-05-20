@@ -531,80 +531,82 @@ function CandidatesInner() {
 
 
 
-          {selectedIds.length > 0 ? (
-            <BulkActionBar
-              selectedCount={selectedIds.length}
-              totalCount={finalAfterSmart.length}
-              allFilteredSelected={selectedIds.length >= finalAfterSmart.length}
-              onSelectAllFiltered={selectAllFiltered}
-              onClearSelection={clearSelection}
-              onAddToJob={() => {}}
-              onEmail={() => toast({ title: 'Bulk email coming soon' })}
-              onTag={() => {}}
-              onAddToSearch={handleSavePopoverOpen}
-              onArchive={archiveSelected}
-              addToJobButtonSlot={
-                <AddToJobPopover
-                  candidateIds={selectedIds}
-                  candidateNames={candidates.filter(c => selectedIds.includes(c.id)).map(c => c.candidate_name)}
-                  onCompleted={() => { clearSelection(); getCandidates() }}
-                  trigger={
-                    <Button onDark size="sm" variant="ghost" icon={UsersIcon}>Add to job</Button>
-                  }
-                />
-              }
-              tagButtonSlot={
-                <AddTagPopover
-                  candidateIds={selectedIds}
-                  candidateNames={candidates.filter(c => selectedIds.includes(c.id)).map(c => c.candidate_name)}
-                  align="end"
-                  trigger={
-                    <Button onDark size="sm" variant="ghost" icon={TagIcon}>Tag</Button>
-                  }
-                />
-              }
-              shareButtonSlot={
-                <ShareListModal
-                  candidateIds={selectedIds}
-                  candidates={candidates.filter(c => selectedIds.includes(c.id)).map((c: any) => ({
-                    id: c.id,
-                    name: c.candidate_name,
-                    company: c.company_current ?? null,
-                    stage: c.current_job_title ?? null,
-                    score: typeof c.fit_score === 'number' ? c.fit_score : (typeof c.match_score === 'number' ? c.match_score : null),
-                  }))}
-                  trigger={
-                    <Button onDark size="sm" variant="ghost" icon={Share2Icon}>Share</Button>
-                  }
-                />
-              }
-            />
-          ) : null}
+          <section className="bg-surface-primary border border-virgilio-border rounded-2xl shadow-sm overflow-hidden">
+            {selectedIds.length > 0 ? (
+              <BulkActionBar
+                selectedCount={selectedIds.length}
+                totalCount={finalAfterSmart.length}
+                allFilteredSelected={selectedIds.length >= finalAfterSmart.length}
+                onSelectAllFiltered={selectAllFiltered}
+                onClearSelection={clearSelection}
+                onAddToJob={() => {}}
+                onEmail={() => toast({ title: 'Bulk email coming soon' })}
+                onTag={() => {}}
+                onAddToSearch={handleSavePopoverOpen}
+                onArchive={archiveSelected}
+                addToJobButtonSlot={
+                  <AddToJobPopover
+                    candidateIds={selectedIds}
+                    candidateNames={candidates.filter(c => selectedIds.includes(c.id)).map(c => c.candidate_name)}
+                    onCompleted={() => { clearSelection(); getCandidates() }}
+                    trigger={
+                      <Button onDark size="sm" variant="ghost" icon={UsersIcon}>Add to job</Button>
+                    }
+                  />
+                }
+                tagButtonSlot={
+                  <AddTagPopover
+                    candidateIds={selectedIds}
+                    candidateNames={candidates.filter(c => selectedIds.includes(c.id)).map(c => c.candidate_name)}
+                    align="end"
+                    trigger={
+                      <Button onDark size="sm" variant="ghost" icon={TagIcon}>Tag</Button>
+                    }
+                  />
+                }
+                shareButtonSlot={
+                  <ShareListModal
+                    candidateIds={selectedIds}
+                    candidates={candidates.filter(c => selectedIds.includes(c.id)).map((c: any) => ({
+                      id: c.id,
+                      name: c.candidate_name,
+                      company: c.company_current ?? null,
+                      stage: c.current_job_title ?? null,
+                      score: typeof c.fit_score === 'number' ? c.fit_score : (typeof c.match_score === 'number' ? c.match_score : null),
+                    }))}
+                    trigger={
+                      <Button onDark size="sm" variant="ghost" icon={Share2Icon}>Share</Button>
+                    }
+                  />
+                }
+              />
+            ) : null}
 
-          <PermissionGate permission="canViewCandidates">
-            <CandidatesTable
-              candidates={visible}
-              totalCount={finalAfterSmart.length}
-              associationsMap={associationsMap}
-              isLoading={isLoading}
-              isSearching={isSearching}
-              hasActiveFilters={activeFilterCount > 0 || !!query}
-              selectedIds={selectedIds}
-              onToggleSelect={toggleSelect}
-              onToggleSelectAll={toggleSelectAll}
-              onOpenCandidate={handleOpenCandidate}
-              onDelete={(c) => setDeleteTarget({ id: c.id, name: c.candidate_name })}
-            />
-          </PermissionGate>
+            <PermissionGate permission="canViewCandidates">
+              <CandidatesTable
+                candidates={visible}
+                totalCount={finalAfterSmart.length}
+                associationsMap={associationsMap}
+                isLoading={isLoading}
+                isSearching={isSearching}
+                hasActiveFilters={activeFilterCount > 0 || !!query}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
+                onToggleSelectAll={toggleSelectAll}
+                onOpenCandidate={handleOpenCandidate}
+                onDelete={(c) => setDeleteTarget({ id: c.id, name: c.candidate_name })}
+              />
+            </PermissionGate>
 
-          <CandidatesFooter
-            shown={visible.length}
-            total={finalAfterSmart.length}
-            pageSize={pageSize}
-            onPageSizeChange={(n) => { setPageSize(n); setPage(1) }}
-            onLoadMore={() => setPage(p => p + 1)}
-            canLoadMore={shown < finalAfterSmart.length}
-          />
+            <CandidatesFooter
+              shown={visible.length}
+              total={finalAfterSmart.length}
+              pageSize={pageSize}
+              onPageSizeChange={(n) => { setPageSize(n); setPage(1) }}
+              onLoadMore={() => setPage(p => p + 1)}
+              canLoadMore={shown < finalAfterSmart.length}
+            />
+          </section>
         </main>
       </div>
 
