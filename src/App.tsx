@@ -147,6 +147,7 @@ function AppContent() {
             <Route path="/jobs/:jobId/candidates/:candidateId" element={<CandidateProfile />} />
             <Route path="/candidates" element={<Candidates />} />
             <Route path="/candidates/:candidateId" element={<CandidateRedirect />} />
+            <Route path="/lists/:id" element={<SharedList />} />
             <Route path="/members" element={<Members />} />
             <Route path="/crm" element={<CRM />} />
             <Route path="/crm/deals" element={<Deals />} />
