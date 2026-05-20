@@ -374,6 +374,16 @@ export default {
 				'0%': { transform: 'scale(1)', opacity: '0.45' },
 				'70%': { transform: 'scale(2.4)', opacity: '0' },
 				'100%': { transform: 'scale(2.4)', opacity: '0' }
+			},
+			'gio-spin': { to: { transform: 'rotate(360deg)' } },
+			'gio-pulse': {
+				'0%, 100%': { opacity: '0.55' },
+				'50%': { opacity: '1' }
+			},
+			'gio-shimmer': { '100%': { transform: 'translateX(100%)' } },
+			'gio-indeterminate': {
+				'0%': { left: '-40%' },
+				'100%': { left: '100%' }
 			}
 			},
 			animation: {
@@ -389,7 +399,11 @@ export default {
 			'shimmer-beam': 'shimmer-beam 2s ease-in-out infinite',
 			'collapsible-down': 'collapsible-down 0.2s ease-out',
 			'collapsible-up': 'collapsible-up 0.2s ease-out',
-			'badge-pulse': 'badge-pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+			'badge-pulse': 'badge-pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+			'gio-spin': 'gio-spin 0.9s linear infinite',
+			'gio-pulse': 'gio-pulse 1.2s ease-in-out infinite',
+			'gio-shimmer': 'gio-shimmer 1.4s ease-in-out infinite',
+			'gio-indeterminate': 'gio-indeterminate 1.1s cubic-bezier(0.65,0,0.35,1) infinite'
 			}
 		}
 	},
