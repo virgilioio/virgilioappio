@@ -24,6 +24,10 @@ import { SavedSearchToolbar } from '@/components/candidates/list/SavedSearchTool
 import { BulkActionBar } from '@/components/candidates/list/BulkActionBar'
 import { CandidatesTable } from '@/components/candidates/list/CandidatesTable'
 import { CandidatesFooter } from '@/components/candidates/list/CandidatesFooter'
+import { SaveSearchButton } from '@/components/candidates/list/SaveSearchButton'
+import { SaveSearchPopover, type SaveSearchPayload } from '@/components/candidates/list/SaveSearchPopover'
+import { deriveAutoName } from '@/lib/savedSearchAutoName'
+
 
 import { CandidateFormSheet } from '@/components/candidates/CandidateFormSheet'
 import { CandidateMergeDialog } from '@/components/candidates/CandidateMergeDialog'
@@ -86,8 +90,16 @@ function CandidatesInner() {
   // Smart list / saved view
   const [activeSmartList, setActiveSmartList] = useState<SmartListKey | null>('all')
   const [activeViewId, setActiveViewId] = useState<string | null>(null)
-  const [baselineFiltersHash, setBaselineFiltersHash] = useState<string>(stableHash({}))
-  const { views, createView, updateView } = useSavedViews('candidates')
+  const [baselineFilters, setBaselineFilters] = useState<Record<string, unknown>>({})
+  const baselineFiltersHash = useMemo(() => stableHash(baselineFilters), [baselineFilters])
+  const { views, createView, updateView, deleteView } = useSavedViews('candidates')
+
+  // Save-as popover state
+  const [saveOpen, setSaveOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [justSavedId, setJustSavedId] = useState<string | null>(null)
+  const [hasPulsed, setHasPulsed] = useState(false)
+
 
   const setFiltersFromRecord = useCallback((rec: Partial<CandidateFilters>) => {
     const arrayKeys = ['statuses','sources','countries','states','cities','companies','seniorityLevels','functionalAreas','specializations','skills','enrichmentStatuses','pipelineStatuses','jobs','stages','rejectedAtStages'] as const
