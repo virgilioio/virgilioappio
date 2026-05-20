@@ -1088,30 +1088,17 @@ export function SourcingCandidateTable({
           </Table>
           </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-end px-6 py-4 border-t border-border flex-shrink-0 bg-background">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-sm">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+          {/* Load more */}
+          {hasMore && (
+            <div className="flex items-center justify-center px-6 py-4 border-t border-border flex-shrink-0 bg-background">
+              <Button
+                variant="secondary"
+                size="sm"
+                iconRight={ChevronDown}
+                onClick={() => setVisibleCount(c => Math.min(c + PAGE_STEP, totalCount))}
+              >
+                Load {Math.min(PAGE_STEP, totalCount - visibleCount)} more
+              </Button>
             </div>
           )}
         </CardContent>
