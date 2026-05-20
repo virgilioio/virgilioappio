@@ -483,21 +483,20 @@ function CandidatesInner() {
 
 
         <main className="flex-1 min-w-0 overflow-y-auto space-y-4">
-          <SavedSearchToolbar
-            activeView={activeView}
-            smartListLabel={smartListLabel}
-            resultsCount={finalAfterSmart.length}
-            totalCount={candidates.length}
-            isDirty={filtersDirty}
-            changesCount={changesCount}
-            onSaveChanges={handleSaveChanges}
-            onResetChanges={handleResetChanges}
-            onSaveAsNew={handleSavePopoverOpen}
-            onExport={handleExport}
-          />
+          <section className="bg-surface-primary border border-virgilio-border rounded-2xl shadow-sm p-4 space-y-3">
+            <SavedSearchToolbar
+              activeView={activeView}
+              smartListLabel={smartListLabel}
+              resultsCount={finalAfterSmart.length}
+              totalCount={candidates.length}
+              isDirty={filtersDirty}
+              changesCount={changesCount}
+              onSaveChanges={handleSaveChanges}
+              onResetChanges={handleResetChanges}
+              onSaveAsNew={handleSavePopoverOpen}
+              onExport={handleExport}
+            />
 
-
-          <div className="space-y-3">
             <SearchModeTabs value={mode} onChange={setMode} />
             <CandidateSearchBar
               value={query}
@@ -528,7 +527,8 @@ function CandidatesInner() {
               }
             />
             <FilterChipsRow filterOptions={filterOptions} />
-          </div>
+          </section>
+
 
 
           {selectedIds.length > 0 ? (
