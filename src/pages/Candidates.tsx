@@ -676,7 +676,47 @@ function CandidatesInner() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={!!deleteTagTarget} onOpenChange={(open) => !open && !isDeletingTag && setDeleteTagTarget(null)}>
+        <AlertDialogContent className="mx-4 max-w-md sm:max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete tag permanently?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`This will permanently delete the tag "${deleteTagTarget?.name ?? ''}"`}
+              {deleteTagTarget?.usage_count
+                ? ` and remove it from ${deleteTagTarget.usage_count} candidate${deleteTagTarget.usage_count === 1 ? '' : 's'}.`
+                : '.'}
+              {' '}This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-3">
+            <AlertDialogCancel className="w-full sm:w-auto" disabled={isDeletingTag}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async (e) => {
+                e.preventDefault()
+                if (!deleteTagTarget) return
+                setIsDeletingTag(true)
+                try {
+                  await deleteTag.mutateAsync(deleteTagTarget.id)
+                  if (activeTagId === deleteTagTarget.id) {
+                    setArrayFilter('tagIds', [])
+                    setActiveSmartList('all')
+                  }
+                  setDeleteTagTarget(null)
+                } finally {
+                  setIsDeletingTag(false)
+                }
+              }}
+              disabled={isDeletingTag}
+              className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeletingTag ? 'Deleting…' : 'Delete tag'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+
   )
 }
 
