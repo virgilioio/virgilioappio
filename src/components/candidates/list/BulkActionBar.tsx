@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Mail, Tag, BookmarkPlus, Archive, Users, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -12,12 +13,15 @@ interface BulkActionBarProps {
   onTag: () => void
   onAddToSearch: () => void
   onArchive: () => void
+  /** Optional render override for the Tag button (used to wrap it in a Popover trigger). */
+  tagButtonSlot?: ReactNode
 }
 
 export function BulkActionBar({
   selectedCount, totalCount, allFilteredSelected,
   onSelectAllFiltered, onClearSelection,
   onAddToJob, onEmail, onTag, onAddToSearch, onArchive,
+  tagButtonSlot,
 }: BulkActionBarProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 h-12 px-4 rounded-xl bg-[#0d0d09] text-white">
@@ -40,7 +44,7 @@ export function BulkActionBar({
       <div className="flex items-center gap-1">
         <Button onDark size="sm" variant="ghost" icon={Users} onClick={onAddToJob}>Add to job</Button>
         <Button onDark size="sm" variant="ghost" icon={Mail} onClick={onEmail}>Email</Button>
-        <Button onDark size="sm" variant="ghost" icon={Tag} onClick={onTag}>Tag</Button>
+        {tagButtonSlot ?? <Button onDark size="sm" variant="ghost" icon={Tag} onClick={onTag}>Tag</Button>}
         <Button onDark size="sm" variant="ghost" icon={BookmarkPlus} onClick={onAddToSearch}>Add to search</Button>
         <Button onDark size="sm" variant="ghost" icon={Archive} onClick={onArchive} className="!text-red-300 hover:!text-red-200">
           Archive

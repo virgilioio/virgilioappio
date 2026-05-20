@@ -45,6 +45,10 @@ import BulkAddToJobPipelineDialog from '@/components/candidates/BulkAddToJobPipe
 
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
+import { AddTagPopover } from '@/components/candidates/tags/AddTagPopover'
+import { Button } from '@/components/ui/button'
+import { Tag as TagIcon } from 'lucide-react'
+import { useTags, useAllCandidateTagsMap } from '@/hooks/useTags'
 
 const SMART_LIST_FILTERS: Record<SmartListKey, Partial<CandidateFilters>> = {
   all: {},
@@ -83,6 +87,8 @@ function CandidatesInner() {
   const { associationsMap, associations } = useCandidateJobAssociationsMap(candidateIds)
   const filterOptions = useCandidateFilterOptions(candidates, associations)
   const { filters, setArrayFilter, setNumericFilter, setDateFilter, clearAll, activeFilterCount } = useCandidateFilters()
+  const { tags } = useTags()
+  const { data: allCandidateTagsMap } = useAllCandidateTagsMap()
 
   // Search state
   const [mode, setMode] = useState<SearchMode>('everything')
@@ -142,7 +148,7 @@ function CandidatesInner() {
   // - boolean mode    → only runs on commit (Enter)
   // - ai mode         → runs via edge function on Enter (separate flow)
   const everythingTerm = mode === 'everything' ? query : ''
-  const baseFiltered = useCandidateFilteredData(candidates, filters, everythingTerm, associationsMap)
+  const baseFiltered = useCandidateFilteredData(candidates, filters, everythingTerm, associationsMap, allCandidateTagsMap)
   const booleanExpr = mode === 'boolean' ? committedQuery : ''
   const { matches: booleanMatches, error: booleanError } = useCandidateBooleanFilter(baseFiltered, booleanExpr, mode === 'boolean')
   const finalCandidates = mode === 'boolean' ? booleanMatches : baseFiltered
@@ -517,9 +523,19 @@ function CandidatesInner() {
               onClearSelection={clearSelection}
               onAddToJob={() => setBulkJobOpen(true)}
               onEmail={() => toast({ title: 'Bulk email coming soon' })}
-              onTag={() => toast({ title: 'Tagging coming soon' })}
+              onTag={() => {}}
               onAddToSearch={handleSavePopoverOpen}
               onArchive={archiveSelected}
+              tagButtonSlot={
+                <AddTagPopover
+                  candidateIds={selectedIds}
+                  candidateNames={candidates.filter(c => selectedIds.includes(c.id)).map(c => c.candidate_name)}
+                  align="end"
+                  trigger={
+                    <Button onDark size="sm" variant="ghost" icon={TagIcon}>Tag</Button>
+                  }
+                />
+              }
             />
           ) : null}
 

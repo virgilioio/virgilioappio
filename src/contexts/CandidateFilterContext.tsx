@@ -16,6 +16,7 @@ export interface CandidateFilters {
   jobs: string[]
   stages: string[]
   rejectedAtStages: string[]
+  tagIds: string[]
   experienceMin: number | null
   experienceMax: number | null
   salaryMin: number | null
@@ -40,6 +41,7 @@ const EMPTY_FILTERS: CandidateFilters = {
   jobs: [],
   stages: [],
   rejectedAtStages: [],
+  tagIds: [],
   experienceMin: null,
   experienceMax: null,
   salaryMin: null,
@@ -48,7 +50,7 @@ const EMPTY_FILTERS: CandidateFilters = {
   dateTo: null,
 }
 
-type ArrayFilterKey = 'statuses' | 'sources' | 'countries' | 'states' | 'cities' | 'companies' | 'seniorityLevels' | 'functionalAreas' | 'specializations' | 'skills' | 'enrichmentStatuses' | 'pipelineStatuses' | 'jobs' | 'stages' | 'rejectedAtStages'
+type ArrayFilterKey = 'statuses' | 'sources' | 'countries' | 'states' | 'cities' | 'companies' | 'seniorityLevels' | 'functionalAreas' | 'specializations' | 'skills' | 'enrichmentStatuses' | 'pipelineStatuses' | 'jobs' | 'stages' | 'rejectedAtStages' | 'tagIds'
 type NumericFilterKey = 'experienceMin' | 'experienceMax' | 'salaryMin' | 'salaryMax'
 type DateFilterKey = 'dateFrom' | 'dateTo'
 
@@ -107,7 +109,7 @@ export function CandidateFilterProvider({ children }: { children: ReactNode }) {
 
   const activeFilterCount = useMemo(() => {
     let count = 0
-    const arrayKeys: ArrayFilterKey[] = ['statuses', 'sources', 'countries', 'states', 'cities', 'companies', 'seniorityLevels', 'functionalAreas', 'specializations', 'skills', 'enrichmentStatuses', 'pipelineStatuses', 'jobs', 'stages', 'rejectedAtStages']
+    const arrayKeys: ArrayFilterKey[] = ['statuses', 'sources', 'countries', 'states', 'cities', 'companies', 'seniorityLevels', 'functionalAreas', 'specializations', 'skills', 'enrichmentStatuses', 'pipelineStatuses', 'jobs', 'stages', 'rejectedAtStages', 'tagIds']
     for (const k of arrayKeys) count += filters[k].length
     if (filters.experienceMin !== null) count++
     if (filters.experienceMax !== null) count++
