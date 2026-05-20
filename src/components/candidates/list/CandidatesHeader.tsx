@@ -126,7 +126,7 @@ export function CandidatesHeader({
           <Button variant="primary" onClick={onAddCandidate}>+ Add candidate</Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="secondary" iconOnly={MoreHorizontal} aria-label="More actions" />
+              <Button variant="secondary" iconOnly icon={MoreHorizontal} aria-label="More actions" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" sideOffset={8}>
               {onImportCSV && (
