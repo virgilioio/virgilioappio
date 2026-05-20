@@ -288,7 +288,7 @@ export default function Find() {
                 {mode === 'project' && currentProject && (
                   <SourcingResultsHeader
                     project={currentProject}
-                    candidateCount={currentProject.candidate_count ?? 0}
+                    candidateCount={currentProject.total_candidates ?? 0}
                     isRefreshing={isRefreshing}
                     onSelectProject={(id) => navigate(`/find/${id}`)}
                     onNewSearch={handleNewSearch}
