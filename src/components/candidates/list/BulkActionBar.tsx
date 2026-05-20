@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Mail, Tag, BookmarkPlus, Archive, Users, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -12,12 +13,15 @@ interface BulkActionBarProps {
   onTag: () => void
   onAddToSearch: () => void
   onArchive: () => void
+  /** Optional render override for the Tag button (used to wrap it in a Popover trigger). */
+  tagButtonSlot?: ReactNode
 }
 
 export function BulkActionBar({
   selectedCount, totalCount, allFilteredSelected,
   onSelectAllFiltered, onClearSelection,
   onAddToJob, onEmail, onTag, onAddToSearch, onArchive,
+  tagButtonSlot,
 }: BulkActionBarProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 h-12 px-4 rounded-xl bg-[#0d0d09] text-white">
