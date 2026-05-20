@@ -47,7 +47,8 @@ import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 import { AddTagPopover } from '@/components/candidates/tags/AddTagPopover'
 import { Button } from '@/components/ui/button'
-import { Tag as TagIcon, Users as UsersIcon } from 'lucide-react'
+import { Tag as TagIcon, Users as UsersIcon, Share2 as Share2Icon } from 'lucide-react'
+import { ShareListModal } from '@/components/candidates/bulk/ShareListModal'
 import { useTags, useAllCandidateTagsMap, useTagMutations, type Tag } from '@/hooks/useTags'
 
 const SMART_LIST_FILTERS: Record<SmartListKey, Partial<CandidateFilters>> = {
@@ -559,6 +560,15 @@ function CandidatesInner() {
                   align="end"
                   trigger={
                     <Button onDark size="sm" variant="ghost" icon={TagIcon}>Tag</Button>
+                  }
+                />
+              }
+              shareButtonSlot={
+                <ShareListModal
+                  candidateIds={selectedIds}
+                  candidateNames={candidates.filter(c => selectedIds.includes(c.id)).map(c => c.candidate_name)}
+                  trigger={
+                    <Button onDark size="sm" variant="ghost" icon={Share2Icon}>Share</Button>
                   }
                 />
               }

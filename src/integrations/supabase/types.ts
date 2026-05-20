@@ -1043,6 +1043,159 @@ export type Database = {
           },
         ]
       }
+      candidate_list_items: {
+        Row: {
+          added_at: string
+          added_by: string
+          candidate_id: string
+          id: string
+          list_id: string
+        }
+        Insert: {
+          added_at?: string
+          added_by: string
+          candidate_id: string
+          id?: string
+          list_id: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string
+          candidate_id?: string
+          id?: string
+          list_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_list_items_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidate_list_messages: {
+        Row: {
+          author_user_id: string
+          body: string
+          id: string
+          list_id: string
+          sent_at: string
+        }
+        Insert: {
+          author_user_id: string
+          body: string
+          id?: string
+          list_id: string
+          sent_at?: string
+        }
+        Update: {
+          author_user_id?: string
+          body?: string
+          id?: string
+          list_id?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_list_messages_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidate_list_reviewers: {
+        Row: {
+          access: Database["public"]["Enums"]["candidate_list_access"]
+          id: string
+          invited_at: string
+          invited_by: string
+          invited_email: string | null
+          list_id: string
+          notify_enabled: boolean
+          status: Database["public"]["Enums"]["candidate_list_reviewer_status"]
+          user_id: string | null
+        }
+        Insert: {
+          access?: Database["public"]["Enums"]["candidate_list_access"]
+          id?: string
+          invited_at?: string
+          invited_by: string
+          invited_email?: string | null
+          list_id: string
+          notify_enabled?: boolean
+          status?: Database["public"]["Enums"]["candidate_list_reviewer_status"]
+          user_id?: string | null
+        }
+        Update: {
+          access?: Database["public"]["Enums"]["candidate_list_access"]
+          id?: string
+          invited_at?: string
+          invited_by?: string
+          invited_email?: string | null
+          list_id?: string
+          notify_enabled?: boolean
+          status?: Database["public"]["Enums"]["candidate_list_reviewer_status"]
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_list_reviewers_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidate_lists: {
+        Row: {
+          block_screenshots: boolean
+          created_at: string
+          description: string | null
+          expires_at: string | null
+          id: string
+          name: string
+          notify_on_activity: boolean
+          owner_user_id: string
+          share_link_active: boolean
+          slug: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          block_screenshots?: boolean
+          created_at?: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          name: string
+          notify_on_activity?: boolean
+          owner_user_id: string
+          share_link_active?: boolean
+          slug: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          block_screenshots?: boolean
+          created_at?: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          name?: string
+          notify_on_activity?: boolean
+          owner_user_id?: string
+          share_link_active?: boolean
+          slug?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       candidate_reminders: {
         Row: {
           candidate_id: string
@@ -6505,6 +6658,20 @@ export type Database = {
         }
         Returns: string
       }
+      create_candidate_list_with_reviewers: {
+        Args: {
+          p_block_screenshots: boolean
+          p_candidate_ids: string[]
+          p_description: string
+          p_expires_at: string
+          p_message: string
+          p_name: string
+          p_notify_on_activity: boolean
+          p_reviewers: Json
+          p_tenant_id: string
+        }
+        Returns: string
+      }
       debug_user_permissions: {
         Args: never
         Returns: {
@@ -6939,6 +7106,8 @@ export type Database = {
         | "candidate_applied"
       application_field_source: "library" | "custom"
       automation_type: "single_email" | "email_sequence"
+      candidate_list_access: "view" | "comment" | "comment_score"
+      candidate_list_reviewer_status: "pending" | "active" | "removed"
       contract_status_enum:
         | "active"
         | "pending"
@@ -7206,6 +7375,8 @@ export const Constants = {
       ],
       application_field_source: ["library", "custom"],
       automation_type: ["single_email", "email_sequence"],
+      candidate_list_access: ["view", "comment", "comment_score"],
+      candidate_list_reviewer_status: ["pending", "active", "removed"],
       contract_status_enum: [
         "active",
         "pending",

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Mail, Tag, BookmarkPlus, Archive, Users, X } from 'lucide-react'
+import { Mail, Tag, BookmarkPlus, Archive, Users, X, Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface BulkActionBarProps {
@@ -17,14 +17,18 @@ interface BulkActionBarProps {
   tagButtonSlot?: ReactNode
   /** Optional render override for the Add to job button (used to wrap it in a Popover trigger). */
   addToJobButtonSlot?: ReactNode
+  /** Optional render override for the Share button (used to wrap it in a Modal trigger). */
+  shareButtonSlot?: ReactNode
+  onShare?: () => void
 }
 
 export function BulkActionBar({
   selectedCount, totalCount, allFilteredSelected,
   onSelectAllFiltered, onClearSelection,
-  onAddToJob, onEmail, onTag, onAddToSearch, onArchive,
+  onAddToJob, onEmail, onTag, onAddToSearch, onArchive, onShare,
   tagButtonSlot,
   addToJobButtonSlot,
+  shareButtonSlot,
 }: BulkActionBarProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 h-12 px-4 rounded-xl bg-[#0d0d09] text-white">
@@ -49,6 +53,7 @@ export function BulkActionBar({
         <Button onDark size="sm" variant="ghost" icon={Mail} onClick={onEmail}>Email</Button>
         {tagButtonSlot ?? <Button onDark size="sm" variant="ghost" icon={Tag} onClick={onTag}>Tag</Button>}
         <Button onDark size="sm" variant="ghost" icon={BookmarkPlus} onClick={onAddToSearch}>Add to search</Button>
+        {shareButtonSlot ?? <Button onDark size="sm" variant="ghost" icon={Share2} onClick={onShare}>Share</Button>}
         <Button onDark size="sm" variant="ghost" icon={Archive} onClick={onArchive} className="!text-red-300 hover:!text-red-200">
           Archive
         </Button>
