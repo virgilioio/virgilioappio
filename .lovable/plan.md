@@ -1,98 +1,124 @@
-# Notification Center & Preferences
+# Candidates Page Revamp — Plan
 
-Rebuild the bell-anchored panel and add a Preferences view, backed by a persistent `notifications` table with DB triggers, per-user delivery preferences, browser push, and polling refresh.
+Rebuild `/candidates` to match the mock (`22_Candidates_talent_database`) pixel‑close and wire every surface to real data. The current page is a single full‑width table; the new page becomes a three‑zone workspace: header KPIs, left **Searches** rail, and a main panel with **search modes + filter chips + table + bulk bar + footer**.
 
-## What ships
-
-### 1. Panel (440×640, anchored to bell, 10px offset, over-page scrim 18% citron)
-
-- Header: "Notifications" + "N unread" · right-side icons: mark-all-read (double-check), Preferences (sliders).
-- Tabs: All · Mentions · Activity, each with a live count. Right side: Filter chip (placeholder for v2).
-- Date groups (Today / Yesterday / Earlier) with count on right.
-- Row anatomy per design: 2px purple left bar when unread, 36px avatar with 16px corner glyph badge (system kinds get a tinted icon tile instead of initials), bold actor name in title, subtitle context line, optional purple-wash preview block for mentions, inline actions (one citron-noir primary pill + ghost secondary), timestamp + unread dot top-right.
-- 4 kinds rendered live: Mention, Application batch, Scorecard submitted, Interview event. Schema supports the other 4 kinds for later.
-- Empty state per tab ("You're all caught up" + tray icon).
-- Footer: Mark all read · View all → (goes to `/notifications` full page — out of scope for this pass; link hidden if route not built).
-- Bell badge: unread count chip; lilac micro-dot on the bell when there are unread.
-
-### 2. Preferences (in-place swap, "← Back" returns to feed)
-
-- Category × channel table with toggles for IN-APP / EMAIL / PUSH:
-  Mentions & comments, New applications, Scorecards submitted, Interview events, Offers & acceptances, Job posting status, Daily digest.
-- Delivery section: Quiet hours (toggle + start/end + tz), Play sound on new mention (toggle).
-- Save changes button persists to `notification_preferences`.
-- "Enable browser notifications" CTA appears when push toggled on but permission not granted; requests `Notification.requestPermission()` and registers a push subscription.
-
-### 3. Delivery wiring
-
-- IN-APP: enforced server-side in the trigger (only writes a notification row if `in_app=true` for that category for that recipient).
-- EMAIL: trigger enqueues to `transactional_emails` via the existing send-transactional-email function. One template per category. Suppressed automatically during Quiet hours when set.
-- PUSH: edge function `dispatch-push-notification` invoked after insert via a deferred trigger; sends Web Push using VAPID keys to all `push_subscriptions` rows for the recipient where the category is enabled. Service worker registered on app boot.
-
-### 4. Refresh
-
-- React Query `notifications` key with `refetchInterval: 60_000` and refetch on window focus. No realtime channel.
+Reuses the Gio Foundation tokens (Poppins/Inter, table primitives, badges, dropdowns) and the existing `useSavedViews('candidates')` hook.
 
 ---
 
-## Technical details
+## 1. Page layout
 
-### New tables
+```text
++---------------------------------------------------------------------+
+| Candidates 1,247   • 412 active · 86 awaiting · 62 fav · 28 new …   |
+|                              [Import CSV] [Bulk upload] [+ Add] ⋯   |
++----------------+----------------------------------------------------+
+|  Searches      |  My searches > Design systems leads · NYC          |
+|  + New         |  47 results · 3 new        Alert me · Share · Exp. |
+|  ─ My searches |  [Everything] [Boolean] [Ask in plain English]     |
+|  Design ... 47 |  [search input ............................. ⌘K]  |
+|  Senior PMs 22 |  [Skills ×] [Location ×] [Stage ×] [+ Add filter]  |
+|  Backend Go 89 |  Editing search · Save changes · Reset · Save as…  |
+|  ─ Shared      |  ────────────────────────────────────────────────  |
+|  ─ Smart lists |  ☑ 3 selected · Select all 47 · Clear   [actions]  |
+|  All 1247      |  CANDIDATE  SKILLS  PIPELINE  AI FIT  LOC  SRC  ⋯  |
+|  Active 412    |  Lena Park …                                      |
+|  Awaiting 86   |  …                                                 |
+|  Favorites 62  |                                                    |
+|  New week 28   |  Showing 1–25 of 47 · Rows per page 25 · Load more |
++----------------+----------------------------------------------------+
+```
 
-- `notification_categories` (enum): `mention | application_batch | scorecard_submitted | interview_event | offer_event | posting_status | daily_digest`.
-- `notifications`
-  - `id, tenant_id, user_id` (recipient, FK auth.users), `category`, `actor_user_id NULL`, `actor_name`, `actor_avatar_url NULL`,
-  - `title TEXT`, `subtitle TEXT NULL`, `preview TEXT NULL` (mention quote), `entity_kind` (`candidate|job|offer|booking`), `entity_id UUID NULL`,
-  - `job_id UUID NULL`, `candidate_id UUID NULL`, `action_url TEXT NULL`, `metadata JSONB DEFAULT '{}'`,
-  - `read_at TIMESTAMPTZ NULL`, `created_at TIMESTAMPTZ DEFAULT now()`.
-  - Indexes: `(user_id, read_at, created_at DESC)`, `(tenant_id, created_at DESC)`.
-  - RLS: select/update own rows where `user_id = auth.uid()` and tenant-scoped; insert restricted to SECURITY DEFINER trigger functions.
-- `notification_preferences`
-  - `user_id PK`, per-category `{in_app, email, push} BOOLEAN` columns (21 cols) defaulting true for in_app, true for email on mentions/scorecards/interviews/offers, false elsewhere; push defaults false.
-  - `quiet_hours_enabled BOOL`, `quiet_hours_start TIME`, `quiet_hours_end TIME`, `quiet_hours_tz TEXT`, `sound_on_mention BOOL`, `updated_at`.
-  - RLS: own row only.
-  - Auto-inserted default row via `on_auth_user_created` trigger extension.
-- `push_subscriptions`
-  - `id, user_id, endpoint UNIQUE, p256dh, auth, user_agent, created_at`. RLS: own.
+Fixed viewport `h-[100dvh]`. Left rail collapses on mobile to a sheet trigger; main panel scrolls internally.
 
-### Triggers (SECURITY DEFINER, search_path = public)
+## 2. New / restructured files
 
-- `tg_notify_mention` on `candidate_comments AFTER INSERT`: parses `@uuid` mentions in `content`, fan-out one notification per mentioned member (excluding author). Preview = sanitized first 240 chars.
-- `tg_notify_scorecard_submitted` on `job_stage_scorecards AFTER UPDATE` when status transitions to `submitted`: notifies job recruiter + job creator (deduped).
-- `tg_notify_interview_event` on `scheduled_bookings AFTER INSERT/UPDATE`: confirmed / declined / rescheduled / cancelled → notifies `booked_by` and other interviewers.
-- `application_batch`: hourly pg_cron job `rollup_application_batches` that groups new applications in last hour per job and emits one notification per recruiter with `metadata.count` and `metadata.flagged_count`.
+```text
+src/pages/Candidates.tsx                 # thin shell, composes the parts below
+src/components/candidates/list/
+  CandidatesHeader.tsx                   # title + KPI chips + top‑right actions
+  CandidatesSearchesRail.tsx             # left sidebar (saved + smart lists)
+  SavedSearchItem.tsx
+  SmartListItem.tsx
+  SearchModeTabs.tsx                     # Everything / Boolean / Ask in plain English
+  CandidateSearchBar.tsx                 # input + ⌘K hint + AI submit
+  FilterChipsRow.tsx                     # active filter pills + Add filter popover
+  SavedSearchToolbar.tsx                 # breadcrumb + Alert me/Share/Export + edit/save/reset
+  BulkActionBar.tsx                      # 3 selected · Add to job / Email / Tag / Archive
+  CandidatesTable.tsx                    # rewrite of IndependentCandidateTable using Gio Table primitives
+  cells/
+    CandidateIdentityCell.tsx            # avatar + name + ♥ + “New” badge + role line
+    SkillsCell.tsx                       # up to 3 skill chips + “+N”
+    PipelineCell.tsx                     # status dot + job link OR “Not in pipeline”
+    AiFitCell.tsx                        # 92 + tiny sparkline
+    SourceCell.tsx                       # square avatar (R/L/A/C) + label
+    AddedCell.tsx                        # date + attributed user
+  CandidatesFooter.tsx                   # Showing X of Y · Rows per page · Load more
+src/hooks/useCandidateKpis.ts            # tenant‑scoped counts via new RPC
+src/hooks/useCandidateBooleanFilter.ts   # client‑side boolean parser
+supabase/functions/candidates-nl-search/index.ts  # NL → filters via Lovable AI Gateway
+```
 
-Each trigger calls helper `public.emit_notification(...)` which:
-1. Reads recipient's `notification_preferences`. If `in_app=false`, skip insert.
-2. Inserts row into `notifications`.
-3. If `email=true` and not in quiet hours, calls `pg_net` to `send-transactional-email`.
-4. If `push=true`, calls `pg_net` to `dispatch-push-notification` (which iterates `push_subscriptions`).
+`IndependentCandidateTable.tsx` is replaced by `CandidatesTable.tsx`. `CandidateFiltersPanel.tsx` is kept and reopened from the **Add filter** popover for filters that don’t have a quick chip.
 
-### Edge functions
+## 3. Data work
 
-- `dispatch-push-notification` (new): accepts `{ notification_id }`, loads row + subscriptions, sends Web Push via VAPID. Secrets: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`.
-- Reuse `send-transactional-email` for email channel; add 6 templates (one per category) scaffolded via the standard transactional flow.
+### 3.1 KPI RPC (header counts)
 
-### Client
+New SQL function `public.get_candidate_kpis(_tenant_id uuid)` returning:
 
-- New `src/hooks/useNotifications.ts`: query + `markAsRead`, `markAllAsRead`, counts by tab.
-- New `src/hooks/useNotificationPreferences.ts`: get/save prefs.
-- New `src/hooks/usePushSubscription.ts`: register/unregister, expose permission state.
-- New `public/sw.js` service worker handling `push` and `notificationclick` events; registered on app mount.
-- Rewrite `src/components/layout/NotificationCenter.tsx` (panel + row variants + empty + preferences view).
-- New `src/components/layout/notifications/NotificationRow.tsx`, `NotificationPreferences.tsx`, `NotificationTabs.tsx`.
-- Bell trigger styling already in `Header.tsx`; just expose unread count from new hook.
+```text
+total              -- all candidates in tenant
+in_active_pipeline -- distinct candidates with an open job_candidates row
+awaiting_outreach  -- candidates with 0 outbound emails AND no scorecards in 7d
+favorites          -- saved_candidates count for current user
+new_this_week      -- created_at >= now() - 7d
+```
 
-### Required secret
+`SECURITY DEFINER`, `SET search_path = public`, granted to `authenticated`. Tenant scope enforced via `user_has_tenant_access(_tenant_id)`. Wrapped by `useCandidateKpis()` (react‑query, 60s stale).
 
-- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` — generated once and added before push works. UI degrades gracefully (Push toggle disabled with "Set up push" message) until present.
+### 3.2 Saved searches
 
----
+Reuse the existing `saved_views` table via `useSavedViews('candidates')`. A “saved search” = `{ name, filters: CandidateFilters, extra_state: { query, mode } }`. Smart Lists are five hardcoded virtual entries (All, In active pipeline, Awaiting outreach, Favorites, New this week) that resolve to preset `CandidateFilters`.
 
-## Out of scope
+### 3.3 Boolean search
 
-- Full-page `/notifications` route (footer "View all" hidden until built).
-- Filter chip behavior beyond the dropdown shell.
-- Application batch rollup that crosses tenants (kept hourly per-tenant).
-- Offer/posting/assignment/reply kinds (schema-ready, triggers ship later).
-- Mobile (panel is desktop-only — bell hidden on `<sm` like today).
+Pure client‑side parser (`useCandidateBooleanFilter`) — supports `AND`, `OR`, `NOT`, parentheses, quoted phrases. Runs against `name + email + skills + company + role`. Falls back to plain text on parse error with a small inline error.
+
+### 3.4 Ask‑in‑plain‑English (AI mode)
+
+Edge function `candidates-nl-search` calls Lovable AI Gateway (`google/gemini-3-flash-preview`) with structured output (`Output.object`) returning a partial `CandidateFilters` + optional free‑text `query`. The client merges that into the filter context and switches the mode tab back to **Everything** with the chips already populated. Errors (429/402) surface as a toast banner inside the search bar.
+
+## 4. Interaction details
+
+- **Header KPI chips** are clickable — clicking applies the matching Smart List preset.
+- **Saved search toolbar** shows `Editing search · Save changes · Reset · Save as new` when current filters diverge from the loaded view (compare via stable JSON hash).
+- **Filter chips row** renders one chip per non‑empty filter group; click opens its popover (`FilterChipPopover` from the design system). `+ Add filter` opens a menu listing all hidden filter dimensions.
+- **Bulk action bar** swaps in on selection: Add to job (existing `BulkAddToJobPipelineDialog`), Email (`BulkEmailDialog`), Tag (new lightweight popover, reuses `useCandidates` tag mutation), Add to search (creates / extends a saved view), Archive (soft‑delete via existing `deleteCandidate`).
+- **Footer**: `Load 25 more` button + `Rows per page` selector (25/50/100). Pagination is client‑side over the already‑fetched dataset (the page fetches all tenant candidates today via `useIndependentCandidates`); we keep that for v1.
+- **Mobile**: header stacks, Searches rail becomes a left Sheet, table collapses to single‑column cards (reuse existing mobile pattern from Pipeline).
+
+## 5. Style adherence
+
+- Table = `<Table density="default">` with `IdentityCell`, `StatusCell`, `NumericCell`, `ActionCell` from the design system. Selected row = 2px purple left rail, hover = `#FAFAF7`.
+- Buttons follow §2: top‑right `Add candidate` = `primary`, `Bulk upload` / `Import CSV` = `secondary`, kebab = `ghost iconOnly`. Bulk bar: `Archive` = `danger`.
+- Source badges use the `R / L / A / C` ink avatars (Referral / LinkedIn / Apollo / Careers) — categorical, no dot.
+- AI Fit sparkline = 24×12 inline SVG, color from `kpi-visualization-standards`.
+- Saved Search list row = 30h, Inter 12.5, hover `#F1F0EC`, selected `#EDE4FF` + 2px purple left rail.
+
+## 6. Out of scope (defer)
+
+- Server‑side pagination / virtualization (current dataset is tenant‑scoped and small enough to keep client‑side).
+- Per‑user notification rules behind **Alert me** (button is present but opens a “Coming soon” popover for now).
+- Real‑time updates beyond the existing react‑query invalidations.
+
+## 7. Acceptance checks
+
+1. `/candidates` matches the mock at desktop (1347×875): header KPIs, Searches rail, search modes, chips row, table, bulk bar, footer.
+2. Header KPI counts come from `get_candidate_kpis` and update after add/delete/import.
+3. Creating a saved search from current filters appears under **My searches** and is reloadable.
+4. Boolean mode: `Figma AND ("design systems" OR tokens) NOT junior` narrows results correctly.
+5. Ask‑in‑plain‑English mode: typing *“senior product designers in NYC who know Figma”* fills Skills/Location/Seniority chips.
+6. Selecting rows swaps the toolbar to the bulk bar; Archive removes rows optimistically.
+7. All controls keyboard‑navigable; focus rings = `ring-virgilio-purple/30`.
+8. No regressions for `useIndependentCandidates`, CSV import, bulk upload, or the candidate profile sheet (`?openCandidate=`).
