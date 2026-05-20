@@ -27,6 +27,11 @@ import { CandidatesFooter } from '@/components/candidates/list/CandidatesFooter'
 import { SaveSearchButton } from '@/components/candidates/list/SaveSearchButton'
 import { SaveSearchPopover, type SaveSearchPayload } from '@/components/candidates/list/SaveSearchPopover'
 import { deriveAutoName } from '@/lib/savedSearchAutoName'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { buttonVariants } from '@/components/ui/button'
 
 
 import { CandidateFormSheet } from '@/components/candidates/CandidateFormSheet'
