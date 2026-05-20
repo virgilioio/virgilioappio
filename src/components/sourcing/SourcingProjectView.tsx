@@ -360,7 +360,6 @@ export function SourcingProjectView({
         searchCriteria={project.search_criteria}
         sourceBreakdown={matchingResult?.source_breakdown}
         onLinkToJob={handleLinkToJob}
-        savedCount={savedCandidates.length}
       />
 
       {pendingJobId && (
