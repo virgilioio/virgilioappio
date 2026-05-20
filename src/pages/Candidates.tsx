@@ -362,6 +362,52 @@ function CandidatesInner() {
   }
   const handleExport = () => toast({ title: 'Export queued', description: 'CSV export coming soon.' })
 
+  const handleDuplicateSavedView = async (v: SavedView) => {
+    try {
+      const created = await createView.mutateAsync({
+        name: `${v.name} (copy)`,
+        filters: v.filters,
+        sort_state: v.sort_state ?? undefined,
+        extra_state: v.extra_state ?? undefined,
+      })
+      setActiveViewId(created.id)
+      setActiveSmartList(null)
+      setFiltersFromRecord(created.filters as Partial<CandidateFilters>)
+      setBaselineFilters(created.filters as Record<string, unknown>)
+      const extra = (created.extra_state ?? {}) as any
+      if (typeof extra.query === 'string') setQuery(extra.query)
+      if (extra.mode) setMode(extra.mode as SearchMode)
+      setJustSavedId(created.id)
+      setTimeout(() => setJustSavedId(prev => (prev === created.id ? null : prev)), 1400)
+      toast({ title: 'Search duplicated', description: `"${created.name}"` })
+    } catch {
+      toast({ title: "Couldn't duplicate search", variant: 'destructive' })
+    }
+  }
+
+  const handleConfirmDeleteSavedView = async () => {
+    if (!deleteSavedView) return
+    setIsDeletingSavedView(true)
+    try {
+      const wasActive = deleteSavedView.id === activeViewId
+      await deleteView.mutateAsync(deleteSavedView.id)
+      if (wasActive) {
+        setActiveViewId(null)
+        setActiveSmartList('all')
+        clearAll()
+        setFiltersFromRecord(SMART_LIST_FILTERS.all as any)
+        setBaselineFilters((SMART_LIST_FILTERS.all ?? {}) as Record<string, unknown>)
+      }
+      setDeleteSavedView(null)
+    } catch {
+      toast({ title: "Couldn't delete search", variant: 'destructive' })
+    } finally {
+      setIsDeletingSavedView(false)
+    }
+  }
+
+
+
 
   const archiveSelected = async () => {
     if (selectedIds.length === 0) return
