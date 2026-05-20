@@ -135,7 +135,9 @@ function CandidatesInner() {
     const t = setTimeout(() => setSearchRunning(false), 10)
     return () => clearTimeout(t)
   }, [searchRunTick])
-  const isSearching = useMinimumDuration(searchRunning || aiLoading, 320)
+  const isBooleanRunning = useMinimumDuration(searchRunning, 700)
+  const isAiRunning = useMinimumDuration(aiLoading, 320)
+  const isSearching = isBooleanRunning || isAiRunning
 
   // Smart list post-filter for the ones the filter context can't express
   const finalAfterSmart = useMemo(() => {
