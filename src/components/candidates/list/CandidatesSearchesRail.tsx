@@ -1,5 +1,13 @@
-import { Bookmark, Users, ListChecks, Mail, Heart, Sparkles, Plus, ChevronRight } from 'lucide-react'
+import { Bookmark, Users, ListChecks, Mail, Heart, Sparkles, Plus, ChevronRight, MoreHorizontal, Pencil, Copy, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
 import type { SmartListKey } from './CandidatesHeader'
 import type { SavedView } from '@/hooks/useSavedViews'
 import type { CandidateKpis } from '@/hooks/useCandidateKpis'
