@@ -712,7 +712,7 @@ export function SourcingCandidateTable({
               <button
                 key={seg.id}
                 type="button"
-                onClick={() => { setFitSegment(seg.id); setCurrentPage(1) }}
+                onClick={() => { setFitSegment(seg.id); setVisibleCount(PAGE_STEP) }}
                 className={cn(
                   'h-7 px-2.5 rounded-md font-poppins text-[12px] font-medium tracking-[-0.005em] transition-colors',
                   'inline-flex items-center gap-1.5',
