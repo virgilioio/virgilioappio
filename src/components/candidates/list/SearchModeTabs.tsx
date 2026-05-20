@@ -16,22 +16,24 @@ const TABS: { value: SearchMode; label: string; icon: typeof Search }[] = [
 
 export function SearchModeTabs({ value, onChange }: SearchModeTabsProps) {
   return (
-    <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-[#F5F4EF]">
+    <div className="inline-flex items-center gap-1">
       {TABS.map(t => {
         const active = value === t.value
         const Icon = t.icon
+        const isAi = t.value === 'ai'
         return (
           <button
             key={t.value}
             type="button"
             onClick={() => onChange(t.value)}
             className={cn(
-              'inline-flex items-center gap-1.5 h-7 px-3 rounded-md text-[12px] font-poppins font-medium transition-all',
-              active ? 'bg-white text-text-primary shadow-sm' : 'text-text-tertiary hover:text-text-primary',
-              t.value === 'ai' && active && 'text-virgilio-purple',
+              'inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg font-poppins text-[13.5px] tracking-[-0.01em] transition-colors',
+              active
+                ? 'bg-[#FAFAF7] text-text-primary font-semibold'
+                : 'text-text-tertiary hover:text-text-primary font-medium',
             )}
           >
-            <Icon className="h-3.5 w-3.5" />
+            <Icon className={cn('h-3.5 w-3.5', active && isAi && 'text-virgilio-purple')} />
             {t.label}
           </button>
         )

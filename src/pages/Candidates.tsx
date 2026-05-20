@@ -598,14 +598,16 @@ function CandidatesInner() {
               />
             </PermissionGate>
 
-            <CandidatesFooter
-              shown={visible.length}
-              total={finalAfterSmart.length}
-              pageSize={pageSize}
-              onPageSizeChange={(n) => { setPageSize(n); setPage(1) }}
-              onLoadMore={() => setPage(p => p + 1)}
-              canLoadMore={shown < finalAfterSmart.length}
-            />
+            {visible.length > 0 && !isLoading && (
+              <TableFooterSummary
+                rangeStart={1}
+                rangeEnd={visible.length}
+                total={finalAfterSmart.length}
+                entityLabel="candidates"
+                onLoadMore={() => setPage(p => p + 1)}
+                loadMoreLabel={`Load ${pageSize} more`}
+              />
+            )}
           </section>
         </main>
       </div>

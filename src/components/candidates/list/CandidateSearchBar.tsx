@@ -35,13 +35,7 @@ export function CandidateSearchBar({
 
   return (
     <div className="space-y-1.5">
-      <div
-        className={cn(
-          'relative flex items-center h-11 rounded-xl border bg-white transition-colors',
-          mode === 'ai' ? 'border-virgilio-purple/30 focus-within:border-virgilio-purple' : 'border-virgilio-border focus-within:border-virgilio-purple',
-          'focus-within:ring-2 focus-within:ring-virgilio-purple/30',
-        )}
-      >
+      <div className="relative flex items-center h-10 rounded-xl border border-transparent bg-[#FAFAF7] transition-colors focus-within:bg-white focus-within:border-virgilio-border">
         <Icon className={cn('absolute left-4 h-4 w-4', mode === 'ai' ? 'text-virgilio-purple' : 'text-text-tertiary')} />
         <input
           value={value}
