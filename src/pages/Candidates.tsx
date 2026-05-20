@@ -89,6 +89,17 @@ function CandidatesInner() {
   const { filters, setArrayFilter, setNumericFilter, setDateFilter, clearAll, activeFilterCount } = useCandidateFilters()
   const { tags } = useTags()
   const { data: allCandidateTagsMap } = useAllCandidateTagsMap()
+  const { deleteTag } = useTagMutations()
+  const activeTagId = filters.tagIds?.[0] ?? null
+  const handleSelectTag = useCallback((tag: Tag) => {
+    setActiveSmartList(null)
+    setActiveViewId(null)
+    clearAll()
+    setArrayFilter('tagIds', [tag.id])
+    setBaselineFilters({ tagIds: [tag.id] })
+  }, [clearAll, setArrayFilter])
+  const [deleteTagTarget, setDeleteTagTarget] = useState<Tag | null>(null)
+  const [isDeletingTag, setIsDeletingTag] = useState(false)
 
   // Search state
   const [mode, setMode] = useState<SearchMode>('everything')
