@@ -397,7 +397,9 @@ function CandidatesInner() {
             isLoading={kpisLoading}
             onSelectView={handleSelectView}
             onSelectSmartList={handleSelectSmartList}
-            onCreateView={handleSaveAsNew}
+            onCreateView={handleSavePopoverOpen}
+            justSavedId={justSavedId}
+
           />
         </div>
 
@@ -408,11 +410,13 @@ function CandidatesInner() {
             resultsCount={finalAfterSmart.length}
             totalCount={candidates.length}
             isDirty={filtersDirty}
+            changesCount={changesCount}
             onSaveChanges={handleSaveChanges}
             onResetChanges={handleResetChanges}
-            onSaveAsNew={handleSaveAsNew}
+            onSaveAsNew={handleSavePopoverOpen}
             onExport={handleExport}
           />
+
 
           <div className="space-y-3">
             <SearchModeTabs value={mode} onChange={setMode} />
@@ -425,9 +429,28 @@ function CandidatesInner() {
               loading={aiLoading}
               isDirty={mode !== 'everything' && query !== committedQuery && query.trim().length > 0}
               error={mode === 'ai' ? aiError : (mode === 'boolean' && committedQuery ? booleanError : null)}
+              trailing={
+                <SaveSearchPopover
+                  open={saveOpen}
+                  onOpenChange={(o) => { setSaveOpen(o); if (o) setHasPulsed(true) }}
+                  autoName={autoName}
+                  existingNames={existingNames}
+                  resultsCount={finalAfterSmart.length}
+                  saving={saving}
+                  onSave={handleSavePayload}
+                  trigger={
+                    <SaveSearchButton
+                      hasFilters={activeFilterCount > 0 && !activeViewId}
+                      pulse={!hasPulsed && filtersDirty && activeFilterCount > 0 && !activeViewId}
+                      onClick={handleSavePopoverOpen}
+                    />
+                  }
+                />
+              }
             />
             <FilterChipsRow filterOptions={filterOptions} />
           </div>
+
 
           {selectedIds.length > 0 ? (
             <BulkActionBar
@@ -439,7 +462,7 @@ function CandidatesInner() {
               onAddToJob={() => setBulkJobOpen(true)}
               onEmail={() => toast({ title: 'Bulk email coming soon' })}
               onTag={() => toast({ title: 'Tagging coming soon' })}
-              onAddToSearch={handleSaveAsNew}
+              onAddToSearch={handleSavePopoverOpen}
               onArchive={archiveSelected}
             />
           ) : null}
