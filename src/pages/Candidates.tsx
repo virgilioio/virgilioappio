@@ -444,9 +444,9 @@ function CandidatesInner() {
   const smartListLabel = activeSmartList ? SMART_LIST_LABEL[activeSmartList] : null
 
   return (
-    <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden bg-virgilio-cream">
+    <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden bg-virgilio-cream animate-fade-in">
       {/* Header */}
-      <div className="shrink-0 px-6 pt-6 pb-4">
+      <div className="shrink-0 px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 lg:pt-12 pb-6">
         <CandidatesHeader
           kpis={kpis}
           isLoading={kpisLoading}
@@ -459,7 +459,7 @@ function CandidatesInner() {
       </div>
 
       {/* Body: rail + main */}
-      <div className="flex-1 min-h-0 flex gap-4 overflow-hidden px-6 pb-6">
+      <div className="flex-1 min-h-0 flex gap-4 overflow-hidden px-4 sm:px-6 lg:px-8 pb-6">
         <div className="hidden md:block h-full">
           <CandidatesSearchesRail
             views={views}
