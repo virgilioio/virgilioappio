@@ -444,9 +444,9 @@ function CandidatesInner() {
   const smartListLabel = activeSmartList ? SMART_LIST_LABEL[activeSmartList] : null
 
   return (
-    <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden bg-background">
-      {/* Header band */}
-      <div className="shrink-0 border-b border-virgilio-border bg-surface-primary px-6 py-5">
+    <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden bg-virgilio-cream">
+      {/* Header */}
+      <div className="shrink-0 px-6 pt-6 pb-4">
         <CandidatesHeader
           kpis={kpis}
           isLoading={kpisLoading}

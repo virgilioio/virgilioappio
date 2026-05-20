@@ -1,5 +1,12 @@
-import { Users, ListChecks, Mail, Heart, Sparkles } from 'lucide-react'
+import { Users, ListChecks, Mail, Heart, Sparkles, MoreHorizontal, Upload, FileUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { cn } from '@/lib/utils'
 import type { CandidateKpis } from '@/hooks/useCandidateKpis'
@@ -37,12 +44,14 @@ function KpiChip({ icon: Icon, label, value, active, loading, onClick, tone = 'd
       type="button"
       onClick={onClick}
       className={cn(
-        'group inline-flex items-center gap-2 h-9 pl-2.5 pr-3 rounded-lg transition-colors',
+        'group inline-flex items-center gap-1.5 h-8 pl-2 pr-2.5 rounded-lg transition-colors',
         'text-[13px] font-poppins font-medium tracking-[-0.005em]',
-        active ? 'bg-virgilio-purple/10 text-virgilio-purple' : 'hover:bg-[#F1F0EC] text-text-primary',
+        active
+          ? 'bg-virgilio-purple/10 text-virgilio-purple'
+          : 'hover:bg-[#F1F0EC] text-text-primary',
       )}
     >
-      <Icon className={cn('h-4 w-4', active ? 'text-virgilio-purple' : toneClass)} />
+      <Icon className={cn('h-3.5 w-3.5', active ? 'text-virgilio-purple' : toneClass)} />
       <span className="tabular-nums">{loading ? '—' : (value ?? 0).toLocaleString()}</span>
       <span className="text-text-tertiary font-normal">{label}</span>
     </button>
@@ -54,15 +63,17 @@ export function CandidatesHeader({
   onAddCandidate, onImportCSV, onBulkUpload,
 }: CandidatesHeaderProps) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-4">
-      <div className="min-w-0">
-        <div className="flex items-baseline gap-3">
-          <h1 className="text-h1 text-text-primary">Candidates</h1>
-          <span className="font-poppins text-[15px] text-text-tertiary tabular-nums">
+    <header className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-3">
+          <h1 className="font-poppins font-semibold tracking-[-0.04em] text-text-primary text-[28px] leading-tight sm:text-[32px]">
+            Candidates<span className="text-virgilio-purple">.</span>
+          </h1>
+          <Badge tone="neutral" size="sm">
             {isLoading ? '—' : (kpis?.total ?? 0).toLocaleString()}
-          </span>
+          </Badge>
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-1">
+        <div className="mt-2 flex flex-wrap items-center gap-1">
           <KpiChip
             icon={ListChecks}
             label="in active pipeline"
@@ -103,18 +114,41 @@ export function CandidatesHeader({
       <PermissionGate permission="canManageCandidates">
         <div className="flex items-center gap-2 shrink-0">
           {onImportCSV && (
-            <Button variant="secondary" onClick={onImportCSV} className="hidden sm:inline-flex">
+            <Button variant="secondary" onClick={onImportCSV} className="hidden lg:inline-flex">
               Import CSV
             </Button>
           )}
           {onBulkUpload && (
-            <Button variant="secondary" onClick={onBulkUpload} className="hidden sm:inline-flex">
+            <Button variant="secondary" onClick={onBulkUpload} className="hidden lg:inline-flex">
               Bulk upload
             </Button>
           )}
-          <Button onClick={onAddCandidate}>+ Add candidate</Button>
+          <Button variant="primary" onClick={onAddCandidate}>+ Add candidate</Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="secondary" iconOnly icon={MoreHorizontal} aria-label="More actions" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" sideOffset={8}>
+              {onImportCSV && (
+                <DropdownMenuItem onSelect={onImportCSV} className="lg:hidden">
+                  <Upload className="h-4 w-4" />
+                  Import CSV
+                </DropdownMenuItem>
+              )}
+              {onBulkUpload && (
+                <DropdownMenuItem onSelect={onBulkUpload} className="lg:hidden">
+                  <FileUp className="h-4 w-4" />
+                  Bulk upload
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onSelect={onAddCandidate} className="lg:hidden">
+                <Users className="h-4 w-4" />
+                Add candidate
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </PermissionGate>
-    </div>
+    </header>
   )
 }
