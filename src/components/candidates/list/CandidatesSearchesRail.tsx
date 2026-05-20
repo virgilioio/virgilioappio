@@ -127,6 +127,7 @@ function SavedSearchItem({
 export function CandidatesSearchesRail({
   views, activeViewId, activeSmartList, kpis, isLoading, justSavedId,
   onSelectView, onSelectSmartList, onCreateView,
+  onEditView, onDuplicateView, onDeleteView,
 }: CandidatesSearchesRailProps) {
 
   return (
