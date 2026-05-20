@@ -358,54 +358,60 @@ export function SourcingProjectView({
         onValueChange={setActiveTab}
         className="flex-1 flex flex-col min-h-0 overflow-hidden"
       >
-        {/* Colorful pipeline-style tabs — exact match to JobDetail */}
-        <div className="border-b bg-background shrink-0 px-4 py-3">
-          <TabsList className="grid w-full h-14 p-2 gap-1 grid-cols-4">
-            <TabsTrigger 
-              value="conversation"
-              className="h-10 md:h-12 text-xs md:text-sm bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-text-primary data-[state=active]:from-blue-500 data-[state=active]:to-purple-500 data-[state=active]:text-white border border-blue-500/20 data-[state=active]:border-blue-500 data-[state=active]:shadow-[0_0_20px_rgba(59,130,246,0.5),0_0_40px_rgba(147,51,234,0.3)] data-[state=active]:animate-pulse"
-            >
-              <span className="flex items-center gap-1 truncate">
-                <Sparkles className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
-                <span className="truncate">Chat with Gio</span>
-              </span>
-            </TabsTrigger>
-            <TabsTrigger 
+        {/* Calm Gio Foundation tabs — minimal, no gradients */}
+        <div className="border-b border-border bg-background shrink-0 px-4">
+          <TabsList className="h-11 bg-transparent p-0 gap-1 justify-start">
+            <TabsTrigger
               value="candidates"
-              className="h-10 md:h-12 text-xs md:text-sm bg-pastel-purple/20 text-text-primary data-[state=active]:bg-pastel-purple"
+              className="h-11 px-3 rounded-none border-b-2 border-transparent bg-transparent text-text-secondary data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-virgilio-purple data-[state=active]:shadow-none"
             >
-              <span className="flex items-center gap-1 truncate">
-                <span className="truncate">Candidates</span>
+              <span className="flex items-center gap-1.5">
+                <span className="font-poppins text-[13px] font-medium tracking-[-0.01em]">Candidates</span>
                 {filteredCandidates.length > 0 && (
-                  <Badge variant="pastel-purple" className="text-xs flex-shrink-0">{filteredCandidates.length}</Badge>
+                  <Badge tone="lilac" size="xs" className="font-mono tabular-nums">
+                    {filteredCandidates.length}
+                  </Badge>
                 )}
               </span>
             </TabsTrigger>
-            <TabsTrigger 
+            <TabsTrigger
               value="saved"
-              className="h-10 md:h-12 text-xs md:text-sm bg-pastel-yellow/20 text-text-primary data-[state=active]:bg-pastel-yellow"
+              className="h-11 px-3 rounded-none border-b-2 border-transparent bg-transparent text-text-secondary data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-virgilio-purple data-[state=active]:shadow-none"
             >
-              <span className="flex items-center gap-1 truncate">
-                <span className="truncate">Saved</span>
+              <span className="flex items-center gap-1.5">
+                <span className="font-poppins text-[13px] font-medium tracking-[-0.01em]">Saved</span>
                 {savedCandidates.length > 0 && (
-                  <Badge variant="pastel-yellow" className="text-xs flex-shrink-0">{savedCandidates.length}</Badge>
+                  <Badge tone="yellow" size="xs" className="font-mono tabular-nums">
+                    {savedCandidates.length}
+                  </Badge>
                 )}
               </span>
             </TabsTrigger>
-            <TabsTrigger 
+            <TabsTrigger
               value="archived"
-              className="h-10 md:h-12 text-xs md:text-sm bg-pastel-blue/20 text-text-primary data-[state=active]:bg-pastel-blue"
+              className="h-11 px-3 rounded-none border-b-2 border-transparent bg-transparent text-text-secondary data-[state=active]:bg-transparent data-[state=active]:text-text-primary data-[state=active]:border-virgilio-purple data-[state=active]:shadow-none"
             >
-              <span className="flex items-center gap-1 truncate">
-                <span className="truncate">Archived</span>
+              <span className="flex items-center gap-1.5">
+                <span className="font-poppins text-[13px] font-medium tracking-[-0.01em]">Archived</span>
                 {archivedCandidates.length > 0 && (
-                  <Badge variant="pastel-blue" className="text-xs flex-shrink-0">{archivedCandidates.length}</Badge>
+                  <Badge tone="neutral" size="xs" className="font-mono tabular-nums">
+                    {archivedCandidates.length}
+                  </Badge>
                 )}
+              </span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="conversation"
+              className="h-11 px-3 ml-auto rounded-none border-b-2 border-transparent bg-transparent text-text-secondary data-[state=active]:bg-transparent data-[state=active]:text-virgilio-purple data-[state=active]:border-virgilio-purple data-[state=active]:shadow-none"
+            >
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-virgilio-purple" />
+                <span className="font-poppins text-[13px] font-medium tracking-[-0.01em]">Chat with Gio</span>
               </span>
             </TabsTrigger>
           </TabsList>
         </div>
-        
+
         <TabsContent value="conversation" className="flex-1 min-h-0 overflow-hidden m-0">
           <ConversationTab 
             projectId={projectId}
@@ -422,6 +428,7 @@ export function SourcingProjectView({
             projectId={project.id}
             searchCriteria={project.search_criteria}
             sourceBreakdown={matchingResult?.source_breakdown}
+            onLinkToJob={handleLinkToJob}
           />
         </TabsContent>
         

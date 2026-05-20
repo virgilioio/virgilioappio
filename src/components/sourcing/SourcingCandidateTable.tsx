@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronLeft, ChevronRight, Download, Mail, Phone, X, Info } from 'lucide-react'
+import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronLeft, ChevronRight, Download, Mail, Phone, X, Info, ArrowUpDown, Sparkles, Heart } from 'lucide-react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
 import emptyStateAvatar from '@/assets/empty-state-avatar.png'
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
@@ -115,18 +116,45 @@ export function SourcingCandidateTable({
   const [selectedPdlData, setSelectedPdlData] = useState<MatchedCandidate | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const { isCollectDisabled } = useSourcingCreditWarnings()
-  
-  
+
+  // Fit segment filter (toolbar) — All / Strong fit / Good / Possible / Collected
+  type FitSegment = 'all' | 'strong' | 'good' | 'possible' | 'collected'
+  const [fitSegment, setFitSegment] = useState<FitSegment>('all')
+  // Sort mode (toolbar)
+  type SortMode = 'ai_fit' | 'recent' | 'experience'
+  const [sortMode, setSortMode] = useState<SortMode>('ai_fit')
+
   // Bulk selection state
   const [selectedApolloIds, setSelectedApolloIds] = useState<Set<string>>(new Set())
   const [isBulkCollecting, setIsBulkCollecting] = useState(false)
   const [showJobDialog, setShowJobDialog] = useState(false)
   const [pendingBulkIds, setPendingBulkIds] = useState<string[]>([])
-  
-  // Sortable table with default sort by match_score DESC
+
+  // Segment counts (computed from full candidate set, ignoring segment filter)
+  const segmentCounts = {
+    all: candidates.length,
+    strong: candidates.filter(c => c.match_tier === 'excellent').length,
+    good: candidates.filter(c => c.match_tier === 'good').length,
+    possible: candidates.filter(c => c.match_tier === 'fair' || c.match_tier === 'minimal').length,
+    collected: candidates.filter(c => c.source === 'apollo' && !!c.candidate_id).length,
+  }
+
+  // Apply fit segment filter
+  const segmentFiltered = candidates.filter(c => {
+    switch (fitSegment) {
+      case 'strong': return c.match_tier === 'excellent'
+      case 'good': return c.match_tier === 'good'
+      case 'possible': return c.match_tier === 'fair' || c.match_tier === 'minimal'
+      case 'collected': return c.source === 'apollo' && !!c.candidate_id
+      default: return true
+    }
+  })
+
+  // Sortable table — sort key derived from sortMode
+  const sortKey = sortMode === 'ai_fit' ? 'match_score' : sortMode === 'experience' ? 'experience_years' : 'created_at'
   const { sortedData, sortConfig, requestSort } = useSortableTable(
-    candidates,
-    { key: 'match_score', direction: 'desc' }
+    segmentFiltered,
+    { key: sortKey as any, direction: 'desc' }
   )
 
   // Pagination
@@ -595,33 +623,133 @@ export function SourcingCandidateTable({
   return (
     <div className="h-full min-h-0 flex flex-col gap-4 overflow-hidden">
 
-      {/* Bulk Action Bar */}
-      {selectedApolloIds.size > 0 && (
-        <div className="sticky top-0 z-10 bg-muted/95 backdrop-blur border border-border rounded-lg px-4 py-3 flex items-center justify-between shadow-sm shrink-0">
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium">
-              {selectedApolloIds.size} selected
+      {/* Toolbar / Bulk Action Bar — mutually exclusive */}
+      {selectedApolloIds.size > 0 ? (
+        // Dark bulk action bar
+        <div className="sticky top-0 z-10 rounded-lg bg-[#0d0d09] px-4 py-2.5 flex items-center justify-between shadow-[0_8px_24px_-12px_rgba(0,0,0,0.4)] shrink-0">
+          <div className="flex items-center gap-3 text-virgilio-cream">
+            <span className="font-poppins text-[13px] font-medium tabular-nums">
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-virgilio-cream/15 px-1.5 text-xs">
+                {selectedApolloIds.size}
+              </span>
+              <span className="ml-2">selected</span>
             </span>
-            <Button variant="ghost" size="sm" onClick={clearSelection} className="h-7 px-2">
-              <X className="h-3.5 w-3.5 mr-1" />
-              Clear
+            <span className="text-virgilio-cream/30">·</span>
+            <button
+              type="button"
+              onClick={() => {
+                // Select all collectible Apollo candidates across results
+                const all = new Set(selectedApolloIds)
+                sortedData.forEach(c => {
+                  if (c.source === 'apollo' && !c.candidate_id && c.apollo_id) all.add(c.apollo_id)
+                })
+                setSelectedApolloIds(all)
+              }}
+              className="text-[12.5px] text-virgilio-cream/80 hover:text-virgilio-cream underline-offset-2 hover:underline"
+            >
+              Select all {sortedData.filter(c => c.source === 'apollo' && !c.candidate_id && c.apollo_id).length}
+            </button>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Button
+              size="sm"
+              variant="purple"
+              icon={isBulkCollecting ? undefined : Download}
+              onClick={handleBulkCollect}
+              disabled={isBulkCollecting || isCollectDisabled}
+            >
+              {isBulkCollecting && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+              {isCollectDisabled
+                ? 'Credits exhausted'
+                : `Collect ${selectedApolloIds.size} · ${selectedApolloIds.size} credit${selectedApolloIds.size === 1 ? '' : 's'}`}
+            </Button>
+            <Button size="sm" variant="secondary" onDark icon={Heart}>
+              Save for later
+            </Button>
+            <Button size="sm" variant="ghost" onDark>
+              Not a fit
+            </Button>
+            <Button
+              size="xs"
+              variant="ghost"
+              onDark
+              iconOnly
+              icon={X}
+              aria-label="Clear selection"
+              onClick={clearSelection}
+            />
+          </div>
+        </div>
+      ) : (
+        // Results toolbar
+        <div className="flex flex-wrap items-center justify-between gap-3 shrink-0">
+          {/* Left: count */}
+          <div className="flex items-center gap-2 text-[12.5px] text-text-secondary">
+            <span>
+              Showing{' '}
+              <span className="font-medium text-text-primary tabular-nums">
+                {sortedData.length === 0 ? 0 : startIndex + 1}–{Math.min(startIndex + itemsPerPage, sortedData.length)}
+              </span>{' '}
+              of <span className="font-medium text-text-primary tabular-nums">{sortedData.length}</span>
+            </span>
+          </div>
+
+          {/* Center: fit segments */}
+          <div className="inline-flex items-center gap-0.5 rounded-lg bg-[#F1F0EC] p-0.5">
+            {([
+              { id: 'all', label: 'All', count: segmentCounts.all },
+              { id: 'strong', label: 'Strong fit', count: segmentCounts.strong },
+              { id: 'good', label: 'Good', count: segmentCounts.good },
+              { id: 'possible', label: 'Possible', count: segmentCounts.possible },
+              { id: 'collected', label: 'Collected', count: segmentCounts.collected },
+            ] as const).map(seg => (
+              <button
+                key={seg.id}
+                type="button"
+                onClick={() => { setFitSegment(seg.id); setCurrentPage(1) }}
+                className={cn(
+                  'h-7 px-2.5 rounded-md font-poppins text-[12px] font-medium tracking-[-0.005em] transition-colors',
+                  'inline-flex items-center gap-1.5',
+                  fitSegment === seg.id
+                    ? 'bg-white text-text-primary shadow-[0_1px_2px_rgba(0,0,0,0.06)]'
+                    : 'text-text-secondary hover:text-text-primary'
+                )}
+              >
+                <span>{seg.label}</span>
+                <span className={cn(
+                  'text-[11px] tabular-nums',
+                  fitSegment === seg.id ? 'text-text-tertiary' : 'text-text-tertiary/70'
+                )}>
+                  {seg.count}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Right: sort + select all */}
+          <div className="flex items-center gap-1.5">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="ghost" icon={ArrowUpDown} dropdown>
+                  Sort: {sortMode === 'ai_fit' ? 'AI fit' : sortMode === 'recent' ? 'Recent activity' : 'Experience'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" sideOffset={8}>
+                <DropdownMenuItem onSelect={() => setSortMode('ai_fit')}>AI fit</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setSortMode('recent')}>Recent activity</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setSortMode('experience')}>Experience</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={CheckCircle2}
+              onClick={toggleSelectAllApollo}
+              disabled={apolloCandidatesOnPage.length === 0}
+            >
+              Select all
             </Button>
           </div>
-          <Button
-            size="sm"
-            onClick={handleBulkCollect}
-            disabled={isBulkCollecting || isCollectDisabled}
-          >
-            {isBulkCollecting ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4 mr-2" />
-            )}
-            {isCollectDisabled 
-              ? 'Credits exhausted' 
-              : `Unlock ${selectedApolloIds.size} ${selectedApolloIds.size === 1 ? 'profile' : 'profiles'} (${selectedApolloIds.size} ${selectedApolloIds.size === 1 ? 'credit' : 'credits'})`
-            }
-          </Button>
         </div>
       )}
 
@@ -630,38 +758,6 @@ export function SourcingCandidateTable({
         <CardContent className="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
           <div className="flex-1 min-h-0 overflow-y-auto">
             <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-10 px-3">
-                  <Checkbox
-                    checked={isAllApolloSelected && apolloCandidatesOnPage.length > 0}
-                    onCheckedChange={toggleSelectAllApollo}
-                    aria-label="Select all Apollo candidates on page"
-                    disabled={apolloCandidatesOnPage.length === 0}
-                  />
-                </TableHead>
-                <TableHead className="w-[280px]">
-                  <SortableHeader 
-                    sortKey="candidate_name" 
-                    currentSort={sortConfig} 
-                    onSort={requestSort}
-                  >
-                    Name
-                  </SortableHeader>
-                </TableHead>
-                <TableHead className="w-[280px]">
-                  <SortableHeader 
-                    sortKey="current_role" 
-                    currentSort={sortConfig} 
-                    onSort={requestSort}
-                  >
-                    Current Role
-                  </SortableHeader>
-                </TableHead>
-                <TableHead>Headline / Skills</TableHead>
-                <TableHead className="text-right w-[220px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
             <TableBody>
               {paginatedData.map((candidate, pIdx) => {
                 const isAdded = addedCandidates.has(candidate.id)
@@ -751,179 +847,231 @@ export function SourcingCandidateTable({
                   }
                 }
 
+                // Fit score band → tone for right rail
+                const fitScore = candidate.match_score ?? 0
+                const fitBand =
+                  fitScore >= 85 ? { label: 'text-emerald-700', bg: 'bg-emerald-50', ring: 'ring-emerald-200' } :
+                  fitScore >= 70 ? { label: 'text-blue-700', bg: 'bg-blue-50', ring: 'ring-blue-200' } :
+                  fitScore >= 55 ? { label: 'text-amber-700', bg: 'bg-amber-50', ring: 'ring-amber-200' } :
+                  { label: 'text-text-tertiary', bg: 'bg-[#F1F0EC]', ring: 'ring-border' }
+
+                // Initials for avatar
+                const displayName = getDisplayName(candidate)
+                const initials = displayName
+                  .split(/\s+/)
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map(s => s[0])
+                  .join('')
+                  .toUpperCase()
+
+                // Top match: position 0 in sorted data when sorted by AI fit
+                const isTopMatch = sortMode === 'ai_fit' && sortedData[0]?.id === candidate.id
+
+                // Matched skills (green check chips)
+                const matchedSkills = (candidate.matched_keywords ?? []).slice(0, 4)
+                const extraSkills = (candidate.skills ?? [])
+                  .filter(s => !matchedSkills.includes(s))
+                  .slice(0, Math.max(0, 5 - matchedSkills.length))
+
                 return (
                   <TableRow
                     key={`${candidate.apollo_id || candidate.id}-${pIdx}`}
                     className={cn(
-                      "cursor-pointer hover:bg-muted/40",
-                      isSelected && "bg-muted/30",
-                      isActiveRow && "bg-primary/5 border-l-2 border-l-primary"
+                      "cursor-pointer transition-colors border-b border-border/60",
+                      "hover:bg-[#FAFAF7]",
+                      isSelected && "bg-[#FAF8FF]",
+                      isActiveRow && "bg-[#FAF8FF] border-l-2 border-l-virgilio-purple"
                     )}
                     onClick={handleRowClick}
                   >
-                    <TableCell colSpan={5} className="py-3 px-4">
-                      <div className="flex items-start gap-3">
+                    <TableCell colSpan={5} className="py-4 px-5">
+                      <div className="flex items-start gap-4">
                         {/* Checkbox */}
-                        <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
+                        <div className="pt-1" onClick={(e) => e.stopPropagation()}>
                           {canSelect ? (
                             <Checkbox
                               checked={isSelected}
                               onCheckedChange={() => toggleSelectApollo(candidate.apollo_id!)}
-                              aria-label={`Select ${getDisplayName(candidate)}`}
+                              aria-label={`Select ${displayName}`}
                             />
                           ) : (
                             <div className="w-4 h-4" />
                           )}
                         </div>
-                        {/* Main content */}
-                        <div className="flex-1 min-w-0 space-y-1.5">
-                          {/* Top: badge + match */}
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5">
-                              <Badge className={cn("text-[10px] px-1.5 py-0 h-4 border-0", badgeClass)}>
-                                {badgeLabel}
-                              </Badge>
-                              {/* Keyword match indicator */}
-                              {candidate.matched_keywords && candidate.matched_keywords.length > 0 && (
-                                <Badge variant="keyword-match" className="text-[10px] px-1.5 py-0 h-4">
-                                  {candidate.matched_keywords.slice(0, 2).join(', ')}
-                                  {candidate.matched_keywords.length > 2 && ` +${candidate.matched_keywords.length - 2}`}
-                                </Badge>
-                              )}
-                            </div>
-                            <Badge className={cn("text-xs", getMatchBadgeColor(candidate.match_tier))}>
-                              {candidate.match_score}%
-                            </Badge>
-                          </div>
-                          {/* Name */}
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-sm">{getDisplayName(candidate)}</span>
+
+                        {/* Avatar */}
+                        <Avatar className="h-10 w-10 shrink-0 ring-1 ring-border bg-virgilio-purple/10 text-virgilio-purple">
+                          <AvatarFallback className="bg-virgilio-purple/10 text-virgilio-purple font-poppins text-[12px] font-semibold tracking-[-0.01em]">
+                            {initials || '?'}
+                          </AvatarFallback>
+                        </Avatar>
+
+                        {/* Identity block */}
+                        <div className="flex-1 min-w-0 space-y-1">
+                          {/* Name + tag row */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-poppins text-[14px] font-semibold tracking-[-0.01em] text-text-primary">
+                              {displayName}
+                            </span>
+                            {isTopMatch && (
+                              <Badge tone="purple" size="xs" icon={Sparkles}>Top match</Badge>
+                            )}
+                            {isInternal && (
+                              <Badge tone="green" size="xs">Collected</Badge>
+                            )}
+                            {isGio && (
+                              <Badge tone="purple" size="xs">Gio</Badge>
+                            )}
+                            {!isInternal && !isGio && isApollo && (
+                              <Badge tone="neutral" size="xs">Preview</Badge>
+                            )}
+                            {isPdl && (
+                              <Badge tone="blue" size="xs">LinkedIn</Badge>
+                            )}
                             {candidate.linkedin_url && (
                               <a
                                 href={candidate.linkedin_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
-                                className="text-blue-600 hover:text-blue-700"
+                                className="text-[#0A66C2] hover:opacity-80"
+                                aria-label="LinkedIn"
                               >
-                                <Linkedin className="h-3 w-3" />
+                                <Linkedin className="h-3.5 w-3.5" />
                               </a>
                             )}
                           </div>
-                          {/* Subtitle: role @ company */}
+
+                          {/* Headline / role at company */}
                           {(candidate.current_role || candidate.current_company) && (
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-[12.5px] text-text-secondary truncate">
                               {candidate.current_role}
                               {candidate.current_role && candidate.current_company && ' at '}
                               {candidate.current_company && (
-                                <a
-                                  href={`https://www.google.com/search?q=${encodeURIComponent(candidate.current_company)}+site:linkedin.com/company`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="hover:text-primary hover:underline"
-                                >
-                                  {candidate.current_company}
-                                </a>
+                                <span className="text-text-primary font-medium">{candidate.current_company}</span>
                               )}
                             </p>
                           )}
-                          {/* Metadata chips row */}
-                          <div className="flex items-center gap-3 flex-wrap">
-                            {/* Location chip */}
-                            {(isInternal || isPdl) && location ? (
-                              <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
-                                <MapPin className="h-2.5 w-2.5" />
-                                {location}
+
+                          {/* Metadata line */}
+                          <div className="flex items-center gap-x-3 gap-y-1 flex-wrap text-[11.5px] text-text-tertiary">
+                            {((isInternal || isPdl || isGio) && location) ? (
+                              <span className="inline-flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />{location}
                               </span>
                             ) : isApollo && candidate.has_location ? (
-                              <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
-                                <MapPin className="h-2.5 w-2.5" />
-                                Location
+                              <span className="inline-flex items-center gap-1 italic">
+                                <MapPin className="h-3 w-3" />Location
                               </span>
                             ) : null}
-                            {/* Email chip */}
-                            {(isInternal || isPdl) && candidate.email ? (
-                              <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
-                                <Mail className="h-2.5 w-2.5" />
-                                {candidate.email}
+                            {(candidate.years_experience || candidate.experience_years) ? (
+                              <span>{candidate.years_experience || candidate.experience_years}y exp.</span>
+                            ) : null}
+                            {((isInternal || isPdl) && candidate.email) ? (
+                              <span className="inline-flex items-center gap-1">
+                                <Mail className="h-3 w-3" />{candidate.email}
                               </span>
                             ) : isApollo && candidate.has_email ? (
-                              <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
-                                <Mail className="h-2.5 w-2.5" />
-                                Email
+                              <span className="inline-flex items-center gap-1 italic">
+                                <Mail className="h-3 w-3" />Email available
                               </span>
                             ) : null}
-                            {/* Phone chip */}
-                            {(isInternal || isPdl) && candidate.phone ? (
-                              <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
-                                <Phone className="h-2.5 w-2.5" />
-                                {candidate.phone}
+                            {((isInternal || isPdl) && candidate.phone) ? (
+                              <span className="inline-flex items-center gap-1">
+                                <Phone className="h-3 w-3" />{candidate.phone}
                               </span>
                             ) : isApollo && candidate.has_phone ? (
-                              <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
-                                <Phone className="h-2.5 w-2.5" />
-                                Phone
+                              <span className="inline-flex items-center gap-1 italic">
+                                <Phone className="h-3 w-3" />Phone available
                               </span>
                             ) : null}
                           </div>
-                        </div>
-                        {/* Right: Actions */}
-                        <div className="flex items-center gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
-                          {isApollo ? (
+
+                          {/* Matched + extra skill chips */}
+                          {(matchedSkills.length > 0 || extraSkills.length > 0) && (
+                            <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                              {matchedSkills.map(skill => (
+                                <span
+                                  key={`m-${skill}`}
+                                  className="inline-flex items-center gap-1 rounded-md bg-emerald-50 text-emerald-700 px-1.5 h-[18px] text-[10.5px] font-medium ring-1 ring-emerald-200/60"
+                                >
+                                  <CheckCircle2 className="h-2.5 w-2.5" />
+                                  {skill}
+                                </span>
+                              ))}
+                              {extraSkills.map(skill => (
+                                <span
+                                  key={`x-${skill}`}
+                                  className="inline-flex items-center rounded-md bg-[#F1F0EC] text-text-secondary px-1.5 h-[18px] text-[10.5px] font-medium"
+                                >
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-1.5 pt-2" onClick={(e) => e.stopPropagation()}>
+                            {isApollo ? (
+                              <Button
+                                size="sm"
+                                variant="primary"
+                                icon={isCollecting ? undefined : Download}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleCollectProfile(candidate.apollo_id!)
+                                }}
+                                disabled={isCollecting || isCollectDisabled}
+                                title={isCollectDisabled ? 'Monthly collect credit limit reached' : 'Reveal full profile (1 credit)'}
+                              >
+                                {isCollecting && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                                {isCollectDisabled ? 'Credits exhausted' : 'Collect · 1 credit'}
+                              </Button>
+                            ) : isAdded ? (
+                              <Button size="sm" variant="secondary" disabled icon={CheckCircle2}>
+                                Added to pipeline
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="primary"
+                                icon={isLoading ? undefined : Plus}
+                                onClick={(e) => handleAddToPipeline(candidate, e)}
+                                disabled={isLoading || !jobId}
+                              >
+                                {isLoading && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                                {jobId ? 'Add to job' : 'Link a job first'}
+                              </Button>
+                            )}
+                            <Button size="sm" variant="secondary" icon={Mail}>
+                              Reach out
+                            </Button>
                             <Button
                               size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleCollectProfile(candidate.apollo_id!)
-                              }}
-                              disabled={isCollecting || isCollectDisabled}
-                              title={isCollectDisabled ? 'Monthly collect credit limit reached' : 'Reveal full profile with LinkedIn, email & phone (uses 1 credit)'}
+                              variant="ghost"
+                              iconRight={ChevronRight}
+                              onClick={(e) => { e.stopPropagation(); handleRowClick() }}
                             >
-                              {isCollecting ? (
-                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                              ) : (
-                                <Download className="h-3 w-3 mr-1" />
-                              )}
-                              {isCollectDisabled ? 'Credits exhausted' : 'Reveal (1 credit)'}
+                              View profile
                             </Button>
-                          ) : (
-                            <>
-                              {isAdded ? (
-                                <Button size="sm" variant="secondary" disabled>
-                                  <CheckCircle2 className="h-3 w-3 mr-1" />
-                                  Added
-                                </Button>
-                              ) : (
-                                <Button
-                                  size="sm"
-                                  variant="default"
-                                  onClick={(e) => handleAddToPipeline(candidate, e)}
-                                  disabled={isLoading || !jobId}
-                                >
-                                  {isLoading ? (
-                                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                  ) : (
-                                    <Plus className="h-3 w-3 mr-1" />
-                                  )}
-                                  Add
-                                </Button>
-                              )}
-                            </>
+                          </div>
+                        </div>
+
+                        {/* Right rail: AI FIT score */}
+                        <div
+                          className={cn(
+                            "shrink-0 flex flex-col items-center justify-center gap-0.5 rounded-lg ring-1 px-3 py-2 min-w-[64px]",
+                            fitBand.bg,
+                            fitBand.ring
                           )}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-muted-foreground"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleRowClick()
-                            }}
-                          >
-                            View
-                            <ChevronRight className="h-3 w-3 ml-0.5" />
-                          </Button>
+                        >
+                          <span className="font-poppins text-[9px] uppercase tracking-[0.08em] text-text-tertiary">
+                            AI Fit
+                          </span>
+                          <span className={cn("font-poppins text-[22px] font-semibold leading-none tabular-nums tracking-[-0.02em]", fitBand.label)}>
+                            {fitScore}
+                          </span>
                         </div>
                       </div>
                     </TableCell>
