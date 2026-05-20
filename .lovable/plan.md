@@ -1,90 +1,103 @@
-# Global Search Dropdown — Revamp
+# Boolean search UX + Spinners & Progress system
 
-Rebuild the top-bar global search dropdown to match the new "Gio ATS Global Search v1.0" mocks. One panel, five states, six entity kinds, one row pattern, keyboard-first.
+Two connected changes:
+1. Fix the Boolean / "Ask in plain English" UX on Candidates so they behave like *queries*, not live filters.
+2. Promote the "Spinners & Progress" mock into a first-class section of the Gio Foundation style guide and ship reusable primitives + apply them across the app.
 
-## What the user gets
+---
 
-A single anchored panel under the topbar search input (≈600 wide). The user types once and the panel cycles through five states based on input:
+## Part 1 — Boolean & Ask Gio: submit-on-Enter + skeleton
 
-1. **Empty** — recent searches, jump-to (saved searches), and command actions (Add candidate, Create job, etc.).
-2. **Mixed results** — typing < 3 chars or no scope chosen: grouped sections (Candidates, Jobs, Companies, Saved) capped at 4–5 per group with "See all N results for X" header.
-3. **Scoped** — user clicks a scope chip (Candidates / Jobs / Companies / Saved): only that entity, with inline filter chips (Location, Skill, Stage) where applicable.
-4. **Ask Gio (AI)** — user clicks the "Ask Gio" pill or natural-language query: shows "Gio understood" interpretation chips + ranked results + "Refine" / "Save as search" actions.
-5. **No results** — empty state with recovery paths: "Ask Gio: …", "Add X as a new candidate", "Create a new job".
+### Behavior
 
-All five states share the same chrome, the same scope chips, the same keyboard footer.
+- **Live filter (default plain text):** unchanged — debounced filter as you type.
+- **Boolean mode toggle ON:**
+  - Typing does NOT filter the list.
+  - Validation error chip does NOT appear while typing.
+  - **Enter** (or Cmd/Ctrl+Enter) commits the expression → table swaps to skeleton → renders filtered results.
+  - **Esc** clears the expression and resets the list.
+  - Parse errors only surface after submit, as an inline chip under the field.
+  - If results count is 0 → standard `TableEmpty` with "Clear boolean" CTA.
+  - When the expression has unsubmitted changes vs. last run, show a faint "Press Enter to run" hint on the right of the field, and dim the run affordance.
+- **Ask Gio (NL) mode:**
+  - Same submit-on-Enter pattern (already async via `candidates-nl-search`).
+  - While the edge function is in-flight → skeleton in table, "Thinking…" pill above.
+- **Loading floor:** minimum visible skeleton duration ~280ms so fast results don't flash.
 
-## Result row anatomy (one pattern, six entity kinds)
+### Files
 
-- 9px / 14px padding, 12 gap, radius 8, 16px tall
-- **Glyph**: 30px avatar (candidates) or tinted 30px tile (jobs / companies / saved / recent / command)
-- **Title**: matched substring wrapped in a soft `#FFF4B8` highlight (never bold pastel, never purple)
-- **Sub-meta** (optional): role @ company / department · open · N candidates / stripe.com · 12 contacts / etc.
-- **Right meta**: stage chip (candidates), "Jobs" / "Companies" label, `⌘`-key hint (commands), keyboard-cursor `↵`
-- **Row states**: idle / hover (`#FAFAF7`) / selected (2px noir left bar + stone wash) — never purple
+- `src/pages/Candidates.tsx` — wire `committedBooleanExpr` / `committedNlQuery` state separate from the input value; pass committed values to filtering hooks; gate filter run on submit only.
+- `src/hooks/useCandidateBooleanFilter.ts` — accept `committedExpr` instead of live `expr`; expose `isRunning` flag (drives skeleton floor via setTimeout).
+- `src/components/candidates/list/CandidatesTable.tsx` — when `isRunning` is true, render `<TableSkeleton rows={8} columns={...} />` inside `<TableBody>` instead of rows.
+- Boolean input component (wherever it lives in `src/components/candidates/`) — add Enter/Esc handling, "Press Enter to run" hint, defer error chip to post-submit.
 
-## Keyboard
+---
 
-`↑ ↓` navigate · `↵` open · `⌘↵` open in new tab · `tab` cycle scope · `esc` close (or clear). Persistent footer inside the panel showing these. `⌘K` opens (replaces current `⌘/`).
+## Part 2 — Spinners & Progress: style guide section + primitives
 
-## Six entity kinds
+### Decision tree (codified in style guide)
 
-| Kind | Glyph | Title | Sub | Right meta |
-|---|---|---|---|---|
-| Candidate | 30px avatar + entity badge | name (highlight) | role @ company | stage chip |
-| Job | green tinted tile | title | department · status · N candidates | "Jobs" |
-| Company | blue tinted tile | name | domain · N contacts | "Companies" |
-| Saved search | purple tinted tile | name | "Saved search · N candidates · N new" | "Searches" |
-| Recent | grey tile (clock) | query | "in candidates" | timestamp |
-| Command | green tile (+) | "Add candidate" | — | `⌘N` |
+| Wait | Treatment |
+|---|---|
+| < 1s | nothing |
+| 1–10s, known shape | **Skeleton** matching destination |
+| 1–10s, unknown shape, in-place | **Spinner** |
+| Determinate, > 1s | **Linear progress** (bar) |
+| Long, multi-step | **Stepped progress** with labels |
+| Indeterminate, multi-second background | **Indeterminate bar** (top of region) |
+| Inside a button | **Button `loading`** (width-locked) |
 
-## Scope (chips inside panel)
+One affordance per region. Never spinner + skeleton together.
 
-`All · Candidates · Jobs · Companies · Saved` + right-aligned `Ask Gio` pill (lilac).
+### New primitives — `src/components/ui/progress-system/`
 
-## Technical plan
+```text
+progress-system/
+  Spinner.tsx           // 12 / 14 / 16 / 20 / 24 px; tone="ink|purple|cream|muted"
+  CircularProgress.tsx  // determinate ring, 0–100
+  LinearProgress.tsx    // determinate bar, 4h default, tone variants
+  IndeterminateBar.tsx  // 2h top-of-region shimmer
+  StepProgress.tsx      // labeled steps
+  InlineLoader.tsx      // spinner + label ("Loading…", "Sending…")
+  Shimmer.tsx           // base shimmer used by all skeletons
+  index.ts
+```
 
-### New components (under `src/components/search/v2/`)
+All built with the tokens from the mock (`--citron-noir`, `--cream`, `--accent-primary` = virgilio-purple, `--hairline`, `--muted`). Single shared `@keyframes gio-spin` and `gio-shimmer` added to `tailwind.config.ts` / `index.css`. Respects `prefers-reduced-motion` (replaces rotation with opacity pulse).
 
-- `GlobalSearchPanel.tsx` — panel chrome, anchoring, scope chips, footer, state machine
-- `SearchScopeChips.tsx` — segmented control + Ask Gio pill
-- `SearchEmptyState.tsx` — recent + jump-to + commands
-- `SearchMixedResults.tsx` — grouped sections w/ "See all" header
-- `SearchScopedResults.tsx` — single-entity list + inline filter chips
-- `SearchAskGio.tsx` — interpretation chips + ranked list + Refine
-- `SearchNoResults.tsx` — recovery paths
-- `SearchResultRow.tsx` — single row primitive (the anatomy above)
-- `SearchKeyboardFooter.tsx` — `↑↓ navigate · ↵ open · ⌘↵ new tab · tab scope`
-- `useSearchHighlight.ts` — wraps matched substring in `<mark>`
-- `useRecentSearches.ts` — localStorage, per-user, capped at 8
+### Existing primitives — align, do not duplicate
 
-### Hook changes
+- `src/components/ui/skeleton.tsx` — re-implement `Skeleton` base on top of new `Shimmer` for visual consistency; keep API.
+- `src/components/ui/table-states.tsx` `TableSkeleton` — adopt shared shimmer; unchanged API.
+- `src/components/search/SearchResultsSkeleton.tsx` — same.
+- `src/components/ui/button.tsx` — `loading` prop already exists; swap its spinner glyph to the new `<Spinner size={14} tone="…" />` and ensure width-lock holds. Buttons automatically pick the right tone via variant.
 
-- Extend `useGlobalSearch` to:
-  - accept a `scope` arg (`all | candidates | jobs | companies | saved`)
-  - search **companies** (CRM `companies` table — confirm it exists, else skip Companies kind in v1)
-  - search **saved searches** via existing `useSavedViews` data
-  - return per-group totals and capped previews
-- New `useAskGioSearch.ts` — calls the existing `candidates-nl-search` edge function (already deployed) and surfaces interpretation chips.
+### Style guide doc
 
-### Replacing the old component
+- Add **§6 Spinners & Progress** to `docs/style-guide.md` with: when to use each, sizes, tones, code snippets, anti-patterns (no spinner inside skeleton, no double indicator, no spinner < 1s).
+- Add a memory entry `mem://style/feedback/spinners-and-progress-v1` and reference it in `mem://index.md` Core.
 
-Drop-in replace `GlobalSearchBar.tsx` so the topbar input is unchanged but the dropdown points at the new panel. Keep `⌘K` (deprecate `⌘/`). Mobile button still opens the existing `SearchResultsDialog` for now.
+### Rollout — apply across the app
 
-### Tokens (Gio Foundation v1.0)
+Targeted sweep, no behavior change beyond swapping ad-hoc loaders:
 
-Panel: radius 12 · shadow `0 12px 32px -8px black/18` · pad 4 · width 600
-Row: 16px tall · 9/14 pad · 12 gap · radius 8 · hover `#FAFAF7` · selected 2px noir bar + `#F1F0EC`
-Highlight: `#FFF4B8` wash (never bold)
-Group label: 10px caps `#8B8F9E` tracking +0.06em
-`kbd`: existing `kbd` style from style guide
+- **Buttons with `loading`**: already correct API-wise — confirms across `SubmitButton`, form submits in Offers, Members invite, Settings save panels (auto via Button).
+- **Tables**: replace any remaining ad-hoc `<Loader2 className="animate-spin" />` cells in `src/components/**/*Table.tsx` with `TableSkeleton`.
+- **Top of regions doing background refetch** (Pipeline kanban, Candidates list react-query background) → `<IndeterminateBar />` at top of the scroll container.
+- **AI surfaces** (Ask Gio, AI fit insights, AI scorecard, AI draft email): replace bespoke "thinking" UI with `<InlineLoader label="Thinking…" tone="purple" />`.
+- **Find / Sourcing**: live search uses `<InlineLoader>` in the chip toolbar; result cards keep their existing skeleton (rebased on shared Shimmer).
+- **Boolean / Ask Gio on Candidates**: `TableSkeleton` on submit (Part 1).
+- **Dashboard widgets**: initial-load skeleton stays; in-widget refresh uses `<IndeterminateBar />` per "Unified loading gates" memory.
 
-### Out of scope (this round)
+Out of scope: redesigning skeleton silhouettes per surface; analytics/charts loaders (separate pass).
 
-- Companies search only wired if `companies` table is reachable from CRM scope; otherwise the chip is hidden in v1.
-- The Cmd palette (CommandDialog) is not changed — this is the topbar dropdown only.
-- No backend schema changes.
+---
 
-## Open question
+## Technical notes
 
-The mock shows a **Companies** scope. The project has a CRM (`useDeals`, etc.) but I want to confirm we should pull from the CRM `companies` table for this top-bar search, or skip Companies in v1 and ship Candidates + Jobs + Saved + Recents + Commands + Ask Gio first. I'll default to **include Companies** unless you say otherwise.
+- All new primitives are pure presentational React + Tailwind, no new deps.
+- Animations defined once in `index.css` (`gio-spin` 0.9s linear infinite, `gio-shimmer` 1.4s ease-in-out infinite) and exposed as Tailwind utilities `animate-gio-spin`, `animate-gio-shimmer`.
+- Button `loading` width-lock preserved (measure → set min-width before swap).
+- Skeleton floor implemented via `useMinimumDuration(isRunning, 280)` hook in `src/hooks/useMinimumDuration.ts`.
+- `prefers-reduced-motion`: spin → 0.7→1 opacity pulse @ 1.2s; shimmer → static muted fill.
+- No DB or edge function changes.
