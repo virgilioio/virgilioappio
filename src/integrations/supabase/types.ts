@@ -1167,6 +1167,38 @@ export type Database = {
           },
         ]
       }
+      candidate_tags: {
+        Row: {
+          candidate_id: string
+          tag_id: string
+          tagged_at: string
+          tagged_by: string | null
+          tenant_id: string
+        }
+        Insert: {
+          candidate_id: string
+          tag_id: string
+          tagged_at?: string
+          tagged_by?: string | null
+          tenant_id: string
+        }
+        Update: {
+          candidate_id?: string
+          tag_id?: string
+          tagged_at?: string
+          tagged_by?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_urls: {
         Row: {
           candidate_id: string
@@ -5818,6 +5850,36 @@ export type Database = {
           is_active?: boolean
           name?: string
           symbol?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tags: {
+        Row: {
+          color: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          tenant_id?: string
           updated_at?: string
         }
         Relationships: []
