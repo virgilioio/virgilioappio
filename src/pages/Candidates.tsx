@@ -473,8 +473,13 @@ function CandidatesInner() {
             onEditView={handleSelectView}
             onDuplicateView={handleDuplicateSavedView}
             onDeleteView={(v) => setDeleteSavedView(v)}
+            tags={tags}
+            activeTagId={activeTagId}
+            onSelectTag={handleSelectTag}
+            onDeleteTag={(t) => setDeleteTagTarget(t)}
           />
         </div>
+
 
         <main className="flex-1 min-w-0 overflow-y-auto px-4 sm:px-6 py-5 space-y-4">
           <SavedSearchToolbar
