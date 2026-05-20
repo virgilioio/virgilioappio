@@ -285,17 +285,18 @@ export default function Find() {
 
               <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
                 {mode === 'project' && currentProject && (
-                  <div className="flex items-center justify-end gap-2 px-4 py-3 border-b border-border shrink-0">
-                    <SourcingProjectActions
-                      project={currentProject}
-                      isRefreshing={isRefreshing}
-                      onRefresh={() => projectActionsRef.current?.onRefresh()}
-                      onArchive={() => projectActionsRef.current?.onArchive()}
-                      onDelete={() => projectActionsRef.current?.onDelete()}
-                      onVisibilityToggle={(v) => projectActionsRef.current?.onVisibilityToggle(v) ?? Promise.resolve()}
-                      onLinkToJob={(id) => projectActionsRef.current?.onLinkToJob(id) ?? Promise.resolve()}
-                    />
-                  </div>
+                  <SourcingResultsHeader
+                    project={currentProject}
+                    candidateCount={currentProject.candidate_count ?? 0}
+                    isRefreshing={isRefreshing}
+                    onSelectProject={(id) => navigate(`/find/${id}`)}
+                    onNewSearch={handleNewSearch}
+                    onRefresh={() => projectActionsRef.current?.onRefresh()}
+                    onArchive={() => projectActionsRef.current?.onArchive()}
+                    onDelete={() => projectActionsRef.current?.onDelete()}
+                    onVisibilityToggle={(v) => projectActionsRef.current?.onVisibilityToggle(v) ?? Promise.resolve()}
+                    onLinkToJob={(id) => projectActionsRef.current?.onLinkToJob(id) ?? Promise.resolve()}
+                  />
                 )}
 
                 <div className="flex-1 min-h-0 overflow-hidden">
