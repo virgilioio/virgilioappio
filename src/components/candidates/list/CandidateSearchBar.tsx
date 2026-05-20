@@ -15,7 +15,10 @@ interface CandidateSearchBarProps {
   error?: string | null
   /** True when input value differs from the last committed query (boolean / ai). */
   isDirty?: boolean
+  /** Optional element rendered at the far right of the bar (e.g. Save-as button). */
+  trailing?: React.ReactNode
 }
+
 
 const PLACEHOLDERS: Record<SearchMode, string> = {
   everything: 'Search by name, email, skill, company…',
@@ -24,8 +27,9 @@ const PLACEHOLDERS: Record<SearchMode, string> = {
 }
 
 export function CandidateSearchBar({
-  value, onChange, mode, onSubmit, onClear, loading, error, isDirty,
+  value, onChange, mode, onSubmit, onClear, loading, error, isDirty, trailing,
 }: CandidateSearchBarProps) {
+
   const Icon = mode === 'ai' ? Sparkles : Search
   const submittable = mode === 'boolean' || mode === 'ai'
 
@@ -86,8 +90,10 @@ export function CandidateSearchBar({
               <kbd className="px-1 py-0.5 bg-[#F1F0EC] rounded font-mono">K</kbd>
             </div>
           )}
+          {trailing && <div className="pl-1 ml-1 border-l border-virgilio-border/70 flex items-center">{trailing}</div>}
         </div>
       </div>
+
       {error && (
         <div className="text-[11.5px] text-destructive font-inter pl-2">{error}</div>
       )}
