@@ -27,6 +27,12 @@ import { CandidatesFooter } from '@/components/candidates/list/CandidatesFooter'
 import { SaveSearchButton } from '@/components/candidates/list/SaveSearchButton'
 import { SaveSearchPopover, type SaveSearchPayload } from '@/components/candidates/list/SaveSearchPopover'
 import { deriveAutoName } from '@/lib/savedSearchAutoName'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 
 import { CandidateFormSheet } from '@/components/candidates/CandidateFormSheet'
@@ -99,6 +105,8 @@ function CandidatesInner() {
   const [saving, setSaving] = useState(false)
   const [justSavedId, setJustSavedId] = useState<string | null>(null)
   const [hasPulsed, setHasPulsed] = useState(false)
+  const [deleteSavedView, setDeleteSavedView] = useState<SavedView | null>(null)
+  const [isDeletingSavedView, setIsDeletingSavedView] = useState(false)
 
 
   const setFiltersFromRecord = useCallback((rec: Partial<CandidateFilters>) => {
@@ -355,6 +363,52 @@ function CandidatesInner() {
   }
   const handleExport = () => toast({ title: 'Export queued', description: 'CSV export coming soon.' })
 
+  const handleDuplicateSavedView = async (v: SavedView) => {
+    try {
+      const created = await createView.mutateAsync({
+        name: `${v.name} (copy)`,
+        filters: v.filters,
+        sort_state: v.sort_state ?? undefined,
+        extra_state: v.extra_state ?? undefined,
+      })
+      setActiveViewId(created.id)
+      setActiveSmartList(null)
+      setFiltersFromRecord(created.filters as Partial<CandidateFilters>)
+      setBaselineFilters(created.filters as Record<string, unknown>)
+      const extra = (created.extra_state ?? {}) as any
+      if (typeof extra.query === 'string') setQuery(extra.query)
+      if (extra.mode) setMode(extra.mode as SearchMode)
+      setJustSavedId(created.id)
+      setTimeout(() => setJustSavedId(prev => (prev === created.id ? null : prev)), 1400)
+      toast({ title: 'Search duplicated', description: `"${created.name}"` })
+    } catch {
+      toast({ title: "Couldn't duplicate search", variant: 'destructive' })
+    }
+  }
+
+  const handleConfirmDeleteSavedView = async () => {
+    if (!deleteSavedView) return
+    setIsDeletingSavedView(true)
+    try {
+      const wasActive = deleteSavedView.id === activeViewId
+      await deleteView.mutateAsync(deleteSavedView.id)
+      if (wasActive) {
+        setActiveViewId(null)
+        setActiveSmartList('all')
+        clearAll()
+        setFiltersFromRecord(SMART_LIST_FILTERS.all as any)
+        setBaselineFilters((SMART_LIST_FILTERS.all ?? {}) as Record<string, unknown>)
+      }
+      setDeleteSavedView(null)
+    } catch {
+      toast({ title: "Couldn't delete search", variant: 'destructive' })
+    } finally {
+      setIsDeletingSavedView(false)
+    }
+  }
+
+
+
 
   const archiveSelected = async () => {
     if (selectedIds.length === 0) return
@@ -399,7 +453,9 @@ function CandidatesInner() {
             onSelectSmartList={handleSelectSmartList}
             onCreateView={handleSavePopoverOpen}
             justSavedId={justSavedId}
-
+            onEditView={handleSelectView}
+            onDuplicateView={handleDuplicateSavedView}
+            onDeleteView={(v) => setDeleteSavedView(v)}
           />
         </div>
 
@@ -567,6 +623,27 @@ function CandidatesInner() {
           onCompleted={() => { setBulkJobOpen(false); clearSelection(); getCandidates() }}
         />
       )}
+
+      <AlertDialog open={!!deleteSavedView} onOpenChange={(open) => { if (!open && !isDeletingSavedView) setDeleteSavedView(null) }}>
+        <AlertDialogContent className="mx-4 max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete saved search?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the saved search "{deleteSavedView?.name}". This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-3">
+            <AlertDialogCancel className="w-full sm:w-auto" disabled={isDeletingSavedView}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleConfirmDeleteSavedView() }}
+              disabled={isDeletingSavedView}
+              className={cn(buttonVariants({ variant: 'danger' }), 'w-full sm:w-auto')}
+            >
+              {isDeletingSavedView ? 'Deleting…' : 'Delete search'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
