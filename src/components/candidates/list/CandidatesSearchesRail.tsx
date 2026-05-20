@@ -47,22 +47,79 @@ function SmartListItem({
   )
 }
 
-function SavedSearchItem({ view, active, justSaved, onClick }: { view: SavedView; active: boolean; justSaved?: boolean; onClick: () => void }) {
+function SavedSearchItem({
+  view, active, justSaved, onClick, onEdit, onDuplicate, onDelete,
+}: {
+  view: SavedView
+  active: boolean
+  justSaved?: boolean
+  onClick: () => void
+  onEdit?: () => void
+  onDuplicate?: () => void
+  onDelete?: () => void
+}) {
+  const hasMenu = !!(onEdit || onDuplicate || onDelete)
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <div
       className={cn(
-        ITEM_BASE,
+        'group relative flex items-center w-full rounded-md',
         active ? ITEM_SELECTED : ITEM_HOVER,
         justSaved && !active && 'bg-virgilio-purple/8 motion-safe:animate-gio-pulse',
       )}
     >
-      <Bookmark className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
-      <div className="flex-1 min-w-0 text-left">
-        <div className="truncate leading-tight">{view.name}</div>
-      </div>
-    </button>
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          ITEM_BASE,
+          'bg-transparent hover:bg-transparent',
+          hasMenu && 'pr-8',
+        )}
+      >
+        <Bookmark className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
+        <div className="flex-1 min-w-0 text-left">
+          <div className="truncate leading-tight">{view.name}</div>
+        </div>
+      </button>
+      {hasMenu && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="xs"
+              iconOnly
+              icon={MoreHorizontal}
+              aria-label={`Actions for ${view.name}`}
+              onClick={(e) => e.stopPropagation()}
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" sideOffset={6}>
+            {onEdit && (
+              <DropdownMenuItem onSelect={() => onEdit()}>
+                <Pencil className="h-3.5 w-3.5 mr-2" />
+                Edit
+              </DropdownMenuItem>
+            )}
+            {onDuplicate && (
+              <DropdownMenuItem onSelect={() => onDuplicate()}>
+                <Copy className="h-3.5 w-3.5 mr-2" />
+                Duplicate
+              </DropdownMenuItem>
+            )}
+            {onDelete && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => onDelete()} className="text-destructive focus:text-destructive">
+                  <Trash2 className="h-3.5 w-3.5 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
   )
 }
 
