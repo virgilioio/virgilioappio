@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { menuPanel } from '@/lib/menu-classes'
@@ -6,31 +6,59 @@ import { Button } from '@/components/ui/button'
 import { TAG_COLOR_PRESETS, tagColorClasses, useTagMutations } from '@/hooks/useTags'
 import { toast } from '@/hooks/use-toast'
 
-export function CreateTagPopover({ trigger }: { trigger: ReactNode }) {
-  const [open, setOpen] = useState(false)
-  const [name, setName] = useState('')
-  const [color, setColor] = useState<string>(TAG_COLOR_PRESETS[0])
-  const { createTag } = useTagMutations()
+export function CreateTagPopover({
+  trigger,
+  editing,
+  open: controlledOpen,
+  onOpenChange,
+}: {
+  trigger?: ReactNode
+  editing?: { id: string; name: string; color: string } | null
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const open = controlledOpen ?? uncontrolledOpen
+  const setOpen = (v: boolean) => { onOpenChange ? onOpenChange(v) : setUncontrolledOpen(v) }
+  const [name, setName] = useState(editing?.name ?? '')
+  const [color, setColor] = useState<string>(editing?.color ?? TAG_COLOR_PRESETS[0])
+  const { createTag, renameTag } = useTagMutations()
+
+  useEffect(() => {
+    if (open) {
+      setName(editing?.name ?? '')
+      setColor(editing?.color ?? TAG_COLOR_PRESETS[0])
+    }
+  }, [open, editing?.id, editing?.name, editing?.color])
+
+  const isEdit = !!editing
 
   async function submit() {
     const n = name.trim()
     if (!n) return
     try {
-      await createTag.mutateAsync({ name: n, color })
-      toast({ title: `Tag "${n}" created` })
+      if (isEdit && editing) {
+        await renameTag.mutateAsync({ id: editing.id, name: n, color })
+        toast({ title: 'Tag updated' })
+      } else {
+        await createTag.mutateAsync({ name: n, color })
+        toast({ title: `Tag "${n}" created` })
+      }
       setName('')
       setColor(TAG_COLOR_PRESETS[0])
       setOpen(false)
     } catch (e: any) {
-      toast({ title: "Couldn't create tag", description: e?.message, variant: 'destructive' })
+      toast({ title: isEdit ? "Couldn't update tag" : "Couldn't create tag", description: e?.message, variant: 'destructive' })
     }
   }
 
+  const pending = createTag.isPending || renameTag.isPending
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      {trigger && <PopoverTrigger asChild>{trigger}</PopoverTrigger>}
       <PopoverContent align="start" sideOffset={6} className={cn(menuPanel, 'w-[260px] p-3')}>
-        <div className="text-[12.5px] font-poppins font-medium text-text-primary mb-2">New tag</div>
+        <div className="text-[12.5px] font-poppins font-medium text-text-primary mb-2">{isEdit ? 'Edit tag' : 'New tag'}</div>
         <input
           autoFocus
           value={name}
@@ -58,8 +86,8 @@ export function CreateTagPopover({ trigger }: { trigger: ReactNode }) {
           })}
         </div>
         <div className="mt-3 flex justify-end">
-          <Button size="sm" onClick={submit} disabled={!name.trim() || createTag.isPending}>
-            Create
+          <Button size="sm" onClick={submit} disabled={!name.trim() || pending}>
+            {isEdit ? 'Save' : 'Create'}
           </Button>
         </div>
       </PopoverContent>
