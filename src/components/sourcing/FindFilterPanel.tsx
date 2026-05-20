@@ -189,10 +189,32 @@ export function FindFilterPanel({
   }
 
   return (
-    <Card className="w-72 h-full shrink-0 flex flex-col min-h-0 overflow-hidden">
+    <Card className="w-[280px] shrink-0 flex flex-col min-h-0 overflow-hidden self-start max-h-full">
       <div className="px-4 pt-4 pb-2 shrink-0">
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Search Criteria</span>
+        <div className="flex items-center justify-between">
+          <span className="font-poppins font-semibold text-[13.5px] text-text-primary">Search criteria</span>
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={() => {
+              onCriteriaChange({
+                skills: [], title_keywords: [], keywords: [], locations: [],
+                seniorities: [], company_sizes: [], industries: [], company_names: [],
+                experience_years: {},
+              })
+              onResultFiltersChange({
+                matchTiers: [], minExperience: 0, maxExperience: 30, source: 'all',
+                hasEmail: undefined, hasPhone: undefined, candidateSource: undefined,
+              })
+            }}
+            className="text-[11.5px] text-text-tertiary hover:text-text-primary"
+          >
+            Reset
+          </Button>
+        </div>
+        <p className="text-[11.5px] text-text-tertiary mt-1">Edit anything to re-run the search.</p>
       </div>
+
 
       <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4 space-y-3">
         <CollapsibleSection label="Job Titles" icon={Briefcase} defaultOpen={(c.title_keywords?.length ?? 0) > 0}>

@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { PageHeader } from '@/components/layout/PageHeader'
-import { Section } from '@/components/layout/Section'
-import { AppContainer } from '@/components/layout/AppContainer'
+import { Bookmark, Plus } from 'lucide-react'
+import { formatDistanceToNow } from 'date-fns'
+import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { AIJobAssistant } from '@/components/dashboard/AIJobAssistant'
 import { FindFilterPanel } from '@/components/sourcing/FindFilterPanel'
 import { SourcingProjectView, SourcingProjectActions as SourcingProjectActionsType } from '@/components/sourcing/SourcingProjectView'
 import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
+import { useSourcingCredits } from '@/hooks/useSourcingCredits'
 import { RoleGate } from '@/components/auth/RoleGate'
 import { useUserJobRoles } from '@/hooks/useUserJobRoles'
 import { GioThinkingHeader } from '@/components/sourcing/GioThinkingHeader'
@@ -193,58 +194,97 @@ export default function Find() {
     })
   }, [])
 
+  const { data: creditsUsage } = useSourcingCredits()
+  const collectRemaining = creditsUsage
+    ? Math.max(0, (creditsUsage.collect_credits_limit || 0) - (creditsUsage.collect_credits_used || 0)) + (creditsUsage.bonus_credits_available || 0)
+    : null
+
   return (
     <RoleGate
       allowedRoles={['isPlatformAdmin', 'isWorkspaceOwner', 'isAdmin', 'isMember']}
       redirectTo="/dashboard"
       accessDeniedMessage="The Find feature is only available to recruiters and administrators."
     >
-      <FirstRunOrientationDialog 
-        open={showFirstRunDialog} 
-        onComplete={() => setShowFirstRunDialog(false)} 
+      <FirstRunOrientationDialog
+        open={showFirstRunDialog}
+        onComplete={() => setShowFirstRunDialog(false)}
       />
-      
-      <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden">
-        <Section variant="default" banded className="animate-fade-in shrink-0">
-          <AppContainer>
-            <PageHeader title="Find" compact />
-          </AppContainer>
-        </Section>
-        
-        <Section className="flex-1 min-h-0 overflow-hidden !py-0">
-          <AppContainer className="h-full min-h-0">
-            <div className="flex gap-6 py-6 h-full min-h-0 overflow-hidden">
+
+      <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden bg-virgilio-cream">
+        <div className="flex-1 min-h-0 overflow-auto">
+          <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8 space-y-6 animate-fade-in">
+            {/* Page header — matches Jobs / Candidates pattern */}
+            <header className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-3">
+                  <h1 className="font-poppins font-semibold tracking-[-0.04em] text-text-primary text-[28px] leading-tight sm:text-[32px]">
+                    Find<span className="text-virgilio-purple">.</span>
+                  </h1>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-body-sm text-text-secondary">
+                  {currentProject && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-virgilio-purple" />
+                      <span className="truncate max-w-[260px]">{currentProject.name}</span>
+                    </span>
+                  )}
+                  {currentProject?.updated_at && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-text-tertiary" />
+                      Last refreshed {formatDistanceToNow(new Date(currentProject.updated_at), { addSuffix: true })}
+                    </span>
+                  )}
+                  {collectRemaining != null && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-text-tertiary" />
+                      {collectRemaining} sourcing credits
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <SavedSearchSelector
+                  selectedProjectId={projectId ?? null}
+                  currentProject={currentProject}
+                  onSelectProject={(id) => navigate(`/find/${id}`)}
+                  onNewSearch={handleNewSearch}
+                  trigger={
+                    <Button variant="secondary" size="md" icon={Bookmark}>
+                      My searches
+                    </Button>
+                  }
+                />
+                <Button variant="primary" size="md" icon={Plus} onClick={handleNewSearch}>
+                  New search
+                </Button>
+              </div>
+            </header>
+
+            {/* Two-column workspace */}
+            <div className="flex gap-6 min-h-[calc(100dvh-16rem)]">
               <FindFilterPanel
                 criteria={editableCriteria}
                 onCriteriaChange={handleCriteriaChange}
                 resultFilters={filters}
                 onResultFiltersChange={setFilters}
               />
-              
+
               <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                <div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
-                  <SavedSearchSelector
-                    selectedProjectId={projectId ?? null}
-                    currentProject={currentProject}
-                    onSelectProject={(id) => navigate(`/find/${id}`)}
-                    onNewSearch={() => navigate('/find')}
-                  />
-                  {mode === 'project' && currentProject && (
-                    <>
-                      <div className="flex-1" />
-                      <SourcingProjectActions
-                        project={currentProject}
-                        isRefreshing={isRefreshing}
-                        onRefresh={() => projectActionsRef.current?.onRefresh()}
-                        onArchive={() => projectActionsRef.current?.onArchive()}
-                        onDelete={() => projectActionsRef.current?.onDelete()}
-                        onVisibilityToggle={(v) => projectActionsRef.current?.onVisibilityToggle(v) ?? Promise.resolve()}
-                        onLinkToJob={(id) => projectActionsRef.current?.onLinkToJob(id) ?? Promise.resolve()}
-                      />
-                    </>
-                  )}
-                </div>
-                
+                {mode === 'project' && currentProject && (
+                  <div className="flex items-center justify-end gap-2 px-4 py-3 border-b border-border shrink-0">
+                    <SourcingProjectActions
+                      project={currentProject}
+                      isRefreshing={isRefreshing}
+                      onRefresh={() => projectActionsRef.current?.onRefresh()}
+                      onArchive={() => projectActionsRef.current?.onArchive()}
+                      onDelete={() => projectActionsRef.current?.onDelete()}
+                      onVisibilityToggle={(v) => projectActionsRef.current?.onVisibilityToggle(v) ?? Promise.resolve()}
+                      onLinkToJob={(id) => projectActionsRef.current?.onLinkToJob(id) ?? Promise.resolve()}
+                    />
+                  </div>
+                )}
+
                 <div className="flex-1 min-h-0 overflow-hidden">
                   {mode === 'new' && (
                     <div className="flex-1 flex flex-col items-center justify-center px-4 py-12 h-full">
@@ -255,8 +295,8 @@ export default function Find() {
                           ) : (
                             <div className="animate-fade-in">
                               <div className="inline-flex items-center justify-center mb-4">
-                                <img 
-                                  src={gioAvatar} 
+                                <img
+                                  src={gioAvatar}
                                   alt="Gio AI Assistant"
                                   className="h-16 w-16 rounded-full transition-all duration-500"
                                 />
@@ -269,11 +309,11 @@ export default function Find() {
                         </div>
 
                         <div className={`transition-all duration-500 ease-out ${
-                          isGenerating 
-                            ? 'opacity-0 scale-95 max-h-0 overflow-hidden pointer-events-none' 
+                          isGenerating
+                            ? 'opacity-0 scale-95 max-h-0 overflow-hidden pointer-events-none'
                             : 'opacity-100 scale-100 max-h-[1000px]'
                         }`}>
-                          <AIJobAssistant 
+                          <AIJobAssistant
                             onProjectCreated={(newProjectId) => navigate(`/find/${newProjectId}`)}
                             onGeneratingChange={setIsGenerating}
                           />
@@ -281,9 +321,9 @@ export default function Find() {
                       </div>
                     </div>
                   )}
-                  
+
                   {mode === 'project' && projectId && (
-                    <SourcingProjectView 
+                    <SourcingProjectView
                       projectId={projectId}
                       filters={filters}
                       onFiltersChange={setFilters}
@@ -297,8 +337,8 @@ export default function Find() {
                 </div>
               </Card>
             </div>
-          </AppContainer>
-        </Section>
+          </div>
+        </div>
       </div>
     </RoleGate>
   )

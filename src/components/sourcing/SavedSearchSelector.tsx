@@ -14,6 +14,7 @@ interface SavedSearchSelectorProps {
   currentProject: SourcingProject | null
   onSelectProject: (id: string) => void
   onNewSearch: () => void
+  trigger?: React.ReactNode
 }
 
 export function SavedSearchSelector({
@@ -21,6 +22,7 @@ export function SavedSearchSelector({
   currentProject,
   onSelectProject,
   onNewSearch,
+  trigger,
 }: SavedSearchSelectorProps) {
   const [open, setOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -35,31 +37,31 @@ export function SavedSearchSelector({
     }) || []
   }, [projects, searchQuery, statusFilter])
 
-  const triggerLabel = currentProject ? currentProject.name : 'Select a search...'
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button
-          className={`inline-flex items-center gap-1.5 rounded-full border px-3 h-8 text-sm font-poppins font-medium transition-all duration-150 whitespace-nowrap hover:bg-accent/30 ${
-            currentProject
-              ? 'bg-accent/40 border-accent-foreground/20 text-accent-foreground'
-              : 'border-border text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Bookmark className="h-3.5 w-3.5" />
-          {currentProject ? currentProject.name : 'Searches'}
-          {currentProject && (
-            <span
-              role="button"
-              onClick={(e) => { e.stopPropagation(); e.preventDefault(); onNewSearch() }}
-              className="ml-0.5 hover:bg-destructive/20 rounded-full p-0.5 transition-colors"
-            >
-              <X className="h-3 w-3" />
-            </span>
-          )}
-          <ChevronDown className="h-3 w-3 opacity-60" />
-        </button>
+        {trigger ?? (
+          <button
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 h-8 text-sm font-poppins font-medium transition-all duration-150 whitespace-nowrap hover:bg-accent/30 ${
+              currentProject
+                ? 'bg-accent/40 border-accent-foreground/20 text-accent-foreground'
+                : 'border-border text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Bookmark className="h-3.5 w-3.5" />
+            {currentProject ? currentProject.name : 'Searches'}
+            {currentProject && (
+              <span
+                role="button"
+                onClick={(e) => { e.stopPropagation(); e.preventDefault(); onNewSearch() }}
+                className="ml-0.5 hover:bg-destructive/20 rounded-full p-0.5 transition-colors"
+              >
+                <X className="h-3 w-3" />
+              </span>
+            )}
+            <ChevronDown className="h-3 w-3 opacity-60" />
+          </button>
+        )}
       </PopoverTrigger>
       <PopoverContent align="start" className="w-80 p-0" sideOffset={8}>
         <div className="p-3 space-y-2 border-b">
