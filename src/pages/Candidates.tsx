@@ -311,7 +311,7 @@ function CandidatesInner() {
       })
       setActiveViewId(created.id)
       setActiveSmartList(null)
-      setBaselineFilters(filters as Record<string, unknown>)
+      setBaselineFilters(filters as unknown as Record<string, unknown>)
       setJustSavedId(created.id)
       setSaveOpen(false)
       setTimeout(() => setJustSavedId(prev => (prev === created.id ? null : prev)), 1400)
@@ -346,7 +346,7 @@ function CandidatesInner() {
   const handleSaveChanges = async () => {
     if (!activeViewId) return
     await updateView.mutateAsync({ id: activeViewId, filters: filters as any, extra_state: { query, mode } })
-    setBaselineFilters(filters as Record<string, unknown>)
+    setBaselineFilters(filters as unknown as Record<string, unknown>)
   }
   const handleResetChanges = () => {
     const v = views.find(x => x.id === activeViewId)
