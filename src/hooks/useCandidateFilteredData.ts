@@ -17,10 +17,18 @@ export function useCandidateFilteredData(
   candidates: IndependentCandidate[],
   filters: CandidateFilters,
   searchTerm: string,
-  associationsMap?: AssociationsMap
+  associationsMap?: AssociationsMap,
+  candidateTagsMap?: Map<string, string[]>,
 ) {
   return useMemo(() => {
     return candidates.filter(c => {
+      // Tag filter — candidate must have at least one selected tag
+      if (filters.tagIds && filters.tagIds.length > 0) {
+        const ctags = candidateTagsMap?.get(c.id)
+        if (!ctags || !ctags.some(id => filters.tagIds.includes(id))) return false
+      }
+
+
       // Text search
       if (searchTerm) {
         const term = searchTerm.toLowerCase()
