@@ -115,18 +115,19 @@ function CandidatesInner() {
     setActiveViewId(null)
     clearAll()
     setFiltersFromRecord(SMART_LIST_FILTERS[key] as any)
-    setBaselineFiltersHash(stableHash(SMART_LIST_FILTERS[key] ?? {}))
+    setBaselineFilters((SMART_LIST_FILTERS[key] ?? {}) as Record<string, unknown>)
   }, [clearAll, setFiltersFromRecord])
 
   const handleSelectView = useCallback((v: SavedView) => {
     setActiveSmartList(null)
     setActiveViewId(v.id)
     setFiltersFromRecord(v.filters as Partial<CandidateFilters>)
-    setBaselineFiltersHash(stableHash(v.filters))
+    setBaselineFilters(v.filters as Record<string, unknown>)
     const extra = (v.extra_state ?? {}) as any
     if (typeof extra.query === 'string') setQuery(extra.query)
     if (extra.mode) setMode(extra.mode as SearchMode)
   }, [setFiltersFromRecord])
+
 
   // Apply text/boolean/ai narrowing
   // - everything mode → live, debounced via input
@@ -263,24 +264,97 @@ function CandidatesInner() {
 
   const filtersDirty = stableHash(filters) !== baselineFiltersHash
 
-  const handleSaveAsNew = async () => {
-    const name = window.prompt('Name this search')
-    if (!name?.trim()) return
-    const created = await createView.mutateAsync({ name: name.trim(), filters: filters as any, extra_state: { query, mode } })
-    setActiveViewId(created.id); setActiveSmartList(null)
-    setBaselineFiltersHash(stableHash(filters))
+  // Count of array-filter keys + scalar slots that differ between current and baseline.
+  const changesCount = useMemo(() => {
+    const base = (baselineFilters ?? {}) as Record<string, unknown>
+    let n = 0
+    for (const k of Object.keys(filters)) {
+      const a = (filters as any)[k]
+      const b = (base as any)[k]
+      if (Array.isArray(a) && Array.isArray(b)) {
+        if (a.length !== b.length || a.some((x, i) => x !== b[i])) n++
+      } else if (a instanceof Date || b instanceof Date) {
+        const av = a instanceof Date ? a.toISOString() : a ?? null
+        const bv = b instanceof Date ? new Date(b as any).toISOString() : b ?? null
+        if (av !== bv) n++
+      } else if ((a ?? null) !== (b ?? null)) {
+        n++
+      }
+    }
+    return n
+  }, [filters, baselineFilters])
+
+  const autoName = useMemo(
+    () => deriveAutoName(filters, { booleanQuery: mode === 'boolean' ? committedQuery : undefined, aiQuery: mode === 'ai' ? query : undefined }),
+    [filters, mode, committedQuery, query]
+  )
+  const existingNames = useMemo(() => views.map(v => v.name), [views])
+
+  const handleSavePopoverOpen = () => {
+    if (activeFilterCount === 0) return
+    setSaveOpen(true)
+    setHasPulsed(true)
   }
+
+  const handleSavePayload = async (payload: SaveSearchPayload) => {
+    setSaving(true)
+    try {
+      const created = await createView.mutateAsync({
+        name: payload.name,
+        filters: filters as any,
+        extra_state: {
+          query,
+          mode,
+          alert_on_new_matches: payload.alertOnNew,
+          pinned: payload.pinned,
+        },
+      })
+      setActiveViewId(created.id)
+      setActiveSmartList(null)
+      setBaselineFilters(filters as Record<string, unknown>)
+      setJustSavedId(created.id)
+      setSaveOpen(false)
+      setTimeout(() => setJustSavedId(prev => (prev === created.id ? null : prev)), 1400)
+
+      // Undo toast
+      const t = toast({
+        title: 'Search saved',
+        description: `"${payload.name}" — ${finalAfterSmart.length} ${finalAfterSmart.length === 1 ? 'candidate' : 'candidates'}`,
+        action: (
+          <button
+            type="button"
+            className="ml-2 inline-flex items-center h-7 px-2 rounded-md text-[11.5px] font-poppins font-medium border border-white/20 text-white hover:bg-white/10"
+            onClick={async () => {
+              await deleteView.mutateAsync(created.id)
+              setActiveViewId(null)
+              setActiveSmartList('all')
+              setBaselineFilters({})
+              t.dismiss?.()
+            }}
+          >
+            Undo
+          </button>
+        ) as any,
+      })
+    } catch (e) {
+      toast({ title: "Couldn't save search", variant: 'destructive' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleSaveChanges = async () => {
     if (!activeViewId) return
     await updateView.mutateAsync({ id: activeViewId, filters: filters as any, extra_state: { query, mode } })
-    setBaselineFiltersHash(stableHash(filters))
+    setBaselineFilters(filters as Record<string, unknown>)
   }
   const handleResetChanges = () => {
     const v = views.find(x => x.id === activeViewId)
-    if (v) { setFiltersFromRecord(v.filters as any); setBaselineFiltersHash(stableHash(v.filters)) }
-    else if (activeSmartList) { clearAll(); setFiltersFromRecord(SMART_LIST_FILTERS[activeSmartList] as any); setBaselineFiltersHash(stableHash(SMART_LIST_FILTERS[activeSmartList] ?? {})) }
+    if (v) { setFiltersFromRecord(v.filters as any); setBaselineFilters(v.filters as Record<string, unknown>) }
+    else if (activeSmartList) { clearAll(); setFiltersFromRecord(SMART_LIST_FILTERS[activeSmartList] as any); setBaselineFilters((SMART_LIST_FILTERS[activeSmartList] ?? {}) as Record<string, unknown>) }
   }
   const handleExport = () => toast({ title: 'Export queued', description: 'CSV export coming soon.' })
+
 
   const archiveSelected = async () => {
     if (selectedIds.length === 0) return
