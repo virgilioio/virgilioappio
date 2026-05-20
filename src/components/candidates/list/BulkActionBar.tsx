@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Mail, Tag, BookmarkPlus, Archive, Users, X } from 'lucide-react'
+import { Mail, Tag, BookmarkPlus, Archive, Users, X, Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface BulkActionBarProps {
