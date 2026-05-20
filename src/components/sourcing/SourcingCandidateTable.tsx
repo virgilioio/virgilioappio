@@ -1283,27 +1283,16 @@ export function SourcingCandidateTable({
             </Card>
           )
         })}
-        {/* Mobile Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 pt-4">
+        {/* Mobile Load More */}
+        {hasMore && (
+          <div className="flex items-center justify-center pt-4">
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
+              iconRight={ChevronDown}
+              onClick={() => setVisibleCount(c => Math.min(c + PAGE_STEP, totalCount))}
             >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm">
-              {currentPage} / {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-            >
-              <ChevronRight className="h-4 w-4" />
+              Load {Math.min(PAGE_STEP, totalCount - visibleCount)} more
             </Button>
           </div>
         )}
