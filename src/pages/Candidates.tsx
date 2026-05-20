@@ -563,6 +563,15 @@ function CandidatesInner() {
                   }
                 />
               }
+              shareButtonSlot={
+                <ShareListModal
+                  candidateIds={selectedIds}
+                  candidateNames={candidates.filter(c => selectedIds.includes(c.id)).map(c => c.candidate_name)}
+                  trigger={
+                    <Button onDark size="sm" variant="ghost" icon={Share2Icon}>Share</Button>
+                  }
+                />
+              }
             />
           ) : null}
 
