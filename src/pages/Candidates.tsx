@@ -41,13 +41,13 @@ import { MinimizableBulkUploadDialog } from '@/components/candidates/Minimizable
 import { CSVImportDialog } from '@/components/candidates/CSVImportDialog'
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 import { DeleteCandidateDialog } from '@/components/candidates/DeleteCandidateDialog'
-import BulkAddToJobPipelineDialog from '@/components/candidates/BulkAddToJobPipelineDialog'
+import { AddToJobPopover } from '@/components/candidates/bulk/AddToJobPopover'
 
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 import { AddTagPopover } from '@/components/candidates/tags/AddTagPopover'
 import { Button } from '@/components/ui/button'
-import { Tag as TagIcon } from 'lucide-react'
+import { Tag as TagIcon, Users as UsersIcon } from 'lucide-react'
 import { useTags, useAllCandidateTagsMap, useTagMutations, type Tag } from '@/hooks/useTags'
 
 const SMART_LIST_FILTERS: Record<SmartListKey, Partial<CandidateFilters>> = {
@@ -230,7 +230,7 @@ function CandidatesInner() {
   const [isCSVImportOpen, setIsCSVImportOpen] = useState(false)
   const [showMergeDialog, setShowMergeDialog] = useState(false)
   const [duplicateInfo, setDuplicateInfo] = useState<{ existing: any; incoming: any; merged: any } | null>(null)
-  const [bulkJobOpen, setBulkJobOpen] = useState(false)
+  
 
   // Auto-open candidate sheet from query param
   useEffect(() => {
@@ -537,11 +537,21 @@ function CandidatesInner() {
               allFilteredSelected={selectedIds.length >= finalAfterSmart.length}
               onSelectAllFiltered={selectAllFiltered}
               onClearSelection={clearSelection}
-              onAddToJob={() => setBulkJobOpen(true)}
+              onAddToJob={() => {}}
               onEmail={() => toast({ title: 'Bulk email coming soon' })}
               onTag={() => {}}
               onAddToSearch={handleSavePopoverOpen}
               onArchive={archiveSelected}
+              addToJobButtonSlot={
+                <AddToJobPopover
+                  candidateIds={selectedIds}
+                  candidateNames={candidates.filter(c => selectedIds.includes(c.id)).map(c => c.candidate_name)}
+                  onCompleted={() => { clearSelection(); getCandidates() }}
+                  trigger={
+                    <Button onDark size="sm" variant="ghost" icon={UsersIcon}>Add to job</Button>
+                  }
+                />
+              }
               tagButtonSlot={
                 <AddTagPopover
                   candidateIds={selectedIds}
@@ -649,12 +659,6 @@ function CandidatesInner() {
         />
       )}
 
-      {bulkJobOpen && (
-        <BulkAddToJobPipelineDialog
-          candidateIds={selectedIds}
-          onCompleted={() => { setBulkJobOpen(false); clearSelection(); getCandidates() }}
-        />
-      )}
 
       <AlertDialog open={!!deleteSavedView} onOpenChange={(open) => !open && !isDeletingSavedView && setDeleteSavedView(null)}>
         <AlertDialogContent className="mx-4 max-w-md sm:max-w-lg">

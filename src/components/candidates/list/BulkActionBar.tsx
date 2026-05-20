@@ -15,6 +15,8 @@ interface BulkActionBarProps {
   onArchive: () => void
   /** Optional render override for the Tag button (used to wrap it in a Popover trigger). */
   tagButtonSlot?: ReactNode
+  /** Optional render override for the Add to job button (used to wrap it in a Popover trigger). */
+  addToJobButtonSlot?: ReactNode
 }
 
 export function BulkActionBar({
@@ -22,6 +24,7 @@ export function BulkActionBar({
   onSelectAllFiltered, onClearSelection,
   onAddToJob, onEmail, onTag, onAddToSearch, onArchive,
   tagButtonSlot,
+  addToJobButtonSlot,
 }: BulkActionBarProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 h-12 px-4 rounded-xl bg-[#0d0d09] text-white">
@@ -42,7 +45,7 @@ export function BulkActionBar({
         <button onClick={onClearSelection} className="text-white/60 hover:text-white">Clear</button>
       </div>
       <div className="flex items-center gap-1">
-        <Button onDark size="sm" variant="ghost" icon={Users} onClick={onAddToJob}>Add to job</Button>
+        {addToJobButtonSlot ?? <Button onDark size="sm" variant="ghost" icon={Users} onClick={onAddToJob}>Add to job</Button>}
         <Button onDark size="sm" variant="ghost" icon={Mail} onClick={onEmail}>Email</Button>
         {tagButtonSlot ?? <Button onDark size="sm" variant="ghost" icon={Tag} onClick={onTag}>Tag</Button>}
         <Button onDark size="sm" variant="ghost" icon={BookmarkPlus} onClick={onAddToSearch}>Add to search</Button>
