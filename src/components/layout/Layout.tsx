@@ -10,6 +10,7 @@ import { BulkUploadProvider } from '@/contexts/BulkUploadContext'
 import { GlobalBulkUploadWidget } from '@/components/candidates/GlobalBulkUploadWidget'
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav'
 import { AppSidebar } from '@/components/layout/AppSidebar'
+import { HeaderContextBands } from '@/components/layout/HeaderContextBands'
 
 export function Layout() {
   const location = useLocation()
@@ -71,6 +72,7 @@ export function Layout() {
           <div aria-hidden className="hidden sm:block fixed top-0 left-[5.5rem] right-3 h-3 z-40 bg-background pointer-events-none" />
           <div className="bg-background sm:pl-[5.5rem] sm:pr-3">
             <Header />
+            <HeaderContextBands />
             <main className="pt-0 sm:pt-16 pb-24 sm:pb-0 min-h-screen sm:min-h-[calc(100vh-4rem)]">
               <Outlet />
             </main>

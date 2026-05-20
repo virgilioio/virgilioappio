@@ -20,23 +20,35 @@ export function SourcingCreditIndicator() {
 
   const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
+  const lowCredits = collectUsagePercent >= 80
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-9 gap-2 hidden sm:inline-flex font-poppins">
-          <Coins className="h-4 w-4" />
-          <span className="text-sm">Credits</span>
-          {collectUsagePercent >= 95 && (
-            <Badge variant="destructive" className="h-5 w-5 p-0 flex items-center justify-center">
-              !
-            </Badge>
+        <button
+          type="button"
+          aria-label="Sourcing credits"
+          className={cn(
+            'hidden sm:inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full',
+            'bg-white/8 hover:bg-white/12 text-white/85 hover:text-white',
+            'font-poppins font-medium text-[11.5px] tracking-[-0.005em] transition-colors',
+            'focus:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/40',
           )}
-          {collectUsagePercent >= 80 && collectUsagePercent < 95 && (
-            <Badge className="h-5 w-5 p-0 flex items-center justify-center bg-yellow-500 text-white hover:bg-yellow-600">
-              !
-            </Badge>
+        >
+          <Coins className="h-3.5 w-3.5" />
+          <span className="tabular-nums">
+            {Math.max(0, (usage.collect_credits_limit || 0) - (usage.collect_credits_used || 0))}
+          </span>
+          <span className="opacity-70">credits</span>
+          {lowCredits && (
+            <span
+              className={cn(
+                'h-1.5 w-1.5 rounded-full ml-0.5',
+                collectUsagePercent >= 95 ? 'bg-red-400' : 'bg-amber-300',
+              )}
+            />
           )}
-        </Button>
+        </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-72">
         <DropdownMenuLabel>
