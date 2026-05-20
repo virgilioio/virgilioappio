@@ -20,6 +20,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { toast } from '@/hooks/use-toast'
 import { SavedSearchSelector } from '@/components/sourcing/SavedSearchSelector'
 import { SourcingProjectActions } from '@/components/sourcing/SourcingProjectActions'
+import { SourcingResultsHeader } from '@/components/sourcing/SourcingResultsHeader'
 
 export default function Find() {
   const { projectId } = useParams<{ projectId?: string }>()
