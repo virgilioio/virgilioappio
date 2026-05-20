@@ -1,24 +1,23 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Bookmark, Plus } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
+import { Bookmark, SlidersHorizontal } from 'lucide-react'
+import { format, formatDistanceToNow } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { AIJobAssistant } from '@/components/dashboard/AIJobAssistant'
+import { Badge } from '@/components/ui/badge'
 import { FindFilterPanel } from '@/components/sourcing/FindFilterPanel'
 import { SourcingProjectView, SourcingProjectActions as SourcingProjectActionsType } from '@/components/sourcing/SourcingProjectView'
+import { FindEmptyState } from '@/components/sourcing/FindEmptyState'
 import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
 import { useSourcingCredits } from '@/hooks/useSourcingCredits'
 import { RoleGate } from '@/components/auth/RoleGate'
 import { useUserJobRoles } from '@/hooks/useUserJobRoles'
-import { GioThinkingHeader } from '@/components/sourcing/GioThinkingHeader'
 import { FirstRunOrientationDialog } from '@/components/onboarding/FirstRunOrientationDialog'
 import { useSourcingProjects } from '@/hooks/useSourcingProjects'
 import { SourcingProjectFilters, SearchCriteria, SourcingProject } from '@/types/sourcing'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from '@/hooks/use-toast'
-import gioAvatar from '@/assets/gio-avatar.png'
 import { SavedSearchSelector } from '@/components/sourcing/SavedSearchSelector'
 import { SourcingProjectActions } from '@/components/sourcing/SourcingProjectActions'
 
@@ -221,24 +220,33 @@ export default function Find() {
                     Find<span className="text-virgilio-purple">.</span>
                   </h1>
                 </div>
-                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-body-sm text-text-secondary">
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-body-sm text-text-tertiary">
+                  <Badge tone="lilac" size="sm" dot>
+                    {sourcingProjects?.length ?? 0} saved {(sourcingProjects?.length ?? 0) === 1 ? 'search' : 'searches'}
+                  </Badge>
                   {currentProject && (
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="h-1.5 w-1.5 rounded-full bg-virgilio-purple" />
-                      <span className="truncate max-w-[260px]">{currentProject.name}</span>
-                    </span>
+                    <>
+                      <span className="text-text-tertiary/60">·</span>
+                      <span className="truncate max-w-[260px] text-text-secondary">{currentProject.name}</span>
+                    </>
                   )}
                   {currentProject?.updated_at && (
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="h-1.5 w-1.5 rounded-full bg-text-tertiary" />
-                      Last refreshed {formatDistanceToNow(new Date(currentProject.updated_at), { addSuffix: true })}
-                    </span>
+                    <>
+                      <span className="text-text-tertiary/60">·</span>
+                      <span>Last refreshed {formatDistanceToNow(new Date(currentProject.updated_at), { addSuffix: true })}</span>
+                    </>
                   )}
                   {collectRemaining != null && (
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="h-1.5 w-1.5 rounded-full bg-text-tertiary" />
-                      {collectRemaining} sourcing credits
-                    </span>
+                    <>
+                      <span className="text-text-tertiary/60">·</span>
+                      <span>{collectRemaining} sourcing credits</span>
+                    </>
+                  )}
+                  {creditsUsage?.next_reset && (
+                    <>
+                      <span className="text-text-tertiary/60">·</span>
+                      <span>Renews {format(new Date(creditsUsage.next_reset), 'MMM d')}</span>
+                    </>
                   )}
                 </div>
               </div>
@@ -255,8 +263,13 @@ export default function Find() {
                     </Button>
                   }
                 />
-                <Button variant="primary" size="md" icon={Plus} onClick={handleNewSearch}>
-                  New search
+                <Button
+                  variant="secondary"
+                  size="md"
+                  icon={SlidersHorizontal}
+                  onClick={() => navigate('/settings?tab=sourcing')}
+                >
+                  Sourcing settings
                 </Button>
               </div>
             </header>
@@ -287,39 +300,13 @@ export default function Find() {
 
                 <div className="flex-1 min-h-0 overflow-hidden">
                   {mode === 'new' && (
-                    <div className="flex-1 flex flex-col items-center justify-center px-4 py-12 h-full">
-                      <div className={`w-full max-w-3xl mx-auto transition-all duration-500 ease-out ${isGenerating ? 'space-y-0' : 'space-y-8'}`}>
-                        <div className={`text-center transition-all duration-500 ease-out ${isGenerating ? 'py-8' : 'space-y-3'}`}>
-                          {isGenerating ? (
-                            <GioThinkingHeader />
-                          ) : (
-                            <div className="animate-fade-in">
-                              <div className="inline-flex items-center justify-center mb-4">
-                                <img
-                                  src={gioAvatar}
-                                  alt="Gio AI Assistant"
-                                  className="h-16 w-16 rounded-full transition-all duration-500"
-                                />
-                              </div>
-                              <h1 className="text-xl md:text-2xl font-poppins font-bold text-foreground" style={{ letterSpacing: '-0.06em' }}>
-                                What role are you hiring right now<span className="text-primary">?</span>
-                              </h1>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className={`transition-all duration-500 ease-out ${
-                          isGenerating
-                            ? 'opacity-0 scale-95 max-h-0 overflow-hidden pointer-events-none'
-                            : 'opacity-100 scale-100 max-h-[1000px]'
-                        }`}>
-                          <AIJobAssistant
-                            onProjectCreated={(newProjectId) => navigate(`/find/${newProjectId}`)}
-                            onGeneratingChange={setIsGenerating}
-                          />
-                        </div>
-                      </div>
-                    </div>
+                    <FindEmptyState
+                      isGenerating={isGenerating}
+                      onGeneratingChange={setIsGenerating}
+                      onProjectCreated={(newProjectId) => navigate(`/find/${newProjectId}`)}
+                      recentProjects={sourcingProjects?.slice(0, 4) ?? []}
+                      onSelectProject={(id) => navigate(`/find/${id}`)}
+                    />
                   )}
 
                   {mode === 'project' && projectId && (
