@@ -94,6 +94,7 @@ export function FindEmptyState({
             isGenerating ? 'opacity-0 scale-95 max-h-0 overflow-hidden pointer-events-none' : 'opacity-100 scale-100 max-h-[1200px]'
           )}>
             <AIJobAssistant
+              variant="find"
               onProjectCreated={onProjectCreated}
               onGeneratingChange={onGeneratingChange}
             />
@@ -149,16 +150,17 @@ export function FindEmptyState({
               <p className="text-[10.5px] font-medium uppercase tracking-[0.08em] text-text-tertiary">
                 Continue a saved search
               </p>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5">
                 {recentProjects.map((proj) => (
                   <button
                     key={proj.id}
                     type="button"
                     onClick={() => onSelectProject(proj.id)}
-                    className="group inline-flex items-center gap-2 h-9 px-3 rounded-full border border-border bg-white hover:bg-[#FAFAF7] transition-colors"
+                    title={`Updated ${formatDistanceToNow(new Date(proj.updated_at), { addSuffix: false })} ago`}
+                    className="group inline-flex items-center gap-1.5 h-[30px] px-2.5 rounded-full border border-border bg-white hover:bg-[#FAFAF7] transition-colors"
                   >
                     <Bookmark className="h-3.5 w-3.5 text-virgilio-purple" />
-                    <span className="font-poppins font-medium text-[12.5px] text-text-primary tracking-[-0.005em] max-w-[200px] truncate">
+                    <span className="font-poppins font-medium text-[12px] text-text-primary tracking-[-0.005em] max-w-[160px] truncate">
                       {proj.name}
                     </span>
                     {proj.total_candidates > 0 && (
@@ -169,10 +171,6 @@ export function FindEmptyState({
                     {proj.job_id && (
                       <LinkIcon className="h-3 w-3 text-emerald-600" />
                     )}
-                    <span className="text-text-tertiary/60">·</span>
-                    <span className="text-[11.5px] text-text-tertiary">
-                      {formatDistanceToNow(new Date(proj.updated_at), { addSuffix: false })} ago
-                    </span>
                   </button>
                 ))}
               </div>

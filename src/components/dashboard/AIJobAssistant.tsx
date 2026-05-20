@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Switch } from '@/components/ui/switch'
-import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin, Target, ChevronDown, ChevronUp, TrendingUp, Clock, Users, Award, Building2, Edit2, BarChart3, AlertTriangle, PieChart, RefreshCw, ArrowUp, MessageSquare } from 'lucide-react'
+import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin, Target, ChevronDown, ChevronUp, TrendingUp, Clock, Users, Award, Building2, Edit2, BarChart3, AlertTriangle, PieChart, RefreshCw, ArrowUp, ArrowRight, MessageSquare, Paperclip, Link2 } from 'lucide-react'
 import gioAvatar from '@/assets/gio-avatar.png'
 import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/hooks/use-toast'
@@ -91,6 +91,7 @@ interface MarketSalaryData {
 interface AIJobAssistantProps {
   onProjectCreated?: (projectId: string) => void
   onGeneratingChange?: (isGenerating: boolean) => void
+  variant?: 'default' | 'find'
 }
 
 // Fallback: detect and fix Spanish job titles when prompt was in English
@@ -157,7 +158,7 @@ function sanitizeJobSpec(spec: any, promptText: string): any {
   return sanitized
 }
 
-export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAssistantProps = {}) {
+export function AIJobAssistant({ onProjectCreated, onGeneratingChange, variant = 'default' }: AIJobAssistantProps = {}) {
   const [prompt, setPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [jobSpec, setJobSpec] = useState<JobSpec | null>(null)
@@ -803,92 +804,113 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAs
           </div>
         )}
         
-        {/* ChatGPT-style Input */}
-        <div className="relative max-w-3xl mx-auto">
-          <div className={`relative flex items-end gap-2 px-5 py-3 rounded-[28px] border transition-all ${
-            isFocused 
-              ? 'border-gray-300 shadow-md' 
-              : 'border-gray-200 shadow-sm'
-          } bg-white`}>
-            
-            {/* Textarea (auto-expanding) */}
-            <textarea
-              ref={textareaRef}
-              value={prompt}
-              onChange={handlePromptChange}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-              onKeyDown={handleKeyDown}
-              placeholder="Describe the role you're looking to fill..."
-              rows={1}
-              className="flex-1 resize-none bg-transparent border-none outline-none text-virgilio-text placeholder:text-gray-400 max-h-[200px] overflow-y-auto py-1"
-              style={{ 
-                minHeight: '24px',
-                scrollbarWidth: 'thin'
-              }}
-            />
-            
-            {/* Toggle and Send Button */}
-            <div className="flex items-center gap-2 flex-shrink-0 pb-1">
-              <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">
-                Chat with Gio
-              </span>
-              <Switch 
-                checked={chatMode} 
-                onCheckedChange={handleToggleChatMode}
-              />
-              {prompt.trim().length > 0 && (
-                <button
-                  onClick={chatMode ? handleSendChatMessage : handleGenerate}
-                  disabled={chatMode ? isChatLoading : (!canGenerate || isGenerating)}
-                  title={
-                    chatMode 
-                      ? 'Send message to Gio'
-                      : canGenerate ? 'Generate job specification' : 'Enter at least 10 words'
-                  }
-                  className="flex items-center justify-center h-8 w-8 rounded-full bg-virgilio-text hover:bg-black disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                >
-                  {(isGenerating || isChatLoading) ? (
-                    <Loader2 className="h-4 w-4 text-white animate-spin" />
-                  ) : (
-                    <ArrowUp className="h-4 w-4 text-white" />
+        {/* Composer */}
+        {variant === 'find' ? (
+          <FindComposer
+            prompt={prompt}
+            textareaRef={textareaRef}
+            handlePromptChange={handlePromptChange}
+            handleKeyDown={handleKeyDown}
+            setIsFocused={setIsFocused}
+            isFocused={isFocused}
+            chatMode={chatMode}
+            handleToggleChatMode={handleToggleChatMode}
+            onSubmit={chatMode ? handleSendChatMessage : handleGenerate}
+            canSubmit={chatMode ? !!prompt.trim() && !isChatLoading : (canGenerate && !isGenerating)}
+            isWorking={isGenerating || isChatLoading}
+            validation={currentValidation}
+            validCount={validItemsCount}
+          />
+        ) : (
+          <>
+            {/* ChatGPT-style Input */}
+            <div className="relative max-w-3xl mx-auto">
+              <div className={`relative flex items-end gap-2 px-5 py-3 rounded-[28px] border transition-all ${
+                isFocused 
+                  ? 'border-gray-300 shadow-md' 
+                  : 'border-gray-200 shadow-sm'
+              } bg-white`}>
+                
+                {/* Textarea (auto-expanding) */}
+                <textarea
+                  ref={textareaRef}
+                  value={prompt}
+                  onChange={handlePromptChange}
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Describe the role you're looking to fill..."
+                  rows={1}
+                  className="flex-1 resize-none bg-transparent border-none outline-none text-virgilio-text placeholder:text-gray-400 max-h-[200px] overflow-y-auto py-1"
+                  style={{ 
+                    minHeight: '24px',
+                    scrollbarWidth: 'thin'
+                  }}
+                />
+                
+                {/* Toggle and Send Button */}
+                <div className="flex items-center gap-2 flex-shrink-0 pb-1">
+                  <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">
+                    Chat with Gio
+                  </span>
+                  <Switch 
+                    checked={chatMode} 
+                    onCheckedChange={handleToggleChatMode}
+                  />
+                  {prompt.trim().length > 0 && (
+                    <button
+                      onClick={chatMode ? handleSendChatMessage : handleGenerate}
+                      disabled={chatMode ? isChatLoading : (!canGenerate || isGenerating)}
+                      title={
+                        chatMode 
+                          ? 'Send message to Gio'
+                          : canGenerate ? 'Generate job specification' : 'Enter at least 10 words'
+                      }
+                      className="flex items-center justify-center h-8 w-8 rounded-full bg-virgilio-text hover:bg-black disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {(isGenerating || isChatLoading) ? (
+                        <Loader2 className="h-4 w-4 text-white animate-spin" />
+                      ) : (
+                        <ArrowUp className="h-4 w-4 text-white" />
+                      )}
+                    </button>
                   )}
-                </button>
+                </div>
+              </div>
+              
+              {/* Word Count - hide in chat mode */}
+              {!chatMode && (
+                <div className="absolute -bottom-6 right-2 text-xs text-gray-400">
+                  {wordCount} words
+                </div>
               )}
             </div>
-          </div>
-          
-          {/* Word Count - hide in chat mode */}
-          {!chatMode && (
-            <div className="absolute -bottom-6 right-2 text-xs text-gray-400">
-              {wordCount} words
-            </div>
-          )}
-        </div>
 
-        {/* Validation Pills - only show in normal mode */}
-        {!chatMode && (
-          <div className="flex justify-center mt-10">
-            <div className="flex flex-wrap gap-3 justify-center">
-              {currentValidation.map((item) => (
-                <div 
-                  key={item.id} 
-                  className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                    item.checked 
-                      ? 'bg-green-50 border-green-200 text-green-700' 
-                      : 'bg-gray-50 border-gray-200 text-gray-500'
-                  }`}
-                >
-                  {item.checked ? (
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                  ) : (
-                    <Circle className="h-3.5 w-3.5" />
-                  )}
-                  <span>{item.label}</span>
+            {/* Validation Pills - only show in normal mode */}
+            {!chatMode && (
+              <div className="flex justify-center mt-10">
+                <div className="flex flex-wrap gap-3 justify-center">
+                  {currentValidation.map((item) => (
+                    <div 
+                      key={item.id} 
+                      className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                        item.checked 
+                          ? 'bg-green-50 border-green-200 text-green-700' 
+                          : 'bg-gray-50 border-gray-200 text-gray-500'
+                      }`}
+                    >
+                      {item.checked ? (
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      ) : (
+                        <Circle className="h-3.5 w-3.5" />
+                      )}
+                      <span>{item.label}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -1144,5 +1166,155 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAs
         isLoading={isCreatingOrg}
       />
     </>
+  )
+}
+// ---------------------------------------------------------------------------
+// FindComposer — card-style composer used on the Find page (variant="find")
+// ---------------------------------------------------------------------------
+
+interface FindComposerProps {
+  prompt: string
+  textareaRef: React.RefObject<HTMLTextAreaElement>
+  handlePromptChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
+  handleKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void
+  setIsFocused: (v: boolean) => void
+  isFocused: boolean
+  chatMode: boolean
+  handleToggleChatMode: (enabled: boolean) => void
+  onSubmit: () => void
+  canSubmit: boolean
+  isWorking: boolean
+  validation: ValidationItem[]
+  validCount: number
+}
+
+function FindComposer({
+  prompt,
+  textareaRef,
+  handlePromptChange,
+  handleKeyDown,
+  setIsFocused,
+  isFocused,
+  chatMode,
+  handleToggleChatMode,
+  onSubmit,
+  canSubmit,
+  isWorking,
+  validation,
+  validCount,
+}: FindComposerProps) {
+  const total = validation.length || 5
+  const missing = validation.filter(v => !v.checked).map(v => v.label.toLowerCase())
+
+  let caption = ''
+  let captionClass = 'text-text-secondary'
+  if (validCount === 0) {
+    caption = 'Add a role, location, and what success looks like.'
+  } else if (validCount >= total) {
+    caption = 'Ready to search.'
+    captionClass = 'text-emerald-600'
+  } else if (validCount <= 2) {
+    caption = `Looking good — add ${missing.slice(0, 2).join(' and ')} for stronger matches.`
+  } else {
+    caption = `Strong prompt. Add ${missing[0]} to tighten results.`
+  }
+
+  return (
+    <div className="space-y-2">
+      <div
+        className={`rounded-2xl border bg-white transition-all ${
+          isFocused
+            ? 'border-virgilio-purple/40 ring-1 ring-virgilio-purple/30'
+            : 'border-border shadow-[0_1px_2px_rgba(0,0,0,0.04)]'
+        }`}
+      >
+        <textarea
+          ref={textareaRef}
+          value={prompt}
+          onChange={handlePromptChange}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          onKeyDown={handleKeyDown}
+          placeholder={
+            chatMode
+              ? 'Tell Gio what you need…'
+              : 'Senior product designer with design-systems experience at a B2B SaaS startup. Open to remote (US), 6+ years…'
+          }
+          rows={3}
+          className="w-full resize-none bg-transparent border-none outline-none px-4 pt-3.5 pb-2 text-[14px] leading-relaxed text-text-primary placeholder:text-text-tertiary min-h-[84px] max-h-[260px]"
+          style={{ scrollbarWidth: 'thin' }}
+        />
+
+        <div className="flex items-center justify-between gap-2 border-t border-border/70 px-3 py-2">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 h-[30px] px-2.5 rounded-lg text-[12.5px] font-poppins font-medium text-text-secondary hover:text-text-primary hover:bg-[#F1F0EC] transition-colors"
+            >
+              <Paperclip className="h-3.5 w-3.5" />
+              Attach JD
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 h-[30px] px-2.5 rounded-lg text-[12.5px] font-poppins font-medium text-text-secondary hover:text-text-primary hover:bg-[#F1F0EC] transition-colors"
+            >
+              <Link2 className="h-3.5 w-3.5" />
+              Paste LinkedIn URL
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 h-[30px] px-2.5 rounded-lg text-[12.5px] font-poppins font-medium text-text-secondary hover:text-text-primary hover:bg-[#F1F0EC] transition-colors"
+            >
+              <Briefcase className="h-3.5 w-3.5" />
+              Use an open job
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <span className="hidden sm:inline-flex items-center gap-1 text-[10.5px] text-text-tertiary">
+              <kbd className="px-1 py-0.5 rounded border border-border bg-[#FAFAF7] font-mono text-[10px]">⌘</kbd>
+              <span>+</span>
+              <kbd className="px-1 py-0.5 rounded border border-border bg-[#FAFAF7] font-mono text-[10px]">Enter</kbd>
+            </span>
+            <Button
+              variant="purple"
+              size="md"
+              icon={Sparkles}
+              iconRight={ArrowRight}
+              onClick={onSubmit}
+              disabled={!canSubmit}
+              loading={isWorking}
+            >
+              {chatMode ? 'Send' : 'Find candidates'}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Strength meter + Chat with Gio link */}
+      <div className="flex items-center justify-between gap-3 px-1">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-1 shrink-0">
+            {Array.from({ length: total }).map((_, i) => (
+              <span
+                key={i}
+                className={`h-1.5 w-1.5 rounded-full transition-colors ${
+                  i < validCount ? 'bg-virgilio-purple' : 'bg-text-tertiary/25'
+                }`}
+              />
+            ))}
+          </div>
+          <span className={`text-[11.5px] truncate ${captionClass}`}>{caption}</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => handleToggleChatMode(!chatMode)}
+          className="inline-flex items-center gap-1 text-[11.5px] font-poppins font-medium text-virgilio-purple hover:underline shrink-0"
+        >
+          {chatMode ? 'Switch back to prompt' : 'Chat with Gio instead'}
+          <ArrowRight className="h-3 w-3" />
+        </button>
+      </div>
+    </div>
   )
 }
