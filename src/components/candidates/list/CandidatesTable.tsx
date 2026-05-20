@@ -189,7 +189,7 @@ export function CandidatesTable({
                         {isNew(c.created_at) && <Badge tone="green" size="xs" shape="pill">New</Badge>}
                       </span>
                     }
-                    sub={c.current_job_title || c.role_current || c.company_current || c.email || '—'}
+                    sub={c.current_job_title || c.company_current || c.email || '—'}
                   />
                 </div>
               </TableCell>
