@@ -48,7 +48,7 @@ import { toast } from '@/hooks/use-toast'
 import { AddTagPopover } from '@/components/candidates/tags/AddTagPopover'
 import { Button } from '@/components/ui/button'
 import { Tag as TagIcon } from 'lucide-react'
-import { useTags, useAllCandidateTagsMap } from '@/hooks/useTags'
+import { useTags, useAllCandidateTagsMap, useTagMutations, type Tag } from '@/hooks/useTags'
 
 const SMART_LIST_FILTERS: Record<SmartListKey, Partial<CandidateFilters>> = {
   all: {},
@@ -89,6 +89,17 @@ function CandidatesInner() {
   const { filters, setArrayFilter, setNumericFilter, setDateFilter, clearAll, activeFilterCount } = useCandidateFilters()
   const { tags } = useTags()
   const { data: allCandidateTagsMap } = useAllCandidateTagsMap()
+  const { deleteTag } = useTagMutations()
+  const activeTagId = filters.tagIds?.[0] ?? null
+  const handleSelectTag = useCallback((tag: Tag) => {
+    setActiveSmartList(null)
+    setActiveViewId(null)
+    clearAll()
+    setArrayFilter('tagIds', [tag.id])
+    setBaselineFilters({ tagIds: [tag.id] })
+  }, [clearAll, setArrayFilter])
+  const [deleteTagTarget, setDeleteTagTarget] = useState<Tag | null>(null)
+  const [isDeletingTag, setIsDeletingTag] = useState(false)
 
   // Search state
   const [mode, setMode] = useState<SearchMode>('everything')
@@ -116,7 +127,7 @@ function CandidatesInner() {
 
 
   const setFiltersFromRecord = useCallback((rec: Partial<CandidateFilters>) => {
-    const arrayKeys = ['statuses','sources','countries','states','cities','companies','seniorityLevels','functionalAreas','specializations','skills','enrichmentStatuses','pipelineStatuses','jobs','stages','rejectedAtStages'] as const
+    const arrayKeys = ['statuses','sources','countries','states','cities','companies','seniorityLevels','functionalAreas','specializations','skills','enrichmentStatuses','pipelineStatuses','jobs','stages','rejectedAtStages','tagIds'] as const
     for (const k of arrayKeys) setArrayFilter(k, (rec[k] as string[]) ?? [])
     const numKeys = ['experienceMin','experienceMax','salaryMin','salaryMax'] as const
     for (const k of numKeys) setNumericFilter(k, (rec[k] as number | null) ?? null)
@@ -462,8 +473,13 @@ function CandidatesInner() {
             onEditView={handleSelectView}
             onDuplicateView={handleDuplicateSavedView}
             onDeleteView={(v) => setDeleteSavedView(v)}
+            tags={tags}
+            activeTagId={activeTagId}
+            onSelectTag={handleSelectTag}
+            onDeleteTag={(t) => setDeleteTagTarget(t)}
           />
         </div>
+
 
         <main className="flex-1 min-w-0 overflow-y-auto px-4 sm:px-6 py-5 space-y-4">
           <SavedSearchToolbar
@@ -660,7 +676,47 @@ function CandidatesInner() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={!!deleteTagTarget} onOpenChange={(open) => !open && !isDeletingTag && setDeleteTagTarget(null)}>
+        <AlertDialogContent className="mx-4 max-w-md sm:max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete tag permanently?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`This will permanently delete the tag "${deleteTagTarget?.name ?? ''}"`}
+              {deleteTagTarget?.usage_count
+                ? ` and remove it from ${deleteTagTarget.usage_count} candidate${deleteTagTarget.usage_count === 1 ? '' : 's'}.`
+                : '.'}
+              {' '}This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-3">
+            <AlertDialogCancel className="w-full sm:w-auto" disabled={isDeletingTag}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async (e) => {
+                e.preventDefault()
+                if (!deleteTagTarget) return
+                setIsDeletingTag(true)
+                try {
+                  await deleteTag.mutateAsync(deleteTagTarget.id)
+                  if (activeTagId === deleteTagTarget.id) {
+                    setArrayFilter('tagIds', [])
+                    setActiveSmartList('all')
+                  }
+                  setDeleteTagTarget(null)
+                } finally {
+                  setIsDeletingTag(false)
+                }
+              }}
+              disabled={isDeletingTag}
+              className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeletingTag ? 'Deleting…' : 'Delete tag'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+
   )
 }
 
