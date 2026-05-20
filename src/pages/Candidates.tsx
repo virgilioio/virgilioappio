@@ -12,6 +12,7 @@ import { useCandidateJobAssociationsMap } from '@/hooks/useCandidateJobAssociati
 import { useCandidateFilterOptions } from '@/hooks/useCandidateFilterOptions'
 import { useCandidateFilteredData } from '@/hooks/useCandidateFilteredData'
 import { useCandidateBooleanFilter } from '@/hooks/useCandidateBooleanFilter'
+import { useMinimumDuration } from '@/hooks/useMinimumDuration'
 import { useSavedViews, type SavedView } from '@/hooks/useSavedViews'
 
 import { CandidatesHeader, type SmartListKey } from '@/components/candidates/list/CandidatesHeader'
@@ -76,6 +77,9 @@ function CandidatesInner() {
   // Search state
   const [mode, setMode] = useState<SearchMode>('everything')
   const [query, setQuery] = useState('')
+  // Committed query used to run boolean / ai filtering on Enter (not on keystroke).
+  const [committedQuery, setCommittedQuery] = useState('')
+  const [searchRunTick, setSearchRunTick] = useState(0)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
 
@@ -113,14 +117,25 @@ function CandidatesInner() {
   }, [setFiltersFromRecord])
 
   // Apply text/boolean/ai narrowing
-  const textFiltered = useMemo(() => {
-    if (mode !== 'everything') return candidates
-    return candidates // applied via search term in useCandidateFilteredData below
-  }, [candidates, mode])
+  // - everything mode → live, debounced via input
+  // - boolean mode    → only runs on commit (Enter)
+  // - ai mode         → runs via edge function on Enter (separate flow)
   const everythingTerm = mode === 'everything' ? query : ''
-  const baseFiltered = useCandidateFilteredData(textFiltered, filters, everythingTerm, associationsMap)
-  const { matches: booleanMatches, error: booleanError } = useCandidateBooleanFilter(baseFiltered, query, mode === 'boolean')
+  const baseFiltered = useCandidateFilteredData(candidates, filters, everythingTerm, associationsMap)
+  const booleanExpr = mode === 'boolean' ? committedQuery : ''
+  const { matches: booleanMatches, error: booleanError } = useCandidateBooleanFilter(baseFiltered, booleanExpr, mode === 'boolean')
   const finalCandidates = mode === 'boolean' ? booleanMatches : baseFiltered
+
+  // Skeleton floor for boolean/ai commits so fast filters don't flash.
+  // Triggers whenever searchRunTick changes; held for ~280ms minimum.
+  const [searchRunning, setSearchRunning] = useState(false)
+  useEffect(() => {
+    if (searchRunTick === 0) return
+    setSearchRunning(true)
+    const t = setTimeout(() => setSearchRunning(false), 10)
+    return () => clearTimeout(t)
+  }, [searchRunTick])
+  const isSearching = useMinimumDuration(searchRunning || aiLoading, 320)
 
   // Smart list post-filter for the ones the filter context can't express
   const finalAfterSmart = useMemo(() => {
