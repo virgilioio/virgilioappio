@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, X, ChevronDown, ChevronRight, Briefcase, Tag, MapPin, TrendingUp, Users, Factory, Building2, Clock, Mail } from 'lucide-react'
+import { Plus, X, ChevronDown, ChevronRight, Briefcase, Tag, MapPin, TrendingUp, Users, Factory, Building2, Clock, Mail, Sparkles } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -11,6 +11,7 @@ import { FilterCheckboxGroup } from '@/components/ui/filter-checkbox-group'
 import { LocationSelector } from './LocationSelector'
 import { AutocompleteTagInput } from './AutocompleteTagInput'
 import { SearchCriteria, SourcingProjectFilters } from '@/types/sourcing'
+import { useSourcingCredits } from '@/hooks/useSourcingCredits'
 import type { LucideIcon } from 'lucide-react'
 
 const SENIORITY_OPTIONS = [
