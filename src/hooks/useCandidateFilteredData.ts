@@ -29,14 +29,27 @@ export function useCandidateFilteredData(
       }
 
 
-      // Text search
+      // Text search — name, email, skills, current company, title, location
       if (searchTerm) {
         const term = searchTerm.toLowerCase()
-        const matchesSearch =
-          c.candidate_name.toLowerCase().includes(term) ||
-          (c.email && c.email.toLowerCase().includes(term))
+        const skills = c.standardized_skills?.length ? c.standardized_skills : c.skills
+        const haystacks: (string | null | undefined)[] = [
+          c.candidate_name,
+          c.email,
+          c.company_current,
+          c.title_current,
+          c.functional_area,
+          c.specialization,
+          c.seniority_level,
+          c.location_city,
+          c.location_state,
+          c.location_country,
+          ...(skills ?? []),
+        ]
+        const matchesSearch = haystacks.some(v => v && v.toLowerCase().includes(term))
         if (!matchesSearch) return false
       }
+
 
       // Array filters
       if (filters.statuses.length > 0 && !filters.statuses.includes(c.status)) return false
