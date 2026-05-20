@@ -24,6 +24,10 @@ import { SavedSearchToolbar } from '@/components/candidates/list/SavedSearchTool
 import { BulkActionBar } from '@/components/candidates/list/BulkActionBar'
 import { CandidatesTable } from '@/components/candidates/list/CandidatesTable'
 import { CandidatesFooter } from '@/components/candidates/list/CandidatesFooter'
+import { SaveSearchButton } from '@/components/candidates/list/SaveSearchButton'
+import { SaveSearchPopover, type SaveSearchPayload } from '@/components/candidates/list/SaveSearchPopover'
+import { deriveAutoName } from '@/lib/savedSearchAutoName'
+
 
 import { CandidateFormSheet } from '@/components/candidates/CandidateFormSheet'
 import { CandidateMergeDialog } from '@/components/candidates/CandidateMergeDialog'
@@ -86,8 +90,16 @@ function CandidatesInner() {
   // Smart list / saved view
   const [activeSmartList, setActiveSmartList] = useState<SmartListKey | null>('all')
   const [activeViewId, setActiveViewId] = useState<string | null>(null)
-  const [baselineFiltersHash, setBaselineFiltersHash] = useState<string>(stableHash({}))
-  const { views, createView, updateView } = useSavedViews('candidates')
+  const [baselineFilters, setBaselineFilters] = useState<Record<string, unknown>>({})
+  const baselineFiltersHash = useMemo(() => stableHash(baselineFilters), [baselineFilters])
+  const { views, createView, updateView, deleteView } = useSavedViews('candidates')
+
+  // Save-as popover state
+  const [saveOpen, setSaveOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [justSavedId, setJustSavedId] = useState<string | null>(null)
+  const [hasPulsed, setHasPulsed] = useState(false)
+
 
   const setFiltersFromRecord = useCallback((rec: Partial<CandidateFilters>) => {
     const arrayKeys = ['statuses','sources','countries','states','cities','companies','seniorityLevels','functionalAreas','specializations','skills','enrichmentStatuses','pipelineStatuses','jobs','stages','rejectedAtStages'] as const
@@ -103,18 +115,19 @@ function CandidatesInner() {
     setActiveViewId(null)
     clearAll()
     setFiltersFromRecord(SMART_LIST_FILTERS[key] as any)
-    setBaselineFiltersHash(stableHash(SMART_LIST_FILTERS[key] ?? {}))
+    setBaselineFilters((SMART_LIST_FILTERS[key] ?? {}) as Record<string, unknown>)
   }, [clearAll, setFiltersFromRecord])
 
   const handleSelectView = useCallback((v: SavedView) => {
     setActiveSmartList(null)
     setActiveViewId(v.id)
     setFiltersFromRecord(v.filters as Partial<CandidateFilters>)
-    setBaselineFiltersHash(stableHash(v.filters))
+    setBaselineFilters(v.filters as Record<string, unknown>)
     const extra = (v.extra_state ?? {}) as any
     if (typeof extra.query === 'string') setQuery(extra.query)
     if (extra.mode) setMode(extra.mode as SearchMode)
   }, [setFiltersFromRecord])
+
 
   // Apply text/boolean/ai narrowing
   // - everything mode → live, debounced via input
@@ -251,24 +264,97 @@ function CandidatesInner() {
 
   const filtersDirty = stableHash(filters) !== baselineFiltersHash
 
-  const handleSaveAsNew = async () => {
-    const name = window.prompt('Name this search')
-    if (!name?.trim()) return
-    const created = await createView.mutateAsync({ name: name.trim(), filters: filters as any, extra_state: { query, mode } })
-    setActiveViewId(created.id); setActiveSmartList(null)
-    setBaselineFiltersHash(stableHash(filters))
+  // Count of array-filter keys + scalar slots that differ between current and baseline.
+  const changesCount = useMemo(() => {
+    const base = (baselineFilters ?? {}) as Record<string, unknown>
+    let n = 0
+    for (const k of Object.keys(filters)) {
+      const a = (filters as any)[k]
+      const b = (base as any)[k]
+      if (Array.isArray(a) && Array.isArray(b)) {
+        if (a.length !== b.length || a.some((x, i) => x !== b[i])) n++
+      } else if (a instanceof Date || b instanceof Date) {
+        const av = a instanceof Date ? a.toISOString() : a ?? null
+        const bv = b instanceof Date ? new Date(b as any).toISOString() : b ?? null
+        if (av !== bv) n++
+      } else if ((a ?? null) !== (b ?? null)) {
+        n++
+      }
+    }
+    return n
+  }, [filters, baselineFilters])
+
+  const autoName = useMemo(
+    () => deriveAutoName(filters, { booleanQuery: mode === 'boolean' ? committedQuery : undefined, aiQuery: mode === 'ai' ? query : undefined }),
+    [filters, mode, committedQuery, query]
+  )
+  const existingNames = useMemo(() => views.map(v => v.name), [views])
+
+  const handleSavePopoverOpen = () => {
+    if (activeFilterCount === 0) return
+    setSaveOpen(true)
+    setHasPulsed(true)
   }
+
+  const handleSavePayload = async (payload: SaveSearchPayload) => {
+    setSaving(true)
+    try {
+      const created = await createView.mutateAsync({
+        name: payload.name,
+        filters: filters as any,
+        extra_state: {
+          query,
+          mode,
+          alert_on_new_matches: payload.alertOnNew,
+          pinned: payload.pinned,
+        },
+      })
+      setActiveViewId(created.id)
+      setActiveSmartList(null)
+      setBaselineFilters(filters as unknown as Record<string, unknown>)
+      setJustSavedId(created.id)
+      setSaveOpen(false)
+      setTimeout(() => setJustSavedId(prev => (prev === created.id ? null : prev)), 1400)
+
+      // Undo toast
+      const t = toast({
+        title: 'Search saved',
+        description: `"${payload.name}" — ${finalAfterSmart.length} ${finalAfterSmart.length === 1 ? 'candidate' : 'candidates'}`,
+        action: (
+          <button
+            type="button"
+            className="ml-2 inline-flex items-center h-7 px-2 rounded-md text-[11.5px] font-poppins font-medium border border-white/20 text-white hover:bg-white/10"
+            onClick={async () => {
+              await deleteView.mutateAsync(created.id)
+              setActiveViewId(null)
+              setActiveSmartList('all')
+              setBaselineFilters({})
+              t.dismiss?.()
+            }}
+          >
+            Undo
+          </button>
+        ) as any,
+      })
+    } catch (e) {
+      toast({ title: "Couldn't save search", variant: 'destructive' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleSaveChanges = async () => {
     if (!activeViewId) return
     await updateView.mutateAsync({ id: activeViewId, filters: filters as any, extra_state: { query, mode } })
-    setBaselineFiltersHash(stableHash(filters))
+    setBaselineFilters(filters as unknown as Record<string, unknown>)
   }
   const handleResetChanges = () => {
     const v = views.find(x => x.id === activeViewId)
-    if (v) { setFiltersFromRecord(v.filters as any); setBaselineFiltersHash(stableHash(v.filters)) }
-    else if (activeSmartList) { clearAll(); setFiltersFromRecord(SMART_LIST_FILTERS[activeSmartList] as any); setBaselineFiltersHash(stableHash(SMART_LIST_FILTERS[activeSmartList] ?? {})) }
+    if (v) { setFiltersFromRecord(v.filters as any); setBaselineFilters(v.filters as Record<string, unknown>) }
+    else if (activeSmartList) { clearAll(); setFiltersFromRecord(SMART_LIST_FILTERS[activeSmartList] as any); setBaselineFilters((SMART_LIST_FILTERS[activeSmartList] ?? {}) as Record<string, unknown>) }
   }
   const handleExport = () => toast({ title: 'Export queued', description: 'CSV export coming soon.' })
+
 
   const archiveSelected = async () => {
     if (selectedIds.length === 0) return
@@ -311,7 +397,9 @@ function CandidatesInner() {
             isLoading={kpisLoading}
             onSelectView={handleSelectView}
             onSelectSmartList={handleSelectSmartList}
-            onCreateView={handleSaveAsNew}
+            onCreateView={handleSavePopoverOpen}
+            justSavedId={justSavedId}
+
           />
         </div>
 
@@ -322,11 +410,13 @@ function CandidatesInner() {
             resultsCount={finalAfterSmart.length}
             totalCount={candidates.length}
             isDirty={filtersDirty}
+            changesCount={changesCount}
             onSaveChanges={handleSaveChanges}
             onResetChanges={handleResetChanges}
-            onSaveAsNew={handleSaveAsNew}
+            onSaveAsNew={handleSavePopoverOpen}
             onExport={handleExport}
           />
+
 
           <div className="space-y-3">
             <SearchModeTabs value={mode} onChange={setMode} />
@@ -339,9 +429,28 @@ function CandidatesInner() {
               loading={aiLoading}
               isDirty={mode !== 'everything' && query !== committedQuery && query.trim().length > 0}
               error={mode === 'ai' ? aiError : (mode === 'boolean' && committedQuery ? booleanError : null)}
+              trailing={
+                <SaveSearchPopover
+                  open={saveOpen}
+                  onOpenChange={(o) => { setSaveOpen(o); if (o) setHasPulsed(true) }}
+                  autoName={autoName}
+                  existingNames={existingNames}
+                  resultsCount={finalAfterSmart.length}
+                  saving={saving}
+                  onSave={handleSavePayload}
+                  trigger={
+                    <SaveSearchButton
+                      hasFilters={activeFilterCount > 0 && !activeViewId}
+                      pulse={!hasPulsed && filtersDirty && activeFilterCount > 0 && !activeViewId}
+                      onClick={handleSavePopoverOpen}
+                    />
+                  }
+                />
+              }
             />
             <FilterChipsRow filterOptions={filterOptions} />
           </div>
+
 
           {selectedIds.length > 0 ? (
             <BulkActionBar
@@ -353,7 +462,7 @@ function CandidatesInner() {
               onAddToJob={() => setBulkJobOpen(true)}
               onEmail={() => toast({ title: 'Bulk email coming soon' })}
               onTag={() => toast({ title: 'Tagging coming soon' })}
-              onAddToSearch={handleSaveAsNew}
+              onAddToSearch={handleSavePopoverOpen}
               onArchive={archiveSelected}
             />
           ) : null}

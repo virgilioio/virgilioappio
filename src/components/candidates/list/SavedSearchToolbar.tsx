@@ -1,4 +1,4 @@
-import { Bell, Share2, Download, ChevronRight } from 'lucide-react'
+import { Bell, Share2, Download, ChevronRight, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { SavedView } from '@/hooks/useSavedViews'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
@@ -10,6 +10,8 @@ interface SavedSearchToolbarProps {
   resultsCount: number
   totalCount: number
   isDirty: boolean
+  /** Number of filter fields that differ from the saved baseline. */
+  changesCount?: number
   onSaveChanges: () => void
   onResetChanges: () => void
   onSaveAsNew: () => void
@@ -18,7 +20,7 @@ interface SavedSearchToolbarProps {
 
 export function SavedSearchToolbar({
   activeView, smartListLabel, resultsCount, totalCount,
-  isDirty, onSaveChanges, onResetChanges, onSaveAsNew, onExport,
+  isDirty, changesCount = 0, onSaveChanges, onResetChanges, onSaveAsNew, onExport,
 }: SavedSearchToolbarProps) {
   const title = activeView?.name ?? smartListLabel ?? 'All candidates'
 
@@ -30,6 +32,18 @@ export function SavedSearchToolbar({
         </span>
         <ChevronRight className="h-3 w-3 text-text-tertiary" />
         <span className="text-[13.5px] font-poppins font-medium text-text-primary truncate">{title}</span>
+        {isDirty && activeView && (
+          <>
+            <span className="inline-flex items-center h-[22px] px-2 rounded-md bg-virgilio-purple/10 text-virgilio-purple text-[11px] font-poppins font-medium">
+              Editing search
+            </span>
+            {changesCount > 0 && (
+              <span className="inline-flex items-center h-[22px] px-1.5 rounded-md bg-[#F1F0EC] text-text-secondary text-[11px] font-poppins font-medium tabular-nums">
+                {changesCount} {changesCount === 1 ? 'change' : 'changes'}
+              </span>
+            )}
+          </>
+        )}
         <span className="ml-2 text-[12px] font-poppins text-text-tertiary tabular-nums">
           {resultsCount.toLocaleString()} {resultsCount === 1 ? 'result' : 'results'}
           {totalCount !== resultsCount && (
@@ -41,15 +55,10 @@ export function SavedSearchToolbar({
       <div className="flex items-center gap-1">
         {isDirty && activeView && (
           <>
-            <span className="inline-flex items-center h-7 px-2.5 rounded-md bg-virgilio-purple/10 text-virgilio-purple text-[11.5px] font-poppins font-medium">
-              Editing search
-            </span>
-            <Button size="sm" variant="ghost" onClick={onResetChanges}>Reset</Button>
-            <Button size="sm" variant="secondary" onClick={onSaveChanges}>Save changes</Button>
+            <Button size="sm" variant="ghost" onClick={onResetChanges}>Revert</Button>
+            <Button size="sm" variant="secondary" icon={Plus} onClick={onSaveAsNew}>Save as new</Button>
+            <Button size="sm" onClick={onSaveChanges}>Save changes</Button>
           </>
-        )}
-        {isDirty && !activeView && (
-          <Button size="sm" variant="secondary" onClick={onSaveAsNew}>Save as search</Button>
         )}
 
         <Popover>

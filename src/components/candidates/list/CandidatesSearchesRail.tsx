@@ -10,10 +10,13 @@ interface CandidatesSearchesRailProps {
   activeSmartList: SmartListKey | null
   kpis: CandidateKpis | undefined
   isLoading: boolean
+  /** Most-recently-saved view id — gets a one-shot lilac fade. */
+  justSavedId?: string | null
   onSelectView: (view: SavedView) => void
   onSelectSmartList: (key: SmartListKey) => void
   onCreateView: () => void
 }
+
 
 const SECTION_LABEL = 'text-[10px] font-poppins font-semibold uppercase tracking-[0.06em] text-[#8B8F9E]'
 const ITEM_BASE =
@@ -33,9 +36,17 @@ function SmartListItem({
   )
 }
 
-function SavedSearchItem({ view, active, onClick }: { view: SavedView; active: boolean; onClick: () => void }) {
+function SavedSearchItem({ view, active, justSaved, onClick }: { view: SavedView; active: boolean; justSaved?: boolean; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className={cn(ITEM_BASE, active ? ITEM_SELECTED : ITEM_HOVER)}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        ITEM_BASE,
+        active ? ITEM_SELECTED : ITEM_HOVER,
+        justSaved && !active && 'bg-virgilio-purple/8 motion-safe:animate-gio-pulse',
+      )}
+    >
       <Bookmark className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
       <div className="flex-1 min-w-0 text-left">
         <div className="truncate leading-tight">{view.name}</div>
@@ -44,10 +55,12 @@ function SavedSearchItem({ view, active, onClick }: { view: SavedView; active: b
   )
 }
 
+
 export function CandidatesSearchesRail({
-  views, activeViewId, activeSmartList, kpis, isLoading,
+  views, activeViewId, activeSmartList, kpis, isLoading, justSavedId,
   onSelectView, onSelectSmartList, onCreateView,
 }: CandidatesSearchesRailProps) {
+
   return (
     <aside className="w-[260px] shrink-0 border-r border-virgilio-border bg-surface-primary h-full overflow-y-auto">
       <div className="p-3 space-y-4">
@@ -74,9 +87,10 @@ export function CandidatesSearchesRail({
             <div className="px-2 py-2 text-[12px] text-text-tertiary">No saved searches yet.</div>
           ) : (
             views.map(v => (
-              <SavedSearchItem key={v.id} view={v} active={v.id === activeViewId} onClick={() => onSelectView(v)} />
+              <SavedSearchItem key={v.id} view={v} active={v.id === activeViewId} justSaved={v.id === justSavedId} onClick={() => onSelectView(v)} />
             ))
           )}
+
         </div>
 
         {/* Smart Lists */}
