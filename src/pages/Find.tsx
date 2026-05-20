@@ -220,24 +220,33 @@ export default function Find() {
                     Find<span className="text-virgilio-purple">.</span>
                   </h1>
                 </div>
-                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-body-sm text-text-secondary">
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-body-sm text-text-tertiary">
+                  <Badge tone="lilac" size="sm" dot>
+                    {sourcingProjects?.length ?? 0} saved {(sourcingProjects?.length ?? 0) === 1 ? 'search' : 'searches'}
+                  </Badge>
                   {currentProject && (
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="h-1.5 w-1.5 rounded-full bg-virgilio-purple" />
-                      <span className="truncate max-w-[260px]">{currentProject.name}</span>
-                    </span>
+                    <>
+                      <span className="text-text-tertiary/60">·</span>
+                      <span className="truncate max-w-[260px] text-text-secondary">{currentProject.name}</span>
+                    </>
                   )}
                   {currentProject?.updated_at && (
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="h-1.5 w-1.5 rounded-full bg-text-tertiary" />
-                      Last refreshed {formatDistanceToNow(new Date(currentProject.updated_at), { addSuffix: true })}
-                    </span>
+                    <>
+                      <span className="text-text-tertiary/60">·</span>
+                      <span>Last refreshed {formatDistanceToNow(new Date(currentProject.updated_at), { addSuffix: true })}</span>
+                    </>
                   )}
                   {collectRemaining != null && (
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="h-1.5 w-1.5 rounded-full bg-text-tertiary" />
-                      {collectRemaining} sourcing credits
-                    </span>
+                    <>
+                      <span className="text-text-tertiary/60">·</span>
+                      <span>{collectRemaining} sourcing credits</span>
+                    </>
+                  )}
+                  {creditsUsage?.next_reset && (
+                    <>
+                      <span className="text-text-tertiary/60">·</span>
+                      <span>Renews {format(new Date(creditsUsage.next_reset), 'MMM d')}</span>
+                    </>
                   )}
                 </div>
               </div>
@@ -254,8 +263,13 @@ export default function Find() {
                     </Button>
                   }
                 />
-                <Button variant="primary" size="md" icon={Plus} onClick={handleNewSearch}>
-                  New search
+                <Button
+                  variant="secondary"
+                  size="md"
+                  icon={SlidersHorizontal}
+                  onClick={() => navigate('/settings?tab=sourcing')}
+                >
+                  Sourcing settings
                 </Button>
               </div>
             </header>
