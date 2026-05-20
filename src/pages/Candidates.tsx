@@ -566,7 +566,13 @@ function CandidatesInner() {
               shareButtonSlot={
                 <ShareListModal
                   candidateIds={selectedIds}
-                  candidateNames={candidates.filter(c => selectedIds.includes(c.id)).map(c => c.candidate_name)}
+                  candidates={candidates.filter(c => selectedIds.includes(c.id)).map((c: any) => ({
+                    id: c.id,
+                    name: c.candidate_name,
+                    company: c.company_current ?? null,
+                    stage: c.current_job_title ?? null,
+                    score: typeof c.fit_score === 'number' ? c.fit_score : (typeof c.match_score === 'number' ? c.match_score : null),
+                  }))}
                   trigger={
                     <Button onDark size="sm" variant="ghost" icon={Share2Icon}>Share</Button>
                   }
