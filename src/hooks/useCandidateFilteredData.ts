@@ -104,5 +104,5 @@ export function useCandidateFilteredData(
 
       return true
     })
-  }, [candidates, filters, searchTerm, associationsMap])
+  }, [candidates, filters, searchTerm, associationsMap, candidateTagsMap])
 }
