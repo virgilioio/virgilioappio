@@ -346,7 +346,7 @@ function CandidatesInner() {
   const handleSaveChanges = async () => {
     if (!activeViewId) return
     await updateView.mutateAsync({ id: activeViewId, filters: filters as any, extra_state: { query, mode } })
-    setBaselineFilters(filters as unknown as Record<string, unknown>)
+    setBaselineFilters({ ...filters } as Record<string, unknown>)
   }
   const handleResetChanges = () => {
     const v = views.find(x => x.id === activeViewId)
