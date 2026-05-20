@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   Search, Briefcase, Users, Bookmark, Clock, Plus,
   Sparkles, ArrowRight, CornerDownLeft, ArrowUp, ArrowDown,
-  Building2, X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabaseClient'
@@ -12,7 +11,6 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useGlobalSearch } from '@/hooks/useGlobalSearch'
 import { useRecentSearches } from './useRecentSearches'
 import { SearchResultRowV2, GlyphKind } from './SearchResultRowV2'
-import { highlight } from './highlight'
 
 type Scope = 'all' | 'candidates' | 'jobs' | 'saved'
 
