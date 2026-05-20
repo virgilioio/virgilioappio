@@ -624,10 +624,10 @@ function CandidatesInner() {
         />
       )}
 
-      <AlertDialog open={!!deleteSavedView} onOpenChange={(open) => { if (!open && !isDeletingSavedView) setDeleteSavedView(null) }}>
-        <AlertDialogContent className="mx-4 max-w-md">
+      <AlertDialog open={!!deleteSavedView} onOpenChange={(open) => !open && !isDeletingSavedView && setDeleteSavedView(null)}>
+        <AlertDialogContent className="mx-4 max-w-md sm:max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete saved search?</AlertDialogTitle>
+            <AlertDialogTitle>Delete saved search permanently?</AlertDialogTitle>
             <AlertDialogDescription>
               This will permanently delete the saved search "{deleteSavedView?.name}". This action cannot be undone.
             </AlertDialogDescription>
@@ -637,7 +637,7 @@ function CandidatesInner() {
             <AlertDialogAction
               onClick={(e) => { e.preventDefault(); handleConfirmDeleteSavedView() }}
               disabled={isDeletingSavedView}
-              className={cn(buttonVariants({ variant: 'danger' }), 'w-full sm:w-auto')}
+              className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeletingSavedView ? 'Deleting…' : 'Delete search'}
             </AlertDialogAction>
