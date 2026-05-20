@@ -311,7 +311,7 @@ function CandidatesInner() {
       })
       setActiveViewId(created.id)
       setActiveSmartList(null)
-      setBaselineFilters(filters as unknown as Record<string, unknown>)
+      setBaselineFilters({ ...filters } as Record<string, unknown>)
       setJustSavedId(created.id)
       setSaveOpen(false)
       setTimeout(() => setJustSavedId(prev => (prev === created.id ? null : prev)), 1400)
