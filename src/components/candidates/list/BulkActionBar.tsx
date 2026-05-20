@@ -45,7 +45,7 @@ export function BulkActionBar({
         <button onClick={onClearSelection} className="text-white/60 hover:text-white">Clear</button>
       </div>
       <div className="flex items-center gap-1">
-        <Button onDark size="sm" variant="ghost" icon={Users} onClick={onAddToJob}>Add to job</Button>
+        {addToJobButtonSlot ?? <Button onDark size="sm" variant="ghost" icon={Users} onClick={onAddToJob}>Add to job</Button>}
         <Button onDark size="sm" variant="ghost" icon={Mail} onClick={onEmail}>Email</Button>
         {tagButtonSlot ?? <Button onDark size="sm" variant="ghost" icon={Tag} onClick={onTag}>Tag</Button>}
         <Button onDark size="sm" variant="ghost" icon={BookmarkPlus} onClick={onAddToSearch}>Add to search</Button>
