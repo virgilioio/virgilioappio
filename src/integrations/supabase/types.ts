@@ -6545,6 +6545,16 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_candidate_kpis: {
+        Args: { _tenant_id: string }
+        Returns: {
+          awaiting_outreach: number
+          favorites: number
+          in_active_pipeline: number
+          new_this_week: number
+          total: number
+        }[]
+      }
       get_candidate_tenant_id: {
         Args: { candidate_id_param: string }
         Returns: string
