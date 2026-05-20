@@ -513,3 +513,56 @@ This means `AnalyticsTimeFilter`, `BulkEmailDialog`, `CandidateFiltersPanel`
 (and any future consumer of `<Calendar>`) inherit the foundation without code
 changes. Prefer `<DatePickerVirgilio>` for new code; the bare `<Calendar>` is
 reserved for ranges and embedded contexts.
+
+---
+
+## §6 Spinners & Progress
+
+Loading is feedback, not decoration. Pick the lightest treatment that still confirms "we heard you" and matches the wait shape.
+
+### Decision tree
+
+| Wait | Treatment | Primitive |
+|---|---|---|
+| < 1s | nothing | — |
+| 1–10s, known destination shape | **Skeleton** | `Shimmer`, `TableSkeleton` |
+| 1–10s, unknown shape, in-place | **Spinner** | `Spinner` / `InlineLoader` |
+| Determinate, > 1s | **Linear progress** | `LinearProgress`, `CircularProgress` |
+| Long, multi-step | **Stepped progress** | `StepProgress` |
+| Background refetch on a populated region | **Indeterminate bar** at top | `IndeterminateBar` |
+| Inside a button | **Button `loading`** (width-locked) | `<Button loading />` |
+
+Rules:
+- One affordance per region. Never spinner + skeleton together.
+- Don't show anything for waits under 1 second.
+- Stretch transient flags with `useMinimumDuration(active, 280)` so fast responses don't flicker.
+- Always honor `prefers-reduced-motion`: spin → opacity pulse, shimmer → static fill.
+
+### Primitives — `src/components/ui/progress-system/`
+
+```tsx
+import {
+  Spinner, InlineLoader, Shimmer,
+  LinearProgress, CircularProgress, IndeterminateBar, StepProgress,
+} from '@/components/ui/progress-system'
+
+<Spinner size={16} tone="purple" />
+<InlineLoader label="Thinking…" tone="purple" />
+<LinearProgress value={64} tone="ink" />
+<IndeterminateBar tone="purple" active={isRefetching} />
+<StepProgress steps={[{ label: 'Upload' }, { label: 'Parse' }, { label: 'Save' }]} current={1} />
+<Shimmer className="h-3 w-32" />
+```
+
+Sizes: Spinner `12 · 14 · 16 · 20 · 24` px. Tones: `ink · purple · cream · muted · current`.
+
+### Anti-patterns
+
+- Spinner inside an already-skeleton region.
+- Two indeterminate indicators stacked in the same panel.
+- Rotating spinners < 1s — they only cause a flash. Use a minimum-duration hold or no indicator.
+- Custom `<Loader2 className="animate-spin" />` — use `Spinner` so reduced-motion fallback and tone tokens are respected.
+
+### Submit-on-Enter pattern (Boolean / AI search)
+
+Async query fields (Boolean expressions, "Ask in plain English") commit on **Enter** or click of the trailing Run/Ask chip — never on keystroke. While committed query runs, swap the table body for `TableSkeleton`. Errors only appear after commit. `Esc` clears the committed query.

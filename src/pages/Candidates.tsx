@@ -12,6 +12,7 @@ import { useCandidateJobAssociationsMap } from '@/hooks/useCandidateJobAssociati
 import { useCandidateFilterOptions } from '@/hooks/useCandidateFilterOptions'
 import { useCandidateFilteredData } from '@/hooks/useCandidateFilteredData'
 import { useCandidateBooleanFilter } from '@/hooks/useCandidateBooleanFilter'
+import { useMinimumDuration } from '@/hooks/useMinimumDuration'
 import { useSavedViews, type SavedView } from '@/hooks/useSavedViews'
 
 import { CandidatesHeader, type SmartListKey } from '@/components/candidates/list/CandidatesHeader'
@@ -76,6 +77,9 @@ function CandidatesInner() {
   // Search state
   const [mode, setMode] = useState<SearchMode>('everything')
   const [query, setQuery] = useState('')
+  // Committed query used to run boolean / ai filtering on Enter (not on keystroke).
+  const [committedQuery, setCommittedQuery] = useState('')
+  const [searchRunTick, setSearchRunTick] = useState(0)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
 
@@ -113,14 +117,25 @@ function CandidatesInner() {
   }, [setFiltersFromRecord])
 
   // Apply text/boolean/ai narrowing
-  const textFiltered = useMemo(() => {
-    if (mode !== 'everything') return candidates
-    return candidates // applied via search term in useCandidateFilteredData below
-  }, [candidates, mode])
+  // - everything mode → live, debounced via input
+  // - boolean mode    → only runs on commit (Enter)
+  // - ai mode         → runs via edge function on Enter (separate flow)
   const everythingTerm = mode === 'everything' ? query : ''
-  const baseFiltered = useCandidateFilteredData(textFiltered, filters, everythingTerm, associationsMap)
-  const { matches: booleanMatches, error: booleanError } = useCandidateBooleanFilter(baseFiltered, query, mode === 'boolean')
+  const baseFiltered = useCandidateFilteredData(candidates, filters, everythingTerm, associationsMap)
+  const booleanExpr = mode === 'boolean' ? committedQuery : ''
+  const { matches: booleanMatches, error: booleanError } = useCandidateBooleanFilter(baseFiltered, booleanExpr, mode === 'boolean')
   const finalCandidates = mode === 'boolean' ? booleanMatches : baseFiltered
+
+  // Skeleton floor for boolean/ai commits so fast filters don't flash.
+  // Triggers whenever searchRunTick changes; held for ~280ms minimum.
+  const [searchRunning, setSearchRunning] = useState(false)
+  useEffect(() => {
+    if (searchRunTick === 0) return
+    setSearchRunning(true)
+    const t = setTimeout(() => setSearchRunning(false), 10)
+    return () => clearTimeout(t)
+  }, [searchRunTick])
+  const isSearching = useMinimumDuration(searchRunning || aiLoading, 320)
 
   // Smart list post-filter for the ones the filter context can't express
   const finalAfterSmart = useMemo(() => {
@@ -138,8 +153,20 @@ function CandidatesInner() {
   // Pagination
   const [pageSize, setPageSize] = useState(25)
   const [page, setPage] = useState(1)
-  useEffect(() => { setPage(1) }, [query, mode, filters, activeSmartList, activeViewId])
+  useEffect(() => { setPage(1) }, [query, committedQuery, mode, filters, activeSmartList, activeViewId])
   useEffect(() => { setAiError(null) }, [mode, query])
+  // Reset committed query when switching modes so the new mode starts clean.
+  useEffect(() => { setCommittedQuery('') }, [mode])
+
+  const handleSearchSubmit = useCallback(() => {
+    setCommittedQuery(query)
+    setSearchRunTick(t => t + 1)
+  }, [query])
+  const handleSearchClear = useCallback(() => {
+    setQuery('')
+    setCommittedQuery('')
+    setSearchRunTick(t => t + 1)
+  }, [])
   const shown = Math.min(page * pageSize, finalAfterSmart.length)
   const visible = finalAfterSmart.slice(0, shown)
 
@@ -304,9 +331,11 @@ function CandidatesInner() {
               value={query}
               onChange={setQuery}
               mode={mode}
-              onSubmit={mode === 'ai' ? handleAiSubmit : undefined}
+              onSubmit={mode === 'ai' ? handleAiSubmit : (mode === 'boolean' ? handleSearchSubmit : undefined)}
+              onClear={handleSearchClear}
               loading={aiLoading}
-              error={mode === 'ai' ? aiError : (mode === 'boolean' ? booleanError : null)}
+              isDirty={mode !== 'everything' && query !== committedQuery && query.trim().length > 0}
+              error={mode === 'ai' ? aiError : (mode === 'boolean' && committedQuery ? booleanError : null)}
             />
             <FilterChipsRow filterOptions={filterOptions} />
           </div>
@@ -332,6 +361,7 @@ function CandidatesInner() {
               totalCount={finalAfterSmart.length}
               associationsMap={associationsMap}
               isLoading={isLoading}
+              isSearching={isSearching}
               hasActiveFilters={activeFilterCount > 0 || !!query}
               selectedIds={selectedIds}
               onToggleSelect={toggleSelect}

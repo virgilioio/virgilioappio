@@ -1,7 +1,8 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
-import { ChevronDown, Loader2, type LucideIcon } from "lucide-react"
+import { ChevronDown, type LucideIcon } from "lucide-react"
+import { Spinner } from "@/components/ui/progress-system/Spinner"
 
 import { cn } from "@/lib/utils"
 
@@ -218,7 +219,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     // Icon composition. Loading spinner replaces the leading icon.
     const leading = loading ? (
-      <Loader2 className="animate-spin" aria-hidden />
+      <Spinner size={14} tone="current" aria-hidden />
     ) : Icon ? (
       <Icon aria-hidden />
     ) : null
