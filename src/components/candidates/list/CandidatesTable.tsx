@@ -17,6 +17,8 @@ interface CandidatesTableProps {
   totalCount: number
   associationsMap: AssociationsMap
   isLoading: boolean
+  /** True while a boolean/AI search is being committed — show skeleton on top of existing rows. */
+  isSearching?: boolean
   hasActiveFilters: boolean
   selectedIds: string[]
   onToggleSelect: (id: string) => void
@@ -129,7 +131,7 @@ function isNew(iso: string): boolean {
 }
 
 export function CandidatesTable({
-  candidates, totalCount, associationsMap, isLoading, hasActiveFilters,
+  candidates, totalCount, associationsMap, isLoading, isSearching, hasActiveFilters,
   selectedIds, onToggleSelect, onToggleSelectAll, onOpenCandidate, onDelete,
 }: CandidatesTableProps) {
   const navigate = useNavigate()
@@ -138,7 +140,7 @@ export function CandidatesTable({
     [candidates, selectedIds],
   )
 
-  if (isLoading) return <TableSkeleton rows={6} columns={9} />
+  if (isLoading || isSearching) return <TableSkeleton rows={8} columns={9} />
   if (candidates.length === 0) {
     return hasActiveFilters
       ? <TableFilteredEmpty colSpan={9} onClearFilters={() => { /* handled by parent */ }} />
