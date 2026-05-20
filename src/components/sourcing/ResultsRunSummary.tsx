@@ -1,5 +1,4 @@
 import { Sparkles, ChevronRight } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 
 interface SourceBreakdown {
   internal?: number
@@ -24,7 +23,7 @@ interface ResultsRunSummaryProps {
 
 /**
  * Lilac AI summary banner shown above the candidate results.
- * Explains what the run found, where it came from, and the top match.
+ * Single tight row: counts on top, sources + top match below, "Why these results?" on the far right.
  */
 export function ResultsRunSummary({
   totalCount,
@@ -37,7 +36,6 @@ export function ResultsRunSummary({
   sourceBreakdown,
   onExplain,
 }: ResultsRunSummaryProps) {
-  // Build source list from breakdown
   const sourceParts: string[] = []
   if (sourceBreakdown) {
     const linkedin = (sourceBreakdown.pdl || 0) + (sourceBreakdown.gio || 0)
@@ -49,80 +47,65 @@ export function ResultsRunSummary({
   }
 
   return (
-    <div className="rounded-lg border border-virgilio-purple/20 bg-gradient-to-r from-virgilio-purple/8 via-virgilio-purple/5 to-transparent px-4 py-3">
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-virgilio-purple/15 text-virgilio-purple">
+    <div className="rounded-lg border border-virgilio-purple/25 bg-white px-3.5 py-2.5">
+      <div className="flex items-center gap-3">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-virgilio-purple/15 text-virgilio-purple">
           <Sparkles className="h-3.5 w-3.5" />
         </div>
 
-        <div className="flex-1 min-w-0 space-y-1">
-          {/* Primary line: counts */}
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
+        <div className="flex-1 min-w-0">
+          {/* Primary line */}
+          <div className="flex flex-wrap items-center gap-x-1.5 font-inter text-[13px] leading-tight">
             <span className="font-medium text-text-primary">
               {totalCount} preview candidates
             </span>
-            <Dot />
+            <span className="text-text-tertiary/60" aria-hidden>·</span>
             <span className="text-text-secondary">
-              <span className="font-medium text-emerald-700">{strongFit}</span> strong fit
+              <span className="font-semibold text-emerald-700 tabular-nums">{strongFit}</span> strong fit
             </span>
-            <Dot />
+            <span className="text-text-tertiary/60" aria-hidden>·</span>
             <span className="text-text-secondary">
-              <span className="font-medium text-blue-700">{good}</span> good
+              <span className="font-semibold text-blue-700 tabular-nums">{good}</span> good
             </span>
-            <Dot />
+            <span className="text-text-tertiary/60" aria-hidden>·</span>
             <span className="text-text-secondary">
-              <span className="font-medium text-amber-700">{possible}</span> possible
+              <span className="font-semibold text-amber-700 tabular-nums">{possible}</span> possible
             </span>
             {alreadyCollected > 0 && (
               <>
-                <Dot />
-                <span className="text-virgilio-purple">
-                  {alreadyCollected} already collected
+                <span className="text-text-tertiary/60" aria-hidden>·</span>
+                <span className="text-virgilio-purple font-medium">
+                  <span className="tabular-nums">{alreadyCollected}</span> already collected
                 </span>
               </>
             )}
           </div>
 
-          {/* Secondary line: sources + top match */}
+          {/* Secondary line */}
           {(sourceParts.length > 0 || topMatchName) && (
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-text-tertiary">
-              {sourceParts.length > 0 && (
-                <span>Sourced from {sourceParts.join(', ')}</span>
-              )}
-              {sourceParts.length > 0 && topMatchName && <Dot subtle />}
+            <div className="mt-0.5 font-inter text-[11.5px] text-text-tertiary leading-tight truncate">
+              {sourceParts.length > 0 && <>Sourced from {sourceParts.join(', ')}.</>}
+              {sourceParts.length > 0 && topMatchName && ' '}
               {topMatchName && (
-                <span>
+                <>
                   Top match:{' '}
                   <span className="font-medium text-text-secondary">{topMatchName}</span>
-                  {topMatchScore != null && (
-                    <span className="text-text-tertiary"> · {topMatchScore} fit</span>
-                  )}
-                </span>
+                  {topMatchScore != null && <> · {topMatchScore} fit.</>}
+                </>
               )}
             </div>
           )}
         </div>
 
-        {onExplain && (
-          <Button
-            size="sm"
-            variant="ghost"
-            iconRight={ChevronRight}
-            onClick={onExplain}
-            className="shrink-0 text-virgilio-purple hover:bg-virgilio-purple/10"
-          >
-            Why these results?
-          </Button>
-        )}
+        <button
+          type="button"
+          onClick={onExplain}
+          className="shrink-0 inline-flex items-center gap-0.5 font-poppins text-[12px] font-medium text-virgilio-purple hover:bg-virgilio-purple/10 rounded-md px-2 h-7 transition-colors"
+        >
+          Why these results?
+          <ChevronRight className="h-3.5 w-3.5" />
+        </button>
       </div>
     </div>
-  )
-}
-
-function Dot({ subtle = false }: { subtle?: boolean }) {
-  return (
-    <span className={subtle ? 'text-text-tertiary/40' : 'text-text-tertiary/60'} aria-hidden>
-      ·
-    </span>
   )
 }

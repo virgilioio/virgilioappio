@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronLeft, ChevronRight, Download, Mail, Phone, X, Info, ArrowUpDown, Sparkles, Heart } from 'lucide-react'
+import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronLeft, ChevronRight, ChevronDown, Download, Mail, Phone, X, Info, ArrowUpDown, Sparkles, Heart } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
 import emptyStateAvatar from '@/assets/empty-state-avatar.png'
@@ -108,8 +108,8 @@ export function SourcingCandidateTable({
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { toast } = useToast()
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 25
+  const PAGE_STEP = 25
+  const [visibleCount, setVisibleCount] = useState(PAGE_STEP)
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
   const [selectedApolloId, setSelectedApolloId] = useState<string | null>(null)
   const [selectedApolloData, setSelectedApolloData] = useState<any>(null)
@@ -157,10 +157,11 @@ export function SourcingCandidateTable({
     { key: sortKey as any, direction: 'desc' }
   )
 
-  // Pagination
-  const totalPages = Math.ceil(sortedData.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const paginatedData = sortedData.slice(startIndex, startIndex + itemsPerPage)
+  // Pagination — client-side Load N more
+  const totalCount = sortedData.length
+  const startIndex = 0
+  const paginatedData = sortedData.slice(0, visibleCount)
+  const hasMore = visibleCount < totalCount
 
   // Apollo candidates that can be selected on current page (not already collected)
   const apolloCandidatesOnPage = paginatedData.filter(c => 
@@ -254,10 +255,9 @@ export function SourcingCandidateTable({
         })
       }
       
-      // Update pagination if needed
-      const prevPage = Math.floor((currentIndex - 1) / itemsPerPage) + 1
-      if (prevPage !== currentPage) {
-        setCurrentPage(prevPage)
+      // Ensure prev candidate is visible
+      if (currentIndex - 1 >= visibleCount) {
+        setVisibleCount(Math.ceil((currentIndex) / PAGE_STEP) * PAGE_STEP)
       }
     }
   }
@@ -303,10 +303,9 @@ export function SourcingCandidateTable({
         })
       }
       
-      // Update pagination if needed
-      const nextPage = Math.floor((currentIndex + 1) / itemsPerPage) + 1
-      if (nextPage !== currentPage) {
-        setCurrentPage(nextPage)
+      // Ensure next candidate is visible
+      if (currentIndex + 1 >= visibleCount) {
+        setVisibleCount(Math.ceil((currentIndex + 2) / PAGE_STEP) * PAGE_STEP)
       }
     }
   }
@@ -627,27 +626,34 @@ export function SourcingCandidateTable({
       {selectedApolloIds.size > 0 ? (
         // Dark bulk action bar
         <div className="sticky top-0 z-10 rounded-lg bg-[#0d0d09] px-4 py-2.5 flex items-center justify-between shadow-[0_8px_24px_-12px_rgba(0,0,0,0.4)] shrink-0">
-          <div className="flex items-center gap-3 text-virgilio-cream">
-            <span className="font-poppins text-[13px] font-medium tabular-nums">
-              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-virgilio-cream/15 px-1.5 text-xs">
+          <div className="flex items-center gap-3 text-white">
+            <span className="font-poppins text-[13px] font-medium tabular-nums inline-flex items-center">
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-white/15 px-1.5 text-xs text-white">
                 {selectedApolloIds.size}
               </span>
-              <span className="ml-2">selected</span>
+              <span className="ml-2 text-white">selected</span>
             </span>
-            <span className="text-virgilio-cream/30">·</span>
+            <span className="text-white/30">·</span>
             <button
               type="button"
               onClick={() => {
-                // Select all collectible Apollo candidates across results
                 const all = new Set(selectedApolloIds)
                 sortedData.forEach(c => {
                   if (c.source === 'apollo' && !c.candidate_id && c.apollo_id) all.add(c.apollo_id)
                 })
                 setSelectedApolloIds(all)
               }}
-              className="text-[12.5px] text-virgilio-cream/80 hover:text-virgilio-cream underline-offset-2 hover:underline"
+              className="text-[12.5px] text-white/80 hover:text-white underline-offset-2 hover:underline"
             >
               Select all {sortedData.filter(c => c.source === 'apollo' && !c.candidate_id && c.apollo_id).length}
+            </button>
+            <span className="text-white/30">·</span>
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="text-[12.5px] text-white/60 hover:text-white"
+            >
+              Clear
             </button>
           </div>
           <div className="flex items-center gap-1.5">
@@ -688,7 +694,7 @@ export function SourcingCandidateTable({
             <span>
               Showing{' '}
               <span className="font-medium text-text-primary tabular-nums">
-                {sortedData.length === 0 ? 0 : startIndex + 1}–{Math.min(startIndex + itemsPerPage, sortedData.length)}
+                {sortedData.length === 0 ? 0 : 1}–{Math.min(visibleCount, sortedData.length)}
               </span>{' '}
               of <span className="font-medium text-text-primary tabular-nums">{sortedData.length}</span>
             </span>
@@ -706,7 +712,7 @@ export function SourcingCandidateTable({
               <button
                 key={seg.id}
                 type="button"
-                onClick={() => { setFitSegment(seg.id); setCurrentPage(1) }}
+                onClick={() => { setFitSegment(seg.id); setVisibleCount(PAGE_STEP) }}
                 className={cn(
                   'h-7 px-2.5 rounded-md font-poppins text-[12px] font-medium tracking-[-0.005em] transition-colors',
                   'inline-flex items-center gap-1.5',
@@ -1082,30 +1088,17 @@ export function SourcingCandidateTable({
           </Table>
           </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-end px-6 py-4 border-t border-border flex-shrink-0 bg-background">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-sm">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+          {/* Load more */}
+          {hasMore && (
+            <div className="flex items-center justify-center px-6 py-4 border-t border-border flex-shrink-0 bg-background">
+              <Button
+                variant="secondary"
+                size="sm"
+                iconRight={ChevronDown}
+                onClick={() => setVisibleCount(c => Math.min(c + PAGE_STEP, totalCount))}
+              >
+                Load {Math.min(PAGE_STEP, totalCount - visibleCount)} more
+              </Button>
             </div>
           )}
         </CardContent>
@@ -1290,27 +1283,16 @@ export function SourcingCandidateTable({
             </Card>
           )
         })}
-        {/* Mobile Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 pt-4">
+        {/* Mobile Load More */}
+        {hasMore && (
+          <div className="flex items-center justify-center pt-4">
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
+              iconRight={ChevronDown}
+              onClick={() => setVisibleCount(c => Math.min(c + PAGE_STEP, totalCount))}
             >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm">
-              {currentPage} / {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-            >
-              <ChevronRight className="h-4 w-4" />
+              Load {Math.min(PAGE_STEP, totalCount - visibleCount)} more
             </Button>
           </div>
         )}
