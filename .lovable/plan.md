@@ -1,33 +1,37 @@
-# Candidates page — header + page chrome alignment with Jobs
+# Candidates page — promote rail + filters to floating white cards
 
-Purely visual. No data, hook, or routing changes.
+Purely visual. No logic, no data, no hook changes.
 
-## What I see today (vs Jobs / vs the mockup)
+## What the mockup shows vs what we have
 
-- **Candidates wrapper** uses `bg-background` (white) and wraps everything in `h-[100dvh] flex flex-col` with a hard **white header band** (`border-b border-virgilio-border bg-surface-primary px-6 py-5`) holding `<CandidatesHeader>`. Because the page is pure white edge-to-edge, the dark floating sidebar reads as **glued to the page chrome**, not floating.
-- **Jobs wrapper** uses `bg-virgilio-cream`, no inner header band, content sits in a `container` with normal padding. The dark floating sidebar pops against the cream margin → it visually floats.
-- **Jobs title** is `Jobs.` (with `text-virgilio-purple` period), a neutral `<Badge>` count chip, then a row of tiny colored-dot stats. The CTA cluster sits top-right on the same row.
-- **Candidates title** is currently `Candidates` (no purple dot), with a faint inline `1,247` text. KPI chips below are large `h-9` pills — visually heavier than Jobs.
-- The mockup confirms: cream page, **no inner band**, `Candidates.` with purple dot, small neutral count chip, KPI row beneath, and a `...` kebab beside the action buttons. The left rail (`CandidatesSearchesRail`) and main table sit as separate panels on cream.
+- **Left rail (Searches / Smart Lists / Tags)**: in the mockup it's a **floating white card** with rounded corners sitting on cream, with breathing room on all sides. Today it's a flush full-height column (`border-r border-virgilio-border bg-surface-primary`) glued to the page edge.
+- **Filters block (breadcrumbs row + Boolean/Everything/Ask tabs + search input + filter chips + Reset / Save as search)**: in the mockup these all live **inside a single white rounded container** with a soft border — same treatment as the Jobs filters card. Today they sit loose directly on the cream background.
+- **Table block** (toolbar + rows + footer) is its own white card in the mockup. Today the rows already render on white but without the outer rounded card chrome.
 
 ## Changes
 
-### 1. `src/pages/Candidates.tsx` — page chrome
-- Swap wrapper from `bg-background` to `bg-virgilio-cream`.
-- Drop the inner white header band (`border-b border-virgilio-border bg-surface-primary px-6 py-5`). The header now sits directly on cream with the same outer padding the body uses.
-- Keep the rail-plus-main body, but ensure the rail and table cards keep their existing white surface so they read as panels on cream (they already do — just confirm no `bg-background` on the body wrapper).
+### 1. `src/components/candidates/list/CandidatesSearchesRail.tsx`
+- Drop `border-r border-virgilio-border` and full-bleed full-height styling.
+- Aside becomes a self-contained card: `bg-surface-primary border border-virgilio-border rounded-2xl shadow-sm overflow-hidden`, fixed width `260px`, with internal scroll on the content area only.
+- Inner padding unchanged.
 
-### 2. `src/components/candidates/list/CandidatesHeader.tsx` — mirror Jobs header
-- Title becomes `Candidates` + `<span className="text-virgilio-purple">.</span>` using the same Poppins/`text-[28px] sm:text-[32px]` rhythm as Jobs.
-- Replace the plain `1,247` text with a `<Badge tone="neutral" size="sm">` next to the title (Jobs pattern).
-- KPI chips: shrink from `h-9` to `h-8`, drop the pill background, and let the active state be the only filled chip (matches mockup density). Keep the same icons/tones.
-- Add the `...` overflow kebab next to the primary `+ Add candidate` button (visual only — opens a small `DropdownMenu` reusing existing handlers like Import CSV / Bulk upload as menu items on narrow screens; on wide screens those stay as inline secondary buttons exactly like today).
+### 2. `src/pages/Candidates.tsx` — body layout
+- Wrap the rail column in `pl-6 py-4` so the card has cream margin on left/top/bottom. Keep `gap-4` between rail and main.
+- Main column gets the same `pr-6 py-4` rhythm (it currently uses `px-4 sm:px-6 py-5`).
+- Wrap the **filters block** in a white card:
+  - Container: `<section className="bg-surface-primary border border-virgilio-border rounded-2xl shadow-sm p-4 space-y-3">`
+  - Contents: `SavedSearchToolbar` (top), then `SearchModeTabs`, `CandidateSearchBar` (with its trailing `SaveSearchPopover`), `FilterChipsRow`.
+  - The "Reset / Save as search" cluster currently lives inside the search bar trailing area — leave it.
+- Wrap the **table block** in a second white card:
+  - Container: `<section className="bg-surface-primary border border-virgilio-border rounded-2xl shadow-sm overflow-hidden">`
+  - Contents: `BulkActionBar` (when shown — its dark pill stays anchored above the table inside the card), `CandidatesTable`, `CandidatesFooter`.
+  - Add a thin `divide-y divide-virgilio-border` only if the table doesn't already render its own top border.
 
-### 3. Sidebar — confirm only
-- `AppSidebar` is already `fixed top-3 left-3 bottom-3 rounded-2xl` — no change needed.
-- The "integrated" feeling on Candidates was caused by the white page bg above; once the page turns cream the floating sidebar reads correctly.
+### 3. Spacing tune-ups
+- Outer body wrapper: `gap-4 px-0` so the two cream margins come from the rail/main padding, keeping the layout symmetric.
+- Header band already uses `px-6 pt-6 pb-4` — no change.
 
 ## Out of scope
-- Restructuring `CandidatesSearchesRail` or the table styling.
-- Any change to the global `Header` (top dark nav) or `Layout` wrapper paddings.
-- Functionality of the kebab beyond surfacing existing actions.
+- Internals of `SavedSearchToolbar`, `CandidatesTable`, `BulkActionBar`, `CandidatesFooter` — they keep their current markup, only the outer wrappers change.
+- Tag list, smart-list, and saved-search row styling inside the rail.
+- Any change to `Jobs.tsx`, top nav, or sidebar (already floating).
