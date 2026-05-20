@@ -157,10 +157,11 @@ export function SourcingCandidateTable({
     { key: sortKey as any, direction: 'desc' }
   )
 
-  // Pagination
-  const totalPages = Math.ceil(sortedData.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const paginatedData = sortedData.slice(startIndex, startIndex + itemsPerPage)
+  // Pagination — client-side Load N more
+  const totalCount = sortedData.length
+  const startIndex = 0
+  const paginatedData = sortedData.slice(0, visibleCount)
+  const hasMore = visibleCount < totalCount
 
   // Apollo candidates that can be selected on current page (not already collected)
   const apolloCandidatesOnPage = paginatedData.filter(c => 
