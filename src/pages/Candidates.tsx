@@ -622,6 +622,27 @@ function CandidatesInner() {
           onCompleted={() => { setBulkJobOpen(false); clearSelection(); getCandidates() }}
         />
       )}
+
+      <AlertDialog open={!!deleteSavedView} onOpenChange={(open) => { if (!open && !isDeletingSavedView) setDeleteSavedView(null) }}>
+        <AlertDialogContent className="mx-4 max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete saved search?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the saved search "{deleteSavedView?.name}". This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-3">
+            <AlertDialogCancel className="w-full sm:w-auto" disabled={isDeletingSavedView}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleConfirmDeleteSavedView() }}
+              disabled={isDeletingSavedView}
+              className={cn(buttonVariants({ variant: 'danger' }), 'w-full sm:w-auto')}
+            >
+              {isDeletingSavedView ? 'Deleting…' : 'Delete search'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
