@@ -23,7 +23,7 @@ import { FilterChipsRow } from '@/components/candidates/list/FilterChipsRow'
 import { SavedSearchToolbar } from '@/components/candidates/list/SavedSearchToolbar'
 import { BulkActionBar } from '@/components/candidates/list/BulkActionBar'
 import { CandidatesTable } from '@/components/candidates/list/CandidatesTable'
-import { CandidatesFooter } from '@/components/candidates/list/CandidatesFooter'
+import { TableFooterSummary } from '@/components/ui/table-pagination'
 import { SaveSearchButton } from '@/components/candidates/list/SaveSearchButton'
 import { SaveSearchPopover, type SaveSearchPayload } from '@/components/candidates/list/SaveSearchPopover'
 import { deriveAutoName } from '@/lib/savedSearchAutoName'
@@ -598,14 +598,16 @@ function CandidatesInner() {
               />
             </PermissionGate>
 
-            <CandidatesFooter
-              shown={visible.length}
-              total={finalAfterSmart.length}
-              pageSize={pageSize}
-              onPageSizeChange={(n) => { setPageSize(n); setPage(1) }}
-              onLoadMore={() => setPage(p => p + 1)}
-              canLoadMore={shown < finalAfterSmart.length}
-            />
+            {visible.length > 0 && !isLoading && (
+              <TableFooterSummary
+                rangeStart={1}
+                rangeEnd={visible.length}
+                total={finalAfterSmart.length}
+                entityLabel="candidates"
+                onLoadMore={() => setPage(p => p + 1)}
+                loadMoreLabel={`Load ${pageSize} more`}
+              />
+            )}
           </section>
         </main>
       </div>

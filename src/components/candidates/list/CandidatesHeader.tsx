@@ -1,12 +1,6 @@
-import { Users, ListChecks, Mail, Heart, Sparkles, MoreHorizontal, Upload, FileUp } from 'lucide-react'
+import { Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { cn } from '@/lib/utils'
 import type { CandidateKpis } from '@/hooks/useCandidateKpis'
@@ -23,37 +17,28 @@ interface CandidatesHeaderProps {
   onBulkUpload?: () => void
 }
 
-interface KpiChipProps {
-  icon: typeof Users
-  label: string
+interface CounterProps {
+  dotClass: string
   value: number | undefined
-  active: boolean
+  label: string
   loading: boolean
+  active: boolean
   onClick: () => void
-  tone?: 'default' | 'pink' | 'purple'
 }
 
-function KpiChip({ icon: Icon, label, value, active, loading, onClick, tone = 'default' }: KpiChipProps) {
-  const toneClass = {
-    default: 'text-text-secondary',
-    pink: 'text-pastel-pink-foreground',
-    purple: 'text-virgilio-purple',
-  }[tone]
+function CounterMarker({ dotClass, value, label, loading, active, onClick }: CounterProps) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'group inline-flex items-center gap-1.5 h-8 pl-2 pr-2.5 rounded-lg transition-colors',
-        'text-[13px] font-poppins font-medium tracking-[-0.005em]',
-        active
-          ? 'bg-virgilio-purple/10 text-virgilio-purple'
-          : 'hover:bg-[#F1F0EC] text-text-primary',
+        'inline-flex items-center gap-1.5 transition-colors',
+        active ? 'text-text-primary font-semibold' : 'text-text-secondary hover:text-text-primary',
       )}
     >
-      <Icon className={cn('h-3.5 w-3.5', active ? 'text-virgilio-purple' : toneClass)} />
+      <span className={cn('h-1.5 w-1.5 rounded-full', dotClass)} />
       <span className="tabular-nums">{loading ? '—' : (value ?? 0).toLocaleString()}</span>
-      <span className="text-text-tertiary font-normal">{label}</span>
+      <span className="font-normal text-text-tertiary">{label}</span>
     </button>
   )
 }
@@ -73,40 +58,38 @@ export function CandidatesHeader({
             {isLoading ? '—' : (kpis?.total ?? 0).toLocaleString()}
           </Badge>
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-1">
-          <KpiChip
-            icon={ListChecks}
-            label="in active pipeline"
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-body-sm text-text-secondary">
+          <CounterMarker
+            dotClass="bg-pastel-green-foreground"
             value={kpis?.inActivePipeline}
-            active={activeSmartList === 'active'}
+            label="in active pipeline"
             loading={isLoading}
+            active={activeSmartList === 'active'}
             onClick={() => onSelectSmartList('active')}
           />
-          <KpiChip
-            icon={Mail}
-            label="awaiting outreach"
+          <CounterMarker
+            dotClass="bg-text-tertiary"
             value={kpis?.awaitingOutreach}
-            active={activeSmartList === 'awaiting'}
+            label="awaiting outreach"
             loading={isLoading}
+            active={activeSmartList === 'awaiting'}
             onClick={() => onSelectSmartList('awaiting')}
           />
-          <KpiChip
-            icon={Heart}
-            label="favorites"
+          <CounterMarker
+            dotClass="bg-pastel-pink-foreground"
             value={kpis?.favorites}
+            label="favorites"
+            loading={isLoading}
             active={activeSmartList === 'favorites'}
-            loading={isLoading}
             onClick={() => onSelectSmartList('favorites')}
-            tone="pink"
           />
-          <KpiChip
-            icon={Sparkles}
-            label="new this week"
+          <CounterMarker
+            dotClass="bg-virgilio-purple"
             value={kpis?.newThisWeek}
-            active={activeSmartList === 'new'}
+            label="new this week"
             loading={isLoading}
+            active={activeSmartList === 'new'}
             onClick={() => onSelectSmartList('new')}
-            tone="purple"
           />
         </div>
       </div>
@@ -123,30 +106,7 @@ export function CandidatesHeader({
               Bulk upload
             </Button>
           )}
-          <Button variant="primary" onClick={onAddCandidate}>+ Add candidate</Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="secondary" iconOnly icon={MoreHorizontal} aria-label="More actions" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" sideOffset={8}>
-              {onImportCSV && (
-                <DropdownMenuItem onSelect={onImportCSV} className="lg:hidden">
-                  <Upload className="h-4 w-4" />
-                  Import CSV
-                </DropdownMenuItem>
-              )}
-              {onBulkUpload && (
-                <DropdownMenuItem onSelect={onBulkUpload} className="lg:hidden">
-                  <FileUp className="h-4 w-4" />
-                  Bulk upload
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem onSelect={onAddCandidate} className="lg:hidden">
-                <Users className="h-4 w-4" />
-                Add candidate
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button variant="primary" icon={Users} onClick={onAddCandidate}>Add candidate</Button>
         </div>
       </PermissionGate>
     </header>
