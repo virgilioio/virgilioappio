@@ -537,11 +537,21 @@ function CandidatesInner() {
               allFilteredSelected={selectedIds.length >= finalAfterSmart.length}
               onSelectAllFiltered={selectAllFiltered}
               onClearSelection={clearSelection}
-              onAddToJob={() => setBulkJobOpen(true)}
+              onAddToJob={() => {}}
               onEmail={() => toast({ title: 'Bulk email coming soon' })}
               onTag={() => {}}
               onAddToSearch={handleSavePopoverOpen}
               onArchive={archiveSelected}
+              addToJobButtonSlot={
+                <AddToJobPopover
+                  candidateIds={selectedIds}
+                  candidateNames={candidates.filter(c => selectedIds.includes(c.id)).map(c => c.candidate_name)}
+                  onCompleted={() => { clearSelection(); getCandidates() }}
+                  trigger={
+                    <Button onDark size="sm" variant="ghost" icon={UsersIcon}>Add to job</Button>
+                  }
+                />
+              }
               tagButtonSlot={
                 <AddTagPopover
                   candidateIds={selectedIds}
