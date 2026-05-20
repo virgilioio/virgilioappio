@@ -10,6 +10,7 @@ import { BulkUploadProvider } from '@/contexts/BulkUploadContext'
 import { GlobalBulkUploadWidget } from '@/components/candidates/GlobalBulkUploadWidget'
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav'
 import { AppSidebar } from '@/components/layout/AppSidebar'
+import { HeaderContextBands } from '@/components/layout/HeaderContextBands'
 
 export function Layout() {
   const location = useLocation()
