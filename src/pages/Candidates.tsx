@@ -366,7 +366,7 @@ function CandidatesInner() {
               setShowMergeDialog(true)
               return null
             }
-            if (res?.id) setSearchParams({ openCandidate: res.id }, { replace: true })
+            if (res && 'id' in res && res.id) setSearchParams({ openCandidate: res.id }, { replace: true })
           }
           setIsFormOpen(false); setSelectedCandidate(null)
           return null
@@ -410,10 +410,11 @@ function CandidatesInner() {
 
       {deleteTarget && (
         <DeleteCandidateDialog
-          isOpen={!!deleteTarget}
+          open={!!deleteTarget}
+          onOpenChange={(o) => { if (!o) setDeleteTarget(null) }}
+          candidateId={deleteTarget.id}
           candidateName={deleteTarget.name}
           onConfirm={handleDelete}
-          onCancel={() => setDeleteTarget(null)}
         />
       )}
 
