@@ -15,6 +15,8 @@ interface BulkActionBarProps {
   onArchive: () => void
   /** Optional render override for the Tag button (used to wrap it in a Popover trigger). */
   tagButtonSlot?: ReactNode
+  /** Optional render override for the Add to job button (used to wrap it in a Popover trigger). */
+  addToJobButtonSlot?: ReactNode
 }
 
 export function BulkActionBar({
